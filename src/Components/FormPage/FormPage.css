@@ -1,0 +1,28 @@
+.actionbtns{
+    display: flex;
+    width: 90%;
+    justify-content: space-between;
+    margin: 20px auto;
+}
+.analyze{
+    background-color: aqua;
+    padding: 7px 10px;   
+    border-radius: 5px;
+    cursor: pointer;
+}
+.export{
+    background-color: greenyellow;
+    padding: 7px 10px;   
+    border-radius: 5px;
+    cursor: pointer;
+}
+.datatable{
+    /* background: white; */
+    width: 100%;
+    overflow: auto;
+    margin: auto;
+}
+td, th{
+    padding: 10px 20px;
+    border: solid black 1px;
+}
