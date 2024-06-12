@@ -16,7 +16,7 @@ const FormPage = ()=>{
         name:""
     })
 
-    const employeeWorkDays = {}
+    const employeeWorkedDays = {}
     const sundayWorkedDays = {}
     const holidayWorkedDays = {}
 
@@ -38,26 +38,48 @@ const FormPage = ()=>{
         writeFileXLSX(wb, "JazmyneBiometricSheet.xlsx");
     }, [pres]);
 
+    const formatDate = (date) => {
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    
+        const day = days[date.getDay()];
+        const month = months[date.getMonth()];
+        const dayOfMonth = date.getDate();
+        const year = date.getFullYear();
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+    
+        return `${day}, ${month} ${dayOfMonth}, ${year}`;
+    }
     const computeMonthlyHours = (totalTimeObject)=>{
         const expectedWorkDays = punchedDays.length
         const expectedWorkHours = expectedWorkDays * 9
         var employeeDet = employeeDetails
         employeeDet.forEach((employee)=>{
+            const employeeID = employee['Employee ID']
+            employeeWorkedDays[employeeID] = []
+            sundayWorkedDays[employeeID] = []
+            holidayWorkedDays[employeeID] = []
             let asumTime = 0
             let ssumTime = 0
             let act = 0
             let sct = 0
             totalTimeObject.forEach((timeObject)=>{
-                if (employee['Employee ID'] === timeObject['Employee ID']){
+                if (employeeID === timeObject['Employee ID']){
                     asumTime += timeObject['Total Hours'] 
                     act++
                     const workdate = timeObject['Date']
                     const newworkdate = new Date(workdate)
+                    employeeWorkedDays[employeeID].push(formatDate(newworkdate))
                     if(newworkdate.getDay()===0){
                         ssumTime += timeObject['Total Hours'] 
                         sct++
+                        sundayWorkedDays[employeeID].push(formatDate(newworkdate))
+
                         asumTime -= timeObject['Total Hours'] 
                         act--
+                        employeeWorkedDays[employeeID].pop()
                     }
                 }
 
@@ -140,7 +162,8 @@ const FormPage = ()=>{
                     'Last Name': employeeLast,
                     'Department': employeeDept,
                     'Date': punchDate,
-                    'Total Hours': totalHours, }]
+                    'Total Hours': totalHours, 
+                }]
             })
         })
         // console.log('date punched: ',datesPunched)
