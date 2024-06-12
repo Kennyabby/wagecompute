@@ -1,6 +1,7 @@
 import './FormPage.css'
 import { useEffect, useState, useRef, useCallback, PureComponent } from "react";
 import { read, utils, writeFileXLSX } from 'xlsx';
+import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 
 
 const FormPage = ()=>{
@@ -11,6 +12,9 @@ const FormPage = ()=>{
     const [totalTimeObject, setTotalTimeObject] = useState([])
     const [employeeDetails, setEmployeeDetails] = useState([])
     const [punchedDays, setPunchedDays] = useState(0)
+    const [viewEWorkedDays, setEViewWorkedDays] = useState(false)
+    const [viewSWorkedDays, setSViewWorkedDays] = useState(false)
+    const [viewHWorkedDays, setHViewWorkedDays] = useState(false)
     const [field, setField] = useState({
         id:"",  
         name:""
@@ -56,7 +60,7 @@ const FormPage = ()=>{
         const expectedWorkDays = punchedDays.length
         const expectedWorkHours = expectedWorkDays * 9
         var employeeDet = employeeDetails
-        employeeDet.forEach((employee)=>{
+        employeeDet.forEach((employee, index)=>{
             const employeeID = employee['Employee ID']
             employeeWorkedDays[employeeID] = []
             sundayWorkedDays[employeeID] = []
@@ -92,7 +96,12 @@ const FormPage = ()=>{
             employee['Worked Days (Actual)'] = <label>{act}
                 {act < expectedWorkDays && <span className='red'>{` abs(${
                     expectedWorkDays - act
-                })`}</span>}
+                })`} </span>}
+                <span className='viewtag' onClick={()=>{
+                    setEViewWorkedDays(!viewEWorkedDays)
+                }}>
+                    {viewEWorkedDays? <IoIosArrowUp/>:<IoIosArrowDown/>}
+                </span>
             </label> 
             employee['Worked Hours (Expected)'] = expectedWorkHours
             employee['Worked Hours (Actual)'] = auctualWorkHours
@@ -102,7 +111,14 @@ const FormPage = ()=>{
             employee['Deductable Hours'] = <label className={deductable>0?'red bold':''}>
                 {`${deductable > 0 ? deductable : 0}`}
             </label>
-            employee['Worked Times (Sundays)'] = sct
+            employee['Worked Times (Sundays)'] = <label>
+                {`${sct}`}
+                <span className='viewtag' onClick={()=>{
+                    setSViewWorkedDays(!viewSWorkedDays)
+                }}>
+                    {viewSWorkedDays? <IoIosArrowUp/>:<IoIosArrowDown/>}
+                </span>
+            </label>
             employee['Sunday Work Hours'] = sundaysWorkHours 
         })
         setPres(employeeDet)

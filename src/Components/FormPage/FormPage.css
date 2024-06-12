@@ -23,6 +23,7 @@
     margin: auto;
 }
 td, th{
+    position: relative;
     padding: 10px 20px;
     border: solid black 1px;
 }
@@ -34,4 +35,17 @@ td, th{
 }
 .green{
     color: rgb(16, 186, 53)
+}
+.viewcov{
+    display: flex;
+    background: blue;
+    width: 100%;
+    position: relative;
+}
+.viewtag{
+    position: absolute;
+    right: 5px;
+    bottom: 2px;
+    font-size: .8em;
+    cursor: pointer;
 }
