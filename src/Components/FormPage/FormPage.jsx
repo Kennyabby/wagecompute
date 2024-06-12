@@ -15,6 +15,10 @@ const FormPage = ()=>{
     const [viewEWorkedDays, setEViewWorkedDays] = useState(false)
     const [viewSWorkedDays, setSViewWorkedDays] = useState(false)
     const [viewHWorkedDays, setHViewWorkedDays] = useState(false)
+    const [infoHeader, setInfoHeader] = useState('')
+    const [infoForId, setInfoForId] = useState('')
+    const [infoFName, setInfoFName] = useState('')
+    const [infoLName, setInfoLName] = useState('')
     const [field, setField] = useState({
         id:"",  
         name:""
@@ -62,6 +66,8 @@ const FormPage = ()=>{
         var employeeDet = employeeDetails
         employeeDet.forEach((employee, index)=>{
             const employeeID = employee['Employee ID']
+            const employeeFirst = employee['First Name']
+            const employeeLast = employee['Last Name']
             employeeWorkedDays[employeeID] = []
             sundayWorkedDays[employeeID] = []
             holidayWorkedDays[employeeID] = []
@@ -98,6 +104,10 @@ const FormPage = ()=>{
                     expectedWorkDays - act
                 })`} </span>}
                 <span className='viewtag' onClick={()=>{
+                    setInfoHeader('Worked Days (Actual)')
+                    setInfoForId(employeeID)
+                    setInfoFName(employeeFirst)
+                    setInfoLName(employeeLast)
                     setEViewWorkedDays(!viewEWorkedDays)
                 }}>
                     {viewEWorkedDays? <IoIosArrowUp/>:<IoIosArrowDown/>}
@@ -114,6 +124,10 @@ const FormPage = ()=>{
             employee['Worked Times (Sundays)'] = <label>
                 {`${sct}`}
                 <span className='viewtag' onClick={()=>{
+                    setInfoHeader('Worked Times (Sundays)')
+                    setInfoForId(employeeID)
+                    setInfoFName(employeeFirst)
+                    setInfoLName(employeeLast)
                     setSViewWorkedDays(!viewSWorkedDays)
                 }}>
                     {viewSWorkedDays? <IoIosArrowUp/>:<IoIosArrowDown/>}
