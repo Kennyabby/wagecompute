@@ -8,8 +8,6 @@ function App() {
         <Routes>
           <Route path='/' element={<FormPage/>}></Route>
         </Routes>
-      {/* <Router>
-      </Router> */}
     </>
   );
 }

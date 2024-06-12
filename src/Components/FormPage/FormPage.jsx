@@ -15,7 +15,10 @@ const FormPage = ()=>{
         id:"",  
         name:""
     })
-   
+
+    const employeeWorkDays = {}
+    const sundayWorkedDays = {}
+    const holidayWorkedDays = {}
 
     const uploadFile = async(e)=>{        
         const f = await file.arrayBuffer()
@@ -64,11 +67,19 @@ const FormPage = ()=>{
             const wovertime = parseFloat((auctualWorkHours - expectedWorkHours).toFixed(2))
             const deductable = parseFloat((expectedWorkHours - auctualWorkHours).toFixed(2))
             employee['Worked Days (Expected)'] = expectedWorkDays
-            employee['Worked Days (Actual)'] = act
+            employee['Worked Days (Actual)'] = <label>{act}
+                {act < expectedWorkDays && <span className='red'>{` abs(${
+                    expectedWorkDays - act
+                })`}</span>}
+            </label> 
             employee['Worked Hours (Expected)'] = expectedWorkHours
             employee['Worked Hours (Actual)'] = auctualWorkHours
-            employee['Worked Hours Overtime'] = wovertime > 0 ? wovertime : 0
-            employee['Deductable Hours'] = deductable > 0 ? deductable : 0
+            employee['Worked Hours Overtime'] = <label className={wovertime>0?'green bold':''}>
+                {`${wovertime > 0 ? wovertime : 0}`}
+            </label>
+            employee['Deductable Hours'] = <label className={deductable>0?'red bold':''}>
+                {`${deductable > 0 ? deductable : 0}`}
+            </label>
             employee['Worked Times (Sundays)'] = sct
             employee['Sunday Work Hours'] = sundaysWorkHours 
         })

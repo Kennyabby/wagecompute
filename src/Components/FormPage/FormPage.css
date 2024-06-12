@@ -26,3 +26,12 @@ td, th{
     padding: 10px 20px;
     border: solid black 1px;
 }
+.red{
+    color: red;
+}
+.bold{
+    font-weight: bold;
+}
+.green{
+    color: rgb(16, 186, 53)
+}
