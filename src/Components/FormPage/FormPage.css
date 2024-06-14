@@ -49,3 +49,53 @@ td, th{
     font-size: .8em;
     cursor: pointer;
 }
+
+.viewinfo{
+    position: fixed;
+    display: block;
+    top:50%;
+    left:50%;
+    height: 80vh;
+    width: 300px;
+    transform: translate(-50%,-50%);
+    background: white;
+    padding: 20px 50px;
+    border-radius: 10px;
+    z-index: 7;
+}
+.abspres{
+    display: flex;
+    width: 100%;
+    justify-content: space-around;
+    margin-bottom:20px ;
+}
+.abspres > div{
+    cursor: pointer;
+    margin-top: 20px;
+}
+.infoheader{
+    width: fit-content;
+    margin: 10px auto;
+    font-weight: bold;
+}
+.infoName{
+    width: fit-content;
+    margin: 10px auto;
+}
+.info{
+    margin-top: 20px;
+    overflow: auto;
+    height: 70%;
+}
+.info > div{
+    padding: 10px;
+    margin: auto 10px;
+    border-bottom: solid black 1px;
+}
+.close{
+    position: absolute;
+    top:10px;
+    right:10px;
+    font-size: 1.8em;
+    cursor: pointer;
+}

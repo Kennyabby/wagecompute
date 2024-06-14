@@ -1,13 +1,13 @@
 import './FormPage.css'
 import { useEffect, useState, useRef, useCallback, PureComponent } from "react";
 import { read, utils, writeFileXLSX } from 'xlsx';
-import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
-
+import { IoIosArrowDown, IoIosArrowUp, IoIosClose } from "react-icons/io";
 
 const FormPage = ()=>{
     const fileReader = useRef(null)
     const [file, setFile] = useState(null)
     const [pres, setPres] = useState([])
+    const [rawdata, setRawdata] = useState([])
     const [presHeaders, setPresHeaders] = useState([])
     const [totalTimeObject, setTotalTimeObject] = useState([])
     const [employeeDetails, setEmployeeDetails] = useState([])
@@ -23,10 +23,10 @@ const FormPage = ()=>{
         id:"",  
         name:""
     })
-
-    const employeeWorkedDays = {}
-    const sundayWorkedDays = {}
-    const holidayWorkedDays = {}
+    const holidays = []
+    const [employeeWorkedDays, setEmployeeWorkedDays] = useState({})
+    const [sundayWorkedDays, setSundayWorkedDays] = useState({})
+    const [holidayWorkedDays, setHolidayWorkedDays] = useState({})
 
     const uploadFile = async(e)=>{        
         const f = await file.arrayBuffer()
@@ -34,7 +34,8 @@ const FormPage = ()=>{
         const ws = wb.Sheets[wb.SheetNames[0]]
         const data = utils.sheet_to_json(ws)
         // console.log(data)
-        setPres(data)
+        // setPres(data)
+        setRawdata(data)
         e.target.parentElement.children[0].value='' 
         setFile(null)
     }
@@ -60,6 +61,11 @@ const FormPage = ()=>{
     
         return `${day}, ${month} ${dayOfMonth}, ${year}`;
     }
+    useEffect(()=>{
+        console.log(employeeWorkedDays)
+        console.log(infoForId)
+        console.log(employeeWorkedDays[infoForId])
+    },[viewEWorkedDays])
     const computeMonthlyHours = (totalTimeObject)=>{
         const expectedWorkDays = punchedDays.length
         const expectedWorkHours = expectedWorkDays * 9
@@ -77,19 +83,34 @@ const FormPage = ()=>{
             let sct = 0
             totalTimeObject.forEach((timeObject)=>{
                 if (employeeID === timeObject['Employee ID']){
-                    asumTime += timeObject['Total Hours'] 
+                    asumTime += Number(timeObject['Total Hours'])
                     act++
                     const workdate = timeObject['Date']
                     const newworkdate = new Date(workdate)
-                    employeeWorkedDays[employeeID].push(formatDate(newworkdate))
+                    const details = {
+                        date: formatDate(newworkdate),
+                        firstPunch: timeObject['First Punch'],
+                        lastPunch: timeObject['Last Punch']
+                    }
+                    setEmployeeWorkedDays((employeeWorkedDays)=>{
+                        employeeWorkedDays[employeeID] = employeeWorkedDays[employeeID].concat([details])
+                        return employeeWorkedDays
+                    })
                     if(newworkdate.getDay()===0){
-                        ssumTime += timeObject['Total Hours'] 
+                        ssumTime += Number(timeObject['Total Hours']) 
                         sct++
-                        sundayWorkedDays[employeeID].push(formatDate(newworkdate))
+                        setSundayWorkedDays((sundayWorkedDays)=>{
+                            sundayWorkedDays[employeeID] = sundayWorkedDays[employeeID].concat([details])
+                            return sundayWorkedDays
+                        })
 
                         asumTime -= timeObject['Total Hours'] 
                         act--
-                        employeeWorkedDays[employeeID].pop()
+                        
+                        setEmployeeWorkedDays((employeeWorkedDays)=>{
+                            employeeWorkedDays[employeeID].pop()
+                            return employeeWorkedDays
+                        })
                     }
                 }
 
@@ -135,6 +156,8 @@ const FormPage = ()=>{
             </label>
             employee['Sunday Work Hours'] = sundaysWorkHours 
         })
+        // console.log(employeeWorkedDays)
+        // console.log(sundayWorkedDays)
         setPres(employeeDet)
     }
     const handleFileChange = (e) =>{
@@ -165,6 +188,9 @@ const FormPage = ()=>{
             const employeeFirst = punch['First Name']
             const employeeLast = punch['Last Name']
             const employeeDept = punch['Department']
+            const employeeFpunch = punch['First Punch']
+            const employeeLpunch = punch['Last Punch']
+            const totalHoursPunched = punch['Total Hours']
             const punchDate = punch['Date']
             if (!datesPunched.includes(punchDate)){
                 datesPunched = datesPunched.concat(punchDate)
@@ -179,20 +205,22 @@ const FormPage = ()=>{
                 })
                 foundEmployees = foundEmployees.concat(employeeID)
             }
-            const totalTime = punch['Total Time']
-            const punchHour = Number(totalTime.slice(0,totalTime.indexOf(':')))
-            const punchMinutes = Number(totalTime.slice(totalTime.indexOf(':')+1,))
-            var totalHours = punchHour + punchMinutes/60
-            if (totalHours === 0){
-                totalHours = 9
-            }
+            // const totalTime = punch['Total Time']
+            // const punchHour = Number(totalTime.slice(0,totalTime.indexOf(':')))
+            // const punchMinutes = Number(totalTime.slice(totalTime.indexOf(':')+1,))
+            // var totalHours = punchHour + punchMinutes/60
+            // if (totalHours === 0){
+            //     totalHours = 9
+            // }
             setTotalTimeObject((totalTimeObject)=>{
                 return [...totalTimeObject, {'Employee ID': employeeID, 
                     'First Name': employeeFirst,
                     'Last Name': employeeLast,
                     'Department': employeeDept,
                     'Date': punchDate,
-                    'Total Hours': totalHours, 
+                    'First Punch': employeeFpunch,
+                    'Last Punch': employeeLpunch,
+                    'Total Hours': totalHoursPunched, 
                 }]
             })
         })
@@ -204,12 +232,158 @@ const FormPage = ()=>{
             }
         }))
     }
+    const isNightShiftStart = (firstPunch,lastPunch) =>{
+        const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
+        const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
+        // console.log((fHour === lHour) && fHour > 19)
+        if ((fHour === lHour) && fHour >= 19){
+            return true
+        }else{
+            return false
+        }
+    }
+    const isNightShiftEnd = (firstPunch, lastPunch) =>{
+        const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
+        const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
+        // console.log(firstPunch === lastPunch)
+        if ((fHour === lHour) && fHour <= 8){
+            return true
+        }else{
+            return false
+        }
+    }
+    const isNightShift = (firstPunch, lastPunch) => {
+        const firstPunchTime = new Date(`1970-01-01T${firstPunch}:00`);
+        const lastPunchTime = new Date(`1970-01-01T${lastPunch}:00`);
+        if (firstPunchTime.getHours() < 7){
+            return true
+        }
+        else if ((firstPunchTime === lastPunchTime) && firstPunchTime.getHours() > 19 
+            && lastPunchTime.getHours() > 19
+        ){
+            return true
+        }
+        else{
+            return false
+        }
+    }
+
+    const calculateTotalTime = (clockIn, clockOut) => {
+        const clockInTime = new Date(`1970-01-01T${clockIn}:00`);
+        let clockOutTime = new Date(`1970-01-01T${clockOut}:00`);
+        if (clockOutTime < clockInTime) {
+            clockOutTime.setDate(clockOutTime.getDate() + 1); // Adjust for crossing midnight
+        }
+        const totalTime = (clockOutTime - clockInTime) / (1000 * 60 * 60); // Convert milliseconds to hours
+        return totalTime.toFixed(2);
+    }
+    useEffect(()=>{
+        // make changes to the rawdata here.
+        const nightShiftData = [];
+        const analyzedEmployees = []
+        const analyzedData = []
+        const adjustedData = []
+        var expdata = rawdata
+        expdata.forEach((punch, index) => {
+            const employeeID = punch['Employee ID'];
+            const employeeFirst = punch['First Name'];
+            const employeeLast = punch['Last Name'];
+            const employeeDept = punch['Department'];
+            const employeeFpunch = punch['First Punch'];
+            const employeeLpunch = punch['Last Punch'];
+            const punchDate = punch['Date'];
+            var nextPunch = expdata[index];
+            if (index < expdata.length - 1) {
+                nextPunch = expdata[index + 1];
+            }
+            const totalHours = calculateTotalTime(employeeFpunch, nextPunch['First Punch'])
+            const mTotalHours = calculateTotalTime(employeeFpunch, employeeLpunch)
+            let updatedPunch= {
+                ...punch,
+                'Total Time': 'Calculated',
+                'Total Hours': mTotalHours,
+                'Shift':'Morning'
+            }
+            if(isNightShiftStart(employeeFpunch, employeeLpunch)){
+                // console.log('Night shift started')
+                if (!analyzedEmployees.includes(employeeID)){
+                    analyzedEmployees.push(employeeID)
+                    analyzedData.push(punch)
+                    if (nextPunch['Employee ID'] === employeeID) {
+                        updatedPunch = {
+                            ...punch,
+                            'First Punch': employeeFpunch,
+                            'Last Punch': nextPunch['First Punch'],
+                            'Total Time': 'Calculated',
+                            'Total Hours': totalHours,
+                            'Shift':'Night'
+                        }
+
+                        expdata[index + 1] = {
+                            ...nextPunch,
+                            'First Punch': nextPunch['Last Punch'],
+                        }
+                        console.log('night shift',updatedPunch)
+                        // console.log(punch)
+                    }
+                }
+            }
+            // console.log('night shift checked', updatedPunch)  
+            if(!isNightShiftEnd(employeeFpunch,employeeLpunch)){
+                // console.log('night shift not ended')
+                if (analyzedEmployees[analyzedEmployees.length-1]===employeeID){
+                    
+                    // analyzedEmployees.push(employeeID)
+                    analyzedData.push(punch)
+                    // analyzeData(rawdata[index])
+                    if (nextPunch['Employee ID'] === employeeID) {
+                        updatedPunch = {
+                            ...punch,
+                            'First Punch': employeeFpunch,
+                            'Last Punch': nextPunch['First Punch'],
+                            'Total Time': 'Calculated',
+                            'Total Hours': totalHours,
+                            'Shift':'Night'
+                        }
+
+                        expdata[index + 1] = {
+                            ...nextPunch,
+                            'First Punch': nextPunch['Last Punch'],
+                        }
+                        // console.log(updatedPunch)
+                    }
+                }
+            }else{
+                analyzedEmployees.pop()
+                updatedPunch = {
+                    ...punch,
+                    'Shift': 'NA'
+                }
+            }
+            // else{
+            //     // console.log('no night shift')
+            //     updatedPunch= {
+            //         ...punch,
+            //         'Total Time': 'Calculated',
+            //         'Total Hours': totalHours,
+            //         'Shift':'Morning'
+            //     }
+            //     console.log(updatedPunch)
+            // }
+           
+            adjustedData.push(updatedPunch)
+        })
+        // setPres(nightShiftData.concat(rawdata.filter(punch => !isNightShift(punch['First Punch']))));
+        // console.log(adjustedData)
+        setPres(adjustedData.filter((data)=>{return data['Shift']!=='NA'}))
+    },[rawdata])
     useEffect(()=>{
         // console.log(field)
     },[field])
     useEffect(()=>{
         if (pres[0]!==undefined){
             const headers = Object.keys(pres[0])
+            console.log(headers)
             setPresHeaders(headers)                
         }
     },[pres])
@@ -218,6 +392,53 @@ const FormPage = ()=>{
     },[totalTimeObject])
     return (
         <>
+            {(viewEWorkedDays || viewHWorkedDays || viewSWorkedDays) &&
+                <div className='viewinfo'>
+                    <IoIosClose className='close' onClick={()=>{
+                        setEViewWorkedDays(false)
+                        setSViewWorkedDays(false)
+                        setHViewWorkedDays(false)
+                    }}/>
+                    <div className='infoheader'>
+                        {infoHeader}
+                    </div>
+                    <div className='infoName'>Employee: <b>{infoFName + ' ' + infoLName}</b></div>
+                    <div className='abspres'>
+                        <div>Present {'('+employeeWorkedDays[infoForId].length+')'}</div>
+                        <div>Absent</div>
+                    </div>
+                    {viewEWorkedDays && <div className='info'>
+                        {employeeWorkedDays[infoForId].map((days)=>{
+                            return <div>
+                                <div>{days.date}</div>
+                                <div>
+                                    <div>{days.firstPunch}-{days.lastPunch}</div>
+                                </div>
+                            </div>
+                        })}
+                    </div>}
+                    {viewSWorkedDays && <div className='info'>
+                        {sundayWorkedDays[infoForId].map((days)=>{
+                            return <div>
+                                <div>{days.date}</div>
+                                <div>
+                                    <div>{days.firstPunch}-{days.lastPunch}</div>
+                                </div>
+                            </div>
+                        })}
+                    </div>}
+                    {viewHWorkedDays && <div className='info'>
+                        {holidayWorkedDays[infoForId].map((days)=>{
+                            return <div>
+                                <div>{days.date}</div>
+                                <div>
+                                    <div>{days.firstPunch}-{days.lastPunch}</div>
+                                </div>
+                            </div>
+                        })}
+                    </div>}
+                </div>
+            }
             <div className="actionbtns">
                 <div style={{display:"block"}}>
                     <input ref={fileReader} type='file' onChange={handleFileChange}/>
