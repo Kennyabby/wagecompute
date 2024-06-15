@@ -190,7 +190,7 @@ const FormPage = ()=>{
             const employeeDept = punch['Department']
             const employeeFpunch = punch['First Punch']
             const employeeLpunch = punch['Last Punch']
-            const totalHoursPunched = punch['Total Hours']
+            var totalHoursPunched = punch['Total Hours']
             const punchDate = punch['Date']
             if (!datesPunched.includes(punchDate)){
                 datesPunched = datesPunched.concat(punchDate)
@@ -209,9 +209,9 @@ const FormPage = ()=>{
             // const punchHour = Number(totalTime.slice(0,totalTime.indexOf(':')))
             // const punchMinutes = Number(totalTime.slice(totalTime.indexOf(':')+1,))
             // var totalHours = punchHour + punchMinutes/60
-            // if (totalHours === 0){
-            //     totalHours = 9
-            // }
+            if (totalHoursPunched === 0){
+                totalHoursPunched = 9
+            }
             setTotalTimeObject((totalTimeObject)=>{
                 return [...totalTimeObject, {'Employee ID': employeeID, 
                     'First Name': employeeFirst,
