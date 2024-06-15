@@ -74,6 +74,7 @@ const FormPage = ()=>{
             const employeeID = employee['Employee ID']
             const employeeFirst = employee['First Name']
             const employeeLast = employee['Last Name']
+            const shift = employee['Shift']
             employeeWorkedDays[employeeID] = []
             sundayWorkedDays[employeeID] = []
             holidayWorkedDays[employeeID] = []
@@ -81,6 +82,8 @@ const FormPage = ()=>{
             let ssumTime = 0
             let act = 0
             let sct = 0
+            let msh = 0
+            let nsh = 0
             totalTimeObject.forEach((timeObject)=>{
                 if (employeeID === timeObject['Employee ID']){
                     asumTime += Number(timeObject['Total Hours'])
@@ -112,6 +115,11 @@ const FormPage = ()=>{
                             return employeeWorkedDays
                         })
                     }
+                    if (timeObject['Shift']==='Morning'){
+                        msh++
+                    }else if (timeObject['Shift']==='Night'){
+                        nsh++
+                    }
                 }
 
             })
@@ -134,6 +142,8 @@ const FormPage = ()=>{
                     {viewEWorkedDays? <IoIosArrowUp/>:<IoIosArrowDown/>}
                 </span>
             </label> 
+            employee['Morning Shift'] = msh
+            employee['Night Shift'] = nsh
             employee['Worked Hours (Expected)'] = expectedWorkHours
             employee['Worked Hours (Actual)'] = auctualWorkHours
             employee['Worked Hours Overtime'] = <label className={wovertime>0?'green bold':''}>
@@ -190,6 +200,7 @@ const FormPage = ()=>{
             const employeeDept = punch['Department']
             const employeeFpunch = punch['First Punch']
             const employeeLpunch = punch['Last Punch']
+            const employeeShift = punch ['Shift']
             var totalHoursPunched = punch['Total Hours']
             const punchDate = punch['Date']
             if (!datesPunched.includes(punchDate)){
@@ -221,6 +232,7 @@ const FormPage = ()=>{
                     'First Punch': employeeFpunch,
                     'Last Punch': employeeLpunch,
                     'Total Hours': totalHoursPunched, 
+                    'Shift':employeeShift
                 }]
             })
         })
@@ -235,8 +247,10 @@ const FormPage = ()=>{
     const isNightShiftStart = (firstPunch,lastPunch) =>{
         const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
         const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
+        const ftime = fHour + fMinutes/60
+        const ltime = lHour + lMinutes/60
         // console.log((fHour === lHour) && fHour > 19)
-        if ((fHour === lHour) && fHour >= 19){
+        if ((ftime === ltime) && ftime >= 18){
             return true
         }else{
             return false
@@ -245,27 +259,26 @@ const FormPage = ()=>{
     const isNightShiftEnd = (firstPunch, lastPunch) =>{
         const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
         const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
-        // console.log(firstPunch === lastPunch)
-        if ((fHour === lHour) && fHour <= 8){
+        const ftime = fHour + fMinutes/60
+        const ltime = lHour + lMinutes/60
+        if ((ftime === ltime) && fHour <= 7){
             return true
         }else{
             return false
         }
     }
     const isNightShift = (firstPunch, lastPunch) => {
-        const firstPunchTime = new Date(`1970-01-01T${firstPunch}:00`);
-        const lastPunchTime = new Date(`1970-01-01T${lastPunch}:00`);
-        if (firstPunchTime.getHours() < 7){
+        const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
+        const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
+        const ftime = fHour + fMinutes/60
+        const ltime = lHour + lMinutes/60
+
+        if(ftime <= 7 && ltime>=19){
             return true
-        }
-        else if ((firstPunchTime === lastPunchTime) && firstPunchTime.getHours() > 19 
-            && lastPunchTime.getHours() > 19
-        ){
-            return true
-        }
-        else{
+        }else{
             return false
         }
+        
     }
 
     const calculateTotalTime = (clockIn, clockOut) => {
@@ -296,7 +309,7 @@ const FormPage = ()=>{
             if (index < expdata.length - 1) {
                 nextPunch = expdata[index + 1];
             }
-            const totalHours = calculateTotalTime(employeeFpunch, nextPunch['First Punch'])
+            const totalHours = calculateTotalTime(employeeLpunch, nextPunch['First Punch'])
             const mTotalHours = calculateTotalTime(employeeFpunch, employeeLpunch)
             let updatedPunch= {
                 ...punch,
@@ -323,15 +336,40 @@ const FormPage = ()=>{
                             ...nextPunch,
                             'First Punch': nextPunch['Last Punch'],
                         }
-                        console.log('night shift',updatedPunch)
+                        // console.log('night shift',updatedPunch)
                         // console.log(punch)
+                    }
+                }
+            }else{
+
+                if (!analyzedEmployees.includes(employeeID)){
+                    if(isNightShift(employeeFpunch, employeeLpunch)){
+                        analyzedEmployees.push(employeeID)
+                        analyzedData.push(punch)
+                        if (nextPunch['Employee ID'] === employeeID) {
+                            updatedPunch = {
+                                ...punch,
+                                'First Punch': employeeLpunch,
+                                'Last Punch': nextPunch['First Punch'],
+                                'Total Time': 'Calculated',
+                                'Total Hours': totalHours,
+                                'Shift':'Night'
+                            }
+    
+                            expdata[index + 1] = {
+                                ...nextPunch,
+                                'First Punch': nextPunch['Last Punch'],
+                            }
+                            console.log('night shift',updatedPunch)
+                            // console.log(punch)
+                        }
                     }
                 }
             }
             // console.log('night shift checked', updatedPunch)  
             if(!isNightShiftEnd(employeeFpunch,employeeLpunch)){
                 // console.log('night shift not ended')
-                if (analyzedEmployees[analyzedEmployees.length-1]===employeeID){
+                if (analyzedEmployees[analyzedEmployees.length-1]===employeeID && updatedPunch['Shift']!=='Night'){
                     
                     // analyzedEmployees.push(employeeID)
                     analyzedData.push(punch)
@@ -402,7 +440,7 @@ const FormPage = ()=>{
                     <div className='infoheader'>
                         {infoHeader}
                     </div>
-                    <div className='infoName'>Employee: <b>{infoFName + ' ' + infoLName}</b></div>
+                    <div className='infoName'>Employee: <b>{infoFName + ' ' + infoLName} {`(${infoForId})`}</b></div>
                     <div className='abspres'>
                         <div>Present {'('+employeeWorkedDays[infoForId].length+')'}</div>
                         <div>Absent</div>
