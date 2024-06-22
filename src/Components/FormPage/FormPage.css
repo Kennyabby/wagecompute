@@ -18,9 +18,10 @@
 }
 .datatable{
     /* background: white; */
-    width: 100%;
+    display: block;
+    width: 90%;
     overflow: auto;
-    margin: auto;
+    margin: 20px auto;
 }
 td, th{
     position: relative;
@@ -99,3 +100,88 @@ td, th{
     font-size: 1.8em;
     cursor: pointer;
 }
+.dtflt{
+    display: flex;
+    width: 90%;
+    margin: auto;
+    padding: 10px;
+    background: rgb(155, 155, 167, 0.8);
+}
+.fltbx{
+    width: 30%;
+    text-align: center;
+    background: white;
+    border-radius: 10px;
+    margin: auto;
+}
+.flttle{
+    font-size: .8em;
+    background: grey;
+    color: white;
+    padding: 5px;
+}
+.fltctnt{
+    padding: 10px;
+    font-size: .9em;
+    background: whitesmoke;
+}
+.hlcv{
+    display:flex;
+    flex-wrap: wrap;
+    width: 100%;
+    height: 70px;
+    text-align: center;
+    overflow: auto;
+}
+
+.holiday{
+    margin: 5px auto;
+    display: block;
+    background: ghostwhite;
+    padding: auto 10px;
+    width: 70px;
+}
+.empfilter{
+    margin: 5px auto;
+    display: block;
+    background: ghostwhite;
+    padding: auto;
+    width: 100px;
+    height: fit-content;
+}
+.selector{
+    cursor: pointer;
+}
+.hlvl{
+    font-size: .9em;
+}
+.hldesc{
+    font-size: .7em;
+    margin: 2px auto;
+}
+.fltinp{
+    width: 100%;
+    display: flex;
+    margin: 10px auto;
+    text-align: center;
+}
+.dtinp{
+    width: 30%;
+    height: 25px;
+    margin: auto;
+    font-size: .8em;
+    text-indent: 3px;
+}
+.empinp{
+    width: 60%;
+}
+.addflt{
+    margin: auto;
+    background: rgb(121, 121, 204);
+    color: white;
+    padding: 5px 20px;
+    font-size: .9em;
+    border-radius: 5px;
+    cursor: pointer;
+}
+

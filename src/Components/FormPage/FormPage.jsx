@@ -11,7 +11,7 @@ const FormPage = ()=>{
     const [presHeaders, setPresHeaders] = useState([])
     const [totalTimeObject, setTotalTimeObject] = useState([])
     const [employeeDetails, setEmployeeDetails] = useState([])
-    const [punchedDays, setPunchedDays] = useState(0)
+    const [punchedDays, setPunchedDays] = useState([])
     const [viewEWorkedDays, setEViewWorkedDays] = useState(false)
     const [viewSWorkedDays, setSViewWorkedDays] = useState(false)
     const [viewHWorkedDays, setHViewWorkedDays] = useState(false)
@@ -19,11 +19,33 @@ const FormPage = ()=>{
     const [infoForId, setInfoForId] = useState('')
     const [infoFName, setInfoFName] = useState('')
     const [infoLName, setInfoLName] = useState('')
-    const [field, setField] = useState({
-        id:"",  
-        name:""
+    const [holiday, setHoliday] = useState({
+        value:'',
+        desc:''
     })
-    const holidays = []
+    const [excludedentry, setExcludedEntry] = useState('')
+    const [dateExcludedEntry, setDateExcludedEntry] = useState('')
+    const [employeeDate, setEmployeeDate] = useState('')
+    const [focusedEmployee, setFocusedEmployee] = useState(null)
+    const [exportData, setExportData] =  useState([])
+    const [holidays, setHolidays] = useState([
+        { "value": "2024-01-01", "desc": "New Year's Day" },
+        { "value": "2024-04-19", "desc": "Good Friday" },
+        { "value": "2024-04-22", "desc": "Easter Monday" },
+        { "value": "2024-05-01", "desc": "Workers' Day" },
+        // { "value": "2024-05-27", "desc": "Children's Day" },
+        { "value": "2024-06-12", "desc": "Democracy Day" },
+        { "value": "2024-06-16", "desc": "Father's Day" },
+        // { "value": "2024-08-15", "desc": "Yam Festival" },
+        { "value": "2024-10-01", "desc": "Independence Day" },
+        { "value": "2024-12-25", "desc": "Christmas Day" },
+        { "value": "2024-12-26", "desc": "Boxing Day" },
+        { "value": "2024-04-10", "desc": "Eid al-Fitr (Tentative Date)" },
+        { "value": "2024-06-17", "desc": "Eid al-Adha (Tentative Date)" },
+        { "value": "2024-10-03", "desc": "Maulud an-Nabi (Tentative Date)" }
+    ])
+    const [excludeEmployees, setExcludeEmployees] = useState([])
+    const [dateexcludeEmployees, setDateExcludeEmployees] = useState([])
     const [employeeWorkedDays, setEmployeeWorkedDays] = useState({})
     const [sundayWorkedDays, setSundayWorkedDays] = useState({})
     const [holidayWorkedDays, setHolidayWorkedDays] = useState({})
@@ -41,12 +63,13 @@ const FormPage = ()=>{
     }
 
     const exportFile = useCallback(() => {
-        const ws = utils.json_to_sheet(pres);
+        const ws = utils.json_to_sheet(exportData);
         const wb = utils.book_new();
         utils.book_append_sheet(wb, ws, "Data");
         writeFileXLSX(wb, "JazmyneBiometricSheet.xlsx");
-    }, [pres]);
+    }, [exportData]);
 
+   
     const formatDate = (date) => {
         const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -61,17 +84,33 @@ const FormPage = ()=>{
     
         return `${day}, ${month} ${dayOfMonth}, ${year}`;
     }
-    useEffect(()=>{
-        console.log(employeeWorkedDays)
-        console.log(infoForId)
-        console.log(employeeWorkedDays[infoForId])
-    },[viewEWorkedDays])
+
     const computeMonthlyHours = (totalTimeObject)=>{
-        const expectedWorkDays = punchedDays.length
-        const expectedWorkHours = expectedWorkDays * 9
+        const holidayDates = holidays.map((holiday)=>{return holiday.value})
+        const expectedPunchedDays = punchedDays.filter((punchday)=>{
+            return !holidayDates.includes(punchday)
+        })
+       
         var employeeDet = employeeDetails
+        var toexport = []
         employeeDet.forEach((employee, index)=>{
             const employeeID = employee['Employee ID']
+            const excludeIDs = excludeEmployees.map((employee)=>{
+                return employee['Employee ID']
+            })
+            var employeeExcluded = excludeIDs.includes(employeeID)
+           
+            var excludedWorkDates = 0
+            var employeeDateExcluded = dateexcludeEmployees.map((employee)=>{
+                return employee['Employee ID']
+            }).includes(employeeID)
+
+            if (dateexcludeEmployees.length && employeeDateExcluded){
+                excludedWorkDates = dateexcludeEmployees.filter((employee)=>{
+                    return employee['Employee ID'] === employeeID
+                })[0]['Excluded Dates'].length
+            }
+            toexport.push({...employee})
             const employeeFirst = employee['First Name']
             const employeeLast = employee['Last Name']
             const shift = employee['Shift']
@@ -80,25 +119,38 @@ const FormPage = ()=>{
             holidayWorkedDays[employeeID] = []
             let asumTime = 0
             let ssumTime = 0
+            let hsumTime = 0
             let act = 0
             let sct = 0
+            let hct = 0
             let msh = 0
             let nsh = 0
             totalTimeObject.forEach((timeObject)=>{
                 if (employeeID === timeObject['Employee ID']){
-                    asumTime += Number(timeObject['Total Hours'])
-                    act++
                     const workdate = timeObject['Date']
                     const newworkdate = new Date(workdate)
                     const details = {
                         date: formatDate(newworkdate),
                         firstPunch: timeObject['First Punch'],
-                        lastPunch: timeObject['Last Punch']
+                        lastPunch: timeObject['Last Punch'],
+                        shift: timeObject['Shift']
                     }
-                    setEmployeeWorkedDays((employeeWorkedDays)=>{
-                        employeeWorkedDays[employeeID] = employeeWorkedDays[employeeID].concat([details])
-                        return employeeWorkedDays
-                    })
+                    if(expectedPunchedDays.includes(timeObject['Date'])){
+                        asumTime += Number(timeObject['Total Hours'])
+                        act++
+                        setEmployeeWorkedDays((employeeWorkedDays)=>{
+                            employeeWorkedDays[employeeID] = employeeWorkedDays[employeeID].concat([details])
+                            return employeeWorkedDays
+                        })
+                    }
+                    if (holidayDates.includes(timeObject['Date'])){
+                        hct++
+                        hsumTime += Number(timeObject['Total Hours']) 
+                        setHolidayWorkedDays((holidayWorkedDays)=>{
+                            holidayWorkedDays[employeeID] = holidayWorkedDays[employeeID].concat([details])
+                            return holidayWorkedDays
+                        })
+                    }
                     if(newworkdate.getDay()===0){
                         ssumTime += Number(timeObject['Total Hours']) 
                         sct++
@@ -107,13 +159,15 @@ const FormPage = ()=>{
                             return sundayWorkedDays
                         })
 
-                        asumTime -= timeObject['Total Hours'] 
-                        act--
-                        
-                        setEmployeeWorkedDays((employeeWorkedDays)=>{
-                            employeeWorkedDays[employeeID].pop()
-                            return employeeWorkedDays
-                        })
+                        if(expectedPunchedDays.includes(timeObject['Date'])){
+                            asumTime -= timeObject['Total Hours'] 
+                            act--
+                            
+                            setEmployeeWorkedDays((employeeWorkedDays)=>{
+                                employeeWorkedDays[employeeID].pop()
+                                return employeeWorkedDays
+                            })
+                        }
                     }
                     if (timeObject['Shift']==='Morning'){
                         msh++
@@ -123,10 +177,15 @@ const FormPage = ()=>{
                 }
 
             })
+            const expectedWorkDays = expectedPunchedDays.length - excludedWorkDates
+            const expectedWorkHours = expectedWorkDays * 9
             const auctualWorkHours = parseFloat(asumTime.toFixed(2))
             const sundaysWorkHours = parseFloat(ssumTime.toFixed(2))
+            const holidaysWorkHours = parseFloat(hsumTime.toFixed(2))
             const wovertime = parseFloat((auctualWorkHours - expectedWorkHours).toFixed(2))
             const deductable = parseFloat((expectedWorkHours - auctualWorkHours).toFixed(2))
+
+
             employee['Worked Days (Expected)'] = expectedWorkDays
             employee['Worked Days (Actual)'] = <label>{act}
                 {act < expectedWorkDays && <span className='red'>{` abs(${
@@ -152,6 +211,21 @@ const FormPage = ()=>{
             employee['Deductable Hours'] = <label className={deductable>0?'red bold':''}>
                 {`${deductable > 0 ? deductable : 0}`}
             </label>
+            employee['worked Hours (For Use)'] = employeeExcluded?expectedWorkHours:auctualWorkHours
+            employee['Worked Times (Holidays)'] = <label>
+                {`${hct}`}
+                <span className='viewtag' onClick={()=>{
+                    setInfoHeader('Worked Times (Holdiays)')
+                    setInfoForId(employeeID)
+                    setInfoFName(employeeFirst)
+                    setInfoLName(employeeLast)
+                    setHViewWorkedDays(!viewHWorkedDays)
+                }}>
+                    {viewSWorkedDays? <IoIosArrowUp/>:<IoIosArrowDown/>}
+                </span>
+            </label>
+            employee['Holiday Worked Hours'] = holidaysWorkHours
+
             employee['Worked Times (Sundays)'] = <label>
                 {`${sct}`}
                 <span className='viewtag' onClick={()=>{
@@ -165,34 +239,37 @@ const FormPage = ()=>{
                 </span>
             </label>
             employee['Sunday Work Hours'] = sundaysWorkHours 
+
+             
+            toexport[index]['Worked Days (Expected)'] = expectedWorkDays
+            toexport[index]['Worked Days (Actual)'] = act
+            toexport[index]['Morning Shift'] = msh
+            toexport[index]['Night Shift'] = nsh
+            toexport[index]['Worked Hours (Expected)'] = expectedWorkHours
+            toexport[index]['Worked Hours (Actual)'] = auctualWorkHours
+            toexport[index]['Worked Hours Overtime'] = wovertime > 0 ? wovertime : 0
+
+            toexport[index]['Deductable Hours'] = deductable > 0 ? deductable : 0
+            toexport[index]['worked Hours (For Use)'] = employeeExcluded?expectedWorkHours:auctualWorkHours
+            toexport[index]['Worked Times (Holidays)'] = hct
+            toexport[index]['Holiday Worked Hours'] = holidaysWorkHours
+
+            toexport[index]['Worked Times (Sundays)'] = sct
+            toexport[index]['Sunday Work Hours'] = sundaysWorkHours
+
         })
         // console.log(employeeWorkedDays)
         // console.log(sundayWorkedDays)
         setPres(employeeDet)
+        setExportData(toexport)
     }
     const handleFileChange = (e) =>{
         setFile(e.target.files[0]);
     }
-    const handleField = (e) =>{
-        const name = e.target.getAttribute("name")
-        const value = e.target.value
-        setField((field)=>{
-            return {...field, [name]:value}
-        })
-    }
-    const addData = ()=>{
-        const lastRowNum = pres[pres.length-1].__rowNum__
-        console.log(lastRowNum)
-        setPres((pres)=>{
-            return [...pres, {ID:Number(field.id), Name:field.name}]
-        })
-        setField((field)=>{
-            return {...field, name:'', id:''}
-        })
-    }
+
     const analyzeData = ()=>{
-        let foundEmployees = []
         let datesPunched = []
+        setTotalTimeObject([])
         pres.forEach((punch)=>{
             const employeeID = punch['Employee ID']
             const employeeFirst = punch['First Name']
@@ -205,16 +282,6 @@ const FormPage = ()=>{
             const punchDate = punch['Date']
             if (!datesPunched.includes(punchDate)){
                 datesPunched = datesPunched.concat(punchDate)
-            }
-            if (!foundEmployees.includes(employeeID)){
-                setEmployeeDetails((employeeDetails)=>{
-                    return [...employeeDetails, {'Employee ID': employeeID, 
-                        'Department': employeeDept,
-                        'First Name': employeeFirst,
-                        'Last Name': employeeLast
-                    }]
-                })
-                foundEmployees = foundEmployees.concat(employeeID)
             }
             // const totalTime = punch['Total Time']
             // const punchHour = Number(totalTime.slice(0,totalTime.indexOf(':')))
@@ -244,14 +311,24 @@ const FormPage = ()=>{
             }
         }))
     }
-    const isNightShiftStart = (firstPunch,lastPunch) =>{
-        const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
-        const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
-        const ftime = fHour + fMinutes/60
-        const ltime = lHour + lMinutes/60
-        // console.log((fHour === lHour) && fHour > 19)
-        if ((ftime === ltime) && ftime >= 18){
-            return true
+    const isNightShiftStart = (firstPunch,lastPunch,nFPunch, nLPunch) =>{
+        if(nFPunch!==null){
+            const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
+            const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
+            const ftime = fHour + fMinutes/60
+            const ltime = lHour + lMinutes/60
+            const [nfHour, nfMinutes] = nFPunch.split(':').map(punch => Number(punch) )
+            const [nlHour, nlMinutes] = nLPunch.split(':').map(punch => Number(punch) )
+            const nftime = nfHour + nfMinutes/60
+            const nltime = nlHour + nlMinutes/60
+            // console.log((fHour === lHour) && fHour > 19)
+            if ((ftime === ltime) && ftime >= 18){
+                if(nftime < 8){
+                    return true
+                }
+            }else{
+                return false
+            }
         }else{
             return false
         }
@@ -267,29 +344,45 @@ const FormPage = ()=>{
             return false
         }
     }
-    const isNightShift = (firstPunch, lastPunch) => {
-        const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
-        const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
-        const ftime = fHour + fMinutes/60
-        const ltime = lHour + lMinutes/60
-
-        if(ftime <= 7 && ltime>=19){
-            return true
+    const isNightShift = (lastPunch, firstPunch) => {
+        if (firstPunch!==null){
+            const [fHour, fMinutes] = firstPunch.split(':').map(punch => Number(punch) )
+            const [lHour, lMinutes] = lastPunch.split(':').map(punch => Number(punch) )
+            const ftime = fHour + fMinutes/60
+            const ltime = lHour + lMinutes/60
+    
+            if(ltime >= 19.5 && ftime < 6.7){
+                return true
+            }else{
+                return false
+            }
         }else{
             return false
-        }
-        
+        }   
     }
 
     const calculateTotalTime = (clockIn, clockOut) => {
-        const clockInTime = new Date(`1970-01-01T${clockIn}:00`);
-        let clockOutTime = new Date(`1970-01-01T${clockOut}:00`);
-        if (clockOutTime < clockInTime) {
-            clockOutTime.setDate(clockOutTime.getDate() + 1); // Adjust for crossing midnight
+        if (clockOut !== null){
+            const clockInTime = new Date(`1970-01-01T${clockIn}:00`);
+            let clockOutTime = new Date(`1970-01-01T${clockOut}:00`);
+            if (clockOutTime < clockInTime) {
+                clockOutTime.setDate(clockOutTime.getDate() + 1); // Adjust for crossing midnight
+            }
+            const totalTime = (clockOutTime - clockInTime) / (1000 * 60 * 60); // Convert milliseconds to hours
+            return totalTime.toFixed(2);
+        }else{
+            return null
         }
-        const totalTime = (clockOutTime - clockInTime) / (1000 * 60 * 60); // Convert milliseconds to hours
-        return totalTime.toFixed(2);
     }
+    const holidayInput = (e)=>{
+        const name = e.target.getAttribute('name')
+        const value = e.target.value
+
+        setHoliday((holiday)=>{
+            return {...holiday, [name]:value}
+        })
+    }
+
     useEffect(()=>{
         // make changes to the rawdata here.
         const nightShiftData = [];
@@ -297,6 +390,8 @@ const FormPage = ()=>{
         const analyzedData = []
         const adjustedData = []
         var expdata = rawdata
+        let foundEmployees = []
+        setEmployeeDetails([])
         expdata.forEach((punch, index) => {
             const employeeID = punch['Employee ID'];
             const employeeFirst = punch['First Name'];
@@ -305,11 +400,11 @@ const FormPage = ()=>{
             const employeeFpunch = punch['First Punch'];
             const employeeLpunch = punch['Last Punch'];
             const punchDate = punch['Date'];
-            var nextPunch = expdata[index];
+            var nextPunch = null;
             if (index < expdata.length - 1) {
                 nextPunch = expdata[index + 1];
             }
-            const totalHours = calculateTotalTime(employeeLpunch, nextPunch['First Punch'])
+            const totalHours = calculateTotalTime(employeeLpunch, nextPunch===null ? null : nextPunch['First Punch'])
             const mTotalHours = calculateTotalTime(employeeFpunch, employeeLpunch)
             let updatedPunch= {
                 ...punch,
@@ -317,12 +412,27 @@ const FormPage = ()=>{
                 'Total Hours': mTotalHours,
                 'Shift':'Morning'
             }
-            if(isNightShiftStart(employeeFpunch, employeeLpunch)){
+
+            if (!foundEmployees.includes(employeeID)){
+                setEmployeeDetails((employeeDetails)=>{
+                    return [...employeeDetails, {'Employee ID': employeeID, 
+                        'First Name': employeeFirst,
+                        'Last Name': employeeLast,
+                        'Department': employeeDept,
+                    }]
+                })
+                foundEmployees = foundEmployees.concat(employeeID)
+            }
+
+            if(isNightShiftStart(employeeFpunch, employeeLpunch, 
+                nextPunch===null ? nextPunch : nextPunch['First Punch'],
+                nextPunch===null ? nextPunch : nextPunch['Last Punch'],
+            )){
                 // console.log('Night shift started')
                 if (!analyzedEmployees.includes(employeeID)){
                     analyzedEmployees.push(employeeID)
                     analyzedData.push(punch)
-                    if (nextPunch['Employee ID'] === employeeID) {
+                    if (nextPunch!==null && nextPunch['Employee ID'] === employeeID) {
                         updatedPunch = {
                             ...punch,
                             'First Punch': employeeFpunch,
@@ -343,10 +453,10 @@ const FormPage = ()=>{
             }else{
 
                 if (!analyzedEmployees.includes(employeeID)){
-                    if(isNightShift(employeeFpunch, employeeLpunch)){
+                    if(isNightShift(employeeLpunch, nextPunch===null ? null : nextPunch['First Punch'])){
                         analyzedEmployees.push(employeeID)
                         analyzedData.push(punch)
-                        if (nextPunch['Employee ID'] === employeeID) {
+                        if (nextPunch!==null && nextPunch['Employee ID'] === employeeID) {
                             updatedPunch = {
                                 ...punch,
                                 'First Punch': employeeLpunch,
@@ -360,7 +470,7 @@ const FormPage = ()=>{
                                 ...nextPunch,
                                 'First Punch': nextPunch['Last Punch'],
                             }
-                            console.log('night shift',updatedPunch)
+                           
                             // console.log(punch)
                         }
                     }
@@ -374,7 +484,7 @@ const FormPage = ()=>{
                     // analyzedEmployees.push(employeeID)
                     analyzedData.push(punch)
                     // analyzeData(rawdata[index])
-                    if (nextPunch['Employee ID'] === employeeID) {
+                    if (nextPunch!==null && nextPunch['Employee ID'] === employeeID) {
                         updatedPunch = {
                             ...punch,
                             'First Punch': employeeFpunch,
@@ -392,42 +502,52 @@ const FormPage = ()=>{
                     }
                 }
             }else{
-                analyzedEmployees.pop()
-                updatedPunch = {
-                    ...punch,
-                    'Shift': 'NA'
+                if(analyzedEmployees.includes(employeeID)){
+                    analyzedEmployees.pop()
+                    updatedPunch = {
+                        ...punch,
+                        'Shift': 'NA'
+                    }
                 }
             }
-            // else{
-            //     // console.log('no night shift')
-            //     updatedPunch= {
-            //         ...punch,
-            //         'Total Time': 'Calculated',
-            //         'Total Hours': totalHours,
-            //         'Shift':'Morning'
-            //     }
-            //     console.log(updatedPunch)
-            // }
+           
            
             adjustedData.push(updatedPunch)
         })
-        // setPres(nightShiftData.concat(rawdata.filter(punch => !isNightShift(punch['First Punch']))));
-        // console.log(adjustedData)
+        
         setPres(adjustedData.filter((data)=>{return data['Shift']!=='NA'}))
     },[rawdata])
-    useEffect(()=>{
-        // console.log(field)
-    },[field])
+
     useEffect(()=>{
         if (pres[0]!==undefined){
             const headers = Object.keys(pres[0])
-            console.log(headers)
             setPresHeaders(headers)                
         }
     },[pres])
     useEffect(()=>{
         computeMonthlyHours(totalTimeObject)
     },[totalTimeObject])
+    useEffect(()=>{
+
+    },[holidays])
+    const focusEmployee = (e)=>{
+        const name = e.target.getAttribute('name')
+        var parent;
+        var immparent;
+        if (name === 'filcnt'){
+            parent = e.target.parentElement.childNodes
+            immparent = e.target
+        }else if(name === 'filch'){
+            parent = e.target.parentElement.parentElement.childNodes
+            immparent = e.target.parentElement
+        }
+        if (name!==null){
+            parent.forEach((child)=>{
+                child.style.border = 'solid yellowgreen 0px'
+            })
+            immparent.style.border = 'solid yellowgreen 2px'
+        }
+    }
     return (
         <>
             {(viewEWorkedDays || viewHWorkedDays || viewSWorkedDays) &&
@@ -450,7 +570,7 @@ const FormPage = ()=>{
                             return <div>
                                 <div>{days.date}</div>
                                 <div>
-                                    <div>{days.firstPunch}-{days.lastPunch}</div>
+                                    <div>{days.firstPunch}-{days.lastPunch} {`(${days.shift})`}</div>
                                 </div>
                             </div>
                         })}
@@ -470,7 +590,7 @@ const FormPage = ()=>{
                             return <div>
                                 <div>{days.date}</div>
                                 <div>
-                                    <div>{days.firstPunch}-{days.lastPunch}</div>
+                                    <div>{days.firstPunch}-{days.lastPunch} {`(${days.shift})`}</div>
                                 </div>
                             </div>
                         })}
@@ -485,7 +605,207 @@ const FormPage = ()=>{
                 <div className='analyze' onClick={analyzeData}>Analyze Data</div>
                 <div className='export' onClick={exportFile}> Export Data</div>
             </div>
-            <div className='datatable' style={{display:"flex", margin:"10px"}}>
+            <div className='dtflt'>
+                <div className='fltbx'>
+                    <div className='flttle'>Holiday Filters</div>
+                    <div className='fltctnt'>
+                        {holidays.length? <div className='hlcv'>
+                            {holidays.map((holiday,index)=>{
+                                return <div className='holiday' key={index}>
+                                    <div className='hlvl'>{holiday.value}</div>
+                                    <div className='hldesc'>{holiday.desc}</div>
+                                </div>
+                            })}                            
+                        </div>:
+                        'Holiday filters appear here.'}
+                    </div>
+                    <div className='fltinp' onChange={holidayInput}>
+                        <input
+                            className='dtinp'
+                            type='date'    
+                            name='value'
+                            value={holiday.value}
+                        />
+                        <input
+                            className='dtinp'
+                            type='text'
+                            name='desc'
+                            placeholder='Description'    
+                            value={holiday.desc}
+                        />
+                        <div className='addflt' onClick={()=>{
+                            if(holiday.value){
+                                setHolidays((holidays)=>{
+                                    return [...holidays, holiday]
+                                })
+                                setHoliday({
+                                    value:'',
+                                    desc:''
+                                })
+                            }
+                        }}>Add</div>
+                    </div>
+                </div>
+                <div className='fltbx'>
+                    <div className='flttle'>Employee Exception Filters</div>
+                    <div className='fltctnt'>
+                        {excludeEmployees.length? <div className='hlcv'>
+                            {excludeEmployees.map((employee,index)=>{
+                                const employeeID = employee['Employee ID']
+                                const employeeFirst = employee['First Name']
+                                const employeeLast = employee['Last Name']
+                                return <div className='empfilter' key={index}>
+                                    <div className='hlvl'>{`Employee ID: ${employeeID}`}</div>
+                                    <div className='hldesc'>{`${employeeFirst} ${employeeLast}`}</div>
+                                </div>
+                            })}                            
+                        </div>:
+                        'Employee filters appear here.'}
+                    </div>
+                    <div className='fltinp' onChange={holidayInput}>
+                        <select
+                            className='dtinp empinp'
+                            type='text'
+                            name='excludedentry'
+                            placeholder='Select Employee'    
+                            value = {excludedentry}
+                            onChange={(e)=>{
+                                setExcludedEntry(e.target.value)
+                            }}
+                        >
+                            <option value={''}>{'Select Employee'}</option>
+                            {employeeDetails.filter((employee)=>{
+                                return !excludeEmployees.includes(employee)
+                            }).map((employee, index)=>{
+                                const employeeID = employee['Employee ID']
+                                const employeeFirst = employee['First Name']
+                                const employeeLast = employee['Last Name']
+                                return <option 
+                                    key={index} 
+                                    value={employeeID}
+                                >
+                                    {`ID:${employeeID} ${employeeFirst} ${employeeLast}`}
+                                </option>
+                            })}
+                        </select>
+                        <div className='addflt' onClick={()=>{
+                            if(excludedentry){
+                                setExcludeEmployees((employees)=>{
+                                    const employee = employeeDetails.filter((employee)=>{
+                                        return employee['Employee ID'] === excludedentry
+                                    })
+                                    return [...employees, ...employee]
+                                })
+                                setExcludedEntry('')
+                            }
+                        }}>Add</div>
+                    </div>
+                </div>
+                <div className='fltbx'>
+                    <div className='flttle'>Employee Date Exception Filters</div>
+                    <div className='fltctnt'>
+                        {dateexcludeEmployees.length? <div className='hlcv'>
+                            {dateexcludeEmployees.map((employee,index)=>{
+                                const employeeID = employee['Employee ID']
+                                const employeeFirst = employee['First Name']
+                                const employeeLast = employee['Last Name']
+                                const employeeDates = employee['Excluded Dates']
+                                return <div 
+                                    className='empfilter selector' 
+                                    name='filcnt' 
+                                    key={index}
+                                    onClick={(e)=>{
+                                        setFocusedEmployee(employee)
+                                        focusEmployee(e)
+                                    }}
+                                >
+                                    <div className='hlvl'  name='filch' >{`Employee ID: ${employeeID}`}</div>
+                                    <div className='hldesc'  name='filch' >{`${employeeFirst} ${employeeLast} (${employeeDates.length})`}</div>
+                                </div>
+                            })}                            
+                        </div>:
+                        'Employee Date filters appear here.'}
+                    </div>
+                    <div>
+                        {focusedEmployee!==null ?
+                            <div className='fltinp' >
+                                <input
+                                    className='dtinp empinp'
+                                    type='date'    
+                                    name='value'
+                                    value={employeeDate}
+                                    onChange={
+                                        (e)=>{
+                                            setEmployeeDate(e.target.value)
+                                        }
+                                    }
+                                />
+                                <div className='addflt' onClick={()=>{
+
+                                    if(employeeDate){
+                                        setDateExcludeEmployees((dateexcludeEmployees)=>{
+                                            dateexcludeEmployees.forEach((employee)=>{
+                                                if(employee['Employee ID'] === focusedEmployee['Employee ID']){
+                                                    employee['Excluded Dates'] = employee['Excluded Dates'].concat([employeeDate])
+                                                    setFocusedEmployee(employee)
+                                                }
+                                            })
+                                            return [...dateexcludeEmployees]
+                                        })
+                                        setEmployeeDate('')
+                                    }else{
+                                        setFocusedEmployee(null)
+                                    }
+                                }}>{employeeDate? "Add": "Back"}</div>
+                            </div> 
+                             :
+                            <div className='fltinp' onChange={holidayInput}>
+                                <select
+                                    className='dtinp empinp'
+                                    type='text'
+                                    name='excludedentry'
+                                    placeholder='Select Employee'    
+                                    value = {dateExcludedEntry}
+                                    onChange={(e)=>{
+                                        setDateExcludedEntry(e.target.value)
+                                    }}
+                                >
+                                    <option value={''}>{'Select Employee'}</option>
+                                    {employeeDetails.filter((employee)=>{
+                                        return !dateexcludeEmployees.map((emp)=>{
+                                            return emp['Employee ID']
+                                        }).includes(employee['Employee ID'])
+                                    }).map((employee, index)=>{
+                                        const employeeID = employee['Employee ID']
+                                        const employeeFirst = employee['First Name']
+                                        const employeeLast = employee['Last Name']
+                                        return <option 
+                                            key={index} 
+                                            value={employeeID}
+                                        >
+                                            {`ID:${employeeID} ${employeeFirst} ${employeeLast}`}
+                                        </option>
+                                    })}
+                                </select>
+                                <div className='addflt' onClick={()=>{
+                                    if(dateExcludedEntry){
+                                        setDateExcludeEmployees((employees)=>{
+                                            const employeelist = employeeDetails.filter((employee)=>{
+                                                return employee['Employee ID'] === dateExcludedEntry
+                                            })
+                                            var employee = {...employeelist[0]}
+                                            employee['Excluded Dates'] = []
+                                            return [...employees, employee]
+                                        })
+                                        setDateExcludedEntry('')
+                                    }
+                                }}>Add</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div className='datatable'>
                 <table>
                     <thead>
                         <tr>
@@ -509,13 +829,6 @@ const FormPage = ()=>{
                         </td>
                     </tfoot>
                 </table>
-                {/* <div style={{display:"inline-block"}}>
-                    <div style={{margin:"5px"}} onChange={handleField}>
-                        <input name="id" placeholder="Enter ID" defaultValue={field.id}/>
-                        <input name="name" placeholder="Enter Name" defaultValue={field.name}/>
-                    </div>
-                    {pres.length!==0 && <button onClick={addData}>Add Data</button>}
-                </div> */}
             </div>
 
         </>
