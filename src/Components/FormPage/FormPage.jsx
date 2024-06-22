@@ -7,6 +7,7 @@ const FormPage = ()=>{
     const fileReader = useRef(null)
     const [file, setFile] = useState(null)
     const [pres, setPres] = useState([])
+    const [bPres, setBpres] = useState([])
     const [rawdata, setRawdata] = useState([])
     const [presHeaders, setPresHeaders] = useState([])
     const [totalTimeObject, setTotalTimeObject] = useState([])
@@ -270,7 +271,7 @@ const FormPage = ()=>{
     const analyzeData = ()=>{
         let datesPunched = []
         setTotalTimeObject([])
-        pres.forEach((punch)=>{
+        bPres.forEach((punch)=>{
             const employeeID = punch['Employee ID']
             const employeeFirst = punch['First Name']
             const employeeLast = punch['Last Name']
@@ -283,10 +284,7 @@ const FormPage = ()=>{
             if (!datesPunched.includes(punchDate)){
                 datesPunched = datesPunched.concat(punchDate)
             }
-            // const totalTime = punch['Total Time']
-            // const punchHour = Number(totalTime.slice(0,totalTime.indexOf(':')))
-            // const punchMinutes = Number(totalTime.slice(totalTime.indexOf(':')+1,))
-            // var totalHours = punchHour + punchMinutes/60
+          
             if (totalHoursPunched === 0){
                 totalHoursPunched = 9
             }
@@ -514,7 +512,7 @@ const FormPage = ()=>{
            
             adjustedData.push(updatedPunch)
         })
-        
+        setBpres(adjustedData.filter((data)=>{return data['Shift']!=='NA'}))
         setPres(adjustedData.filter((data)=>{return data['Shift']!=='NA'}))
     },[rawdata])
 
