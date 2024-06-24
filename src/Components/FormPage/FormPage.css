@@ -4,6 +4,9 @@
     justify-content: space-between;
     margin: 20px auto;
 }
+.upload{
+    font-size: .7em;
+}
 .analyze{
     background-color: aqua;
     padding: 7px 10px;   
@@ -133,21 +136,37 @@ td, th{
     text-align: center;
     overflow: auto;
 }
-
+.xcards{
+    position: absolute;
+    left:-7px;
+    top: -7px;
+    z-index: 2;
+    cursor: pointer;
+    opacity: 0;
+    transform: opacity .5s ease-in;
+}
 .holiday{
+    position: relative;
     margin: 5px auto;
     display: block;
     background: ghostwhite;
     padding: auto 10px;
     width: 70px;
 }
+.holiday:hover > .xcards{
+    opacity: 1;
+}
 .empfilter{
+    position: relative;
     margin: 5px auto;
     display: block;
     background: ghostwhite;
     padding: auto;
     width: 100px;
     height: fit-content;
+}
+.empfilter:hover > .xcards{
+    opacity: 1;
 }
 .selector{
     cursor: pointer;
