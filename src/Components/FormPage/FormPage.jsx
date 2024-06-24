@@ -597,7 +597,9 @@ const FormPage = ()=>{
             }
             <div className="actionbtns">
                 <div style={{display:"block"}}>
-                    <input ref={fileReader} type='file' onChange={handleFileChange}/>
+                    <input ref={fileReader} type='file' 
+                        placeholder='Upload Attendace'
+                    onChange={handleFileChange}/>
                     {file!==null && <button onClick={uploadFile}>Upload</button>}
                 </div>
                 <div className='analyze' onClick={analyzeData}>Analyze Data</div>
