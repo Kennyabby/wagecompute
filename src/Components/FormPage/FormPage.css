@@ -144,6 +144,7 @@ td, th{
     cursor: pointer;
     opacity: 0;
     transform: opacity .5s ease-in;
+    
 }
 .holiday{
     position: relative;
@@ -168,8 +169,23 @@ td, th{
 .empfilter:hover > .xcards{
     opacity: 1;
 }
+.shdates{
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    font-size: .8em;
+    transform: translate(-50%,0);
+    cursor: pointer;
+    z-index: 3;
+}
 .selector{
     cursor: pointer;
+    margin: 5px auto;
+    margin-bottom: 10px;
+    width: 95px;
+}
+.selector > .hlvl{
+    font-size: .8em;
 }
 .hlvl{
     font-size: .9em;

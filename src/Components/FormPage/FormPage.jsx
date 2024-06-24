@@ -37,17 +37,14 @@ const FormPage = ()=>{
         { "value": "2024-04-19", "desc": "Good Friday" },
         { "value": "2024-04-22", "desc": "Easter Monday" },
         { "value": "2024-05-01", "desc": "Workers' Day" },
-        // { "value": "2024-05-27", "desc": "Children's Day" },
         { "value": "2024-06-12", "desc": "Democracy Day" },
         { "value": "2024-06-16", "desc": "Father's Day" },
-        // { "value": "2024-08-15", "desc": "Yam Festival" },
         { "value": "2024-10-01", "desc": "Independence Day" },
         { "value": "2024-12-25", "desc": "Christmas Day" },
         { "value": "2024-12-26", "desc": "Boxing Day" },
         { "value": "2024-04-10", "desc": "Eid al-Fitr (Tentative Date)" },
         { "value": "2024-06-17", "desc": "Eid al-Adha (Tentative Date)" },
         { "value": "2024-06-18", "desc": "Eid al-Adha (Public Holiday)" },
-        { "value": "2024-10-03", "desc": "Maulud an-Nabi (Tentative Date)" }
     ])
     const [excludeEmployees, setExcludeEmployees] = useState([])
     const [dateexcludeEmployees, setDateExcludeEmployees] = useState([])
@@ -221,7 +218,9 @@ const FormPage = ()=>{
             const overtimeSalary = parseFloat((wovertime > 0? wovertime*salaryPerHour: 0).toFixed(2))
             const deductable = parseFloat((expectedWorkHours - auctualWorkHours).toFixed(2))
             const deductableSalary = parseFloat((deductable >0 ? deductable * salaryPerHour : 0).toFixed(2))
-            const totalSalary = parseFloat((employeeExcluded?expectedWorkSalary: (expectedWorkSalary+overtimeSalary-deductableSalary+holidayWorkSalary)).toFixed(2))
+            const totalSalary = parseFloat((employeeExcluded?
+                expectedWorkSalary : 
+                (expectedWorkSalary+overtimeSalary-deductableSalary+holidayWorkSalary)).toFixed(2))
             employee['Worked Days (Expected)'] = expectedWorkDays
             employee['Worked Days (Actual)'] = <label>{act}
                 {act < expectedWorkDays && <span className='red'>{` abs(${
@@ -292,7 +291,7 @@ const FormPage = ()=>{
             toexport[index]['Worked Hours Overtime'] = wovertime > 0 ? wovertime : 0
 
             toexport[index]['Deductable Hours'] = deductable > 0 ? deductable : 0
-            toexport[index]['worked Hours (For Use)'] = employeeExcluded?expectedWorkHours:auctualWorkHours
+            toexport[index]['Worked Hours (For Use)'] = employeeExcluded?expectedWorkHours:auctualWorkHours
             toexport[index]['Worked Times (Holidays)'] = hct
             toexport[index]['Holiday Worked Hours'] = holidaysWorkHours
 
@@ -800,6 +799,7 @@ const FormPage = ()=>{
                                             })
                                         })
                                     }}/>
+                                    <IoIosArrowDown className='shdates'/>
                                 </div>
                             })}                            
                         </div>:
