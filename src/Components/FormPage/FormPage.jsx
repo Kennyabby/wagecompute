@@ -2,10 +2,13 @@ import './FormPage.css'
 import { useEffect, useState, useRef, useCallback, PureComponent } from "react";
 import { read, utils, writeFileXLSX } from 'xlsx';
 import { IoIosArrowDown, IoIosArrowUp, IoIosClose } from "react-icons/io";
+import { IoClose } from 'react-icons/io5';
 
 const FormPage = ()=>{
     const fileReader = useRef(null)
     const [file, setFile] = useState(null)
+    const [sfile, setSfile] = useState(null)
+    const [salaryDet, setSalaryDet] = useState(null)
     const [pres, setPres] = useState([])
     const [bPres, setBpres] = useState([])
     const [rawdata, setRawdata] = useState([])
@@ -43,6 +46,7 @@ const FormPage = ()=>{
         { "value": "2024-12-26", "desc": "Boxing Day" },
         { "value": "2024-04-10", "desc": "Eid al-Fitr (Tentative Date)" },
         { "value": "2024-06-17", "desc": "Eid al-Adha (Tentative Date)" },
+        { "value": "2024-06-18", "desc": "Eid al-Adha (Public Holiday)" },
         { "value": "2024-10-03", "desc": "Maulud an-Nabi (Tentative Date)" }
     ])
     const [excludeEmployees, setExcludeEmployees] = useState([])
@@ -59,8 +63,19 @@ const FormPage = ()=>{
         // console.log(data)
         // setPres(data)
         setRawdata(data)
-        e.target.parentElement.children[0].value='' 
+        e.target.parentElement.children[0].value=''
         setFile(null)
+    }
+    const uploadSfile = async(e)=>{        
+        const f = await sfile.arrayBuffer()
+        const wb =  read(f)
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const data = utils.sheet_to_json(ws)
+        // console.log(data)
+        // setPres(data)
+        setSalaryDet(data)
+        e.target.parentElement.children[0].value=''
+        setSfile(null)
     }
 
     const exportFile = useCallback(() => {
@@ -70,7 +85,6 @@ const FormPage = ()=>{
         writeFileXLSX(wb, "JazmyneBiometricSheet.xlsx");
     }, [exportData]);
 
-   
     const formatDate = (date) => {
         const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -96,6 +110,15 @@ const FormPage = ()=>{
         var toexport = []
         employeeDet.forEach((employee, index)=>{
             const employeeID = employee['Employee ID']
+            var employeeSalary  = 0
+            const empSalary = salaryDet.filter((employee)=>{
+                if(employee['Employee ID'] === employeeID){
+                    return employee
+                }
+            })
+            if (empSalary!==undefined){
+                employeeSalary = Number(empSalary[0]['Salary'])
+            }
             const excludeIDs = excludeEmployees.map((employee)=>{
                 return employee['Employee ID']
             })
@@ -111,6 +134,7 @@ const FormPage = ()=>{
                     return employee['Employee ID'] === employeeID
                 })[0]['Excluded Dates'].length
             }
+
             toexport.push({...employee})
             const employeeFirst = employee['First Name']
             const employeeLast = employee['Last Name']
@@ -172,21 +196,32 @@ const FormPage = ()=>{
                     }
                     if (timeObject['Shift']==='Morning'){
                         msh++
+                        if(newworkdate.getDay()===0){
+                            msh--
+                        }
                     }else if (timeObject['Shift']==='Night'){
                         nsh++
+                        if(newworkdate.getDay()===0){
+                            nsh--
+                        }
                     }
                 }
 
             })
             const expectedWorkDays = expectedPunchedDays.length - excludedWorkDates
             const expectedWorkHours = expectedWorkDays * 9
+            const salaryPerHour = (employeeSalary/expectedWorkDays)/9
             const auctualWorkHours = parseFloat(asumTime.toFixed(2))
+            const expectedWorkSalary = parseFloat((expectedWorkHours*salaryPerHour).toFixed(2))
+            const employeeWorkSalary = parseFloat((auctualWorkHours*salaryPerHour).toFixed(2)) 
             const sundaysWorkHours = parseFloat(ssumTime.toFixed(2))
             const holidaysWorkHours = parseFloat(hsumTime.toFixed(2))
+            const holidayWorkSalary = parseFloat((holidaysWorkHours*salaryPerHour*2).toFixed(2))
             const wovertime = parseFloat((auctualWorkHours - expectedWorkHours).toFixed(2))
+            const overtimeSalary = parseFloat((wovertime > 0? wovertime*salaryPerHour: 0).toFixed(2))
             const deductable = parseFloat((expectedWorkHours - auctualWorkHours).toFixed(2))
-
-
+            const deductableSalary = parseFloat((deductable >0 ? deductable * salaryPerHour : 0).toFixed(2))
+            const totalSalary = parseFloat((employeeExcluded?expectedWorkSalary: (expectedWorkSalary+overtimeSalary-deductableSalary+holidayWorkSalary)).toFixed(2))
             employee['Worked Days (Expected)'] = expectedWorkDays
             employee['Worked Days (Actual)'] = <label>{act}
                 {act < expectedWorkDays && <span className='red'>{` abs(${
@@ -212,7 +247,7 @@ const FormPage = ()=>{
             employee['Deductable Hours'] = <label className={deductable>0?'red bold':''}>
                 {`${deductable > 0 ? deductable : 0}`}
             </label>
-            employee['worked Hours (For Use)'] = employeeExcluded?expectedWorkHours:auctualWorkHours
+            employee['Worked Hours (For Use)'] = employeeExcluded?expectedWorkHours:auctualWorkHours
             employee['Worked Times (Holidays)'] = <label>
                 {`${hct}`}
                 <span className='viewtag' onClick={()=>{
@@ -226,20 +261,26 @@ const FormPage = ()=>{
                 </span>
             </label>
             employee['Holiday Worked Hours'] = holidaysWorkHours
+            employee['Expected Work Salary'] = expectedWorkSalary
+            // employee['Actual Salary'] = employeeWorkSalary
+            employee['Overtime Salary'] = employeeExcluded?0:overtimeSalary
+            employee['Deductable Salary'] = employeeExcluded?0:deductableSalary
+            employee['Holiday Salary'] = holidayWorkSalary
+            employee['Net Payable Salary'] = totalSalary 
+            // employee['Worked Times (Sundays)'] = <label>
+            //     {`${sct}`}
+            //     <span className='viewtag' onClick={()=>{
+            //         setInfoHeader('Worked Times (Sundays)')
+            //         setInfoForId(employeeID)
+            //         setInfoFName(employeeFirst)
+            //         setInfoLName(employeeLast)
+            //         setSViewWorkedDays(!viewSWorkedDays)
+            //     }}>
+            //         {viewSWorkedDays? <IoIosArrowUp/>:<IoIosArrowDown/>}
+            //     </span>
+            // </label>
+            // employee['Sunday Work Hours'] = sundaysWorkHours 
 
-            employee['Worked Times (Sundays)'] = <label>
-                {`${sct}`}
-                <span className='viewtag' onClick={()=>{
-                    setInfoHeader('Worked Times (Sundays)')
-                    setInfoForId(employeeID)
-                    setInfoFName(employeeFirst)
-                    setInfoLName(employeeLast)
-                    setSViewWorkedDays(!viewSWorkedDays)
-                }}>
-                    {viewSWorkedDays? <IoIosArrowUp/>:<IoIosArrowDown/>}
-                </span>
-            </label>
-            employee['Sunday Work Hours'] = sundaysWorkHours 
 
              
             toexport[index]['Worked Days (Expected)'] = expectedWorkDays
@@ -255,8 +296,15 @@ const FormPage = ()=>{
             toexport[index]['Worked Times (Holidays)'] = hct
             toexport[index]['Holiday Worked Hours'] = holidaysWorkHours
 
-            toexport[index]['Worked Times (Sundays)'] = sct
-            toexport[index]['Sunday Work Hours'] = sundaysWorkHours
+            toexport[index]['Expected Work Salary'] = expectedWorkSalary
+            // employee['Actual Salary'] = employeeWorkSalary
+            toexport[index]['Overtime Salary'] = employeeExcluded?0:overtimeSalary
+            toexport[index]['Deductable Salary'] = employeeExcluded?0:deductableSalary
+            toexport[index]['Holiday Salary'] = holidayWorkSalary
+            toexport[index]['Net Payable Salary'] = totalSalary 
+
+            // toexport[index]['Worked Times (Sundays)'] = sct
+            // toexport[index]['Sunday Work Hours'] = sundaysWorkHours
 
         })
         // console.log(employeeWorkedDays)
@@ -267,7 +315,9 @@ const FormPage = ()=>{
     const handleFileChange = (e) =>{
         setFile(e.target.files[0]);
     }
-
+    const handleSfileChange = (e) =>{
+        setSfile(e.target.files[0]);
+    }
     const analyzeData = ()=>{
         let datesPunched = []
         setTotalTimeObject([])
@@ -599,8 +649,16 @@ const FormPage = ()=>{
                 <div style={{display:"block"}}>
                     <input ref={fileReader} type='file' 
                         placeholder='Upload Attendace'
-                    onChange={handleFileChange}/>
+                        onChange={handleFileChange}/>
                     {file!==null && <button onClick={uploadFile}>Upload</button>}
+                    <div className='upload'>Upload Attendance</div>
+                </div>
+                <div style={{display:"block"}}>
+                    <input ref={fileReader} type='file' 
+                        placeholder='Upload Attendace'
+                        onChange={handleSfileChange}/>
+                    {sfile!==null && <button onClick={uploadSfile}>Upload</button>}
+                    <div className='upload'>Upload Salary Details</div>
                 </div>
                 <div className='analyze' onClick={analyzeData}>Analyze Data</div>
                 <div className='export' onClick={exportFile}> Export Data</div>
@@ -614,6 +672,13 @@ const FormPage = ()=>{
                                 return <div className='holiday' key={index}>
                                     <div className='hlvl'>{holiday.value}</div>
                                     <div className='hldesc'>{holiday.desc}</div>
+                                    <IoIosClose className='xcards' onClick={()=>{
+                                        setHolidays((holidays)=>{
+                                            return holidays.filter((fholiday)=>{
+                                                return fholiday!== holiday
+                                            })
+                                        })
+                                    }}/>
                                 </div>
                             })}                            
                         </div>:
@@ -657,6 +722,13 @@ const FormPage = ()=>{
                                 return <div className='empfilter' key={index}>
                                     <div className='hlvl'>{`Employee ID: ${employeeID}`}</div>
                                     <div className='hldesc'>{`${employeeFirst} ${employeeLast}`}</div>
+                                    <IoIosClose className='xcards' onClick={()=>{
+                                        setExcludeEmployees((employees)=>{
+                                            return employees.filter((femploee)=>{
+                                                return femploee!== employee
+                                            })
+                                        })
+                                    }}/>
                                 </div>
                             })}                            
                         </div>:
@@ -721,6 +793,13 @@ const FormPage = ()=>{
                                 >
                                     <div className='hlvl'  name='filch' >{`Employee ID: ${employeeID}`}</div>
                                     <div className='hldesc'  name='filch' >{`${employeeFirst} ${employeeLast} (${employeeDates.length})`}</div>
+                                    <IoIosClose className='xcards' onClick={()=>{
+                                        setDateExcludeEmployees((employees)=>{
+                                            return employees.filter((femploee)=>{
+                                                return femploee!== employee
+                                            })
+                                        })
+                                    }}/>
                                 </div>
                             })}                            
                         </div>:
