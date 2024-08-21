@@ -96,7 +96,10 @@
         margin: auto 0;
     }
 }
-
+.prinp{
+    background: white;
+    border: solid black 1px;
+}
 .invhead{
     width: 100%;
     display: flex;
@@ -143,7 +146,7 @@
 }
 .invnum{
     width: fit-content;
-    margin-top: 100px;
+    margin-top: 30px;
     margin-right: auto;
     text-align: left;
 }
