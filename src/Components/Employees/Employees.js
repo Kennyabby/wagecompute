@@ -28,9 +28,15 @@ const Employees = () =>{
         department:'',
         position:'',
         gender:'',
+        dateOfBirth:'',
+        phoneNo:'',
+        address:'',
         hiredDate:'',
+        bankName:'',
+        bankBranch:'',
+        accountNo:'',
         payPerHour:'',
-        
+        salary:'',
     }
     const [fields, setFields] = useState({...initFields})
     useEffect(()=>{
@@ -145,12 +151,6 @@ const Employees = () =>{
     }
     const handleViewClick = (e, index, employee)=>{
         const name = e.target.getAttribute('name')
-        const {i_d, 
-            firstName, lastName, 
-            otherName, gender,
-            department, position,
-            payPerHour, hiredDate
-        } = employee
         if (name==='edit'){
             setIsView(false)
             setEditIndex(index)
@@ -159,13 +159,9 @@ const Employees = () =>{
             setIsView(true)
         }
         setCurEmployee(employee)
-        setFields({
-            i_d, 
-            firstName, lastName, 
-            otherName, gender,
-            department, position,
-            payPerHour, hiredDate
-        })
+        var newEmpValue = {...employee}
+        delete newEmpValue._id
+        setFields({...newEmpValue})
     }
     return(
         <>
@@ -215,7 +211,7 @@ const Employees = () =>{
                     </div>
                     <div className='selform' onClick={toggleSelForm}>
                         <div name='Basic' className={selform==='Basic'?'seltype':''}>Basic</div>
-                        <div name='Hr' className={selform==='Hr'?'seltype':''}>Hr</div>
+                        <div name='Hr' className={selform==='Hr'?'seltype':''}>HR</div>
                     </div>
                     <div className='form' onChange={handleFieldChange}>
                         {selform==='Basic'&&<div className='basic'>
@@ -260,6 +256,39 @@ const Employees = () =>{
                                     type='text'
                                     placeholder='Other Name' 
                                     value={fields.otherName}
+                                    disabled={isView}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <div>Address</div>
+                                <input 
+                                    className='forminp'
+                                    name='address'
+                                    type='text'
+                                    placeholder='Address' 
+                                    value={fields.address}
+                                    disabled={isView}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <div>Phone Number</div>
+                                <input 
+                                    className='forminp'
+                                    name='phoneNo'
+                                    type='text'
+                                    placeholder='Phone Number' 
+                                    value={fields.phoneNo}
+                                    disabled={isView}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <div>Date of Birth</div>
+                                <input 
+                                    className='forminp'
+                                    name='dateOfBirth'
+                                    type='date'
+                                    placeholder='Date of Birth' 
+                                    value={fields.dateOfBirth}
                                     disabled={isView}
                                 />
                             </div>
@@ -326,7 +355,52 @@ const Employees = () =>{
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Rate Per Hour</div>
+                                    <div>Bank Name</div>
+                                    <input 
+                                        className='forminp'
+                                        name='bankName'
+                                        type='text'
+                                        placeholder='Bank Name'
+                                        value={fields.bankName}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Bank Branch</div>
+                                    <input 
+                                        className='forminp'
+                                        name='bankBranch'
+                                        type='text'
+                                        placeholder='Bank Branch'
+                                        value={fields.bankBranch}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Account No</div>
+                                    <input 
+                                        className='forminp'
+                                        name='accountNo'
+                                        type='number'
+                                        placeholder='Account No'
+                                        value={fields.accountNo}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                
+                                <div className='inpcov'>
+                                    <div>Salary (Naira)</div>
+                                    <input 
+                                        className='forminp'
+                                        name='salary'
+                                        type='number'
+                                        placeholder='Salary' 
+                                        value={fields.salary}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Pay Per Hour</div>
                                     <input 
                                         className='forminp'
                                         name='payPerHour'
