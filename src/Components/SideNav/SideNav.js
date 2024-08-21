@@ -35,7 +35,7 @@ const SideNav = ()=>{
                 <ul className='icons'>
 
                 </ul>
-                <ul className='navbar'>
+                <ul className='navbarr'>
                     <li name="dashboard" className={curPath==='dashboard'?'selected':''}>Dashboard</li>
                     <li name="employees" className={curPath==='employees'?'selected':''}>Employees</li>
                     <li name="departments" className={curPath==='departments'?'selected':''}>Departments</li>

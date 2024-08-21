@@ -183,13 +183,11 @@ const Employees = () =>{
                     const {i_d, 
                         firstName, lastName,
                         department, position,
-                        
                     } = employee
                     return(
                         <div className={'dept' + (curEmployee?.i_d===i_d?' curview':'')} key={index} i_d={i_d} 
                             onClick={(e)=>{
                                 handleViewClick(e,index,employee)
-                               
                             }}
                         >
                             <div className='dets'>
