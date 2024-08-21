@@ -26,6 +26,10 @@ const Attendance = () =>{
         'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
         'AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'
     ]
+    const monthDays = {
+        'JANUARY':31,'FEBRUARY':28,'MARCH':31,'APRIL':30,'MAY':31,'JUNE':30,'JULY':31,
+        'AUGUST':31,'SEPTEMBER':30,'OCTOBER':31,'NOVEMBER':30,'DECEMBER':31
+    }
     const years = ['2030','2029','2028','2027','2026','2025','2024','2023',
         '2022','2021','2020']
     useEffect(()=>{
@@ -155,19 +159,28 @@ const Attendance = () =>{
             var totalDays = 0
             var totalPay = 0
             var payPerHour = 0
+            var payPerDay = 0
             employees.forEach((emp)=>{
                 if (String(emp.i_d) === String(id)){
                     payPerHour = Number(emp.payPerHour)
+                    
+                    payPerDay = Number(emp.salary)/monthDays[month]
                 }
             })
             newRawData.forEach((data)=>{
                 if (data[calId]===id){
                     const [hour,minute] = data[calDur].split(':')
-                    totalHours += parseFloat(Number(hour) + Number(minute)/60)
-                    totalDays += 1
+                    const curHour = parseFloat(Number(hour) + Number(minute)/60)
+                    totalHours += curHour
+                    if(curHour>=9){
+                        totalDays += 1
+                    }else if (curHour>5 && curHour<9){
+                        totalDays += 0.5
+                    }
                 }
             })
-            totalPay = parseFloat(Number(payPerHour * totalHours))
+            totalPay = parseFloat(Number(payPerDay * totalHours))
+            newRow['Expected Work Days'] = monthDays[month]
             newRow['Total Hours'] = totalHours
             newRow['Total Days'] = totalDays
             newRow['Total Pay'] = totalPay
@@ -370,7 +383,7 @@ const Attendance = () =>{
                                         return <div key={i} className='payee'>
                                             {Object.keys(newPayee).map((col, j)=>{
                                                 return <div key={j}>
-                                                    {col+': '+(newPayee[col]!==undefined?newPayee[col]:'Not Available')} 
+                                                    {col+': '+(newPayee[col]?newPayee[col]:0)} 
                                                 </div>
                                             })}
                                         </div>

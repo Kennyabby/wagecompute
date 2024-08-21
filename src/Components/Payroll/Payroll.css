@@ -90,9 +90,10 @@
     width: 90%;
     margin: auto;
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     div{
-        margin: auto;
+        margin: auto 0;
     }
 }
 
@@ -100,7 +101,9 @@
     width: 100%;
     display: flex;
     margin: 20px auto;
+    justify-content: center;
     margin-bottom: 50px;
+    text-align: center;
     border-bottom: solid grey 1px;
 }
 .invlogo{
@@ -108,15 +111,25 @@
     margin-right: auto;
 }
 .company{
-    text-align: left;
-    margin-bottom: 20px;
+    /* text-align: left; */
+    margin-bottom: 30px;
+    font-size: 3em;
 }
 .billfrom{
     text-align: center;
     justify-content: center;
+    text-align: center;
 }
 .billfromitem{
-    text-align: left;
+    /* text-align: left; */
+}
+.billtoview{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin: 20px auto;
+    margin-bottom: 50px;
+    border-bottom: solid grey 1px;
 }
 .billto{
     width: fit-content;
@@ -125,6 +138,7 @@
 .ttlrow{
     width: fit-content; 
     margin: auto;
+    margin-top: 25px;
     text-align: center;
 }
 .invnum{
@@ -190,4 +204,16 @@ h1{
     background: #1E1F23;
     color: #ffffff;
     transition: 0.5s;
+}
+
+.signature{
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    margin: 30px auto;
+    .sign{
+        width: 300px;
+        padding-bottom: 80px;
+        border-bottom: solid black 2px;
+    }
 }

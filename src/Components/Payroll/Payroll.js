@@ -16,6 +16,7 @@ const Payroll = () =>{
     const [viewSlip, setViewSlip] = useState(false)
     const [debtDue, setDebtDue] = useState('')
     const [shortages, setShortages] = useState('')
+    const [penalties, setPenalties] = useState('')
     const [totalPay, setTotalPay] = useState(0)
     const [curEmployee, setCurEmployee] = useState(null)
     const [curAtt, setCurAtt] = useState(null)
@@ -89,6 +90,7 @@ const Payroll = () =>{
                             setTotalPay(0)
                             setShortages('')
                             setDebtDue('')
+                            setPenalties('')
                         }}
                     >
                         Cancel
@@ -104,26 +106,37 @@ const Payroll = () =>{
                                             {/* <img src={''} className='invlogo'/> */}
                                             <div className="billfrom">
                                                 <h4 className='company' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
-                                                <p className='billfromitem'>{`Address: ${companyRecord.address}`}</p>
+                                                <p className='billfromitem'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfromitem'>{`Email: ${companyRecord.emailid}`}</p>
                                                 <p className='billfromitem'>Created Date: <b>{date}</b></p>
                                             </div>
                                        </div>
-                                        <div>
-                                        <div className="billto">
+                                        <div className='billtoview'>
+                                            <div className="billto">
                                                 <br />
-                                                <p className='billtoitem'><b>{`For: `}</b>{`${curEmployee.firstName} ${curEmployee.lastName}`}</p>
-                                                <p className='billtoitem'><b>{`Month: `}</b>{curAtt.month}</p>
-                                                <p className='billtoitem'><b>{'Year: '}</b>{curAtt.year}</p>
-                                                <p className='billtoitem'><b>{'Department: '}</b>{curEmployee.department}</p>
-                                                <p className='billtoitem'><b>{'Position: '}</b>{curEmployee.position}</p>
+                                                <p className='billtoitem'><b>{`Employee ID: `}</b>{curEmployee.i_d}</p>
+                                                <p className='billtoitem'><b>{`Bank Name: `}</b>{curEmployee.bankName}</p>
+                                                <p className='billtoitem'><b>{`Bank Branch: `}</b>{curEmployee.bankBranch}</p>
+                                                <p className='billtoitem'><b>{'Account No: '}</b>{curEmployee.accountNo}</p>
+                                                <p className='billtoitem'><b>{'Payment Date: '}</b>{`31 ${curAtt.month}, ${curAtt.year}.`}</p>
+                                                <p className='billtoitem'><b>{'Date Engaged: '}</b>{curEmployee.hiredDate}</p>
+
+                                            </div>
+                                            <div className="billto">
+                                                <br />
+                                                <p className='billtoitem'><b>{`Name: `}</b>{`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName}`}</p>
+                                                <p className='billtoitem'><b>{`Address: `}</b>{curEmployee.address}</p>
+                                                <p className='billtoitem'><b>{`Phone No: `}</b>{curEmployee.phoneNo}</p>
+                                                <p className='billtoitem'><b>{'Date of Birth: '}</b>{curEmployee.dateOfBirth}</p>
+                                                <p className='billtoitem'><b>{'Sex: '}</b>{curEmployee.gender}</p>
+                                                <p className='billtoitem'><b>{'Department/Position: '}</b>{curEmployee.department+'/'+curEmployee.position}</p>
                                             </div>
                                         </div>
                                     </div>
                                     <br />
                                     <div className="ttlrow">
                                         <div >
-                                            <h2 className="col-md-12" style={{ color: '#325aa8' }} >SALARY SLIP</h2>
+                                            <h2 className="col-md-12" style={{ color: '#325aa8' }} >STAFF PAY SLIP</h2>
                                             <div className='invnum'>
                                                 <h5 className='col-md-0'> Id: {InvoiceNumber}</h5>
                                                 <Barcode value={`4n%${InvoiceNumber}+ut%`} width={1} height={50} displayValue={false} />
@@ -135,9 +148,47 @@ const Payroll = () =>{
                                         <table className="table">
                                             <thead>
                                                 <tr>
+                                                    <th><h5>Expected Work Days</h5></th>
+                                                    <th><h5>Actual Work Days</h5></th>
+                                                    <th><h5>Absent Days</h5></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="col-md-5">31</td>
+                                                    {
+                                                        curAtt.payees.length?
+                                                        curAtt.payees.map((payee, index) => {
+                                                            if(payee['ID']===curEmployee.i_d){
+                                                                return (
+                                                                        <td key={index} className="col-md-5">{payee['Total Days']}</td>                                                                    
+                                                                )
+                                                            }
+                                                        }):null
+                                                    }
+                                                    {
+                                                        curAtt.payees.length?
+                                                        curAtt.payees.map((payee, index) => {
+                                                            if(payee['ID']===curEmployee.i_d){
+                                                                return (
+                                                                        <td key={index} className="col-md-5">{31-Number(payee['Total Days'])}</td>
+                                                                )
+                                                            }
+                                                        }):null
+                                                    }
+                                                </tr>
+                                                
+                                                
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div>
+                                        <table className="table">
+                                            <thead>
+                                                <tr>
                                                     <th><h5>Description</h5></th>
-                                                    <th><h5>Earnings (₦)</h5></th>
-                                                    <th><h5>Total Pay</h5></th>
+                                                    <th><h5>Deductions</h5></th>
+                                                    <th><h5>Gross Earnings</h5></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -147,8 +198,12 @@ const Payroll = () =>{
                                                         if(payee['ID']===curEmployee.i_d){
                                                             return (
                                                                 <tr key={index} >
-                                                                    <td className="col-md-5">{'For '+payee['Total Days']+' Days'}</td>
-                                                                    <td className="col-md-5">{'For '+payee['Total Hours']+' Hours'}</td>
+                                                                    <td className="col-md-5">
+                                                                    <p>
+                                                                        <strong>Salary/Wages: </strong>
+                                                                    </p>
+                                                                    </td>
+                                                                    <td className="col-md-5"></td>
                                                                     <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {totalPay}  </td>
                                                                 </tr>
                                                             )
@@ -157,37 +212,56 @@ const Payroll = () =>{
                                                 }
                                                 <tr>
                                                     <td className="text-right">
-                                                        <p>
-                                                            <strong>Salary/Wages: </strong>
-                                                        </p>
+                                                        
                                                         <p>
                                                             <strong>Debt Due: </strong>
                                                         </p>
                                                         <p>
                                                             <strong>Shortages: </strong>
                                                         </p>
+                                                        <p>
+                                                            <strong>Penalties: </strong>
+                                                        </p>
                                                     </td>
                                                     <td>
-                                                        <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(totalPay)}</strong>
-                                                        </p>
+                                                        
                                                         <p>
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(debtDue)} </strong>
                                                         </p>
                                                         <p>
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(shortages)}</strong>
                                                         </p>
+                                                        <p>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(penalties)}</strong>
+                                                        </p>
                                                     </td>
                                                 </tr>
                                                 <tr style={{ color: '#F81D2D' }}>
-                                                    <td className="text-right"><h4><strong>Total:</strong></h4></td>
-                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(totalPay)-(Number(debtDue)+Number(shortages))} </strong></h4></td>
+                                                    <td className="text-right"><h4><strong>Net Pay:</strong></h4></td>
+                                                    <td className="text-right"><h4><strong></strong></h4></td>
+                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(totalPay)-(Number(debtDue)+Number(shortages)+Number(penalties))} </strong></h4></td>
                                                 </tr>
                                             </tbody>
                                         </table>
                                     </div>
                                     
                                 </div>
+                            </div>
+                            <div className='signature'>                                
+                                <div className='sign'>
+                                    <div>(ACCOUNT OFFICER/CASHIER)</div>
+                                </div>
+                                <div className='sign'>
+                                    <div>(MANAGING DIRECTOR)</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div>Customer debt repayment after 24hrs = 20%.</div>
+                                <div>Staff debt repayment after a week and must not exceed as graduated below;</div>
+                                <div> Manager: ₦6,000</div>
+                                <div> Supervisor: ₦5,000</div>
+                                <div> HOD: ₦4,000</div>
+                                <div> Others: ₦3,000</div>
                             </div>
                         </div>
                     </div>
@@ -277,13 +351,25 @@ const Payroll = () =>{
                                             }}
                                         />
                                     </div>
-                                     <div className='inpcov formpad'>
+                                    <div className='inpcov formpad'>
                                         <input 
                                             className='forminp'
                                             name='shortages'
                                             type='number'
                                             placeholder='Shortages'
                                             value={shortages}
+                                            onChange={(e)=>{
+                                                setShortages(e.target.value)
+                                            }}
+                                        />
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <input 
+                                            className='forminp'
+                                            name='penalties'
+                                            type='number'
+                                            placeholder='Penalties Fine'
+                                            value={penalties}
                                             onChange={(e)=>{
                                                 setShortages(e.target.value)
                                             }}
