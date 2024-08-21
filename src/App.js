@@ -11,8 +11,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
 function App() {
-  const SERVER = "http://localhost:3001"
-  // const SERVER = "https://wageserver.vercel.app"
+  // const SERVER = "http://localhost:3001"
+  const SERVER = "https://wageserver.vercel.app"
 
   const [sessId, setSessID] = useState(null)
   const [companyRecord, setCompanyRecord] = useState(null)
