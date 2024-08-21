@@ -17,6 +17,7 @@ const Payroll = () =>{
     const [debtDue, setDebtDue] = useState('')
     const [shortages, setShortages] = useState('')
     const [penalties, setPenalties] = useState('')
+    const [bonus, setBonus] = useState('')
     const [totalPay, setTotalPay] = useState(0)
     const [curEmployee, setCurEmployee] = useState(null)
     const [curAtt, setCurAtt] = useState(null)
@@ -91,6 +92,7 @@ const Payroll = () =>{
                             setShortages('')
                             setDebtDue('')
                             setPenalties('')
+                            setBonus('')
                         }}
                     >
                         Cancel
@@ -148,38 +150,29 @@ const Payroll = () =>{
                                         <table className="table">
                                             <thead>
                                                 <tr>
-                                                    <th><h5>Expected Work Days</h5></th>
-                                                    <th><h5>Actual Work Days</h5></th>
-                                                    <th><h5>Absent Days</h5></th>
+                                                    <th><h5>Expected Work Days: 31</h5></th>
+                                                    <th><h5>Actual Work Days: {
+                                                        curAtt.payees.length?
+                                                        curAtt.payees.map((payee, index) => {
+                                                            if(payee['ID']===curEmployee.i_d){
+                                                                return (
+                                                                        <label key={index}>{payee['Total Days']}</label>                                                                    
+                                                                )
+                                                            }
+                                                        }):null
+                                                    }</h5></th>
+                                                    <th><h5>Absent Days: {
+                                                        curAtt.payees.length?
+                                                        curAtt.payees.map((payee, index) => {
+                                                            if(payee['ID']===curEmployee.i_d){
+                                                                return (
+                                                                        <label key={index}>{31-Number(payee['Total Days'])}</label>
+                                                                )
+                                                            }
+                                                        }):null
+                                                    }</h5></th>
                                                 </tr>
                                             </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td className="col-md-5">31</td>
-                                                    {
-                                                        curAtt.payees.length?
-                                                        curAtt.payees.map((payee, index) => {
-                                                            if(payee['ID']===curEmployee.i_d){
-                                                                return (
-                                                                        <td key={index} className="col-md-5">{payee['Total Days']}</td>                                                                    
-                                                                )
-                                                            }
-                                                        }):null
-                                                    }
-                                                    {
-                                                        curAtt.payees.length?
-                                                        curAtt.payees.map((payee, index) => {
-                                                            if(payee['ID']===curEmployee.i_d){
-                                                                return (
-                                                                        <td key={index} className="col-md-5">{31-Number(payee['Total Days'])}</td>
-                                                                )
-                                                            }
-                                                        }):null
-                                                    }
-                                                </tr>
-                                                
-                                                
-                                            </tbody>
                                         </table>
                                     </div>
                                     <div>
@@ -222,6 +215,9 @@ const Payroll = () =>{
                                                         <p>
                                                             <strong>Penalties: </strong>
                                                         </p>
+                                                        <p>
+                                                            <strong>Bonus: </strong>
+                                                        </p>
                                                     </td>
                                                     <td>
                                                         
@@ -234,12 +230,15 @@ const Payroll = () =>{
                                                         <p>
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(penalties)}</strong>
                                                         </p>
+                                                        <p>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(bonus)}</strong>
+                                                        </p>
                                                     </td>
                                                 </tr>
                                                 <tr style={{ color: '#F81D2D' }}>
                                                     <td className="text-right"><h4><strong>Net Pay:</strong></h4></td>
                                                     <td className="text-right"><h4><strong></strong></h4></td>
-                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(totalPay)-(Number(debtDue)+Number(shortages)+Number(penalties))} </strong></h4></td>
+                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(totalPay)-(Number(debtDue)+Number(shortages)+Number(penalties))+(Number(bonus))} </strong></h4></td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -372,6 +371,18 @@ const Payroll = () =>{
                                             value={penalties}
                                             onChange={(e)=>{
                                                 setShortages(e.target.value)
+                                            }}
+                                        />
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <input 
+                                            className='forminp'
+                                            name='bonus'
+                                            type='number'
+                                            placeholder='Bonus'
+                                            value={bonus}
+                                            onChange={(e)=>{
+                                                setBonus(e.target.value)
                                             }}
                                         />
                                     </div>
