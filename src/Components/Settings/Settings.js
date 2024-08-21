@@ -29,7 +29,7 @@ const Settings = () =>{
         }
     },[settings])
     const addColumn = async ()=>{
-        if (colname && !colSettings.import_columns.includes(colname)){
+        if (colname && !colSettings.import_columns?.includes(colname)){
             var postingCols = []
             if (writeStatus==='Edit'){
                 const filtcols = colSettings.import_columns?.filter((col)=>{
