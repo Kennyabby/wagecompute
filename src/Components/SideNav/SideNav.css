@@ -1,0 +1,52 @@
+.sidenav{
+    display: block;
+    width: 30%;
+    height: 100vh;
+    overflow: auto;
+    background: rgb(14, 14, 14);
+    color: white;
+}
+.navheader{
+    width: 90%;
+    margin: 20px auto;
+    font-weight: bold;
+    font-size: 1.6rem;
+}
+.navheader::after{
+    display: block;
+    content: '';
+    width: 40%;
+    margin-right: 10px;
+    border: solid greenyellow 2px;
+    background-color: greenyellow;
+}
+
+.navbox{
+    display: flex;
+    width: 90%;
+    margin: auto;
+}
+.icons{
+    width: 10%;
+    background: rgb(36, 35, 35);
+}
+.navbar{
+    width: 90%;
+    li, div{
+       font-size: 1.23em;
+       margin-bottom: 20px; 
+       cursor: pointer
+    };
+    li{
+        background: black;
+    };
+    li:hover{
+        font-weight: bold;
+    }
+}
+li{
+    list-style: none;
+}
+.selected{
+    font-weight: bold;
+}

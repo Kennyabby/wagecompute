@@ -1,0 +1,61 @@
+.settings{
+    height: 100%;
+    background: white;
+    overflow: auto;
+}
+.columns{
+    width: 90%;
+    margin: auto;
+}
+.addsection{
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+}
+.addcolumn{
+    margin: auto 15px;
+    padding: 7px 15px;
+    border-radius: 10px;
+    border: solid greenyellow 1.5px;
+    cursor: pointer;
+}
+.dcol{
+    border:solid  rgb(233, 65, 65) 1.5px;
+}
+.columnsbox{
+    display: flex;
+    flex-wrap: wrap;
+    padding: 10px auto;
+    width: 80%;
+    border: solid rgba(251, 219, 145, 0.8) 2px;
+    height: 120px;
+    border-radius: 10px;
+    overflow: auto;
+}
+.col{
+    position: relative;
+    margin: auto 10px;
+    padding: 7px 20px;
+    border: 5px;
+    border-radius: 10px;
+    cursor: pointer;
+    background: rgb(95, 87, 87);
+    color: white;
+    font-size: .8em;
+}
+.delcol{
+    display: none;
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    font-size: .8em;
+    background: rgba(0,0,0,0.8);
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    text-align: center;
+    cursor: pointer;
+}
+.col:hover > .delcol{
+    display: block;
+}
