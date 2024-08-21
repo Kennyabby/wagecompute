@@ -1,0 +1,83 @@
+.attendance{
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+}
+.attlist{
+    width: 30%;
+}
+.attview{
+    width: 67%;
+}
+.addatt{
+    display: block;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+}
+.uplttl{
+    font-size: 1em;
+}
+.checkbox{
+    width: 90%;
+    margin: 10px auto;
+    height: 85%;
+    padding: 10px 20px;
+    background: rgba(179, 228, 247,0.2);
+    border-radius: 10px;
+    overflow: auto;
+}
+.upldbox{
+    display: flex;
+    width: 95%;
+    margin: 5px auto;
+    
+}
+.uplbtn{
+    width: fit-content;
+    margin-left: auto;
+    padding: 7px 15px;
+    font-size: .8em;
+    cursor: pointer;
+}
+.aftupl{
+    display: flex;
+    width: fit-content;
+    margin-left: auto;
+    div{
+        width: fit-content;
+        margin-left:10px;
+        padding: 7px 15px;
+        font-size: .8em;
+        cursor: pointer;
+    }
+}
+.icols{
+    display: flex;
+    align-items: center;
+    margin: 15px auto;
+    div{
+        margin-right: auto 10px;
+    }
+    select{
+        margin: auto 10px ;
+    }
+}
+.caldiv{
+    display: flex;
+    margin: 20px auto;
+    flex-wrap: wrap;
+    width: 100%;
+    div{
+        margin: auto;
+    }
+}
+.payee{
+    color: black;
+    margin: 50px 20px;
+    cursor: pointer;
+    div{
+        color: black;
+    }
+}

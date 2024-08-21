@@ -1,0 +1,64 @@
+.addblock{
+    width: 90%;
+    margin: auto;
+}
+.formpad{
+    font-size: .8em;
+    width: 100%;
+}
+.inppad{
+    width: 90%;
+    text-indent: 10px;
+    height: 100px;
+    border-radius: 5px;
+    margin: 10px 0px;
+    outline: none;
+    border: none;
+    background: rgb(236, 240, 251);
+}
+.cfm{
+    display: flex;
+    width: 100%;
+    font-size: .8em;
+}
+.nobtn{
+    background: white;
+    color: black;
+    border: solid rgb(151, 5, 5) 2px;
+}
+.popbtn{
+    padding: 5px 15px;
+    margin: 0px;
+    margin-right: 10px;    
+}
+
+.dept{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    width: 90%;
+    margin: 20px auto;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    background: whitesmoke;
+}
+.deptdesc{
+    font-size: .8em;
+    width: 90%;
+    margin: 10px 0px;
+}
+.dets{
+    width: 70%;
+}
+.edit{
+    font-size: .9em;
+    font-weight: bold;
+}
+.delbtn{
+    font-size: .6em;
+    height: fit-content;
+    background: rgb(247, 77, 77);
+    border: saddlebrown;
+}

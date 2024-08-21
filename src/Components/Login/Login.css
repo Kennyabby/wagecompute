@@ -1,0 +1,192 @@
+
+.login{
+    width: 100%;
+    height: 100vh;
+    display: flex;
+}
+.loginblock{
+    padding: 20px;
+    width: 55vw;
+    background: white;
+}
+.loginbanner{
+    display: block;
+    width: 45vw;
+    background: rgba(247, 220, 86, 0.85);
+}
+.lgnabout{
+    margin: auto;
+    margin-top: 20px;
+    margin-bottom: 50px;
+    width: 90%;
+}
+.lgnicon{
+    font-size: 7rem;
+    color: #7046aa
+}
+.lgntitle{
+    font-family: 'MontserratBold';
+    font-size: 2.3rem;
+    margin: 20px auto;
+    font-weight: bolder;
+    width: max-content;
+}
+.loginsignup{
+    color: rgb(108, 108, 199);  
+    font-weight: bold;
+    cursor: pointer;
+}
+.lgnmsgs{
+    margin: auto;
+    margin-top: 30px;
+    width: 80%;
+}
+.lgnmsg{
+    margin: 10px auto;
+    font-size: 1rem;
+    width: fit-content;
+}
+.errmsgs{
+    position: fixed;
+    bottom: 5px;
+    left: 5px;
+    /* width: max-content; */
+    padding: 20px 30px;
+    border-radius: 8px;
+    border-left: solid yellow 6px;
+    background: rgb(111, 124, 45);
+    color: yellow;
+    font-weight: bold;
+    font-size: 1em;
+    z-index: 1;
+}
+.lgninpcv{
+    width: 60%;
+    margin: 20px auto;
+    display: block;
+    flex-wrap: wrap;
+}
+.inplgcv{
+    width: 100%;
+    margin: 10px auto;
+    text-align: left;
+    color: grey;
+}
+.lgninp{
+    width: 100%;
+    margin: 10px auto;
+    height: 60px;
+    text-indent: 20px;
+    border: solid black 0px;
+    background: rgb(233, 244, 249);
+    font-size: 1rem;
+    outline: none;
+    text-align: left;
+    border-radius: 5px; 
+    
+}
+.lgnpassbx{
+    display: flex;
+    margin: 10px auto;
+    height: 60px;
+    width: 100%;
+    border: solid black 0px;
+    background: rgb(233, 244, 249);
+    font-size: 1rem;
+    border-radius: 5px;
+}
+.lgnpassinp{
+    width: 100%;
+    text-indent: 20px;
+    border: solid black 0px;
+    background: rgb(233, 244, 249);
+    font-size: 1rem;
+    outline: none;
+    text-align: left;
+}
+.shwpass{
+    cursor: pointer;
+    font-size: 1.2em;
+    width: fit-content;
+    margin: auto 20px;
+}
+.lgnbtn{
+    width: 60%;
+    margin: auto;
+    margin-top: 20px;
+}
+.lgnfg{
+    margin-top: 15px;
+    font-weight: bold;
+    color: rgb(108, 108, 199);
+    cursor: pointer;
+    width: fit-content;
+    margin-left: auto;
+    margin-bottom: 25px;
+}
+.lreminder{
+    font-size: .9em;
+    margin: 15px auto;
+    width: 100%;
+    text-align: left;
+}
+.signin{
+    padding: 15px 20px;
+    border-radius: 5px;
+    background: rgba(247, 220, 86, 0.85); 
+    font-weight: bold;
+    font-family: 'MontserratBold';
+    font-size: 1.2rem;
+    text-align: center;
+    cursor: pointer;
+    margin: auto
+}
+.emgct{
+    margin: 30px auto;
+}
+
+.ctlbl{
+    font-weight: bold;
+    cursor: pointer;
+}
+.bidlogocover{
+    width: 80%;
+    margin: auto;
+    margin-top: 50%;
+    transform: translate(0,-50%);
+    cursor: pointer;
+}
+.bidlogo{
+    width:80%;
+}
+.mbidlogocover{
+    display: none;
+}
+@media screen and (max-width: 700px) {
+    .loginblock{
+        padding: 0;
+        width: 100%;
+        overflow: auto;
+    }
+    .loginbanner{
+        display: none;
+    }
+    .lgninpcv{
+        width: 80%;
+    }
+    .lgnbtn{
+        width: 80%;
+        margin: 20px auto;
+    }
+    .mbidlogocover{
+        display: block;
+        width: 80%;
+        margin: 0 auto;
+        cursor: pointer;
+        text-align: center;
+    }
+    .mbidlogo{
+        margin: auto;
+        width:60vw;
+    }
+}
