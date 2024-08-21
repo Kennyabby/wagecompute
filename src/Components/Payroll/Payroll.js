@@ -220,7 +220,6 @@ const Payroll = () =>{
                                                         </p>
                                                     </td>
                                                     <td>
-                                                        
                                                         <p>
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(debtDue)} </strong>
                                                         </p>
@@ -340,7 +339,7 @@ const Payroll = () =>{
                                 <div className='deptetr'>
                                      <div className='inpcov formpad'>
                                         <input 
-                                            className='forminp'
+                                            className='forminp prinp'
                                             name='deptDue'
                                             type='number'
                                             placeholder='Dept Due'
@@ -352,7 +351,7 @@ const Payroll = () =>{
                                     </div>
                                     <div className='inpcov formpad'>
                                         <input 
-                                            className='forminp'
+                                            className='forminp prinp'
                                             name='shortages'
                                             type='number'
                                             placeholder='Shortages'
@@ -364,19 +363,19 @@ const Payroll = () =>{
                                     </div>
                                     <div className='inpcov formpad'>
                                         <input 
-                                            className='forminp'
+                                            className='forminp prinp'
                                             name='penalties'
                                             type='number'
                                             placeholder='Penalties Fine'
                                             value={penalties}
                                             onChange={(e)=>{
-                                                setShortages(e.target.value)
+                                                setPenalties(e.target.value)
                                             }}
                                         />
                                     </div>
                                     <div className='inpcov formpad'>
                                         <input 
-                                            className='forminp'
+                                            className='forminp prinp'
                                             name='bonus'
                                             type='number'
                                             placeholder='Bonus'
