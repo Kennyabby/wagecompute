@@ -27,7 +27,7 @@
     overflow: auto;
 }
 .add{
-    position: absolute;
+    position: fixed;
     background: greenyellow;
     width: 50px;
     height: 50px;
@@ -36,8 +36,8 @@
     text-justify: center;
     border-radius: 50%;
     color: black;
-    bottom: 10px;
-    right: 10px;
+    bottom: 20px;
+    right: 20px;
     font-weight: bold;
     font-size: 2.5em;
     cursor: pointer;

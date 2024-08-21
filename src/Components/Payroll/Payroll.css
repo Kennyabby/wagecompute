@@ -1,0 +1,193 @@
+.payroll{
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+}
+.payview{
+    justify-content: center;
+    align-items: center;
+    .formtitle{
+        width: fit-content;
+        margin: 10px auto;
+    }
+    .paydesc{
+        display: flex;
+        width: 90%;
+        margin: 20px auto;
+        flex-wrap: wrap;
+        justify-content: space-around;
+    }
+    .pyrl{
+        width: 90%;
+        margin: 20px auto;
+        border-radius: 10px;
+        background: whitesmoke;
+        padding: 10px;
+        box-shadow: 2px 4px 4px 2px rgba(0,0,0,0.1);
+        .calatr{
+            margin: 20px auto;
+            div{
+                text-align: center;
+                font-size: .9em;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-around;
+                div{
+                    padding: 7px 10px;
+                    border-radius: 5px;
+                    margin: 10px auto;
+                    width: fit-content;
+                    box-shadow: 2px 4px 4px 2px rgba(0,0,0,0.1);
+                }
+            }
+        }
+
+        .viewslip{
+            width: fit-content;
+            margin-left: auto;
+            padding: 8px 12px;
+            color: white;
+            font-weight: bold;
+            background: rgb(127, 193, 27);
+            cursor: pointer;
+            border-radius: 7px;
+            font-size: .9em;
+        }
+    }
+}
+
+.payslip{
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    top: 0px;
+    left: 0px;
+    z-index: 3;
+    background: rgba(255,255,255,0.95);
+    overflow: auto;
+    .cancelslip{
+        position: fixed;
+        top:10px;
+        left: 10px;
+        width: fit-content;
+        padding: 8px 12px;
+        border-radius: 5px;
+        border: solid brown 1.5px;
+        font-size: .8em;
+        cursor:pointer;
+        .mainslip{
+            width: 90%;
+            margin: auto;
+            background: white;
+            overflow: auto;
+        }
+    }
+    
+}
+.deptetr{
+    width: 90%;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    div{
+        margin: auto;
+    }
+}
+
+.invhead{
+    width: 100%;
+    display: flex;
+    margin: 20px auto;
+    margin-bottom: 50px;
+    border-bottom: solid grey 1px;
+}
+.invlogo{
+    width: 100px;
+    margin-right: auto;
+}
+.company{
+    text-align: left;
+    margin-bottom: 20px;
+}
+.billfrom{
+    text-align: center;
+    justify-content: center;
+}
+.billfromitem{
+    text-align: left;
+}
+.billto{
+    width: fit-content;
+    margin-right: auto;
+}
+.ttlrow{
+    width: fit-content; 
+    margin: auto;
+    text-align: center;
+}
+.invnum{
+    width: fit-content;
+    margin-top: 100px;
+    margin-right: auto;
+    text-align: left;
+}
+.billtoitem{
+    text-align: left;
+}
+.main thead {
+    background: #1E1F23;
+    color: #fff;
+    }
+.img{
+    height: 100px;}
+h1{
+   text-align: center;
+}
+
+.brcode{
+    margin-top: 90px;
+}
+
+.bbc{
+    margin-left: 900px;
+}
+
+.containers{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    width: 100%;
+}
+
+.form{
+    border: 0.5px solid orange;
+}
+
+/* input{
+    margin: 10px;
+    border: 0.5px solid rgb(34, 131, 200);
+    height: 50px;
+    width: 150px;
+    text-indent: 10px;
+    border-radius: 5px;
+} */
+
+.invbutton{
+    padding: 10px;
+    width: fit-content;
+    background: #325aa8;
+    color: white;
+    border-style: solid;
+    border-radius: 5px;
+    border-color: #325aa8;
+    margin: 10px;
+    margin-right: auto;
+}
+.buttons button:hover{
+    background: #1E1F23;
+    color: #ffffff;
+    transition: 0.5s;
+}
