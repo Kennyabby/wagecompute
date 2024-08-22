@@ -9,6 +9,7 @@ const Payroll = () =>{
         server, fetchServer,
         getDate,
         company, companyRecord,
+        monthDays,
         employees,
         attendance
     } = useContext(ContextProvider)
@@ -120,7 +121,7 @@ const Payroll = () =>{
                                                 <p className='billtoitem'><b>{`Bank Name: `}</b>{curEmployee.bankName}</p>
                                                 <p className='billtoitem'><b>{`Bank Branch: `}</b>{curEmployee.bankBranch}</p>
                                                 <p className='billtoitem'><b>{'Account No: '}</b>{curEmployee.accountNo}</p>
-                                                <p className='billtoitem'><b>{'Payment Date: '}</b>{`31 ${curAtt.month}, ${curAtt.year}.`}</p>
+                                                <p className='billtoitem'><b>{'Payment Date: '}</b>{`${monthDays[curAtt.month]} ${curAtt.month}, ${curAtt.year}.`}</p>
                                                 <p className='billtoitem'><b>{'Date Engaged: '}</b>{curEmployee.hiredDate}</p>
 
                                             </div>
@@ -150,7 +151,7 @@ const Payroll = () =>{
                                         <table className="table">
                                             <thead>
                                                 <tr>
-                                                    <th><h5>Expected Work Days: 31</h5></th>
+                                                    <th><h5>Expected Work Days: {monthDays[curAtt.month]}</h5></th>
                                                     <th><h5>Actual Work Days: {
                                                         curAtt.payees.length?
                                                         curAtt.payees.map((payee, index) => {
@@ -166,7 +167,7 @@ const Payroll = () =>{
                                                         curAtt.payees.map((payee, index) => {
                                                             if(payee['ID']===curEmployee.i_d){
                                                                 return (
-                                                                        <label key={index}>{31-Number(payee['Total Days'])}</label>
+                                                                        <label key={index}>{Number(monthDays[curAtt.month])-Number(payee['Total Days'])}</label>
                                                                 )
                                                             }
                                                         }):null
@@ -179,7 +180,7 @@ const Payroll = () =>{
                                         <table className="table">
                                             <thead>
                                                 <tr>
-                                                    <th><h5>Description</h5></th>
+                                                    <th><h5>Descriptions</h5></th>
                                                     <th><h5>Deductions</h5></th>
                                                     <th><h5>Gross Earnings</h5></th>
                                                 </tr>
@@ -204,6 +205,15 @@ const Payroll = () =>{
                                                     }):null
                                                 }
                                                 <tr>
+                                                    <td className="col-md-5">
+                                                    <p>
+                                                        <strong>Bonuses: </strong>
+                                                    </p>
+                                                    </td>
+                                                    <td className="col-md-5"></td>
+                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(bonus)}  </td>
+                                                </tr>
+                                                <tr>
                                                     <td className="text-right">
                                                         
                                                         <p>
@@ -214,9 +224,6 @@ const Payroll = () =>{
                                                         </p>
                                                         <p>
                                                             <strong>Penalties: </strong>
-                                                        </p>
-                                                        <p>
-                                                            <strong>Bonus: </strong>
                                                         </p>
                                                     </td>
                                                     <td>
@@ -229,15 +236,12 @@ const Payroll = () =>{
                                                         <p>
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(penalties)}</strong>
                                                         </p>
-                                                        <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(bonus)}</strong>
-                                                        </p>
                                                     </td>
                                                 </tr>
                                                 <tr style={{ color: '#F81D2D' }}>
                                                     <td className="text-right"><h4><strong>Net Pay:</strong></h4></td>
                                                     <td className="text-right"><h4><strong></strong></h4></td>
-                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(totalPay)-(Number(debtDue)+Number(shortages)+Number(penalties))+(Number(bonus))} </strong></h4></td>
+                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {(Number(totalPay)+Number(bonus))-(Number(debtDue)+Number(shortages)+Number(penalties))} </strong></h4></td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -307,7 +311,7 @@ const Payroll = () =>{
                 </div>
                 <div className='empview payview'>
                     {curEmployee && <div className='formtitle'>
-                        {`${curEmployee.firstName} ${curEmployee.lastName} (${curEmployee.i_d})`}
+                        {`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} (${curEmployee.i_d})`}
                     </div>}
                     {curEmployee && <div className='paydesc'>
                         <div><b>Department: </b>{`${curEmployee.department}`}</div>

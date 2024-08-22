@@ -202,9 +202,12 @@ const Employees = () =>{
                 </div>
                 <div className='empview'>
                     <div className='formtitle padtitle'>
+                        {isView ? <div className={writeStatus==='New'?'frmttle':''}>
+                            {`EMPLOYEE FORM`}
+                        </div> :
                         <div className={writeStatus==='New'?'frmttle':''}>
                             {`${writeStatus.toUpperCase()} EMPLOYEE FORM`}
-                        </div>
+                        </div>}
                         {writeStatus==='Edit'&& !isView && <div className='yesbtn popbtn delbtn'
                                 onClick={deleteEmployee}
                         >Delete</div>}
@@ -213,7 +216,7 @@ const Employees = () =>{
                         <div name='Basic' className={selform==='Basic'?'seltype':''}>Basic</div>
                         <div name='Hr' className={selform==='Hr'?'seltype':''}>HR</div>
                     </div>
-                    <div className='form' onChange={handleFieldChange}>
+                    <div className='fm' onChange={handleFieldChange}>
                         {selform==='Basic'&&<div className='basic'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
