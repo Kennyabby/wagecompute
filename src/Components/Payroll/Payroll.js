@@ -11,7 +11,7 @@ const Payroll = () =>{
         company, companyRecord,
         monthDays,
         employees,
-        attendance
+        attendance, getAttendance
     } = useContext(ContextProvider)
     const targetRef = useRef(null)
     const [viewSlip, setViewSlip] = useState(false)
@@ -79,8 +79,39 @@ const Payroll = () =>{
 
     const handleViewClick = (e,index,employee)=>{
         setCurEmployee(employee)
-
     }
+
+    const handlePayeeUpdate = async(payee, attNo, bonus, shortages, debtDue, penalties)=>{
+        
+        var payees;
+        attendance.forEach((att)=>{
+            if(att.no === attNo){
+                payees = att.payees
+            }
+        })
+        var updPayee;
+        payees.forEach((pyee)=>{
+            if (pyee['ID']===payee['ID']){
+                updPayee = {...payee, bonus,shortages,debtDue,penalties}
+            }
+        })
+        const ftrPayees = payees.filter((py)=>{
+            return py['ID'] !== payee['ID']
+        })
+        const updPayees = [...ftrPayees, updPayee]
+
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Attendance", 
+            prop: [{no: attNo}, {payees: updPayees}]
+        }, "updateOneDoc", server)
+          
+        if (resps.err){
+            console.log(resps.mess)
+        }else{
+            getAttendance(company)
+        }
+     }
     return(
         <>
             <div className='payroll'>
@@ -319,90 +350,19 @@ const Payroll = () =>{
                     </div>}
                     {curEmployee && 
                         attendance.map((att,id)=>{
-                            const {payees} = att
-                            return <div className='pyrl' key={id}>
-                                <div><b>Attendance No: </b>{`${att.no} for ${att.month}, ${att.year}.`}</div>
-                                <div className='calatr'>
-                                    {payees.map((payee, id1)=>{
-                                        const {ID} = payee
-
-                                        if (ID===curEmployee.i_d){
-                                            
-                                            return <div key={id1}>
-                                                <div><b>Total Days Worked:{'->'}</b> {`(${payee['Total Days']})`}</div>
-                                                <div><b>Total Hours Worked:{'->'}</b> {`(${payee['Total Hours']})`}</div>
-                                                <div><b>Total Pay (Naira):{'->'}</b> {`(${parseFloat(payee['Total Pay']).toFixed(2)})`}</div>
-                                            </div>
-                                        }else{
-                                            <div>
-                                                Employee Not Present in This Attendance
-                                            </div>
-                                        }
-                                    })}
-                                </div>
-                                <div className='deptetr'>
-                                     <div className='inpcov formpad'>
-                                        <input 
-                                            className='forminp prinp'
-                                            name='deptDue'
-                                            type='number'
-                                            placeholder='Dept Due'
-                                            value={debtDue}
-                                            onChange={(e)=>{
-                                                setDebtDue(e.target.value)
-                                            }}
-                                        />
-                                    </div>
-                                    <div className='inpcov formpad'>
-                                        <input 
-                                            className='forminp prinp'
-                                            name='shortages'
-                                            type='number'
-                                            placeholder='Shortages'
-                                            value={shortages}
-                                            onChange={(e)=>{
-                                                setShortages(e.target.value)
-                                            }}
-                                        />
-                                    </div>
-                                    <div className='inpcov formpad'>
-                                        <input 
-                                            className='forminp prinp'
-                                            name='penalties'
-                                            type='number'
-                                            placeholder='Penalties Fine'
-                                            value={penalties}
-                                            onChange={(e)=>{
-                                                setPenalties(e.target.value)
-                                            }}
-                                        />
-                                    </div>
-                                    <div className='inpcov formpad'>
-                                        <input 
-                                            className='forminp prinp'
-                                            name='bonus'
-                                            type='number'
-                                            placeholder='Bonus'
-                                            value={bonus}
-                                            onChange={(e)=>{
-                                                setBonus(e.target.value)
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                                <div className='viewslip'
-                                    onClick={()=>{
-                                        setViewSlip(true)
-                                        setCurAtt(att)
-                                        const {payees} = att
-                                        payees.forEach(payee => {
-                                            if (payee['ID']===curEmployee.i_d){
-                                                setTotalPay(parseFloat(payee['Total Pay']).toFixed(2))
-                                            }
-                                        });
-                                    }}
-                                >View Pay Slip</div>
-                            </div>
+                            return <PayAttendance
+                                key={id}
+                                att = {att}
+                                setDebtDue={setDebtDue}
+                                setShortages={setShortages}
+                                setPenalties={setPenalties}
+                                setBonus={setBonus}
+                                curEmployee={curEmployee}
+                                setViewSlip={setViewSlip}
+                                setCurAtt={setCurAtt}
+                                setTotalPay={setTotalPay}
+                                handlePayeeUpdate={handlePayeeUpdate}
+                            />
                         })
                     }
                 </div>
@@ -412,3 +372,123 @@ const Payroll = () =>{
 }
 
 export default Payroll
+
+const PayAttendance = ({att, setDebtDue, setShortages, 
+    setPenalties, setBonus, curEmployee, setViewSlip, setCurAtt,
+    setTotalPay, handlePayeeUpdate
+})=>{
+    const [subDebtDue, setSubDebtDue] = useState('')
+    const [subShortages, setSubShortages] = useState('')
+    const [subPenalties, setSubPenalties] = useState('')
+    const [subBonus, setSubBonus] = useState('')
+    const {payees} = att
+    
+    useEffect(()=>{
+        const {payees} = att
+        payees.forEach((payee)=>{
+            if (payee['ID']===curEmployee.i_d){
+                setSubDebtDue(payee.debtDue)
+                setSubShortages(payee.shortages)
+                setSubPenalties(payee.penalties)
+                setSubBonus(payee.bonus)
+            }
+        })
+    },[att, curEmployee])
+
+    return (
+        <>
+            <div className='pyrl'>
+                <div><b>Attendance No: </b>{`${att.no} for ${att.month}, ${att.year}.`}</div>
+                <div className='calatr'>
+                    {payees.map((payee, id1)=>{
+                        const {ID} = payee
+
+                        if (ID===curEmployee.i_d){
+                            return <div key={id1}>
+                                <div><b>Total Days Worked:{'->'}</b> {`(${payee['Total Days']})`}</div>
+                                <div><b>Total Hours Worked:{'->'}</b> {`(${payee['Total Hours']})`}</div>
+                                <div><b>Total Pay (Naira):{'->'}</b> {`(${parseFloat(payee['Total Pay']).toFixed(2)})`}</div>
+                            </div>
+                        }else{
+                            <div>
+                                Employee Not Present in This Attendance
+                            </div>
+                        }
+                    })}
+                </div>
+                <div className='deptetr'>
+                    <div className='inpcov formpad'>
+                        <input 
+                            className='forminp prinp'
+                            name='deptDue'
+                            type='number'
+                            placeholder='Dept Due'
+                            value={subDebtDue}
+                            onChange={(e)=>{
+                                setSubDebtDue(e.target.value)
+                            }}
+                        />
+                    </div>
+                    <div className='inpcov formpad'>
+                        <input 
+                            className='forminp prinp'
+                            name='shortages'
+                            type='number'
+                            placeholder='Shortages'
+                            value={subShortages}
+                            onChange={(e)=>{
+                                setSubShortages(e.target.value)
+                            }}
+                        />
+                    </div>
+                    <div className='inpcov formpad'>
+                        <input 
+                            className='forminp prinp'
+                            name='penalties'
+                            type='number'
+                            placeholder='Penalties Fine'
+                            value={subPenalties}
+                            onChange={(e)=>{
+                                setSubPenalties(e.target.value)
+                            }}
+                        />
+                    </div>
+                    <div className='inpcov formpad'>
+                        <input 
+                            className='forminp prinp'
+                            name='bonus'
+                            type='number'
+                            placeholder='Bonus'
+                            value={subBonus}
+                            onChange={(e)=>{
+                                setSubBonus(e.target.value)
+                            }}
+                        />
+                    </div>
+                </div>
+                <div className='viewslip'
+                    onClick={()=>{
+                        setViewSlip(true)
+                        setCurAtt(att)
+                        setBonus(subBonus?subBonus:'')
+                        setDebtDue(subDebtDue?subDebtDue:'')
+                        setPenalties(subPenalties?subPenalties:'')
+                        setShortages(subShortages?subShortages:'')
+                        const {payees} = att
+                        payees.forEach(payee => {
+                            if (payee['ID']===curEmployee.i_d){
+                                setTotalPay(parseFloat(payee['Total Pay']).toFixed(2))
+                                if (payee.bonus === subBonus && payee.shortages === subShortages && 
+                                    payee.penalties === subPenalties && payee.debtDue===subDebtDue
+                                ){
+                                }else{
+                                    handlePayeeUpdate(payee, att.no, subBonus, subShortages, subDebtDue, subPenalties)
+                                }
+                            }
+                        })
+                    }}
+                >View Pay Slip</div>
+            </div>
+        </>
+    )
+}
