@@ -27,6 +27,7 @@ const Attendance = () =>{
     useEffect(()=>{
         storePath('attendance')  
     },[storePath])
+
     const [columns, setColumns] = useState([])
     const [selectedCols, setSelectedCols] = useState([])
     useEffect(()=>{
@@ -61,9 +62,24 @@ const Attendance = () =>{
 
             // Convert the sheet to JSON, starting from the desired row (7 here since it's 0-indexed)
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // Define the known column name to search for
+            const knownColumnName = columns[0]; // Replace with your actual column name
+            let headerRowIndex = null;
 
-            // Set the row number where headers are located (index starts at 0, so row 8 is index 7)
-            const headerRowIndex = 7;
+            // Search for the header row by finding the row that contains the known column name
+            for (let i = 0; i < jsonData.length; i++) {
+                if (jsonData[i].includes(knownColumnName)) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+
+            if (headerRowIndex === null) {
+                console.error('Header row with the specified column name not found');
+                return;
+            }
+
 
             // Extract headers and rows starting from the specified row
             const headers = jsonData[headerRowIndex];
@@ -166,7 +182,7 @@ const Attendance = () =>{
                     totalHours += curHour
                     if(curHour>=9){
                         totalDays += 1
-                    }else if (curHour>5 && curHour<9){
+                    }else if (curHour>=5 && curHour<9){
                         totalDays += 0.5
                     }
                 }
