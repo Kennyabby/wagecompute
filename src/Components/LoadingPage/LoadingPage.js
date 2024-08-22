@@ -6,7 +6,11 @@ const LoadingPage = ()=>{
 
     return(
         <>
-            WAGE COMPUTE
+            <div className='loadingpage'>
+                <div>
+                    WAGE COMPUTE
+                </div>
+            </div>
         </>
     )
 }
