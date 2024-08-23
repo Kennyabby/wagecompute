@@ -6,7 +6,7 @@ import LoadingPage from './Components/LoadingPage/LoadingPage';
 import Login from './Components/Login/Login';
 import Profile from './Components/Profile/Profile';
 import Dashboard from './Components/Dashboard/Dashboard';
-import FormPage from './Components/FormPage/FormPage'
+import FormPage from './Components/FormPage/FormPage';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
