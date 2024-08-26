@@ -1,8 +1,10 @@
 import './FormPage.css'
-import { useEffect, useState, useRef, useCallback, PureComponent } from "react";
+import { useEffect, useState, useRef, useCallback, useContext} from "react";
 import { read, utils, writeFileXLSX } from 'xlsx';
 import { IoIosArrowDown, IoIosArrowUp, IoIosClose } from "react-icons/io";
 import { IoClose } from 'react-icons/io5';
+import ContextProvider from '../../Resources/ContextProvider';
+import { useNavigate } from 'react-router-dom';
 
 const FormPage = ()=>{
     const fileReader = useRef(null)
@@ -27,6 +29,7 @@ const FormPage = ()=>{
         value:'',
         desc:''
     })
+    const {storePath} = useContext(ContextProvider)
     const [excludedentry, setExcludedEntry] = useState('')
     const [dateExcludedEntry, setDateExcludedEntry] = useState('')
     const [employeeDate, setEmployeeDate] = useState('')
@@ -51,6 +54,10 @@ const FormPage = ()=>{
     const [employeeWorkedDays, setEmployeeWorkedDays] = useState({})
     const [sundayWorkedDays, setSundayWorkedDays] = useState({})
     const [holidayWorkedDays, setHolidayWorkedDays] = useState({})
+    const Navigate = useNavigate()
+    useEffect(()=>{
+        storePath('test')  
+    },[storePath])
 
     const uploadFile = async(e)=>{        
         const f = await file.arrayBuffer()
@@ -63,6 +70,7 @@ const FormPage = ()=>{
         e.target.parentElement.children[0].value=''
         setFile(null)
     }
+    
     const uploadSfile = async(e)=>{        
         const f = await sfile.arrayBuffer()
         const wb =  read(f)
@@ -597,317 +605,324 @@ const FormPage = ()=>{
     }
     return (
         <>
-            {(viewEWorkedDays || viewHWorkedDays || viewSWorkedDays) &&
-                <div className='viewinfo'>
-                    <IoIosClose className='close' onClick={()=>{
-                        setEViewWorkedDays(false)
-                        setSViewWorkedDays(false)
-                        setHViewWorkedDays(false)
-                    }}/>
-                    <div className='infoheader'>
-                        {infoHeader}
-                    </div>
-                    <div className='infoName'>Employee: <b>{infoFName + ' ' + infoLName} {`(${infoForId})`}</b></div>
-                    <div className='abspres'>
-                        <div>Present {'('+employeeWorkedDays[infoForId].length+')'}</div>
-                        <div>Absent</div>
-                    </div>
-                    {viewEWorkedDays && <div className='info'>
-                        {employeeWorkedDays[infoForId].map((days)=>{
-                            return <div>
-                                <div>{days.date}</div>
-                                <div>
-                                    <div>{days.firstPunch}-{days.lastPunch} {`(${days.shift})`}</div>
+            <div className='formpage'>
+                <div className='backtologin'
+                    onClick={()=>{
+                        Navigate('/login')
+                    }}
+                >{'<< Back'}</div>
+                {(viewEWorkedDays || viewHWorkedDays || viewSWorkedDays) &&
+                    <div className='viewinfo'>
+                        <IoIosClose className='close' onClick={()=>{
+                            setEViewWorkedDays(false)
+                            setSViewWorkedDays(false)
+                            setHViewWorkedDays(false)
+                        }}/>
+                        <div className='infoheader'>
+                            {infoHeader}
+                        </div>
+                        <div className='infoName'>Employee: <b>{infoFName + ' ' + infoLName} {`(${infoForId})`}</b></div>
+                        <div className='abspres'>
+                            <div>Present {'('+employeeWorkedDays[infoForId].length+')'}</div>
+                            <div>Absent</div>
+                        </div>
+                        {viewEWorkedDays && <div className='info'>
+                            {employeeWorkedDays[infoForId].map((days)=>{
+                                return <div>
+                                    <div>{days.date}</div>
+                                    <div>
+                                        <div>{days.firstPunch}-{days.lastPunch} {`(${days.shift})`}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        })}
-                    </div>}
-                    {viewSWorkedDays && <div className='info'>
-                        {sundayWorkedDays[infoForId].map((days)=>{
-                            return <div>
-                                <div>{days.date}</div>
-                                <div>
-                                    <div>{days.firstPunch}-{days.lastPunch}</div>
-                                </div>
-                            </div>
-                        })}
-                    </div>}
-                    {viewHWorkedDays && <div className='info'>
-                        {holidayWorkedDays[infoForId].map((days)=>{
-                            return <div>
-                                <div>{days.date}</div>
-                                <div>
-                                    <div>{days.firstPunch}-{days.lastPunch} {`(${days.shift})`}</div>
-                                </div>
-                            </div>
-                        })}
-                    </div>}
-                </div>
-            }
-            <div className="actionbtns">
-                <div style={{display:"block"}}>
-                    <input ref={fileReader} type='file' 
-                        placeholder='Upload Attendace'
-                        onChange={handleFileChange}/>
-                    {file!==null && <button onClick={uploadFile}>Upload</button>}
-                    <div className='upload'>Upload Attendance</div>
-                </div>
-                <div style={{display:"block"}}>
-                    <input ref={fileReader} type='file' 
-                        placeholder='Upload Attendace'
-                        onChange={handleSfileChange}/>
-                    {sfile!==null && <button onClick={uploadSfile}>Upload</button>}
-                    <div className='upload'>Upload Salary Details</div>
-                </div>
-                <div className='analyze' onClick={analyzeData}>Analyze Data</div>
-                <div className='export' onClick={exportFile}> Export Data</div>
-            </div>
-            <div className='dtflt'>
-                <div className='fltbx'>
-                    <div className='flttle'>Holiday Filters</div>
-                    <div className='fltctnt'>
-                        {holidays.length? <div className='hlcv'>
-                            {holidays.map((holiday,index)=>{
-                                return <div className='holiday' key={index}>
-                                    <div className='hlvl'>{holiday.value}</div>
-                                    <div className='hldesc'>{holiday.desc}</div>
-                                    <IoIosClose className='xcards' onClick={()=>{
-                                        setHolidays((holidays)=>{
-                                            return holidays.filter((fholiday)=>{
-                                                return fholiday!== holiday
-                                            })
-                                        })
-                                    }}/>
-                                </div>
-                            })}                            
-                        </div>:
-                        'Holiday filters appear here.'}
-                    </div>
-                    <div className='fltinp' onChange={holidayInput}>
-                        <input
-                            className='dtinp'
-                            type='date'    
-                            name='value'
-                            value={holiday.value}
-                        />
-                        <input
-                            className='dtinp'
-                            type='text'
-                            name='desc'
-                            placeholder='Description'    
-                            value={holiday.desc}
-                        />
-                        <div className='addflt' onClick={()=>{
-                            if(holiday.value){
-                                setHolidays((holidays)=>{
-                                    return [...holidays, holiday]
-                                })
-                                setHoliday({
-                                    value:'',
-                                    desc:''
-                                })
-                            }
-                        }}>Add</div>
-                    </div>
-                </div>
-                <div className='fltbx'>
-                    <div className='flttle'>Employee Exception Filters</div>
-                    <div className='fltctnt'>
-                        {excludeEmployees.length? <div className='hlcv'>
-                            {excludeEmployees.map((employee,index)=>{
-                                const employeeID = employee['Employee ID']
-                                const employeeFirst = employee['First Name']
-                                const employeeLast = employee['Last Name']
-                                return <div className='empfilter' key={index}>
-                                    <div className='hlvl'>{`Employee ID: ${employeeID}`}</div>
-                                    <div className='hldesc'>{`${employeeFirst} ${employeeLast}`}</div>
-                                    <IoIosClose className='xcards' onClick={()=>{
-                                        setExcludeEmployees((employees)=>{
-                                            return employees.filter((femploee)=>{
-                                                return femploee!== employee
-                                            })
-                                        })
-                                    }}/>
-                                </div>
-                            })}                            
-                        </div>:
-                        'Employee filters appear here.'}
-                    </div>
-                    <div className='fltinp' onChange={holidayInput}>
-                        <select
-                            className='dtinp empinp'
-                            type='text'
-                            name='excludedentry'
-                            placeholder='Select Employee'    
-                            value = {excludedentry}
-                            onChange={(e)=>{
-                                setExcludedEntry(e.target.value)
-                            }}
-                        >
-                            <option value={''}>{'Select Employee'}</option>
-                            {employeeDetails.filter((employee)=>{
-                                return !excludeEmployees.includes(employee)
-                            }).map((employee, index)=>{
-                                const employeeID = employee['Employee ID']
-                                const employeeFirst = employee['First Name']
-                                const employeeLast = employee['Last Name']
-                                return <option 
-                                    key={index} 
-                                    value={employeeID}
-                                >
-                                    {`ID:${employeeID} ${employeeFirst} ${employeeLast}`}
-                                </option>
                             })}
-                        </select>
-                        <div className='addflt' onClick={()=>{
-                            if(excludedentry){
-                                setExcludeEmployees((employees)=>{
-                                    const employee = employeeDetails.filter((employee)=>{
-                                        return employee['Employee ID'] === excludedentry
+                        </div>}
+                        {viewSWorkedDays && <div className='info'>
+                            {sundayWorkedDays[infoForId].map((days)=>{
+                                return <div>
+                                    <div>{days.date}</div>
+                                    <div>
+                                        <div>{days.firstPunch}-{days.lastPunch}</div>
+                                    </div>
+                                </div>
+                            })}
+                        </div>}
+                        {viewHWorkedDays && <div className='info'>
+                            {holidayWorkedDays[infoForId].map((days)=>{
+                                return <div>
+                                    <div>{days.date}</div>
+                                    <div>
+                                        <div>{days.firstPunch}-{days.lastPunch} {`(${days.shift})`}</div>
+                                    </div>
+                                </div>
+                            })}
+                        </div>}
+                    </div>
+                }
+                <div className="actionbtns">
+                    <div style={{display:"block"}}>
+                        <input ref={fileReader} type='file' 
+                            placeholder='Upload Attendace'
+                            onChange={handleFileChange}/>
+                        {file!==null && <button onClick={uploadFile}>Upload</button>}
+                        <div className='upload'>Upload Attendance</div>
+                    </div>
+                    <div style={{display:"block"}}>
+                        <input ref={fileReader} type='file' 
+                            placeholder='Upload Attendace'
+                            onChange={handleSfileChange}/>
+                        {sfile!==null && <button onClick={uploadSfile}>Upload</button>}
+                        <div className='upload'>Upload Salary Details</div>
+                    </div>
+                    <div className='analyze' onClick={analyzeData}>Analyze Data</div>
+                    <div className='export' onClick={exportFile}> Export Data</div>
+                </div>
+                <div className='dtflt'>
+                    <div className='fltbx'>
+                        <div className='flttle'>Holiday Filters</div>
+                        <div className='fltctnt'>
+                            {holidays.length? <div className='hlcv'>
+                                {holidays.map((holiday,index)=>{
+                                    return <div className='holiday' key={index}>
+                                        <div className='hlvl'>{holiday.value}</div>
+                                        <div className='hldesc'>{holiday.desc}</div>
+                                        <IoIosClose className='xcards' onClick={()=>{
+                                            setHolidays((holidays)=>{
+                                                return holidays.filter((fholiday)=>{
+                                                    return fholiday!== holiday
+                                                })
+                                            })
+                                        }}/>
+                                    </div>
+                                })}                            
+                            </div>:
+                            'Holiday filters appear here.'}
+                        </div>
+                        <div className='fltinp' onChange={holidayInput}>
+                            <input
+                                className='dtinp'
+                                type='date'    
+                                name='value'
+                                value={holiday.value}
+                            />
+                            <input
+                                className='dtinp'
+                                type='text'
+                                name='desc'
+                                placeholder='Description'    
+                                value={holiday.desc}
+                            />
+                            <div className='addflt' onClick={()=>{
+                                if(holiday.value){
+                                    setHolidays((holidays)=>{
+                                        return [...holidays, holiday]
                                     })
-                                    return [...employees, ...employee]
-                                })
-                                setExcludedEntry('')
-                            }
-                        }}>Add</div>
+                                    setHoliday({
+                                        value:'',
+                                        desc:''
+                                    })
+                                }
+                            }}>Add</div>
+                        </div>
                     </div>
-                </div>
-                <div className='fltbx'>
-                    <div className='flttle'>Employee Date Exception Filters</div>
-                    <div className='fltctnt'>
-                        {dateexcludeEmployees.length? <div className='hlcv'>
-                            {dateexcludeEmployees.map((employee,index)=>{
-                                const employeeID = employee['Employee ID']
-                                const employeeFirst = employee['First Name']
-                                const employeeLast = employee['Last Name']
-                                const employeeDates = employee['Excluded Dates']
-                                return <div 
-                                    className='empfilter selector' 
-                                    name='filcnt' 
-                                    key={index}
-                                    onClick={(e)=>{
-                                        setFocusedEmployee(employee)
-                                        focusEmployee(e)
-                                    }}
-                                >
-                                    <div className='hlvl'  name='filch' >{`Employee ID: ${employeeID}`}</div>
-                                    <div className='hldesc'  name='filch' >{`${employeeFirst} ${employeeLast} (${employeeDates.length})`}</div>
-                                    <IoIosClose className='xcards' onClick={()=>{
-                                        setDateExcludeEmployees((employees)=>{
-                                            return employees.filter((femploee)=>{
-                                                return femploee!== employee
+                    <div className='fltbx'>
+                        <div className='flttle'>Employee Exception Filters</div>
+                        <div className='fltctnt'>
+                            {excludeEmployees.length? <div className='hlcv'>
+                                {excludeEmployees.map((employee,index)=>{
+                                    const employeeID = employee['Employee ID']
+                                    const employeeFirst = employee['First Name']
+                                    const employeeLast = employee['Last Name']
+                                    return <div className='empfilter' key={index}>
+                                        <div className='hlvl'>{`Employee ID: ${employeeID}`}</div>
+                                        <div className='hldesc'>{`${employeeFirst} ${employeeLast}`}</div>
+                                        <IoIosClose className='xcards' onClick={()=>{
+                                            setExcludeEmployees((employees)=>{
+                                                return employees.filter((femploee)=>{
+                                                    return femploee!== employee
+                                                })
                                             })
+                                        }}/>
+                                    </div>
+                                })}                            
+                            </div>:
+                            'Employee filters appear here.'}
+                        </div>
+                        <div className='fltinp' onChange={holidayInput}>
+                            <select
+                                className='dtinp empinp'
+                                type='text'
+                                name='excludedentry'
+                                placeholder='Select Employee'    
+                                value = {excludedentry}
+                                onChange={(e)=>{
+                                    setExcludedEntry(e.target.value)
+                                }}
+                            >
+                                <option value={''}>{'Select Employee'}</option>
+                                {employeeDetails.filter((employee)=>{
+                                    return !excludeEmployees.includes(employee)
+                                }).map((employee, index)=>{
+                                    const employeeID = employee['Employee ID']
+                                    const employeeFirst = employee['First Name']
+                                    const employeeLast = employee['Last Name']
+                                    return <option 
+                                        key={index} 
+                                        value={employeeID}
+                                    >
+                                        {`ID:${employeeID} ${employeeFirst} ${employeeLast}`}
+                                    </option>
+                                })}
+                            </select>
+                            <div className='addflt' onClick={()=>{
+                                if(excludedentry){
+                                    setExcludeEmployees((employees)=>{
+                                        const employee = employeeDetails.filter((employee)=>{
+                                            return employee['Employee ID'] === excludedentry
                                         })
-                                    }}/>
-                                    <IoIosArrowDown className='shdates'/>
-                                </div>
-                            })}                            
-                        </div>:
-                        'Employee Date filters appear here.'}
+                                        return [...employees, ...employee]
+                                    })
+                                    setExcludedEntry('')
+                                }
+                            }}>Add</div>
+                        </div>
                     </div>
-                    <div>
-                        {focusedEmployee!==null ?
-                            <div className='fltinp' >
-                                <input
-                                    className='dtinp empinp'
-                                    type='date'    
-                                    name='value'
-                                    value={employeeDate}
-                                    onChange={
-                                        (e)=>{
-                                            setEmployeeDate(e.target.value)
+                    <div className='fltbx'>
+                        <div className='flttle'>Employee Date Exception Filters</div>
+                        <div className='fltctnt'>
+                            {dateexcludeEmployees.length? <div className='hlcv'>
+                                {dateexcludeEmployees.map((employee,index)=>{
+                                    const employeeID = employee['Employee ID']
+                                    const employeeFirst = employee['First Name']
+                                    const employeeLast = employee['Last Name']
+                                    const employeeDates = employee['Excluded Dates']
+                                    return <div 
+                                        className='empfilter selector' 
+                                        name='filcnt' 
+                                        key={index}
+                                        onClick={(e)=>{
+                                            setFocusedEmployee(employee)
+                                            focusEmployee(e)
+                                        }}
+                                    >
+                                        <div className='hlvl'  name='filch' >{`Employee ID: ${employeeID}`}</div>
+                                        <div className='hldesc'  name='filch' >{`${employeeFirst} ${employeeLast} (${employeeDates.length})`}</div>
+                                        <IoIosClose className='xcards' onClick={()=>{
+                                            setDateExcludeEmployees((employees)=>{
+                                                return employees.filter((femploee)=>{
+                                                    return femploee!== employee
+                                                })
+                                            })
+                                        }}/>
+                                        <IoIosArrowDown className='shdates'/>
+                                    </div>
+                                })}                            
+                            </div>:
+                            'Employee Date filters appear here.'}
+                        </div>
+                        <div>
+                            {focusedEmployee!==null ?
+                                <div className='fltinp' >
+                                    <input
+                                        className='dtinp empinp'
+                                        type='date'    
+                                        name='value'
+                                        value={employeeDate}
+                                        onChange={
+                                            (e)=>{
+                                                setEmployeeDate(e.target.value)
+                                            }
                                         }
-                                    }
-                                />
-                                <div className='addflt' onClick={()=>{
+                                    />
+                                    <div className='addflt' onClick={()=>{
 
-                                    if(employeeDate){
-                                        setDateExcludeEmployees((dateexcludeEmployees)=>{
-                                            dateexcludeEmployees.forEach((employee)=>{
-                                                if(employee['Employee ID'] === focusedEmployee['Employee ID']){
-                                                    employee['Excluded Dates'] = employee['Excluded Dates'].concat([employeeDate])
-                                                    setFocusedEmployee(employee)
-                                                }
+                                        if(employeeDate){
+                                            setDateExcludeEmployees((dateexcludeEmployees)=>{
+                                                dateexcludeEmployees.forEach((employee)=>{
+                                                    if(employee['Employee ID'] === focusedEmployee['Employee ID']){
+                                                        employee['Excluded Dates'] = employee['Excluded Dates'].concat([employeeDate])
+                                                        setFocusedEmployee(employee)
+                                                    }
+                                                })
+                                                return [...dateexcludeEmployees]
                                             })
-                                            return [...dateexcludeEmployees]
-                                        })
-                                        setEmployeeDate('')
-                                    }else{
-                                        setFocusedEmployee(null)
-                                    }
-                                }}>{employeeDate? "Add": "Back"}</div>
-                            </div> 
-                             :
-                            <div className='fltinp' onChange={holidayInput}>
-                                <select
-                                    className='dtinp empinp'
-                                    type='text'
-                                    name='excludedentry'
-                                    placeholder='Select Employee'    
-                                    value = {dateExcludedEntry}
-                                    onChange={(e)=>{
-                                        setDateExcludedEntry(e.target.value)
-                                    }}
-                                >
-                                    <option value={''}>{'Select Employee'}</option>
-                                    {employeeDetails.filter((employee)=>{
-                                        return !dateexcludeEmployees.map((emp)=>{
-                                            return emp['Employee ID']
-                                        }).includes(employee['Employee ID'])
-                                    }).map((employee, index)=>{
-                                        const employeeID = employee['Employee ID']
-                                        const employeeFirst = employee['First Name']
-                                        const employeeLast = employee['Last Name']
-                                        return <option 
-                                            key={index} 
-                                            value={employeeID}
-                                        >
-                                            {`ID:${employeeID} ${employeeFirst} ${employeeLast}`}
-                                        </option>
-                                    })}
-                                </select>
-                                <div className='addflt' onClick={()=>{
-                                    if(dateExcludedEntry){
-                                        setDateExcludeEmployees((employees)=>{
-                                            const employeelist = employeeDetails.filter((employee)=>{
-                                                return employee['Employee ID'] === dateExcludedEntry
+                                            setEmployeeDate('')
+                                        }else{
+                                            setFocusedEmployee(null)
+                                        }
+                                    }}>{employeeDate? "Add": "Back"}</div>
+                                </div> 
+                                :
+                                <div className='fltinp' onChange={holidayInput}>
+                                    <select
+                                        className='dtinp empinp'
+                                        type='text'
+                                        name='excludedentry'
+                                        placeholder='Select Employee'    
+                                        value = {dateExcludedEntry}
+                                        onChange={(e)=>{
+                                            setDateExcludedEntry(e.target.value)
+                                        }}
+                                    >
+                                        <option value={''}>{'Select Employee'}</option>
+                                        {employeeDetails.filter((employee)=>{
+                                            return !dateexcludeEmployees.map((emp)=>{
+                                                return emp['Employee ID']
+                                            }).includes(employee['Employee ID'])
+                                        }).map((employee, index)=>{
+                                            const employeeID = employee['Employee ID']
+                                            const employeeFirst = employee['First Name']
+                                            const employeeLast = employee['Last Name']
+                                            return <option 
+                                                key={index} 
+                                                value={employeeID}
+                                            >
+                                                {`ID:${employeeID} ${employeeFirst} ${employeeLast}`}
+                                            </option>
+                                        })}
+                                    </select>
+                                    <div className='addflt' onClick={()=>{
+                                        if(dateExcludedEntry){
+                                            setDateExcludeEmployees((employees)=>{
+                                                const employeelist = employeeDetails.filter((employee)=>{
+                                                    return employee['Employee ID'] === dateExcludedEntry
+                                                })
+                                                var employee = {...employeelist[0]}
+                                                employee['Excluded Dates'] = []
+                                                return [...employees, employee]
                                             })
-                                            var employee = {...employeelist[0]}
-                                            employee['Excluded Dates'] = []
-                                            return [...employees, employee]
-                                        })
-                                        setDateExcludedEntry('')
-                                    }
-                                }}>Add</div>
-                            </div>
-                        }
+                                            setDateExcludedEntry('')
+                                        }
+                                    }}>Add</div>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div className='datatable'>
-                <table>
-                    <thead>
-                        <tr>
-                            {presHeaders.map((header, index)=>{
-                                return <th key={index}>{header}</th>
-                            })}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {pres.map((pres, index) => (
-                             <tr key={index}>
+                <div className='datatable'>
+                    <table>
+                        <thead>
+                            <tr>
                                 {presHeaders.map((header, index)=>{
-                                    return <td key={index}>{pres[header]}</td>
+                                    return <th key={index}>{header}</th>
                                 })}
                             </tr>
-                        ))}
-                    </tbody>
-                    <tfoot>
-                        <td colSpan={2}>
-                            {pres.length!==0 && <button onClick={exportFile}>Export XLSX</button>}
-                        </td>
-                    </tfoot>
-                </table>
+                        </thead>
+                        <tbody>
+                            {pres.map((pres, index) => (
+                                <tr key={index}>
+                                    {presHeaders.map((header, index)=>{
+                                        return <td key={index}>{pres[header]}</td>
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <td colSpan={2}>
+                                {pres.length!==0 && <button onClick={exportFile}>Export XLSX</button>}
+                            </td>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
 
         </>

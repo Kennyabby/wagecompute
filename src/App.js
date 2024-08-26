@@ -25,7 +25,7 @@ function App() {
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
-    'employees','departments','positions','attendance','payroll','settings']
+    'employees','departments','positions','attendance','payroll','settings','test']
   const dashList = ['dashboard', 
     'employees','departments','positions','attendance','payroll','settings']
   
@@ -101,8 +101,9 @@ function App() {
       collection: "Profile", 
       sessionId: propVal 
     }, "getDocDetails", SERVER)
+    // console.log(resp.record)
     if ([null, undefined].includes(resp.record)){
-      // removeSessions()
+      removeSessions()
     }else{
       setCompanyRecord(resp.record)
       getDepartments(cmp_val)
@@ -188,6 +189,7 @@ function App() {
     const date = `${current.getDate()}/${current.getMonth() + 1}/${current.getFullYear()}`;
     return date
   }
+
   useEffect(()=>{
     var currPath = window.localStorage.getItem('curr-path')
     if (currPath !== null && pathList.includes(currPath)){
@@ -251,6 +253,7 @@ function App() {
             <Route path='/' element={<LoadingPage/>}></Route>
             <Route path='/login' element={<Login/>}></Route>
             <Route path='/profile' element={<Profile/>}></Route>
+            <Route path='/test' element={<FormPage/>}></Route>
             <Route path='/:id' element={<Dashboard/>}></Route>
           </Routes>
         </ContextProvider.Provider>
