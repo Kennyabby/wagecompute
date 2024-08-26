@@ -1,6 +1,6 @@
 
 .login{
-    width: 100%;
+    width: 100vw;
     height: 100vh;
     display: flex;
 }
@@ -8,6 +8,7 @@
     padding: 20px;
     width: 55vw;
     background: white;
+    overflow: auto;
 }
 .loginbanner{
     display: block;

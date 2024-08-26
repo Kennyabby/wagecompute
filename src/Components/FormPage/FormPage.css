@@ -1,3 +1,23 @@
+.formpage{
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: auto;
+    background: white;
+}
+.backtologin{
+    padding: 5px 12px;
+    font-size: .8em;
+    font-weight: bold;
+    border: solid brown 1.5px;
+    background: white;
+    border-radius: 5px;
+    position: fixed;
+    cursor: pointer;
+    top:0px;
+    left: 0px;
+    z-index: 2;
+}
 .actionbtns{
     display: flex;
     width: 90%;
