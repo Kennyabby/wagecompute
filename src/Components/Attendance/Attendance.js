@@ -37,14 +37,11 @@ const Attendance = () =>{
             })
             delete colSetFilt[0]?._id
             setColumns(colSetFilt[0]?colSetFilt[0].import_columns:[])
-            console.log(colSetFilt[0]?colSetFilt[0].import_columns:[])
         }
     },[settings])
     useEffect(()=>{
-        console.log(attendance)
     },[attendance])
     useEffect(()=>{
-        console.log(iCols)
     },[iCols])
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
@@ -146,12 +143,25 @@ const Attendance = () =>{
             getAttendance(company)
         }
     }
+    const converToId = (id)=>{
+        var preId = id
+        if (isNaN(preId)){
+            preId = ''
+            String(id).split('').forEach((val)=>{    
+                if(!isNaN(val)){
+                    preId += val.trim()
+                }
+            })
+        }
+        return preId.trim()
+    }
     const loadData = async () =>{
         var newRawData = []
         var ids = []
         rawData.forEach((data)=>{
-            if (!ids.includes(data[fields[calId]])){
-                ids = ids.concat(data[fields[calId]])
+            const convertedId = converToId(data[fields[calId]])
+            if (!ids.includes(convertedId)){
+                ids = ids.concat(convertedId)
             }
             var newRow = {}
             columns.forEach((col)=>{
