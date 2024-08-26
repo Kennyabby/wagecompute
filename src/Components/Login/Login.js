@@ -57,7 +57,6 @@ const Login = () => {
             setLoginMessage("")
           },5000)
         }else{
-          console.log(resp)
           var idVal = resp.id
           var company = resp.db
           var now = Date.now()
