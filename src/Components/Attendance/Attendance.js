@@ -22,6 +22,7 @@ const Attendance = () =>{
     const [calDur, setCalDur] = useState('')
     const [month, setMonth] = useState('')
     const [year, setYear] = useState('')
+    const [durationFormat, setDurationFormat] = useState('fmt1')
     const [viewNo, setViewNo] = useState(null)
     
     useEffect(()=>{
@@ -155,6 +156,18 @@ const Attendance = () =>{
         }
         return preId.trim()
     }
+    const converToHour = (hour)=>{
+        var preHour = hour
+        if (isNaN(preHour)){
+            preHour = ''
+            String(hour).split(' ').forEach((val)=>{    
+                if(!isNaN(val)){
+                    preHour += val.trim()
+                }
+            })
+        }
+        return preHour.trim()
+    }
     const loadData = async () =>{
         var newRawData = []
         var ids = []
@@ -187,8 +200,13 @@ const Attendance = () =>{
             })
             newRawData.forEach((data)=>{
                 if (data[calId]===id){
-                    const [hour,minute] = data[calDur].split(':')
-                    const curHour = parseFloat(Number(hour) + Number(minute)/60)
+                    var curHour;
+                    if (durationFormat==='fmt1'){
+                        const [hour,minute] = data[calDur].split(':')
+                        curHour = parseFloat(Number(hour) + Number(minute)/60)
+                    }else if (durationFormat==='fmt2'){
+                        curHour = Number(converToHour(data[calDur]))
+                    }
                     totalHours += curHour
                     if(curHour>=9){
                         totalDays += 1
@@ -321,6 +339,22 @@ const Attendance = () =>{
                                     </select>
                                 </div>
                                 <div className='inpcov formpad'>
+                                    <div>Duration Format</div>
+                                    <select
+                                        className='forminp'
+                                        name='durationFormat'
+                                        type='text'
+                                        value={durationFormat}
+                                        onChange={(e)=>{
+                                            setDurationFormat(e.target.value)
+                                        }}
+                                    >
+                                        <option value=''>Select Duration Format</option>
+                                        <option value='fmt1'>00:00</option>
+                                        <option value='fmt2'>0 Hour(s)</option>
+                                    </select>
+                                </div>
+                                <div className='inpcov formpad'>
                                     <div>SELECT YEAR</div>
                                     <select
                                         className='forminp'
@@ -354,6 +388,7 @@ const Attendance = () =>{
                                         })}
                                     </select>
                                 </div>
+                                
                             </div>
                         </div>}
                     </div>

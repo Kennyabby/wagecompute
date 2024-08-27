@@ -268,6 +268,17 @@ const Payroll = () =>{
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(penalties)}</strong>
                                                         </p>
                                                     </td>
+                                                    <td>
+                                                        <p>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> Gross Deductions </strong>
+                                                        </p>
+                                                        <p>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> - </strong>
+                                                        </p>
+                                                        <p>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(debtDue) + Number(shortages) + Number(penalties)}</strong>
+                                                        </p>
+                                                    </td>
                                                 </tr>
                                                 <tr style={{ color: '#F81D2D' }}>
                                                     <td className="text-right"><h4><strong>Net Pay:</strong></h4></td>
