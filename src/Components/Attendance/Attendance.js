@@ -422,13 +422,11 @@ const Attendance = () =>{
                         attendance.map((att, id)=>{
                             if (String(att.no) === String(viewNo)){
                                 const {payees} = att
-                                console.log(payees)
                                 return <div key={id}>
                                     {payees.map((payee, i)=>{
                                         const ftremp = employees.filter((emp)=>{
                                             return String(emp.i_d)===String(payee['Person ID'])
                                         })[0]
-                                        console.log(ftremp)
                                         const {firstName, lastName, department, position} = ftremp?ftremp:{} 
                                         const newPayee = {
                                             'First Name': firstName, 'Last Name':lastName,
