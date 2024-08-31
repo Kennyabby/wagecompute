@@ -186,7 +186,7 @@ const Payroll = () =>{
                                                     <th><h5>Actual Work Days: {
                                                         curAtt.payees.length?
                                                         curAtt.payees.map((payee, index) => {
-                                                            if(payee['ID']===curEmployee.i_d){
+                                                            if(payee['Person ID']===curEmployee.i_d){
                                                                 return (
                                                                         <label key={index}>{payee['Total Days']}</label>                                                                    
                                                                 )
@@ -196,7 +196,7 @@ const Payroll = () =>{
                                                     <th><h5>Absent Days: {
                                                         curAtt.payees.length?
                                                         curAtt.payees.map((payee, index) => {
-                                                            if(payee['ID']===curEmployee.i_d){
+                                                            if(payee['Person ID']===curEmployee.i_d){
                                                                 return (
                                                                         <label key={index}>{Number(monthDays[curAtt.month])-Number(payee['Total Days'])}</label>
                                                                 )
@@ -220,7 +220,7 @@ const Payroll = () =>{
                                                 {
                                                     curAtt.payees.length?
                                                     curAtt.payees.map((payee, index) => {
-                                                        if(payee['ID']===curEmployee.i_d){
+                                                        if(payee['Person ID']===curEmployee.i_d){
                                                             return (
                                                                 <tr key={index} >
                                                                     <td className="col-md-5">
@@ -270,13 +270,13 @@ const Payroll = () =>{
                                                     </td>
                                                     <td>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> Gross Deductions </strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> - </strong>
                                                         </p>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> - </strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> - </strong>
                                                         </p>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(debtDue) + Number(shortages) + Number(penalties)}</strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(debtDue) + Number(shortages) + Number(penalties)}</strong>
                                                         </p>
                                                     </td>
                                                 </tr>
@@ -397,7 +397,7 @@ const PayAttendance = ({att, setDebtDue, setShortages,
     useEffect(()=>{
         const {payees} = att
         payees.forEach((payee)=>{
-            if (payee['ID']===curEmployee.i_d){
+            if (payee['Person ID']===curEmployee.i_d){
                 setSubDebtDue(payee.debtDue)
                 setSubShortages(payee.shortages)
                 setSubPenalties(payee.penalties)
@@ -412,9 +412,8 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                 <div><b>Attendance No: </b>{`${att.no} for ${att.month}, ${att.year}.`}</div>
                 <div className='calatr'>
                     {payees.map((payee, id1)=>{
-                        const {ID} = payee
 
-                        if (ID===curEmployee.i_d){
+                        if (payee['Person ID']===curEmployee.i_d){
                             return <div key={id1}>
                                 <div><b>Total Days Worked:{'->'}</b> {`(${payee['Total Days']})`}</div>
                                 <div><b>Total Hours Worked:{'->'}</b> {`(${payee['Total Hours']})`}</div>
