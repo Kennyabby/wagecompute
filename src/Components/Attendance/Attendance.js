@@ -438,7 +438,7 @@ const Attendance = () =>{
                                         return <div key={i} className='payee'>
                                             {Object.keys(newPayee).map((col, j)=>{
                                                 return <div key={j}>
-                                                    {col+': '+(newPayee[col]?newPayee[col]:0)} 
+                                                    {col+': '+(![undefined, null].includes(newPayee[col])?newPayee[col]:'Not Available')} 
                                                 </div>
                                             })}
                                         </div>
