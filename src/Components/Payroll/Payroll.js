@@ -223,25 +223,25 @@ const Payroll = () =>{
                                                         if(payee['Person ID']===curEmployee.i_d){
                                                             return (
                                                                 <tr key={index} >
-                                                                    <td className="col-md-5">
+                                                                    <td className="col-md-3">
                                                                     <p>
                                                                         <strong>Salary/Wages: </strong>
                                                                     </p>
                                                                     </td>
-                                                                    <td className="col-md-5"></td>
-                                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {totalPay}  </td>
+                                                                    <td className="col-md-3"></td>
+                                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {totalPay}  </td>
                                                                 </tr>
                                                             )
                                                         }
                                                     }):null
                                                 }
                                                 <tr>
-                                                    <td className="col-md-5">
+                                                    <td className="col-md-3">
                                                     <p>
                                                         <strong>Bonuses: </strong>
                                                     </p>
                                                     </td>
-                                                    <td className="col-md-5"></td>
+                                                    <td className="col-md-3"></td>
                                                     <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(bonus)}  </td>
                                                 </tr>
                                                 <tr>
@@ -259,13 +259,13 @@ const Payroll = () =>{
                                                     </td>
                                                     <td>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(debtDue)} </strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(debtDue)} </strong>
                                                         </p>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(shortages)}</strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(shortages)}</strong>
                                                         </p>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(penalties)}</strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(penalties)}</strong>
                                                         </p>
                                                     </td>
                                                     <td>
