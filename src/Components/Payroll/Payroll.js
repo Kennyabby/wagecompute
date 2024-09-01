@@ -74,7 +74,7 @@ const Payroll = () =>{
               useCORS: true
            }
         },
-        filename: `${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} - PaySlip`+'.pdf'
+        filename: curEmployee? (`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} - PaySlip`+'.pdf'): 'Payslip.pdf'
      };
 
     const handleViewClick = (e,index,employee)=>{
