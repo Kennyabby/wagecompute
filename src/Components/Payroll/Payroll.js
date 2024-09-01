@@ -74,7 +74,7 @@ const Payroll = () =>{
               useCORS: true
            }
         },
-        filename: InvoiceNumber+'.pdf'
+        filename: `${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} - PaySlip`+'.pdf'
      };
 
     const handleViewClick = (e,index,employee)=>{
