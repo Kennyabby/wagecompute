@@ -229,7 +229,7 @@ const Payroll = () =>{
                                                                     </p>
                                                                     </td>
                                                                     <td className="col-md-3"></td>
-                                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {totalPay}  </td>
+                                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {totalPay} </td>
                                                                 </tr>
                                                             )
                                                         }
@@ -486,7 +486,7 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                         setShortages(subShortages?subShortages:'')
                         const {payees} = att
                         payees.forEach(payee => {
-                            if (payee['ID']===curEmployee.i_d){
+                            if (payee['Person ID']===curEmployee.i_d){
                                 setTotalPay(parseFloat(payee['Total Pay']).toFixed(2))
                                 if (payee.bonus === subBonus && payee.shortages === subShortages && 
                                     payee.penalties === subPenalties && payee.debtDue===subDebtDue
