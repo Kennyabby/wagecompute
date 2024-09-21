@@ -226,7 +226,7 @@ const Employees = () =>{
                                     type='text'
                                     placeholder='Employee ID'
                                     value={fields.i_d}
-                                    disabled={writeStatus!=='New' || isView}
+                                    disabled={isView}
                                 />
                             </div>
                             <div className='inpcov'>
