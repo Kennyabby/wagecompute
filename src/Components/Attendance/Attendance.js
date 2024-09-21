@@ -22,7 +22,7 @@ const Attendance = () =>{
     const [calDur, setCalDur] = useState('')
     const [month, setMonth] = useState('')
     const [year, setYear] = useState('')
-    const [durationFormat, setDurationFormat] = useState('fmt1')
+    const [durationFormat, setDurationFormat] = useState('fmt2')
     const [viewNo, setViewNo] = useState(null)
     
     useEffect(()=>{
@@ -208,14 +208,14 @@ const Attendance = () =>{
                         curHour = Number(converToHour(data[calDur]))
                     }
                     totalHours += curHour
-                    if(curHour>=9){
+                    if(curHour>=5){
                         totalDays += 1
-                    }else if (curHour>=5 && curHour<9){
+                    }else if (curHour>=1 && curHour<5){
                         totalDays += 0.5
                     }
                 }
             })
-            totalPay = parseFloat(Number(payPerDay * totalHours))
+            totalPay = parseFloat(Number(payPerDay * totalDays))
             newRow['Expected Work Days'] = monthDays[month]
             newRow['Total Hours'] = totalHours
             newRow['Total Days'] = totalDays
@@ -423,7 +423,7 @@ const Attendance = () =>{
                             if (String(att.no) === String(viewNo)){
                                 const {payees} = att
                                 return <div key={id}>
-                                    {payees.map((payee, i)=>{
+                                    {payees.map((payee, i)=>{ 
                                         const ftremp = employees.filter((emp)=>{
                                             return String(emp.i_d)===String(payee['Person ID'])
                                         })[0]
