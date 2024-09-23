@@ -105,6 +105,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                             <thead>
                                                 <tr>
                                                     <th><h8 className='theader'>S/N</h8></th>
+                                                    <th><h8 className='theader'>ID</h8></th>
                                                     <th><h8 className='theader'>NAME</h8></th>
                                                     <th><h8 className='theader'>SEX</h8></th>
                                                     <th><h8 className='theader'>ACCOUNT NUMBER</h8></th>
@@ -149,7 +150,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                                 deductions+=Number(payees[0].debtDue)
                                                             }
                                                             if (payees[0].penalties){
-                                                                deductions+=Number(payees[0].pwnalties)
+                                                                deductions+=Number(payees[0].penalties)
                                                             }
                                                             return (
                                                                 <tr key={index} >       
