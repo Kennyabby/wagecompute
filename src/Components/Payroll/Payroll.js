@@ -95,12 +95,12 @@ const Payroll = () =>{
         })
         var updPayee;
         payees.forEach((pyee)=>{
-            if (pyee['ID']===payee['ID']){
+            if (pyee['Person ID']===payee['Person ID']){
                 updPayee = {...payee, bonus,shortages,debtDue,penalties}
             }
         })
         const ftrPayees = payees.filter((py)=>{
-            return py['ID'] !== payee['ID']
+            return py['Person ID'] !== payee['Person ID']
         })
         const updPayees = [...ftrPayees, updPayee]
 
@@ -294,7 +294,7 @@ const Payroll = () =>{
                                                 <tr style={{ color: '#F81D2D' }}>
                                                     <td className="text-right"><h4><strong>Net Pay:</strong></h4></td>
                                                     <td className="text-right"><h4><strong></strong></h4></td>
-                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {(Number(totalPay)+Number(bonus))-(Number(debtDue)+Number(shortages)+Number(penalties))} </strong></h4></td>
+                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {parseFloat((Number(totalPay)+Number(bonus))-(Number(debtDue)+Number(shortages)+Number(penalties))).toFixed(2)} </strong></h4></td>
                                                 </tr>
                                             </tbody>
                                         </table>

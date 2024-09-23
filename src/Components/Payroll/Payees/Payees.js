@@ -132,7 +132,6 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                                 }
                                                             }
                                                         })
-                                                        
                                                         var payees = []
                                                         if (attd.length){
                                                             payees = attd[0].payees.filter((payee)=>{
@@ -143,6 +142,15 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                         }
                                                         if (payees.length){
                                                             var deductions = 0
+                                                            if (payees[0].shortages){
+                                                                deductions+=Number(payees[0].shortages)
+                                                            }
+                                                            if (payees[0].debtDue){
+                                                                deductions+=Number(payees[0].debtDue)
+                                                            }
+                                                            if (payees[0].penalties){
+                                                                deductions+=Number(payees[0].pwnalties)
+                                                            }
                                                             return (
                                                                 <tr key={index} >       
                                                                     <td className='trow'>{index+1}</td>                                                                         
@@ -157,7 +165,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                                     <td className='trow'>{employee.salary*12}</td>                                                                         
                                                                     <td className='trow'>{parseFloat(payees[0]['Total Pay']).toFixed(2)}</td>                                                                         
                                                                     <td className='trow'>{deductions}</td>                                                                         
-                                                                    <td className='trow'>{parseFloat(payees[0]['Total Pay']).toFixed(2)}</td>                                                                         
+                                                                    <td className='trow'>{parseFloat(payees[0]['Total Pay']-deductions).toFixed(2)}</td>                                                                         
                                                                     {/* <td className='trow'>{employee.paymentMode}</td>                                                                          */}
                                                                     {/* <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {'VALUE'}</td> */}
                                                                 </tr>
