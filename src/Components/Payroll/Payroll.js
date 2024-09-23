@@ -240,7 +240,7 @@ const Payroll = () =>{
                                                                     </p>
                                                                     </td>
                                                                     <td className="col-md-3"></td>
-                                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {totalPay} </td>
+                                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(totalPay).toLocaleString()} </td>
                                                                 </tr>
                                                             )
                                                         }
@@ -253,7 +253,7 @@ const Payroll = () =>{
                                                     </p>
                                                     </td>
                                                     <td className="col-md-3"></td>
-                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(bonus)}  </td>
+                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(bonus).toLocaleString()}  </td>
                                                 </tr>
                                                 <tr>
                                                     <td className="text-right">
@@ -270,13 +270,13 @@ const Payroll = () =>{
                                                     </td>
                                                     <td>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(debtDue)} </strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(debtDue).toLocaleString()} </strong>
                                                         </p>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(shortages)}</strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(shortages).toLocaleString()}</strong>
                                                         </p>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(penalties)}</strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(penalties).toLocaleString()}</strong>
                                                         </p>
                                                     </td>
                                                     <td>
@@ -287,14 +287,14 @@ const Payroll = () =>{
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> - </strong>
                                                         </p>
                                                         <p>
-                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {Number(debtDue) + Number(shortages) + Number(penalties)}</strong>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {(Number(debtDue) + Number(shortages) + Number(penalties)).toLocaleString()}</strong>
                                                         </p>
                                                     </td>
                                                 </tr>
                                                 <tr style={{ color: '#F81D2D' }}>
                                                     <td className="text-right"><h4><strong>Net Pay:</strong></h4></td>
                                                     <td className="text-right"><h4><strong></strong></h4></td>
-                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {parseFloat((Number(totalPay)+Number(bonus))-(Number(debtDue)+Number(shortages)+Number(penalties))).toFixed(2)} </strong></h4></td>
+                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(parseFloat((Number(totalPay)+Number(bonus))-(Number(debtDue)+Number(shortages)+Number(penalties))).toFixed(2)).toLocaleString()} </strong></h4></td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -479,7 +479,7 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                             return <div key={id1}>
                                 <div><b>Total Days Worked:{'->'}</b> {`(${payee['Total Days']})`}</div>
                                 <div><b>Total Hours Worked:{'->'}</b> {`(${payee['Total Hours']})`}</div>
-                                <div><b>Total Pay (Naira):{'->'}</b> {`(${parseFloat(payee['Total Pay']).toFixed(2)})`}</div>
+                                <div><b>Total Pay (Naira):{'->'}</b> {`(${Number(parseFloat(payee['Total Pay']).toFixed(2)).toLocaleString()})`}</div>
                             </div>
                         }else{
                             <div>
