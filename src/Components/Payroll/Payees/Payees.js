@@ -125,20 +125,24 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                     employees.map((employee,index)=>{
                                                         var count=0
                                                         const attd = attendance.filter((att)=>{
-                                                            count++
-                                                            if (att.month === selectedMonth && att.year === selectedYear && count===3){
-                                                                return att
+                                                            if (att.month === selectedMonth && att.year === selectedYear){
+                                                                count++
+                                                                if (count===1){
+                                                                    return att
+                                                                }
                                                             }
                                                         })
                                                         
-                                                        const payees = attd[0].payees.filter((payee)=>{
-                                                            if (payee['Person ID'] === employee.i_d){
-                                                                return payee
-                                                            }
-                                                        })
-
+                                                        var payees = []
+                                                        if (attd.length){
+                                                            payees = attd[0].payees.filter((payee)=>{
+                                                                if (payee['Person ID'] === employee.i_d){
+                                                                    return payee
+                                                                }
+                                                            })
+                                                        }
                                                         if (payees.length){
-                                                            console.log(payees,employee)
+                                                            var deductions = 0
                                                             return (
                                                                 <tr key={index} >       
                                                                     <td className='trow'>{index+1}</td>                                                                         
@@ -152,8 +156,8 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                                     <td className='trow'>{employee.salary}</td>                                                                         
                                                                     <td className='trow'>{employee.salary*12}</td>                                                                         
                                                                     <td className='trow'>{parseFloat(payees[0]['Total Pay']).toFixed(2)}</td>                                                                         
-                                                                    <td className='trow'>{employee.deductions}</td>                                                                         
-                                                                    <td className='trow'>{employee.salary}</td>                                                                         
+                                                                    <td className='trow'>{deductions}</td>                                                                         
+                                                                    <td className='trow'>{parseFloat(payees[0]['Total Pay']).toFixed(2)}</td>                                                                         
                                                                     {/* <td className='trow'>{employee.paymentMode}</td>                                                                          */}
                                                                     {/* <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {'VALUE'}</td> */}
                                                                 </tr>
@@ -161,32 +165,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                         }
                                                     })
                                                 }
-                                                {/* {
-                                                    attendance.map((att)=>{
-                                                        if (att.month === selectedMonth && att.year === selectedYear){
-                                                            var count = 0
-                                                            att.payees.map((payee)=>{
-                                                                count++
-                                                                if(count===2){
-                                                                    console.log(att.payees)
-                                                                    employees.map((employee,index)=>{
-                                                                        var ct=0
-                                                                        if(payee['Person ID'] === employee.i_d){
-                                                                            ct++
-                                                                            console.log(ct)
-                                                                            return (
-                                                                                <tr key={index} >                                                                                
-                                                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {'VALUE'}</td>
-                                                                                </tr>
-                                                                            )
-                                                                        }
-                                                                    })
-                                                                }
-                                                            })
-                                                        }
-                                                        
-                                                    })
-                                                } */}
+                                                
                                                 
                                             </tbody>
                                         </table>
@@ -208,7 +187,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                         }
                     }
                 >
-                    PRINT SLIP
+                    PRINT PAYEE
                 </button>
                 </div>
                 </div>}
