@@ -153,6 +153,37 @@
 .billtoitem{
     text-align: left;
 }
+.payeeinpcov{
+    display: flex;
+    width: 95%;
+    margin: 10px auto;
+    text-align: center;
+    .inpcov{
+        font-weight: bold;
+        margin: auto;
+        display: block;
+        select{
+            width: 70%;
+            /* margin: auto 10px; */
+        }
+    }
+}
+.viewpayeebtn{
+    padding: 8px 15px;
+    width: 90%;
+    margin: 10px auto;
+    background: rgb(127, 193, 27);
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 10px;
+}
+.theader{
+    font-size: .8em;
+}
+.trow{
+    font-size: .8em;
+}
 .main thead {
     background: #1E1F23;
     color: #fff;

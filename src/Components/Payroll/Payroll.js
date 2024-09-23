@@ -1,6 +1,7 @@
 import './Payroll.css'
 
 import {useEffect, useState, useRef, useContext } from 'react'
+import Payee from './Payees/Payees';
 import ContextProvider from '../../Resources/ContextProvider'
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import Barcode from 'react-barcode';
@@ -9,12 +10,15 @@ const Payroll = () =>{
         server, fetchServer,
         getDate,
         company, companyRecord,
-        monthDays,
+        monthDays,months, years,
         employees,
         attendance, getAttendance
     } = useContext(ContextProvider)
+    const [selectedMonth, setSelectedMonth] = useState('')
+    const [selectedYear, setSelectedYear] = useState('')
     const targetRef = useRef(null)
     const [viewSlip, setViewSlip] = useState(false)
+    const [viewPayee, setViewPayee] = useState(false)
     const [debtDue, setDebtDue] = useState('')
     const [shortages, setShortages] = useState('')
     const [penalties, setPenalties] = useState('')
@@ -115,6 +119,13 @@ const Payroll = () =>{
     return(
         <>
             <div className='payroll'>
+                {viewPayee && 
+                    <Payee
+                        setViewPayee={setViewPayee}
+                        selectedMonth={selectedMonth}
+                        selectedYear={selectedYear}
+                    />
+                }
                 {viewSlip && <div className='payslip'>
                     <div className='cancelslip'
                         onClick= {()=>{
@@ -288,7 +299,6 @@ const Payroll = () =>{
                                             </tbody>
                                         </table>
                                     </div>
-                                    
                                 </div>
                             </div>
                             <div className='signature'>                                
@@ -326,6 +336,58 @@ const Payroll = () =>{
                 </div>
                 </div>}
                 <div className='emplist'>
+                <div className='payeeinpcov'>
+                    <div className='inpcov formpad'>
+                        <div>Month</div>
+                        <select 
+                            className='forminp prinp'
+                            name='selectedMonth'
+                            type='text'
+                            placeholder='Select Month'
+                            value={selectedMonth}
+                            onChange={(e)=>{
+                                setSelectedMonth(e.target.value)
+                            }}
+                        >
+                            <option value={''}>Select Month</option>
+                            {months.map((month, index)=>{
+                                return(
+                                    <option key={index} value={month}>
+                                        {month}
+                                    </option>
+                                )
+                            })}
+                        </select>
+                    </div>
+                    <div className='inpcov formpad'>
+                        <div>Year</div>
+                        <select 
+                            className='forminp prinp'
+                            name='selectedYear'
+                            type='text'
+                            placeholder='Select Year'
+                            value={selectedYear}
+                            onChange={(e)=>{
+                                setSelectedYear(e.target.value)
+                            }}
+                        >
+                            <option value={''}>Select Year</option>
+                            {years.map((year, index)=>{
+                                return(
+                                    <option key={index} value={year}>
+                                        {year}
+                                    </option>
+                                )
+                            })}
+                        </select>
+                    </div>
+                </div>
+                <div 
+                    className='viewpayeebtn'
+                    onClick={()=>{
+                        setViewPayee(true)
+                    }}
+                >VIEW STAFF PAYROLL</div>
                 {employees.map((employee, index)=>{
                     const {i_d, 
                         firstName, lastName,
