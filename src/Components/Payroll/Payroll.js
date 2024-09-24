@@ -18,7 +18,7 @@ const Payroll = () =>{
     const [selectedYear, setSelectedYear] = useState('')
     const targetRef = useRef(null)
     const [viewSlip, setViewSlip] = useState(false)
-    const [viewSlipStatus, setViewSlipStatus] = useState('View Pay Slip')
+    const [viewSlipStatus, setViewSlipStatus] = useState('Save and view pay slip')
     const [viewPayee, setViewPayee] = useState(false)
     const [debtDue, setDebtDue] = useState('')
     const [shortages, setShortages] = useState('')
@@ -87,7 +87,7 @@ const Payroll = () =>{
     }
 
     const handlePayeeUpdate = async(payee, attNo, bonus, shortages, debtDue, penalties)=>{
-        if (viewSlipStatus === 'View Pay Slip'){
+        if (viewSlipStatus === 'Save and view pay slip'){
             setViewSlipStatus('Saving hold on ...')
             var payees;
             attendance.forEach((att)=>{
@@ -116,7 +116,7 @@ const Payroll = () =>{
                 console.log(resps.mess)
             }else{
                 getAttendance(company)
-                setViewSlipStatus('View Pay Slip')
+                setViewSlipStatus('Save and view pay slip')
                 setViewSlip(true)
             }
         }
