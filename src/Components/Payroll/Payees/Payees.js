@@ -95,17 +95,10 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                         
                                     </div>
                                     <br />
-                                    {/* <div className="ttlrow">
-                                        <div >
-                                            <h2 className="col-md-12" style={{ color: '#325aa8' }} >STAFF PAY SLIP</h2>
-                                            <div className='invnum'>
-                                                <h5 className='col-md-0'> Id: {InvoiceNumber}</h5>
-                                                <Barcode value={`4n%${InvoiceNumber}+ut%`} width={1} height={50} displayValue={false} />
-                                            </div>
-                                        </div>
-                                    </div> */}
-                                    <br />
                                     
+                                    <br />
+                                    <p className='billtoitem'>{`STAFF PAYROLL FOR THE MONTH OF `}<b>{`${selectedMonth}, ${selectedYear}.`}</b></p>                                                                                   
+                                   
                                     <div>
                                         <table className="table">
                                             <thead>
