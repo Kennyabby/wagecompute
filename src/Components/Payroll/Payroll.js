@@ -114,6 +114,7 @@ const Payroll = () =>{
             console.log(resps.mess)
         }else{
             getAttendance(company)
+            setViewSlip(true)
         }
      }
     return(
@@ -435,6 +436,7 @@ const Payroll = () =>{
                                 setCurAtt={setCurAtt}
                                 setTotalPay={setTotalPay}
                                 handlePayeeUpdate={handlePayeeUpdate}
+                                monthDays={monthDays}
                             />
                         })
                     }
@@ -448,22 +450,35 @@ export default Payroll
 
 const PayAttendance = ({att, setDebtDue, setShortages, 
     setPenalties, setBonus, curEmployee, setViewSlip, setCurAtt,
-    setTotalPay, handlePayeeUpdate
+    setTotalPay, handlePayeeUpdate, monthDays
 })=>{
-    const [subDebtDue, setSubDebtDue] = useState('')
-    const [subShortages, setSubShortages] = useState('')
-    const [subPenalties, setSubPenalties] = useState('')
-    const [subBonus, setSubBonus] = useState('')
+    const [subDebtDue, setSubDebtDue] = useState(0)
+    const [subShortages, setSubShortages] = useState(0)
+    const [subPenalties, setSubPenalties] = useState(0)
+    const [subBonus, setSubBonus] = useState(0)
     const {payees} = att
     
     useEffect(()=>{
         const {payees} = att
+        setSubDebtDue(0)
+        setSubShortages(0)
+        setSubPenalties(0)
+        setSubBonus(0)
         payees.forEach((payee)=>{
             if (payee['Person ID']===curEmployee.i_d){
-                setSubDebtDue(payee.debtDue)
-                setSubShortages(payee.shortages)
-                setSubPenalties(payee.penalties)
-                setSubBonus(payee.bonus)
+                console.log(payee)
+                if (payee.debtDue){
+                    setSubDebtDue(payee.debtDue)
+                }
+                if (payee.shortages){
+                    setSubShortages(payee.shortages)
+                }
+                if(payee.penalties){
+                    setSubPenalties(payee.penalties)
+                }
+                if(payee.bonus){
+                    setSubBonus(payee.bonus)
+                }
             }
         })
     },[att, curEmployee])
@@ -476,10 +491,11 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                     {payees.map((payee, id1)=>{
 
                         if (payee['Person ID']===curEmployee.i_d){
+                            const totalPay = Number(parseFloat((curEmployee.salary/monthDays[att.month])*payee['Total Days']).toFixed(2)).toLocaleString()
                             return <div key={id1}>
                                 <div><b>Total Days Worked:{'->'}</b> {`(${payee['Total Days']})`}</div>
                                 <div><b>Total Hours Worked:{'->'}</b> {`(${payee['Total Hours']})`}</div>
-                                <div><b>Total Pay (Naira):{'->'}</b> {`(${Number(parseFloat(payee['Total Pay']).toFixed(2)).toLocaleString()})`}</div>
+                                <div><b>Total Pay (Naira):{'->'}</b> {`(${totalPay})`}</div>
                             </div>
                         }else{
                             <div>
@@ -490,11 +506,12 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                 </div>
                 <div className='deptetr'>
                     <div className='inpcov formpad'>
+                    <label className='ddclbl'>Debt Due</label>
                         <input 
                             className='forminp prinp'
-                            name='deptDue'
+                            name={curEmployee.i_d}
                             type='number'
-                            placeholder='Dept Due'
+                            placeholder='Debt Due'
                             value={subDebtDue}
                             onChange={(e)=>{
                                 setSubDebtDue(e.target.value)
@@ -502,6 +519,7 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                         />
                     </div>
                     <div className='inpcov formpad'>
+                        <label className='ddclbl'>Shortages</label>
                         <input 
                             className='forminp prinp'
                             name='shortages'
@@ -514,6 +532,7 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                         />
                     </div>
                     <div className='inpcov formpad'>
+                        <label className='ddclbl'>Penalties</label>
                         <input 
                             className='forminp prinp'
                             name='penalties'
@@ -526,6 +545,7 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                         />
                     </div>
                     <div className='inpcov formpad'>
+                        <label className='ddclbl'>Bonus</label>
                         <input 
                             className='forminp prinp'
                             name='bonus'
@@ -540,7 +560,6 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                 </div>
                 <div className='viewslip'
                     onClick={()=>{
-                        setViewSlip(true)
                         setCurAtt(att)
                         setBonus(subBonus?subBonus:'')
                         setDebtDue(subDebtDue?subDebtDue:'')
@@ -549,12 +568,15 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                         const {payees} = att
                         payees.forEach(payee => {
                             if (payee['Person ID']===curEmployee.i_d){
-                                setTotalPay(parseFloat(payee['Total Pay']).toFixed(2))
+                                const totalPay = parseFloat((curEmployee.salary/monthDays[att.month])*payee['Total Days']).toFixed(2)
+                                setTotalPay(totalPay)
                                 if (payee.bonus === subBonus && payee.shortages === subShortages && 
                                     payee.penalties === subPenalties && payee.debtDue===subDebtDue
                                 ){
+                                    setViewSlip(true)                                
                                 }else{
                                     handlePayeeUpdate(payee, att.no, subBonus, subShortages, subDebtDue, subPenalties)
+                                                                
                                 }
                             }
                         })
