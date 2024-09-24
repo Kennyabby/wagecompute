@@ -184,6 +184,10 @@
 .trow{
     font-size: .8em;
 }
+.ttrow{
+    font-weight: bold;
+    font-size: .8em;
+}
 .main thead {
     background: #1E1F23;
     color: #fff;

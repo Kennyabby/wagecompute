@@ -18,6 +18,7 @@ const Payroll = () =>{
     const [selectedYear, setSelectedYear] = useState('')
     const targetRef = useRef(null)
     const [viewSlip, setViewSlip] = useState(false)
+    const [viewSlipStatus, setViewSlipStatus] = useState('View Pay Slip')
     const [viewPayee, setViewPayee] = useState(false)
     const [debtDue, setDebtDue] = useState('')
     const [shortages, setShortages] = useState('')
@@ -86,35 +87,38 @@ const Payroll = () =>{
     }
 
     const handlePayeeUpdate = async(payee, attNo, bonus, shortages, debtDue, penalties)=>{
-        
-        var payees;
-        attendance.forEach((att)=>{
-            if(att.no === attNo){
-                payees = att.payees
+        if (viewSlipStatus === 'View Pay Slip'){
+            setViewSlipStatus('Saving hold on ...')
+            var payees;
+            attendance.forEach((att)=>{
+                if(att.no === attNo){
+                    payees = att.payees
+                }
+            })
+            var updPayee;
+            payees.forEach((pyee)=>{
+                if (pyee['Person ID']===payee['Person ID']){
+                    updPayee = {...payee, bonus,shortages,debtDue,penalties}
+                }
+            })
+            const ftrPayees = payees.filter((py)=>{
+                return py['Person ID'] !== payee['Person ID']
+            })
+            const updPayees = [...ftrPayees, updPayee]
+    
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Attendance", 
+                prop: [{no: attNo}, {payees: updPayees}]
+            }, "updateOneDoc", server)
+              
+            if (resps.err){
+                console.log(resps.mess)
+            }else{
+                getAttendance(company)
+                setViewSlipStatus('View Pay Slip')
+                setViewSlip(true)
             }
-        })
-        var updPayee;
-        payees.forEach((pyee)=>{
-            if (pyee['Person ID']===payee['Person ID']){
-                updPayee = {...payee, bonus,shortages,debtDue,penalties}
-            }
-        })
-        const ftrPayees = payees.filter((py)=>{
-            return py['Person ID'] !== payee['Person ID']
-        })
-        const updPayees = [...ftrPayees, updPayee]
-
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Attendance", 
-            prop: [{no: attNo}, {payees: updPayees}]
-        }, "updateOneDoc", server)
-          
-        if (resps.err){
-            console.log(resps.mess)
-        }else{
-            getAttendance(company)
-            setViewSlip(true)
         }
      }
     return(
@@ -437,6 +441,7 @@ const Payroll = () =>{
                                 setTotalPay={setTotalPay}
                                 handlePayeeUpdate={handlePayeeUpdate}
                                 monthDays={monthDays}
+                                viewSlipStatus={viewSlipStatus}
                             />
                         })
                     }
@@ -450,20 +455,20 @@ export default Payroll
 
 const PayAttendance = ({att, setDebtDue, setShortages, 
     setPenalties, setBonus, curEmployee, setViewSlip, setCurAtt,
-    setTotalPay, handlePayeeUpdate, monthDays
+    setTotalPay, handlePayeeUpdate, monthDays, viewSlipStatus
 })=>{
-    const [subDebtDue, setSubDebtDue] = useState(0)
-    const [subShortages, setSubShortages] = useState(0)
-    const [subPenalties, setSubPenalties] = useState(0)
-    const [subBonus, setSubBonus] = useState(0)
+    const [subDebtDue, setSubDebtDue] = useState('')
+    const [subShortages, setSubShortages] = useState('')
+    const [subPenalties, setSubPenalties] = useState('')
+    const [subBonus, setSubBonus] = useState('')
     const {payees} = att
     
     useEffect(()=>{
         const {payees} = att
-        setSubDebtDue(0)
-        setSubShortages(0)
-        setSubPenalties(0)
-        setSubBonus(0)
+        setSubDebtDue('')
+        setSubShortages('')
+        setSubPenalties('')
+        setSubBonus('')
         payees.forEach((payee)=>{
             if (payee['Person ID']===curEmployee.i_d){
                 console.log(payee)
@@ -581,7 +586,7 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                             }
                         })
                     }}
-                >View Pay Slip</div>
+                >{viewSlipStatus}</div>
             </div>
         </>
     )
