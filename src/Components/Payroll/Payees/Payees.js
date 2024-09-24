@@ -7,6 +7,12 @@ import Barcode from 'react-barcode';
 
 const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
     const [InvoiceNumber, setInvoiceNumber] = useState('')
+    var totalGrossSalaryPerAnnum = 0
+    var totalGrossSalaryPerMonth = 0
+    var totalActualGrossSalary = 0
+    var totalDeductions = 0
+    var totalNetPay = 0
+
     const targetRef = useRef(null)
     const {storePath,
         getDate,
@@ -157,6 +163,15 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                                 bonus+=Number(payees[0].bonus)
                                                             }
                                                             const totalPay = parseFloat((employee.salary/monthDays[attd[0].month])*payees[0]['Total Days']).toFixed(2)
+                                                            const grossSalaryPerAnnum = employee.salary*12
+                                                            totalGrossSalaryPerAnnum += grossSalaryPerAnnum
+                                                            const grossSalaryPerMonth = Number(employee.salary)+bonus
+                                                            totalGrossSalaryPerMonth += grossSalaryPerMonth
+                                                            const actualGrossSalary = Number(parseFloat(totalPay+bonus).toFixed(2))
+                                                            totalActualGrossSalary += actualGrossSalary
+                                                            totalDeductions += deductions
+                                                            const netPay = Number(parseFloat(totalPay+bonus-deductions).toFixed(2))
+                                                            totalNetPay += netPay
                                                             return (
                                                                 <tr key={index} >       
                                                                     <td className='trow'>{index+1}</td>                                                                         
@@ -167,12 +182,12 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                                     <td className='trow'>{employee.bankName}</td>                                                                         
                                                                     <td className='trow'>{employee.position}</td>                                                                         
                                                                     <td className='trow'>{employee.hiredDate}</td>                                                                         
-                                                                    <td className='trow'>{Number(parseFloat(employee.salary/monthDays[selectedMonth]).toFixed(2)).toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>{(employee.salary*12).toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>{(Number(employee.salary)+bonus).toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>{Number(parseFloat(totalPay+bonus).toFixed(2)).toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>{deductions.toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>{Number(parseFloat(totalPay+bonus-deductions).toFixed(2)).toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>₦{Number(parseFloat(employee.salary/monthDays[selectedMonth]).toFixed(2)).toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>₦{grossSalaryPerAnnum.toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>₦{grossSalaryPerMonth.toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>₦{actualGrossSalary.toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>₦{deductions.toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>₦{netPay.toLocaleString()}</td>                                                                         
                                                                     {/* <td className='trow'>{employee.paymentMode}</td>                                                                          */}
                                                                     {/* <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {'VALUE'}</td> */}
                                                                 </tr>
@@ -180,10 +195,33 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                         }
                                                     })
                                                 }
-                                                
+                                                <tr>       
+                                                    <td className='ttrow'></td>
+                                                    <td className='ttrow'></td>                                                                         
+                                                    <td className='ttrow'></td>                                                                         
+                                                    <td className='ttrow'></td>                                                                         
+                                                    <td className='ttrow'></td>                                                                         
+                                                    <td className='ttrow'></td>                                                                         
+                                                    <td className='ttrow'></td>                                                                         
+                                                    <td className='ttrow'>TOTAL :</td>                                                                         
+                                                    <td className='ttrow'></td>                                                                         
+                                                    <td className='ttrow'>₦{totalGrossSalaryPerAnnum.toLocaleString()}</td>                                                                         
+                                                    <td className='ttrow'>₦{totalGrossSalaryPerMonth.toLocaleString()}</td>                                                                         
+                                                    <td className='ttrow'>₦{totalActualGrossSalary.toLocaleString()}</td>                                                                         
+                                                    <td className='ttrow'>₦{totalDeductions.toLocaleString()}</td>                                                                         
+                                                    <td className='ttrow'>₦{totalNetPay.toLocaleString()}</td>                                                                         
+                                                    {/* <td className='trow'>{employee.paymentMode}</td>                                                                          */}
+                                                    {/* <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {'VALUE'}</td> */}
+                                                </tr>
                                                 
                                             </tbody>
                                         </table>
+                                        <div className='signature'>                                
+                                           
+                                            <div className='sign'>
+                                                <div>SIGNED BY: (MANAGING DIRECTOR)</div>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                 </div>
