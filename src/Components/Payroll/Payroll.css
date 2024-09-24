@@ -179,7 +179,7 @@
     border-radius: 10px;
 }
 .theader{
-    font-size: .8em;
+    font-size: .7em;
 }
 .trow{
     font-size: .8em;
@@ -250,4 +250,7 @@ h1{
         padding-bottom: 80px;
         border-bottom: solid black 2px;
     }
+}
+.ddclbl{
+    width: 100px;
 }

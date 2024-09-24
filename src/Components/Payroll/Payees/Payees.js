@@ -143,6 +143,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                         }
                                                         if (payees.length){
                                                             var deductions = 0
+                                                            var bonus = 0
                                                             if (payees[0].shortages){
                                                                 deductions+=Number(payees[0].shortages)
                                                             }
@@ -152,6 +153,10 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                             if (payees[0].penalties){
                                                                 deductions+=Number(payees[0].penalties)
                                                             }
+                                                            if (payees[0].bonus){
+                                                                bonus+=Number(payees[0].bonus)
+                                                            }
+                                                            const totalPay = parseFloat((employee.salary/monthDays[attd[0].month])*payees[0]['Total Days']).toFixed(2)
                                                             return (
                                                                 <tr key={index} >       
                                                                     <td className='trow'>{index+1}</td>                                                                         
@@ -163,11 +168,11 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                                     <td className='trow'>{employee.position}</td>                                                                         
                                                                     <td className='trow'>{employee.hiredDate}</td>                                                                         
                                                                     <td className='trow'>{Number(parseFloat(employee.salary/monthDays[selectedMonth]).toFixed(2)).toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>{Number(employee.salary).toLocaleString()}</td>                                                                         
                                                                     <td className='trow'>{(employee.salary*12).toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>{Number(parseFloat(payees[0]['Total Pay']).toFixed(2)).toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>{(Number(employee.salary)+bonus).toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>{Number(parseFloat(totalPay+bonus).toFixed(2)).toLocaleString()}</td>                                                                         
                                                                     <td className='trow'>{deductions.toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>{Number(parseFloat(payees[0]['Total Pay']-deductions).toFixed(2)).toLocaleString()}</td>                                                                         
+                                                                    <td className='trow'>{Number(parseFloat(totalPay+bonus-deductions).toFixed(2)).toLocaleString()}</td>                                                                         
                                                                     {/* <td className='trow'>{employee.paymentMode}</td>                                                                          */}
                                                                     {/* <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {'VALUE'}</td> */}
                                                                 </tr>
