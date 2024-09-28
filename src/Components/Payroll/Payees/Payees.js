@@ -100,7 +100,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                     <p className='billtoitem'>{`STAFF PAYROLL FOR THE MONTH OF `}<b>{`${selectedMonth}, ${selectedYear}.`}</b></p>                                                                                   
                                    
                                     <div>
-                                        <table className="table">
+                                        <table className="table">   
                                             <thead>
                                                 <tr>
                                                     <th><h8 className='theader'>S/N</h8></th>
