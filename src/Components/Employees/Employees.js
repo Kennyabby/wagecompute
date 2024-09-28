@@ -37,6 +37,19 @@ const Employees = () =>{
         accountNo:'',
         payPerHour:'',
         salary:'',
+        gurantorName:'',
+        guarantorAddress:'',
+        guarantorLGA:'',
+        guarantorSOA:'',
+        guarantorPhoneNo:'',
+        guarantorGender:'',
+        guarantorMaritalStatus:'',
+        guarantorReligion:'',
+        guarantorRelationship:'',
+        guarantorKnowsEmploeyeeFor:'',
+        guarantorStance:'',
+        guarantorFormCreatedAt:''
+
     }
     const [fields, setFields] = useState({...initFields})
     useEffect(()=>{
@@ -213,8 +226,9 @@ const Employees = () =>{
                         >Delete</div>}
                     </div>
                     <div className='selform' onClick={toggleSelForm}>
-                        <div name='Basic' className={selform==='Basic'?'seltype':''}>Basic</div>
-                        <div name='Hr' className={selform==='Hr'?'seltype':''}>HR</div>
+                        <div name='Basic' className={selform==='Basic'?'seltype':''}>Basic Info</div>
+                        <div name='Hr' className={selform==='Hr'?'seltype':''}>HR Info</div>
+                        <div name='Guarantor' className={selform==='Guarantor'?'seltype':''}>Guarantor Info</div>
                     </div>
                     <div className='fm' onChange={handleFieldChange}>
                         {selform==='Basic'&&<div className='basic'>
@@ -412,6 +426,139 @@ const Employees = () =>{
                                         value={fields.payPerHour}
                                         disabled={isView}
                                     />
+                                </div>
+                            </div>
+                        }
+                        {selform==='Guarantor'&&
+                            <div className='hr'>
+                                <div className='inpcov'>
+                                    <div>Full Name</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorName'
+                                        type='text'
+                                        placeholder='Guarantor Name' 
+                                        value={fields.gurantorName}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Address</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorAddress'
+                                        type='text'
+                                        placeholder='Guarantor Address'
+                                        value={fields.guarantorAddress}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Local Government of Origin</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorLGA'
+                                        type='text'
+                                        placeholder='Guarantor LGA'
+                                        value={fields.guarantorLGA}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>State of Origin</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorSOA'
+                                        type='text'
+                                        placeholder='Guarantor State of Origin'
+                                        value={fields.guarantorSOA}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                
+                                <div className='inpcov'>
+                                    <div>Phone No</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorPhoneNo'
+                                        type='text'
+                                        placeholder='Gurantor Phone No' 
+                                        value={fields.guarantorPhoneNo}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Gender</div>
+                                    <select 
+                                        className='forminp'
+                                        name='guarantorGender'
+                                        type='text'
+                                        value={fields.guarantorGender}
+                                        disabled={isView}
+                                    >
+                                        <option value=''>Select Gender</option>
+                                        <option value='Male'>Male</option>
+                                        <option value='Female'>Female</option>
+                                    </select>
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Marital Status</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorMaritalStatus'
+                                        type='text'
+                                        placeholder='Marital Status' 
+                                        value={fields.guarantorMaritalStatus}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Religion</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorReligion'
+                                        type='text'
+                                        placeholder='Religion' 
+                                        value={fields.guarantorReligion}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Relationship</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorRelationship'
+                                        type='text'
+                                        placeholder='Relationship' 
+                                        value={fields.guarantorRelationship}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>{`Knows ${fields.firstName} ${fields.lastName} For`}</div>
+                                    <input 
+                                        className='forminp'
+                                        name='guarantorKnowsEmploeyeeFor'
+                                        type='text'
+                                        placeholder='Knows Employee For' 
+                                        value={fields.guarantorKnowsEmploeyeeFor}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Gurantor Can Vouch</div>
+                                    <select 
+                                        className='forminp'
+                                        name='guarantorStance'
+                                        type='text'
+                                        placeholder='Gurantor Can Vouch' 
+                                        value={fields.guarantorStance}
+                                        disabled={isView}
+                                    >
+                                        <option value=''>Can Gurantor Vouch for Employee?</option>
+                                        <option value='Yes'>Yes</option>
+                                        <option value='No'>No</option>
+                                    </select>
                                 </div>
                             </div>
                         }
