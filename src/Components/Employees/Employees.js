@@ -488,7 +488,7 @@ const Employees = () =>{
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Gender</div>
+                                    <div>Guarantor Gender</div>
                                     <select 
                                         className='forminp'
                                         name='guarantorGender'
@@ -513,7 +513,7 @@ const Employees = () =>{
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Religion</div>
+                                    <div>Guarantor Religion</div>
                                     <input 
                                         className='forminp'
                                         name='guarantorReligion'
