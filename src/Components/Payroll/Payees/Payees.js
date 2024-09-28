@@ -82,23 +82,19 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                         <div className="row">
                             <div >
                                 <div className="col-md-12">
-                                    <div className="row">
+                                    <div className="row payeerow">
                                        <div className='invhead'>
                                             {/* <img src={''} className='invlogo'/> */}
                                             <div className="billfrom">
-                                                <h4 className='company' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
-                                                <p className='billfromitem'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
-                                                <p className='billfromitem'>{`Email: ${companyRecord.emailid}`}</p>
-                                                <p className='billfromitem'>Created Date: <b>{getDate()}</b></p>
+                                                <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
+                                                <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
+                                                <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p>
+                                                <p className='billfrompayee'>Created Date: <b>{getDate()}</b></p>
+                                                <p className='billfrompayee'>{`STAFF PAYROLL FOR THE MONTH OF `}<b>{`${selectedMonth}, ${selectedYear}.`}</b></p>                                                                                   
                                             </div>
                                        </div>
-                                        
                                     </div>
-                                    <br />
                                     
-                                    <br />
-                                    <p className='billtoitem'>{`STAFF PAYROLL FOR THE MONTH OF `}<b>{`${selectedMonth}, ${selectedYear}.`}</b></p>                                                                                   
-                                   
                                     <div>
                                         <table className="table">   
                                             <thead>

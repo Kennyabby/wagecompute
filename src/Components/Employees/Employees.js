@@ -49,7 +49,6 @@ const Employees = () =>{
         guarantorKnowsEmploeyeeFor:'',
         guarantorStance:'',
         guarantorFormCreatedAt:''
-
     }
     const [fields, setFields] = useState({...initFields})
     useEffect(()=>{

@@ -118,13 +118,19 @@
     margin-bottom: 30px;
     font-size: 3em;
 }
+.payeecompany{
+    /* text-align: left; */
+    margin-bottom: 10px;
+    font-size: 2em;
+}
 .billfrom{
     text-align: center;
     justify-content: center;
     text-align: center;
 }
-.billfromitem{
+.billfrompayee{
     /* text-align: left; */
+    font-size: .8em;
 }
 .billtoview{
     display: flex;
@@ -187,6 +193,9 @@
 .ttrow{
     font-weight: bold;
     font-size: .8em;
+}
+.payeerow{
+    margin-bottom: 0px;
 }
 .main thead {
     background: #1E1F23;
