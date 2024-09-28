@@ -43,7 +43,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
            // default is 'A4'
            format: 'A4',
            // default is 'portrait'
-           orientation: 'portrait',
+           orientation: 'landscape',
         },
         canvas: {
            // default is 'image/jpeg' for better size performance
