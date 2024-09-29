@@ -189,13 +189,16 @@ const Attendance = () =>{
             var totalHours = 0
             var totalDays = 0
             var totalPay = 0
-            var payPerHour = 0
             var payPerDay = 0
+            var expectedWorkDays = ''
             employees.forEach((emp)=>{
                 if (String(emp.i_d) === String(id)){
-                    payPerHour = Number(emp.payPerHour)
-                    
-                    payPerDay = Number(emp.salary)/monthDays[month]
+                    if (emp.expectedWorkDays){
+                        expectedWorkDays = Number(emp.expectedWorkDays)
+                        payPerDay = Number(emp.salary)/expectedWorkDays
+                    }else{
+                        payPerDay = Number(emp.salary)/monthDays[month]
+                    }
                 }
             })
             newRawData.forEach((data)=>{
@@ -215,8 +218,8 @@ const Attendance = () =>{
                     }
                 }
             })
-            totalPay = parseFloat(Number(payPerDay * totalDays))
-            newRow['Expected Work Days'] = monthDays[month]
+            totalPay = parseFloat(Number(payPerDay * totalDays)).toFixed(2)
+            newRow['Expected Work Days'] = expectedWorkDays ? expectedWorkDays : monthDays[month]
             newRow['Total Hours'] = totalHours
             newRow['Total Days'] = totalDays
             newRow['Total Pay'] = totalPay

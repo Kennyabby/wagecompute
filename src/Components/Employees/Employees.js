@@ -35,7 +35,7 @@ const Employees = () =>{
         bankName:'',
         bankBranch:'',
         accountNo:'',
-        payPerHour:'',
+        expectedWorkDays: '',
         salary:'',
         gurantorName:'',
         guarantorAddress:'',
@@ -416,13 +416,13 @@ const Employees = () =>{
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Pay Per Hour</div>
+                                    <div>Expected Work Days</div>
                                     <input 
                                         className='forminp'
-                                        name='payPerHour'
+                                        name='expectedWorkDays'
                                         type='number'
-                                        placeholder='Rate Per Hour' 
-                                        value={fields.payPerHour}
+                                        placeholder='Set to Default' 
+                                        value={fields.expectedWorkDays}
                                         disabled={isView}
                                     />
                                 </div>

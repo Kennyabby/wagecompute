@@ -198,7 +198,7 @@ const Payroll = () =>{
                                         <table className="table">
                                             <thead>
                                                 <tr>
-                                                    <th><h5>Expected Work Days: {monthDays[curAtt.month]}</h5></th>
+                                                    <th><h5>Expected Work Days: {curEmployee.expectedWorkDays?curEmployee.expectedWorkDays:monthDays[curAtt.month]}</h5></th>
                                                     <th><h5>Actual Work Days: {
                                                         curAtt.payees.length?
                                                         curAtt.payees.map((payee, index) => {
@@ -214,7 +214,7 @@ const Payroll = () =>{
                                                         curAtt.payees.map((payee, index) => {
                                                             if(payee['Person ID']===curEmployee.i_d){
                                                                 return (
-                                                                        <label key={index}>{Number(monthDays[curAtt.month])-Number(payee['Total Days'])}</label>
+                                                                        <label key={index}>{Number((curEmployee.expectedWorkDays?curEmployee.expectedWorkDays:monthDays[curAtt.month]))-Number(payee['Total Days'])}</label>
                                                                 )
                                                             }
                                                         }):null
@@ -496,7 +496,8 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                     {payees.map((payee, id1)=>{
 
                         if (payee['Person ID']===curEmployee.i_d){
-                            const totalPay = Number(parseFloat((curEmployee.salary/monthDays[att.month])*payee['Total Days']).toFixed(2)).toLocaleString()
+                            const expectedWorkDays = Number(curEmployee.expectedWorkDays?curEmployee.expectedWorkDays:monthDays[att.month])
+                            const totalPay = Number(parseFloat((curEmployee.salary/expectedWorkDays)*payee['Total Days']).toFixed(2)).toLocaleString()
                             return <div key={id1}>
                                 <div><b>Total Days Worked:{'->'}</b> {`(${payee['Total Days']})`}</div>
                                 <div><b>Total Hours Worked:{'->'}</b> {`(${payee['Total Hours']})`}</div>
@@ -573,7 +574,8 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                         const {payees} = att
                         payees.forEach(payee => {
                             if (payee['Person ID']===curEmployee.i_d){
-                                const totalPay = parseFloat((curEmployee.salary/monthDays[att.month])*payee['Total Days']).toFixed(2)
+                                const expectedWorkDays = Number(curEmployee.expectedWorkDays?curEmployee.expectedWorkDays:monthDays[att.month])
+                                const totalPay = parseFloat((curEmployee.salary/expectedWorkDays)*payee['Total Days']).toFixed(2)
                                 setTotalPay(totalPay)
                                 if (payee.bonus === subBonus && payee.shortages === subShortages && 
                                     payee.penalties === subPenalties && payee.debtDue===subDebtDue
