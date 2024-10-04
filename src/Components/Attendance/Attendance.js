@@ -225,7 +225,6 @@ const Attendance = () =>{
             newRow['Total Pay'] = totalPay
             analyzedData = analyzedData.concat(newRow)
         })
-        
         addAttendace(year, month, analyzedData)
     }
     const handleButtonClick = () => {
@@ -249,7 +248,6 @@ const Attendance = () =>{
             })
             setSelectedCols([...filtSelection])
         }
-        
     }
     return(
         <>
