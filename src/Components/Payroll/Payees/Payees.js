@@ -155,7 +155,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                             const totalPay = Number(parseFloat((employee.salary/expectedWorkDays)*payees[0]['Total Days']).toFixed(2))
                                                             const grossSalaryPerAnnum = employee.salary*12
                                                             totalGrossSalaryPerAnnum += grossSalaryPerAnnum
-                                                            const grossSalaryPerMonth = Number(employee.salary)+bonus
+                                                            const grossSalaryPerMonth = Number(employee.salary)
                                                             totalGrossSalaryPerMonth += grossSalaryPerMonth
                                                             const actualGrossSalary = Number(parseFloat(totalPay+bonus).toFixed(2))
                                                             totalActualGrossSalary += actualGrossSalary
