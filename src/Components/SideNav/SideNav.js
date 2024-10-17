@@ -57,6 +57,7 @@ const SideNav = ()=>{
                     <li name="positions" className={curPath==='positions'?'selected':''}>Positions</li>
                     <li name="attendance" className={curPath==='attendance'?'selected':''}>Attendance</li>
                     <li name="payroll" className={curPath==='payroll'?'selected':''}>Payroll</li>
+                    <li name="sales" className={curPath==='sales'?'selected':''}>Sales</li>
                     <li name="settings" className={curPath==='settings'?'selected':''}>Settings</li>
                     <div
                         onClick={logout}

@@ -10,6 +10,7 @@ import Positions from '../Positions/Positions'
 import Departments from '../Departments/Departments'
 import Attendance from '../Attendance/Attendance'
 import Payroll from '../Payroll/Payroll'
+import Sales from '../Sales/Sales'
 import Settings from '../Settings/Settings'
 
 const Dashboard = ()=>{
@@ -38,6 +39,9 @@ const Dashboard = ()=>{
                 setView(<Payroll/>)
             }
             else if (index === 6){
+                setView(<Sales/>)
+            }
+            else if (index === 7){
                 setView(<Settings/>)
             }
         }
