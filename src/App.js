@@ -22,12 +22,13 @@ function App() {
   const [employees, setEmployees] = useState([])
   const [settings, setSettings] = useState([])
   const [attendance, setAttendance] = useState([])
+  const [sales, setSales] = useState([])
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
-    'employees','departments','positions','attendance','payroll','settings','test']
+    'employees','departments','positions','attendance','payroll','sales','settings','test']
   const dashList = ['dashboard', 
-    'employees','departments','positions','attendance','payroll','settings']
+    'employees','departments','positions','attendance','payroll','sales','settings']
   
   const months = [
       'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
@@ -111,6 +112,7 @@ function App() {
       getEmployees(cmp_val)
       getSettings(cmp_val)
       getAttendance(cmp_val)
+      getSales(cmp_val)
       Navigate('/'+currPath)
     }
   }
@@ -156,6 +158,18 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setAttendance(resp.record)
+    }
+  }
+
+  const getSales = async (company) =>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Sales", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      console.log(resp.record)
+      setSales(resp.record)
     }
   }
 
@@ -237,6 +251,7 @@ function App() {
           positions, setPositions, getPositions,
           employees, setEmployees, getEmployees,
           attendance, setAttendance, getAttendance,
+          sales, setSales, getSales,
           settings, setSettings, getSettings,
           storePath,
           months, monthDays, years,

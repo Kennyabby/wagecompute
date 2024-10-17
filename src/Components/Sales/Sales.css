@@ -1,0 +1,75 @@
+.sales{
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+}
+.salesfm{
+    width: 90%;
+    height: 75%;
+    margin: auto;
+    margin-top: 10px;
+    overflow: auto;
+}
+.salesunit{
+    width: 95%;
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    background: whitesmoke;
+    margin: 10px auto;
+}
+.salesunittag{
+    width: 100%;
+    text-align: center;
+    margin: 10px auto;
+    font-weight: bold;
+}
+.viewsales{
+    cursor: pointer;
+}
+.addnewsales{
+    width: 100%;
+    display: inline-flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+}
+.addempsales{
+    width: fit-content;
+    margin: auto;
+    background: greenyellow;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 7px;
+    font-weight: bold;
+}
+.empsalesblk{
+    position: relative;
+    border: solid black 2px;
+    margin: 50px auto;
+}
+.empsalesttl{
+    width: 100%;
+    text-align: center;
+    margin: 20px auto;
+    font-weight: bold;
+}
+.salesdelete{
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 1.5em;
+    color: red;
+    cursor: pointer;
+}
+.slsadd{
+    position: fixed;
+    bottom: 20px;
+    right: 30px;
+    padding: 10px;
+    background: greenyellow;
+    color: black;
+    font-size: 3em;
+    border-radius: 50%;
+    cursor: pointer;
+}
