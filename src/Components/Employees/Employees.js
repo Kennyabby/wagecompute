@@ -32,6 +32,7 @@ const Employees = () =>{
         phoneNo:'',
         address:'',
         hiredDate:'',
+        dismissalDate:'',
         bankName:'',
         bankBranch:'',
         accountNo:'',
@@ -367,6 +368,17 @@ const Employees = () =>{
                                         type='date'
                                         placeholder='Select Date' 
                                         value={fields.hiredDate}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Dismissal Date</div>
+                                    <input 
+                                        className='forminp'
+                                        name='dismissalDate'
+                                        type='date'
+                                        placeholder='Select Date' 
+                                        value={fields.dismissalDate}
                                         disabled={isView}
                                     />
                                 </div>

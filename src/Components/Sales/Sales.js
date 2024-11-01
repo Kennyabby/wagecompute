@@ -21,6 +21,7 @@ const Sales = ()=>{
     const [addTotalSales, setAddTotalSales] = useState('')
     const [addDebt, setAddDebt] = useState('')
     const [postStatus, setPostStatus] = useState('Post Sales')
+    const [postingDate, setPostingDate] = useState('')
     const [curSale, setCurSale] = useState(null)
     const defaultFields = {
         employeeId: '',
@@ -43,9 +44,15 @@ const Sales = ()=>{
     useEffect(()=>{
         storePath('sales')  
     },[storePath])
+
     useEffect(()=>{
-        // 
-    },[fields])
+        if (curSale){
+            setPostingDate(curSale.postingDate)
+        }else{
+            setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
+        }
+    },[curSale])
+
     const handleFieldChange = ({index, e})=>{
         const name = e.target.getAttribute('name')
         const category = e.target.getAttribute('category')
@@ -82,37 +89,40 @@ const Sales = ()=>{
     }
 
     const addSales = async ()=> { 
-        setPostStatus('Posting Sales...')
-        var totalSales = 0
-        var totalDebt = 0        
-        fields.forEach((field)=>{
-            totalSales += Number(field.totalSales)
-            totalDebt += Number(field.debt)
-        })
-        const newSale = {
-            createdAt: new Date().getTime(),
-            totalSales,
-            totalDebt,
-            record: [...fields]
-        }
-
-        const newSales = [newSale, ...sales]        
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Sales", 
-            update: newSale
-        }, "createDoc", server)
-        
-        if (resps.err){
-            console.log(resps.mess)
-            setPostStatus('Post Sales')
-        }else{
-            setSales(newSales)
-            setCurSale(newSale)
-            setIsView(true)
-            setFields([...(newSale.record)])
-            getSales(company)
-            setPostStatus('Post Sales')
+        if (postingDate){
+            setPostStatus('Posting Sales...')
+            var totalSales = 0
+            var totalDebt = 0        
+            fields.forEach((field)=>{
+                totalSales += Number(field.totalSales)
+                totalDebt += Number(field.debt)
+            })
+            const newSale = {
+                postingDate: postingDate,
+                createdAt: new Date().getTime(),
+                totalSales,
+                totalDebt,
+                record: [...fields]
+            }
+    
+            const newSales = [newSale, ...sales]        
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Sales", 
+                update: newSale
+            }, "createDoc", server)
+            
+            if (resps.err){
+                console.log(resps.mess)
+                setPostStatus('Post Sales')
+            }else{
+                setSales(newSales)
+                setCurSale(newSale)
+                setIsView(true)
+                setFields([...(newSale.record)])
+                getSales(company)
+                setPostStatus('Post Sales')
+            }
         }
     }
 
@@ -126,7 +136,7 @@ const Sales = ()=>{
             <div className='sales'>
                 <div className='emplist attlist'>                                       
                     {sales.map((sale, index)=>{
-                        const {createdAt, 
+                        const {createdAt, postingDate,
                             totalSales, totalDebt, record, 
                         } = sale 
                         return(
@@ -136,7 +146,7 @@ const Sales = ()=>{
                                 }}
                             >
                                 <div className='dets'>
-                                    <div><b>Posting Date: </b>{getDate(createdAt)}</div>
+                                    <div><b>Posting Date: </b>{getDate(postingDate)}</div>
                                     <div><b>Total Sales: </b>{totalSales}</div>
                                     <div><b>Total Debt: </b>{totalDebt}</div>
                                     <div className='deptdesc'>{`Waitresses No:`} <b>{`${record.length}`}</b></div>
@@ -209,7 +219,7 @@ const Sales = ()=>{
                                                 key={employee.i_d}
                                                 value={employee.i_d}
                                             >
-                                                {`${employee.firstName} ${employee.lastName}`}
+                                                {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
                                             </option>
                                         )
                                     })}
@@ -251,7 +261,7 @@ const Sales = ()=>{
                                         }).map((emp, idt)=>{
                                             return (
                                                 <div key={idt}>
-                                                    {`${emp.firstName.toUpperCase()} ${emp.lastName.toUpperCase()}`}
+                                                    {`(${emp.i_d}) ${emp.firstName.toUpperCase()} ${emp.lastName.toUpperCase()} - ${emp.position}`}
                                                 </div>
                                             )
                                         })}
@@ -306,8 +316,21 @@ const Sales = ()=>{
                         })}
                         
                     </div>
-                    {!isView && <div className='confirm'>                        
-                        <div className='yesbtn'
+                    {!isView && <div className='confirm'>     
+                        <div className='inpcov salesinpcov'>
+                            <input 
+                                className='forminp'
+                                name='postingDate'
+                                type='date'
+                                placeholder='Posting Date'
+                                value={postingDate}
+                                disabled={isView}
+                                onChange={(e)=>{
+                                    setPostingDate(e.target.value)
+                                }}
+                            />
+                        </div>                   
+                        <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:fields.length?'pointer':'not-allowed'
                             }}

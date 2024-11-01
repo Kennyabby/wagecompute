@@ -73,3 +73,11 @@
     border-radius: 50%;
     cursor: pointer;
 }
+.salesyesbtn{
+    height: fit-content ;
+    margin: auto 10px;
+}
+.salesinpcov{
+    margin: 0px;
+}
+
