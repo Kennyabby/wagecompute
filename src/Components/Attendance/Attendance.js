@@ -274,11 +274,15 @@ const Attendance = () =>{
                                 <div className='deptdesc'>{'Month: '+month}</div>
                                 <div> <b>{payees.length}</b>{' Computed Pays'}</div>
                             </div>
+                            {(months[(new Date()).getMonth()]===month && 
+                                String((new Date()).getFullYear()===year) || 
+                                (months[(new Date()).getMonth()+1]===month &&
+                                [1,2,3,4,5,6].includes((new Date).getDate()))) && 
                             <div 
                             className='edit'
                             onClick={()=>{
                                 deleteAttendance(att)
-                            }}>Delete</div>
+                            }}>Delete</div>}
                         </div>
                     )
                   })}

@@ -168,7 +168,7 @@ function App() {
       prop: {} 
     }, "getDocsDetails", SERVER)
     if (resp.record){
-      console.log(resp.record)
+      // console.log(resp.record)
       setSales(resp.record)
     }
   }
@@ -198,8 +198,8 @@ function App() {
     }
   }
 
-  const getDate = () =>{
-    const current = new Date();
+  const getDate = (dateval) =>{
+    const current = dateval? new Date(dateval): new Date();
     const date = `${current.getDate()}/${current.getMonth() + 1}/${current.getFullYear()}`;
     return date
   }
