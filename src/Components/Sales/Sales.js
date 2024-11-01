@@ -26,6 +26,7 @@ const Sales = ()=>{
     const defaultFields = {
         employeeId: '',
         totalSales: '',
+        cashSales:'',
         debt:'',
         shortage:'',
         debtRecovered:'',
@@ -77,7 +78,7 @@ const Sales = ()=>{
                 })
                 fields[index] = {
                     ...fields[index], 
-                    totalSales: (ct+Number(value))?ct+Number(value):'',
+                    cashSales: (ct+Number(value))?ct+Number(value):'',
                     [name]:{
                         ...fields[index][name], 
                         [category]:value
@@ -93,17 +94,20 @@ const Sales = ()=>{
     const addSales = async ()=> { 
         if (postingDate){
             setPostStatus('Posting Sales...')
-            var totalSales = 0
-            var totalDebt = 0        
+            var totalCashSales = 0
+            var totalDebt = 0      
+            var totalShortage = 0  
             fields.forEach((field)=>{
-                totalSales += Number(field.totalSales)
+                totalCashSales += Number(field.cashSales)
                 totalDebt += Number(field.debt)
+                totalShortage += Number(field.shortage)
             })
             const newSale = {
                 postingDate: postingDate,
                 createdAt: new Date().getTime(),
-                totalSales,
+                totalCashSales,
                 totalDebt,
+                totalShortage,
                 record: [...fields]
             }
     
@@ -153,10 +157,11 @@ const Sales = ()=>{
     return (
         <>
             <div className='sales'>
-                <div className='emplist attlist'>                                       
+                <div className='emplist saleslist'>                                       
                     {sales.map((sale, index)=>{
                         const {createdAt, postingDate,
-                            totalSales, totalDebt, record, 
+                            totalSales, totalCashSales, totalDebt, record, 
+                            totalShortage, totalDebtRecovered 
                         } = sale 
                         return(
                             <div className={'dept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
@@ -165,10 +170,12 @@ const Sales = ()=>{
                                 }}
                             >
                                 <div className='dets'>
-                                    <div><b>Posting Date: </b>{getDate(postingDate)}</div>
-                                    <div><b>Total Sales: </b>{totalSales}</div>
-                                    <div><b>Total Debt: </b>{totalDebt}</div>
-                                    <div className='deptdesc'>{`Waitresses No:`} <b>{`${record.length}`}</b></div>
+                                    <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                    <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
+                                    <div>Total Cash Sales: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
+                                    <div>Total Debt: <b>{'₦'+(Number(totalDebt) - Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
+                                    <div>Total Shortage: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
+                                    <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
                                 </div>
                                 <div 
                                     className='edit'
@@ -183,7 +190,7 @@ const Sales = ()=>{
                         )
                   })}
                 </div>
-                <div className='empview attview'>
+                <div className='empview salesview'>
                     {(fields.length && !isView )? 
                         <RxReset
                             className='slsadd'
@@ -266,6 +273,7 @@ const Sales = ()=>{
                             </div>                                                
                         </div>}
                         {fields.map((field, index)=>{
+                            const netTotal = Number(field.totalSales) + Number(field.debt) + Number(field.shortage)
                             return (
                                 <div key={index} className='empsalesblk'>
                                     {!isView && <MdDelete 
@@ -292,14 +300,14 @@ const Sales = ()=>{
                                     </div>
                                     {<div className='basic'>
                                         <div className='inpcov'>
-                                            <div>Total Sales</div>
+                                            <div>Cash Sales</div>
                                             <input 
                                                 className='forminp'
                                                 style={{cursor: 'not-allowed'}}
-                                                name='totalSales'
+                                                name='cashSales'
                                                 type='number'
-                                                placeholder='Total Sales'
-                                                value={field.totalSales}
+                                                placeholder='Cash Sales'
+                                                value={field.cashSales}
                                                 disabled={true}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
@@ -327,7 +335,7 @@ const Sales = ()=>{
                                                 name='shortage'
                                                 type='number'
                                                 placeholder='Shortage'
-                                                value={field.shoortage}
+                                                value={field.shortage}
                                                 disabled={isView}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
@@ -338,11 +346,12 @@ const Sales = ()=>{
                                             <div>Debt Recovered</div>
                                             <input 
                                                 className='forminp'
+                                                style={{cursor: 'not-allowed'}}
                                                 name='debtRecovered'
                                                 type='number'
                                                 placeholder='Debt Recovered'
                                                 value={field.debtRecovered}
-                                                disabled={isView}
+                                                disabled={true}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
