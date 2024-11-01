@@ -27,6 +27,8 @@ const Sales = ()=>{
         employeeId: '',
         totalSales: '',
         debt:'',
+        shortage:'',
+        debtRecovered:'',
         ...salesUnits
     }
     const [fields, setFields] = useState([])
@@ -131,6 +133,23 @@ const Sales = ()=>{
         setFields([...(sale.record)])
         setIsView(true)
     }
+
+    const deleteSales = async (sale)=>{
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Sales", 
+            update: {createdAt: sale.createdAt}
+        }, "removeDoc", server)
+        if (resps.err){
+            console.log(resps.mess)
+        }else{
+            setIsView(false)
+            setCurSale(null)
+            setFields([])
+            setAddEmployeeId('')
+            getSales(company)
+        }
+    }
     return (
         <>
             <div className='sales'>
@@ -151,10 +170,15 @@ const Sales = ()=>{
                                     <div><b>Total Debt: </b>{totalDebt}</div>
                                     <div className='deptdesc'>{`Waitresses No:`} <b>{`${record.length}`}</b></div>
                                 </div>
-                                {/* <div 
-                                className='edit'
-                                name='edit'
-                                >Edit</div> */}
+                                <div 
+                                    className='edit'
+                                    name='delete'
+                                    onClick={()=>{
+                                        deleteSales(sale)
+                                    }}
+                                >
+                                    Delete
+                                </div>
                             </div>
                         )
                   })}
@@ -290,6 +314,34 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Debt'
                                                 value={field.debt}
+                                                disabled={isView}
+                                                onChange={(e)=>{
+                                                    handleFieldChange({index, e})
+                                                }}
+                                            />
+                                        </div>
+                                        <div className='inpcov'>
+                                            <div>Shortage</div>
+                                            <input 
+                                                className='forminp'
+                                                name='shortage'
+                                                type='number'
+                                                placeholder='Shortage'
+                                                value={field.shoortage}
+                                                disabled={isView}
+                                                onChange={(e)=>{
+                                                    handleFieldChange({index, e})
+                                                }}
+                                            />
+                                        </div>
+                                        <div className='inpcov'>
+                                            <div>Debt Recovered</div>
+                                            <input 
+                                                className='forminp'
+                                                name='debtRecovered'
+                                                type='number'
+                                                placeholder='Debt Recovered'
+                                                value={field.debtRecovered}
                                                 disabled={isView}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
