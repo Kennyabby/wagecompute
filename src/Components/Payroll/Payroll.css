@@ -184,6 +184,23 @@
     text-align: center;
     border-radius: 10px;
 }
+.payeerow{
+    margin: 0px;
+    justify-content: left;
+}
+td, th {
+    page-break-inside: avoid;
+    /* white-space: nowrap; */
+  }
+.tablecover{
+    justify-content: left;
+    margin: 0px;
+}
+table {
+    margin: 0px;
+    width: 100%;
+    page-break-inside: auto;
+}
 .theader{
     font-size: .7em;
 }
@@ -192,10 +209,16 @@
 }
 .ttrow{
     font-weight: bold;
-    font-size: .8em;
+    font-size: .7em;
 }
 .payeerow{
     margin-bottom: 0px;
+}
+.payeetable{
+    margin-top: 0;
+}
+.payeetable tr {
+    page-break-inside: avoid;
 }
 .main thead {
     background: #1E1F23;

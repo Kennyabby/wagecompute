@@ -1,6 +1,7 @@
 import {useState, useEffect, useContext, useRef} from 'react'
 import ContextProvider from '../../../Resources/ContextProvider';
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
+import html2pdf from 'html2pdf.js';
 import Barcode from 'react-barcode';
 
     
@@ -35,7 +36,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
         // using values higher than 10 when having multiple pages generated, it
         // might cause the page to crash or hang.
         // resolution: Resolution.HIGH,
-        resoluton: Resolution.MEDIUM = 3,
+        resoluton: Resolution.MEDIUM = 5,
         page: {
            // margin is in MM, default is Margin.NONE = 0
         //    margin: Margin.SMALL,
@@ -63,9 +64,21 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
               useCORS: true
            }
         },
-        filename: 'StaffPayRoll.pdf'
+        filename: `StaffPayRoll - ${selectedMonth}, ${selectedYear}.pdf`
      };
+     
 
+     const printToPDF = () => {
+         const element = targetRef.current;
+         const options = {
+             margin:       0.2,
+             filename:     `StaffPayRoll - ${selectedMonth}, ${selectedYear}.pdf`,
+             image:        { type: 'jpeg', quality: 0.98 },
+             html2canvas:  { scale: 2 },
+             jsPDF:        { unit: 'in', format: 'A4', orientation: 'landscape' }
+         };
+         html2pdf().set(options).from(element).save();
+     };
     return(
         <>
         {<div className='payslip'>
@@ -79,12 +92,11 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                     <div className='mainslip'>
                         <div className="container"  ref={targetRef}>
                         <div className="container">
-                        <div className="row">
-                            <div >
+                        <div className="row payeerow">
+                            <div>
                                 <div className="col-md-12">
                                     <div className="row payeerow">
                                        <div className='invhead'>
-                                            {/* <img src={''} className='invlogo'/> */}
                                             <div className="billfrom">
                                                 <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                 <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
@@ -95,8 +107,8 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                        </div>
                                     </div>
                                     
-                                    <div>
-                                        <table className="table">   
+                                    <div className='tablecover'>
+                                        <table className="table payeetable">   
                                             <thead>
                                                 <tr>
                                                     <th><h8 className='theader'>S/N</h8></th>
@@ -139,6 +151,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                         if (payees.length){
                                                             var deductions = 0
                                                             var bonus = 0
+                                                            var adjustment = 0
                                                             if (payees[0].shortages){
                                                                 deductions+=Number(payees[0].shortages)
                                                             }
@@ -151,36 +164,42 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                             if (payees[0].bonus){
                                                                 bonus+=Number(payees[0].bonus)
                                                             }
+                                                            if (payees[0].adjustment){
+                                                                adjustment+=Number(payees[0].adjustment)
+                                                            }
                                                             const expectedWorkDays = Number(employee.expectedWorkDays?employee.expectedWorkDays:monthDays[attd[0].month])
                                                             const totalPay = Number(parseFloat((employee.salary/expectedWorkDays)*payees[0]['Total Days']).toFixed(2))
                                                             const grossSalaryPerAnnum = employee.salary*12
                                                             totalGrossSalaryPerAnnum += grossSalaryPerAnnum
                                                             const grossSalaryPerMonth = Number(employee.salary)
                                                             totalGrossSalaryPerMonth += grossSalaryPerMonth
-                                                            const actualGrossSalary = Number(parseFloat(totalPay+bonus).toFixed(2))
-                                                            totalActualGrossSalary += actualGrossSalary
+                                                            const actualGrossSalary = Number(parseFloat(totalPay+adjustment+bonus).toFixed(2))
+                                                            totalActualGrossSalary += actualGrossSalary         
                                                             totalDeductions += deductions
-                                                            const netPay = Number(parseFloat(totalPay+bonus-deductions).toFixed(2))
+                                                            const netPay = Number(parseFloat(totalPay+adjustment+bonus-deductions).toFixed(2))
                                                             totalNetPay += netPay
                                                             return (
-                                                                <tr key={index} >       
-                                                                    <td className='trow'>{index+1}</td>                                                                         
-                                                                    <td className='trow'>{employee.i_d}</td>                                                                         
-                                                                    <td className='trow'>{`${employee.lastName} ${employee.firstName} ${employee.otherName}`}</td>                                                                         
-                                                                    <td className='trow'>{employee.gender}</td>                                                                         
-                                                                    <td className='trow'>{employee.accountNo}</td>                                                                         
-                                                                    <td className='trow'>{employee.bankName}</td>                                                                         
-                                                                    <td className='trow'>{employee.position}</td>                                                                         
-                                                                    <td className='trow'>{employee.hiredDate}</td>                                                                         
-                                                                    <td className='trow'>₦{Number(parseFloat(employee.salary/monthDays[selectedMonth]).toFixed(2)).toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>₦{grossSalaryPerAnnum.toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>₦{grossSalaryPerMonth.toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>₦{actualGrossSalary.toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>₦{deductions.toLocaleString()}</td>                                                                         
-                                                                    <td className='trow'>₦{netPay.toLocaleString()}</td>                                                                         
-                                                                    {/* <td className='trow'>{employee.paymentMode}</td>                                                                          */}
-                                                                    {/* <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {'VALUE'}</td> */}
-                                                                </tr>
+                                                                <>
+                                                                    <tr key={index} >       
+                                                                        <td className='trow'>{index+1}</td>                                                                         
+                                                                        <td className='trow'>{employee.i_d}</td>                                                                         
+                                                                        <td className='trow'>{`${employee.lastName} ${employee.firstName} ${employee.otherName}`}</td>                                                                         
+                                                                        <td className='trow'>{employee.gender}</td>                                                                         
+                                                                        <td className='trow'>{employee.accountNo}</td>                                                                         
+                                                                        <td className='trow'>{employee.bankName}</td>                                                                         
+                                                                        <td className='trow'>{employee.position}</td>                                                                         
+                                                                        <td className='trow'>{employee.hiredDate}</td>                                                                         
+                                                                        <td className='trow'>₦{Number(parseFloat(employee.salary/monthDays[selectedMonth]).toFixed(2)).toLocaleString()}</td>                                                                         
+                                                                        <td className='trow'>₦{grossSalaryPerAnnum.toLocaleString()}</td>                                                                         
+                                                                        <td className='trow'>₦{grossSalaryPerMonth.toLocaleString()}</td>                                                                         
+                                                                        <td className='trow'>₦{actualGrossSalary.toLocaleString()}</td>                                                                         
+                                                                        <td className='trow'>₦{deductions.toLocaleString()}</td>                                                                         
+                                                                        <td className='trow'>₦{netPay.toLocaleString()}</td>                                                                         
+                                                                        {/* <td className='trow'>{employee.paymentMode}</td>                                                                          */}
+                                                                        {/* <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {'VALUE'}</td> */}
+                                                                    </tr>
+                                                                    {/* <div style={{ pageBreakAfter: 'always' }}></div> */}
+                                                                </>
                                                             )
                                                         }
                                                     })
@@ -224,7 +243,8 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                     className='invbutton'
                     onClick={
                         () => {
-                            generatePDF(targetRef, options)
+                            // generatePDF(targetRef, options)
+                            printToPDF()
                             // setViewSchedule(false)
                             // resetField()
                         }
