@@ -20,6 +20,7 @@ const Payroll = () =>{
     const [viewSlip, setViewSlip] = useState(false)
     const [viewSlipStatus, setViewSlipStatus] = useState('Save and view pay slip')
     const [viewPayee, setViewPayee] = useState(false)
+    const [adjustment, setAdjustment] = useState('')
     const [debtDue, setDebtDue] = useState('')
     const [shortages, setShortages] = useState('')
     const [penalties, setPenalties] = useState('')
@@ -79,14 +80,14 @@ const Payroll = () =>{
               useCORS: true
            }
         },
-        filename: curEmployee? (`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} - PaySlip`+'.pdf'): 'Payslip.pdf'
+        filename: curEmployee? (`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} - PaySlip (${months[new Date(Date.now()).getMonth()].toUpperCase()},${new Date(Date.now()).getFullYear()})`+'.pdf'): 'Payslip.pdf'
      };
 
     const handleViewClick = (e,index,employee)=>{
         setCurEmployee(employee)
     }
 
-    const handlePayeeUpdate = async(payee, attNo, bonus, shortages, debtDue, penalties)=>{
+    const handlePayeeUpdate = async(payee, attNo, adjustment, bonus, shortages, debtDue, penalties)=>{
         if (viewSlipStatus === 'Save and view pay slip'){
             setViewSlipStatus('Saving hold on ...')
             var payees;
@@ -98,7 +99,7 @@ const Payroll = () =>{
             var updPayee;
             payees.forEach((pyee)=>{
                 if (pyee['Person ID']===payee['Person ID']){
-                    updPayee = {...payee, bonus,shortages,debtDue,penalties}
+                    updPayee = {...payee,adjustment,bonus,shortages,debtDue,penalties}
                 }
             })
             const ftrPayees = payees.filter((py)=>{
@@ -254,6 +255,15 @@ const Payroll = () =>{
                                                 <tr>
                                                     <td className="col-md-3">
                                                     <p>
+                                                        <strong>Salary Adjustment: </strong>
+                                                    </p>
+                                                    </td>
+                                                    <td className="col-md-3"></td>
+                                                    <td className="col-md-3"><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(adjustment).toLocaleString()}  </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="col-md-3">
+                                                    <p>
                                                         <strong>Bonuses: </strong>
                                                     </p>
                                                     </td>
@@ -299,7 +309,7 @@ const Payroll = () =>{
                                                 <tr style={{ color: '#F81D2D' }}>
                                                     <td className="text-right"><h4><strong>Net Pay:</strong></h4></td>
                                                     <td className="text-right"><h4><strong></strong></h4></td>
-                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(parseFloat((Number(totalPay)+Number(bonus))-(Number(debtDue)+Number(shortages)+Number(penalties))).toFixed(2)).toLocaleString()} </strong></h4></td>
+                                                    <td className="text-left"><h4><strong><i className="fas fa-rupee-sign" area-hidden="true"></i> ₦ {Number(parseFloat((Number(totalPay)+Number(adjustment)+Number(bonus))-(Number(debtDue)+Number(shortages)+Number(penalties))).toFixed(2)).toLocaleString()} </strong></h4></td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -431,10 +441,12 @@ const Payroll = () =>{
                             return <PayAttendance
                                 key={id}
                                 att = {att}
+                                curAtt={curAtt}
                                 setDebtDue={setDebtDue}
                                 setShortages={setShortages}
                                 setPenalties={setPenalties}
                                 setBonus={setBonus}
+                                setAdjustment={setAdjustment}
                                 curEmployee={curEmployee}
                                 setViewSlip={setViewSlip}
                                 setCurAtt={setCurAtt}
@@ -453,14 +465,15 @@ const Payroll = () =>{
 
 export default Payroll
 
-const PayAttendance = ({att, setDebtDue, setShortages, 
-    setPenalties, setBonus, curEmployee, setViewSlip, setCurAtt,
+const PayAttendance = ({att, curAtt, setDebtDue, setShortages, 
+    setPenalties, setBonus, setAdjustment, curEmployee, setViewSlip, setCurAtt,
     setTotalPay, handlePayeeUpdate, monthDays, viewSlipStatus
 })=>{
     const [subDebtDue, setSubDebtDue] = useState('')
     const [subShortages, setSubShortages] = useState('')
     const [subPenalties, setSubPenalties] = useState('')
     const [subBonus, setSubBonus] = useState('')
+    const [subAdjustment, setSubAdjustment] = useState('')
     const {payees} = att
     
     useEffect(()=>{
@@ -469,9 +482,9 @@ const PayAttendance = ({att, setDebtDue, setShortages,
         setSubShortages('')
         setSubPenalties('')
         setSubBonus('')
+        setSubAdjustment('')
         payees.forEach((payee)=>{
             if (payee['Person ID']===curEmployee.i_d){
-                console.log(payee)
                 if (payee.debtDue){
                     setSubDebtDue(payee.debtDue)
                 }
@@ -483,6 +496,9 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                 }
                 if(payee.bonus){
                     setSubBonus(payee.bonus)
+                }
+                if(payee.adjustment){
+                    setSubAdjustment(payee.adjustment)
                 }
             }
         })
@@ -511,6 +527,32 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                     })}
                 </div>
                 <div className='deptetr'>
+                    <div className='inpcov formpad'>
+                        <label className='ddclbl'>Salary Adjustment</label>
+                        <input 
+                            className='forminp prinp'
+                            name='adjustment'
+                            type='number'
+                            placeholder='Adjustment'
+                            value={subAdjustment}
+                            onChange={(e)=>{
+                                setSubAdjustment(e.target.value)
+                            }}
+                        />
+                    </div>
+                    <div className='inpcov formpad'>
+                        <label className='ddclbl'>Bonus</label>
+                        <input 
+                            className='forminp prinp'
+                            name='bonus'
+                            type='number'
+                            placeholder='Bonus'
+                            value={subBonus}
+                            onChange={(e)=>{
+                                setSubBonus(e.target.value)
+                            }}
+                        />
+                    </div>
                     <div className='inpcov formpad'>
                     <label className='ddclbl'>Debt Due</label>
                         <input 
@@ -550,23 +592,12 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                             }}
                         />
                     </div>
-                    <div className='inpcov formpad'>
-                        <label className='ddclbl'>Bonus</label>
-                        <input 
-                            className='forminp prinp'
-                            name='bonus'
-                            type='number'
-                            placeholder='Bonus'
-                            value={subBonus}
-                            onChange={(e)=>{
-                                setSubBonus(e.target.value)
-                            }}
-                        />
-                    </div>
+                    
                 </div>
                 <div className='viewslip'
                     onClick={()=>{
                         setCurAtt(att)
+                        setAdjustment(subAdjustment?subAdjustment:'')
                         setBonus(subBonus?subBonus:'')
                         setDebtDue(subDebtDue?subDebtDue:'')
                         setPenalties(subPenalties?subPenalties:'')
@@ -577,18 +608,19 @@ const PayAttendance = ({att, setDebtDue, setShortages,
                                 const expectedWorkDays = Number(curEmployee.expectedWorkDays?curEmployee.expectedWorkDays:monthDays[att.month])
                                 const totalPay = parseFloat((curEmployee.salary/expectedWorkDays)*payee['Total Days']).toFixed(2)
                                 setTotalPay(totalPay)
-                                if (payee.bonus === subBonus && payee.shortages === subShortages && 
-                                    payee.penalties === subPenalties && payee.debtDue===subDebtDue
+                                if (payee.adjustment === subAdjustment && payee.bonus === subBonus && 
+                                    payee.shortages === subShortages && payee.penalties === subPenalties && 
+                                    payee.debtDue===subDebtDue
                                 ){
                                     setViewSlip(true)                                
                                 }else{
-                                    handlePayeeUpdate(payee, att.no, subBonus, subShortages, subDebtDue, subPenalties)
+                                    handlePayeeUpdate(payee, att.no, subAdjustment, subBonus, subShortages, subDebtDue, subPenalties)
                                                                 
                                 }
                             }
                         })
                     }}
-                >{viewSlipStatus}</div>
+                >{(att.no===curAtt?.no) ? viewSlipStatus : 'Save and view pay slip'}</div>
             </div>
         </>
     )
