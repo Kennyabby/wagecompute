@@ -41,6 +41,7 @@ const Sales = ()=>{
         employeeId: '',
         totalSales: '',
         cashSales:'',
+        bankSales:'',
         debt:'',
         shortage:'',
         debtRecovered:'',
@@ -71,7 +72,30 @@ const Sales = ()=>{
         const category = e.target.getAttribute('category')
         const value = e.target.value
         setFields((fields)=>{
-            if (category){
+            if (category && category!=='cash'){
+                var ct = 0
+                Object.keys(salesUnits).forEach((salesUnit)=>{
+                    var ct1 = 0                    
+                    Object.keys(fields[index][salesUnit]).forEach((payPoint)=>{                    
+                        if(category!==payPoint){                
+                            ct1 += Number(fields[index][salesUnit][payPoint])
+                        }else{
+                            if (name !== salesUnit) {
+                                ct1 += Number(fields[index][salesUnit][payPoint])
+                            }
+                        }
+                    })
+                    ct += Number(ct1)
+                })
+                fields[index] = {
+                    ...fields[index], 
+                    bankSales: (ct+Number(value))?ct+Number(value):'',
+                    [name]:{
+                        ...fields[index][name], 
+                        [category]:value
+                    }
+                }
+            }else if (category && category === 'cash'){
                 var ct = 0
                 Object.keys(salesUnits).forEach((salesUnit)=>{
                     var ct1 = 0                    
@@ -94,7 +118,8 @@ const Sales = ()=>{
                         [category]:value
                     }
                 }
-            }else{
+            }
+            else{
                 fields[index] = {...fields[index], [name]:value}
             }
             return [...fields]
@@ -128,16 +153,19 @@ const Sales = ()=>{
             setPostStatus('Posting Sales...')
             var totalCashSales = 0
             var totalDebt = 0      
-            var totalShortage = 0  
+            var totalShortage = 0 
+            var totalBankSales = 0 
             fields.forEach((field)=>{
                 totalCashSales += Number(field.cashSales)
                 totalDebt += Number(field.debt)
                 totalShortage += Number(field.shortage)
+                totalBankSales += Number(field.bankSales)
             })
             const newSale = {
                 postingDate: postingDate,
                 createdAt: new Date().getTime(),
                 totalCashSales,
+                totalBankSales,
                 totalDebt,
                 totalShortage,
                 record: [...fields]
@@ -251,7 +279,7 @@ const Sales = ()=>{
                 <div className='emplist saleslist'>                                       
                     {sales.map((sale, index)=>{
                         const {createdAt, postingDate, totalCashSales, totalDebt, record, 
-                            totalShortage, totalDebtRecovered 
+                            totalShortage, totalDebtRecovered, totalBankSales 
                         } = sale 
                         return(
                             <div className={'dept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
@@ -262,7 +290,8 @@ const Sales = ()=>{
                                 <div className='dets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
-                                    <div>Sales Payments: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
+                                    <div>Bank Sales: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
+                                    <div>Cash Sales: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
                                     <div>Debts: <b>{'₦'+(Number(totalDebt) - Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                     <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
@@ -486,7 +515,7 @@ const Sales = ()=>{
                             })
                         }
                         {salesOpts==='sales' && fields.map((field, index)=>{
-                            const netTotal = Number(field.cashSales) + Number(field.debt) + Number(field.shortage)
+                            const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
                             return (
                                 <div key={index} className='empsalesblk'>
                                     <div className='pdsalesview'>
@@ -516,14 +545,14 @@ const Sales = ()=>{
                                     </div>
                                     {<div className='basic'>
                                         <div className='inpcov'>
-                                            <div>Cash Sales</div>
+                                            <div>All Sales</div>
                                             <input 
                                                 className='forminp'
                                                 style={{cursor: 'not-allowed'}}
-                                                name='cashSales'
+                                                name='allSales'
                                                 type='number'
-                                                placeholder='Cash Sales'
-                                                value={field.cashSales}
+                                                placeholder='All Sales'
+                                                value={field.cashSales + field.bankSales}
                                                 disabled={true}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
