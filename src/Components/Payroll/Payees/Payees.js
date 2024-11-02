@@ -90,11 +90,11 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                         Cancel
                     </div>
                     <div className='mainslip'>
-                        <div className="container"  ref={targetRef}>
-                        <div className="container">
+                        <div className=""  ref={targetRef}>
+                        <div className="">
                         <div className="row payeerow">
                             <div>
-                                <div className="col-md-12">
+                                <div className="">
                                     <div className="row payeerow">
                                        <div className='invhead'>
                                             <div className="billfrom">

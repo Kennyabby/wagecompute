@@ -21,10 +21,10 @@
     display: flex;
     width: 90%;
     justify-content: space-around;
-    font-weight: bold;
     cursor: pointer;
 }
 .slopts{
+    font-weight: bold;
     border-bottom: solid greenyellow 2px;
 }
 .salesunit{
@@ -80,6 +80,17 @@
     border: solid black 1px;
     border-radius: 10px;
     position: relative;
+}
+.pdsalesview{
+    position: absolute;
+    width: fit-content;
+    font-size: .9em;
+    top: -30px;
+    left: -2px;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    border: solid black 1px;
 }
 .empsalesttl{
     width: 100%;
