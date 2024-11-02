@@ -43,6 +43,18 @@
     cursor: pointer;
     z-index: 2;
 }
+.emptypecov{
+    width: 95%;
+    margin: 10px auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    font-size: .9em;
+    cursor: pointer;
+}
+.emptype{
+    border-bottom: solid yellowgreen 2px;
+}
 .formtitle{
     display: flex;
     width: 100%;
