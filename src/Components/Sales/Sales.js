@@ -7,6 +7,16 @@ import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 
 const Sales = ()=>{
+
+    const {storePath, 
+        fetchServer, 
+        server, 
+        company, 
+        employees,
+        sales, setSales, getSales, months,
+        getDate
+    } = useContext(ContextProvider)
+
     const payPoints = {
         'moniepoint1':'', 'moniepoint2':'', 
         'moniepoint3':'', 'moniepoint4':'', 
@@ -19,6 +29,7 @@ const Sales = ()=>{
     }
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
+    const [recoverMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
     const [addTotalSales, setAddTotalSales] = useState('')
     const [addDebt, setAddDebt] = useState('')
     const [salesOpts, setSalesOpts] = useState('sales')
@@ -42,15 +53,6 @@ const Sales = ()=>{
     const [fields, setFields] = useState([])
     const [recoveryFields, setRecoveryFields] = useState([])
     const [isView, setIsView] = useState(false)
-
-    const {storePath, 
-        fetchServer, 
-        server, 
-        company, 
-        employees,
-        sales, setSales, getSales,
-        getDate
-    } = useContext(ContextProvider)
 
     useEffect(()=>{
         storePath('sales')  
@@ -381,15 +383,21 @@ const Sales = ()=>{
                                                 }}
                                             >
                                                 <option value=''>Select Recovery Sales</option>
-                                                {employees.map((employee)=>{
-                                                    return (
-                                                        <option 
-                                                            key={employee.i_d}
-                                                            value={employee.i_d}
-                                                        >
-                                                            {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
-                                                        </option>
-                                                    )
+                                                {sales.map((sale,index)=>{
+                                                    if (                                                        
+                                                        months[new Date(sale.postingDate).getMonth()] === recoverMonth &&
+                                                        new Date(postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                                                    ){
+                                                        return (
+                                                            sale.record.map((record, index)=>{
+                                                                if (record.employeeId === recoveryEmployeeId && record.debt){
+                                                                    return (
+                                                                        <option key={index}>{`${sale.postingDate} - Debt: ${Number(record.debt)}`}</option>
+                                                                    )
+                                                                }
+                                                            })                                                          
+                                                        )
+                                                    }
                                                 })}
                                             </select>
                                         </div>
@@ -503,7 +511,7 @@ const Sales = ()=>{
                         
                     </div>
                     {!isView && <div className='confirm'>     
-                        <div className='inpcov salesinpcov'>
+                        {salesOpts === 'sales' ? <div className='inpcov salesinpcov'>
                             <input 
                                 className='forminp'
                                 name='postingDate'
@@ -515,7 +523,24 @@ const Sales = ()=>{
                                     setPostingDate(e.target.value)
                                 }}
                             />
-                        </div>                   
+                        </div> : <div className='inpcov salesinpcov'>
+                            <select 
+                                className='forminp'
+                                name='recoveryMonth'
+                                type='text'
+                                value={recoverMonth}
+                                onChange={(e)=>{
+                                    setRecoveryMonth(e.target.value)
+                                }}
+                            >
+                                <option value=''>Select Recovery Month</option>
+                                {months.map((month,index)=>{
+                                    return (
+                                        <option key={index}>{month}</option>
+                                    )
+                                })}
+                            </select>
+                        </div> }                 
                         {salesOpts === 'sales' ? <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:fields.length?'pointer':'not-allowed'
