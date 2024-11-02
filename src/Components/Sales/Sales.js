@@ -29,7 +29,7 @@ const Sales = ()=>{
     }
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
-    const [recoverMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
+    const [recoveryMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
     const [addTotalSales, setAddTotalSales] = useState('')
     const [addDebt, setAddDebt] = useState('')
     const [salesOpts, setSalesOpts] = useState('sales')
@@ -100,14 +100,28 @@ const Sales = ()=>{
             return [...fields]
         })
     }
-
+    const removeComma = (value)=>{
+        let numberValue = parseInt(value.replace(/,/g, ''), 10);
+        return numberValue
+    }
     const handleRecoveryFieldChange = ({index, e})=>{
         const name = e.target.getAttribute('name')
-        const value = e.target.value
-        setFields((fields)=>{
-            fields[index] = {...fields[index], [name]:value}
-            return [...fields]
-        })
+        const value = e.target.value        
+        // console.log(selectedText)
+        // console.log(name, value, recoveryFields)
+        if (name === 'recoverySales' && value){
+            const selectedText = e.target.selectedOptions[0].text
+            console.log(removeComma(selectedText.split('₦')[1]))
+            setRecoveryFields((fields)=>{
+                fields[index] = {...fields[index], [name]:value, recoveryAmount:removeComma(selectedText.split('₦')[1])}
+                return [...fields]
+            })
+        }else{
+            setRecoveryFields((fields)=>{
+                fields[index] = {...fields[index], [name]:value}
+                return [...fields]
+            })
+        }  
     }
     const addSales = async ()=> { 
         if (postingDate){
@@ -170,6 +184,7 @@ const Sales = ()=>{
             setCurSale(null)
             setFields([])
             setAddEmployeeId('')
+            setRecoveryEmployeeId('')
             getSales(company)
         }
     }
@@ -180,8 +195,59 @@ const Sales = ()=>{
         }
     }
 
-    const postRecovery = ()=>{
-
+    const postRecovery = async()=>{
+        setRecoveryStatus('Posting Recovery ....')
+        recoveryFields.forEach( async(field)=>{
+            var updtSale = {}
+            sales.forEach((sale,index)=>{
+                if (                                                        
+                    months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
+                    new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                ){
+                    console.log(sales)
+                    var totalDebtRecovered = sale.totalDebtRecovered?sale.totalDebtRecovered:0
+                    sale.record.forEach((record, index)=>{
+                        if (record.employeeId === recoveryEmployeeId && record.debt){
+                            console.log('yes')
+                            if (Number(field.recoverySales) === sale.createdAt){
+                                record.debtRecovered = field.recoveryAmount
+                                console.log(record.debtRecovered)
+                                totalDebtRecovered += Number(field.recoveryAmount)
+                            }
+                                
+                        }
+                    })                                                          
+                    sale.totalDebtRecovered = totalDebtRecovered
+                    console.log(sale.totalDebtRecovered)
+                    updtSale={...sale}
+                }
+            })
+            const ftrSales = sales.filter((sales)=>{
+                return sales.createdAt !== updtSale.createdAt
+            })
+            const updatedSales = [updtSale, ...ftrSales]
+            // setSales(updatedSales)
+            console.log(updtSale,updatedSales)
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Sales", 
+                prop: [{createdAt: updtSale.createdAt}, updtSale]
+            }, "updateOneDoc", server)
+              
+            if (resps.err){
+                console.log('There was an error!!!!!!')
+                console.log(resps.mess)
+                setRecoveryStatus('Post Recovery')
+            }else{                
+                setSales(updatedSales)
+                getSales(company)
+                setRecoveryFields([])
+                setRecoveryStatus('Post Recovery')
+                
+            }            
+        })
+        
+        
     }
     return (
         <>
@@ -200,9 +266,9 @@ const Sales = ()=>{
                                 <div className='dets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
-                                    <div>Total Cash Sales: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
-                                    <div>Total Debt: <b>{'₦'+(Number(totalDebt) - Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
-                                    <div>Total Shortage: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
+                                    <div>Cash Sales: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
+                                    <div>Debts: <b>{'₦'+(Number(totalDebt) - Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
+                                    <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
                                 </div>
                                 <div 
@@ -219,7 +285,7 @@ const Sales = ()=>{
                   })}
                 </div>
                 <div className='empview salesview'>
-                    {(fields.length && !isView )? 
+                    {salesOpts === 'sales' && ( (fields.length && !isView) ? 
                         <RxReset
                             className='slsadd'
                             onClick={()=>{
@@ -237,7 +303,7 @@ const Sales = ()=>{
                                 setAddEmployeeId('')
                                 setCurSale(null)
                             }}
-                        />
+                        />)
                     }
                     <div className='formtitle padtitle'>
                         <div className={'frmttle'}>
@@ -288,16 +354,30 @@ const Sales = ()=>{
                                     })}
                                 </select>
                             </div>
+                            <div className='inpcov'>
+                                <div>Total Sales</div>
+                                <input 
+                                    className='forminp'
+                                    name='totalSales'
+                                    type='number'
+                                    placeholder='Total Sales'
+                                    value={addTotalSales}
+                                    onChange={(e)=>{
+                                        setAddTotalSales(e.target.value)
+                                    }}
+                                />
+                            </div>
                             <div className='addempsales'
                                 style={{
-                                    cursor:addEmployeeId?'pointer':'not-allowed'
+                                    cursor:(addEmployeeId&&addTotalSales)?'pointer':'not-allowed'
                                 }}
                                 onClick={()=>{
-                                    if (addEmployeeId){
+                                    if (addEmployeeId && addTotalSales){
                                         setFields((fields)=>{
-                                            return [{...defaultFields, employeeId:addEmployeeId},...fields]
+                                            return [{...defaultFields, employeeId:addEmployeeId, totalSales:addTotalSales},...fields]
                                         })
                                         setAddEmployeeId('')
+                                        setAddTotalSales('')
                                     }
                                 }}
                             >
@@ -328,6 +408,7 @@ const Sales = ()=>{
                                     })}
                                 </select>
                             </div>
+                            
                             <div className='addempsales'
                                 style={{
                                     cursor:recoveryEmployeeId?'pointer':'not-allowed'
@@ -357,20 +438,7 @@ const Sales = ()=>{
                                                     return [...updfields]
                                                 })
                                             }}
-                                        />
-                                        <div className='inpcov'>
-                                            <div>Recovery Amount</div>
-                                            <input 
-                                                className='forminp'
-                                                name='recoveryAmount'
-                                                type='number'
-                                                placeholder='Recovery Amount'
-                                                value={field.recoveryAmount}
-                                                onChange={(e)=>{
-                                                    handleRecoveryFieldChange(index, e)
-                                                }}
-                                            />
-                                        </div>
+                                        />                                        
                                         <div className='inpcov'>
                                             <div>Select Recovery Sales</div>
                                             <select 
@@ -379,20 +447,21 @@ const Sales = ()=>{
                                                 type='text'
                                                 value={field.recoverySales}
                                                 onChange={(e)=>{
-                                                    handleRecoveryFieldChange(index, e)
+                                                    handleRecoveryFieldChange({index, e})
                                                 }}
                                             >
                                                 <option value=''>Select Recovery Sales</option>
                                                 {sales.map((sale,index)=>{
                                                     if (                                                        
-                                                        months[new Date(sale.postingDate).getMonth()] === recoverMonth &&
-                                                        new Date(postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                                                        months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
+                                                        new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
                                                     ){
                                                         return (
                                                             sale.record.map((record, index)=>{
-                                                                if (record.employeeId === recoveryEmployeeId && record.debt){
+                                                                console.log(record.debt, record.debtRecovered)
+                                                                if (record.employeeId === recoveryEmployeeId && (record.debt - record.debtRecovered) > 0){
                                                                     return (
-                                                                        <option key={index}>{`${sale.postingDate} - Debt: ${Number(record.debt)}`}</option>
+                                                                        <option key={index} value={sale.createdAt}>{`${sale.postingDate} - Debt: ${'₦'+ Number(record.debt - record.debtRecovered).toLocaleString()}`}</option>
                                                                     )
                                                                 }
                                                             })                                                          
@@ -401,14 +470,32 @@ const Sales = ()=>{
                                                 })}
                                             </select>
                                         </div>
+                                        <div className='inpcov'>
+                                            <div>Recovery Amount</div>
+                                            <input 
+                                                className='forminp'
+                                                // style={{pointer: 'not-allowed'}}
+                                                name='recoveryAmount'
+                                                type='number'
+                                                placeholder='Recovery Amount'
+                                                value={field.recoveryAmount}
+                                                // disabled={true}
+                                                onChange={(e)=>{
+                                                    handleRecoveryFieldChange({index, e})
+                                                }}
+                                            />
+                                        </div>
                                     </div>
                                 )
                             })
                         }
                         {salesOpts==='sales' && fields.map((field, index)=>{
-                            const netTotal = Number(field.totalSales) + Number(field.debt) + Number(field.shortage)
+                            const netTotal = Number(field.cashSales) + Number(field.debt) + Number(field.shortage)
                             return (
                                 <div key={index} className='empsalesblk'>
+                                    <div className='pdsalesview'>
+                                        {`Pending Sales out of ${Number(field.totalSales).toLocaleString()}:`} <b> {'₦'+(Number(field.totalSales) - netTotal).toLocaleString()}</b>
+                                    </div>
                                     {!isView && <MdDelete 
                                         className='salesdelete'
                                         onClick={()=>{
@@ -510,7 +597,7 @@ const Sales = ()=>{
                         })}
                         
                     </div>
-                    {!isView && <div className='confirm'>     
+                    {(!isView || salesOpts === 'recovery') && <div className='confirm'>     
                         {salesOpts === 'sales' ? <div className='inpcov salesinpcov'>
                             <input 
                                 className='forminp'
@@ -528,7 +615,7 @@ const Sales = ()=>{
                                 className='forminp'
                                 name='recoveryMonth'
                                 type='text'
-                                value={recoverMonth}
+                                value={recoveryMonth}
                                 onChange={(e)=>{
                                     setRecoveryMonth(e.target.value)
                                 }}
@@ -552,11 +639,13 @@ const Sales = ()=>{
                             }}
                         >{postStatus}</div>: 
                         <div className='yesbtn salesyesbtn'
-                            // style={{
-                            //     cursor:fields.length?'pointer':'not-allowed'
-                            // }}
+                            style={{
+                                cursor:recoveryFields.length?'pointer':'not-allowed'
+                            }}
                             onClick={()=>{
-                                postRecovery()
+                                if (recoveryFields.length){
+                                    postRecovery()
+                                }
                             }}
                         >{recoveryStatus}</div>
                         }
@@ -583,7 +672,7 @@ const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isV
                 <div>
                     {salesUnit.toUpperCase()}
                 </div>
-                <div><b>Sales: </b>{`${salesAmount}`}</div>
+                <div><b>Sales: </b>{`${salesAmount.toLocaleString()}`}</div>
                 {open ?
                     <FaChevronUp 
                         className='viewsales'
