@@ -17,6 +17,16 @@
     margin-top: 10px;
     overflow: auto;
 }
+.salesopts{
+    display: flex;
+    width: 90%;
+    justify-content: space-around;
+    font-weight: bold;
+    cursor: pointer;
+}
+.slopts{
+    border-bottom: solid greenyellow 2px;
+}
 .salesunit{
     width: 95%;
     display: flex;
@@ -40,6 +50,14 @@
     justify-content: space-around;
     flex-wrap: wrap;
 }
+.addnewrecovery{
+    width: 100%;
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin: 20px auto;
+    margin-bottom: 0px;
+}
 .addempsales{
     width: fit-content;
     margin: auto;
@@ -53,6 +71,15 @@
     position: relative;
     border: solid black 2px;
     margin: 50px auto;
+}
+.recoveryblk{
+    width: 95%;
+    margin: 10px auto;
+    display: inline-flex;
+    flex-wrap: wrap;
+    border: solid black 1px;
+    border-radius: 10px;
+    position: relative;
 }
 .empsalesttl{
     width: 100%;

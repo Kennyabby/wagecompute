@@ -18,9 +18,12 @@ const Sales = ()=>{
         'accomodation':{...payPoints}
     }
     const [addEmployeeId, setAddEmployeeId] = useState('')
+    const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [addTotalSales, setAddTotalSales] = useState('')
     const [addDebt, setAddDebt] = useState('')
+    const [salesOpts, setSalesOpts] = useState('sales')
     const [postStatus, setPostStatus] = useState('Post Sales')
+    const [recoveryStatus, setRecoveryStatus] = useState('Post Recovery')
     const [postingDate, setPostingDate] = useState('')
     const [curSale, setCurSale] = useState(null)
     const defaultFields = {
@@ -32,7 +35,12 @@ const Sales = ()=>{
         debtRecovered:'',
         ...salesUnits
     }
+    const defaultRecoveryFields = {
+        recoveryAmount: '',
+        recoverySales: '',
+    }
     const [fields, setFields] = useState([])
+    const [recoveryFields, setRecoveryFields] = useState([])
     const [isView, setIsView] = useState(false)
 
     const {storePath, 
@@ -91,6 +99,14 @@ const Sales = ()=>{
         })
     }
 
+    const handleRecoveryFieldChange = ({index, e})=>{
+        const name = e.target.getAttribute('name')
+        const value = e.target.value
+        setFields((fields)=>{
+            fields[index] = {...fields[index], [name]:value}
+            return [...fields]
+        })
+    }
     const addSales = async ()=> { 
         if (postingDate){
             setPostStatus('Posting Sales...')
@@ -134,6 +150,7 @@ const Sales = ()=>{
 
     const handleViewClick = (e,index,sale) =>{
         setCurSale(sale)
+        setSalesOpts('sales')
         setFields([...(sale.record)])
         setIsView(true)
     }
@@ -154,13 +171,22 @@ const Sales = ()=>{
             getSales(company)
         }
     }
+    const handleSalesOpts = (e)=>{
+        const name = e.target.getAttribute('name')
+        if (name){
+            setSalesOpts(name)
+        }
+    }
+
+    const postRecovery = ()=>{
+
+    }
     return (
         <>
             <div className='sales'>
                 <div className='emplist saleslist'>                                       
                     {sales.map((sale, index)=>{
-                        const {createdAt, postingDate,
-                            totalSales, totalCashSales, totalDebt, record, 
+                        const {createdAt, postingDate, totalCashSales, totalDebt, record, 
                             totalShortage, totalDebtRecovered 
                         } = sale 
                         return(
@@ -221,7 +247,11 @@ const Sales = ()=>{
                     </div>
                     
                     <div className='salesfm'>
-                        {!isView && <div className='addnewsales'>
+                        {<div className='salesopts' onClick={handleSalesOpts}>
+                            <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
+                            <div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>
+                        </div>}
+                        {salesOpts==='sales' ? (!isView && <div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
                                 <select 
@@ -271,8 +301,92 @@ const Sales = ()=>{
                             >
                                 Add Employee Sales
                             </div>                                                
+                        </div>): <div className='addnewrecovery'>
+                            <div className='inpcov'>
+                                <div>Employee ID</div>
+                                <select 
+                                    className='forminp'
+                                    name='employeeId'
+                                    type='text'
+                                    value={recoveryEmployeeId}
+                                    onChange={(e)=>{
+                                        setRecoveryEmployeeId(e.target.value)
+                                    }}
+                                >
+                                    <option value=''>Select Sales Person</option>
+                                    {employees.map((employee)=>{
+                                        return (
+                                            <option 
+                                                key={employee.i_d}
+                                                value={employee.i_d}
+                                            >
+                                                {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                            </option>
+                                        )
+                                    })}
+                                </select>
+                            </div>
+                            <div className='addempsales'
+                                style={{
+                                    cursor:recoveryEmployeeId?'pointer':'not-allowed'
+                                }}
+                                onClick={()=>{
+                                    if (recoveryEmployeeId){
+                                        setRecoveryFields((fields)=>{
+                                            return [...fields, {...defaultRecoveryFields}]
+                                        })                                       
+                                    }
+                                }}
+                            >
+                                Add Recovery Amount
+                            </div>
                         </div>}
-                        {fields.map((field, index)=>{
+                        {
+                            salesOpts==='recovery' && recoveryFields.map((field, index)=>{
+                                return (
+                                    <div className='recoveryblk' key={index}>
+                                        <div className='inpcov'>
+                                            <div>Recovery Amount</div>
+                                            <input 
+                                                className='forminp'
+                                                name='recoveryAmount'
+                                                type='number'
+                                                placeholder='Recovery Amount'
+                                                value={field.recoveryAmount}
+                                                onChange={(e)=>{
+                                                    handleRecoveryFieldChange(index, e)
+                                                }}
+                                            />
+                                        </div>
+                                        <div className='inpcov'>
+                                            <div>Select Recovery Sales</div>
+                                            <select 
+                                                className='forminp'
+                                                name='recoverySales'
+                                                type='text'
+                                                value={field.recoverySales}
+                                                onChange={(e)=>{
+                                                    handleRecoveryFieldChange(index, e)
+                                                }}
+                                            >
+                                                <option value=''>Select Recovery Sales</option>
+                                                {employees.map((employee)=>{
+                                                    return (
+                                                        <option 
+                                                            key={employee.i_d}
+                                                            value={employee.i_d}
+                                                        >
+                                                            {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                                        </option>
+                                                    )
+                                                })}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )
+                            })
+                        }
+                        {salesOpts==='sales' && fields.map((field, index)=>{
                             const netTotal = Number(field.totalSales) + Number(field.debt) + Number(field.shortage)
                             return (
                                 <div key={index} className='empsalesblk'>
@@ -391,7 +505,7 @@ const Sales = ()=>{
                                 }}
                             />
                         </div>                   
-                        <div className='yesbtn salesyesbtn'
+                        {salesOpts === 'sales' ? <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:fields.length?'pointer':'not-allowed'
                             }}
@@ -400,7 +514,16 @@ const Sales = ()=>{
                                     addSales()                                
                                 }
                             }}
-                        >{postStatus}</div>
+                        >{postStatus}</div>: 
+                        <div className='yesbtn salesyesbtn'
+                            // style={{
+                            //     cursor:fields.length?'pointer':'not-allowed'
+                            // }}
+                            onClick={()=>{
+                                postRecovery()
+                            }}
+                        >{recoveryStatus}</div>
+                        }
                     </div>}
                 </div>
             </div>
