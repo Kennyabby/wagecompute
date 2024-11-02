@@ -11,7 +11,7 @@ const Payroll = () =>{
         getDate,
         company, companyRecord,
         monthDays,months, years,
-        employees,
+        employees, sales,
         attendance, getAttendance
     } = useContext(ContextProvider)
     const [selectedMonth, setSelectedMonth] = useState('')
@@ -445,6 +445,7 @@ const Payroll = () =>{
                                 key={id}
                                 att = {att}
                                 curAtt={curAtt}
+                                sales={sales}
                                 setDebtDue={setDebtDue}
                                 setShortages={setShortages}
                                 setPenalties={setPenalties}
@@ -457,6 +458,7 @@ const Payroll = () =>{
                                 handlePayeeUpdate={handlePayeeUpdate}
                                 monthDays={monthDays}
                                 viewSlipStatus={viewSlipStatus}
+                                months={months}
                             />
                         })
                     }
@@ -468,9 +470,9 @@ const Payroll = () =>{
 
 export default Payroll
 
-const PayAttendance = ({att, curAtt, setDebtDue, setShortages, 
+const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
     setPenalties, setBonus, setAdjustment, curEmployee, setViewSlip, setCurAtt,
-    setTotalPay, handlePayeeUpdate, monthDays, viewSlipStatus
+    setTotalPay, handlePayeeUpdate, monthDays, viewSlipStatus, months
 })=>{
     const [subDebtDue, setSubDebtDue] = useState('')
     const [subShortages, setSubShortages] = useState('')
@@ -505,6 +507,24 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages,
                 }
             }
         })
+        var saleDebt = ''
+        var saleShortage = ''
+        sales.forEach((sale)=>{
+            sale.record.forEach((record)=>{
+                if (record.employeeId === curEmployee.i_d){
+                    if (att.month === months[new Date(sale.postingDate).getMonth()]){
+                        saleDebt = Number(saleDebt)+Number(record.debt)
+                        saleShortage = Number(saleShortage)+Number(record.shortage)
+                    }
+                }
+            })
+        })
+        if (saleDebt){
+            setSubDebtDue(saleDebt)
+        }
+        if (saleShortage){
+            setSubShortages(saleShortage)
+        }
     },[att, curEmployee])
 
     return (

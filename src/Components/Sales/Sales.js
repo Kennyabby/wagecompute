@@ -204,11 +204,9 @@ const Sales = ()=>{
                     months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
                     new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
                 ){
-                    console.log(sales)
                     var totalDebtRecovered = sale.totalDebtRecovered?sale.totalDebtRecovered:0
                     sale.record.forEach((record, index)=>{
                         if (record.employeeId === recoveryEmployeeId && record.debt){
-                            console.log('yes')
                             if (Number(field.recoverySales) === sale.createdAt){
                                 record.debtRecovered = field.recoveryAmount
                                 console.log(record.debtRecovered)
@@ -218,7 +216,6 @@ const Sales = ()=>{
                         }
                     })                                                          
                     sale.totalDebtRecovered = totalDebtRecovered
-                    console.log(sale.totalDebtRecovered)
                     updtSale={...sale}
                 }
             })
@@ -226,16 +223,15 @@ const Sales = ()=>{
                 return sales.createdAt !== updtSale.createdAt
             })
             const updatedSales = [updtSale, ...ftrSales]
-            // setSales(updatedSales)
-            console.log(updtSale,updatedSales)
+            const updatedSale = {...updtSale}  
+            delete updatedSale._id
             const resps = await fetchServer("POST", {
                 database: company,
                 collection: "Sales", 
-                prop: [{createdAt: updtSale.createdAt}, updtSale]
+                prop: [{createdAt: updtSale.createdAt}, updatedSale]
             }, "updateOneDoc", server)
               
             if (resps.err){
-                console.log('There was an error!!!!!!')
                 console.log(resps.mess)
                 setRecoveryStatus('Post Recovery')
             }else{                
@@ -243,7 +239,7 @@ const Sales = ()=>{
                 getSales(company)
                 setRecoveryFields([])
                 setRecoveryStatus('Post Recovery')
-                
+                setRecoveryEmployeeId('')
             }            
         })
         
@@ -266,7 +262,7 @@ const Sales = ()=>{
                                 <div className='dets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
-                                    <div>Cash Sales: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
+                                    <div>Sales Payments: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
                                     <div>Debts: <b>{'₦'+(Number(totalDebt) - Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                     <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
