@@ -345,6 +345,17 @@ const Sales = ()=>{
                             salesOpts==='recovery' && recoveryFields.map((field, index)=>{
                                 return (
                                     <div className='recoveryblk' key={index}>
+                                        <MdDelete 
+                                            className='recoverydelete'
+                                            onClick={()=>{
+                                                setRecoveryFields((fields)=>{
+                                                    const updfields = fields.filter((ftrfield)=>{
+                                                        return ftrfield!== field
+                                                    })
+                                                    return [...updfields]
+                                                })
+                                            }}
+                                        />
                                         <div className='inpcov'>
                                             <div>Recovery Amount</div>
                                             <input 
