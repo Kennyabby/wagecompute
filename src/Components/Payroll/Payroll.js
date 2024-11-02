@@ -302,6 +302,9 @@ const Payroll = () =>{
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> - </strong>
                                                         </p>
                                                         <p>
+                                                            <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> - </strong>
+                                                        </p>
+                                                        <p>
                                                             <strong><i className="fas fa-rupee-sign" area-hidden="false"></i> ₦ {(Number(debtDue) + Number(shortages) + Number(penalties)).toLocaleString()}</strong>
                                                         </p>
                                                     </td>

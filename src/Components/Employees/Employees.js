@@ -16,6 +16,7 @@ const Employees = () =>{
     const [selform, setSelform] = useState("Basic")
     const [writeStatus, setWriteStatus] = useState('New')
     const [isView, setIsView] = useState(false)
+    const [employeeType, setEmployeeType] = useState('current')
     const [edit, setEdit] = useState(false)
     const [curEmployee, setCurEmployee] = useState(null)
     const [editId, setEditId] = useState(null)
@@ -33,6 +34,7 @@ const Employees = () =>{
         address:'',
         hiredDate:'',
         dismissalDate:'',
+        dismissalReason:'',
         bankName:'',
         bankBranch:'',
         accountNo:'',
@@ -188,7 +190,33 @@ const Employees = () =>{
                             setCurEmployee(null)
                         }}
                     >{'+'}</div>
-                {employees.map((employee, index)=>{
+                <div className='emptypecov' 
+                    onClick={(e)=>{
+                        const name = e.target.getAttribute('name')
+                        if (name){
+                            setEmployeeType(name)
+                        }
+                        setFields({...initFields, i_d:employees.length+1})
+                        setIsView(false)
+                        setWriteStatus('New')
+                        setCurEmployee(null)
+                    }}
+                >
+                    <div name='current' className={employeeType ==='current' ? 'emptype' : ''}>Current</div>
+                    <div name='dismissed' className={employeeType ==='dismissed' ? 'emptype' : ''}>Dismissed</div>
+                </div>
+                {employees.filter((empl)=>{ 
+                    var dismissalStatus = ''
+                    if (empl.dismissalDate){
+                        dismissalStatus = 'dismissed'
+                    }else{
+                        dismissalStatus = 'current'
+                    }
+
+                    if (dismissalStatus === employeeType) {
+                        return empl
+                    }
+                }).map((employee, index)=>{
                     const {i_d, 
                         firstName, lastName,
                         department, position,
@@ -379,6 +407,17 @@ const Employees = () =>{
                                         type='date'
                                         placeholder='Select Date' 
                                         value={fields.dismissalDate}
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Dismissal Reason</div>
+                                    <input 
+                                        className='forminp'
+                                        name='dismissalReason'
+                                        type='text'
+                                        placeholder='Dismissal Reason'
+                                        value={fields.dismissalReason}
                                         disabled={isView}
                                     />
                                 </div>
