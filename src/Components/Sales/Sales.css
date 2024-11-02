@@ -95,6 +95,14 @@
     color: red;
     cursor: pointer;
 }
+.recoverydelete{
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 1.5em;
+    color: red;
+    cursor: pointer;
+}
 .slsadd{
     position: fixed;
     bottom: 20px;
