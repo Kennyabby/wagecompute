@@ -406,7 +406,11 @@ const Payroll = () =>{
                         setViewPayee(true)
                     }}
                 >VIEW STAFF PAYROLL</div>
-                {employees.map((employee, index)=>{
+                {employees.filter((ftremp)=>{
+                    if (!ftremp.dismissalDate){
+                        return ftremp
+                    }
+                }).map((employee, index)=>{
                     const {i_d, 
                         firstName, lastName,
                         department, position,
