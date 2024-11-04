@@ -80,7 +80,7 @@ const Payroll = () =>{
               useCORS: true
            }
         },
-        filename: curEmployee? (`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} - PaySlip (${months[new Date(Date.now()).getMonth()].toUpperCase()},${new Date(Date.now()).getFullYear()})`+'.pdf'): 'Payslip.pdf'
+        filename: curEmployee? (`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} - PaySlip (${curAtt?.month},${curAtt?.year})`+'.pdf'): 'Payslip.pdf'
      };
 
     const handleViewClick = (e,index,employee)=>{
