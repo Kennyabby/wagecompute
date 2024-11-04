@@ -525,8 +525,6 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
         })
         if (saleDebt && saleDebt>0){
             setSubDebtDue(saleDebt)
-        }else{
-            setSubDebtDue('')
         }
         if (saleShortage){
             setSubShortages(saleShortage)
