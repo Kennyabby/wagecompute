@@ -14,7 +14,7 @@ const Sales = ()=>{
         company, 
         employees,
         sales, setSales, getSales, months,
-        getDate
+        getDate, removeComma, setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
 
     const payPoints = {
@@ -106,7 +106,6 @@ const Sales = ()=>{
                     })
                     ct += Number(ct1)
                 })
-                console.log(value)
                 fields[index] = {
                     ...fields[index], 
                     cashSales: (ct+Number(value))?ct+Number(value):'',
@@ -122,10 +121,7 @@ const Sales = ()=>{
             return [...fields]
         })
     }
-    const removeComma = (value)=>{
-        let numberValue = parseInt(value.replace(/,/g, ''), 10);
-        return numberValue
-    }
+    
     const handleRecoveryFieldChange = ({index, e})=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value        
@@ -133,7 +129,6 @@ const Sales = ()=>{
         // console.log(name, value, recoveryFields)
         if (name === 'recoverySales' && value){
             const selectedText = e.target.selectedOptions[0].text
-            console.log(removeComma(selectedText.split('₦')[1]))
             setRecoveryFields((fields)=>{
                 fields[index] = {...fields[index], [name]:value, recoveryAmount:removeComma(selectedText.split('₦')[1])}
                 return [...fields]
@@ -177,6 +172,9 @@ const Sales = ()=>{
             
             if (resps.err){
                 console.log(resps.mess)
+                setAlertState('info')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
                 setPostStatus('Post Sales')
             }else{
                 setSales(newSales)
@@ -204,6 +202,9 @@ const Sales = ()=>{
         }, "removeDoc", server)
         if (resps.err){
             console.log(resps.mess)
+            setAlertState('info')
+            setAlert(resps.mess)
+            setAlertTimeout(5000)
         }else{
             setIsView(false)
             setCurSale(null)
@@ -230,15 +231,13 @@ const Sales = ()=>{
                     new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
                     Number(field.recoverySales) === sale.createdAt                                               
                 ){
-                    var totalDebtRecovered = sale.totalDebtRecovered?sale.totalDebtRecovered:0
+                    var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
                     sale.record.forEach((record, index)=>{
                         if (record.employeeId === recoveryEmployeeId && record.debt){
                             const alreadyRecovered = record.debtRecovered ? record.debtRecovered : 0
                             record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
-                            // console.log(record.debtRecovered)
                             totalDebtRecovered += Number(field.recoveryAmount)
-                            // if (Number(field.recoverySales) === sale.createdAt){
-                            // }
+                            
                                 
                         }
                     })                                                          
@@ -246,7 +245,6 @@ const Sales = ()=>{
                     updtSale={...sale}
                 }
             })
-            console.log(updtSale)
             const ftrSales = sales.filter((sales)=>{
                 return sales.createdAt !== updtSale.createdAt
             })
@@ -261,6 +259,9 @@ const Sales = ()=>{
               
             if (resps.err){
                 console.log(resps.mess)
+                setAlertState('info')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
                 setRecoveryStatus('Post Recovery')
             }else{                
                 setSales(updatedSales)
@@ -275,7 +276,7 @@ const Sales = ()=>{
     }
     return (
         <>
-            <div className='sales'>
+            <div className='sales'>                
                 <div className='emplist saleslist'>                                       
                     {sales.map((sale, index)=>{
                         const {createdAt, postingDate, totalCashSales, totalDebt, record, 
@@ -660,7 +661,22 @@ const Sales = ()=>{
                             }}
                             onClick={()=>{
                                 if (fields.length){
-                                    addSales()                                
+                                    var ct = 0
+                                    fields.forEach((field)=>{
+                                        const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
+                                        Number(field.debt) + Number(field.shortage)
+
+                                        if (enteredSales === Number(field.totalSales)){
+                                            addSales()                                
+                                        }else{
+                                            ct++
+                                        }
+                                    })
+                                    if (ct){
+                                        setAlertState('error')
+                                        setAlert('Please Make sure your entries match with the total sales before posting')
+                                        setAlertTimeout(5000)
+                                    }
                                 }
                             }}
                         >{postStatus}</div>: 

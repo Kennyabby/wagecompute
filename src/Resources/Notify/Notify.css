@@ -1,0 +1,11 @@
+.notify{
+    position: fixed;
+    top: 20px;
+    right: 5px;
+    display: inline-flex;
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: .8em;
+    background: rgba(245, 245, 162, 0.893);
+    max-width: 300px;
+}

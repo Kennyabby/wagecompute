@@ -7,6 +7,7 @@ import Login from './Components/Login/Login';
 import Profile from './Components/Profile/Profile';
 import Dashboard from './Components/Dashboard/Dashboard';
 import FormPage from './Components/FormPage/FormPage';
+import Notify from './Resources/Notify/Notify';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
@@ -14,6 +15,9 @@ function App() {
   // const SERVER = "http://localhost:3001"
   const SERVER = "https://wageserver.vercel.app"
 
+  const [alert, setAlert] = useState('')
+  const [alertState, setAlertState] = useState(null)
+  const [alertTimeout, setAlertTimeout] = useState(5000)
   const [sessId, setSessID] = useState(null)
   const [companyRecord, setCompanyRecord] = useState(null)
   const [loginMessage, setLoginMessage] = useState('')
@@ -64,6 +68,11 @@ function App() {
     var shuffledList = shuffleList(list)
     const code = shuffledList.slice(6, 12).join('')
     return code
+  }
+
+  const removeComma = (value)=>{
+    let numberValue = parseInt(value.replace(/,/g, ''), 10);
+    return numberValue
   }
 
   const storePath = (path)=>{
@@ -253,17 +262,24 @@ function App() {
           attendance, setAttendance, getAttendance,
           sales, setSales, getSales,
           settings, setSettings, getSettings,
+          setAlert, setAlertState, setAlertTimeout,
           storePath,
           months, monthDays, years,
           path,
-          dashList,
+          dashList, 
           loadPage,
           getImage,
           getDate,
+          removeComma,
           removeSessions,
           sessId,
           company
         }}>
+          <Notify 
+              notifyMessage = {alert}
+              notifyState = {alertState}
+              timeout = {alertTimeout}
+          />
           <Routes>
             <Route path='/' element={<LoadingPage/>}></Route>
             <Route path='/login' element={<Login/>}></Route>
