@@ -357,7 +357,7 @@ const Sales = ()=>{
                         console.log(selectedYear, new Date(slCreatedAt).getFullYear())
                         if ((selectedMonth === months[new Date(slCreatedAt).getMonth()] && 
                             Number(selectedYear) === new Date(slCreatedAt).getFullYear()) || 
-                            Number(selectedYear) === new Date(slCreatedAt).getFullYear()
+                            (Number(selectedYear) === new Date(slCreatedAt).getFullYear() && !selectedMonth)
                         ){
                             return ftrsale
                         }
