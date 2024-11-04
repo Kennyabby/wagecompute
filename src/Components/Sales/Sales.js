@@ -393,9 +393,9 @@ const Sales = ()=>{
                                     <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
                                     <div>Bank: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
                                     <div>Cash: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
-                                    <div>Debts: <b>{'₦'+(Number(totalDebt) - Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
+                                    <div>Debts: <b>{'₦'+(Number(totalDebt)+Number(totalShortage)-Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                     <div>Recovered: <b>{'₦'+(Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
-                                    <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
+                                    {/* <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div> */}
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
                                 </div>
                                 <div 
@@ -601,10 +601,11 @@ const Sales = ()=>{
                                                     ){
                                                         return (
                                                             sale.record.map((record, index)=>{
-                                                                if (record.employeeId === recoveryEmployeeId && (record.debt - record.debtRecovered) > 0){
+                                                                if (record.employeeId === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)) > 0){
                                                                     return (
-                                                                        <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ Number(record.debt - record.debtRecovered).toLocaleString()}`}</option>
+                                                                        <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)).toLocaleString()}`}</option>
                                                                     )
+                                                                    
                                                                 }
                                                             })                                                          
                                                         )
