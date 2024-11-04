@@ -76,7 +76,9 @@
         border-radius: 5px;
         border: solid brown 1.5px;
         font-size: .8em;
+        background: white;
         cursor:pointer;
+        z-index: 2;
         .mainslip{
             width: 90%;
             margin: auto;
