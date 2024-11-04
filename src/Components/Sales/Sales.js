@@ -36,6 +36,7 @@ const Sales = ()=>{
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [recoveryMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
     const [addTotalSales, setAddTotalSales] = useState('')
+    const [deleteCount, setDeleteCount] = useState(0)
     const [addDebt, setAddDebt] = useState('')
     const [salesOpts, setSalesOpts] = useState('sales')
     const [postStatus, setPostStatus] = useState('Post Sales')
@@ -203,23 +204,31 @@ const Sales = ()=>{
     }
 
     const deleteSales = async (sale)=>{
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Sales", 
-            update: {createdAt: sale.createdAt}
-        }, "removeDoc", server)
-        if (resps.err){
-            console.log(resps.mess)
-            setAlertState('info')
-            setAlert(resps.mess)
-            setAlertTimeout(5000)
+        if (deleteCount === sale.createdAt) {
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Sales", 
+                update: {createdAt: sale.createdAt}
+            }, "removeDoc", server)
+            if (resps.err){
+                console.log(resps.mess)
+                setAlertState('info')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
+            }else{
+                setIsView(false)
+                setCurSale(null)
+                setFields([])
+                setAddEmployeeId('')
+                setRecoveryEmployeeId('')            
+                setAlertState('info')
+                setAlert('Sales Delete Successfully!')
+                setDeleteCount(0)
+                setAlertTimeout(5000)
+                getSales(company)
+            }
         }else{
-            setIsView(false)
-            setCurSale(null)
-            setFields([])
-            setAddEmployeeId('')
-            setRecoveryEmployeeId('')
-            getSales(company)
+            setDeleteCount(sale.createdAt)
         }
     }
     const handleSalesOpts = (e)=>{
@@ -356,15 +365,20 @@ const Sales = ()=>{
                                     <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
                                 </div>
-                                {/* <div 
+                                <div 
                                     className='edit'
-                                    name='delete'
-                                    onClick={()=>{
+                                    name='delete'         
+                                    style={{color:'red'}}                           
+                                    onClick={()=>{                                        
+                                        setAlertState('info')
+                                        setAlert('You are about to delete the selected Sales. Please Delete again if you are sure!')
+                                        setAlertTimeout(5000)
+                                                                                    
                                         deleteSales(sale)
                                     }}
                                 >
                                     Delete
-                                </div> */}
+                                </div>
                             </div>
                         )
                   })}
