@@ -30,6 +30,8 @@ const Sales = ()=>{
         'accomodation':{...payPoints}
     }
     const [showReport, setShowReport] = useState(false)
+    const [reportSales, setReportSales] = useState(null)
+    const [isMultiple, setIsMultiple] = useState(false)
     const [selectedMonth, setSelectedMonth] = useState(months[new Date(Date.now()).getMonth()])
     const [selectedYear, setSelectedYear] = useState(new Date(Date.now()).getFullYear())
     const [addEmployeeId, setAddEmployeeId] = useState('')
@@ -223,7 +225,7 @@ const Sales = ()=>{
                 setFields([])
                 setAddEmployeeId('')
                 setRecoveryEmployeeId('')            
-                setAlertState('info')
+                setAlertState('success')
                 setAlert('Sales Deleted Successfully!')
                 setDeleteCount(0)
                 setAlertTimeout(5000)
@@ -300,10 +302,26 @@ const Sales = ()=>{
         <>
             <div className='sales'>         
                 {showReport && <SalesReport
-
+                    reportSales = {reportSales}
+                    multiple={isMultiple}
+                    setShowReport={(value)=>{
+                        setShowReport(value)
+                        setReportSales(null)
+                    }}                    
+                    selectedMonth={selectedMonth}
+                    selectedYear={selectedYear}
                 />}       
                 <div className='emplist saleslist'>    
-                    {<FaTableCells className='allslrepicon'/>}
+                    <FaTableCells                         
+                        className='allslrepicon'
+                        onClick={()=>{
+                            setReportSales(sales)
+                            setIsMultiple(true)
+                            if (selectedMonth && selectedYear){                                
+                                setShowReport(true)
+                            }
+                        }}
+                    />
                     <div className='payeeinpcov'>
                         <div className='inpcov formpad'>
                             <div>Month</div>
@@ -353,8 +371,7 @@ const Sales = ()=>{
                         </div>
                     </div>                                   
                     {sales.filter((ftrsale)=>{
-                        const slCreatedAt = ftrsale.createdAt
-                        console.log(selectedYear, new Date(slCreatedAt).getFullYear())
+                        const slCreatedAt = ftrsale.postingDate
                         if ((selectedMonth === months[new Date(slCreatedAt).getMonth()] && 
                             Number(selectedYear) === new Date(slCreatedAt).getFullYear()) || 
                             (Number(selectedYear) === new Date(slCreatedAt).getFullYear() && !selectedMonth)
@@ -400,7 +417,17 @@ const Sales = ()=>{
                   })}
                 </div>
                 <div className='empview salesview'>
-                    {isView && salesOpts==='sales' && <FaTableCells className='slrepicon'/>}
+                    {isView && salesOpts==='sales' && 
+                        <FaTableCells                         
+                            className='slrepicon'
+                            onClick={()=>{
+                                setReportSales(curSale)
+                                setIsMultiple(false)
+                                setShowReport(true)
+                                
+                            }}
+                        />
+                    }
                     {salesOpts === 'sales' && ( (fields.length && !isView) ? 
                         <RxReset
                             className='slsadd'
@@ -574,7 +601,6 @@ const Sales = ()=>{
                                                     ){
                                                         return (
                                                             sale.record.map((record, index)=>{
-                                                                console.log(record.debt, record.debtRecovered)
                                                                 if (record.employeeId === recoveryEmployeeId && (record.debt - record.debtRecovered) > 0){
                                                                     return (
                                                                         <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ Number(record.debt - record.debtRecovered).toLocaleString()}`}</option>
@@ -750,13 +776,16 @@ const Sales = ()=>{
                             }}
                             onClick={()=>{
                                 if (fields.length){
+                                    var rt = 0
                                     var ct = 0
                                     fields.forEach((field)=>{
                                         const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
                                         Number(field.debt) + Number(field.shortage)
-
                                         if (enteredSales === Number(field.totalSales)){
-                                            addSales()                                
+                                            rt++
+                                            if (rt===fields.length){
+                                                addSales()                                
+                                            }
                                         }else{
                                             ct++
                                         }
