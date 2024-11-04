@@ -182,6 +182,9 @@ const Sales = ()=>{
                 setIsView(true)
                 setFields([...(newSale.record)])
                 getSales(company)
+                setAlertState('success')
+                setAlert('Sales Posted Successfully!')
+                setAlertTimeout(5000)
                 setPostStatus('Post Sales')
             }
         }
