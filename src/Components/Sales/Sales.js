@@ -293,6 +293,7 @@ const Sales = ()=>{
                                     <div>Bank: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
                                     <div>Cash: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
                                     <div>Debts: <b>{'₦'+(Number(totalDebt) - Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
+                                    <div>Recovered: <b>{'₦'+(Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                     <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
                                 </div>
