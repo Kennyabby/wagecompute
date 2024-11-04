@@ -77,10 +77,10 @@ const Sales = ()=>{
                 Object.keys(salesUnits).forEach((salesUnit)=>{
                     var ct1 = 0                    
                     Object.keys(fields[index][salesUnit]).forEach((payPoint)=>{                    
-                        if(category!==payPoint){                
+                        if(category!==payPoint && payPoint!=='cash'){                
                             ct1 += Number(fields[index][salesUnit][payPoint])
                         }else{
-                            if (name !== salesUnit) {
+                            if (name !== salesUnit && payPoint!=='cash') {
                                 ct1 += Number(fields[index][salesUnit][payPoint])
                             }
                         }
@@ -100,16 +100,13 @@ const Sales = ()=>{
                 Object.keys(salesUnits).forEach((salesUnit)=>{
                     var ct1 = 0                    
                     Object.keys(fields[index][salesUnit]).forEach((payPoint)=>{                    
-                        if(category!==payPoint){                
+                        if(name !== salesUnit && payPoint === category){                
                             ct1 += Number(fields[index][salesUnit][payPoint])
-                        }else{
-                            if (name !== salesUnit) {
-                                ct1 += Number(fields[index][salesUnit][payPoint])
-                            }
                         }
                     })
                     ct += Number(ct1)
                 })
+                console.log(value)
                 fields[index] = {
                     ...fields[index], 
                     cashSales: (ct+Number(value))?ct+Number(value):'',
@@ -230,16 +227,18 @@ const Sales = ()=>{
             sales.forEach((sale,index)=>{
                 if (                                                        
                     months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                    new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                    new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
+                    Number(field.recoverySales) === sale.createdAt                                               
                 ){
                     var totalDebtRecovered = sale.totalDebtRecovered?sale.totalDebtRecovered:0
                     sale.record.forEach((record, index)=>{
                         if (record.employeeId === recoveryEmployeeId && record.debt){
-                            if (Number(field.recoverySales) === sale.createdAt){
-                                record.debtRecovered = field.recoveryAmount
-                                console.log(record.debtRecovered)
-                                totalDebtRecovered += Number(field.recoveryAmount)
-                            }
+                            const alreadyRecovered = record.debtRecovered ? record.debtRecovered : 0
+                            record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
+                            // console.log(record.debtRecovered)
+                            totalDebtRecovered += Number(field.recoveryAmount)
+                            // if (Number(field.recoverySales) === sale.createdAt){
+                            // }
                                 
                         }
                     })                                                          
@@ -247,6 +246,7 @@ const Sales = ()=>{
                     updtSale={...sale}
                 }
             })
+            console.log(updtSale)
             const ftrSales = sales.filter((sales)=>{
                 return sales.createdAt !== updtSale.createdAt
             })
@@ -289,9 +289,9 @@ const Sales = ()=>{
                             >
                                 <div className='dets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                    <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
-                                    <div>Bank Sales: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
-                                    <div>Cash Sales: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
+                                    <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
+                                    <div>Bank: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
+                                    <div>Cash: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
                                     <div>Debts: <b>{'₦'+(Number(totalDebt) - Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                     <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
@@ -486,7 +486,7 @@ const Sales = ()=>{
                                                                 console.log(record.debt, record.debtRecovered)
                                                                 if (record.employeeId === recoveryEmployeeId && (record.debt - record.debtRecovered) > 0){
                                                                     return (
-                                                                        <option key={index} value={sale.createdAt}>{`${sale.postingDate} - Debt: ${'₦'+ Number(record.debt - record.debtRecovered).toLocaleString()}`}</option>
+                                                                        <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ Number(record.debt - record.debtRecovered).toLocaleString()}`}</option>
                                                                     )
                                                                 }
                                                             })                                                          
