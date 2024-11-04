@@ -10,6 +10,24 @@
 .salesview{
     width: 63%;
 }
+.slrepicon{
+    position: absolute;
+    right: 35px;
+    top: 15px;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+.allslrepicon{
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+.sldets{
+    width: 95%;
+    font-size: .9em;
+}
 .salesfm{
     width: 90%;
     height: 75%;
