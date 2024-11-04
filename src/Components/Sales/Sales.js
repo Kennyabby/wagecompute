@@ -205,6 +205,8 @@ const Sales = ()=>{
 
     const deleteSales = async (sale)=>{
         if (deleteCount === sale.createdAt) {
+            setAlertState('info')
+            setAlert('Deleting...')
             const resps = await fetchServer("POST", {
                 database: company,
                 collection: "Sales", 
@@ -222,13 +224,16 @@ const Sales = ()=>{
                 setAddEmployeeId('')
                 setRecoveryEmployeeId('')            
                 setAlertState('info')
-                setAlert('Sales Delete Successfully!')
+                setAlert('Sales Deleted Successfully!')
                 setDeleteCount(0)
                 setAlertTimeout(5000)
                 getSales(company)
             }
         }else{
             setDeleteCount(sale.createdAt)
+            setTimeout(()=>{
+                setDeleteCount(0)
+            },12000)
         }
     }
     const handleSalesOpts = (e)=>{
