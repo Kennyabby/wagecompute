@@ -315,6 +315,7 @@ const Sales = ()=>{
                                 value={selectedMonth}
                                 onChange={(e)=>{
                                     setSelectedMonth(e.target.value)
+                                    setCurSale(null)
                                 }}
                             >
                                 <option value={''}>Select Month</option>
@@ -337,6 +338,7 @@ const Sales = ()=>{
                                 value={selectedYear}
                                 onChange={(e)=>{
                                     setSelectedYear(e.target.value)
+                                    setCurSale(null)
                                 }}
                             >
                                 <option value={''}>Select Year</option>
@@ -350,7 +352,16 @@ const Sales = ()=>{
                             </select>
                         </div>
                     </div>                                   
-                    {sales.map((sale, index)=>{
+                    {sales.filter((ftrsale)=>{
+                        const slCreatedAt = ftrsale.createdAt
+                        console.log(selectedYear, new Date(slCreatedAt).getFullYear())
+                        if ((selectedMonth === months[new Date(slCreatedAt).getMonth()] && 
+                            Number(selectedYear) === new Date(slCreatedAt).getFullYear()) || 
+                            Number(selectedYear) === new Date(slCreatedAt).getFullYear()
+                        ){
+                            return ftrsale
+                        }
+                    }).map((sale, index)=>{
                         const {createdAt, postingDate, totalCashSales, totalDebt, record, 
                             totalShortage, totalDebtRecovered, totalBankSales 
                         } = sale 
