@@ -2,6 +2,8 @@ import './Sales.css'
 import { useState, useEffect, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaTableCells } from "react-icons/fa6";
+import SalesReport from './SalesReport/SalesReport';
 import { MdAdd } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
@@ -13,7 +15,7 @@ const Sales = ()=>{
         server, 
         company, 
         employees,
-        sales, setSales, getSales, months,
+        sales, setSales, getSales, months, years,
         getDate, removeComma, setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
 
@@ -27,6 +29,9 @@ const Sales = ()=>{
         'kitchen':{...payPoints}, 'vip':{...payPoints}, 
         'accomodation':{...payPoints}
     }
+    const [showReport, setShowReport] = useState(false)
+    const [selectedMonth, setSelectedMonth] = useState(months[new Date(Date.now()).getMonth()])
+    const [selectedYear, setSelectedYear] = useState(new Date(Date.now()).getFullYear())
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [recoveryMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
@@ -279,8 +284,58 @@ const Sales = ()=>{
     }
     return (
         <>
-            <div className='sales'>                
-                <div className='emplist saleslist'>                                       
+            <div className='sales'>         
+                {showReport && <SalesReport
+
+                />}       
+                <div className='emplist saleslist'>    
+                    {<FaTableCells className='allslrepicon'/>}
+                    <div className='payeeinpcov'>
+                        <div className='inpcov formpad'>
+                            <div>Month</div>
+                            <select 
+                                className='forminp prinp'
+                                name='selectedMonth'
+                                type='text'
+                                placeholder='Select Month'
+                                value={selectedMonth}
+                                onChange={(e)=>{
+                                    setSelectedMonth(e.target.value)
+                                }}
+                            >
+                                <option value={''}>Select Month</option>
+                                {months.map((month, index)=>{
+                                    return(
+                                        <option key={index} value={month}>
+                                            {month}
+                                        </option>
+                                    )
+                                })}
+                            </select>
+                        </div>
+                        <div className='inpcov formpad'>
+                            <div>Year</div>
+                            <select 
+                                className='forminp prinp'
+                                name='selectedYear'
+                                type='text'
+                                placeholder='Select Year'
+                                value={selectedYear}
+                                onChange={(e)=>{
+                                    setSelectedYear(e.target.value)
+                                }}
+                            >
+                                <option value={''}>Select Year</option>
+                                {years.map((year, index)=>{
+                                    return(
+                                        <option key={index} value={year}>
+                                            {year}
+                                        </option>
+                                    )
+                                })}
+                            </select>
+                        </div>
+                    </div>                                   
                     {sales.map((sale, index)=>{
                         const {createdAt, postingDate, totalCashSales, totalDebt, record, 
                             totalShortage, totalDebtRecovered, totalBankSales 
@@ -291,7 +346,7 @@ const Sales = ()=>{
                                     handleViewClick(e,index,sale)
                                 }}
                             >
-                                <div className='dets'>
+                                <div className='dets sldets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
                                     <div>Bank: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
@@ -301,7 +356,7 @@ const Sales = ()=>{
                                     <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div>
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
                                 </div>
-                                <div 
+                                {/* <div 
                                     className='edit'
                                     name='delete'
                                     onClick={()=>{
@@ -309,12 +364,13 @@ const Sales = ()=>{
                                     }}
                                 >
                                     Delete
-                                </div>
+                                </div> */}
                             </div>
                         )
                   })}
                 </div>
                 <div className='empview salesview'>
+                    {isView && salesOpts==='sales' && <FaTableCells className='slrepicon'/>}
                     {salesOpts === 'sales' && ( (fields.length && !isView) ? 
                         <RxReset
                             className='slsadd'
