@@ -2,11 +2,32 @@
     position: fixed;
     top: 20px;
     right: 5px;
-    display: inline-flex;
-    padding: 7px 10px;
-    border-radius: 10px;
-    font-size: .8em;
-    background: rgba(245, 245, 162, 0.893);
-    max-width: 300px;
     z-index: 2;
+    max-width: 300px;
+    border-radius: 10px;
+    background: rgba(245, 245, 162, 0.893);
+    padding: 7px 10px;
+}
+.notifymess{
+    display: inline-flex;
+    font-size: .8em;
+}
+.notifyactn{
+    display: inline-flex;
+    width: 100%;
+    justify-content: space-around;
+    font-size: .7em;
+    margin: 10px auto;
+    div{
+        background: white;
+        padding: 5px 7px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+}
+.notifycl{
+    border: solid red 1.5px;
+}
+.notifyacp{
+    border: solid greenyellow 1.5px;
 }

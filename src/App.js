@@ -18,6 +18,8 @@ function App() {
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
   const [alertTimeout, setAlertTimeout] = useState(5000)
+  const [actionMessage, setActionMessage] = useState('')
+  const [action, setAction] = useState('')
   const [sessId, setSessID] = useState(null)
   const [companyRecord, setCompanyRecord] = useState(null)
   const [loginMessage, setLoginMessage] = useState('')
@@ -263,6 +265,8 @@ function App() {
           sales, setSales, getSales,
           settings, setSettings, getSettings,
           setAlert, setAlertState, setAlertTimeout,
+          alert, alertState, alertTimeout, actionMessage, 
+          setAction, setActionMessage,
           storePath,
           months, monthDays, years,
           path,
@@ -275,11 +279,11 @@ function App() {
           sessId,
           company
         }}>
-          <Notify 
+          {!actionMessage && <Notify 
               notifyMessage = {alert}
               notifyState = {alertState}
-              timeout = {alertTimeout}
-          />
+              timeout = {alertTimeout}             
+          />}
           <Routes>
             <Route path='/' element={<LoadingPage/>}></Route>
             <Route path='/login' element={<Login/>}></Route>
