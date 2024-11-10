@@ -21,6 +21,12 @@ const SalesReport = ({
         'accomodation':{...payPoints}
     }
     const targetRef = useRef(null)
+    const [reportEmployees, setReportEmployees] = useState([])
+    const [reportAllSales, setReportAllSales] = useState({})
+    const [reportAllPayPoints, setReportAllPaypoints] = useState({})
+    const [reportAllSalesUnits, setReportAllSalesUnits] = useState({})
+    const [reportAllSalesDebts, setReportAllSalesDebts] = useState({})
+
     const {storePath,
         getDate,
         company, companyRecord,
@@ -33,6 +39,91 @@ const SalesReport = ({
         const invdate = Date.now()
         return "INV_"+company+invdate
     }
+
+    useEffect(()=>{
+        var reportEmps = []
+        reportSales.record.forEach((sale)=>{
+             employees.forEach((emp)=>{
+                 if (emp.i_d === sale.employeeId && !reportEmps.includes(emp)){
+                     reportEmps = reportEmps.concat(emp)
+                     setReportEmployees((reportEmployees)=>{
+                         return [...reportEmployees,emp]
+                     })                        
+                 }
+             })                            
+         })
+     
+         employees.forEach((emp)=>{
+             var sumBankSales = 0
+             var sumCashSales = 0
+             var sumDebt = 0
+             var sumShortage = 0
+             var sumDebtRecovered = 0
+             var allDebt = 0
+             var allSales = 0
+             var allDebtRecovered = 0
+             reportSales.record.forEach((sale)=>{
+                 if (emp.i_d === sale.employeeId){
+                     sumBankSales += Number(sale.bankSales)
+                     sumCashSales += Number(sale.cashSales)
+                     sumDebt += Number(sale.debt)
+                     sumShortage += Number(sale.shortage)
+                     sumDebtRecovered += Number(sale.debtRecovered ? sale.debtRecovered: 0)
+                     allSales += Number(sale.bankSales) + Number(sale.cashSales) + Number(sale.debt) + Number(sale.shortage)
+                     allDebt += Number(sale.debt) + Number(sale.shortage)
+                     allDebtRecovered += Number(sale.debtRecovered ? sale.debtRecovered: 0)
+                 }
+             })                            
+             setReportAllSales((reportAllSales)=>{
+                 return {...reportAllSales, [emp.i_d]:{allSales,allDebt,allDebtRecovered}}
+             })
+         })
+   
+         var newPayPoints = {}
+         Object.keys(payPoints).forEach((payPoint)=>{
+             newPayPoints[payPoint]={}               
+             reportSales.record.forEach((record)=>{                                                        
+                 employees.forEach((emp)=>{
+                     if (record.employeeId === emp.i_d){
+                         newPayPoints[payPoint][emp.i_d] = 0
+                         var totalpaypoint = 0
+                         reportSales.record.forEach((sale)=>{
+                             if (emp.i_d === sale.employeeId){
+                                 Object.keys(salesUnits).forEach((unit)=>{
+                                     totalpaypoint += Number(sale[unit][payPoint])
+                                 })                         
+                             }
+                         })                                
+                         newPayPoints[payPoint][emp.i_d] = totalpaypoint                                                           
+                     }
+                 })                    
+             })     
+         })
+         setReportAllPaypoints(newPayPoints) 
+         
+         var newSaleUnits = {}
+         Object.keys(salesUnits).forEach((saleunit)=>{
+             newSaleUnits[saleunit] = {}
+             Object.keys(payPoints).forEach((paypoint)=>{
+                 newSaleUnits[saleunit][paypoint] = 0
+                 reportSales.record.forEach((record)=>{
+                     newSaleUnits[saleunit][paypoint] += Number(record[saleunit][paypoint])
+                 })
+             })
+         })
+         setReportAllSalesUnits(newSaleUnits)
+
+         var newDebtUnits = {}
+         Object.keys(salesUnits).forEach((saleunit)=>{
+             reportSales.record.forEach((record)=>{
+                 if (record.salesPoint === saleunit){
+                     newDebtUnits[saleunit] = Number(record.debt) + Number(record.shortage)
+                 }
+             })               
+         })
+         setReportAllSalesDebts(newDebtUnits)
+    },[reportSales])
+    
     const options = {
         // default is `save`
         // method: 'open',
@@ -106,7 +197,7 @@ const SalesReport = ({
                                                 <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                 {/* <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p> */}
-                                                <p className='billfrompayee'>{`SALES FOR `}<b>{`${!multiple && new Date(reportSales.createdAt).getDate()} ${selectedMonth}, ${selectedYear}.`}</b></p>                                                                                   
+                                                <p className='billfrompayee'>{`SALES FOR `}<b>{`${!multiple ? new Date(reportSales.createdAt).getDate() : ''} ${selectedMonth}, ${selectedYear}.`}</b></p>                                                                                   
                                                 <p className='billfrompayee'>Created Date: <b>{getDate()}</b></p>
                                             </div>
                                        </div>
@@ -117,81 +208,50 @@ const SalesReport = ({
                                             <thead>
                                                 <tr>
                                                     <th><h8 className='theader'>NAMES</h8></th>
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
+                                                            <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
+                                                        )                                                        
                                                     })}
                                                     <th><h8 className='theader'>TOTAL</h8></th>
-                                                    {/* <th><h8 className='theader'>MODE OF PAYMENT</h8></th> */}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
                                                     <td className='ttrow'> </td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>₦</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
+                                                            <th><h8 className='ttrow'>{'₦'}</h8></th>                                                        
+                                                        )                                                                                                                
+                                                    })}                                                    
                                                     <td className='ttrow'>₦</td>                                                        
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>SALES</td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    <td className='ttrow'>SALES</td>
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>{(Number(sale.cashSales)+Number(sale.bankSales)+Number(sale.debt)+Number(sale.shortage)).toLocaleString()}</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)+Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}                                                        
+                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allSales']).toLocaleString()}</td>
+                                                        )                                                        
+                                                    })} 
+                                                    {<td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)+Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}                                                        
                                                 </tr>
                                                 <tr>
                                                     <td className='ttrow'>DEBT</td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>{(Number(sale.debt)+Number(sale.shortage)).toLocaleString()}</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
+                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                        )                                                        
                                                     })}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
+                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
                                                 </tr>
                                                 <tr>
                                                     <td className='ttrow'>TOTAL</td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>{(Number(sale.cashSales)+Number(sale.bankSales)).toLocaleString()}</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allSales'] - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                        )                                                                
+                                                    })}                                                   
+                                                    {<td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>
@@ -200,35 +260,22 @@ const SalesReport = ({
                                             <thead>
                                                 <tr>
                                                     <th><h8 className='theader'>NAMES</h8></th>
-                                                    {!multiple && reportSales.record.map((sale)=>{
-                                                        return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
+                                                        {reportEmployees.map((emp)=>{
+                                                            return(
+                                                                <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
+                                                            )                                                        
+                                                        })}
                                                     <th><h8 className='theader'>TOTAL</h8></th>
-                                                    {/* <th><h8 className='theader'>MODE OF PAYMENT</h8></th> */}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                    <td className='ttrow'>PAYMENT POINT</td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                <td className='ttrow'>PAYMENT POINT</td>                                                        
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>₦</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
+                                                            <th><h8 className='ttrow'>{'₦'}</h8></th>                                                        
+                                                        )                                                                                                                
+                                                    })}                                                    
                                                     <td className='ttrow'>₦</td>                                                        
                                                 </tr>
                                                 {Object.keys(payPoints).map((payPoint)=>{
@@ -236,46 +283,26 @@ const SalesReport = ({
                                                     return (
                                                         <tr>
                                                             <td className='ttrow'>{payPoint.toUpperCase()}</td>                                                        
-                                                            {!multiple && reportSales.record.map((record)=>{                                                        
-                                                                return (
-                                                                    employees.map((emp)=>{
-                                                                        if (record.employeeId === emp.i_d){
-                                                                            return(
-                                                                                reportSales.record.map((sale)=>{
-                                                                                    if (emp.i_d === sale.employeeId){
-                                                                                        var totalpaypoint = 0
-                                                                                        Object.keys(salesUnits).map((unit)=>{
-                                                                                            totalpaypoint += Number(sale[unit][payPoint])
-                                                                                        })
-                                                                                        totalPaypointAmount+= totalpaypoint
-                                                                                        return(
-                                                                                            <td className='ttrow'>{(totalpaypoint).toLocaleString()}</td>
-                                                                                        )
-                                                                                    }
-                                                                                })
-                                                                            )
-                                                                        }
-                                                                    })
+                                                            {reportEmployees.map((emp)=>{
+                                                                totalPaypointAmount += reportAllPayPoints[payPoint][emp.i_d]
+                                                                return(
+                                                                    <td className='ttrow'>{(reportAllPayPoints[payPoint][emp.i_d]).toLocaleString()}</td>                                                                    
                                                                 )
-                                                            })}
-                                                            {!multiple && <td className='ttrow'>{(totalPaypointAmount).toLocaleString()}</td>}                                                        
+                                                                
+                                                            })}                                                                                                                        
+                                                            <td className='ttrow'>{(totalPaypointAmount).toLocaleString()}</td>                                                       
                                                         </tr>
                                                     )
                                                 })}                                               
                                                 <tr>
-                                                    <td className='ttrow'>TOTAL</td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    <td className='ttrow'>TOTAL</td>  
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>{(Number(sale.cashSales)+Number(sale.bankSales)).toLocaleString()}</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allSales'] - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                        )                                                                
+                                                    })}                                                      
+                                                    
+                                                    {<td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>
@@ -292,7 +319,6 @@ const SalesReport = ({
                                                     <th><h8 className='theader'>SUB TOTAL</h8></th>
                                                     <th><h8 className='theader'>DEBT</h8></th>
                                                     <th><h8 className='theader'>TOTAL</h8></th>
-                                                    {/* <th><h8 className='theader'>MODE OF PAYMENT</h8></th> */}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -314,100 +340,40 @@ const SalesReport = ({
                                                     return (
                                                         <tr>
                                                             <td className='ttrow'>{salesunit.toUpperCase()}</td>                                                        
-                                                            {Object.keys(payPoints).map((paypoint)=>{
-                                                                var totalPaypointAmount = 0
-                                                                
-                                                                !multiple && reportSales.record.forEach((sale)=>{
-                                                                    totalPaypointAmount += Number(sale[salesunit][paypoint])                                                                            
-                                                                })
-                                                                totalSaleUnitAmount += totalPaypointAmount
-                                                                return (
-                                                                    <td className='ttrow'>{totalPaypointAmount.toLocaleString()}</td>                                                        
-                                                                )
+                                                            {Object.keys(payPoints).map((paypoint)=>{  
+                                                                if (reportAllSalesUnits[salesunit]){
+                                                                    totalSaleUnitAmount += reportAllSalesUnits[salesunit][paypoint]                                                            
+                                                                    return (
+                                                                        <td className='ttrow'>{reportAllSalesUnits[salesunit][paypoint].toLocaleString()}</td>                                                        
+                                                                    )
+                                                                }else{
+                                                                    return (
+                                                                        <td className='ttrow'>0</td>                                                        
+                                                                    )
+                                                                } 
                                                             })}
-                                                            {!multiple && <td className='ttrow'>{(totalSaleUnitAmount).toLocaleString()}</td>}                                                        
-                                                            {!multiple &&                                  
-                                                                reportSales.record.map((sale1)=>{
-                                                                    var ct = 0
-                                                                    
-                                                                    return (
-                                                                        Object.keys(salesUnits).map((salesunit1)=>{
-                                                                            var sum = 0         
-                                                                            if (salesunit1===salesunit){
-                                                                                Object.keys(payPoints).forEach((payPoint)=>{
-                                                                                    sum += Number(sale1[salesunit1][payPoint])
-                                                                                })
-                                                                                if (sum && !cursaleunits.includes(salesunit1)){
-                                                                                    ct++
-                                                                                    cursaleunits = cursaleunits.concat(salesunit1)
-                                                                                    if (sum){
-                                                                                        return (
-                                                                                            <td className='ttrow'>{(Number(sale1.debt)+Number(sale1.shortage)).toLocaleString()}</td>
-                                                                                        )
-                                                                                    }                                                                                
-                                                                                }
-                                                                            }
-                                                                        })  
-                                                                    )                                                         
-                                                                })                           
-                                                            }                                                        
-                                                            {!multiple &&                                  
-                                                                reportSales.record.map((sale1)=>{
-                                                                    var ct = 0
-                                                                    
-                                                                    return (
-                                                                        Object.keys(salesUnits).map((salesunit1)=>{
-                                                                            var sum = 0         
-                                                                            if (salesunit1===salesunit){
-                                                                                Object.keys(payPoints).forEach((payPoint)=>{
-                                                                                    sum += Number(sale1[salesunit1][payPoint])
-                                                                                })
-                                                                                if (sum && !cursaleunits1.includes(salesunit1)){
-                                                                                    ct++
-                                                                                    cursaleunits1 = cursaleunits.concat(salesunit1)
-                                                                                    if (sum){
-                                                                                        return (
-                                                                                            <td className='ttrow'>{(Number(sale1.debt)+Number(sale1.shortage)+totalSaleUnitAmount).toLocaleString()}</td>
-                                                                                        )
-                                                                                    }                                                                                
-                                                                                }
-                                                                            }
-                                                                        })  
-                                                                    )                                                         
-                                                                })                           
-                                                            }                                                        
-                                                            {/* {!multiple && <td className='ttrow'>{(reportSales.totalDebt).toLocaleString()}</td>}                                                         */}
+                                                            {<td className='ttrow'>{(totalSaleUnitAmount).toLocaleString()}</td>}                                                        
+                                                            {reportAllSalesDebts[salesunit]!==undefined && <td className='ttrow'>{(reportAllSalesDebts[salesunit]).toLocaleString()}</td>}                                                        
+                                                            {reportAllSalesDebts[salesunit]!==undefined && <td className='ttrow'>{(totalSaleUnitAmount + reportAllSalesDebts[salesunit]).toLocaleString()}</td>}                                                                                                                                                                            
                                                         </tr>
                                                     )
                                                 })}                                               
                                                 <tr>
                                                     <td className='ttrow'>TOTAL</td>  
-                                                    {Object.keys(payPoints).map((payPoint)=>{
+                                                    {Object.keys(payPoints).map((paypoint)=>{
                                                         var totalPaypointAmount = 0
-                                                        {!multiple && reportSales.record.forEach((record)=>{                                                        
-                                                            employees.forEach((emp)=>{
-                                                                if (record.employeeId === emp.i_d){
-                                                                    reportSales.record.map((sale)=>{
-                                                                        if (emp.i_d === sale.employeeId){
-                                                                            var totalpaypoint = 0
-                                                                            Object.keys(salesUnits).map((unit)=>{
-                                                                                totalpaypoint += Number(sale[unit][payPoint])
-                                                                            })
-                                                                            totalPaypointAmount += totalpaypoint                                                                            
-                                                                        }
-                                                                    })
-                                                                    
-                                                                }
-                                                            })
-                                                            
-                                                        })}
+                                                        Object.keys(salesUnits).forEach((salesunit)=>{
+                                                            if (reportAllSalesUnits[salesunit]){
+                                                                totalPaypointAmount += reportAllSalesUnits[salesunit][paypoint]
+                                                            }
+                                                        })
                                                         return (                                                            
-                                                            !multiple && <td className='ttrow'>{(totalPaypointAmount).toLocaleString()}</td>
-                                                        )
+                                                            <td className='ttrow'>{(totalPaypointAmount).toLocaleString()}</td>
+                                                        )                                                                                                                
                                                     })}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)+Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                    {<td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
+                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)+Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>
@@ -416,81 +382,52 @@ const SalesReport = ({
                                             <thead>
                                                 <tr>
                                                     <th><h8 className='theader'>NAMES</h8></th>
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
+                                                            <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
+                                                        )                                                                
                                                     })}
+                                                    
                                                     <th><h8 className='theader'>TOTAL</h8></th>
                                                     {/* <th><h8 className='theader'>MODE OF PAYMENT</h8></th> */}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                    <td className='ttrow'> </td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    <td className='ttrow'> </td>   
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>₦</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
+                                                            <td className='ttrow'>₦</td>
+                                                        )                                                                
+                                                    })}                                                                                                         
                                                     <td className='ttrow'>₦</td>                                                        
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>DEBT</td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    <td className='ttrow'>DEBT</td> 
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>{(Number(sale.debt)+Number(sale.shortage)).toLocaleString()}</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}                                                        
+                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                        )                                                        
+                                                    })}                                                                                                           
+                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}                                                        
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>DEBTS RECOVERED</td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    <td className='ttrow'>DEBTS RECOVERED</td>     
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>{(Number(sale.debtRecovered)).toLocaleString()}</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
-                                                    })}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
+                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allDebtRecovered']).toLocaleString()}</td>
+                                                        )                                                        
+                                                    })}                                                                                                        
+                                                    {<td className='ttrow'>{(Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
                                                 </tr>
                                                 <tr>
                                                     <td className='ttrow'>OUTSTANDING DEBT</td>                                                        
-                                                    {!multiple && reportSales.record.map((sale)=>{
+                                                    {reportEmployees.map((emp)=>{
                                                         return(
-                                                            employees.map((emp)=>{
-                                                                if (emp.i_d === sale.employeeId){
-                                                                    return(
-                                                                        <td className='ttrow'>{(Number(sale.debt)+Number(sale.shortage)-Number(sale.debtRecovered)).toLocaleString()}</td>
-                                                                    )
-                                                                }
-                                                            })
-                                                        )
+                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allDebt'] - reportAllSales[emp.i_d]['allDebtRecovered']).toLocaleString()}</td>
+                                                        )                                                        
                                                     })}
-                                                    {!multiple && <td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)-Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
+                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)-Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>

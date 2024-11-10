@@ -4,19 +4,21 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
 import SalesReport from './SalesReport/SalesReport';
+import Notify from '../../Resources/Notify/Notify';
 import { MdAdd } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 
 const Sales = ()=>{
-
     const {storePath, 
         fetchServer, 
         server, 
         company, 
         employees,
         sales, setSales, getSales, months, years,
-        getDate, removeComma, setAlert, setAlertState, setAlertTimeout
+        getDate, removeComma, 
+        alert,alertState,alertTimeout,actionMessage,
+        setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
 
     const payPoints = {
@@ -50,6 +52,7 @@ const Sales = ()=>{
         cashSales:'',
         bankSales:'',
         debt:'',
+        salesPoint:'',
         shortage:'',
         debtRecovered:'',
         ...salesUnits
@@ -146,6 +149,19 @@ const Sales = ()=>{
                 return [...fields]
             })
         }  
+    }
+
+    const acceptSalesDebt = ()=>{
+        setFields((fields)=>{
+            fields.forEach((field)=>{
+                const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
+                const debtDue = Number(field.totalSales) - netTotal 
+                if (debtDue){
+                    field.debt = Number(field.debt) + debtDue
+                }
+            })
+            return [...fields]
+        })
     }
     const addSales = async ()=> { 
         if (postingDate){
@@ -309,12 +325,46 @@ const Sales = ()=>{
                     }}                    
                     selectedMonth={selectedMonth}
                     selectedYear={selectedYear}
-                />}       
+                />}    
+                {actionMessage && <Notify        
+                    notifyMessage={alert}
+                    notifyState = {alertState}
+                    timeout = {alertTimeout}
+                    actionMessage={actionMessage}
+                    action={()=>{
+                        setActionMessage('Calculating...')
+                        acceptSalesDebt()
+                    }}
+                />}   
                 <div className='emplist saleslist'>    
                     <FaTableCells                         
                         className='allslrepicon'
                         onClick={()=>{
-                            setReportSales(sales)
+                            var filteredReportSales = {                                                                
+                                totalCashSales:0,
+                                totalBankSales:0,
+                                totalDebt:0,
+                                totalShortage:0,
+                                totalDebtRecovered:0,
+                                record: []
+                            }
+                            sales.filter((ftrsale)=>{
+                                const slPostingDate = ftrsale.postingDate
+                                if ((selectedMonth === months[new Date(slPostingDate).getMonth()] && 
+                                    Number(selectedYear) === new Date(slPostingDate).getFullYear()) || 
+                                    (Number(selectedYear) === new Date(slPostingDate).getFullYear() && !selectedMonth)
+                                ){
+                                    return ftrsale
+                                }
+                            }).forEach((sale)=>{                                
+                                filteredReportSales['totalCashSales'] += sale['totalCashSales'] ? sale['totalCashSales'] : 0
+                                filteredReportSales['totalBankSales'] += sale['totalBankSales'] ? sale['totalBankSales'] : 0
+                                filteredReportSales['totalDebt'] += sale['totalDebt'] ? sale['totalDebt'] : 0
+                                filteredReportSales['totalShortage'] += sale['totalShortage'] ? sale['totalShortage'] : 0
+                                filteredReportSales['totalDebtRecovered'] += sale['totalDebtRecovered'] ? sale['totalDebtRecovered'] : 0
+                                filteredReportSales['record'] = filteredReportSales['record'].concat(sale['record'])
+                            })
+                            setReportSales(filteredReportSales)
                             setIsMultiple(true)
                             if (selectedMonth && selectedYear){                                
                                 setShowReport(true)
@@ -468,7 +518,7 @@ const Sales = ()=>{
                                     className='forminp'
                                     name='employeeId'
                                     type='text'
-                                    value={addEmployeeId}
+                                    value={addEmployeeId}                                    
                                     onChange={(e)=>{
                                         setAddEmployeeId(e.target.value)
                                     }}
@@ -479,10 +529,19 @@ const Sales = ()=>{
                                         fields.forEach((field)=>{
                                             if (fltemp.i_d === field.employeeId){
                                                 ct++
+                                                if (['vip','accomodation'].includes(field.salesPoint)){
+                                                    ct--
+                                                }
                                             }
                                         })
                                         if (!ct){
-                                            return fltemp
+                                            if (fltemp.dismissalDate){
+                                                if (new Date(fltemp.dismissalDate).getMonth()>=months.indexOf(selectedMonth)){
+                                                    return fltemp
+                                                }
+                                            }else{
+                                                return fltemp
+                                            }
                                         }
                                     }).map((employee)=>{
                                         return (
@@ -691,6 +750,38 @@ const Sales = ()=>{
                                             />
                                         </div>
                                         <div className='inpcov'>
+                                            <div>Sales Point</div>
+                                            <select 
+                                                className='forminp'
+                                                name='salesPoint'
+                                                type='text'
+                                                placeholder='Sales Point'
+                                                value={field.salesPoint}
+                                                disabled={isView || field.salesPoint}
+                                                onChange={(e)=>{
+                                                    handleFieldChange({index, e})
+                                                }}
+                                            >
+                                                <option value=''>Select Sales Point</option>
+                                                {Object.keys(salesUnits).filter((fltslunit)=>{
+                                                    var ct=0
+                                                    fields.forEach((fild)=>{
+                                                        if ( fild!==field && fltslunit === fild.salesPoint){
+                                                            ct++                                                            
+                                                        }
+                                                    })
+                                                    if (!ct){
+                                                        return fltslunit
+                                                    }
+                                                }).map((saleUnit, index)=>{
+                                                    
+                                                    return (
+                                                        <option key={index} value={saleUnit}>{saleUnit.toUpperCase()}</option>
+                                                    )
+                                                })}
+                                            </select>
+                                        </div>
+                                        <div className='inpcov'>
                                             <div>Shortage</div>
                                             <input 
                                                 className='forminp'
@@ -720,17 +811,19 @@ const Sales = ()=>{
                                             />
                                         </div>
                                         {Object.keys(salesUnits).map((salesUnit, id)=>{                                            
-                                            return(
-                                                <SalesEntry
-                                                    key={id}                                                   
-                                                    handleFieldChange={handleFieldChange}
-                                                    salesUnits={salesUnits}
-                                                    salesUnit={salesUnit}
-                                                    field={field}    
-                                                    isView={isView}                                                
-                                                    index={index}
-                                                />
-                                            )
+                                            if (salesUnit === field.salesPoint){
+                                                return(
+                                                    <SalesEntry
+                                                        key={id}                                                   
+                                                        handleFieldChange={handleFieldChange}
+                                                        salesUnits={salesUnits}
+                                                        salesUnit={salesUnit}
+                                                        field={field}    
+                                                        isView={isView}                                                
+                                                        index={index}
+                                                    />
+                                                )
+                                            }
                                         })}
                                         
                                     </div>}                                    
@@ -778,6 +871,7 @@ const Sales = ()=>{
                                 if (fields.length){
                                     var rt = 0
                                     var ct = 0
+                                    var wt = 0
                                     fields.forEach((field)=>{
                                         const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
                                         Number(field.debt) + Number(field.shortage)
@@ -787,14 +881,25 @@ const Sales = ()=>{
                                                 addSales()                                
                                             }
                                         }else{
-                                            ct++
+                                            if (enteredSales < Number(field.totalSales)){
+                                                ct++
+                                            }else if (enteredSales > Number(field.totalSales)){
+                                                wt++
+                                            }
                                         }
                                     })
-                                    if (ct){
+                                    if (wt){
+                                        setActionMessage('')
                                         setAlertState('error')
-                                        setAlert('Please Make sure your entries match with the total sales before posting')
+                                        setAlert('Negative difference(s) detected in the employee sales you want to post. Please Make sure your entries match with the total sales before posting')
                                         setAlertTimeout(5000)
+                                    }else if (ct){
+                                        setAlertState('info')
+                                        setActionMessage('Accept')                                        
+                                        setAlert('Positive Diffrence(s) Detected. Would you like to accept this diffrences as Debt?')
+                                        setAlertTimeout(15000)
                                     }
+                                    console.log(wt,ct,'now')
                                 }
                             }}
                         >{postStatus}</div>: 
@@ -864,7 +969,7 @@ const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isV
                             }}
                         />
                     </div>
-                )
+                )                
             })}
         </div>
     )

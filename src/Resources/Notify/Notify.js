@@ -6,10 +6,12 @@ const Notify = ({
     timeout,
     action,actionMessage
 })=>{
-    const {setAlert, setAlertState} = useContext(ContextProvider)
+    const {
+        setAlert, setAlertState, setActionMessage
+    } = useContext(ContextProvider)
     const [icon, setIcon] = useState('Error:')
     const [color, setColor] = useState('red')
-
+   
     useEffect(()=>{
         if (notifyState === 'error'){
             setIcon('Error:')
@@ -23,20 +25,51 @@ const Notify = ({
         }
     },[notifyState])
     useEffect(()=>{
-        if (notifyMessage){
+        if (notifyMessage || actionMessage){
             setTimeout(()=>{
                 setAlert('')
                 setAlertState(null)
+                setActionMessage('')                                
             },[timeout])
-        }
+        }        
     },[notifyMessage])
-    return (
+    
+    const takeAction = ()=>{
+        if (actionMessage){
+            action()
+            setAlert('')
+            setAlertState(null)
+            setActionMessage('')
+        }
+    }
+    return (    
         <>
             {notifyMessage && <div className='notify' style={{border: `solid ${color} 1.5px`}}>
-                <div style={{color:color, marginRight: '5px', fontWeight:'bold'}}>{icon}</div>
-                <div>
-                    {notifyMessage}
+                <div className='notifymess'>                    
+                    <div style={{color:color, marginRight: '5px', fontWeight:'bold'}}>{icon}</div>
+                    <div>
+                        {notifyMessage}
+                    </div>
                 </div>
+                {actionMessage && <div className='notifyactn'>
+                    <div 
+                        className='notifycl'
+                        onClick={()=>{
+                            setAlert('')
+                            setAlertState(null)
+                            setActionMessage('')
+                        }}
+                    >Cancel</div>
+                    <div 
+                        className='notifyacp'
+                        onClick={()=>{
+                            action()
+                            setAlert('')
+                            setAlertState(null)
+                            setActionMessage('')
+                        }}
+                    >{actionMessage}</div>
+                </div>}
             </div>}
         </>
     )
