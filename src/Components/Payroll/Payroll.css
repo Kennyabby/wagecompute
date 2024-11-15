@@ -1,5 +1,6 @@
 .payroll{
     display: flex;
+    padding: 10px;
     height: 100%;
     justify-content: center;
     align-items: center;
@@ -155,8 +156,7 @@
 .invnum{
     width: fit-content;
     margin-top: 30px;
-    margin-right: auto;
-    text-align: left;
+    margin: auto;
 }
 .billtoitem{
     text-align: left;
@@ -203,8 +203,13 @@ table {
     width: 100%;
     page-break-inside: auto;
 }
+
 .theader{
     font-size: .7em;
+}
+.row{
+    width: 95%;
+    margin: auto;
 }
 .trow{
     font-size: .7em;
@@ -212,12 +217,13 @@ table {
 .ttrow{
     font-weight: bold;
     font-size: .7em;
+    margin: 0px;
 }
 .payeerow{
     margin-bottom: 0px;
 }
 .payeetable{
-    margin-top: 0;
+    margin-bottom: 20px;
 }
 .payeetable tr {
     page-break-inside: avoid;
@@ -244,7 +250,7 @@ h1{
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    /* height: 100vh; */
     width: 100%;
 }
 
@@ -271,6 +277,7 @@ h1{
     border-color: #325aa8;
     margin: 10px;
     margin-right: auto;
+    cursor: pointer;
 }
 .buttons button:hover{
     background: #1E1F23;
