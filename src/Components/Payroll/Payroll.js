@@ -147,8 +147,8 @@ const Payroll = () =>{
                         Cancel
                     </div>
                     <div className='mainslip'>
-                        <div className="container"  ref={targetRef}>
-                        <div className="container">
+                        <div className="containers"  ref={targetRef}>
+                        <div className="containers">
                         <div className="row">
                             <div >
                                 <div className="col-md-12">

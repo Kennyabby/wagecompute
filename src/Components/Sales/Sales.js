@@ -764,15 +764,16 @@ const Sales = ()=>{
                                             >
                                                 <option value=''>Select Sales Point</option>
                                                 {Object.keys(salesUnits).filter((fltslunit)=>{
-                                                    var ct=0
-                                                    fields.forEach((fild)=>{
-                                                        if ( fild!==field && fltslunit === fild.salesPoint){
-                                                            ct++                                                            
-                                                        }
-                                                    })
-                                                    if (!ct){
-                                                        return fltslunit
-                                                    }
+                                                    // var ct=0
+                                                    // fields.forEach((fild)=>{
+                                                    //     if ( fild!==field && fltslunit === fild.salesPoint){
+                                                    //         ct++                                                            
+                                                    //     }
+                                                    // })
+                                                    // if (!ct){
+                                                    //     return fltslunit
+                                                    // }
+                                                    return fltslunit
                                                 }).map((saleUnit, index)=>{
                                                     
                                                     return (
