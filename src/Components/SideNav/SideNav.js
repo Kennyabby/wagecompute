@@ -58,6 +58,7 @@ const SideNav = ()=>{
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && <li name="payroll" className={curPath==='payroll'?'selected':''}>Payroll</li>}
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales')) && <li name="sales" className={curPath==='sales'?'selected':''}>Sales</li>}
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && <li name="purchase" className={curPath==='purchase'?'selected':''}>Purchase</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && <li name="expenses" className={curPath==='expenses'?'selected':''}>Expenses</li>}
                     {(companyRecord?.status === 'admin') && <li name="settings" className={curPath==='settings'?'selected':''}>Settings</li>}
                     <div
                         onClick={logout}

@@ -30,13 +30,13 @@ function App() {
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
   const [purchase, setPurchase] = useState([])
+  const [expenses, setExpenses] = useState([])
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','purchase','settings','test']
+    'employees','departments','positions','attendance','payroll','sales','purchase','expenses','settings','test']
   const dashList = ['dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','purchase','settings']
-  
+    'employees','departments','positions','attendance','payroll','sales','purchase','expenses','settings']
   const months = [
       'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
       'AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'
@@ -141,6 +141,7 @@ function App() {
         getAttendance(cmp_val)
         getSales(cmp_val)
         getPurchase(cmp_val)
+        getExpenses(cmp_val)
         Navigate('/'+currPath)
       }else{
         getEmployees(cmp_val)
@@ -148,7 +149,11 @@ function App() {
           getPurchase(cmp_val)
           Navigate('/purchase')
         }
-        else if (resp.record.permissions.includes('sales')){
+        if (resp.record.permissions.includes('expenses')){
+          getExpenses(cmp_val)
+          Navigate('/expenses')
+        }
+        if (resp.record.permissions.includes('sales')){
           getSales(cmp_val)
           Navigate('/sales')
         }
@@ -219,6 +224,17 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setPurchase(resp.record)
+    }
+  }
+
+  const getExpenses = async (company) =>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Expenses", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      setExpenses(resp.record)
     }
   }
 
@@ -301,6 +317,8 @@ function App() {
           employees, setEmployees, getEmployees,
           attendance, setAttendance, getAttendance,
           sales, setSales, getSales,
+          purchase, setPurchase, getPurchase,
+          expenses, setExpenses, getExpenses,
           settings, setSettings, getSettings,
           setAlert, setAlertState, setAlertTimeout,
           alert, alertState, alertTimeout, actionMessage, 
