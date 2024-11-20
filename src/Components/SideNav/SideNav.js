@@ -48,17 +48,16 @@ const SideNav = ()=>{
             <div className='navheader'>{companyName}</div>
             <nav className='navbox' onClick={handleNav}>
                 <ul className='icons'>
-
                 </ul>
                 <ul className='navbarr'>
-                    <li name="dashboard" className={curPath==='dashboard'?'selected':''}>Dashboard</li>
-                    <li name="employees" className={curPath==='employees'?'selected':''}>Employees</li>
-                    <li name="departments" className={curPath==='departments'?'selected':''}>Departments</li>
-                    <li name="positions" className={curPath==='positions'?'selected':''}>Positions</li>
-                    <li name="attendance" className={curPath==='attendance'?'selected':''}>Attendance</li>
-                    <li name="payroll" className={curPath==='payroll'?'selected':''}>Payroll</li>
-                    <li name="sales" className={curPath==='sales'?'selected':''}>Sales</li>
-                    <li name="settings" className={curPath==='settings'?'selected':''}>Settings</li>
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard')) && <li name="dashboard" className={curPath==='dashboard'?'selected':''}>Dashboard</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees')) && <li name="employees" className={curPath==='employees'?'selected':''}>Employees</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments')) && <li name="departments" className={curPath==='departments'?'selected':''}>Departments</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions')) && <li name="positions" className={curPath==='positions'?'selected':''}>Positions</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance')) && <li name="attendance" className={curPath==='attendance'?'selected':''}>Attendance</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && <li name="payroll" className={curPath==='payroll'?'selected':''}>Payroll</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales')) && <li name="sales" className={curPath==='sales'?'selected':''}>Sales</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('all')) && <li name="settings" className={curPath==='settings'?'selected':''}>Settings</li>}
                     <div
                         onClick={logout}
                     >{logStatus}</div>

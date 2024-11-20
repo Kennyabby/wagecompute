@@ -118,13 +118,21 @@ function App() {
       removeSessions()
     }else{
       setCompanyRecord(resp.record)
-      getDepartments(cmp_val)
-      getPositions(cmp_val)
-      getEmployees(cmp_val)
-      getSettings(cmp_val)
-      getAttendance(cmp_val)
-      getSales(cmp_val)
-      Navigate('/'+currPath)
+      if (resp.record.status==='admin'){
+        getDepartments(cmp_val)
+        getPositions(cmp_val)
+        getEmployees(cmp_val)
+        getSettings(cmp_val)
+        getAttendance(cmp_val)
+        getSales(cmp_val)
+        Navigate('/'+currPath)
+      }else{
+        getEmployees(cmp_val)
+        if (resp.record.permissions.includes('sales')){
+          getSales(cmp_val)
+          Navigate('/sales')
+        }
+      }
     }
   }
 
