@@ -71,9 +71,6 @@ const Sales = ()=>{
 
     useEffect(()=>{
         storePath('sales')  
-        console.log(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getUTCDate())
-        console.log(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10))
-        // console.log(`${String(new Date(Date.now()).getMonth())}/01/${String(new Date(Date.now()).getFullYear())}`)
     },[storePath])
 
     useEffect(()=>{
@@ -142,8 +139,6 @@ const Sales = ()=>{
     const handleRecoveryFieldChange = ({index, e})=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value        
-        // console.log(selectedText)
-        // console.log(name, value, recoveryFields)
         if (name === 'recoverySales' && value){
             const selectedText = e.target.selectedOptions[0].text
             setRecoveryFields((fields)=>{
@@ -939,7 +934,6 @@ const Sales = ()=>{
                                         setAlert('Positive Diffrence(s) Detected. Would you like to accept this diffrences as Debt?')
                                         setAlertTimeout(15000)
                                     }
-                                    console.log(wt,ct,'now')
                                 }
                             }}
                         >{postStatus}</div>: 
