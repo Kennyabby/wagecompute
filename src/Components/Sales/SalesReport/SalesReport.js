@@ -6,6 +6,8 @@ import html2pdf from 'html2pdf.js';
 
 const SalesReport = ({
     reportSales,multiple,
+    fromDate,
+    toDate,
     selectedMonth,
     selectedYear,
     setShowReport,
@@ -197,7 +199,7 @@ const SalesReport = ({
                                                 <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                 {/* <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p> */}
-                                                <p className='billfrompayee'>{`SALES FOR `}<b>{`${!multiple ? new Date(reportSales.createdAt).getDate() : ''} ${selectedMonth}, ${selectedYear}.`}</b></p>                                                                                   
+                                                <p className='billfrompayee'>{`SALES FROM `}<b>{`${getDate(fromDate)}`}</b>{` TO `}<b>{`${getDate(toDate)}`}</b></p>                                                                                   
                                                 <p className='billfrompayee'>Created Date: <b>{getDate()}</b></p>
                                             </div>
                                        </div>
