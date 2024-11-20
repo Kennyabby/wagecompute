@@ -11,6 +11,7 @@ import Departments from '../Departments/Departments'
 import Attendance from '../Attendance/Attendance'
 import Payroll from '../Payroll/Payroll'
 import Sales from '../Sales/Sales'
+import Purchase from '../Purchase/Purchase'
 import Settings from '../Settings/Settings'
 
 const Dashboard = ()=>{
@@ -42,6 +43,9 @@ const Dashboard = ()=>{
                 setView(<Sales/>)
             }
             else if (index === 7 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
+                setView(<Purchase/>)
+            }
+            else if (index === 8 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
                 setView(<Settings/>)
             }
         }
