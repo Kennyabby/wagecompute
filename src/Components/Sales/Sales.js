@@ -35,6 +35,8 @@ const Sales = ()=>{
     const [isMultiple, setIsMultiple] = useState(false)
     const [selectedMonth, setSelectedMonth] = useState(months[new Date(Date.now()).getMonth()])
     const [selectedYear, setSelectedYear] = useState(new Date(Date.now()).getFullYear())
+    const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+    const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [recoveryMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
@@ -57,16 +59,21 @@ const Sales = ()=>{
         debtRecovered:'',
         ...salesUnits
     }
+
     const defaultRecoveryFields = {
         recoveryAmount: '',
         recoverySales: '',
     }
+
     const [fields, setFields] = useState([])
     const [recoveryFields, setRecoveryFields] = useState([])
     const [isView, setIsView] = useState(false)
 
     useEffect(()=>{
         storePath('sales')  
+        console.log(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getUTCDate())
+        console.log(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10))
+        // console.log(`${String(new Date(Date.now()).getMonth())}/01/${String(new Date(Date.now()).getFullYear())}`)
     },[storePath])
 
     useEffect(()=>{
@@ -163,6 +170,7 @@ const Sales = ()=>{
             return [...fields]
         })
     }
+
     const addSales = async ()=> { 
         if (postingDate){
             setPostStatus('Posting Sales...')
@@ -253,6 +261,7 @@ const Sales = ()=>{
             },12000)
         }
     }
+
     const handleSalesOpts = (e)=>{
         const name = e.target.getAttribute('name')
         if (name){
@@ -313,6 +322,7 @@ const Sales = ()=>{
         
         
     }
+
     return (
         <>
             <div className='sales'>         
@@ -349,10 +359,10 @@ const Sales = ()=>{
                                 record: []
                             }
                             sales.filter((ftrsale)=>{
-                                const slPostingDate = ftrsale.postingDate
-                                if ((selectedMonth === months[new Date(slPostingDate).getMonth()] && 
-                                    Number(selectedYear) === new Date(slPostingDate).getFullYear()) || 
-                                    (Number(selectedYear) === new Date(slPostingDate).getFullYear() && !selectedMonth)
+                                const slPostingDate = new Date(ftrsale.postingDate).getTime()
+                                const fromDate = new Date(saleFrom).getTime()
+                                const toDate = new Date(saleTo).getTime()
+                                if ( slPostingDate>= fromDate && slPostingDate<=toDate
                                 ){
                                     return ftrsale
                                 }
@@ -372,6 +382,34 @@ const Sales = ()=>{
                         }}
                     />
                     <div className='payeeinpcov'>
+                        <div className='inpcov formpad'>
+                            <div>Date From</div>
+                            <input 
+                                className='forminp prinps'
+                                name='salesfrom'
+                                type='date'
+                                placeholder='From'
+                                value={saleFrom}
+                                onChange={(e)=>{
+                                    setSaleFrom(e.target.value)
+                                }}
+                            />
+                        </div>
+                        <div className='inpcov formpad'>
+                            <div>Date To</div>
+                            <input 
+                                className='forminp prinps'
+                                name='salesto'
+                                type='date'
+                                placeholder='To'
+                                value={saleTo}
+                                onChange={(e)=>{
+                                    setSaleTo(e.target.value)
+                                }}
+                            />
+                        </div>
+                    </div>                                   
+                    {/* <div className='payeeinpcov'>
                         <div className='inpcov formpad'>
                             <div>Month</div>
                             <select 
@@ -418,12 +456,13 @@ const Sales = ()=>{
                                 })}
                             </select>
                         </div>
-                    </div>                                   
+                    </div>                                    */}
                     {sales.filter((ftrsale)=>{
-                        const slCreatedAt = ftrsale.postingDate
-                        if ((selectedMonth === months[new Date(slCreatedAt).getMonth()] && 
-                            Number(selectedYear) === new Date(slCreatedAt).getFullYear()) || 
-                            (Number(selectedYear) === new Date(slCreatedAt).getFullYear() && !selectedMonth)
+                        const slCreatedAt = new Date(ftrsale.postingDate).getTime()
+                        const fromDate = new Date(saleFrom).getTime()
+                        const toDate = new Date(saleTo).getTime()
+
+                        if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
                         ){
                             return ftrsale
                         }

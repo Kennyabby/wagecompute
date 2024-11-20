@@ -162,7 +162,7 @@ const SalesReport = ({
            }
         },
         filename: `StaffPayRoll - ${selectedMonth}, ${selectedYear}.pdf`
-     };
+    };
 
     const printToPDF = () => {
         const element = targetRef.current;

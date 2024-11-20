@@ -7,6 +7,9 @@
 .saleslist{
     width: 35%;
 }
+.prinps{
+    width: 150px;
+}
 .salesview{
     width: 63%;
 }
@@ -150,4 +153,5 @@
 .salesinpcov{
     margin: 0px;
 }
+
 
