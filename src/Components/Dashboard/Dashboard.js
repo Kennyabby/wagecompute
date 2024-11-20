@@ -14,7 +14,7 @@ import Sales from '../Sales/Sales'
 import Settings from '../Settings/Settings'
 
 const Dashboard = ()=>{
-    const {server, storePath, dashList} = useContext(ContextProvider)
+    const {server, storePath, dashList, companyRecord} = useContext(ContextProvider)
     const [view, setView] = useState(null)
     const params = useParams()
     
@@ -22,30 +22,30 @@ const Dashboard = ()=>{
         const path = params.id
         if (dashList.includes(path)){
             const index = dashList.indexOf(path)
-            if (index===0){
+            if (index===0 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard'))){
                 setView(<DashView/>)
-            }else if (index === 1){
+            }else if (index === 1 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees'))){
                 setView(<Employees/>)
-            }else if (index === 2){
+            }else if (index === 2 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments'))){
                 setView(<Departments/>)
             }
-            else if (index === 3){
+            else if (index === 3 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions'))){
                 setView(<Positions/>)
             }
-            else if (index === 4){
+            else if (index === 4 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance'))){
                 setView(<Attendance/>)
             }
-            else if (index === 5){
+            else if (index === 5 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll'))){
                 setView(<Payroll/>)
             }
-            else if (index === 6){
+            else if (index === 6 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales'))){
                 setView(<Sales/>)
             }
-            else if (index === 7){
+            else if (index === 7 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
                 setView(<Settings/>)
             }
         }
-    },[params])
+    },[params,companyRecord])
     return(
         <>
             <div className='dashboard'>

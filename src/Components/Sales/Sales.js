@@ -13,6 +13,7 @@ const Sales = ()=>{
     const {storePath, 
         fetchServer, 
         server, 
+        companyRecord,
         company, 
         employees,
         sales, setSales, getSales, months, years,
@@ -80,6 +81,11 @@ const Sales = ()=>{
             setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
         }
     },[curSale])
+    useEffect(()=>{
+        if (companyRecord.status!=='admin'){
+            setSaleFrom(new Date(Date.now()).toISOString().slice(0, 10))
+        }
+    },[companyRecord])
 
     const handleFieldChange = ({index, e})=>{
         const name = e.target.getAttribute('name')
@@ -342,7 +348,7 @@ const Sales = ()=>{
                     }}
                 />}   
                 <div className='emplist saleslist'>    
-                    <FaTableCells                         
+                    {companyRecord.status==='admin' && <FaTableCells                         
                         className='allslrepicon'
                         onClick={()=>{
                             var filteredReportSales = {                                                                
@@ -375,7 +381,7 @@ const Sales = ()=>{
                                 setShowReport(true)
                             }
                         }}
-                    />
+                    />}
                     <div className='payeeinpcov'>
                         <div className='inpcov formpad'>
                             <div>Date From</div>
@@ -385,6 +391,7 @@ const Sales = ()=>{
                                 type='date'
                                 placeholder='From'
                                 value={saleFrom}
+                                disabled={companyRecord.status!=='admin'}
                                 onChange={(e)=>{
                                     setSaleFrom(e.target.value)
                                 }}
@@ -398,6 +405,7 @@ const Sales = ()=>{
                                 type='date'
                                 placeholder='To'
                                 value={saleTo}
+                                disabled={companyRecord.status!=='admin'}
                                 onChange={(e)=>{
                                     setSaleTo(e.target.value)
                                 }}
@@ -481,7 +489,7 @@ const Sales = ()=>{
                                     {/* <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div> */}
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
                                 </div>
-                                <div 
+                                {companyRecord.status==='admin' && <div 
                                     className='edit'
                                     name='delete'         
                                     style={{color:'red'}}                           
@@ -494,13 +502,14 @@ const Sales = ()=>{
                                     }}
                                 >
                                     Delete
-                                </div>
+                                </div>}
                             </div>
                         )
                   })}
                 </div>
                 <div className='empview salesview'>
                     {isView && salesOpts==='sales' && 
+                        companyRecord.status==='admin' && 
                         <FaTableCells                         
                             className='slrepicon'
                             onClick={()=>{
