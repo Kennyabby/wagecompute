@@ -29,12 +29,13 @@ function App() {
   const [settings, setSettings] = useState([])
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
+  const [purchase, setPurchase] = useState([])
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','settings','test']
+    'employees','departments','positions','attendance','payroll','sales','purchase','settings','test']
   const dashList = ['dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','settings']
+    'employees','departments','positions','attendance','payroll','sales','purchase','settings']
   
   const months = [
       'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
@@ -59,6 +60,7 @@ function App() {
         getSettings(cmp_val)
         getAttendance(cmp_val)
         getSales(cmp_val)
+        getPurchase(cmp_val)
       }
     },3000)
     return () => clearInterval(intervalId);
@@ -138,10 +140,15 @@ function App() {
         getSettings(cmp_val)
         getAttendance(cmp_val)
         getSales(cmp_val)
+        getPurchase(cmp_val)
         Navigate('/'+currPath)
       }else{
         getEmployees(cmp_val)
-        if (resp.record.permissions.includes('sales')){
+        if (resp.record.permissions.includes('purchase')){
+          getPurchase(cmp_val)
+          Navigate('/purchase')
+        }
+        else if (resp.record.permissions.includes('sales')){
           getSales(cmp_val)
           Navigate('/sales')
         }
@@ -200,8 +207,18 @@ function App() {
       prop: {} 
     }, "getDocsDetails", SERVER)
     if (resp.record){
-      // console.log(resp.record)
       setSales(resp.record)
+    }
+  }
+
+  const getPurchase = async (company) =>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Purchse", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      setPurchase(resp.record)
     }
   }
 
