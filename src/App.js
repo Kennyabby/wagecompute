@@ -49,7 +49,20 @@ function App() {
 
   const Navigate = useNavigate()
 
-
+  useEffect(()=>{
+    var cmp_val = window.localStorage.getItem('sessn-cmp')
+    const intervalId = setInterval(()=>{
+      if (cmp_val){
+        getDepartments(cmp_val)
+        getPositions(cmp_val)
+        getEmployees(cmp_val)
+        getSettings(cmp_val)
+        getAttendance(cmp_val)
+        getSales(cmp_val)
+      }
+    },3000)
+    return () => clearInterval(intervalId);
+  },[])
   const shuffleList = (array) => {
     var currentIndex = array.length,
       randomIndex,
