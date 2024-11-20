@@ -333,9 +333,11 @@ const Sales = ()=>{
                     setShowReport={(value)=>{
                         setShowReport(value)
                         setReportSales(null)
-                    }}                    
-                    selectedMonth={selectedMonth}
-                    selectedYear={selectedYear}
+                    }}              
+                    fromDate = {saleFrom}
+                    toDate = {saleTo}      
+                    // selectedMonth={selectedMonth}
+                    // selectedYear={selectedYear}
                 />}    
                 {actionMessage && <Notify        
                     notifyMessage={alert}
