@@ -552,7 +552,7 @@ const Sales = ()=>{
                     <div className='salesfm'>
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
-                            {companyRecord.status==='admin' && <div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
+                            {companyRecord?.status==='admin' && <div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
                         </div>}
                         {salesOpts==='sales' ? (!isView && <div className='addnewsales'>
                             <div className='inpcov'>
