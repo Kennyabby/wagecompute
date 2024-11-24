@@ -169,7 +169,7 @@ const SalesReport = ({
     const printToPDF = () => {
         const element = targetRef.current;
         const options = {
-            margin:       0.2,
+            margin:       0.1,
             filename:     `SALES REPORT - FROM ${getDate(fromDate)} TO ${getDate(toDate)}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
