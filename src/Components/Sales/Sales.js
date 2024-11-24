@@ -448,6 +448,7 @@ const Sales = ()=>{
                                 disabled={companyRecord.status!=='admin'}
                                 onChange={(e)=>{
                                     setSaleFrom(e.target.value)
+                                    setSaleEmployee('')
                                 }}
                             />
                         </div>
@@ -462,6 +463,7 @@ const Sales = ()=>{
                                 disabled={companyRecord.status!=='admin'}
                                 onChange={(e)=>{
                                     setSaleTo(e.target.value)
+                                    setSaleEmployee('')
                                 }}
                             />
                         </div>
@@ -526,7 +528,7 @@ const Sales = ()=>{
                                     {/* <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div> */}
                                     <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
                                 </div>
-                                {companyRecord.status==='admin' && <div 
+                                {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                     className='edit'
                                     name='delete'         
                                     style={{color:'red'}}                           
