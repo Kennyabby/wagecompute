@@ -38,6 +38,7 @@ const Sales = ()=>{
     const [selectedYear, setSelectedYear] = useState(new Date(Date.now()).getFullYear())
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
     const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
+    const [saleEmployee, setSaleEmployee] = useState('')
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [recoveryMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
@@ -352,6 +353,7 @@ const Sales = ()=>{
                 <div className='emplist saleslist'>    
                     {companyRecord.status==='admin' && <FaTableCells                         
                         className='allslrepicon'
+                        saleEmployee = {saleEmployee}
                         onClick={()=>{
                             var filteredReportSales = {                                                                
                                 totalCashSales:0,
@@ -369,17 +371,42 @@ const Sales = ()=>{
                                 ){
                                     return ftrsale
                                 }
-                            }).forEach((sale)=>{                                
-                                filteredReportSales['totalCashSales'] += sale['totalCashSales'] ? sale['totalCashSales'] : 0
-                                filteredReportSales['totalBankSales'] += sale['totalBankSales'] ? sale['totalBankSales'] : 0
-                                filteredReportSales['totalDebt'] += sale['totalDebt'] ? sale['totalDebt'] : 0
-                                filteredReportSales['totalShortage'] += sale['totalShortage'] ? sale['totalShortage'] : 0
-                                filteredReportSales['totalDebtRecovered'] += sale['totalDebtRecovered'] ? sale['totalDebtRecovered'] : 0
-                                filteredReportSales['record'] = filteredReportSales['record'].concat(sale['record'])
+                            }).forEach((sale)=>{        
+                                if (!saleEmployee){
+                                    filteredReportSales['totalCashSales'] += sale['totalCashSales'] ? sale['totalCashSales'] : 0
+                                    filteredReportSales['totalBankSales'] += sale['totalBankSales'] ? sale['totalBankSales'] : 0
+                                    filteredReportSales['totalDebt'] += sale['totalDebt'] ? sale['totalDebt'] : 0
+                                    filteredReportSales['totalShortage'] += sale['totalShortage'] ? sale['totalShortage'] : 0
+                                    filteredReportSales['totalDebtRecovered'] += sale['totalDebtRecovered'] ? sale['totalDebtRecovered'] : 0
+                                    filteredReportSales['record'] = filteredReportSales['record'].concat(sale['record'])
+                                }else{                                    
+                                    var totalBankSales = 0
+                                    var totalCashSales = 0
+                                    var totalDebt = 0
+                                    var totalShortage = 0
+                                    var totalDebtRecovered = 0
+                                    sale['record'].forEach((record)=>{
+                                        if (record.employeeId === saleEmployee){
+                                            totalBankSales += Number(record.bankSales)
+                                            totalCashSales += Number(record.cashSales)
+                                            totalDebt += Number(record.debt)
+                                            totalShortage += Number(record.shortage)
+                                            totalDebtRecovered += record.debtRecovered? Number(record.debtRecovered) : 0
+                                            filteredReportSales['record'] = filteredReportSales['record'].concat(record)
+                                        }
+                                    })
+                                    // console.log(saleRecord)
+                                    filteredReportSales['totalCashSales'] += totalCashSales
+                                    filteredReportSales['totalBankSales'] += totalBankSales
+                                    filteredReportSales['totalDebt'] += totalDebt
+                                    filteredReportSales['totalShortage'] += totalShortage
+                                    filteredReportSales['totalDebtRecovered'] += totalDebtRecovered
+                                    
+                                }                        
                             })
                             setReportSales(filteredReportSales)
                             setIsMultiple(true)
-                            if (selectedMonth && selectedYear){                                
+                            if (saleTo && saleFrom){                                
                                 setShowReport(true)
                             }
                         }}
@@ -413,55 +440,38 @@ const Sales = ()=>{
                                 }}
                             />
                         </div>
-                    </div>                                   
-                    {/* <div className='payeeinpcov'>
-                        <div className='inpcov formpad'>
-                            <div>Month</div>
-                            <select 
-                                className='forminp prinp'
-                                name='selectedMonth'
-                                type='text'
-                                placeholder='Select Month'
-                                value={selectedMonth}
-                                onChange={(e)=>{
-                                    setSelectedMonth(e.target.value)
-                                    setCurSale(null)
-                                }}
-                            >
-                                <option value={''}>Select Month</option>
-                                {months.map((month, index)=>{
-                                    return(
-                                        <option key={index} value={month}>
-                                            {month}
-                                        </option>
-                                    )
-                                })}
-                            </select>
-                        </div>
-                        <div className='inpcov formpad'>
-                            <div>Year</div>
-                            <select 
-                                className='forminp prinp'
-                                name='selectedYear'
-                                type='text'
-                                placeholder='Select Year'
-                                value={selectedYear}
-                                onChange={(e)=>{
-                                    setSelectedYear(e.target.value)
-                                    setCurSale(null)
-                                }}
-                            >
-                                <option value={''}>Select Year</option>
-                                {years.map((year, index)=>{
-                                    return(
-                                        <option key={index} value={year}>
-                                            {year}
-                                        </option>
-                                    )
-                                })}
-                            </select>
-                        </div>
-                    </div>                                    */}
+                    </div>                                                       
+                    <div className='inpcov fltinpcov'>
+                        <select 
+                            className='forminp'
+                            name='employeeId'
+                            type='text'
+                            value={saleEmployee}
+                            onChange={(e)=>{
+                                setSaleEmployee(e.target.value)
+                            }}
+                        >
+                            <option value=''>All Sales Persons</option>
+                            {employees.filter((fltemp)=>{
+                                if (fltemp.dismissalDate){
+                                    if (new Date(fltemp.dismissalDate).getMonth() >= new Date(saleFrom).getMonth()){
+                                        return fltemp
+                                    }
+                                }else{
+                                    return fltemp
+                                }
+                            }).map((employee)=>{
+                                return (
+                                    <option 
+                                        key={employee.i_d}
+                                        value={employee.i_d}
+                                    >
+                                        {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                    </option>
+                                )
+                            })}
+                        </select>
+                    </div>
                     {sales.filter((ftrsale)=>{
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
@@ -554,7 +564,7 @@ const Sales = ()=>{
                     <div className='salesfm'>
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
-                            {companyRecord?.status==='admin' && <div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
+                            {<div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
                         </div>}
                         {salesOpts==='sales' ? (!isView && <div className='addnewsales'>
                             <div className='inpcov'>
@@ -581,7 +591,7 @@ const Sales = ()=>{
                                         })
                                         if (!ct){
                                             if (fltemp.dismissalDate){
-                                                if (new Date(fltemp.dismissalDate).getMonth()>=months.indexOf(selectedMonth)){
+                                                if (new Date(fltemp.dismissalDate).getMonth() >= new Date(saleFrom).getMonth()){
                                                     return fltemp
                                                 }
                                             }else{
