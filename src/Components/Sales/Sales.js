@@ -591,9 +591,10 @@ const Sales = ()=>{
                     <div className='salesfm'>
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
+                            <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>Rentals</div>
                             {<div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
                         </div>}
-                        {salesOpts==='sales' ? (!isView && <div className='addnewsales'>
+                        {salesOpts==='sales' && (!isView && <div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
                                 <select 
@@ -666,7 +667,8 @@ const Sales = ()=>{
                             >
                                 Add Employee Sales
                             </div>                                                
-                        </div>): <div className='addnewrecovery'>
+                        </div>)} 
+                        {salesOpts === 'recovery' && <div className='addnewrecovery'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
                                 <select 
@@ -966,7 +968,7 @@ const Sales = ()=>{
                                 })}
                             </select>
                         </div> }                 
-                        {salesOpts === 'sales' ? <div className='yesbtn salesyesbtn'
+                        {salesOpts === 'sales' && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:fields.length?'pointer':'not-allowed'
                             }}
@@ -1004,8 +1006,8 @@ const Sales = ()=>{
                                     }
                                 }
                             }}
-                        >{postStatus}</div>: 
-                        <div className='yesbtn salesyesbtn'
+                        >{postStatus}</div>} 
+                        {salesOpts === 'recovery' && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:recoveryFields.length?'pointer':'not-allowed'
                             }}
