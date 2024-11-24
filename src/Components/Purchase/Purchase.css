@@ -8,7 +8,7 @@
     height: 100vh;
 }
 .purlst{
-    width: 33%;
+    width: 36%;
     height: 98%;
     background: white;
     border: solid black 1.5px;
@@ -19,7 +19,7 @@
 .purinfo{
     justify-content: center;
     text-align: center;
-    width: 62%;
+    width: 60%;
     height: 98%;
     overflow: auto;
     box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
