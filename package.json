@@ -10,7 +10,6 @@
     "formdata-polyfill": "^4.0.10",
     "framer-motion": "^11.0.25",
     "html2pdf": "^0.0.11",
-    "html2pdf.js": "^0.10.2",
     "react": "^18.2.0",
     "react-barcode": "^1.5.3",
     "react-dom": "^18.2.0",
@@ -45,5 +44,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "html2pdf.js": "^0.10.2"
   }
 }

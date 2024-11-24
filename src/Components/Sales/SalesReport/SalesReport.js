@@ -379,6 +379,7 @@ const SalesReport = ({
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>
+                                        <div style={{marginTop:'120px'}}></div>
                                         <div>DAILY DEBT RECOVERY</div>
                                         <table className="table payeetable">   
                                             <thead>
