@@ -116,9 +116,10 @@ const SalesReport = ({
 
          var newDebtUnits = {}
          Object.keys(salesUnits).forEach((saleunit)=>{
+            newDebtUnits[saleunit] = 0
              reportSales.record.forEach((record)=>{
                  if (record.salesPoint === saleunit){
-                     newDebtUnits[saleunit] = Number(record.debt) + Number(record.shortage)
+                     newDebtUnits[saleunit] += Number(record.debt) + Number(record.shortage)
                  }
              })               
          })
