@@ -219,7 +219,7 @@ function App() {
   const getPurchase = async (company) =>{
     const resp = await fetchServer("POST", {
       database: company,
-      collection: "Purchse", 
+      collection: "Purchase", 
       prop: {} 
     }, "getDocsDetails", SERVER)
     if (resp.record){

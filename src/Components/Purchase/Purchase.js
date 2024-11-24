@@ -19,6 +19,9 @@ const Purchase = ()=>{
     const [purchaseDate, setPurchaseDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curPurchase, setCurPurchase] = useState(null)
     const [isView, setIsView] = useState(false)
+    const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+    const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
+
     const defaultFields = {
         purchaseDepartment:'',
         purchaseHandler:'',
@@ -28,15 +31,19 @@ const Purchase = ()=>{
         purchaseAmount:'',
     }
     const [fields, setFields] = useState({...defaultFields})
-    useEffect(()=>{
-        storePath('purchase')  
-    },[storePath])
-
     const purchaseCategory = ['ASSORTED DRINKS', 'ASSORTED PROTEIN', 'INGREDIENTS', 'SWALLOW', 'CEREALS']
     const unitsofmeasurements = [
         'PORTIONS', 'PACKETS', 'CRATES',
     ]
+    useEffect(()=>{
+        storePath('purchase')  
+    },[storePath])
 
+    useEffect(()=>{
+        if (companyRecord.status!=='admin'){
+            setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+        }
+    },[companyRecord])
     const handlePurchaseEntry = (e)=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value
@@ -109,7 +116,7 @@ const Purchase = ()=>{
         <>
             <div className='purchase'>
                 <div className='purlst'>
-                    {!isView && <MdAdd 
+                    {<MdAdd 
                         className='add slsadd'
                         onClick={()=>{
                             setIsView(false)
@@ -117,6 +124,36 @@ const Purchase = ()=>{
                             setCurPurchase(null)
                         }}
                     />}
+                    <div className='payeeinpcov'>
+                        <div className='inpcov formpad'>
+                            <div>Date From</div>
+                            <input 
+                                className='forminp prinps'
+                                name='salesfrom'
+                                type='date'
+                                placeholder='From'
+                                value={saleFrom}
+                                disabled={companyRecord.status!=='admin'}
+                                onChange={(e)=>{
+                                    setSaleFrom(e.target.value)
+                                }}
+                            />
+                        </div>
+                        <div className='inpcov formpad'>
+                            <div>Date To</div>
+                            <input 
+                                className='forminp prinps'
+                                name='salesto'
+                                type='date'
+                                placeholder='To'
+                                value={saleTo}
+                                disabled={companyRecord.status!=='admin'}
+                                onChange={(e)=>{
+                                    setSaleTo(e.target.value)
+                                }}
+                            />
+                        </div>
+                    </div>
                     {purchase.map((pur, index)=>{
                         const {
                             createdAt,postingDate, 
@@ -124,6 +161,12 @@ const Purchase = ()=>{
                             purchaseUOM, purchaseDepartment,
                             itemCategory,purchaseHandler 
                         } = pur
+                        var handlerName = ''
+                        employees.forEach((emp)=>{
+                            if (emp.i_d === purchaseHandler){
+                                handlerName = `${emp.firstName} ${emp.lastName}`
+                            }
+                        })
                         return(
                             <div className={'dept' + (curPurchase?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
@@ -132,10 +175,10 @@ const Purchase = ()=>{
                             >
                                 <div className='dets sldets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                    <div>Purchase Department: <b>{'₦'+(Number(purchaseDepartment)).toLocaleString()}</b></div>                                    
+                                    <div>Purchase Department: <b>{purchaseDepartment}</b></div>                                    
                                     <div>Purchase Amount: <b>{'₦'+(Number(purchaseAmount)).toLocaleString()}</b></div>                                    
                                     <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM} of ${itemCategory}`}</b></div>                                    
-                                    <div className='deptdesc'>{`Purchase Handled By:`} <b>{`${purchaseHandler}`}</b></div>
+                                    <div className='deptdesc'>{`Purchase Handled By:`} <b>{`${handlerName}`}</b></div>
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
                                     className='edit'
@@ -163,11 +206,12 @@ const Purchase = ()=>{
                                 className='forminp'
                                 name='purchaseDepartment'
                                 type='text'
-                                value={fields.purchaseDepartment}                                
+                                value={fields.purchaseDepartment}  
+                                disabled={isView}                              
                             >
                                 <option value=''>Select Department</option>
-                                <option value='bar'>Bar</option>
-                                <option value='kitchen'>Kitchen</option>
+                                <option value='Bar'>Bar</option>
+                                <option value='Kitchen'>Kitchen</option>
                             </select>
                         </div>
                         <div className='inpcov'>
@@ -176,7 +220,8 @@ const Purchase = ()=>{
                                 className='forminp'
                                 name='purchaseHandler'
                                 type='text'
-                                value={fields.purchaseHandler}                                
+                                value={fields.purchaseHandler}     
+                                disabled={isView}                           
                             >
                                 <option value=''>Select Purchase Handler</option>
                                 {employees.map((employee)=>{
@@ -198,6 +243,7 @@ const Purchase = ()=>{
                                 name='itemCategory'
                                 type='text'
                                 value={fields.itemCategory}
+                                disabled={isView}
                             >
                                 <option value=''>Item Category</option>
                                 {purchaseCategory.map((category, index)=>{
@@ -215,6 +261,7 @@ const Purchase = ()=>{
                                 type='number'
                                 placeholder='Purchase Quantity'
                                 value={fields.purchaseQuantity}
+                                disabled={isView}
                             />
                         </div>
                         <div className='inpcov'>
@@ -224,6 +271,7 @@ const Purchase = ()=>{
                                 name='purchaseUOM'
                                 type='text'
                                 value={fields.purchaseUOM}
+                                disabled={isView}
                             >
                                 <option value=''>Unit of Measurement</option>
                                 {unitsofmeasurements.map((uom, index)=>{
@@ -241,10 +289,11 @@ const Purchase = ()=>{
                                 type='number'
                                 placeholder='Purchase Amount'
                                 value={fields.purchaseAmount}
+                                disabled={isView}
                             />
                         </div>
                     </div>
-                    <div className='purchasebuttom'>
+                    {!isView && <div className='purchasebuttom'>
                         <div className='inpcov'>
                             <input 
                                 className='forminp'
@@ -261,7 +310,7 @@ const Purchase = ()=>{
                             className='purchasebutton'
                             onClick={addPurchase}
                         >{purchaseStatus}</div>
-                    </div>
+                    </div>}
                 </div>
             </div>
         </>
