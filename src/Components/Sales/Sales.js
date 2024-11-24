@@ -526,7 +526,7 @@ const Sales = ()=>{
                                     <div>Debts: <b>{'₦'+(Number(totalDebt)+Number(totalShortage)-Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                     <div>Recovered: <b>{'₦'+(Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                     {/* <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div> */}
-                                    <div className='deptdesc'>{`Number of Sales Persons:`} <b>{`${record.length}`}</b></div>
+                                    <div className='deptdesc'>{`Number of Sales Made:`} <b>{`${record.length}`}</b></div>
                                 </div>
                                 {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                     className='edit'
@@ -797,7 +797,7 @@ const Sales = ()=>{
                             return (
                                 <div key={index} className='empsalesblk'>
                                     <div className='pdsalesview'>
-                                        {`Pending Sales out of ${Number(field.totalSales).toLocaleString()}:`} <b> {'₦'+(Number(field.totalSales) - netTotal).toLocaleString()}</b> <b>{` ${field.postingDate? '('+getDate(field.postingDate)+')' : ''}`}</b>
+                                        {`Pending Sales out of ₦${Number(field.totalSales).toLocaleString()}:`} <b> {'₦'+(Number(field.totalSales) - netTotal).toLocaleString()}</b> <b>{` ${field.postingDate? '('+getDate(field.postingDate)+')' : ''}`}</b>
                                     </div>
                                     {!isView && <MdDelete 
                                         className='salesdelete'
