@@ -441,7 +441,7 @@ const Sales = ()=>{
                             />
                         </div>
                     </div>                                                       
-                    <div className='inpcov fltinpcov'>
+                    {companyRecord.status==='admin' && <div className='inpcov fltinpcov'>
                         <select 
                             className='forminp'
                             name='employeeId'
@@ -471,7 +471,7 @@ const Sales = ()=>{
                                 )
                             })}
                         </select>
-                    </div>
+                    </div>}
                     {sales.filter((ftrsale)=>{
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
