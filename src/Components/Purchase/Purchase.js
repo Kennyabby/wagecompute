@@ -1,6 +1,7 @@
 import './Purchase.css'
-import { useEffect, useContext } from 'react'
+import { useEffect, useContext, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import { useScroll } from 'framer-motion'
 
 const Purchase = ()=>{
 
@@ -13,9 +14,36 @@ const Purchase = ()=>{
         alert,alertState,alertTimeout,actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
+    const [purchaseStatus, setPurchaseStatus] = useState('Post Purchase')
+    const [purchaseDate, setPurchaseDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
+    const defaultFields = {
+        purchaseDepartment:'',
+        purchaseHandler:'',
+        itemCategory:'',
+        purchaseQuantity:'',
+        purchaseUOM:'',
+        purchaseAmount:'',
+    }
+    const [fields, setFields] = useState({...defaultFields})
     useEffect(()=>{
         storePath('purchase')  
     },[storePath])
+
+    const purchaseCategory = ['ASSORTED DRINKS', 'ASSORTED PROTEIN', 'INGREDIENTS', 'SWALLOW', 'CEREALS']
+    const unitsofmeasurements = [
+        'PORTIONS', 'PACKETS', 'CRATES',
+    ]
+
+    const handlePurchaseEntry = (e)=>{
+        const name = e.target.getAttribute('name')
+        const value = e.target.value
+
+        if (name){
+            setFields((fields)=>{
+                return {...fields, [name]:value}
+            })
+        }
+    }
     return (
         <>
             <div className='purchase'>
@@ -23,18 +51,15 @@ const Purchase = ()=>{
 
                 </div>
                 <div className='purinfo'>
-                    <div>PURCHASE ENTRY</div>
-                    <div>
+                    <div className='purinfotitle'>PURCHASE ENTRY</div>
+                    <div className='purinfocontent' onChange={handlePurchaseEntry}>
                         <div className='inpcov'>
                             <div>Select Department</div>
                             <select 
                                 className='forminp'
-                                name='employeeId'
+                                name='purchaseDepartment'
                                 type='text'
-                                value={''}
-                                onChange={(e)=>{
-                                    // setRecoveryEmployeeId(e.target.value)
-                                }}
+                                value={fields.purchaseDepartment}                                
                             >
                                 <option value=''>Select Department</option>
                                 <option value='bar'>Bar</option>
@@ -45,12 +70,9 @@ const Purchase = ()=>{
                             <div>Select Purchase Handler</div>
                             <select 
                                 className='forminp'
-                                name='employeeId'
+                                name='purchaseHandler'
                                 type='text'
-                                value={''}
-                                onChange={(e)=>{
-                                    // setRecoveryEmployeeId(e.target.value)
-                                }}
+                                value={fields.purchaseHandler}                                
                             >
                                 <option value=''>Select Purchase Handler</option>
                                 {employees.map((employee)=>{
@@ -69,16 +91,16 @@ const Purchase = ()=>{
                             <div>Item Category</div>
                             <select 
                                 className='forminp'
-                                name='employeeId'
+                                name='itemCategory'
                                 type='text'
-                                value={''}
-                                onChange={(e)=>{
-                                    // setRecoveryEmployeeId(e.target.value)
-                                }}
+                                value={fields.itemCategory}
                             >
                                 <option value=''>Item Category</option>
-                                <option value='bar'>Assorted Drinks</option>
-                                <option value='kitchen'>Food</option>
+                                {purchaseCategory.map((category, index)=>{
+                                    return (
+                                        <option key={index} value={category}>{category}</option>
+                                    )
+                                })}
                             </select>
                         </div>
                         <div className='inpcov'>
@@ -88,41 +110,50 @@ const Purchase = ()=>{
                                 name='purchaseQuantity'
                                 type='number'
                                 placeholder='Purchase Quantity'
-                                value={''}
-                                disabled={''}
-                                onChange={(e)=>{
-                                    // handleFieldChange({index, e})
-                                }}
+                                value={fields.purchaseQuantity}
                             />
                         </div>
                         <div className='inpcov'>
-                            <div>Purchase Unit of Mearsurement</div>
-                            <input 
+                            <div>Unit of Measurement</div>
+                            <select 
                                 className='forminp'
-                                name='purchaseQuantity'
-                                type='number'
-                                placeholder='Purchase Quantity'
-                                value={''}
-                                disabled={''}
-                                onChange={(e)=>{
-                                    // handleFieldChange({index, e})
-                                }}
-                            />
+                                name='purchaseUOM'
+                                type='text'
+                                value={fields.purchaseUOM}
+                            >
+                                <option value=''>Unit of Measurement</option>
+                                {unitsofmeasurements.map((uom, index)=>{
+                                    return (
+                                        <option key={index} value={uom}>{uom}</option>
+                                    )
+                                })}
+                            </select>
                         </div>
                         <div className='inpcov'>
                             <div>Purchase Amount</div>
                             <input 
                                 className='forminp'
-                                name='debt'
+                                name='purchaseAmount'
                                 type='number'
-                                placeholder='Debt'
-                                value={''}
-                                disabled={''}
+                                placeholder='Purchase Amount'
+                                value={fields.purchaseAmount}
+                            />
+                        </div>
+                    </div>
+                    <div className='purchasebuttom'>
+                        <div className='inpcov'>
+                            <input 
+                                className='forminp'
+                                name='purchasedate'
+                                type='date'
+                                placeholder='Purchase Date'
+                                value={purchaseDate}
                                 onChange={(e)=>{
-                                    // handleFieldChange({index, e})
+                                    setPurchaseDate(e.target.value)
                                 }}
                             />
                         </div>
+                        <div className='purchasebutton'>{purchaseStatus}</div>
                     </div>
                 </div>
             </div>
