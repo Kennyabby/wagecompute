@@ -2,6 +2,7 @@ import './Purchase.css'
 import { useEffect, useContext, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useScroll } from 'framer-motion'
+import { MdAdd } from 'react-icons/md'
 
 const Purchase = ()=>{
 
@@ -9,13 +10,15 @@ const Purchase = ()=>{
         server, 
         fetchServer,
         companyRecord,
-        company, 
-        employees, months, getPurchase, purchase,
-        alert,alertState,alertTimeout,actionMessage,
+        company, getDate,
+        employees, months, getPurchase, setPurchase, purchase,
+        alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
     const [purchaseStatus, setPurchaseStatus] = useState('Post Purchase')
     const [purchaseDate, setPurchaseDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
+    const [curPurchase, setCurPurchase] = useState(null)
+    const [isView, setIsView] = useState(false)
     const defaultFields = {
         purchaseDepartment:'',
         purchaseHandler:'',
@@ -44,11 +47,112 @@ const Purchase = ()=>{
             })
         }
     }
+    const handleViewClick = (pur) =>{
+        setCurPurchase(pur)
+        setFields({...pur})
+        setIsView(true)
+    }
+    const addPurchase = async ()=>{
+        if (fields.purchaseAmount){
+            setPurchaseStatus('Posting Purchase...')
+            const newPurchase = {
+                ...fields,
+                postingDate:purchaseDate,
+                createdAt: Date.now()
+            }
+            const newPurchases = [newPurchase, ...purchase]
+            
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Purchase", 
+                update: newPurchase
+              }, "createDoc", server)
+              
+              if (resps.err){
+                console.log(resps.mess)
+                setPurchaseStatus('Post Purchase')
+              }else{
+                setPurchaseStatus('Post Purchase')
+                setPurchase(newPurchases)
+                setCurPurchase(newPurchase)
+                setIsView(true)
+                setFields({...newPurchase})
+                getPurchase(company)
+              }
+          
+        }
+    }
+    const deletePurchase = async (purchase)=>{
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Purchase", 
+            update: {createdAt: purchase.createdAt}
+        }, "removeDoc", server)
+        if (resps.err){
+            console.log(resps.mess)
+            // setAlertState('info')
+            // setAlert(resps.mess)
+            // setAlertTimeout(5000)
+        }else{
+            setIsView(false)
+            setCurPurchase(null)
+            // setCurSaleDate(null)
+            setFields({...defaultFields})
+            // setAlertState('success')
+            // setAlert('Sales Deleted Successfully!')
+            // setDeleteCount(0)
+            // setAlertTimeout(5000)
+            getPurchase(company)
+        }        
+    }
     return (
         <>
             <div className='purchase'>
                 <div className='purlst'>
-
+                    {!isView && <MdAdd 
+                        className='add slsadd'
+                        onClick={()=>{
+                            setIsView(false)
+                            setFields({...defaultFields})
+                            setCurPurchase(null)
+                        }}
+                    />}
+                    {purchase.map((pur, index)=>{
+                        const {
+                            createdAt,postingDate, 
+                            purchaseAmount, purchaseQuantity,
+                            purchaseUOM, purchaseDepartment,
+                            itemCategory,purchaseHandler 
+                        } = pur
+                        return(
+                            <div className={'dept' + (curPurchase?.createdAt===createdAt?' curview':'')} key={index} 
+                                onClick={(e)=>{
+                                    handleViewClick(pur)
+                                }}
+                            >
+                                <div className='dets sldets'>
+                                    <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                    <div>Purchase Department: <b>{'₦'+(Number(purchaseDepartment)).toLocaleString()}</b></div>                                    
+                                    <div>Purchase Amount: <b>{'₦'+(Number(purchaseAmount)).toLocaleString()}</b></div>                                    
+                                    <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM} of ${itemCategory}`}</b></div>                                    
+                                    <div className='deptdesc'>{`Purchase Handled By:`} <b>{`${purchaseHandler}`}</b></div>
+                                </div>
+                                {(companyRecord.status==='admin') && <div 
+                                    className='edit'
+                                    name='delete'         
+                                    style={{color:'red'}}                           
+                                    onClick={()=>{                                        
+                                        // setAlertState('info')
+                                        // setAlert('You are about to delete the selected Sales. Please Delete again if you are sure!')
+                                        // setAlertTimeout(5000)                                                                                    
+                                        deletePurchase(purchase)
+                                    }}
+                                >
+                                    Delete
+                                </div>}
+                            </div>
+                        )
+                    })}
                 </div>
                 <div className='purinfo'>
                     <div className='purinfotitle'>PURCHASE ENTRY</div>
@@ -153,7 +257,10 @@ const Purchase = ()=>{
                                 }}
                             />
                         </div>
-                        <div className='purchasebutton'>{purchaseStatus}</div>
+                        <div 
+                            className='purchasebutton'
+                            onClick={addPurchase}
+                        >{purchaseStatus}</div>
                     </div>
                 </div>
             </div>
