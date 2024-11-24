@@ -50,6 +50,7 @@ const Sales = ()=>{
     const [recoveryStatus, setRecoveryStatus] = useState('Post Recovery')
     const [postingDate, setPostingDate] = useState('')
     const [curSale, setCurSale] = useState(null)
+    const [curSaleDate, setCurSaleDate] = useState(null)
     const defaultFields = {
         employeeId: '',
         totalSales: '',
@@ -88,7 +89,18 @@ const Sales = ()=>{
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])
-
+    useEffect(()=>{
+        if (saleEmployee){
+            calculateReportSales()
+        }else{
+            setReportSales(null)
+        }
+    },[saleEmployee])
+    useEffect(()=>{
+        if (reportSales){
+            handleViewClick(reportSales)
+        }
+    },[reportSales])
     const handleFieldChange = ({index, e})=>{
         const name = e.target.getAttribute('name')
         const category = e.target.getAttribute('category')
@@ -213,6 +225,7 @@ const Sales = ()=>{
             }else{
                 setSales(newSales)
                 setCurSale(newSale)
+                setCurSaleDate(newSale.postingDate)
                 setIsView(true)
                 setFields([...(newSale.record)])
                 getSales(company)
@@ -224,8 +237,9 @@ const Sales = ()=>{
         }
     }
 
-    const handleViewClick = (e,index,sale) =>{
+    const handleViewClick = (sale) =>{
         setCurSale(sale)
+        setCurSaleDate(sale.postingDate)
         setSalesOpts('sales')
         setFields([...(sale.record)])
         setIsView(true)
@@ -248,6 +262,7 @@ const Sales = ()=>{
             }else{
                 setIsView(false)
                 setCurSale(null)
+                setCurSaleDate(null)
                 setFields([])
                 setAddEmployeeId('')
                 setRecoveryEmployeeId('')            
@@ -327,6 +342,62 @@ const Sales = ()=>{
         
     }
 
+    const calculateReportSales = ()=>{
+        var filteredReportSales = {                                                                
+            totalCashSales:0,
+            totalBankSales:0,
+            totalDebt:0,
+            totalShortage:0,
+            totalDebtRecovered:0,
+            postingDate:saleFrom,
+            createdAt: Date.now(),
+            record: []
+        }
+        sales.filter((ftrsale)=>{
+            const slPostingDate = new Date(ftrsale.postingDate).getTime()
+            const fromDate = new Date(saleFrom).getTime()
+            const toDate = new Date(saleTo).getTime()
+            if ( slPostingDate>= fromDate && slPostingDate<=toDate
+            ){
+                return ftrsale
+            }
+        }).forEach((sale)=>{        
+            if (!saleEmployee){
+                filteredReportSales['totalCashSales'] += sale['totalCashSales'] ? sale['totalCashSales'] : 0
+                filteredReportSales['totalBankSales'] += sale['totalBankSales'] ? sale['totalBankSales'] : 0
+                filteredReportSales['totalDebt'] += sale['totalDebt'] ? sale['totalDebt'] : 0
+                filteredReportSales['totalShortage'] += sale['totalShortage'] ? sale['totalShortage'] : 0
+                filteredReportSales['totalDebtRecovered'] += sale['totalDebtRecovered'] ? sale['totalDebtRecovered'] : 0
+                filteredReportSales['record'] = filteredReportSales['record'].concat(sale['record'])
+            }else{                                    
+                var totalBankSales = 0
+                var totalCashSales = 0
+                var totalDebt = 0
+                var totalShortage = 0
+                var totalDebtRecovered = 0
+                sale['record'].forEach((record)=>{
+                    if (record.employeeId === saleEmployee){
+                        record['postingDate'] = sale.postingDate
+                        totalBankSales += Number(record.bankSales)
+                        totalCashSales += Number(record.cashSales)
+                        totalDebt += Number(record.debt)
+                        totalShortage += Number(record.shortage)
+                        totalDebtRecovered += record.debtRecovered? Number(record.debtRecovered) : 0
+                        filteredReportSales['record'] = filteredReportSales['record'].concat(record)
+                    }
+                })
+                // console.log(saleRecord)
+                filteredReportSales['totalCashSales'] += totalCashSales
+                filteredReportSales['totalBankSales'] += totalBankSales
+                filteredReportSales['totalDebt'] += totalDebt
+                filteredReportSales['totalShortage'] += totalShortage
+                filteredReportSales['totalDebtRecovered'] += totalDebtRecovered
+                
+            }                        
+        })
+        setReportSales(filteredReportSales)
+        setIsMultiple(true)        
+    }
     return (
         <>
             <div className='sales'>         
@@ -335,7 +406,9 @@ const Sales = ()=>{
                     multiple={isMultiple}
                     setShowReport={(value)=>{
                         setShowReport(value)
-                        setReportSales(null)
+                        if (!saleEmployee){
+                            setReportSales(null)
+                        }
                     }}              
                     fromDate = {saleFrom}
                     toDate = {saleTo}      
@@ -357,57 +430,7 @@ const Sales = ()=>{
                         className='allslrepicon'
                         saleEmployee = {saleEmployee}
                         onClick={()=>{
-                            var filteredReportSales = {                                                                
-                                totalCashSales:0,
-                                totalBankSales:0,
-                                totalDebt:0,
-                                totalShortage:0,
-                                totalDebtRecovered:0,
-                                record: []
-                            }
-                            sales.filter((ftrsale)=>{
-                                const slPostingDate = new Date(ftrsale.postingDate).getTime()
-                                const fromDate = new Date(saleFrom).getTime()
-                                const toDate = new Date(saleTo).getTime()
-                                if ( slPostingDate>= fromDate && slPostingDate<=toDate
-                                ){
-                                    return ftrsale
-                                }
-                            }).forEach((sale)=>{        
-                                if (!saleEmployee){
-                                    filteredReportSales['totalCashSales'] += sale['totalCashSales'] ? sale['totalCashSales'] : 0
-                                    filteredReportSales['totalBankSales'] += sale['totalBankSales'] ? sale['totalBankSales'] : 0
-                                    filteredReportSales['totalDebt'] += sale['totalDebt'] ? sale['totalDebt'] : 0
-                                    filteredReportSales['totalShortage'] += sale['totalShortage'] ? sale['totalShortage'] : 0
-                                    filteredReportSales['totalDebtRecovered'] += sale['totalDebtRecovered'] ? sale['totalDebtRecovered'] : 0
-                                    filteredReportSales['record'] = filteredReportSales['record'].concat(sale['record'])
-                                }else{                                    
-                                    var totalBankSales = 0
-                                    var totalCashSales = 0
-                                    var totalDebt = 0
-                                    var totalShortage = 0
-                                    var totalDebtRecovered = 0
-                                    sale['record'].forEach((record)=>{
-                                        if (record.employeeId === saleEmployee){
-                                            totalBankSales += Number(record.bankSales)
-                                            totalCashSales += Number(record.cashSales)
-                                            totalDebt += Number(record.debt)
-                                            totalShortage += Number(record.shortage)
-                                            totalDebtRecovered += record.debtRecovered? Number(record.debtRecovered) : 0
-                                            filteredReportSales['record'] = filteredReportSales['record'].concat(record)
-                                        }
-                                    })
-                                    // console.log(saleRecord)
-                                    filteredReportSales['totalCashSales'] += totalCashSales
-                                    filteredReportSales['totalBankSales'] += totalBankSales
-                                    filteredReportSales['totalDebt'] += totalDebt
-                                    filteredReportSales['totalShortage'] += totalShortage
-                                    filteredReportSales['totalDebtRecovered'] += totalDebtRecovered
-                                    
-                                }                        
-                            })
-                            setReportSales(filteredReportSales)
-                            setIsMultiple(true)
+                            calculateReportSales()
                             if (saleTo && saleFrom){                                
                                 setShowReport(true)
                             }
@@ -450,7 +473,7 @@ const Sales = ()=>{
                             type='text'
                             value={saleEmployee}
                             onChange={(e)=>{
-                                setSaleEmployee(e.target.value)
+                                setSaleEmployee(e.target.value)                                
                             }}
                         >
                             <option value=''>All Sales Persons</option>
@@ -474,7 +497,7 @@ const Sales = ()=>{
                             })}
                         </select>
                     </div>}
-                    {sales.filter((ftrsale)=>{
+                    {(reportSales? [reportSales] : sales).filter((ftrsale)=>{
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
                         const toDate = new Date(saleTo).getTime()
@@ -490,7 +513,7 @@ const Sales = ()=>{
                         return(
                             <div className={'dept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
-                                    handleViewClick(e,index,sale)
+                                    handleViewClick(sale)
                                 }}
                             >
                                 <div className='dets sldets'>
@@ -772,7 +795,7 @@ const Sales = ()=>{
                             return (
                                 <div key={index} className='empsalesblk'>
                                     <div className='pdsalesview'>
-                                        {`Pending Sales out of ${Number(field.totalSales).toLocaleString()}:`} <b> {'₦'+(Number(field.totalSales) - netTotal).toLocaleString()}</b>
+                                        {`Pending Sales out of ${Number(field.totalSales).toLocaleString()}:`} <b> {'₦'+(Number(field.totalSales) - netTotal).toLocaleString()}</b> <b>{` ${field.postingDate? '('+getDate(field.postingDate)+')' : ''}`}</b>
                                     </div>
                                     {!isView && <MdDelete 
                                         className='salesdelete'
