@@ -8,8 +8,7 @@ const SalesReport = ({
     reportSales,multiple,
     fromDate,
     toDate,
-    selectedMonth,
-    selectedYear,
+    saleEmployee,
     setShowReport,
 })=>{
     const [InvoiceNumber, setInvoiceNumber] = useState('')
@@ -163,14 +162,14 @@ const SalesReport = ({
               useCORS: true
            }
         },
-        filename: `StaffPayRoll - ${selectedMonth}, ${selectedYear}.pdf`
+        filename: `SALES REPORT - FROM ${getDate(fromDate)} TO ${getDate(toDate)}.pdf`
     };
 
     const printToPDF = () => {
         const element = targetRef.current;
         const options = {
             margin:       0.2,
-            filename:     `SALES REPORT - ${selectedMonth}, ${selectedYear}.pdf`,
+            filename:     `SALES REPORT - FROM ${getDate(fromDate)} TO ${getDate(toDate)}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
