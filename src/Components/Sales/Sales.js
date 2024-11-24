@@ -65,6 +65,7 @@ const Sales = ()=>{
     const defaultRecoveryFields = {
         recoveryAmount: '',
         recoverySales: '',
+        recoveryPoint: '',
     }
 
     const [fields, setFields] = useState([])
@@ -292,6 +293,7 @@ const Sales = ()=>{
                         }
                     })                                                          
                     sale.totalDebtRecovered = totalDebtRecovered
+                    sale.recoveryPoint = field.recoveryPoint
                     updtSale={...sale}
                 }
             })
@@ -649,6 +651,7 @@ const Sales = ()=>{
                                     value={recoveryEmployeeId}
                                     onChange={(e)=>{
                                         setRecoveryEmployeeId(e.target.value)
+                                        setRecoveryFields([])
                                     }}
                                 >
                                     <option value=''>Select Sales Person</option>
@@ -740,6 +743,25 @@ const Sales = ()=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
                                             />
+                                        </div>
+                                        <div className='inpcov'>
+                                            <div>Recovery Point</div>
+                                            <select 
+                                                className='forminp'
+                                                name='recoveryPoint'
+                                                type='text'
+                                                value={field.recoveryPont}
+                                                onChange={(e)=>{
+                                                    handleRecoveryFieldChange({index, e})
+                                                }}
+                                            >
+                                                <option value=''>Select Recovery Point</option>
+                                                {Object.keys(payPoints).map((paypoint,index)=>{
+                                                    return (
+                                                        <option key={index} value={paypoint}>{`${paypoint.toUpperCase()}`}</option>
+                                                    )
+                                                })}
+                                            </select>
                                         </div>
                                     </div>
                                 )
