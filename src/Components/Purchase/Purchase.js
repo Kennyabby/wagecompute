@@ -31,6 +31,7 @@ const Purchase = ()=>{
         purchaseAmount:'',
     }
     const [fields, setFields] = useState({...defaultFields})
+    const departments = ['Bar', 'Kitchen', 'Musical', 'Security & Safety', 'Admin']
     const purchaseCategory = ['ASSORTED DRINKS', 'ASSORTED PROTEIN', 'INGREDIENTS', 'SWALLOW', 'CEREALS']
     const unitsofmeasurements = [
         'PORTIONS', 'PACKETS', 'CRATES',
@@ -210,8 +211,11 @@ const Purchase = ()=>{
                                 disabled={isView}                              
                             >
                                 <option value=''>Select Department</option>
-                                <option value='Bar'>Bar</option>
-                                <option value='Kitchen'>Kitchen</option>
+                                {departments.map((dept, index)=>{
+                                    return (
+                                        <option key={index} value={index}>{dept}</option>
+                                    )
+                                })}
                             </select>
                         </div>
                         <div className='inpcov'>
