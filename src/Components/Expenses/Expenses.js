@@ -28,6 +28,7 @@ const Expenses = ()=>{
         expenseCategory:'',
         expensesAmount:'',
         expensesVendor:'',
+        expensesDescription:'',
     }
     const [fields, setFields] = useState({...defaultFields})
     const departments = ['Bar', 'Kitchen', 'Musical', 'Security & Safety', 'Admin']
@@ -264,6 +265,17 @@ const Expenses = ()=>{
                                     )
                                 })}
                             </select>
+                        </div>
+                        <div className='inpcov'>
+                            <div>Description of Item</div>
+                            <input 
+                                className='forminp'
+                                name='expensesDescription'
+                                type='text'
+                                placeholder='Description of Item'
+                                value={fields.expensesDescription}
+                                disabled={isView}
+                            />
                         </div>
                         <div className='inpcov'>
                             <div>Expenses Amount</div>
