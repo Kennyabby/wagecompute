@@ -29,6 +29,7 @@ const Purchase = ()=>{
         purchaseQuantity:'',
         purchaseUOM:'',
         purchaseAmount:'',
+        purchaseVendor:'',
     }
     const [fields, setFields] = useState({...defaultFields})
     const departments = ['Bar', 'Kitchen', 'Musical', 'Security & Safety', 'Admin']
@@ -68,7 +69,6 @@ const Purchase = ()=>{
                 postingDate:purchaseDate,
                 createdAt: Date.now()
             }
-            
             const newPurchases = [newPurchase, ...purchase]
             
             const resps = await fetchServer("POST", {
@@ -76,7 +76,7 @@ const Purchase = ()=>{
                 collection: "Purchase", 
                 update: newPurchase
               }, "createDoc", server)
-
+                                          
               if (resps.err){
                 console.log(resps.mess)
                 setPurchaseStatus('Post Purchase')
@@ -214,10 +214,21 @@ const Purchase = ()=>{
                                 <option value=''>Select Department</option>
                                 {departments.map((dept, index)=>{
                                     return (
-                                        <option key={index} value={index}>{dept}</option>
+                                        <option key={index} value={dept}>{dept}</option>
                                     )
                                 })}
                             </select>
+                        </div>
+                        <div className='inpcov'>
+                            <div>Vendor</div>
+                            <input 
+                                className='forminp'
+                                name='purchaseVendor'
+                                type='text'
+                                placeholder='Vendor'
+                                value={fields.purchaseVendor}
+                                disabled={isView}
+                            />
                         </div>
                         <div className='inpcov'>
                             <div>Select Purchase Handler</div>
