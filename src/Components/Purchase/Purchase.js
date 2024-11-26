@@ -68,6 +68,7 @@ const Purchase = ()=>{
                 postingDate:purchaseDate,
                 createdAt: Date.now()
             }
+            
             const newPurchases = [newPurchase, ...purchase]
             
             const resps = await fetchServer("POST", {
@@ -75,7 +76,7 @@ const Purchase = ()=>{
                 collection: "Purchase", 
                 update: newPurchase
               }, "createDoc", server)
-              
+
               if (resps.err){
                 console.log(resps.mess)
                 setPurchaseStatus('Post Purchase')
@@ -87,9 +88,9 @@ const Purchase = ()=>{
                 setFields({...newPurchase})
                 getPurchase(company)
               }
-          
         }
     }
+
     const deletePurchase = async (purchase)=>{
         const resps = await fetchServer("POST", {
             database: company,
