@@ -27,10 +27,11 @@ const Expenses = ()=>{
         expensesHandler:'',
         expenseCategory:'',
         expensesAmount:'',
+        expensesVendor:'',
     }
     const [fields, setFields] = useState({...defaultFields})
     const departments = ['Bar', 'Kitchen', 'Musical', 'Security & Safety', 'Admin']
-    const expensesCategory = ['Electrical Repairs', 'Plumbing Repairs', 'MTN Subscription', 'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs']    
+    const expensesCategory = ['Electrical Repairs', 'Plumbing Repairs', 'MTN Subscription', 'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs', 'Others']    
     useEffect(()=>{
         storePath('expenses')  
     },[storePath])
@@ -213,6 +214,17 @@ const Expenses = ()=>{
                                     )
                                 })}
                             </select>
+                        </div>
+                        <div className='inpcov'>
+                            <div>Vendor</div>
+                            <input 
+                                className='forminp'
+                                name='expensesVendor'
+                                type='text'
+                                placeholder='Vendor'
+                                value={fields.expensesVendor}
+                                disabled={isView}
+                            />
                         </div>
                         <div className='inpcov'>
                             <div>Select Expenses Handler</div>
