@@ -268,8 +268,8 @@ const Expenses = ()=>{
                         </div>
                         <div className='inpcov'>
                             <div>Description of Item</div>
-                            <input 
-                                className='forminp'
+                            <textarea 
+                                className='forminp  exparea'
                                 name='expensesDescription'
                                 type='text'
                                 placeholder='Description of Item'
