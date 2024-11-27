@@ -943,6 +943,24 @@ const Sales = ()=>{
                                                 }}
                                             />
                                         </div>
+                                        {field.recoveryList !==undefined && <div 
+                                            onClick={()=>{
+                                                if (!field.viewHistory){
+                                                    field.viewHistory = true
+                                                }else{
+                                                    field.viewHistory = false
+                                                }
+                                            }}
+                                            className='addempsales'
+                                        >View History</div>}
+                                        {field.viewHistory && <div>
+                                            {field.recoverdList.map((reclist, index)=>{
+                                                const {recoveryAmount, recoveryPoint, recoveryDate} = reclist
+                                                return <div key={index}>
+                                                    {`${recoveryDate} ${recoveryAmount} ${recoveryPoint}`}
+                                                </div>
+                                            })}
+                                        </div>}
                                         {Object.keys(salesUnits).map((salesUnit, id)=>{                                            
                                             if (salesUnit === field.salesPoint){
                                                 return(
