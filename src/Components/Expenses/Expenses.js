@@ -116,7 +116,9 @@ const Expenses = ()=>{
         }        
     }
     const calculateReportExpense = ()=>{
-        var filteredReportExpenses = expenses.filter((ftrexpense)=>{
+        var filteredReportExpenses = expenses.sort((a,b) => {
+            return b.postingDate - a.postingDate
+        }).filter((ftrexpense)=>{
             const expPostingDate = new Date(ftrexpense.postingDate).getTime()
             const fromDate = new Date(expenseFrom).getTime()
             const toDate = new Date(expenseTo).getTime()
