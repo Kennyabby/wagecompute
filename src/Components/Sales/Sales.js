@@ -160,7 +160,17 @@ const Sales = ()=>{
         if (name === 'recoverySales' && value){
             const selectedText = e.target.selectedOptions[0].text
             setRecoveryFields((fields)=>{
-                fields[index] = {...fields[index], [name]:value, recoveryAmount:removeComma(selectedText.split('₦')[1])}
+                fields[index] = {...fields[index], [name]:value, 
+                    recoveryAmount:removeComma(selectedText.split('₦')[1]),
+                    recoveryMaxAmount:removeComma(selectedText.split('₦')[1])
+                }
+                return [...fields]
+            })
+        }else if (name === 'recoveryAmount' && value){
+            setRecoveryFields((fields)=>{
+                if (value <= fields[index]['recoveryMaxAmount']){
+                    fields[index] = {...fields[index], [name]:value}
+                }
                 return [...fields]
             })
         }else{
@@ -776,7 +786,7 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Recovery Amount'
                                                 value={field.recoveryAmount}
-                                                // disabled={true}
+                                                disabled={field.recoverySales?false:true}
                                                 onChange={(e)=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
