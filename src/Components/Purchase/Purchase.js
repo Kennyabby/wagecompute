@@ -192,7 +192,11 @@ const Purchase = ()=>{
                             />
                         </div>
                     </div>
-                    {purchase.map((pur, index)=>{
+                    {purchase.filter((purfltr)=>{
+                        if (purfltr.postingDate >= saleFrom && purfltr.postingDate <= saleTo){
+                            return purfltr
+                        }
+                    }).map((pur, index)=>{
                         const {
                             createdAt,postingDate, 
                             purchaseAmount, purchaseQuantity,

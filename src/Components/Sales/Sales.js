@@ -439,7 +439,6 @@ const Sales = ()=>{
                 <div className='emplist saleslist'>    
                     {companyRecord.status==='admin' && <FaTableCells                         
                         className='allslrepicon'
-                        saleEmployee = {saleEmployee}
                         onClick={()=>{
                             calculateReportSales()
                             if (saleTo && saleFrom){                                
@@ -821,7 +820,7 @@ const Sales = ()=>{
                         }
                         {salesOpts==='sales' && fields.map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
-                            // console.log(field)
+                            // console.log(index)
                             return (
                                 <div key={index} className='empsalesblk'>
                                     <div className='pdsalesview'>

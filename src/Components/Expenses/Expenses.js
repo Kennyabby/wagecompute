@@ -191,7 +191,11 @@ const Expenses = ()=>{
                             />
                         </div>
                     </div>
-                    {expenses.map((pur, index)=>{
+                    {expenses.filter((expfltr)=>{
+                        if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo){
+                            return expfltr
+                        }
+                    }).map((pur, index)=>{
                         const {
                             createdAt,postingDate, 
                             expensesAmount, expensesDepartment,
