@@ -67,6 +67,7 @@ const Sales = ()=>{
         recoveryAmount: '',
         recoverySales: '',
         recoveryPoint: '',
+        recoveryDate: '',
     }
 
     const [fields, setFields] = useState([])
@@ -298,17 +299,24 @@ const Sales = ()=>{
                     Number(field.recoverySales) === sale.createdAt                                               
                 ){
                     var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
+                    var saleRecoveredList = sale.recoveryList !== undefined? sale.recoveryList : [] 
                     sale.record.forEach((record, index)=>{
                         if (record.employeeId === recoveryEmployeeId && record.debt){
                             const alreadyRecovered = record.debtRecovered ? record.debtRecovered : 0
                             record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
                             totalDebtRecovered += Number(field.recoveryAmount)
-                            
+                            const recoveredList = record.recoverdList !== undefined? record.recoverdList: [] 
+                            record.recoverdList += recoveredList.concat({
+                                recoveryAmount:field.recoveryAmount,
+                                recoveryPoint:field.recoveryPoint,
+                                recoveryDate: field.recoveryDate
+                            })
+                            saleRecoveredList = saleRecoveredList.concat(record.recoverdList)
                                 
                         }
                     })                                                          
                     sale.totalDebtRecovered = totalDebtRecovered
-                    sale.recoveryPoint = field.recoveryPoint
+                    sale.recoveryList = saleRecoveredList
                     updtSale={...sale}
                 }
             })
@@ -789,6 +797,19 @@ const Sales = ()=>{
                                                     )
                                                 })}
                                             </select>
+                                        </div>
+                                        <div className='inpcov'>
+                                            <div>Recovery Date</div>
+                                            <input 
+                                                className='forminp'
+                                                name='recoveryDate'
+                                                type='date'
+                                                placeholder='Recovery Date'
+                                                value={field.recoveryDate}
+                                                onChange={(e)=>{
+                                                    handleRecoveryFieldChange({index, e})
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 )
