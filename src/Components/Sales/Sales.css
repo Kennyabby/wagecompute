@@ -13,6 +13,15 @@
 .salesview{
     width: 63%;
 }
+.slvwrecovery{
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    margin:10px auto;
+    div{
+        margin: auto 10px;
+    };
+}
 .slrepicon{
     position: absolute;
     right: 35px;

@@ -824,6 +824,7 @@ const Sales = ()=>{
                         }
                         {salesOpts==='sales' && fields.map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
+                            // console.log(field)
                             return (
                                 <div key={index} className='empsalesblk'>
                                     <div className='pdsalesview'>
@@ -896,15 +897,7 @@ const Sales = ()=>{
                                             >
                                                 <option value=''>Select Sales Point</option>
                                                 {Object.keys(salesUnits).filter((fltslunit)=>{
-                                                    // var ct=0
-                                                    // fields.forEach((fild)=>{
-                                                    //     if ( fild!==field && fltslunit === fild.salesPoint){
-                                                    //         ct++                                                            
-                                                    //     }
-                                                    // })
-                                                    // if (!ct){
-                                                    //     return fltslunit
-                                                    // }
+                                                   
                                                     return fltslunit
                                                 }).map((saleUnit, index)=>{
                                                     
@@ -943,7 +936,7 @@ const Sales = ()=>{
                                                 }}
                                             />
                                         </div>
-                                        {field.recoveryList !==undefined && <div 
+                                        {field.recoverdList !==undefined && <div 
                                             onClick={()=>{
                                                 if (!field.viewHistory){
                                                     field.viewHistory = true
@@ -954,10 +947,12 @@ const Sales = ()=>{
                                             className='addempsales'
                                         >View History</div>}
                                         {field.viewHistory && <div>
-                                            {field.recoveryList.map((reclist, index)=>{
+                                            {field.recoverdList.map((reclist, index)=>{
                                                 const {recoveryAmount, recoveryPoint, recoveryDate} = reclist
-                                                return <div key={index}>
-                                                    {`${recoveryDate} ${recoveryAmount} ${recoveryPoint}`}
+                                                return <div key={index} className='slvwrecovery'>
+                                                    <div>Date: <b>{` ${recoveryDate}\t`}</b></div>
+                                                    <div>Amount: <b>{` ${Number(recoveryAmount).toLocaleString()}`}</b></div>
+                                                    <div>Paid to: <b>{` ${recoveryPoint.toUpperCase()}`}</b></div>                                                         
                                                 </div>
                                             })}
                                         </div>}
