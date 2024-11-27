@@ -131,7 +131,9 @@ const ExpensesReport = ({
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {reportExpense?.map((exp)=>{
+                                                            {reportExpense?.sort((a,b)=>{
+                                                                return a.postingDate - b.postingDate
+                                                            }).map((exp)=>{
                                                                 if (exp.expensesDepartment === department){
                                                                     return(
                                                                         <tr>
