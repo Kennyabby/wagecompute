@@ -3,6 +3,8 @@ import { useEffect, useContext, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useScroll } from 'framer-motion'
 import { MdAdd } from 'react-icons/md'
+import { FaTableCells } from 'react-icons/fa6'
+import ExpensesReport from './ExpensesReport/ExpensesReport'
 
 const Expenses = ()=>{
 
@@ -19,9 +21,10 @@ const Expenses = ()=>{
     const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curExpense, setCurExpense] = useState(null)
     const [isView, setIsView] = useState(false)
+    const [showReport, setShowReport] = useState(false)
     const [expenseFrom, setExpenseFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
     const [expenseTo, setExpenseTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
-
+    const [reportExpense, setReportExpense] = useState(null)
     const defaultFields = {
         expensesDepartment:'',
         expensesHandler:'',
@@ -112,10 +115,42 @@ const Expenses = ()=>{
             getExpenses(company)
         }        
     }
+    const calculateReportExpense = ()=>{
+        var filteredReportExpenses = expenses.filter((ftrexpense)=>{
+            const expPostingDate = new Date(ftrexpense.postingDate).getTime()
+            const fromDate = new Date(expenseFrom).getTime()
+            const toDate = new Date(expenseTo).getTime()
+            if ( expPostingDate>= fromDate && expPostingDate<=toDate
+            ){
+                return ftrexpense
+            }
+        })
+        setReportExpense(filteredReportExpenses)
+    }
     return (
         <>
             <div className='expenses'>
+                {showReport && <ExpensesReport
+                    reportExpense = {reportExpense}
+                    multiple={true}
+                    setShowReport={(value)=>{
+                        setShowReport(value)                        
+                    }}              
+                    fromDate = {expenseFrom}
+                    toDate = {expenseTo}      
+                    // selectedMonth={selectedMonth}
+                    // selectedYear={selectedYear}
+                />}
                 <div className='purlst'>
+                    {companyRecord.status==='admin' && <FaTableCells                         
+                        className='allslrepicon'
+                        onClick={()=>{
+                            calculateReportExpense()
+                            if (expenseTo && expenseFrom){                                
+                                setShowReport(true)
+                            }
+                        }}
+                    />}
                     {<MdAdd 
                         className='add slsadd'
                         onClick={()=>{

@@ -3,7 +3,6 @@ import {useState, useContext, useRef, useEffect} from 'react'
 import ContextProvider from '../../../Resources/ContextProvider'
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
-import Purchase from '../Purchase';
 
 const PurchaseReport = ({
     reportPurchases,
