@@ -119,7 +119,7 @@ const PurchaseReport = ({
                                         
                                             return (
                                                 <div className='purtablecv'>
-                                                    <div>{`REPORT OF PURCHASE - ${department.toUpperCase()}`}</div>
+                                                    <div>{`${department.toUpperCase()} - DIRECT COST REPORT`}</div>
                                                     <table className="table payeetable">   
                                                         <thead>
                                                             <tr>
