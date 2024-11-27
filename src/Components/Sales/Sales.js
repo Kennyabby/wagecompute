@@ -942,13 +942,13 @@ const Sales = ()=>{
                                                 }
                                             }}
                                             className='addempsales'
-                                        >View History</div>}
+                                        >{field.viewHistory?` Unview History`:'View History'}</div>}
                                         {field.viewHistory && <div>
                                             {field.recoverdList.map((reclist, index)=>{
                                                 const {recoveryAmount, recoveryPoint, recoveryDate} = reclist
                                                 return <div key={index} className='slvwrecovery'>
                                                     <div>Date: <b>{` ${recoveryDate}\t`}</b></div>
-                                                    <div>Amount: <b>{` ${Number(recoveryAmount).toLocaleString()}`}</b></div>
+                                                    <div>Amount: <b>{` ${'₦'+Number(recoveryAmount).toLocaleString()}`}</b></div>
                                                     <div>Paid to: <b>{` ${recoveryPoint.toUpperCase()}`}</b></div>                                                         
                                                 </div>
                                             })}
