@@ -306,12 +306,18 @@ const Sales = ()=>{
                             record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
                             totalDebtRecovered += Number(field.recoveryAmount)
                             const recoveredList = record.recoverdList !== undefined? record.recoverdList: [] 
-                            record.recoverdList += recoveredList.concat({
+                            record.recoverdList = recoveredList.concat({
                                 recoveryAmount:field.recoveryAmount,
                                 recoveryPoint:field.recoveryPoint,
-                                recoveryDate: field.recoveryDate
+                                recoveryDate: field.recoveryDate,
+                                recoveryEmployeeId: recoveryEmployeeId
                             })
-                            saleRecoveredList = saleRecoveredList.concat(record.recoverdList)
+                            saleRecoveredList = saleRecoveredList.concat({
+                                recoveryAmount:field.recoveryAmount,
+                                recoveryPoint:field.recoveryPoint,
+                                recoveryDate: field.recoveryDate,
+                                recoveryEmployeeId: recoveryEmployeeId
+                            })
                                 
                         }
                     })                                                          
@@ -518,8 +524,9 @@ const Sales = ()=>{
                         }
                     }).map((sale, index)=>{
                         const {createdAt, postingDate, totalCashSales, totalDebt, record, 
-                            totalShortage, totalDebtRecovered, totalBankSales 
+                            totalShortage, totalDebtRecovered, totalBankSales, recoveryList 
                         } = sale 
+                        // console.log(recoveryList)
                         return(
                             <div className={'dept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
