@@ -457,7 +457,7 @@ const SalesReport = ({
                         }
                     }
                 >
-                    PRINT PAYEE
+                    PRINT REPORT
                 </button>
               </div>
             </div>}

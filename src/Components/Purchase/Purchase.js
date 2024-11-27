@@ -3,6 +3,8 @@ import { useEffect, useContext, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useScroll } from 'framer-motion'
 import { MdAdd } from 'react-icons/md'
+import { FaTableCells } from 'react-icons/fa6'
+import PurchaseReport from './PurchaseReport/PurchaseReport'
 
 const Purchase = ()=>{
 
@@ -19,9 +21,10 @@ const Purchase = ()=>{
     const [purchaseDate, setPurchaseDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curPurchase, setCurPurchase] = useState(null)
     const [isView, setIsView] = useState(false)
+    const [showReport, setShowReport] = useState(false)
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
     const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
-
+    const [reportPurchase, setReportPurchase] = useState(null)
     const defaultFields = {
         purchaseDepartment:'',
         purchaseHandler:'',
@@ -114,10 +117,43 @@ const Purchase = ()=>{
             getPurchase(company)
         }        
     }
+
+    const calculateReportPurchase = ()=>{
+        var filteredReportPurchases = purchase.filter((ftrpurchase)=>{
+            const prPostingDate = new Date(ftrpurchase.postingDate).getTime()
+            const fromDate = new Date(saleFrom).getTime()
+            const toDate = new Date(saleTo).getTime()
+            if ( prPostingDate>= fromDate && prPostingDate<=toDate
+            ){
+                return ftrpurchase
+            }
+        })
+        setReportPurchase(filteredReportPurchases)
+    }
     return (
         <>
             <div className='purchase'>
+                {showReport && <PurchaseReport
+                    reportPurchases = {reportPurchase}
+                    multiple={true}
+                    setShowReport={(value)=>{
+                        setShowReport(value)                        
+                    }}              
+                    fromDate = {saleFrom}
+                    toDate = {saleTo}      
+                    // selectedMonth={selectedMonth}
+                    // selectedYear={selectedYear}
+                />}    
                 <div className='purlst'>
+                    {companyRecord.status==='admin' && <FaTableCells                         
+                        className='allslrepicon'
+                        onClick={()=>{
+                            calculateReportPurchase()
+                            if (saleTo && saleFrom){                                
+                                setShowReport(true)
+                            }
+                        }}
+                    />}
                     {<MdAdd 
                         className='add slsadd'
                         onClick={()=>{

@@ -8,6 +8,7 @@
     height: 100vh;
 }
 .purlst{
+    position: relative;
     width: 36%;
     height: 98%;
     background: white;
