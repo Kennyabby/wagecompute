@@ -34,8 +34,10 @@ const Expenses = ()=>{
         expensesDescription:'',
     }
     const [fields, setFields] = useState({...defaultFields})
-    const departments = ['Bar', 'Kitchen', 'Musical', 'Security & Safety', 'Admin']
-    const expensesCategory = ['Electrical Repairs', 'Plumbing Repairs', 'MTN Subscription', 'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs', 'Others']    
+    const departments = ['Admin']
+    const expensesCategory = ['Electrical Repairs', 'Plumbing Repairs', 'MTN Subscription',
+         'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs',
+        'Sewage Evacuation', 'Sanitation/Waste Bin','Musical Expenses']    
     useEffect(()=>{
         storePath('expenses')  
     },[storePath])
