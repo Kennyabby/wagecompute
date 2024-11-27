@@ -1,11 +1,11 @@
-import './PurchaseReport.css'
+import './ExpensesReport.css'
 import {useState, useContext, useRef, useEffect} from 'react'
 import ContextProvider from '../../../Resources/ContextProvider'
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
 
-const PurchaseReport = ({
-    reportPurchases,
+const ExpensesReport = ({
+    reportExpense,
     fromDate,
     toDate,
     setShowReport,
@@ -26,13 +26,13 @@ const PurchaseReport = ({
 
     useEffect(()=>{
         
-     },[reportPurchases])
+     },[reportExpense])
     
-    const calculatePurchaseAmount =(dept)=>{
+    const calculateExpenseAmount =(dept)=>{
         var reportDeptAmount = 0
-        reportPurchases.forEach((pur)=>{
-            if (pur.purchaseDepartment===dept){
-                reportDeptAmount += Number(pur.purchaseAmount)
+        reportExpense.forEach((exp)=>{
+            if (exp.expensesDepartment===dept){
+                reportDeptAmount += Number(exp.expensesAmount)
             }                                       
         })
         return reportDeptAmount
@@ -115,7 +115,7 @@ const PurchaseReport = ({
                                     </div>
                                     <div className='tablecover'>
                                         {departments.map((department)=>{
-                                            const totalPurchaseAMont = reportPurchases?calculatePurchaseAmount(department):0
+                                            const totalPurchaseAmount = reportExpense?calculateExpenseAmount(department):0
                                         
                                             return (
                                                 <div className='purtablecv'>
@@ -124,21 +124,21 @@ const PurchaseReport = ({
                                                         <thead>
                                                             <tr>
                                                                 <th><h8 className='theader'>DATE</h8></th>
-                                                                <th><h8 className='theader'>SUPPLIERS</h8></th>
+                                                                <th><h8 className='theader'>VENDOR</h8></th>
                                                                 <th><h8 className='theader'>DETAIL OF ITEMS</h8></th>
                                                                 <th><h8 className='theader'>AMOUNT</h8></th>
                                                                 
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {reportPurchases?.map((pur)=>{
-                                                                if (pur.purchaseDepartment === department){
+                                                            {reportExpense?.map((exp)=>{
+                                                                if (exp.expensesDepartment === department){
                                                                     return(
                                                                         <tr>
-                                                                            <td><h8 className='ttrow'>{getDate(pur.postingDate)}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{pur.purchaseVendor}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{pur.itemCategory}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{'₦'+Number(pur.purchaseAmount).toLocaleString()}</h8></td>                                                        
+                                                                            <td><h8 className='ttrow'>{getDate(exp.postingDate)}</h8></td>                                                        
+                                                                            <td><h8 className='ttrow'>{exp.expensesVendor}</h8></td>                                                        
+                                                                            <td><h8 className='ttrow'>{exp.expenseCategory}</h8></td>                                                        
+                                                                            <td><h8 className='ttrow'>{'₦'+Number(exp.expensesAmount).toLocaleString()}</h8></td>                                                        
                                                                         </tr>
                                                                     )                                                                                                                
                                                                 }
@@ -147,7 +147,7 @@ const PurchaseReport = ({
                                                                 <td className='ttrow'>TOTAL</td>                                                        
                                                                 <td className='ttrow'></td>                                                        
                                                                 <td className='ttrow'></td>                                                        
-                                                                <td className='ttrow'>{'₦'+totalPurchaseAMont.toLocaleString()}</td>                                                      
+                                                                <td className='ttrow'>{'₦'+totalPurchaseAmount.toLocaleString()}</td>                                                      
                                                             </tr>                                                                                                
                                                         </tbody>
                                                     </table>                                        
@@ -179,4 +179,4 @@ const PurchaseReport = ({
     )
 }
 
-export default PurchaseReport
+export default ExpensesReport
