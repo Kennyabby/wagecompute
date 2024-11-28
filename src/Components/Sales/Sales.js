@@ -793,7 +793,7 @@ const Sales = ()=>{
                                         setRecoveryFields([])
                                     }}
                                 >
-                                    <option value=''>Select Sales Person</option>
+                                    <option value=''>Select Employee ID</option>
                                     {employees.map((employee)=>{
                                         return (
                                             <option 
