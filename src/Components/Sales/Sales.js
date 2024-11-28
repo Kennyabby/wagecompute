@@ -15,8 +15,8 @@ const Sales = ()=>{
         server, 
         companyRecord,
         company, 
-        employees,
-        sales, setSales, getSales, months, years,
+        employees, setEmployees, getEmployees,
+        sales, setSales, getSales, months, 
         getDate, removeComma, 
         alert,alertState,alertTimeout,actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage
@@ -65,6 +65,7 @@ const Sales = ()=>{
         recoverySales: '',
         recoveryPoint: '',
         recoveryDate: '',
+        recoveryTransferId:''
     }
 
     const [fields, setFields] = useState([])
@@ -298,66 +299,103 @@ const Sales = ()=>{
     const postRecovery = async()=>{
         setRecoveryStatus('Posting Recovery ....')
         recoveryFields.forEach( async(field)=>{
-            var updtSale = {}
-            sales.forEach((sale,index)=>{
-                if (                                                        
-                    months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                    new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
-                    Number(field.recoverySales) === sale.createdAt                                               
-                ){
-                    var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
-                    var saleRecoveredList = sale.recoveryList !== undefined? sale.recoveryList : [] 
-                    sale.record.forEach((record, index)=>{
-                        if (record.employeeId === recoveryEmployeeId && record.debt){
-                            const alreadyRecovered = record.debtRecovered ? record.debtRecovered : 0
-                            record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
-                            totalDebtRecovered += Number(field.recoveryAmount)
-                            const recoveredList = record.recoverdList !== undefined? record.recoverdList: [] 
-                            record.recoverdList = recoveredList.concat({
-                                recoveryAmount:field.recoveryAmount,
-                                recoveryPoint:field.recoveryPoint,
-                                recoveryDate: field.recoveryDate,
-                                recoveryEmployeeId: recoveryEmployeeId
-                            })
-                            saleRecoveredList = saleRecoveredList.concat({
-                                recoveryAmount:field.recoveryAmount,
-                                recoveryPoint:field.recoveryPoint,
-                                recoveryDate: field.recoveryDate,
-                                recoveryEmployeeId: recoveryEmployeeId
-                            })
-                                
-                        }
-                    })                                                          
-                    sale.totalDebtRecovered = totalDebtRecovered
-                    sale.recoveryList = saleRecoveredList
-                    updtSale={...sale}
+            if(recoveryEmployeeId === field.recoverySales){
+
+            }else{
+                var updtSale = {}
+                sales.forEach((sale,index)=>{
+                    if (                                                        
+                        months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
+                        new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
+                        Number(field.recoverySales) === sale.createdAt                                               
+                    ){
+                        var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
+                        var saleRecoveredList = sale.recoveryList !== undefined? sale.recoveryList : [] 
+                        sale.record.forEach((record, index)=>{
+                            if (record.employeeId === recoveryEmployeeId && record.debt){
+                                const alreadyRecovered = record.debtRecovered ? record.debtRecovered : 0
+                                record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
+                                totalDebtRecovered += Number(field.recoveryAmount)
+                                const recoveredList = record.recoverdList !== undefined? record.recoverdList: [] 
+                                const recoveryDetails ={
+                                    recoveryAmount:field.recoveryAmount,
+                                    recoveryPoint:field.recoveryPoint,
+                                    recoveryDate: field.recoveryDate,
+                                    recoveryEmployeeId: recoveryEmployeeId,
+                                    recoveryTransferId: field.recoveryTransferId
+                                }
+                                record.recoverdList = recoveredList.concat(recoveryDetails)
+                                saleRecoveredList = saleRecoveredList.concat(recoveryDetails)
+                                    
+                            }
+                        })                                                          
+                        sale.totalDebtRecovered = totalDebtRecovered
+                        sale.recoveryList = saleRecoveredList
+                        updtSale={...sale}
+                    }
+                })
+                const ftrSales = sales.filter((sales)=>{
+                    return sales.createdAt !== updtSale.createdAt
+                })
+                const updatedSales = [updtSale, ...ftrSales]
+                const updatedSale = {...updtSale}  
+                delete updatedSale._id
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Sales", 
+                    prop: [{createdAt: updtSale.createdAt}, updatedSale]
+                }, "updateOneDoc", server)
+                  
+                if (resps.err){
+                    console.log(resps.mess)
+                    setAlertState('info')
+                    setAlert(resps.mess)
+                    setAlertTimeout(5000)
+                    setRecoveryStatus('Post Recovery')
+                }else{                
+                    setSales(updatedSales)
+                    getSales(company)
+                    setRecoveryFields([])
+                    setRecoveryStatus('Post Recovery')
+                    setRecoveryEmployeeId('')
+                }            
+
+                if (field.recoveryPoint === 'Employee'){
+                    const targetEmployee = employees.filter((emp)=>{
+                        return emp.i_d === field.recoveryTransferId
+                    })
+                    const employeeDebt = targetEmployee[0]['employeeDebt'] ? targetEmployee[0]['employeeDebt'] : 0
+                    var employeeDebtList = targetEmployee[0]['employeeDebtList']!==undefined?targetEmployee[0]['employeeDebtList'] : [] 
+                    var newEmployeeDebtList = employeeDebtList.concat({
+                        transferedFrom: recoveryEmployeeId,            
+                        postingDate: field.recoveryDate,
+                        debtAmount: Number(field.recoveryAmount),
+                    })
+                    const updatedEmployee = {
+                        ...targetEmployee[0],
+                        employeeDebt: Number(employeeDebt)+Number(field.recoveryAmount),
+                        employeeDebtList: newEmployeeDebtList
+                    }
+                    const filteredEmp = employees.filter((emp)=>{
+                        return emp.i_d!==updatedEmployee.i_d
+                    })
+                    const updatedEmployees = [...filteredEmp, updatedEmployee]
+                    delete updatedEmployee._id
+                    const resps1 = await fetchServer("POST", {
+                        database: company,
+                        collection: "Employees", 
+                        prop: [{i_d: updatedEmployee.i_d}, updatedEmployee]
+                    }, "updateOneDoc", server)
+                    if (resps.err){
+                        console.log(resps1.mess)
+                    }else{
+                        setEmployees(updatedEmployees)
+                        getEmployees(company)
+                        console.log('employee debt updated')
+                    }
                 }
-            })
-            const ftrSales = sales.filter((sales)=>{
-                return sales.createdAt !== updtSale.createdAt
-            })
-            const updatedSales = [updtSale, ...ftrSales]
-            const updatedSale = {...updtSale}  
-            delete updatedSale._id
-            const resps = await fetchServer("POST", {
-                database: company,
-                collection: "Sales", 
-                prop: [{createdAt: updtSale.createdAt}, updatedSale]
-            }, "updateOneDoc", server)
-              
-            if (resps.err){
-                console.log(resps.mess)
-                setAlertState('info')
-                setAlert(resps.mess)
-                setAlertTimeout(5000)
-                setRecoveryStatus('Post Recovery')
-            }else{                
-                setSales(updatedSales)
-                getSales(company)
-                setRecoveryFields([])
-                setRecoveryStatus('Post Recovery')
-                setRecoveryEmployeeId('')
-            }            
+
+            }
         })
         
         
@@ -809,8 +847,35 @@ const Sales = ()=>{
                                                         <option key={index} value={paypoint}>{`${paypoint.toUpperCase()}`}</option>
                                                     )
                                                 })}
+                                                <option value='Employee'>EMPLOYEE</option>
                                             </select>
                                         </div>
+                                        {field.recoveryPoint === 'Employee' &&
+                                            <div className='inpcov'>
+                                                <div>Transfer To ID</div>
+                                                <select 
+                                                    className='forminp'
+                                                    name='recoveryTransferId'
+                                                    type='text'
+                                                    value={field.recoveryTransferId}
+                                                    onChange={(e)=>{
+                                                        handleRecoveryFieldChange({index, e})
+                                                    }}
+                                                >
+                                                    <option value=''>Select Transfer ID</option>
+                                                    {employees.map((employee)=>{
+                                                        return (
+                                                            <option 
+                                                                key={employee.i_d}
+                                                                value={employee.i_d}
+                                                            >
+                                                                {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                                            </option>
+                                                        )
+                                                    })}
+                                                </select>
+                                            </div>
+                                        }
                                         <div className='inpcov'>
                                             <div>Recovery Date</div>
                                             <input 
