@@ -37,7 +37,14 @@ const Expenses = ()=>{
     const departments = ['Admin']
     const expensesCategory = ['Electrical Repairs', 'Plumbing Repairs', 'MTN Subscription',
          'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs',
-        'Sewage Evacuation', 'Sanitation/Waste Bin','Musical Expenses']    
+        'Sewage Evacuation', 'Sanitation & Waste','Musical Expenses',
+        'Admin Expenses', 'Printing and Stationery', 'Furniture Maintenance',
+        'Transport', 'NEPA', 'PR', 'Telephone Subscription', 'Adhoc Staff',
+        'Fitting & Lighting', 'Laundry Services', 'Staff Uniform', 'CCTV Maintenance',
+        'Entertainment', 'Building Maintenance', 'Computer Maintenance', 'Cooking gas',
+        'Salary & Wages', 'First Aid', 'Hiring', 'Donation', 'Staff Welfare',
+        'Director Remuneration', 'Medical', 'General Maintenance'
+    ]    
     useEffect(()=>{
         storePath('expenses')  
     },[storePath])
@@ -302,7 +309,7 @@ const Expenses = ()=>{
                                 disabled={isView}
                             >
                                 <option value=''>Expense Category</option>
-                                {expensesCategory.map((category, index)=>{
+                                {expensesCategory.sort((a,b) => a - b).map((category, index)=>{
                                     return (
                                         <option key={index} value={category}>{category}</option>
                                     )
