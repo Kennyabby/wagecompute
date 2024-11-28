@@ -240,7 +240,7 @@ const Purchase = ()=>{
                     })}
                 </div>
                 <div className='purinfo'>
-                    <div className='purinfotitle'>PURCHASE ENTRY</div>
+                    <div className='purinfotitle'>DIRECT COST ENTRY</div>
                     <div className='purinfocontent' onChange={handlePurchaseEntry}>
                         <div className='inpcov'>
                             <div>Select Department</div>

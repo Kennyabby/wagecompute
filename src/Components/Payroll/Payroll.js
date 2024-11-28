@@ -511,6 +511,12 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
                 }
             }
         })
+        var empDebtAmount = ''
+        curEmployee.employeeDebtList?.forEach((empDebt)=>{
+            if (att.month === months[new Date(empDebt.postingDate).getMonth()]){
+                empDebtAmount = Number(empDebtAmount) + Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)
+            }
+        })
         var saleDebt = ''
         var saleShortage = ''
         sales.forEach((sale)=>{
@@ -523,8 +529,8 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
                 }
             })
         })
-        if (saleDebt && saleDebt>0){
-            setSubDebtDue(saleDebt)
+        if ((Number(saleDebt)+Number(empDebtAmount)) && ((Number(saleDebt)<0?0:Number(saleDebt))+Number(empDebtAmount))>0){
+            setSubDebtDue(Number(saleDebt)+Number(empDebtAmount))
         }
         if (saleShortage){
             setSubShortages(saleShortage)

@@ -39,7 +39,7 @@ const Employees = () =>{
         bankBranch:'',
         accountNo:'',
         expectedWorkDays: '',
-        salary:'',
+        salary:'',        
         gurantorName:'',
         guarantorAddress:'',
         guarantorLGA:'',
@@ -134,7 +134,7 @@ const Employees = () =>{
 
     const deleteEmployee = async()=>{
         const i_d = curEmployee.i_d
-        const filteredEmp = departments.filter((emp)=>{
+        const filteredEmp = employees.filter((emp)=>{
             return emp.i_d!==i_d
         })
         const resps = await fetchServer("POST", {
@@ -466,6 +466,28 @@ const Employees = () =>{
                                         disabled={isView}
                                     />
                                 </div>
+                                {fields.employeeDebt && <div className='inpcov'>
+                                    <div>Debt (Naira)</div>
+                                    <input 
+                                        className='forminp'
+                                        name='employeeDebt'
+                                        type='number'
+                                        placeholder='Debts' 
+                                        value={fields.employeeDebt}
+                                        disabled={true}
+                                    />
+                                </div>}
+                                {fields.employeeDebtRecoverd && <div className='inpcov'>
+                                    <div>Recovered (Naira)</div>
+                                    <input 
+                                        className='forminp'
+                                        name='employeeDebtRecoverd'
+                                        type='number'
+                                        placeholder='Debts' 
+                                        value={fields.employeeDebtRecoverd}
+                                        disabled={true}
+                                    />
+                                </div>}
                                 <div className='inpcov'>
                                     <div>Expected Work Days</div>
                                     <input 

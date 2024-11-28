@@ -299,8 +299,64 @@ const Sales = ()=>{
     const postRecovery = async()=>{
         setRecoveryStatus('Posting Recovery ....')
         recoveryFields.forEach( async(field)=>{
-            if(recoveryEmployeeId === field.recoverySales){
-
+            if(recoveryEmployeeId === (field.recoverySales).slice(0,field.recoverySales.indexOf('-'))){
+                console.log('updating Employee...')
+                var updtEmployee = {}
+                employees.forEach((employee)=>{
+                    if (employee.i_d === recoveryEmployeeId){
+                        var totalDebtRecovered = employee.employeeDebtRecoverd ? employee.employeeDebtRecoverd : 0
+                        var employeeRecoveredList = employee.recoveryList !== undefined? employee.recoveryList : []
+                        employee.employeeDebtList?.forEach((empDebt,index)=>{
+                            if (                                                        
+                                months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
+                                new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
+                                field.recoverySales === `${recoveryEmployeeId}-${index}`                                                        
+                            ){
+                                const alreadyRecovered = empDebt.debtRecovered ? empDebt.debtRecovered : 0
+                                empDebt.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
+                                totalDebtRecovered += Number(field.recoveryAmount)
+                                const recoveredList = empDebt.recoverdList !== undefined? empDebt.recoverdList: [] 
+                                const recoveryDetails ={
+                                    recoveryAmount:field.recoveryAmount,
+                                    recoveryPoint:field.recoveryPoint,
+                                    recoveryDate: field.recoveryDate,
+                                    recoveryEmployeeId: recoveryEmployeeId,
+                                    recoveryTransferId: field.recoveryTransferId
+                                }
+                                empDebt.recoverdList = recoveredList.concat(recoveryDetails)
+                                employeeRecoveredList = employeeRecoveredList.concat(recoveryDetails)
+                            }
+                        })
+                        employee.emploeeeDebtRecoverd = totalDebtRecovered
+                        employee.recoveryList = employeeRecoveredList
+                        updtEmployee={...employee}
+                    }
+                })
+                const ftrEmployees = employees.filter((employee)=>{
+                    return employee.i_d !== updtEmployee.i_d
+                })
+                const updatedEmployees = [updtEmployee, ...ftrEmployees]
+                const updatedEmployee = {...updtEmployee}  
+                delete updatedEmployee._id
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Employees", 
+                    prop: [{i_d: updtEmployee.i_d}, updatedEmployee]
+                }, "updateOneDoc", server)
+                  
+                if (resps.err){
+                    console.log(resps.mess)
+                    setAlertState('info')
+                    setAlert(resps.mess)
+                    setAlertTimeout(5000)
+                    setRecoveryStatus('Post Recovery')
+                }else{                
+                    setEmployees(updatedEmployees)
+                    getEmployees(company)
+                    setRecoveryFields([])
+                    setRecoveryStatus('Post Recovery')
+                    setRecoveryEmployeeId('')
+                }
             }else{
                 var updtSale = {}
                 sales.forEach((sale,index)=>{
@@ -358,43 +414,40 @@ const Sales = ()=>{
                     setRecoveryFields([])
                     setRecoveryStatus('Post Recovery')
                     setRecoveryEmployeeId('')
-                }            
-
-                if (field.recoveryPoint === 'Employee'){
-                    const targetEmployee = employees.filter((emp)=>{
-                        return emp.i_d === field.recoveryTransferId
-                    })
-                    const employeeDebt = targetEmployee[0]['employeeDebt'] ? targetEmployee[0]['employeeDebt'] : 0
-                    var employeeDebtList = targetEmployee[0]['employeeDebtList']!==undefined?targetEmployee[0]['employeeDebtList'] : [] 
-                    var newEmployeeDebtList = employeeDebtList.concat({
-                        transferedFrom: recoveryEmployeeId,            
-                        postingDate: field.recoveryDate,
-                        debtAmount: Number(field.recoveryAmount),
-                    })
-                    const updatedEmployee = {
-                        ...targetEmployee[0],
-                        employeeDebt: Number(employeeDebt)+Number(field.recoveryAmount),
-                        employeeDebtList: newEmployeeDebtList
-                    }
-                    const filteredEmp = employees.filter((emp)=>{
-                        return emp.i_d!==updatedEmployee.i_d
-                    })
-                    const updatedEmployees = [...filteredEmp, updatedEmployee]
-                    delete updatedEmployee._id
-                    const resps1 = await fetchServer("POST", {
-                        database: company,
-                        collection: "Employees", 
-                        prop: [{i_d: updatedEmployee.i_d}, updatedEmployee]
-                    }, "updateOneDoc", server)
-                    if (resps.err){
-                        console.log(resps1.mess)
-                    }else{
-                        setEmployees(updatedEmployees)
-                        getEmployees(company)
-                        console.log('employee debt updated')
-                    }
+                }                            
+            }
+            if (field.recoveryPoint === 'Employee'){
+                const targetEmployee = employees.filter((emp)=>{
+                    return emp.i_d === field.recoveryTransferId
+                })
+                const employeeDebt = targetEmployee[0]['employeeDebt'] ? targetEmployee[0]['employeeDebt'] : 0
+                var employeeDebtList = targetEmployee[0]['employeeDebtList']!==undefined?targetEmployee[0]['employeeDebtList'] : [] 
+                var newEmployeeDebtList = employeeDebtList.concat({
+                    transferedFrom: recoveryEmployeeId,            
+                    postingDate: field.recoveryDate,
+                    debtAmount: Number(field.recoveryAmount),
+                })
+                const updatedEmployee = {
+                    ...targetEmployee[0],
+                    employeeDebt: Number(employeeDebt)+Number(field.recoveryAmount),
+                    employeeDebtList: newEmployeeDebtList
                 }
-
+                const filteredEmp = employees.filter((emp)=>{
+                    return emp.i_d!==updatedEmployee.i_d
+                })
+                const updatedEmployees = [...filteredEmp, updatedEmployee]
+                delete updatedEmployee._id
+                const resps1 = await fetchServer("POST", {
+                    database: company,
+                    collection: "Employees", 
+                    prop: [{i_d: updatedEmployee.i_d}, updatedEmployee]
+                }, "updateOneDoc", server)
+                if (resps1.err){
+                    console.log(resps1.mess)
+                }else{
+                    setEmployees(updatedEmployees)
+                    getEmployees(company)
+                }
             }
         })
         
@@ -785,7 +838,7 @@ const Sales = ()=>{
                                             }}
                                         />                                        
                                         <div className='inpcov'>
-                                            <div>Select Recovery Sales</div>
+                                            <div>Select Recovery Debts</div>
                                             <select 
                                                 className='forminp'
                                                 name='recoverySales'
@@ -795,14 +848,14 @@ const Sales = ()=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
                                             >
-                                                <option value=''>Select Recovery Sales</option>
-                                                {sales.map((sale,index)=>{
+                                                <option value=''>Select Recovery Debts</option>
+                                                {sales.map((sale)=>{
                                                     if (                                                        
                                                         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
                                                         new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
                                                     ){
                                                         return (
-                                                            sale.record.map((record, index)=>{
+                                                            sale.record.map((record,index)=>{
                                                                 if (record.employeeId === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)) > 0){
                                                                     return (
                                                                         <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)).toLocaleString()}`}</option>
@@ -810,6 +863,22 @@ const Sales = ()=>{
                                                                     
                                                                 }
                                                             })                                                          
+                                                        )
+                                                    }
+                                                })}
+                                                {employees.map((employee)=>{
+                                                    if (employee.i_d === recoveryEmployeeId){
+                                                        return (
+                                                            employee.employeeDebtList?.map((empDebt,index)=>{
+                                                                if (                                                        
+                                                                    months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
+                                                                    new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                                                                ){
+                                                                    return (
+                                                                        <option key={index} value={`${recoveryEmployeeId}-${index}`}>{`${empDebt.postingDate} - ${Number(empDebt.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)).toLocaleString()}`}</option>                                                                                                                                 
+                                                                    )
+                                                                }
+                                                            })
                                                         )
                                                     }
                                                 })}
