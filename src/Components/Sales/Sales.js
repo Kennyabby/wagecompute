@@ -327,7 +327,7 @@ const Sales = ()=>{
                                 employeeRecoveredList = employeeRecoveredList.concat(recoveryDetails)
                             }
                         })
-                        employee.emploeeeDebtRecoverd = totalDebtRecovered
+                        employee.employeeDebtRecoverd = totalDebtRecovered
                         employee.recoveryList = employeeRecoveredList
                         updtEmployee={...employee}
                     }
