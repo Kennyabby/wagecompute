@@ -359,16 +359,21 @@ const Sales = ()=>{
                 }
             }else{
                 var updtSale = {}
+                console.log('recovering sales debt')
+                
                 sales.forEach((sale,index)=>{
+                    console.log(sale.createdAt,field.recoverySales)
                     if (                                                        
                         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
                         new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
                         Number(field.recoverySales) === sale.createdAt                                               
                     ){
+                        console.log('Identified Debt')
+                        console.log(sale.totalDebtRecovered, sale.recoveryList)
                         var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
                         var saleRecoveredList = sale.recoveryList !== undefined? sale.recoveryList : [] 
                         sale.record.forEach((record, index)=>{
-                            if (record.employeeId === recoveryEmployeeId && record.debt){
+                            if (record.employeeId === recoveryEmployeeId && (record.debt || record.shortage)){
                                 const alreadyRecovered = record.debtRecovered ? record.debtRecovered : 0
                                 record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
                                 totalDebtRecovered += Number(field.recoveryAmount)
@@ -386,8 +391,9 @@ const Sales = ()=>{
                             }
                         })                                                          
                         sale.totalDebtRecovered = totalDebtRecovered
-                        sale.recoveryList = saleRecoveredList
+                        sale.recoveryList = saleRecoveredList                        
                         updtSale={...sale}
+                        console.log(updtSale)
                     }
                 })
                 const ftrSales = sales.filter((sales)=>{
@@ -416,39 +422,39 @@ const Sales = ()=>{
                     setRecoveryEmployeeId('')
                 }                            
             }
-            if (field.recoveryPoint === 'Employee'){
-                const targetEmployee = employees.filter((emp)=>{
-                    return emp.i_d === field.recoveryTransferId
-                })
-                const employeeDebt = targetEmployee[0]['employeeDebt'] ? targetEmployee[0]['employeeDebt'] : 0
-                var employeeDebtList = targetEmployee[0]['employeeDebtList']!==undefined?targetEmployee[0]['employeeDebtList'] : [] 
-                var newEmployeeDebtList = employeeDebtList.concat({
-                    transferedFrom: recoveryEmployeeId,            
-                    postingDate: field.recoveryDate,
-                    debtAmount: Number(field.recoveryAmount),
-                })
-                const updatedEmployee = {
-                    ...targetEmployee[0],
-                    employeeDebt: Number(employeeDebt)+Number(field.recoveryAmount),
-                    employeeDebtList: newEmployeeDebtList
-                }
-                const filteredEmp = employees.filter((emp)=>{
-                    return emp.i_d!==updatedEmployee.i_d
-                })
-                const updatedEmployees = [...filteredEmp, updatedEmployee]
-                delete updatedEmployee._id
-                const resps1 = await fetchServer("POST", {
-                    database: company,
-                    collection: "Employees", 
-                    prop: [{i_d: updatedEmployee.i_d}, updatedEmployee]
-                }, "updateOneDoc", server)
-                if (resps1.err){
-                    console.log(resps1.mess)
-                }else{
-                    setEmployees(updatedEmployees)
-                    getEmployees(company)
-                }
-            }
+            // if (field.recoveryPoint === 'Employee'){
+            //     const targetEmployee = employees.filter((emp)=>{
+            //         return emp.i_d === field.recoveryTransferId
+            //     })
+            //     const employeeDebt = targetEmployee[0]['employeeDebt'] ? targetEmployee[0]['employeeDebt'] : 0
+            //     var employeeDebtList = targetEmployee[0]['employeeDebtList']!==undefined?targetEmployee[0]['employeeDebtList'] : [] 
+            //     var newEmployeeDebtList = employeeDebtList.concat({
+            //         transferedFrom: recoveryEmployeeId,            
+            //         postingDate: field.recoveryDate,
+            //         debtAmount: Number(field.recoveryAmount),
+            //     })
+            //     const updatedEmployee = {
+            //         ...targetEmployee[0],
+            //         employeeDebt: Number(employeeDebt)+Number(field.recoveryAmount),
+            //         employeeDebtList: newEmployeeDebtList
+            //     }
+            //     const filteredEmp = employees.filter((emp)=>{
+            //         return emp.i_d!==updatedEmployee.i_d
+            //     })
+            //     const updatedEmployees = [...filteredEmp, updatedEmployee]
+            //     delete updatedEmployee._id
+            //     const resps1 = await fetchServer("POST", {
+            //         database: company,
+            //         collection: "Employees", 
+            //         prop: [{i_d: updatedEmployee.i_d}, updatedEmployee]
+            //     }, "updateOneDoc", server)
+            //     if (resps1.err){
+            //         console.log(resps1.mess)
+            //     }else{
+            //         setEmployees(updatedEmployees)
+            //         getEmployees(company)
+            //     }
+            // }
         })
         
         
