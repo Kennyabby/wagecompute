@@ -524,13 +524,13 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
                 if (record.employeeId === curEmployee.i_d){
                     if (att.month === months[new Date(sale.postingDate).getMonth()]){
                         var thisDebt = Number(record.debt) - Number(record.debtRecovered)
-                        saleDebt = Number(saleDebt) + (thisDebt>0?thisDebt:0) 
+                        saleDebt = Number(saleDebt) + Number(thisDebt>0?thisDebt:0) 
                         saleShortage = Number(saleShortage)+Number(record.shortage) + (Number(thisDebt) < 0 ? thisDebt : 0)
                     }
                 }
             })
         })
-        if ((Number(saleDebt)+Number(empDebtAmount)) && ((Number(saleDebt)<0?0:Number(saleDebt))+Number(empDebtAmount))>0){
+        if ((Number(saleDebt)+Number(empDebtAmount))>0){
             setSubDebtDue(Number(saleDebt)+Number(empDebtAmount))
         }
         if (saleShortage){
