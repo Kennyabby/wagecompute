@@ -277,7 +277,7 @@ const Attendance = () =>{
                             {((months[(new Date()).getMonth()]===month && 
                                 String((new Date()).getFullYear()===year)) || 
                                 (months[(new Date()).getMonth()-1]===month &&
-                                [1,2,3,4,5,6].includes((new Date).getDate()))) && 
+                                [1,2,3,4,5,6,8,9,10].includes((new Date).getDate()))) && 
                             <div 
                             className='edit'
                             onClick={()=>{
