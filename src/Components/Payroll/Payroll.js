@@ -506,7 +506,7 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
             setSubBonus(payee.bonus)
         }
         if(payee.adjustment){
-            setSubAdjustment(payee.setAdjustment)
+            setSubAdjustment(payee.adjustment)
         }
         }
         
