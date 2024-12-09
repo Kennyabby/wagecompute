@@ -511,6 +511,7 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
       
     },[])
     useEffect(()=>{
+        var empDebtAmount = ""
         curEmployee.employeeDebtList?.forEach((empDebt)=>{
             if (att.month === months[new Date(empDebt.postingDate).getMonth()]){
                 empDebtAmount = Number(empDebtAmount) + Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)
