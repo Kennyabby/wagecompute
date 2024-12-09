@@ -490,6 +490,7 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
       setSubPenalties('')
       setSubBonus('')
       setSubAdjustment('')
+      const {payees} = att
       payees.forEach((payee)=>{
         if (payee['Person ID']===curEmployee.i_d){
         if(payee.debtDue){
@@ -511,7 +512,7 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
         
       })
       
-    },[])
+    },[att,curEmployee])
     useEffect(()=>{
         var empDebtAmount = ""
         curEmployee.employeeDebtList?.forEach((empDebt)=>{
