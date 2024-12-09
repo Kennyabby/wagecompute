@@ -484,34 +484,33 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
     const [subBonus, setSubBonus] = useState('')
     const [subAdjustment, setSubAdjustment] = useState('')
     const {payees} = att
-    
     useEffect(()=>{
-        const {payees} = att
-        setSubDebtDue('')
-        setSubShortages('')
-        setSubPenalties('')
-        setSubBonus('')
-        setSubAdjustment('')
-        payees.forEach((payee)=>{
-            if (payee['Person ID']===curEmployee.i_d){
-                if (payee.debtDue){
-                    setSubDebtDue(payee.debtDue)
-                }
-                if (payee.shortages){
-                    setSubShortages(payee.shortages)
-                }
-                if(payee.penalties){
-                    setSubPenalties(payee.penalties)
-                }
-                if(payee.bonus){
-                    setSubBonus(payee.bonus)
-                }
-                if(payee.adjustment){
-                    setSubAdjustment(payee.adjustment)
-                }
-            }
-        })
-        var empDebtAmount = ''
+      setSubDebtDue('')
+      setSubShortages('')
+      setSubPenalties('')
+      setSubBonus('')
+      setSubAdjustment('')
+      payees.forEach((payee)=>{
+        if(payee.debtDue){
+            setSubDebtDue(payee.debtDue)
+        }
+        if(payee.shortages){
+            setSubShortages(payee.shortages)
+        }
+        if(payee.penalties){
+            setSubPenalties(payee.penalties)
+        }
+        if(payee.bonus){
+            setSubBonus(payee.bonus)
+        }
+        if(payee.adjustment){
+            setSubAdjustment(payee.setAdjustment)
+        }
+        
+      })
+      
+    },[])
+    useEffect(()=>{
         curEmployee.employeeDebtList?.forEach((empDebt)=>{
             if (att.month === months[new Date(empDebt.postingDate).getMonth()]){
                 empDebtAmount = Number(empDebtAmount) + Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)
