@@ -58,7 +58,7 @@ function App() {
         getPositions(cmp_val)
         getEmployees(cmp_val)
         getSettings(cmp_val)
-        getAttendance(cmp_val)
+        //getAttendance(cmp_val)
         getSales(cmp_val)
         getPurchase(cmp_val)
       }
@@ -136,9 +136,9 @@ function App() {
       if (resp.record.status==='admin'){
         getDepartments(cmp_val)
         getPositions(cmp_val)
-        //getEmployees(cmp_val)
+        getEmployees(cmp_val)
         getSettings(cmp_val)
-        //getAttendance(cmp_val)
+        getAttendance(cmp_val)
         getSales(cmp_val)
         getPurchase(cmp_val)
         getExpenses(cmp_val)
