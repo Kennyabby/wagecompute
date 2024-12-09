@@ -491,6 +491,7 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
       setSubBonus('')
       setSubAdjustment('')
       payees.forEach((payee)=>{
+        if (payee['Person ID']===curEmployee.i_d){
         if(payee.debtDue){
             setSubDebtDue(payee.debtDue)
         }
@@ -505,6 +506,7 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
         }
         if(payee.adjustment){
             setSubAdjustment(payee.setAdjustment)
+        }
         }
         
       })
