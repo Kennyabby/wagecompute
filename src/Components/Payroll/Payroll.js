@@ -489,9 +489,9 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
         const {payees} = att
         setSubDebtDue('')
         setSubShortages('')
-        //setSubPenalties('')
-        //setSubBonus('')
-        //setSubAdjustment('')
+        setSubPenalties('')
+        setSubBonus('')
+        setSubAdjustment('')
         payees.forEach((payee)=>{
             if (payee['Person ID']===curEmployee.i_d){
                 if (payee.debtDue){
