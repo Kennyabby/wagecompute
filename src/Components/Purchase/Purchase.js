@@ -38,7 +38,7 @@ const Purchase = ()=>{
     const departments = ['Bar', 'Kitchen', 'Musical', 'Security & Safety', 'Admin']
     const purchaseCategory = ['ASSORTED DRINKS', 'ASSORTED PROTEIN', 'INGREDIENTS', 'SWALLOW', 'CEREALS']
     const unitsofmeasurements = [
-        'PORTIONS', 'PACKETS', 'CRATES',
+        'PORTIONS', 'PACKETS', 'CRATES','CARTONS','PACKS'
     ]
     useEffect(()=>{
         storePath('purchase')  
