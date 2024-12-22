@@ -4,6 +4,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
 import SalesReport from './SalesReport/SalesReport';
+import RentalReceipt from './RentalReceipt/RentalReceipt';
 import Notify from '../../Resources/Notify/Notify';
 import { MdAdd } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
@@ -690,9 +691,14 @@ const Sales = ()=>{
                         }
                     }}              
                     fromDate = {saleFrom}
-                    toDate = {saleTo}      
-                    // selectedMonth={selectedMonth}
-                    // selectedYear={selectedYear}
+                    toDate = {saleTo}
+                />}    
+                {showReceipt && <RentalReceipt
+                    rentalSale = {curRent}
+                    month = {months[new Date(Date.now()).getMonth()]}
+                    setShowReceipt={(value)=>{
+                        setShowReceipt(value)                        
+                    }}                                  
                 />}    
                 {actionMessage && <Notify        
                     notifyMessage={alert}
