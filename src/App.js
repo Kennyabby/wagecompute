@@ -31,6 +31,7 @@ function App() {
   const [sales, setSales] = useState([])
   const [purchase, setPurchase] = useState([])
   const [expenses, setExpenses] = useState([])
+  const [rentals, setRentals] = useState([])
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
@@ -61,6 +62,7 @@ function App() {
         //getAttendance(cmp_val)
         getSales(cmp_val)
         getPurchase(cmp_val)
+        getRentals(cmp_val)
       }
     },3000)
     return () => clearInterval(intervalId);
@@ -142,6 +144,7 @@ function App() {
         getSales(cmp_val)
         getPurchase(cmp_val)
         getExpenses(cmp_val)
+        getRentals(cmp_val)
         Navigate('/'+currPath)
       }else{
         getEmployees(cmp_val)
@@ -238,6 +241,18 @@ function App() {
     }
   }
 
+  const getRentals = async (company) =>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Rentals", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    // console.log(resp.record)
+    if (resp.record){
+      setRentals(resp.record)
+    }
+  }
+
   const getSettings = async (company) =>{
     const resp = await fetchServer("POST", {
       database: company,
@@ -319,6 +334,7 @@ function App() {
           sales, setSales, getSales,
           purchase, setPurchase, getPurchase,
           expenses, setExpenses, getExpenses,
+          rentals, setRentals, getRentals,
           settings, setSettings, getSettings,
           setAlert, setAlertState, setAlertTimeout,
           alert, alertState, alertTimeout, actionMessage, 

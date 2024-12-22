@@ -36,7 +36,7 @@ const Expenses = ()=>{
     const [fields, setFields] = useState({...defaultFields})
     const departments = ['Admin']
     const expensesCategory = ['Electrical Repairs', 'Plumbing Repairs', 'MTN Subscription',
-         'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs',
+        'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs', 'Refrigerator Repairs',
         'Sewage Evacuation', 'Sanitation & Waste','Musical Expenses',
         'Admin Expenses', 'Printing and Stationery', 'Furniture Maintenance',
         'Transport', 'NEPA', 'PR', 'Telephone Subscription', 'Adhoc Staff',

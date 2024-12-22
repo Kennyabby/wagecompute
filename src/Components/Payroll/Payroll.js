@@ -598,6 +598,7 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
                             type='number'
                             placeholder='Debt Due'
                             value={subDebtDue}
+                            disabled={true}
                             onChange={(e)=>{
                                 setSubDebtDue(e.target.value)
                             }}
@@ -611,6 +612,7 @@ const PayAttendance = ({att, curAtt, setDebtDue, setShortages, sales,
                             type='number'
                             placeholder='Shortages'
                             value={subShortages}
+                            disabled={true}
                             onChange={(e)=>{
                                 setSubShortages(e.target.value)
                             }}
