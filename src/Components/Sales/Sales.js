@@ -1,7 +1,7 @@
 import './Sales.css'
 import { useState, useEffect, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
-import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
 import SalesReport from './SalesReport/SalesReport';
 import Notify from '../../Resources/Notify/Notify';
@@ -17,6 +17,7 @@ const Sales = ()=>{
         company, 
         employees, setEmployees, getEmployees,
         sales, setSales, getSales, months, 
+        rentals, setRentals, getRentals,
         getDate, removeComma, 
         alert,alertState,alertTimeout,actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage
@@ -31,7 +32,11 @@ const Sales = ()=>{
         'kitchen':{...payPoints}, 'vip':{...payPoints}, 
         'accomodation':{...payPoints}
     }
+
+    const rentalSpaces = ['Suya Space', 'Shisha Space', 'Snooker Space', 'Shawarma Space']
+        
     const [showReport, setShowReport] = useState(false)
+    const [showReceipt, setShowReceipt] = useState(false)
     const [reportSales, setReportSales] = useState(null)
     const [isMultiple, setIsMultiple] = useState(false)
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -43,10 +48,13 @@ const Sales = ()=>{
     const [addTotalSales, setAddTotalSales] = useState('')
     const [deleteCount, setDeleteCount] = useState(0)
     const [salesOpts, setSalesOpts] = useState('sales')
+    const [salesOpts1, setSalesOpts1] = useState('sales')
     const [postStatus, setPostStatus] = useState('Post Sales')
+    const [rentalsStatus, setRentalsStatus] = useState('Post Rentals')
     const [recoveryStatus, setRecoveryStatus] = useState('Post Recovery')
     const [postingDate, setPostingDate] = useState('')
     const [curSale, setCurSale] = useState(null)
+    const [curRent, setCurRent] = useState(null)
     const [curSaleDate, setCurSaleDate] = useState(null)
     const defaultFields = {
         employeeId: '',
@@ -68,14 +76,41 @@ const Sales = ()=>{
         recoveryTransferId:''
     }
 
+    const defaultRentalFields = {
+        paymentDate: new Date(Date.now()).toISOString().slice(0, 10),
+        receivedFrom: '',
+        rentalAmount: '',
+        rentalSpace: '',
+        paymentMonth: months[new Date(Date.now()).getMonth() - 1],
+        payPoint: '',
+        amountPaid: '',
+        rentalDebt: 0,
+        expectedPayment: '',
+        paymentAmount: '',
+        balanceRemaining: 0
+    }
     const [fields, setFields] = useState([])
     const [recoveryFields, setRecoveryFields] = useState([])
+    const [rentalFields, setRentalFields] = useState({
+        ...defaultRentalFields
+    })
     const [isView, setIsView] = useState(false)
 
     useEffect(()=>{
         storePath('sales')  
     },[storePath])
-
+    useEffect(()=>{
+        if (salesOpts!=='sales'){
+            setIsView(false)
+            setFields([])
+            setAddEmployeeId('')
+            setCurSale(null)
+        }else{
+            setIsView(false)            
+            setCurRent(null)
+            setRentalFields({...defaultRentalFields})
+        }
+    },[salesOpts])
     useEffect(()=>{
         if (curSale){
             setPostingDate(curSale.postingDate)
@@ -83,6 +118,27 @@ const Sales = ()=>{
             setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
         }
     },[curSale])
+    useEffect(()=>{
+        if (curRent===null){
+            var previousRental = null
+            rentals.forEach((rental)=>{
+                if (rental.rentalSpace === rentalFields.rentalSpace && 
+                    rental.paymentMonth === months[months.indexOf(rentalFields.paymentMonth)-1])
+                {
+                    previousRental = rental
+                }
+            })
+            if (previousRental!==null){
+                setRentalFields((rentalFields)=>{
+                    return {...rentalFields, rentalDebt:previousRental.balanceRemaining}
+                })
+            }else{
+                setRentalFields((rentalFields)=>{
+                    return {...rentalFields, rentalDebt:defaultRentalFields.rentalDebt}
+                })
+            }
+        }
+    },[rentalFields.rentalSpace])
     useEffect(()=>{
         if (companyRecord.status!=='admin'){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -250,7 +306,16 @@ const Sales = ()=>{
         setCurSale(sale)
         setCurSaleDate(sale.postingDate)
         setSalesOpts('sales')
+        setIsView(true)
         setFields([...(sale.record)])
+        setIsView(true)
+    }
+    
+    const handleRentalViewClick = (rent) =>{
+        setCurRent(rent)
+        setSalesOpts('rentals')
+        setIsView(true)
+        setRentalFields({...rent})
         setIsView(true)
     }
 
@@ -292,6 +357,18 @@ const Sales = ()=>{
     const handleSalesOpts = (e)=>{
         const name = e.target.getAttribute('name')
         if (name){
+            setSalesOpts(name)
+            if (name==='recovery'){
+                setSalesOpts1('sales')
+            }else{
+                setSalesOpts1(name)
+            }
+        }
+    }
+    const handleSalesOpts1 = (e)=>{
+        const name = e.target.getAttribute('name')
+        if (name){
+            setSalesOpts1(name)
             setSalesOpts(name)
         }
     }
@@ -516,6 +593,90 @@ const Sales = ()=>{
         setReportSales(filteredReportSales)
         setIsMultiple(true)        
     }
+    const handleRentalFieldChange = (e) =>{
+        const name = e.target.getAttribute('name')
+        const value = e.target.value
+
+        if (name){
+            if (name === 'rentalAmount'){
+                setRentalFields((rentalFields)=>{
+                    return {...rentalFields, 'expectedPayment':Number(value)+Number(rentalFields.rentalDebt)}
+                }) 
+            }
+            if (name === 'paymentAmount'){
+                setRentalFields((rentalFields)=>{
+                    return {...rentalFields, 'balanceRemaining':Number(rentalFields.expectedPayment)-Number(value)}
+                }) 
+            }
+            setRentalFields((rentalFields)=>{
+                return {...rentalFields, [name]:value}
+            })
+            
+        }
+    }
+    const postRentals = async ()=> {
+        setRentalsStatus('Posting to Rentals...')        
+        const newRental = {
+            ...rentalFields,
+            createdAt: new Date().getTime(),            
+        }
+
+        const newRentals = [newRental, ...rentals]        
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Rentals", 
+            update: newRental
+        }, "createDoc", server)
+        
+        if (resps.err){
+            console.log(resps.mess)
+            setAlertState('info')
+            setAlert(resps.mess)
+            setAlertTimeout(5000)
+            setRentalsStatus('Post Rentals')
+        }else{
+            setRentals(newRentals)
+            setCurRent(newRental)
+            setIsView(true)
+            setRentalFields({...newRental})
+            getRentals(company)
+            setAlertState('success')
+            setAlert('Sales Posted Successfully!')
+            setAlertTimeout(5000)
+            setRentalsStatus('Post Rentals')
+        }
+    }
+    const deleteRental = async (rent)=>{
+        if (deleteCount === rent.createdAt) {
+            setAlertState('info')
+            setAlert('Deleting...')
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Rentals", 
+                update: {createdAt: rent.createdAt}
+            }, "removeDoc", server)
+            if (resps.err){
+                console.log(resps.mess)
+                setAlertState('info')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
+            }else{
+                setIsView(false)
+                setCurRent(null)
+                setRentalFields({...defaultRentalFields})
+                setAlertState('success')
+                setAlert('Rental Sales Deleted Successfully!')
+                setDeleteCount(0)
+                setAlertTimeout(5000)
+                getRentals(company)
+            }
+        }else{
+            setDeleteCount(rent.createdAt)
+            setTimeout(()=>{
+                setDeleteCount(0)
+            },12000)
+        }
+    }
     return (
         <>
             <div className='sales'>         
@@ -584,8 +745,14 @@ const Sales = ()=>{
                                 }}
                             />
                         </div>
-                    </div>                                                       
-                    {companyRecord.status==='admin' && <div className='inpcov fltinpcov'>
+                    </div>     
+                    <div className='emptypecov' 
+                        onClick={handleSalesOpts1}
+                    >
+                        <div name='sales' className={salesOpts1==='sales' ? 'slopts': ''}>Sales</div>
+                        <div name='rentals' className={salesOpts1==='rentals' ? 'slopts': ''}>Rentals</div>
+                    </div>                                                  
+                    {salesOpts1 === 'sales' && companyRecord.status==='admin' && <div className='inpcov fltinpcov'>
                         <select 
                             className='forminp'
                             name='employeeId'
@@ -616,7 +783,7 @@ const Sales = ()=>{
                             })}
                         </select>
                     </div>}
-                    {(reportSales? [reportSales] : sales).filter((ftrsale)=>{
+                    {salesOpts1 === 'sales' && (reportSales? [reportSales] : sales).filter((ftrsale)=>{
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
                         const toDate = new Date(saleTo).getTime()
@@ -663,6 +830,55 @@ const Sales = ()=>{
                             </div>
                         )
                   })}
+                    {salesOpts1 === 'rentals' && rentals.filter((ftrrent)=>{
+                        // console.log(ftrrent)
+                        const slCreatedAt = getDate(ftrrent.createdAt)
+                        const fromDate = getDate(saleFrom)
+                        const toDate = getDate(saleTo)
+                        // console.log(getDate(slCreatedAt),saleFrom,getDate(slCreatedAt)>= getDate(saleFrom))
+                        // console.log(getDate(slCreatedAt),saleTo,getDate(slCreatedAt)<= getDate(saleTo))
+                        if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
+                        ){
+                            
+                            return ftrrent
+                        }
+                    }).map((rent, index)=>{
+                        const {createdAt, paymentDate, paymentMonth, paymentAmount, balanceRemaining, expectedPayment, 
+                            rentalSpace, receivedFrom 
+                        } = rent
+                        // console.log(recoveryList)
+                        return(
+                            <div className={'dept' + (curRent?.createdAt===createdAt?' curview':'')} key={index} 
+                                onClick={(e)=>{
+                                    handleRentalViewClick(rent)
+                                }}
+                            >
+                                <div className='dets sldets'>
+                                    <div>Payment Date: <b>{getDate(paymentDate)}</b></div>
+                                    <div>Rental Space: <b>{rentalSpace.toUpperCase()}</b></div>
+                                    <div>For The Month: <b>{paymentMonth}</b></div>
+                                    <div>Expected Payment: <b>{'₦'+(Number(expectedPayment)).toLocaleString()}</b></div>
+                                    <div>Payment Amount: <b>{'₦'+(Number(paymentAmount)).toLocaleString()}</b></div>
+                                    <div>Balance Remaining: <b>{'₦'+(Number(balanceRemaining)).toLocaleString()}</b></div>                                    
+                                    {/* <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div> */}
+                                    <div className='deptdesc'>{`Payment Received From:`} <b>{`${receivedFrom}`}</b></div>
+                                </div>
+                                {(companyRecord.status==='admin' && !saleEmployee) && <div 
+                                    className='edit'
+                                    name='delete'         
+                                    style={{color:'red'}}                           
+                                    onClick={()=>{                                        
+                                        setAlertState('info')
+                                        setAlert('You are about to delete the selected Rental Sales. Please Delete again if you are sure!')
+                                        setAlertTimeout(5000)                                                                                    
+                                        deleteRental(rent)
+                                    }}
+                                >
+                                    Delete
+                                </div>}
+                            </div>
+                        )
+                  })}
                 </div>
                 <div className='empview salesview'>
                     {isView && salesOpts==='sales' && 
@@ -677,7 +893,15 @@ const Sales = ()=>{
                             }}
                         />
                     }
-                    {salesOpts === 'sales' && ( (fields.length && !isView) ? 
+                    {isView && salesOpts==='rentals' && 
+                        <FaReceipt                   
+                            className='slrepicon'
+                            onClick={()=>{
+                                setShowReceipt(true)                                
+                            }}
+                        />
+                    }
+                    {['sales','rentals'].includes(salesOpts) && ( (fields.length && !isView) ? 
                         <RxReset
                             className='slsadd'
                             onClick={()=>{
@@ -690,10 +914,16 @@ const Sales = ()=>{
                         <MdAdd 
                             className='add slsadd'
                             onClick={()=>{
-                                setIsView(false)
-                                setFields([])
-                                setAddEmployeeId('')
-                                setCurSale(null)
+                                if (salesOpts==='sales'){
+                                    setIsView(false)
+                                    setFields([])
+                                    setAddEmployeeId('')
+                                    setCurSale(null)
+                                }else if (salesOpts==='rentals'){
+                                    setIsView(false)
+                                    setRentalFields({...defaultRentalFields})
+                                    setCurRent(null)
+                                }
                             }}
                         />)
                     }
@@ -968,6 +1198,163 @@ const Sales = ()=>{
                                 )
                             })
                         }
+                        {salesOpts==='rentals' && <div className='basic'>                            
+                            <div className='inpcov'>
+                                <div>Payment Date</div>
+                                <input 
+                                    className='forminp'
+                                    name='paymentDate'
+                                    type='date'
+                                    placeholder='Rental Date'
+                                    value={rentalFields.paymentDate}
+                                    disabled={isView}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <div>Rental Space</div>
+                                <select 
+                                    className='forminp'
+                                    name='rentalSpace'
+                                    type='text'
+                                    placeholder='Rental Space'
+                                    value={rentalFields.rentalSpace}
+                                    disabled={isView}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                >
+                                    <option value=''>Select Rental Space</option>
+                                    {rentalSpaces.map((space, index)=>{
+                                        return <option key={index}>{space}</option>
+                                    })}
+                                </select>
+                            </div>
+                            <div className='inpcov'>
+                                <div>Shop Rent Amount</div>
+                                <input 
+                                    className='forminp'
+                                    name='rentalAmount'
+                                    type='number'
+                                    placeholder='Rental Amount'
+                                    value={rentalFields.rentalAmount}
+                                    disabled={isView}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                />
+                            </div>   
+                            <div className='inpcov'>
+                                <div>Previous Debt</div>
+                                <input 
+                                    className='forminp'
+                                    name='rentalDebt'
+                                    type='number'
+                                    placeholder='Previous Debt'
+                                    value={rentalFields.rentalDebt}
+                                    disabled={true}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                />
+                            </div>                         
+                            <div className='inpcov'>
+                                <div>Expected Payment</div>
+                                <input 
+                                    className='forminp'
+                                    name='expectedPayment'
+                                    type='number'
+                                    placeholder='Expected Payment'
+                                    value={rentalFields.expectedPayment}
+                                    disabled={true}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                />
+                            </div>                         
+                            <div className='inpcov'>
+                                <div>Payment Amount</div>
+                                <input 
+                                    className='forminp'
+                                    name='paymentAmount'
+                                    type='number'
+                                    placeholder='Payment Amount'
+                                    value={rentalFields.paymentAmount}
+                                    disabled={isView}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                />
+                            </div>                         
+                            <div className='inpcov'>
+                                <div>Select Payment Point</div>
+                                <select 
+                                    className='forminp'
+                                    name='payPoint'
+                                    type='text'
+                                    placeholder='Payment Point'
+                                    value={rentalFields.payPoint}
+                                    disabled={isView}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                >
+                                    <option value=''>Select Payment Point</option>
+                                    {Object.keys(payPoints).map((payPoint, index)=>{
+                                        return <option key={index} value={payPoint}>{payPoint.toUpperCase()}</option>
+                                    })}
+                                </select>
+                            </div>   
+                            <div className='inpcov'>
+                                <div>For The Month of</div>
+                                <select 
+                                    className='forminp'
+                                    name='paymentMonth'
+                                    type='text'
+                                    placeholder='Payment Month'
+                                    value={rentalFields.paymentMonth}
+                                    disabled={isView}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                >
+                                    <option value=''>Select Payment Month</option>
+                                    {months.map((month, index)=>{
+                                        return <option key={index} value={month}>{month}</option>
+                                    })}
+                                </select>
+                            </div>   
+                            <div className='inpcov'>
+                                <div>Received From</div>
+                                <input 
+                                    className='forminp'
+                                    name='receivedFrom'
+                                    type='text'
+                                    placeholder='Received From'
+                                    value={rentalFields.receivedFrom}
+                                    disabled={isView}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <div>Balance Remaining</div>
+                                <input 
+                                    className='forminp'
+                                    name='balanceRemaining'
+                                    type='number'
+                                    placeholder='Balance Remaining'
+                                    value={rentalFields.balanceRemaining}
+                                    disabled={true}
+                                    onChange={(e)=>{
+                                        handleRentalFieldChange(e)
+                                    }}
+                                />
+                            </div>
+                        </div>}
                         {salesOpts==='sales' && fields.map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
                             // console.log(index)
@@ -1125,7 +1512,7 @@ const Sales = ()=>{
                         
                     </div>
                     {(!isView || salesOpts === 'recovery') && <div className='confirm'>     
-                        {salesOpts === 'sales' ? <div className='inpcov salesinpcov'>
+                        {salesOpts === 'sales' && <div className='inpcov salesinpcov'>
                             <input 
                                 className='forminp'
                                 name='postingDate'
@@ -1137,7 +1524,8 @@ const Sales = ()=>{
                                     setPostingDate(e.target.value)
                                 }}
                             />
-                        </div> : <div className='inpcov salesinpcov'>
+                        </div>}  
+                        {salesOpts === 'recovery' && <div className='inpcov salesinpcov'>
                             <select 
                                 className='forminp'
                                 name='recoveryMonth'
@@ -1154,7 +1542,7 @@ const Sales = ()=>{
                                     )
                                 })}
                             </select>
-                        </div> }                 
+                        </div>}               
                         {salesOpts === 'sales' && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:fields.length?'pointer':'not-allowed'
@@ -1203,8 +1591,17 @@ const Sales = ()=>{
                                     postRecovery()
                                 }
                             }}
-                        >{recoveryStatus}</div>
-                        }
+                        >{recoveryStatus}</div>}
+                        {salesOpts === 'rentals' && <div className='yesbtn salesyesbtn'
+                            style={{
+                                cursor:(rentalFields.paymentAmount && rentalFields.expectedPayment)?'pointer':'not-allowed'
+                            }}
+                            onClick={()=>{
+                                if (rentalFields.paymentAmount && rentalFields.expectedPayment){
+                                    postRentals()
+                                }
+                            }}
+                        >{rentalsStatus}</div>}                        
                     </div>}
                 </div>
             </div>
