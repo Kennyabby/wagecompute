@@ -106,8 +106,8 @@ const Sales = ()=>{
             setFields([])
             setAddEmployeeId('')
             setCurSale(null)
-        }else{
-            setIsView(false)            
+        }else{                                  
+            setIsView(false)                             
             setCurRent(null)
             setRentalFields({...defaultRentalFields})
         }
@@ -115,6 +115,7 @@ const Sales = ()=>{
     useEffect(()=>{
         if (curSale){
             setPostingDate(curSale.postingDate)
+            setIsView(true)
         }else{
             setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
         }
