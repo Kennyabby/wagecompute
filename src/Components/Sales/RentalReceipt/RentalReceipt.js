@@ -105,15 +105,32 @@ const RentalReceipt = ({
                             </div>
                         </div>
                         <div className='rcpt-body'>
-                            <div>
-                                <div><b>MONTH:</b> {`${month}`}</div>
-                                <div><b>DATE:</b> {`${rentalSale.paymentDate}`}</div>
+                            <div className='rcpt-row'>
+                                <div className='rcpt-row-item'><b>MONTH:</b> <span>{` ${month}`}</span></div>
+                                <div className='rcpt-row-item'><b>DATE:</b> <span>{` ${rentalSale.paymentDate}`}</span></div>
                             </div>
-                            <div><b>RECEIVED FROM:</b> {`${rentalSale.receivedFrom}`}</div>
-                            <div><b>AMOUNT PAID:</b> {`${rentalSale.paymentAmount}`}</div>
-                            <div><b>BEING PAYMENT FOR:</b> {`${rentalSale.rentalSpace.toUpperCase()}`}</div>
-                            <div><b>FOR THE MONTH OF:</b> {`${rentalSale.paymentMonth}`}</div>
-                            <div></div>
+                            <div className='rcpt-row-item'><b>RECEIVED FROM:</b> <span>{` ${rentalSale.receivedFrom}`}</span></div>
+                            <div className='rcpt-row-item'><b>AMOUNT PAID:</b> <span>{` ${rentalSale.paymentAmount}`}</span></div>
+                            <div className='rcpt-row-item'><b>BEING PAYMENT FOR:</b> <span>{ `${rentalSale.rentalSpace.toUpperCase()}`}</span></div>
+                            <div className='rcpt-row-item'><b>FOR THE MONTH OF:</b> <span>{` ${rentalSale.paymentMonth}`}</span></div>
+                            <div className='rcpt-row rcpt-border'>
+                                <div>
+                                    <div className='rcpt-row-hgt'>OLD BALANCE</div>
+                                    <div>{`${rentalSale.rentalDebt}`}</div>
+                                </div>
+                                <div>
+                                    <div className='rcpt-row-hgt'>TOTAL AMOUNT</div>
+                                    <div>{`${Number(rentalSale.rentalDebt)+Number(rentalSale.rentalAmount)}`}</div>
+                                </div>
+                                <div>
+                                    <div className='rcpt-row-hgt'>AMOUNT PAID</div>
+                                    <div>{`${rentalSale.paymentAmount}`}</div>
+                                </div>
+                                <div>
+                                    <div className='rcpt-row-hgt'>BALANCE REMAINING</div>
+                                    <div>{`${rentalSale.balanceRemaining}`}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

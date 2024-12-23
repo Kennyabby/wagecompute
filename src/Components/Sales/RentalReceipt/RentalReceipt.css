@@ -1,0 +1,29 @@
+.rcpt-body{
+    width: 90%;
+    margin: auto;    
+}
+.rcpt-row{
+    display: flex;
+    margin: 40px 0px;
+    /* gap: 40px; */
+    justify-content: space-between;
+}
+.rcpt-row-item{
+    display: flex;
+    margin: 20px 0px;
+    align-items: center;
+    span{
+        font-size: 1em;
+        margin: 0px 10px;
+        padding-bottom: 5px;
+        width: 200px;
+        border-bottom: solid black 2px;
+    }
+}
+.rcpt-row-hgt{
+    font-weight: 800;
+}
+.rcpt-border{
+    border: solid black 2px;
+    padding: 10px;
+}
