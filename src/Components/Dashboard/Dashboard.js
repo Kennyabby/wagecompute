@@ -13,6 +13,7 @@ import Payroll from '../Payroll/Payroll'
 import Sales from '../Sales/Sales'
 import Purchase from '../Purchase/Purchase'
 import Expenses from '../Expenses/Expenses'
+import Reports from '../Reports/Reports'
 import Settings from '../Settings/Settings'
 
 const Dashboard = ()=>{
@@ -49,7 +50,10 @@ const Dashboard = ()=>{
             else if (index === 8 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses'))){
                 setView(<Expenses/>)
             }
-            else if (index === 9 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
+            else if (index === 9 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports'))){
+                setView(<Reports/>)
+            }
+            else if (index === 10 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
                 setView(<Settings/>)
             }
         }
