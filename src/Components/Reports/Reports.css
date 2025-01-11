@@ -11,7 +11,7 @@
 .reports-list{
     display: flex;
     width: 98%;
-    height: 100px;
+    /* height: 70px; */
     margin: 10px auto;
     justify-content: space-around;
     align-items: center;
