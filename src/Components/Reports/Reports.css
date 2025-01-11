@@ -1,10 +1,11 @@
 .reports{
-    display: flex;
+    display: block;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     width: 100%;
     height: 100%;
+    overflow: auto;
     background: rgb(224, 222, 215);
 }
 .reports-list{
@@ -58,7 +59,14 @@
 .reports-view{
     width: 100%;
     height: 100%;
-    display: block;
+    display: block;    
+    /* overflow: auto; */
+}
+.reports-onview{
+    width: 100%;
+    height: 100%;
+    display: block;    
+    overflow: auto;
 }
 .no-report{
     height: 100%;
@@ -83,6 +91,9 @@
     border-radius: 5px;
 }
 .report-table{
-    width: 100%;
-    height: 100%;
+    font-size: .7em;
+    width: 95%;
+    /* height: 100%; */
+    margin: 20px auto;
+    overflow: auto;
 }
