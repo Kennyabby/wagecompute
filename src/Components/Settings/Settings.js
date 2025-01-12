@@ -9,12 +9,15 @@ const Settings = () =>{
         company,
         settings, getSettings,
         server, fetchServer,
+        recoveryVal, setRecoveryVal
     } = useContext(ContextProvider)
     const [colname, setColname] = useState('')
     const [writeStatus, setWriteStatus] = useState('Add')
     const [editCol, setEditCol] = useState(null)
     // const [columns, setColumns] = useState([])
     const [colSettings, setColSettings] = useState({})
+    const [saveStatus, setSaveStatus] = useState('')
+    const [settingRecovery, setSettingRecovery] = useState(false)
     useEffect(()=>{
         storePath('settings')  
     },[storePath])
@@ -26,8 +29,17 @@ const Settings = () =>{
             })
             delete colSetFilt[0]?._id
             setColSettings(colSetFilt[0]?colSetFilt[0]:{})
+
+            const recvSetFilt = settings.filter((setting)=>{
+                return setting.name === 'debt_recovery'
+            })
+            console.log(recvSetFilt[0].enabled)
+            if (!settingRecovery){
+                setRecoveryVal(recvSetFilt[0]?recvSetFilt[0].enabled:false)
+            }
         }
-    },[settings])
+    },[settings,settingRecovery])
+  
     const addColumn = async ()=>{
         if (colname && !colSettings.import_columns?.includes(colname)){
             var postingCols = []
@@ -71,6 +83,7 @@ const Settings = () =>{
         setColname('')
     }
     const delColumn = async (e)=>{
+        setSaveStatus('Saving...')
         const colid = Number(e.target.getAttribute('name'))
         console.log(colid)
         const filtcols = colSettings.import_columns.filter((col,index)=>{
@@ -84,15 +97,37 @@ const Settings = () =>{
         }, "updateOneDoc", server)
         if (resps.err){
             console.log(resps.mess)
+            setSaveStatus(resps.mess)
         }else{
+            setSaveStatus('Saved')
             getSettings(company)
             setColname('')
             setWriteStatus('Add')
         }
     }
+
+    const setRecoveryPermission = async (recoveryVal)=>{
+        setSaveStatus('Saving...')
+        setSettingRecovery(true)
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Settings", 
+            prop: [{name: 'debt_recovery'}, {enabled: recoveryVal}]
+        }, "updateOneDoc", server)
+        if (resps.err){
+            console.log(resps.mess)
+            setSaveStatus(resps.mess)
+            setSettingRecovery(false)
+        }else{
+            setSaveStatus('Saved')
+            getSettings(company)
+            setSettingRecovery(false)
+        }
+    }
     return(
         <>
             <div className='settings'>
+                {saveStatus && <div className='save-status'>{saveStatus}</div>}
                 <div className='columns'>
                     <div className='formtitle'>Set Import Columns</div>
                     <div className='inpcov formpad'>
@@ -138,8 +173,22 @@ const Settings = () =>{
                         })}
                     </div>
                 </div>
+                <div className='recovery'>
+                    <div className='formtitle'>Set Debt Recovery Permission</div>
+                    <div className='recovery-block'>
+                        Enable Debt Recovery 
+                        <input 
+                            type='checkbox'
+                            checked={recoveryVal}
+                            onChange={(e)=>{
+                                setRecoveryVal(!recoveryVal)
+                                setRecoveryPermission(!recoveryVal)
+                            }}
+                        />
+                    </div>
+                </div>
             </div>
-        </>
+        </> 
     )
 }
 

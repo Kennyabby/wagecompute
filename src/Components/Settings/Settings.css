@@ -3,8 +3,22 @@
     background: white;
     overflow: auto;
 }
+.save-status{
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 5px 15px;
+    background: rgb(197, 243, 130);
+    font-weight: 600;
+    font-size: .8em;
+    border-radius: 5px;
+}
+.columns::before{
+    width: 100%;
+    background: whitesmoke;
+}
 .columns{
-    width: 90%;
+    width:90%;
     margin: auto;
 }
 .addsection{
@@ -58,4 +72,18 @@
 }
 .col:hover > .delcol{
     display: block;
+}
+
+.recovery{
+    width: 90%;
+    margin: 50px auto;
+}
+.recovery-block{
+    display: flex;
+    gap: 10px;
+}
+
+.checkbox{
+    font-size: 1.2em;
+    cursor: pointer;
 }

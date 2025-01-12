@@ -15,7 +15,7 @@ const Sales = ()=>{
         fetchServer, 
         server, 
         companyRecord,
-        company, 
+        company, recoveryVal,
         employees, setEmployees, getEmployees,
         sales, setSales, getSales, months, 
         rentals, setRentals, getRentals,
@@ -947,7 +947,7 @@ const Sales = ()=>{
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
                             <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>Rentals</div>
-                            {<div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
+                            {((companyRecord?.status === 'admin') || recoveryVal) && <div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
                         </div>}
                         {salesOpts==='sales' && (!isView && <div className='addnewsales'>
                             <div className='inpcov'>
