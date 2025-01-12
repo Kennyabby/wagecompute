@@ -37,9 +37,9 @@ const Expenses = ()=>{
     const departments = ['Admin']
     const expensesCategory = ['Electrical Repairs', 'Plumbing Repairs', 'MTN Subscription',
         'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs', 'Refrigerator Repairs',
-        'Sewage Evacuation', 'Sanitation & Waste','Musical Expenses',
-        'Admin Expenses', 'Printing and Stationery', 'Furniture Maintenance',
-        'Transport', 'NEPA', 'PR', 'Telephone Subscription', 'Adhoc Staff',
+        'Sewage Evacuation', 'Sanitation & Waste','Musical Expenses','Other Expenses',
+        'Printing and Stationery', 'Furniture Maintenance', 'Staff Salary', 'Security Salary', 'Adhoc Staff',
+        'Transport', 'NEPA', 'PR', 'Telephone Subscription',
         'Fitting & Lighting', 'Laundry Services', 'Staff Uniform', 'CCTV Maintenance',
         'Entertainment', 'Building Maintenance', 'Computer Maintenance', 'Cooking gas',
         'Salary & Wages', 'First Aid', 'Hiring', 'Donation', 'Staff Welfare',
@@ -204,12 +204,12 @@ const Expenses = ()=>{
                         if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo){
                             return expfltr
                         }
-                    }).map((pur, index)=>{
+                    }).map((exp,index)=>{
                         const {
                             createdAt,postingDate, 
                             expensesAmount, expensesDepartment,
                             expenseCategory,expensesHandler 
-                        } = pur
+                        } = exp
                         var handlerName = ''
                         employees.forEach((emp)=>{
                             if (emp.i_d === expensesHandler){
@@ -219,7 +219,7 @@ const Expenses = ()=>{
                         return(
                             <div className={'dept' + (curExpense?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
-                                    handleViewClick(pur)
+                                    handleViewClick(exp)
                                 }}
                             >
                                 <div className='dets sldets'>
@@ -237,7 +237,7 @@ const Expenses = ()=>{
                                         // setAlertState('info')
                                         // setAlert('You are about to delete the selected Expenses. Please Delete again if you are sure!')
                                         // setAlertTimeout(5000)                                                                                    
-                                        deleteExpenses(expenses)
+                                        deleteExpenses(exp)
                                     }}
                                 >
                                     Delete
