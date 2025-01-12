@@ -39,6 +39,7 @@ const SideNav = ()=>{
            console.log(resps.mess)
            setLogStatus('Log Out')
         }else{
+            window.localStorage.setItem('lgt-mess', 'Logged Out Successfully!')
             window.location.reload()
         }
     }

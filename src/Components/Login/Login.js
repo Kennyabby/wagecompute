@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // import bidlogo from '../../assets/images/auctionbidlogo.png'
 
 const Login = () => {
-  const { server, fetchServer, storePath, 
+  const { server, fetchServer, storePath,
     loginMessage, setLoginMessage, loadPage
   } = useContext(ContextProvider)
   const [field, setField] = useState({
@@ -27,9 +27,14 @@ const Login = () => {
     if(loginMessage){
       setTimeout(()=>{
         setLoginMessage("")
-      },5000)
+      },7000)
     }
   },[loginMessage])
+  useEffect(()=>{
+    const logoutMessage = window.localStorage.getItem('lgt-mess')
+    setLoginMessage(logoutMessage)
+    window.localStorage.removeItem('lgt-mess')    
+  },[])
   const validateLogin = async ()=> {
     if (field.emailid==='test' && field.password==='test'){
       Navigate('/test')

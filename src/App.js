@@ -26,8 +26,13 @@ function App() {
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
   const [employees, setEmployees] = useState([])
+
   const [settings, setSettings] = useState([])
+  const [colSettings, setColSettings] = useState({})
   const [recoveryVal, setRecoveryVal] = useState(false)
+  const [enableBlockVal, setEnableBlockVal] = useState(false)
+  const [changingSettings, setChangingSettings] = useState(false)
+  
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
   const [purchase, setPurchase] = useState([])
@@ -56,18 +61,79 @@ function App() {
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     const intervalId = setInterval(()=>{
       if (cmp_val){
+        getSettings(cmp_val)
+        getEmployees(cmp_val)
         getDepartments(cmp_val)
         getPositions(cmp_val)
-        getEmployees(cmp_val)
-        getSettings(cmp_val)
-        //getAttendance(cmp_val)
         getSales(cmp_val)
-        getPurchase(cmp_val)
         getRentals(cmp_val)
+        getPurchase(cmp_val)
+        getExpenses(cmp_val)
+        //getAttendance(cmp_val)
       }
     },3000)
     return () => clearInterval(intervalId);
   },[])
+
+  useEffect(()=>{
+    if(settings?.length){
+      const bllgnSetFilt = settings.filter((setting)=>{
+        return setting.name === 'enable_block_login'
+      })
+      if (!changingSettings){
+          setEnableBlockVal(bllgnSetFilt[0] ? bllgnSetFilt[0].enabled : false)
+      }
+      
+      const colSetFilt = settings.filter((setting)=>{
+        return setting.name === 'import_columns'
+      })
+      delete colSetFilt[0]?._id
+      setColSettings(colSetFilt[0]?colSetFilt[0]:{})
+
+      const recvSetFilt = settings.filter((setting)=>{
+          return setting.name === 'debt_recovery'
+      })
+      if (!changingSettings){
+          setRecoveryVal(recvSetFilt[0] ? recvSetFilt[0].enabled : false)
+      }        
+    }
+  },[settings,changingSettings])
+
+  useEffect(()=>{
+    if (companyRecord?.status !== 'admin'){
+      if (enableBlockVal){
+        logout()
+      }else{
+        if (companyRecord?.permissions.includes('purchase')){
+          getPurchase(company)
+          Navigate('/purchase')
+        }
+        if (companyRecord?.permissions.includes('expenses')){
+          getExpenses(company)
+          Navigate('/expenses')
+        }
+        if (companyRecord?.permissions.includes('sales')){
+          getSales(company)
+          Navigate('/sales')
+        }
+      }
+    }
+  },[enableBlockVal, companyRecord, company])
+
+  const logout = async ()=>{
+    const resps = await fetchServer("POST", {
+      database: company,
+      collection: "Profile", 
+      record: companyRecord
+    }, "closeSession", SERVER)          
+    if (resps.err){
+      console.log(resps.mess)
+    }else{
+      window.localStorage.setItem('lgt-mess', 'Login Access Denied. Please Request For Access!')      
+      window.location.reload()
+    }        
+  }
+
   const shuffleList = (array) => {
     var currentIndex = array.length,
       randomIndex,
@@ -126,6 +192,7 @@ function App() {
   const loadPage = async (propVal, currPath)=>{
     Navigate('/')
     var cmp_val = window.localStorage.getItem('sessn-cmp')
+    setCompany(cmp_val)
     const resp = await fetchServer("POST", {
       database: cmp_val,
       collection: "Profile", 
@@ -137,30 +204,19 @@ function App() {
     }else{
       setCompanyRecord(resp.record)
       if (resp.record.status==='admin'){
+        getSettings(cmp_val)
+        getEmployees(cmp_val)
         getDepartments(cmp_val)
         getPositions(cmp_val)
-        getEmployees(cmp_val)
-        getSettings(cmp_val)
-        getAttendance(cmp_val)
         getSales(cmp_val)
+        getRentals(cmp_val)
         getPurchase(cmp_val)
         getExpenses(cmp_val)
-        getRentals(cmp_val)
+        getAttendance(cmp_val)
         Navigate('/'+currPath)
       }else{
-        getEmployees(cmp_val)
-        if (resp.record.permissions.includes('purchase')){
-          getPurchase(cmp_val)
-          Navigate('/purchase')
-        }
-        if (resp.record.permissions.includes('expenses')){
-          getExpenses(cmp_val)
-          Navigate('/expenses')
-        }
-        if (resp.record.permissions.includes('sales')){
-          getSales(cmp_val)
-          Navigate('/sales')
-        }
+        getSettings(cmp_val)
+        getEmployees(cmp_val)        
       }
     }
   }
@@ -336,8 +392,13 @@ function App() {
           purchase, setPurchase, getPurchase,
           expenses, setExpenses, getExpenses,
           rentals, setRentals, getRentals,
+          
           settings, setSettings, getSettings,
+          colSettings, setColSettings,
           recoveryVal, setRecoveryVal,
+          enableBlockVal, setEnableBlockVal,
+          changingSettings, setChangingSettings,
+
           setAlert, setAlertState, setAlertTimeout,
           alert, alertState, alertTimeout, actionMessage, 
           setAction, setActionMessage,
