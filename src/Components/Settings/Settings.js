@@ -9,36 +9,21 @@ const Settings = () =>{
         company,
         settings, getSettings,
         server, fetchServer,
-        recoveryVal, setRecoveryVal
+        recoveryVal, setRecoveryVal,
+        changingSettings, setChangingSettings,
+        colSettings, setColSettings,
+        enableBlockVal, setEnableBlockVal
     } = useContext(ContextProvider)
     const [colname, setColname] = useState('')
     const [writeStatus, setWriteStatus] = useState('Add')
     const [editCol, setEditCol] = useState(null)
     // const [columns, setColumns] = useState([])
-    const [colSettings, setColSettings] = useState({})
+    
     const [saveStatus, setSaveStatus] = useState('')
-    const [settingRecovery, setSettingRecovery] = useState(false)
+    
     useEffect(()=>{
         storePath('settings')  
     },[storePath])
-
-    useEffect(()=>{
-        if (settings?.length){
-            const colSetFilt = settings.filter((setting)=>{
-                return setting.name === 'import_columns'
-            })
-            delete colSetFilt[0]?._id
-            setColSettings(colSetFilt[0]?colSetFilt[0]:{})
-
-            const recvSetFilt = settings.filter((setting)=>{
-                return setting.name === 'debt_recovery'
-            })
-            console.log(recvSetFilt[0].enabled)
-            if (!settingRecovery){
-                setRecoveryVal(recvSetFilt[0]?recvSetFilt[0].enabled:false)
-            }
-        }
-    },[settings,settingRecovery])
   
     const addColumn = async ()=>{
         if (colname && !colSettings.import_columns?.includes(colname)){
@@ -84,6 +69,7 @@ const Settings = () =>{
     }
     const delColumn = async (e)=>{
         setSaveStatus('Saving...')
+        setChangingSettings(true)
         const colid = Number(e.target.getAttribute('name'))
         console.log(colid)
         const filtcols = colSettings.import_columns.filter((col,index)=>{
@@ -97,18 +83,20 @@ const Settings = () =>{
         }, "updateOneDoc", server)
         if (resps.err){
             console.log(resps.mess)
-            setSaveStatus(resps.mess)
+            setSaveStatus(resps.mess) 
+            setChangingSettings(false)           
         }else{
             setSaveStatus('Saved')
             getSettings(company)
             setColname('')
             setWriteStatus('Add')
+            setChangingSettings(false)
         }
     }
 
     const setRecoveryPermission = async (recoveryVal)=>{
         setSaveStatus('Saving...')
-        setSettingRecovery(true)
+        setChangingSettings(true)
         const resps = await fetchServer("POST", {
             database: company,
             collection: "Settings", 
@@ -117,11 +105,30 @@ const Settings = () =>{
         if (resps.err){
             console.log(resps.mess)
             setSaveStatus(resps.mess)
-            setSettingRecovery(false)
+            setChangingSettings(false)
         }else{
             setSaveStatus('Saved')
             getSettings(company)
-            setSettingRecovery(false)
+            setChangingSettings(false)
+        }
+    }
+    
+    const setDisableLogin = async (enableBlockVal)=>{
+        setSaveStatus('Saving...')
+        setChangingSettings(true)
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Settings", 
+            prop: [{name: 'enable_block_login'}, {enabled: enableBlockVal}]
+        }, "updateOneDoc", server)
+        if (resps.err){
+            console.log(resps.mess)
+            setSaveStatus(resps.mess)
+            setChangingSettings(false)
+        }else{
+            setSaveStatus('Saved')
+            getSettings(company)
+            setChangingSettings(false)
         }
     }
     return(
@@ -183,6 +190,20 @@ const Settings = () =>{
                             onChange={(e)=>{
                                 setRecoveryVal(!recoveryVal)
                                 setRecoveryPermission(!recoveryVal)
+                            }}
+                        />
+                    </div>
+                </div>
+                <div className='recovery'>
+                    <div className='formtitle'>Set Employee Login Access</div>
+                    <div className='recovery-block'>
+                        Disable Access To Login 
+                        <input 
+                            type='checkbox'
+                            checked={enableBlockVal}
+                            onChange={(e)=>{
+                                setEnableBlockVal(!enableBlockVal)
+                                setDisableLogin(!enableBlockVal)
                             }}
                         />
                     </div>
