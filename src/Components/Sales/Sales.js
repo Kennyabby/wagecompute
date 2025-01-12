@@ -101,6 +101,11 @@ const Sales = ()=>{
         storePath('sales')  
     },[storePath])
     useEffect(()=>{
+        if (!recoveryVal){
+            setSalesOpts('sales')
+        }
+    },[recoveryVal])
+    useEffect(()=>{
         if (salesOpts!=='sales'){
             setIsView(false)
             setFields([])
@@ -1023,7 +1028,7 @@ const Sales = ()=>{
                                 Add Employee Sales
                             </div>                                                
                         </div>)} 
-                        {salesOpts === 'recovery' && <div className='addnewrecovery'>
+                        {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='addnewrecovery'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
                                 <select 
@@ -1066,7 +1071,7 @@ const Sales = ()=>{
                             </div>
                         </div>}
                         {
-                            salesOpts==='recovery' && recoveryFields.map((field, index)=>{
+                            salesOpts==='recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && recoveryFields.map((field, index)=>{
                                 return (
                                     <div className='recoveryblk' key={index}>
                                         <MdDelete 
@@ -1518,7 +1523,7 @@ const Sales = ()=>{
                         })}
                         
                     </div>
-                    {(!isView || salesOpts === 'recovery') && <div className='confirm'>     
+                    {(!isView || salesOpts === 'recovery') && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='confirm'>     
                         {salesOpts === 'sales' && <div className='inpcov salesinpcov'>
                             <input 
                                 className='forminp'
