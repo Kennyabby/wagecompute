@@ -35,7 +35,7 @@ const Purchase = ()=>{
         purchaseVendor:'',
     }
     const [fields, setFields] = useState({...defaultFields})
-    const departments = ['Bar', 'Kitchen', 'Musical', 'Security & Safety', 'Admin']
+    const departments = ['Bar', 'Kitchen', 'Musical']
     const purchaseCategory = ['ASSORTED DRINKS', 'ASSORTED PROTEIN', 'INGREDIENTS', 'SWALLOW', 'CEREALS']
     const unitsofmeasurements = [
         'PORTIONS', 'PACKETS', 'CRATES','CARTONS','PACKS'
@@ -230,7 +230,7 @@ const Purchase = ()=>{
                                         // setAlertState('info')
                                         // setAlert('You are about to delete the selected Sales. Please Delete again if you are sure!')
                                         // setAlertTimeout(5000)                                                                                    
-                                        deletePurchase(purchase)
+                                        deletePurchase(pur)
                                     }}
                                 >
                                     Delete
