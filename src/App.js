@@ -27,6 +27,7 @@ function App() {
   const [positions, setPositions] = useState([])
   const [employees, setEmployees] = useState([])
   const [settings, setSettings] = useState([])
+  const [recoveryVal, setRecoveryVal] = useState(false)
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
   const [purchase, setPurchase] = useState([])
@@ -336,6 +337,7 @@ function App() {
           expenses, setExpenses, getExpenses,
           rentals, setRentals, getRentals,
           settings, setSettings, getSettings,
+          recoveryVal, setRecoveryVal,
           setAlert, setAlertState, setAlertTimeout,
           alert, alertState, alertTimeout, actionMessage, 
           setAction, setActionMessage,
