@@ -1,7 +1,8 @@
 import './Reports.css'
 
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import html2pdf from 'html2pdf.js';
 
 const Reports = ()=>{
     const { storePath,
@@ -20,16 +21,23 @@ const Reports = ()=>{
 
     const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))
     const [filterTo, setFilterTo] = useState(new Date(Date.now()).toISOString().slice(0,10))
-    const reports = ['PROFIT & LOSS', 'TRIAL BALANCE', 'CHART OF ACCOUNTS']
-    const [curReport, setCurReport] = useState({title:reports[0], data:[]})
-
+    const reports = ['PROFIT OR LOSS', 'TRIAL BALANCE', 'BALANCE SHEET']
+    const [curReport, setCurReport] = useState({
+        title:reports[0], 
+        data:[],
+        description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
+        columns: ['Month','Sales Amount', 'Purchase Amount', 'Gross Profit', 'Expense Amount', 'Salary Expense', 'Net Profit']
+    })
+    const reportRef = useRef(null)
     const handleReportSelection = (e)=>{
         const name = e.target.getAttribute('name')
         if (name){
-            if (name==='PROFIT & LOSS'){
+            if (name==='PROFIT OR LOSS'){
                 setCurReport({
                     title:name,
-                    data:getPandLdata(filterFrom,filterTo)
+                    data:getPandLdata(filterFrom,filterTo),
+                    description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
+                    columns: ['Month','Sales Amount', 'Purchase Amount', 'Gross Profit', 'Expense Amount', 'Salary Expense', 'Net Profit']
                 })
             }else{
                 setCurReport({
@@ -41,7 +49,7 @@ const Reports = ()=>{
     }
 
     useEffect(()=>{
-        if (curReport.title === 'PROFIT & LOSS'){
+        if (curReport.title === 'PROFIT OR LOSS'){
             setCurReport((curReport)=>{                
                 return {...curReport, data:getPandLdata(filterFrom,filterTo)}
             })
@@ -190,6 +198,17 @@ const Reports = ()=>{
         return combinedReports
     }
 
+    const printToPDF = () => {
+        const element = reportRef.current;
+        const options = {
+            margin:       0.2,
+            filename:     `${curReport.title} REPORT - ${new Date(filterTo).getFullYear()}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'A4', orientation: 'landscape' }
+        };
+        html2pdf().set(options).from(element).save();
+    };
     return (
         <>
             <div className='reports'>
@@ -201,22 +220,25 @@ const Reports = ()=>{
                     })}
                 </div>
                 <div className='reports-cover'>
-                    <div className='reports-view'>
+                    <div className='reports-view' ref={reportRef}>
+                        <div className='report-invhead'>
+                            <div className="billfrom">
+                                <h4 className='company report-company' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
+                                <p className='billfromitem report-billfrom'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
+                                <p className='billfromitem report-billfrom'>{`Email: ${companyRecord.emailid}`}</p>
+                            </div>
+                        </div>
                         {curReport.title?<div className='reports-onview'>
                             <div className='report-title'>
-                                {curReport.title + ' - REPORT'}
+                                {curReport.description + ` YEAR ${new Date(filterTo).getFullYear()}`}
                             </div>
                             <div className='report-table'>
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Month</th>                                            
-                                            <th>Sales Amount</th>
-                                            <th>Purchase Amount</th>
-                                            <th>Gross Profit</th>
-                                            <th>Expenses Amount</th>
-                                            <th>Salary Expense</th>
-                                            <th>Net Profit</th>
+                                            {curReport.columns?.map((col, index)=>{
+                                                return <th key={index}>{col}</th>
+                                            })}                                            
                                         </tr>                                        
                                     </thead>
                                     <tbody>
@@ -339,6 +361,12 @@ const Reports = ()=>{
                                     }}
                                 />
                             </div>
+                        </div>
+                        <div 
+                            className='print-report'
+                            onClick={printToPDF}
+                        >
+                            Print Report
                         </div>
                     </div>
                 </div>
