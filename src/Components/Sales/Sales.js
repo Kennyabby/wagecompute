@@ -1523,7 +1523,7 @@ const Sales = ()=>{
                         })}
                         
                     </div>
-                    {(!isView || salesOpts === 'recovery') && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='confirm'>     
+                    {(!isView || salesOpts === 'recovery') && <div className='confirm'>     
                         {salesOpts === 'sales' && <div className='inpcov salesinpcov'>
                             <input 
                                 className='forminp'
@@ -1537,7 +1537,7 @@ const Sales = ()=>{
                                 }}
                             />
                         </div>}  
-                        {salesOpts === 'recovery' && <div className='inpcov salesinpcov'>
+                        {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='inpcov salesinpcov'>
                             <select 
                                 className='forminp'
                                 name='recoveryMonth'
@@ -1594,7 +1594,7 @@ const Sales = ()=>{
                                 }
                             }}
                         >{postStatus}</div>} 
-                        {salesOpts === 'recovery' && <div className='yesbtn salesyesbtn'
+                        {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:recoveryFields.length?'pointer':'not-allowed'
                             }}
