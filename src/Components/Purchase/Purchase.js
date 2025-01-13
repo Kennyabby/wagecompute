@@ -35,7 +35,7 @@ const Purchase = ()=>{
         purchaseVendor:'',
     }
     const [fields, setFields] = useState({...defaultFields})
-    const departments = ['Bar', 'Kitchen', 'Musical']
+    const departments = ['Bar', 'Kitchen']
     const purchaseCategory = ['ASSORTED DRINKS', 'ASSORTED PROTEIN', 'INGREDIENTS', 'SWALLOW', 'CEREALS']
     const unitsofmeasurements = [
         'PORTIONS', 'PACKETS', 'CRATES','CARTONS','PACKS'
