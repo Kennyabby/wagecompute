@@ -67,3 +67,28 @@
     width: 400px;
     font-size: .8em;
 }
+.exp-desc{
+    font-size: .9em;
+    margin: 10px 0px;
+    font-weight: 800;
+}
+.exp-dets{
+    flex-wrap: wrap;
+    
+}
+.desc-relt{
+    position: relative
+}
+.desc-btn-top{
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    z-index: 2;
+}
+.desc-btn-bottom{
+    position: absolute;
+    bottom: 10px;
+    right:10px;
+    z-index: 2;
+}

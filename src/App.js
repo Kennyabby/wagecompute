@@ -73,7 +73,7 @@ function App() {
       }
     },3000)
     return () => clearInterval(intervalId);
-  },[])
+  },[window.localStorage.getItem('sessn-cmp')])
 
   useEffect(()=>{
     if(settings?.length){
@@ -178,6 +178,7 @@ function App() {
     window.localStorage.removeItem('curr-path')
     window.localStorage.removeItem('slvw')
     window.localStorage.removeItem('sldtl')
+    window.localStorage.removeItem('sessn-cmp')
     setSessID(null)
     Navigate("/")
     setTimeout(()=>{
