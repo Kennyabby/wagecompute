@@ -11,7 +11,7 @@ const PurchaseReport = ({
     setShowReport,
 })=>{
     const [InvoiceNumber, setInvoiceNumber] = useState('')    
-    const departments = ['Bar', 'Kitchen', 'Musical', 'Security & Safety', 'Admin']
+    const departments = ['Bar', 'Kitchen']
     const targetRef = useRef(null)
     const {storePath,
         getDate,
