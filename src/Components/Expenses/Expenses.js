@@ -1,9 +1,11 @@
 import './Expenses.css'
-import { useEffect, useContext, useState } from 'react'
+import { useEffect, useContext, useState, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import html2pdf from 'html2pdf.js';
 import { useScroll } from 'framer-motion'
 import { MdAdd } from 'react-icons/md'
-import { FaTableCells } from 'react-icons/fa6'
+import { FaTableCells, FaPrint } from 'react-icons/fa6'
+import { FaAngleDown, FaAngleUp } from "react-icons/fa";
 import ExpensesReport from './ExpensesReport/ExpensesReport'
 
 const Expenses = ()=>{
@@ -17,6 +19,7 @@ const Expenses = ()=>{
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
+    const targetRef = useRef(null)
     const [expensesStatus, setExpensesStatus] = useState('Post Expenses')
     const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curExpense, setCurExpense] = useState(null)
@@ -48,7 +51,7 @@ const Expenses = ()=>{
     useEffect(()=>{
         storePath('expenses')  
     },[storePath])
-
+   
     useEffect(()=>{
         if (companyRecord.status!=='admin'){
             setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -65,9 +68,11 @@ const Expenses = ()=>{
         }
     }
     const handleViewClick = (exp) =>{
-        setCurExpense(exp)
-        setFields({...exp})
-        setIsView(true)
+        if (curExpense === null || exp.createdAt !== curExpense?.createdAt){
+            setCurExpense(exp)
+            setFields({...exp})
+            setIsView(true)            
+        }
     }
     const addExpenses = async ()=>{
         if (fields.expensesAmount && fields.expenseCategory && 
@@ -138,6 +143,19 @@ const Expenses = ()=>{
         })
         setReportExpense(filteredReportExpenses)
     }
+
+    const printToPDF = (e) => {
+        const element = e.target.parentElement
+        const options = {
+            margin:       0.1,
+            filename:     `EXPENSE DESCRIPTION.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+        };
+        html2pdf().set(options).from(element).save();
+    };
+
     return (
         <>
             <div className='expenses'>
@@ -204,11 +222,12 @@ const Expenses = ()=>{
                         if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo){
                             return expfltr
                         }
-                    }).map((exp,index)=>{
+                    }).map((exp,index)=>{                        
                         const {
                             createdAt,postingDate, 
                             expensesAmount, expensesDepartment,
-                            expenseCategory,expensesHandler 
+                            expenseCategory,expensesHandler, expensesVendor,
+                            expensesDescription
                         } = exp
                         var handlerName = ''
                         employees.forEach((emp)=>{
@@ -217,17 +236,45 @@ const Expenses = ()=>{
                             }
                         })
                         return(
-                            <div className={'dept' + (curExpense?.createdAt===createdAt?' curview':'')} key={index} 
+                            <div className={'dept  desc-relt' + (curExpense?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
                                     handleViewClick(exp)
                                 }}
                             >
-                                <div className='dets sldets'>
+                                <div className='dets sldets' ref={targetRef}>
+                                    {(curExpense?.createdAt === createdAt && curExpense.showDetails) && 
+                                        <FaPrint 
+                                            className='desc-btn-top'
+                                            onClick={(e)=>{printToPDF(e)}}
+                                        />
+                                    }
+                                    {(curExpense?.createdAt === createdAt && curExpense.showDetails) ? 
+                                        (<FaAngleUp 
+                                            className='desc-btn-bottom'
+                                            onClick={()=>{
+                                                setCurExpense((curExpense)=>{
+                                                    return {...curExpense, showDetails: false}
+                                                })
+                                            }}
+                                        />) 
+                                        : (curExpense?.createdAt === createdAt && <FaAngleDown 
+                                            className='desc-btn-bottom'
+                                            onClick={()=>{
+                                                setCurExpense((curExpense)=>{
+                                                    return {...curExpense, showDetails: true}
+                                                })
+                                            }}
+                                        />)}
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Expenses Department: <b>{expensesDepartment}</b></div>                                    
                                     <div>Expenses Category: <b>{expenseCategory}</b></div>                                    
                                     <div>Expenses Amount: <b>{'₦'+(Number(expensesAmount)).toLocaleString()}</b></div>                                    
                                     <div className='deptdesc'>{`Expenses Handled By:`} <b>{`${handlerName}`}</b></div>
+                                    {(curExpense?.createdAt === createdAt && curExpense?.showDetails) && <div>
+                                        <div>Expenses Vendor: <b>{expensesVendor}</b></div>                                    
+                                        <div className='exp-desc'>Description of Items:</div>
+                                        <pre className='exp-dets'>{expensesDescription}</pre>
+                                    </div>}
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
                                     className='edit'
