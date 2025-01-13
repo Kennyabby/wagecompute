@@ -124,8 +124,9 @@ const ExpensesReport = ({
                                                         <thead>
                                                             <tr>
                                                                 <th><h8 className='theader'>DATE</h8></th>
+                                                                <th><h8 className='theader'>HANDLER</h8></th>
                                                                 <th><h8 className='theader'>VENDOR</h8></th>
-                                                                <th><h8 className='theader'>DETAIL OF ITEMS</h8></th>
+                                                                <th><h8 className='theader'>EXPENSE CATEGORY</h8></th>
                                                                 <th><h8 className='theader'>AMOUNT</h8></th>
                                                                 
                                                             </tr>
@@ -138,6 +139,9 @@ const ExpensesReport = ({
                                                                     return(
                                                                         <tr>
                                                                             <td><h8 className='ttrow'>{getDate(exp.postingDate)}</h8></td>                                                        
+                                                                            <td><h8 className='ttrow'>{employees.filter((emp)=>{
+                                                                                return emp.i_d === exp.expensesHandler
+                                                                            })[0].firstName}</h8></td>                                                        
                                                                             <td><h8 className='ttrow'>{exp.expensesVendor}</h8></td>                                                        
                                                                             <td><h8 className='ttrow'>{exp.expenseCategory}</h8></td>                                                        
                                                                             <td><h8 className='ttrow'>{'₦'+Number(exp.expensesAmount).toLocaleString()}</h8></td>                                                        
@@ -147,6 +151,7 @@ const ExpensesReport = ({
                                                             })}                                                                                                                                                    
                                                             <tr>
                                                                 <td className='ttrow'>TOTAL</td>                                                        
+                                                                <td className='ttrow'></td>                                                        
                                                                 <td className='ttrow'></td>                                                        
                                                                 <td className='ttrow'></td>                                                        
                                                                 <td className='ttrow'>{'₦'+totalPurchaseAmount.toLocaleString()}</td>                                                      
