@@ -1,5 +1,5 @@
 import './Expenses.css'
-import { useEffect, useContext, useState, useRef } from 'react'
+import { useEffect, useContext, useState} from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import html2pdf from 'html2pdf.js';
 import { useScroll } from 'framer-motion'
@@ -19,7 +19,6 @@ const Expenses = ()=>{
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
-    const targetRef = useRef(null)
     const [expensesStatus, setExpensesStatus] = useState('Post Expenses')
     const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curExpense, setCurExpense] = useState(null)
@@ -241,7 +240,7 @@ const Expenses = ()=>{
                                     handleViewClick(exp)
                                 }}
                             >
-                                <div className='dets sldets' ref={targetRef}>
+                                <div className='dets sldets'>
                                     {(curExpense?.createdAt === createdAt && curExpense.showDetails) && 
                                         <FaPrint 
                                             className='desc-btn-top'
