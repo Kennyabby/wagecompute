@@ -143,20 +143,17 @@ const Expenses = ()=>{
         setReportExpense(filteredReportExpenses)
     }
 
-    const printToPDF = (e) => {
-        
-        setTimeout(()=>{
-            const element = e.target.parentElement.parentElement
-            console.log(element)
-            const options = {
-                margin:       0.1,
-                filename:     `EXPENSE DESCRIPTION.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
-            };
-            html2pdf().set(options).from(element).save();
-        },500)
+    const printToPDF = (e) => {        
+        const element = e.target.parentElement.parentElement
+        console.log(element)
+        const options = {
+            margin:       0.1,
+            filename:     `EXPENSE DESCRIPTION.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+        };
+        html2pdf().set(options).from(element).save();        
     };
 
     return (
