@@ -35,14 +35,23 @@ const Reports = ()=>{
             if (name==='PROFIT OR LOSS'){
                 setCurReport({
                     title:name,
-                    data:getPandLdata(filterFrom,filterTo),
+                    data:getPandLdata(filterFrom, filterTo),
                     description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
-                    columns: ['Month','Sales Amount', 'Purchase Amount', 'Gross Profit', 'Expense Amount', 'Salary Expense', 'Net Profit']
+                    columns: ['Month', 'Sales Amount', 'Purchase Amount', 'Gross Profit', 'Expense Amount', 'Salary Expense', 'Net Profit']
                 })
-            }else{
+            }else if (name==='TRIAL BALANCE'){
                 setCurReport({
                     title:name,
-                    data:[]
+                    description: 'Trial Balance for'.toUpperCase(),
+                    data:getTrialBalance(filterFrom, filterTo),
+                    columns:['Month', 'Description', 'Credit', 'Debit']
+                })
+            }else if (name==='BALANCE SHEET'){
+                setCurReport({
+                    title:name,
+                    description: 'Balance Sheet Report for'.toUpperCase(),
+                    data:getBalanceSheet(filterFrom, filterTo),
+                    columns:['Month']
                 })
             }
         }
@@ -53,10 +62,29 @@ const Reports = ()=>{
             setCurReport((curReport)=>{                
                 return {...curReport, data:getPandLdata(filterFrom,filterTo)}
             })
+        }else if (curReport.title === 'TRIAL BALANCE'){
+            setCurReport((curReport)=>{                
+                return {...curReport, data:getTrialBalance(filterFrom,filterTo)}
+            })
+        }else if (curReport.title === 'BALANCE SHEET'){
+            setCurReport((curReport)=>{                
+                return {...curReport, data:getBalanceSheet(filterFrom,filterTo)}
+            })
         }
     },[filterFrom,filterTo, expenses, sales, rentals, purchase])
 
-    const getPandLdata = (filterFrom, filterTo)=>{
+    const getBalanceSheet = (filterFrom, filterTo)=>{
+        return getAlldata(filterFrom, filterTo)
+    }
+
+    const getTrialBalance = (filterFrom, filterTo)=>{
+        return getAlldata(filterFrom, filterTo)
+    }
+
+    const getPandLdata = (filterFrom, filterTo) =>{
+        return getAlldata(filterFrom, filterTo)
+    }
+    const getAlldata = (filterFrom, filterTo)=>{
         var saledata = []
         sales.forEach((sale)=>{
             const {postingDate, totalCashSales, totalBankSales, 
@@ -242,7 +270,7 @@ const Reports = ()=>{
                                         </tr>                                        
                                     </thead>
                                     <tbody>
-                                        {curReport.data.map((report, index)=>{
+                                        {curReport.title === 'PROFIT OR LOSS' && curReport.data.map((report, index)=>{
                                             return <tr key={index}>
                                                 <td>{report.month}</td>
                                                 <td>{'₦'+(report.salesAmount).toLocaleString()}</td>
@@ -253,11 +281,19 @@ const Reports = ()=>{
                                                 <td>{'₦'+(report.salesAmount - report.purchaseAmount - report.expenseAmount - report.salaryAmount).toLocaleString()}</td>
                                             </tr>
                                         })}
+                                        {curReport.title === 'TRIAL BALANCE' && curReport.data.map((report, index)=>{
+                                            return <tr key={index}>
+                                                <td>{report.month}</td>
+                                                <td>{'SALES INCOME || ADMIN & OTHER EXPENSES'}</td>
+                                                <td>{'₦'+(report.salesAmount).toLocaleString()}</td>
+                                                <td>{'₦'+(report.purchaseAmount + report.expenseAmount + report.salaryAmount).toLocaleString()}</td>                                                
+                                            </tr>
+                                        })}
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <th>Total Amount</th>
-                                            {
+                                            <th>Total Amount</th>                                            
+                                            {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
                                                     var totalSalesAmount = 0
                                                     curReport.data.forEach((report)=>{
@@ -266,7 +302,7 @@ const Reports = ()=>{
                                                     return <th>{'₦'+totalSalesAmount.toLocaleString()}</th>                                          
                                                 })
                                             }                                         
-                                            {
+                                            {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
                                                     var totalPurchaseAmount = 0
                                                     curReport.data.forEach((report)=>{
@@ -275,7 +311,7 @@ const Reports = ()=>{
                                                     return <th>{'₦'+totalPurchaseAmount.toLocaleString()}</th>                                          
                                                 })
                                             }                                         
-                                            {
+                                            {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
                                                     var totalSalesAmount = 0
                                                     var totalPurchaseAmount = 0
@@ -286,7 +322,7 @@ const Reports = ()=>{
                                                     return <th>{'₦'+(totalSalesAmount - totalPurchaseAmount).toLocaleString()}</th>                                          
                                                 })
                                             }                                         
-                                            {
+                                            {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
                                                     var totalExpenseAmount = 0
                                                     curReport.data.forEach((report)=>{
@@ -295,7 +331,7 @@ const Reports = ()=>{
                                                     return <th>{'₦'+totalExpenseAmount.toLocaleString()}</th>                                          
                                                 })
                                             }                                         
-                                            {
+                                            {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
                                                     var totalSalaryAmount = 0
                                                     curReport.data.forEach((report)=>{
@@ -304,7 +340,7 @@ const Reports = ()=>{
                                                     return <th>{'₦'+totalSalaryAmount.toLocaleString()}</th>                                          
                                                 })
                                             }                                         
-                                            {
+                                            {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
                                                     var totalSalesAmount = 0
                                                     var totalPurchaseAmount = 0
@@ -316,11 +352,34 @@ const Reports = ()=>{
                                                         totalExpenseAmount += report.expenseAmount
                                                         totalSalaryAmount += report.salaryAmount
                                                     })          
-                                                    return <th>{'₦'+(totalSalesAmount - totalPurchaseAmount - totalExpenseAmount -totalSalaryAmount).toLocaleString()}</th>                                          
+                                                    return <th>{'₦'+(totalSalesAmount - totalPurchaseAmount - totalExpenseAmount - totalSalaryAmount).toLocaleString()}</th>                                          
+                                                })
+                                            }
+                                            <th></th>
+                                            {curReport.title === 'TRIAL BALANCE' && 
+                                                [''].map((arg, index)=>{
+                                                    var totalSalesAmount = 0
+                                                    curReport.data.forEach((report)=>{
+                                                        totalSalesAmount += report.salesAmount 
+                                                    })          
+                                                    return <th>{'₦'+totalSalesAmount.toLocaleString()}</th>                                          
+                                                })
+                                            }                                         
+                                            {curReport.title === 'TRIAL BALANCE' && 
+                                                [''].map((arg, index)=>{
+                                                    var totalPurchaseAmount = 0
+                                                    var totalExpenseAmount = 0
+                                                    var totalSalaryAmount = 0
+                                                    curReport.data.forEach((report)=>{
+                                                        totalPurchaseAmount += report.purchaseAmount
+                                                        totalExpenseAmount += report.expenseAmount
+                                                        totalSalaryAmount += report.salaryAmount
+                                                    })          
+                                                    return <th>{'₦'+(totalPurchaseAmount + totalExpenseAmount + totalSalaryAmount).toLocaleString()}</th>                                          
                                                 })
                                             }                                         
                                             
-                                            {/* <th>Total Amount</th> */}
+                                            
                                         </tr>
                                     </tfoot>
                                 </table>
