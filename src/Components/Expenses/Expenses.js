@@ -145,7 +145,6 @@ const Expenses = ()=>{
 
     const printToPDF = (e) => {        
         const element = e.target.parentElement.parentElement
-        console.log(element)
         const options = {
             margin:       0.1,
             filename:     `EXPENSE DESCRIPTION.pdf`,
