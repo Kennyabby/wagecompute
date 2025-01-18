@@ -13,7 +13,7 @@ import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
 function App() {
   // const SERVER = "http://localhost:3001"
-  const SERVER = "https://wageserver.vercel.app"
+  const SERVER = "https://enterpriseserver.vercel.app"
 
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
