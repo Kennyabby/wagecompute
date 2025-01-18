@@ -8,7 +8,7 @@ const LoadingPage = ()=>{
         <>
             <div className='loadingpage'>
                 <div>
-                    THE WAGE COMPUTE
+                    THE ENTERPRISE COMPUTE
                 </div>
             </div>
         </>
