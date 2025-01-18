@@ -844,14 +844,13 @@ const Sales = ()=>{
                   })}
                     {salesOpts1 === 'rentals' && rentals.filter((ftrrent)=>{
                         // console.log(ftrrent)
-                        const slCreatedAt = getDate(ftrrent.createdAt)
+                        const slCreatedAt = getDate(ftrrent.paymentDate)
                         const fromDate = getDate(saleFrom)
                         const toDate = getDate(saleTo)
                         // console.log(getDate(slCreatedAt),saleFrom,getDate(slCreatedAt)>= getDate(saleFrom))
                         // console.log(getDate(slCreatedAt),saleTo,getDate(slCreatedAt)<= getDate(saleTo))
                         if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
-                        ){
-                            
+                        ){                            
                             return ftrrent
                         }
                     }).map((rent, index)=>{

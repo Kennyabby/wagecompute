@@ -26,7 +26,7 @@ const Reports = ()=>{
         title:reports[0], 
         data:[],
         description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
-        columns: ['Month','Sales Amount', 'Purchase Amount', 'Gross Profit', 'Expense Amount', 'Salary Expense', 'Net Profit']
+        columns: ['Month','Sales Income', 'Other Income','Purchases', 'Gross Profit', 'Admin Expenses', 'Net Profit']
     })
     const reportRef = useRef(null)
     const handleReportSelection = (e)=>{
@@ -37,7 +37,7 @@ const Reports = ()=>{
                     title:name,
                     data:getPandLdata(filterFrom, filterTo),
                     description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
-                    columns: ['Month', 'Sales Amount', 'Purchase Amount', 'Gross Profit', 'Expense Amount', 'Salary Expense', 'Net Profit']
+                    columns: ['Month','Sales Income', 'Other Income','Purchases', 'Gross Profit', 'Admin Expenses', 'Net Profit']
                 })
             }else if (name==='TRIAL BALANCE'){
                 setCurReport({
@@ -99,18 +99,21 @@ const Reports = ()=>{
                 saledata = saledata.concat(reportSale)
             }
         })
+        const monthlySalesData = getMonthWiseReport(saledata)
+
+        var rentalData = []
         rentals.forEach((rental)=>{
             const {paymentDate, paymentAmount} = rental
             if (filterFrom <= paymentDate && filterTo >= paymentDate){
                 var reportRental = {}
                 reportRental.postingDate = paymentDate
                 reportRental.docType = 'rentals'
-                reportRental.salesAmount = Number(paymentAmount)
+                reportRental.rentalAmount = Number(paymentAmount)
     
-                saledata = saledata.concat(reportRental)
+                rentalData = rentalData.concat(reportRental)
             }
         })
-        const monthlySalesData = getMonthWiseReport(saledata)
+        const monthlyRentalData = getMonthWiseReport(rentalData)
 
         var purchaseData = []
         purchase.forEach((pur)=>{
@@ -136,8 +139,7 @@ const Reports = ()=>{
                 reportExpenses.expenseAmount = Number(expensesAmount)
                 expenseData = expenseData.concat(reportExpenses)
             }
-        })
-        const monthlyExpenseData = getMonthWiseReport(expenseData)
+        })        
 
         var payrollData = []
         attendance.forEach((att)=>{
@@ -159,40 +161,40 @@ const Reports = ()=>{
                     reportSalary.docType = 'salary'
                     reportSalary.salaryAmount = salaryAmount
     
-                    payrollData = payrollData.concat(reportSalary)
+                    expenseData = expenseData.concat(reportSalary)
                 }
             })
         }) 
-        const monthlyPayrollData = getMonthWiseReport(payrollData)
+        const monthlyExpenseData = getMonthWiseReport(expenseData)
 
-        return combinedMonthReport([...monthlySalesData,...monthlyExpenseData,...monthlyPurchaseData,
-            ...monthlyPayrollData
+        return combinedMonthReport([...monthlySalesData,...monthlyRentalData,
+            ...monthlyExpenseData,...monthlyPurchaseData
         ])
     }
 
-    const getMonthWiseReport = (data,year) => {
+    const getMonthWiseReport = (data) => {
         const monthIndex = ['01','02','03','04','05','06','07','08','09','10','11','12']
         var newData = []
         monthIndex.forEach((month)=>{  
             var newRecord = {}          
             var sumSalesAmount = 0
+            var sumRentalAmount = 0
             var sumPurchaseAmount = 0
             var sumExpenseAmount = 0
-            var sumSalaryAmount = 0
             data.forEach((record)=>{
-                const {postingDate, salesAmount, purchaseAmount, expenseAmount, salaryAmount} = record
+                const {postingDate, salesAmount, rentalAmount, purchaseAmount, expenseAmount} = record
                 if (postingDate.split('-')[1] === month){
                     sumSalesAmount += salesAmount ? salesAmount : 0
+                    sumRentalAmount += rentalAmount ? rentalAmount : 0
                     sumPurchaseAmount += purchaseAmount ? purchaseAmount : 0
                     sumExpenseAmount += expenseAmount ? expenseAmount : 0
-                    sumSalaryAmount += salaryAmount ? salaryAmount : 0
                 }
             })
             newRecord.month = months[Number(month)-1]
             newRecord.salesAmount = sumSalesAmount
+            newRecord.rentalAmount = sumRentalAmount
             newRecord.purchaseAmount = sumPurchaseAmount
             newRecord.expenseAmount = sumExpenseAmount
-            newRecord.salaryAmount = sumSalaryAmount
             newData = newData.concat(newRecord)
         })
         return newData
@@ -203,23 +205,23 @@ const Reports = ()=>{
         months.forEach((month)=>{
             var monthlyRecord = {}
             var sumSalesAmount = 0
+            var sumRentalAmount = 0
             var sumPurchaseAmount = 0
             var sumExpenseAmount = 0
-            var sumSalaryAmount = 0
             monthlyReports.forEach((report)=>{
-                const {salesAmount, purchaseAmount, expenseAmount, salaryAmount} = report
+                const {salesAmount, rentalAmount, purchaseAmount, expenseAmount} = report
                 if (report.month === month){
                     sumSalesAmount += salesAmount
+                    sumRentalAmount += rentalAmount
                     sumPurchaseAmount += purchaseAmount 
                     sumExpenseAmount += expenseAmount
-                    sumSalaryAmount += salaryAmount
                 }
             })                        
             monthlyRecord.month = month
             monthlyRecord.salesAmount = sumSalesAmount
+            monthlyRecord.rentalAmount = sumRentalAmount
             monthlyRecord.purchaseAmount = sumPurchaseAmount
             monthlyRecord.expenseAmount = sumExpenseAmount
-            monthlyRecord.salaryAmount = sumSalaryAmount
 
             combinedReports = combinedReports.concat(monthlyRecord)
         })
@@ -274,19 +276,19 @@ const Reports = ()=>{
                                             return <tr key={index}>
                                                 <td>{report.month}</td>
                                                 <td>{'₦'+(report.salesAmount).toLocaleString()}</td>
+                                                <td>{'₦'+(report.rentalAmount).toLocaleString()}</td>
                                                 <td>{'₦'+(report.purchaseAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.salesAmount - report.purchaseAmount).toLocaleString()}</td>
+                                                <td>{'₦'+(report.salesAmount + report.rentalAmount - report.purchaseAmount).toLocaleString()}</td>
                                                 <td>{'₦'+(report.expenseAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.salaryAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.salesAmount - report.purchaseAmount - report.expenseAmount - report.salaryAmount).toLocaleString()}</td>
+                                                <td>{'₦'+(report.salesAmount + report.rentalAmount - report.purchaseAmount - report.expenseAmount).toLocaleString()}</td>
                                             </tr>
                                         })}
                                         {curReport.title === 'TRIAL BALANCE' && curReport.data.map((report, index)=>{
                                             return <tr key={index}>
                                                 <td>{report.month}</td>
                                                 <td>{'SALES INCOME || ADMIN & OTHER EXPENSES'}</td>
-                                                <td>{'₦'+(report.salesAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.purchaseAmount + report.expenseAmount + report.salaryAmount).toLocaleString()}</td>                                                
+                                                <td>{'₦'+(report.salesAmount + report.rentAmount).toLocaleString()}</td>
+                                                <td>{'₦'+(report.purchaseAmount + report.expenseAmount).toLocaleString()}</td>                                                
                                             </tr>
                                         })}
                                     </tbody>
@@ -304,6 +306,15 @@ const Reports = ()=>{
                                             }                                         
                                             {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
+                                                    var totalRentalAmount = 0
+                                                    curReport.data.forEach((report)=>{
+                                                        totalRentalAmount += report.rentalAmount 
+                                                    })          
+                                                    return <th>{'₦'+totalRentalAmount.toLocaleString()}</th>                                          
+                                                })
+                                            }                                         
+                                            {curReport.title === 'PROFIT OR LOSS' && 
+                                                [''].map((arg, index)=>{
                                                     var totalPurchaseAmount = 0
                                                     curReport.data.forEach((report)=>{
                                                         totalPurchaseAmount += report.purchaseAmount 
@@ -314,12 +325,14 @@ const Reports = ()=>{
                                             {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
                                                     var totalSalesAmount = 0
+                                                    var totalRentalAmount = 0
                                                     var totalPurchaseAmount = 0
                                                     curReport.data.forEach((report)=>{
                                                         totalSalesAmount += report.salesAmount 
+                                                        totalRentalAmount += report.rentalAmount 
                                                         totalPurchaseAmount += report.purchaseAmount 
                                                     })          
-                                                    return <th>{'₦'+(totalSalesAmount - totalPurchaseAmount).toLocaleString()}</th>                                          
+                                                    return <th>{'₦'+(totalSalesAmount + totalRentalAmount - totalPurchaseAmount).toLocaleString()}</th>                                          
                                                 })
                                             }                                         
                                             {curReport.title === 'PROFIT OR LOSS' && 
@@ -330,56 +343,44 @@ const Reports = ()=>{
                                                     })          
                                                     return <th>{'₦'+totalExpenseAmount.toLocaleString()}</th>                                          
                                                 })
-                                            }                                         
-                                            {curReport.title === 'PROFIT OR LOSS' && 
-                                                [''].map((arg, index)=>{
-                                                    var totalSalaryAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalSalaryAmount += report.salaryAmount 
-                                                    })          
-                                                    return <th>{'₦'+totalSalaryAmount.toLocaleString()}</th>                                          
-                                                })
-                                            }                                         
+                                            }                                                                                     
                                             {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
                                                     var totalSalesAmount = 0
+                                                    var totalRentalAmount = 0
                                                     var totalPurchaseAmount = 0
                                                     var totalExpenseAmount = 0
-                                                    var totalSalaryAmount = 0
                                                     curReport.data.forEach((report)=>{
                                                         totalSalesAmount += report.salesAmount 
+                                                        totalRentalAmount += report.rentalAmount
                                                         totalPurchaseAmount += report.purchaseAmount
                                                         totalExpenseAmount += report.expenseAmount
-                                                        totalSalaryAmount += report.salaryAmount
                                                     })          
-                                                    return <th>{'₦'+(totalSalesAmount - totalPurchaseAmount - totalExpenseAmount - totalSalaryAmount).toLocaleString()}</th>                                          
+                                                    return <th>{'₦'+(totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>                                          
                                                 })
                                             }
-                                            <th></th>
                                             {curReport.title === 'TRIAL BALANCE' && 
                                                 [''].map((arg, index)=>{
                                                     var totalSalesAmount = 0
+                                                    var totalRentalAmount = 0
                                                     curReport.data.forEach((report)=>{
                                                         totalSalesAmount += report.salesAmount 
+                                                        totalRentalAmount += report.rentalAmount 
                                                     })          
-                                                    return <th>{'₦'+totalSalesAmount.toLocaleString()}</th>                                          
+                                                    return <th>{'₦'+(totalSalesAmount + totalRentalAmount).toLocaleString()}</th>                                          
                                                 })
                                             }                                         
                                             {curReport.title === 'TRIAL BALANCE' && 
                                                 [''].map((arg, index)=>{
                                                     var totalPurchaseAmount = 0
                                                     var totalExpenseAmount = 0
-                                                    var totalSalaryAmount = 0
                                                     curReport.data.forEach((report)=>{
                                                         totalPurchaseAmount += report.purchaseAmount
                                                         totalExpenseAmount += report.expenseAmount
-                                                        totalSalaryAmount += report.salaryAmount
                                                     })          
-                                                    return <th>{'₦'+(totalPurchaseAmount + totalExpenseAmount + totalSalaryAmount).toLocaleString()}</th>                                          
+                                                    return <th>{'₦'+(totalPurchaseAmount + totalExpenseAmount).toLocaleString()}</th>                                          
                                                 })
-                                            }                                         
-                                            
-                                            
+                                            }                                                                                                                                 
                                         </tr>
                                     </tfoot>
                                 </table>
