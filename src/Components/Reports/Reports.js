@@ -44,7 +44,7 @@ const Reports = ()=>{
                     title:name,
                     description: 'Trial Balance for'.toUpperCase(),
                     data:getTrialBalance(filterFrom, filterTo),
-                    columns:['Month', 'Description', 'Credit', 'Debit']
+                    columns:['Month', 'Description', 'Credit', 'Debit', 'Balance']
                 })
             }else if (name==='BALANCE SHEET'){
                 setCurReport({
@@ -227,6 +227,24 @@ const Reports = ()=>{
         return combinedReports
     }
 
+    const cummulativeBalance = (data, month)=>{
+        var balance = 0
+        var sumSalesAmount = 0
+        var sumRentalAmount = 0
+        var sumPurchaseAmount = 0
+        var sumExpenseAmount = 0
+        data.forEach((record)=>{
+            const {salesAmount, rentalAmount, purchaseAmount, expenseAmount} = record
+            if (months.indexOf(record.month)<=months.indexOf(month)){
+                sumSalesAmount += salesAmount
+                sumRentalAmount += rentalAmount
+                sumPurchaseAmount += purchaseAmount 
+                sumExpenseAmount += expenseAmount
+            }
+        })
+        balance = sumSalesAmount + sumRentalAmount - sumPurchaseAmount - sumExpenseAmount
+        return balance 
+    }
     const printToPDF = () => {
         const element = reportRef.current;
         const options = {
@@ -282,14 +300,48 @@ const Reports = ()=>{
                                                 <td>{'₦'+(report.salesAmount + report.rentalAmount - report.purchaseAmount - report.expenseAmount).toLocaleString()}</td>
                                             </tr>
                                         })}
-                                        {curReport.title === 'TRIAL BALANCE' && curReport.data.map((report, index)=>{
-                                            return <tr key={index}>
-                                                <td>{report.month}</td>
-                                                <td>{'SALES INCOME || ADMIN & OTHER EXPENSES'}</td>
-                                                <td>{'₦'+(report.salesAmount + report.rentAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.purchaseAmount + report.expenseAmount).toLocaleString()}</td>                                                
+                                        {curReport.title === 'TRIAL BALANCE' && 
+                                            <tr>
+                                                <td>{`1ST JANUARY`}</td>
+                                                <td>{`OPENING BALANCE, ${new Date(filterFrom).getFullYear()}`}</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td>{'₦'+
+                                                    cummulativeBalance(
+                                                        getAlldata('2024-01-01',
+                                                            new Date(new Date(filterTo).getFullYear()-1, 
+                                                                months.indexOf('DECEMBER'), 
+                                                                monthDays['DECEMBER']+1
+                                                            ).toISOString().slice(0,10)
+                                                        ),'DECEMBER'
+                                                    ).toLocaleString()}
+                                                </td>
                                             </tr>
-                                        })}
+                                        }
+                                        {curReport.title === 'TRIAL BALANCE' && 
+                                            [''].map((args, index)=>{
+                                                var cummulativeSum = cummulativeBalance(
+                                                    getAlldata('2024-01-01',
+                                                        new Date(new Date(filterTo).getFullYear()-1, 
+                                                            months.indexOf('DECEMBER'), 
+                                                            monthDays['DECEMBER']+1
+                                                        ).toISOString().slice(0,10)
+                                                    ),'DECEMBER'
+                                                )
+                                                return curReport.data.map((report, index)=>{
+                                                    return <tr key={index}>
+                                                        <td>{report.month}</td>
+                                                        <td>{'SALES INCOME || ADMIN & OTHER EXPENSES'}</td>
+                                                        <td>{'₦'+(report.salesAmount + report.rentalAmount).toLocaleString()}</td>
+                                                        <td>{'₦'+(report.purchaseAmount + report.expenseAmount).toLocaleString()}</td>                                                
+                                                        {[''].map((arg, index)=>{        
+                                                            cummulativeSum += report.salesAmount + report.rentalAmount - report.purchaseAmount - report.expenseAmount
+                                                            return <td>{'₦'+(cummulativeSum).toLocaleString()}</td>                                          
+                                                        })}                                                
+                                                    </tr>
+                                                })
+                                            })
+                                        }
                                     </tbody>
                                     <tfoot>
                                         <tr>
@@ -357,25 +409,35 @@ const Reports = ()=>{
                                                 })
                                             }
                                             {curReport.title === 'TRIAL BALANCE' && 
+                                                <th>{`CLOSING BALANCE, ${new Date(filterTo).getFullYear()}`}</th>
+                                            }
+                                            {curReport.title === 'TRIAL BALANCE' && 
+                                                <th></th>
+                                            }
+                                            {curReport.title === 'TRIAL BALANCE' && 
+                                                <th></th>
+                                            }                                                                                                                                                                             
+                                            {curReport.title === 'TRIAL BALANCE' && 
                                                 [''].map((arg, index)=>{
                                                     var totalSalesAmount = 0
                                                     var totalRentalAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalSalesAmount += report.salesAmount 
-                                                        totalRentalAmount += report.rentalAmount 
-                                                    })          
-                                                    return <th>{'₦'+(totalSalesAmount + totalRentalAmount).toLocaleString()}</th>                                          
-                                                })
-                                            }                                         
-                                            {curReport.title === 'TRIAL BALANCE' && 
-                                                [''].map((arg, index)=>{
                                                     var totalPurchaseAmount = 0
                                                     var totalExpenseAmount = 0
                                                     curReport.data.forEach((report)=>{
+                                                        totalSalesAmount += report.salesAmount 
+                                                        totalRentalAmount += report.rentalAmount 
                                                         totalPurchaseAmount += report.purchaseAmount
                                                         totalExpenseAmount += report.expenseAmount
                                                     })          
-                                                    return <th>{'₦'+(totalPurchaseAmount + totalExpenseAmount).toLocaleString()}</th>                                          
+                                                    var cummulativeSum = cummulativeBalance(
+                                                        getAlldata('2024-01-01',
+                                                            new Date(new Date(filterTo).getFullYear()-1, 
+                                                                months.indexOf('DECEMBER'), 
+                                                                monthDays['DECEMBER']+1
+                                                            ).toISOString().slice(0,10)
+                                                        ),'DECEMBER'
+                                                    )
+                                                    return <th>{'₦'+(cummulativeSum + totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>                                          
                                                 })
                                             }                                                                                                                                 
                                         </tr>
