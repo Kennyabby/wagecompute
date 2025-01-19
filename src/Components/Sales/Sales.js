@@ -1561,7 +1561,7 @@ const Sales = ()=>{
                                                 }
                                             }}
                                             className='addempsales'
-                                        >{field.viewHistory?` Unview History`:'View History'}</div>}
+                                        >{field.viewHistory? `Hide Recovery History`:'View Recovery History'}</div>}
                                         {field.viewHistory && <div>
                                             {field.recoverdList.map((reclist, index)=>{
                                                 const {recoveryAmount, recoveryPoint, recoveryTransferId, recoveryDate} = reclist
