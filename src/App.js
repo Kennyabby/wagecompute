@@ -12,7 +12,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
 function App() {
-  
+
   // const SERVER = "http://localhost:3001"
   const SERVER = "https://enterpriseserver.vercel.app"
 
@@ -158,7 +158,10 @@ function App() {
   }
 
   const removeComma = (value)=>{
-    let numberValue = parseInt(value.replace(/,/g, ''), 10);
+    let numberValue = value
+    if (value){
+      numberValue = parseInt(value.replace(/,/g, ''), 10);
+    }
     return numberValue
   }
 

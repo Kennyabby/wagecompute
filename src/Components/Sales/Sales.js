@@ -14,14 +14,14 @@ const Sales = ()=>{
     const {storePath, 
         fetchServer, 
         server, 
-        companyRecord,
-        company, recoveryVal,
-        employees, setEmployees, getEmployees,
+        companyRecord, 
+        company, recoveryVal, 
+        employees, setEmployees, getEmployees, 
         sales, setSales, getSales, months, 
-        rentals, setRentals, getRentals,
+        rentals, setRentals, getRentals, 
         getDate, removeComma, 
-        alert,alertState,alertTimeout,actionMessage,
-        setAlert, setAlertState, setAlertTimeout, setActionMessage
+        alert,alertState,alertTimeout,actionMessage, 
+        setAlert, setAlertState, setAlertTimeout, setActionMessage 
     } = useContext(ContextProvider)
 
     const payPoints = {
@@ -70,8 +70,9 @@ const Sales = ()=>{
     }
 
     const defaultRecoveryFields = {
-        recoveryAmount: '',
+        recoveryReceipt: '',
         recoverySales: '',
+        recoveryAmount: '',
         recoveryPoint: '',
         recoveryDate: '',
         recoveryTransferId:''
@@ -220,7 +221,7 @@ const Sales = ()=>{
     
     const handleRecoveryFieldChange = ({index, e})=>{
         const name = e.target.getAttribute('name')
-        const value = e.target.value        
+        const value = e.target.value
         if (name === 'recoverySales' && value){
             const selectedText = e.target.selectedOptions[0].text
             setRecoveryFields((fields)=>{
@@ -238,10 +239,28 @@ const Sales = ()=>{
                 return [...fields]
             })
         }else{
-            setRecoveryFields((fields)=>{
-                fields[index] = {...fields[index], [name]:value}
-                return [...fields]
-            })
+            if (name === 'recoverySales'){
+                const selectedText = e.target.selectedOptions[0].value
+                setRecoveryFields((fields)=>{
+                    fields[index] = {...fields[index], [name]:value, recoveryAmount:selectedText}
+                    return [...fields]
+                })
+            }else if (name==='recoveryPoint'){
+                setRecoveryFields((fields)=>{
+                    fields[index] = {...fields[index], [name]:value, recoveryTransferId:'',recoveryReceipt:''}
+                    return [...fields]
+                })
+            }else if (name==='recoveryTransferId'){
+                setRecoveryFields((fields)=>{
+                    fields[index] = {...fields[index], [name]:value, recoveryReceipt:value?`TRANSFER TO ID:${value}`:''}
+                    return [...fields]
+                })
+            }else{
+                setRecoveryFields((fields)=>{
+                    fields[index] = {...fields[index], [name]:value}
+                    return [...fields]
+                })
+            }
         }  
     }
 
@@ -401,6 +420,7 @@ const Sales = ()=>{
                                 totalDebtRecovered += Number(field.recoveryAmount)
                                 const recoveredList = empDebt.recoverdList !== undefined? empDebt.recoverdList: [] 
                                 const recoveryDetails ={
+                                    recoveryReceipt:field.recoveryReceipt,
                                     recoveryAmount:field.recoveryAmount,
                                     recoveryPoint:field.recoveryPoint,
                                     recoveryDate: field.recoveryDate,
@@ -438,6 +458,9 @@ const Sales = ()=>{
                     setEmployees(updatedEmployees)
                     getEmployees(company)
                     setRecoveryFields([])
+                    setAlertState('success')
+                    setAlert('Debt Recovered Successfully!')
+                    setAlertTimeout(5000)
                     setRecoveryStatus('Post Recovery')
                     setRecoveryEmployeeId('')
                 }
@@ -463,6 +486,7 @@ const Sales = ()=>{
                                 totalDebtRecovered += Number(field.recoveryAmount)
                                 const recoveredList = record.recoverdList !== undefined? record.recoverdList: [] 
                                 const recoveryDetails ={
+                                    recoveryReceipt:field.recoveryReceipt,
                                     recoveryAmount:field.recoveryAmount,
                                     recoveryPoint:field.recoveryPoint,
                                     recoveryDate: field.recoveryDate,
@@ -502,6 +526,9 @@ const Sales = ()=>{
                     setSales(updatedSales)
                     getSales(company)
                     setRecoveryFields([])
+                    setAlertState('success')
+                    setAlert('Debt Recovered Successfully!')
+                    setAlertTimeout(5000)
                     setRecoveryStatus('Post Recovery')
                     setRecoveryEmployeeId('')
                 }                            
@@ -1083,7 +1110,19 @@ const Sales = ()=>{
                                                     return [...updfields]
                                                 })
                                             }}
-                                        />                                        
+                                        />             
+                                        <input 
+                                            className='forminp recoveryReceipt'
+                                            style={{cursor: field.recoveryPoint === 'Employee'?'not-allowed':'auto'}}
+                                            name='recoveryReceipt'
+                                            type='text'
+                                            placeholder='Enter Receipt Number'
+                                            disabled={field.recoveryPoint === 'Employee'}
+                                            value={field.recoveryReceipt}
+                                            onChange={(e)=>{
+                                                handleRecoveryFieldChange({index, e})
+                                            }}
+                                        />                                                              
                                         <div className='inpcov'>
                                             <div>Select Recovery Debts</div>
                                             <select 
@@ -1135,7 +1174,7 @@ const Sales = ()=>{
                                             <div>Recovery Amount</div>
                                             <input 
                                                 className='forminp'
-                                                // style={{pointer: 'not-allowed'}}
+                                                style={{cursor: field.recoverySales?'auto':'not-allowed'}}
                                                 name='recoveryAmount'
                                                 type='number'
                                                 placeholder='Recovery Amount'
@@ -1587,7 +1626,7 @@ const Sales = ()=>{
                                     }else if (ct){
                                         setAlertState('info')
                                         setActionMessage('Accept')                                        
-                                        setAlert('Positive Diffrence(s) Detected. Would you like to accept this diffrences as Debt?')
+                                        setAlert('Positive Diffrence(s) Detected. Would you like to accept these diffrences as Debt?')
                                         setAlertTimeout(15000)
                                     }
                                 }
@@ -1599,7 +1638,38 @@ const Sales = ()=>{
                             }}
                             onClick={()=>{
                                 if (recoveryFields.length){
-                                    postRecovery()
+                                    var ct=0
+                                    var ct1=0
+                                    var ct2=0
+                                    var ct3=0
+                                    var requiredNo = recoveryFields.length
+                                    recoveryFields.forEach((recoveryField)=>{
+                                        const {recoveryReceipt, recoveryAmount, recoveryDate, recoveryPoint} = recoveryField
+                                        if (recoveryReceipt){
+                                            ct++
+                                        }
+                                        if (recoveryAmount){
+                                            ct1++
+                                        }
+                                        if (recoveryDate){
+                                            ct2++
+                                        }
+                                        if (recoveryPoint){
+                                            ct3++
+                                        }
+                                    })
+                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo){
+                                        postRecovery()
+                                    }else{
+                                        setActionMessage('')
+                                        setAlertState('error')
+                                        setAlert(
+                                            `${ct<requiredNo?' "All Receipt Number Must Be Entered", ':''}\
+                                            ${ct1<requiredNo?' "All Recovery Amount Must Be Greater Than 0", ':''}${ct2<requiredNo?' "All Receipt Date Must Be Specified", ':''}\
+                                            ${ct3<requiredNo?' "All Recovery Point Must Be Selected", ':''}`
+                                        )
+                                        setAlertTimeout(10000)                                        
+                                    }
                                 }
                             }}
                         >{recoveryStatus}</div>}
