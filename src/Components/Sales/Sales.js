@@ -1665,8 +1665,9 @@ const Sales = ()=>{
                                         setAlertState('error')
                                         setAlert(
                                             `${ct<requiredNo?' "All Receipt Number Must Be Entered", ':''}\
-                                            ${ct1<requiredNo?' "All Recovery Amount Must Be Greater Than 0", ':''}${ct2<requiredNo?' "All Receipt Date Must Be Specified", ':''}\
-                                            ${ct3<requiredNo?' "All Recovery Point Must Be Selected", ':''}`
+                                            ${ct1<requiredNo?' "All Recovery Amount Must Be Greater Than 0", ':''}\
+                                            ${ct3<requiredNo?' "All Recovery Point Must Be Selected", ':''}\
+                                            ${ct2<requiredNo?' "All Recovery Date Must Be Specified", ':''}`
                                         )
                                         setAlertTimeout(10000)                                        
                                     }
