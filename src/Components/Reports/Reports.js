@@ -309,7 +309,7 @@ const Reports = ()=>{
                                                 <td>{'₦'+
                                                     cummulativeBalance(
                                                         getAlldata('2024-01-01',
-                                                            new Date(new Date(filterTo).getFullYear()-1, 
+                                                            new Date(new Date(filterFrom).getFullYear()-1, 
                                                                 months.indexOf('DECEMBER'), 
                                                                 monthDays['DECEMBER']+1
                                                             ).toISOString().slice(0,10)

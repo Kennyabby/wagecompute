@@ -31,6 +31,7 @@ function App() {
   const [settings, setSettings] = useState([])
   const [colSettings, setColSettings] = useState({})
   const [recoveryVal, setRecoveryVal] = useState(false)
+  const [accommodationVal, setAccommodationVal] = useState(false)
   const [enableBlockVal, setEnableBlockVal] = useState(false)
   const [changingSettings, setChangingSettings] = useState(false)
   
@@ -115,6 +116,7 @@ function App() {
         }
         if (companyRecord?.permissions.includes('sales')){
           getSales(company)
+          getRentals(company)
           Navigate('/sales')
         }
       }
@@ -401,6 +403,7 @@ function App() {
           settings, setSettings, getSettings,
           colSettings, setColSettings,
           recoveryVal, setRecoveryVal,
+          accommodationVal, setAccommodationVal,
           enableBlockVal, setEnableBlockVal,
           changingSettings, setChangingSettings,
 
