@@ -1564,11 +1564,21 @@ const Sales = ()=>{
                                         >{field.viewHistory?` Unview History`:'View History'}</div>}
                                         {field.viewHistory && <div>
                                             {field.recoverdList.map((reclist, index)=>{
-                                                const {recoveryAmount, recoveryPoint, recoveryDate} = reclist
+                                                const {recoveryAmount, recoveryPoint, recoveryTransferId, recoveryDate} = reclist
                                                 return <div key={index} className='slvwrecovery'>
                                                     <div>Date: <b>{` ${recoveryDate}\t`}</b></div>
                                                     <div>Amount: <b>{` ${'₦'+Number(recoveryAmount).toLocaleString()}`}</b></div>
-                                                    <div>Paid to: <b>{` ${recoveryPoint.toUpperCase()}`}</b></div>                                                         
+                                                    <div>{!recoveryTransferId ? 'Paid to: ':'Moved to'}<b>{` ${!recoveryTransferId? recoveryPoint.toUpperCase():''}`}</b>
+                                                        <b>{recoveryTransferId && employees.filter((employee)=>{
+                                                            return employee.i_d === recoveryTransferId
+                                                        }).map((emp, idt)=>{
+                                                            return (
+                                                                <span key={idt}>
+                                                                    {`${emp.firstName.toUpperCase()} (${emp.i_d})`}
+                                                                </span>
+                                                            )
+                                                        })}
+                                                    </b></div>                                                         
                                                 </div>
                                             })}
                                         </div>}
