@@ -15,7 +15,7 @@ const Sales = ()=>{
         fetchServer, 
         server, 
         companyRecord, 
-        company, recoveryVal, 
+        company, recoveryVal, accommodationVal,
         employees, setEmployees, getEmployees, 
         sales, setSales, getSales, months, 
         rentals, setRentals, getRentals, 
@@ -403,7 +403,6 @@ const Sales = ()=>{
         setRecoveryStatus('Posting Recovery ....')
         recoveryFields.forEach( async(field)=>{
             if(recoveryEmployeeId === (field.recoverySales).slice(0,field.recoverySales.indexOf('-'))){
-                console.log('updating Employee...')
                 var updtEmployee = {}
                 employees.forEach((employee)=>{
                     if (employee.i_d === recoveryEmployeeId){
@@ -466,17 +465,12 @@ const Sales = ()=>{
                 }
             }else{
                 var updtSale = {}
-                console.log('recovering sales debt')
-                
                 sales.forEach((sale,index)=>{
-                    console.log(sale.createdAt,field.recoverySales)
                     if (                                                        
                         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
                         new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
                         Number(field.recoverySales) === sale.createdAt                                               
                     ){
-                        console.log('Identified Debt')
-                        console.log(sale.totalDebtRecovered, sale.recoveryList)
                         var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
                         var saleRecoveredList = sale.recoveryList !== undefined? sale.recoveryList : [] 
                         sale.record.forEach((record, index)=>{
@@ -501,7 +495,6 @@ const Sales = ()=>{
                         sale.totalDebtRecovered = totalDebtRecovered
                         sale.recoveryList = saleRecoveredList                        
                         updtSale={...sale}
-                        console.log(updtSale)
                     }
                 })
                 const ftrSales = sales.filter((sales)=>{
@@ -626,6 +619,53 @@ const Sales = ()=>{
         })
         setReportSales(filteredReportSales)
         setIsMultiple(true)        
+    }
+    const calculateDebtReport = ()=>{
+        // {employees.map((employee)=>{
+        //     if (!employee.dismissalDate){
+        //         return (
+        //             <option 
+        //                 key={employee.i_d}
+        //                 value={employee.i_d}
+        //             >
+        //                 {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+        //             </option>
+        //         )
+        //     }
+        // })}
+        // {sales.map((sale)=>{
+        //     if (                                                        
+        //         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
+        //         new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+        //     ){
+        //         return (
+        //             sale.record.map((record,index)=>{
+        //                 if (record.employeeId === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)) > 0){
+        //                     return (
+        //                         <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)).toLocaleString()}`}</option>
+        //                     )
+                            
+        //                 }
+        //             })                                                          
+        //         )
+        //     }
+        // })}
+        // {employees.map((employee)=>{
+        //     if (employee.i_d === recoveryEmployeeId){
+        //         return (
+        //             employee.employeeDebtList?.map((empDebt,index)=>{
+        //                 if (                                                        
+        //                     months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
+        //                     new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+        //                 ){
+        //                     return (
+        //                         <option key={index} value={`${recoveryEmployeeId}-${index}`}>{`${empDebt.postingDate} - ${Number(empDebt.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)).toLocaleString()}`}</option>                                                                                                                                 
+        //                     )
+        //                 }
+        //             })
+        //         )
+        //     }
+        // })}
     }
     const handleRentalFieldChange = (e) =>{
         const name = e.target.getAttribute('name')
@@ -835,7 +875,6 @@ const Sales = ()=>{
                         const {createdAt, postingDate, totalCashSales, totalDebt, record, 
                             totalShortage, totalDebtRecovered, totalBankSales, recoveryList 
                         } = sale 
-                        // console.log(recoveryList)
                         return(
                             <div className={'dept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
@@ -849,7 +888,6 @@ const Sales = ()=>{
                                     <div>Cash: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
                                     <div>Debts: <b>{'₦'+(Number(totalDebt)+Number(totalShortage)-Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                     <div>Recovered: <b>{'₦'+(Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
-                                    {/* <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div> */}
                                     <div className='deptdesc'>{`Number of Sales Made:`} <b>{`${record.length}`}</b></div>
                                 </div>
                                 {(companyRecord.status==='admin' && !saleEmployee) && <div 
@@ -870,12 +908,9 @@ const Sales = ()=>{
                         )
                   })}
                     {salesOpts1 === 'rentals' && rentals.filter((ftrrent)=>{
-                        // console.log(ftrrent)
-                        const slCreatedAt = getDate(ftrrent.paymentDate)
-                        const fromDate = getDate(saleFrom)
-                        const toDate = getDate(saleTo)
-                        // console.log(getDate(slCreatedAt),saleFrom,getDate(slCreatedAt)>= getDate(saleFrom))
-                        // console.log(getDate(slCreatedAt),saleTo,getDate(slCreatedAt)<= getDate(saleTo))
+                        const slCreatedAt = new Date(ftrrent.paymentDate).getTime()
+                        const fromDate = new Date(saleFrom).getTime()
+                        const toDate = new Date(saleTo).getTime()
                         if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
                         ){                            
                             return ftrrent
@@ -884,7 +919,6 @@ const Sales = ()=>{
                         const {createdAt, paymentDate, paymentMonth, paymentAmount, balanceRemaining, expectedPayment, 
                             rentalSpace, receivedFrom 
                         } = rent
-                        // console.log(recoveryList)
                         return(
                             <div className={'dept' + (curRent?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
@@ -898,7 +932,6 @@ const Sales = ()=>{
                                     <div>Expected Payment: <b>{'₦'+(Number(expectedPayment)).toLocaleString()}</b></div>
                                     <div>Payment Amount: <b>{'₦'+(Number(paymentAmount)).toLocaleString()}</b></div>
                                     <div>Balance Remaining: <b>{'₦'+(Number(balanceRemaining)).toLocaleString()}</b></div>                                    
-                                    {/* <div>Shortages: <b>{'₦'+totalShortage.toLocaleString()}</b></div> */}
                                     <div className='deptdesc'>{`Payment Received From:`} <b>{`${receivedFrom}`}</b></div>
                                 </div>
                                 {(companyRecord.status==='admin' && !saleEmployee) && <div 
@@ -969,15 +1002,13 @@ const Sales = ()=>{
                         <div className={'frmttle'}>
                             {`DAILY SALES`}
                         </div> 
-                        {/* <div className='yesbtn popbtn delbtn'
-                                onClick={()=>{}}
-                        >Delete</div> */}
                     </div>
                     
                     <div className='salesfm'>
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
                             <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>Rentals</div>
+                            {((companyRecord?.status === 'admin') || accommodationVal) && <div name='accommodation' className={salesOpts==='accommodation' ? 'slopts': ''}>Accommodation</div>}
                             {((companyRecord?.status === 'admin') || recoveryVal) && <div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
                         </div>}
                         {salesOpts==='sales' && (!isView && <div className='addnewsales'>
@@ -1069,14 +1100,16 @@ const Sales = ()=>{
                                 >
                                     <option value=''>Select Employee ID</option>
                                     {employees.map((employee)=>{
-                                        return (
-                                            <option 
-                                                key={employee.i_d}
-                                                value={employee.i_d}
-                                            >
-                                                {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
-                                            </option>
-                                        )
+                                        if (!employee.dismissalDate){
+                                            return (
+                                                <option 
+                                                    key={employee.i_d}
+                                                    value={employee.i_d}
+                                                >
+                                                    {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                                </option>
+                                            )
+                                        }
                                     })}
                                 </select>
                             </div>
