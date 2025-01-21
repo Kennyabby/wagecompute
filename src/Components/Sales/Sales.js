@@ -5,6 +5,7 @@ import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
 import SalesReport from './SalesReport/SalesReport';
 import RentalReceipt from './RentalReceipt/RentalReceipt';
+import DebtReport from './DebtReport/DebtReport';
 import Notify from '../../Resources/Notify/Notify';
 import { MdAdd } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
@@ -37,6 +38,7 @@ const Sales = ()=>{
     const rentalSpaces = ['Suya Space', 'Shisha Space', 'Snooker Space', 'Shawarma Space']
         
     const [showReport, setShowReport] = useState(false)
+    const [showDebtReport, setShowDebtReport] = useState(false)
     const [showReceipt, setShowReceipt] = useState(false)
     const [reportSales, setReportSales] = useState(null)
     const [isMultiple, setIsMultiple] = useState(false)
@@ -608,7 +610,6 @@ const Sales = ()=>{
                         filteredReportSales['record'] = filteredReportSales['record'].concat(record)
                     }
                 })
-                // console.log(saleRecord)
                 filteredReportSales['totalCashSales'] += totalCashSales
                 filteredReportSales['totalBankSales'] += totalBankSales
                 filteredReportSales['totalDebt'] += totalDebt
@@ -621,51 +622,79 @@ const Sales = ()=>{
         setIsMultiple(true)        
     }
     const calculateDebtReport = ()=>{
-        // {employees.map((employee)=>{
-        //     if (!employee.dismissalDate){
-        //         return (
-        //             <option 
-        //                 key={employee.i_d}
-        //                 value={employee.i_d}
-        //             >
-        //                 {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
-        //             </option>
-        //         )
-        //     }
-        // })}
-        // {sales.map((sale)=>{
-        //     if (                                                        
-        //         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-        //         new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
-        //     ){
-        //         return (
-        //             sale.record.map((record,index)=>{
-        //                 if (record.employeeId === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)) > 0){
-        //                     return (
-        //                         <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)).toLocaleString()}`}</option>
-        //                     )
-                            
-        //                 }
-        //             })                                                          
-        //         )
-        //     }
-        // })}
-        // {employees.map((employee)=>{
-        //     if (employee.i_d === recoveryEmployeeId){
-        //         return (
-        //             employee.employeeDebtList?.map((empDebt,index)=>{
-        //                 if (                                                        
-        //                     months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-        //                     new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
-        //                 ){
-        //                     return (
-        //                         <option key={index} value={`${recoveryEmployeeId}-${index}`}>{`${empDebt.postingDate} - ${Number(empDebt.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)).toLocaleString()}`}</option>                                                                                                                                 
-        //                     )
-        //                 }
-        //             })
-        //         )
-        //     }
-        // })}
+        var debtReportList = []        
+        {employees.forEach((employee)=>{
+            if (!employee.dismissalDate){
+                if (!recoveryEmployeeId){
+                    const debtDoc = {}
+                    debtDoc.i_d = employee.i_d
+                    var totalDebt = 0
+                    var totalDebtRecovered = 0
+                    {sales.forEach((sale)=>{
+                        if (                                                        
+                            months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
+                            new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                        ){                                                
+                            sale.record.forEach((record,index)=>{
+                                if (record.employeeId === employee.i_d && (Number(record.debt)+Number(record.shortage)) > 0){
+                                    totalDebt +=  Number(record.debt)
+                                    totalDebtRecovered += Number(record.debtRecovered) 
+                                }
+                            }) 
+                        }
+                    })}
+                    employee.employeeDebtList?.forEach((empDebt,index)=>{
+                        if (                                                        
+                            months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
+                            new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                        ){
+                            totalDebt += Number(empDebt.debtAmount)
+                            totalDebtRecovered += empDebt.debtRecovered ? Number(empDebt.debtRecovered) : 0                               
+                        }
+                    })                    
+                    debtDoc.totalDebt = totalDebt
+                    debtDoc.totalDebtRecovered = totalDebtRecovered
+                    debtDoc.totalOutstanding = totalDebt - totalDebtRecovered
+                    debtReportList = debtReportList.concat(debtDoc)
+                }else{
+                    {sales.forEach((sale)=>{
+                        if (                                                        
+                            months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
+                            new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                        ){                                                
+                            sale.record.forEach((record,index)=>{
+                                if (employee.i_d === record.employeeId && employee.i_d === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage)) > 0){                                    
+                                    const empDebtDoc = {}
+                                    empDebtDoc.postingDate = sale.postingDate
+                                    empDebtDoc.transferedFrom = 'Sales Debt'
+                                    empDebtDoc.debt = Number(record.debt)
+                                    empDebtDoc.debtRecovered = record.debtRecovered ? Number(record.debtRecovered) : 0 
+                                    empDebtDoc.debtOutstanding = Number(record.debt) - (record.debtRecovered ? Number(record.debtRecovered) : 0)
+                                    debtReportList = debtReportList.concat(empDebtDoc)
+                                }
+                            }) 
+                        }
+                    })}
+                    if (employee.i_d === recoveryEmployeeId){
+                        employee.employeeDebtList?.sort((a,b)=>{return b.postingDate - a.postingDate}).forEach((empDebt,index)=>{
+                            if (                                                        
+                                months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
+                                new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                            ){
+                                const empDebtDoc = {}
+                                empDebtDoc.postingDate = empDebt.postingDate
+                                empDebtDoc.transferedFrom = empDebt.transferedFrom
+                                empDebtDoc.debt = Number(empDebt.debtAmount)
+                                empDebtDoc.debtRecovered = empDebt.debtRecovered ? Number(empDebt.debtRecovered) : 0                                                                
+                                empDebtDoc.debtOutstanding = Number(empDebt.debtAmount) - (empDebt.debtRecovered ? Number(empDebt.debtRecovered) : 0)                                                                
+                                debtReportList = debtReportList.concat(empDebtDoc)
+                            }
+                        })
+                    }
+                }
+            }
+        })}        
+        return debtReportList
     }
     const handleRentalFieldChange = (e) =>{
         const name = e.target.getAttribute('name')
@@ -765,6 +794,15 @@ const Sales = ()=>{
                     }}              
                     fromDate = {saleFrom}
                     toDate = {saleTo}
+                />}    
+                {showDebtReport && <DebtReport
+                    reportDebts = {calculateDebtReport()}
+                    multiple={recoveryEmployeeId===''}
+                    setShowDebtReport={(value)=>{
+                        setShowDebtReport(value)                        
+                    }}              
+                    recoveryEmployeeId={recoveryEmployeeId}
+                    recoveryMonth={recoveryMonth}
                 />}    
                 {showReceipt && <RentalReceipt
                     rentalSale = {curRent}
@@ -959,8 +997,16 @@ const Sales = ()=>{
                             onClick={()=>{
                                 setReportSales(curSale)
                                 setIsMultiple(false)
-                                setShowReport(true)
-                                
+                                setShowReport(true)                                
+                            }}
+                        />
+                    }
+                    {salesOpts==='recovery' && 
+                        companyRecord.status==='admin' && 
+                        <FaTableCells                         
+                            className='slrepicon'
+                            onClick={()=>{
+                                setShowDebtReport(true)                                
                             }}
                         />
                     }
