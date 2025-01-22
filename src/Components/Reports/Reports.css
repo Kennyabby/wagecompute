@@ -66,6 +66,7 @@
 .reports-onview{
     width: 100%;
     height: 100%;
+    margin: auto;
     display: block;    
 }
 .no-report{
@@ -100,6 +101,7 @@
 .report-invhead{
     width: fit-content;
     margin: 20px auto;
+    margin-top: 5px;
 }
 .report-company{
     font-size: 1.7em;

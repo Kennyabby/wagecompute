@@ -252,7 +252,7 @@ const Reports = ()=>{
             filename:     `${curReport.title} REPORT - ${new Date(filterTo).getFullYear()}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
-            jsPDF:        { unit: 'in', format: 'A4', orientation: 'landscape' }
+            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
     };
@@ -344,7 +344,7 @@ const Reports = ()=>{
                                         }
                                     </tbody>
                                     <tfoot>
-                                        <tr>
+                                        {curReport.title === 'PROFIT OR LOSS' && <tr>
                                             <th>Total Amount</th>                                            
                                             {curReport.title === 'PROFIT OR LOSS' && 
                                                 [''].map((arg, index)=>{
@@ -407,7 +407,10 @@ const Reports = ()=>{
                                                     })          
                                                     return <th>{'₦'+(totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>                                          
                                                 })
-                                            }
+                                            }                                                                                                                                                                             
+                                        </tr>}
+                                        {curReport.title === 'TRIAL BALANCE' && <tr>
+                                            <th>Total Amount</th>     
                                             {curReport.title === 'TRIAL BALANCE' && 
                                                 <th>{`CLOSING BALANCE, ${new Date(filterTo).getFullYear()}`}</th>
                                             }
@@ -439,8 +442,8 @@ const Reports = ()=>{
                                                     )
                                                     return <th>{'₦'+(cummulativeSum + totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>                                          
                                                 })
-                                            }                                                                                                                                 
-                                        </tr>
+                                            }
+                                        </tr>}
                                     </tfoot>
                                 </table>
                             </div>
