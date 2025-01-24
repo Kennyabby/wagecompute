@@ -8,7 +8,7 @@ const Employees = () =>{
     const {storePath, 
         fetchServer, 
         server, 
-        company, 
+        company, companyRecord,
         departments,
         positions,
         employees, setEmployees, getEmployees
@@ -40,7 +40,7 @@ const Employees = () =>{
         accountNo:'',
         expectedWorkDays: '',
         salary:'',        
-        gurantorName:'',
+        guarantorName:'',
         guarantorAddress:'',
         guarantorLGA:'',
         guarantorSOA:'',
@@ -58,15 +58,15 @@ const Employees = () =>{
         storePath('employees')  
     },[storePath])
     useEffect(()=>{
-        if (employees.length){
-            setFields((fields)=>{
-                if (!fields.i_d){
-                    return {...fields, i_d:employees.length+1}
-                }else{
-                    return fields
-                }
-            })
-        }
+        // if (employees.length){
+        //     setFields((fields)=>{
+        //         if (!fields.i_d){
+        //             return {...fields, i_d:employees.length+1}
+        //         }else{
+        //             return fields
+        //         }
+        //     })
+        // }
     },[employees])
     const toggleSelForm = (e)=>{
         const name = e.target.getAttribute('name')
@@ -184,7 +184,7 @@ const Employees = () =>{
                 <div className='emplist'>
                     <div className='add' 
                         onClick={()=>{
-                            setFields({...initFields, i_d:employees.length+1})
+                            setFields({...initFields})
                             setIsView(false)
                             setWriteStatus('New')
                             setCurEmployee(null)
@@ -233,10 +233,12 @@ const Employees = () =>{
                                 <div className='deptdesc'>{`${department} Department`}</div>
                                 <div className='deptdesc'><b>Position:</b>{` ${position}`}</div>
                             </div>
-                            <div 
-                            className='edit'
-                            name='edit'
-                            >Edit</div>
+                            {companyRecord.status==='admin' && <div 
+                                className='edit'
+                                name='edit'
+                            >
+                                Edit
+                            </div>}
                         </div>
                     )
                   })}
@@ -510,7 +512,7 @@ const Employees = () =>{
                                         name='guarantorName'
                                         type='text'
                                         placeholder='Guarantor Name' 
-                                        value={fields.gurantorName}
+                                        value={fields.guarantorName}
                                         disabled={isView}
                                     />
                                 </div>
