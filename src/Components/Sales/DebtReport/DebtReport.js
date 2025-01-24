@@ -167,54 +167,54 @@ const DebtReport = ({
                                             </tbody>
                                             {multiple ? <tfoot>
                                                 <tr>
-                                                    <th className='ttrow'>TOTAL</th>
+                                                    <th className='theader'>TOTAL</th>
                                                     {[''].map((args, id)=>{
                                                         var sumTotalDebt = 0
                                                         reportDebts?.forEach((debtReport)=>{
                                                             sumTotalDebt += debtReport.totalDebt
                                                         })
-                                                        return <th className='ttrow' key={id}>{'₦'+sumTotalDebt.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalDebt.toLocaleString()}</th>
                                                     })}                                                                                        
                                                     {[''].map((args, id)=>{
                                                         var sumTotalDebtRecovered = 0
                                                         reportDebts?.forEach((debtReport)=>{
                                                             sumTotalDebtRecovered += debtReport.totalDebtRecovered
                                                         })
-                                                        return <th className='ttrow' key={id}>{'₦'+sumTotalDebtRecovered.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalDebtRecovered.toLocaleString()}</th>
                                                     })}                                                                                        
                                                     {[''].map((args, id)=>{
                                                         var sumTotalOutstanding = 0
                                                         reportDebts?.forEach((debtReport)=>{
                                                             sumTotalOutstanding += debtReport.totalOutstanding
                                                         })
-                                                        return <th className='ttrow' key={id}>{'₦'+sumTotalOutstanding.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalOutstanding.toLocaleString()}</th>
                                                     })}                                                                                        
                                                 </tr>
                                             </tfoot> : 
                                             <tfoot>
                                                 <tr>
-                                                    <th className='ttrow'>TOTAL</th>                                                                                        
+                                                    <th className='theader'>TOTAL</th>                                                                                        
                                                     <th></th>                                                                                        
                                                     {[''].map((args, id)=>{
                                                         var sumTotalDebt = 0
                                                         reportDebts?.forEach((debtReport)=>{
                                                             sumTotalDebt += debtReport.debt
                                                         })
-                                                        return <th className='ttrow' key={id}>{'₦'+sumTotalDebt.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalDebt.toLocaleString()}</th>
                                                     })}
                                                     {[''].map((args, id)=>{
                                                         var sumTotalDebtRecovered = 0
                                                         reportDebts?.forEach((debtReport)=>{
                                                             sumTotalDebtRecovered += debtReport.debtRecovered
                                                         })
-                                                        return <th className='ttrow' key={id}>{'₦'+sumTotalDebtRecovered.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalDebtRecovered.toLocaleString()}</th>
                                                     })}                                                                                        
                                                     {[''].map((args, id)=>{
                                                         var sumTotalOutstanding = 0
                                                         reportDebts?.forEach((debtReport)=>{
                                                             sumTotalOutstanding += debtReport.debtOutstanding
                                                         })
-                                                        return <th className='ttrow' key={id}>{'₦'+sumTotalOutstanding.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalOutstanding.toLocaleString()}</th>
                                                     })}       
                                                 </tr>
                                             </tfoot>
