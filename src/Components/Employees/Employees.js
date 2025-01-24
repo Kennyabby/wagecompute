@@ -196,7 +196,7 @@ const Employees = () =>{
                         if (name){
                             setEmployeeType(name)
                         }
-                        setFields({...initFields, i_d:employees.length+1})
+                        setFields({...initFields})
                         setIsView(false)
                         setWriteStatus('New')
                         setCurEmployee(null)
