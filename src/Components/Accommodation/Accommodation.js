@@ -132,14 +132,16 @@ const Accommodation = ()=>{
         if (salesOpts){
             setIsView(false)
             setCurAccomodation(null)
+            setAccommodationFields({...defaultAccommodationFields})
             setCurCustomer(null)
+            setCustomerFields({...defaultCustomerFields})
         }
     },[salesOpts])
     const calculateAccommodationSales = ()=>{
 
     }
     const postAccommodation = async ()=> { 
-        setCustomerStatus('Posting Accommodation...')        
+        setAccommodationStatus('Posting Accommodation...')        
         const newAccommodation = {
             ...accommodationFields,
             postingDate: postingDate,
@@ -444,24 +446,30 @@ const Accommodation = ()=>{
                         ){
                             return ftrsale
                         }
-                    }).map((sale, index)=>{
-                        const {createdAt, postingDate, totalCashSales, totalDebt, record, 
-                            totalShortage, totalDebtRecovered, totalBankSales, recoveryList 
-                        } = sale 
+                    }).map((accommodation, index)=>{
+                        const {createdAt, postingDate, employeeId, customerId, roomNo, accommodationAmount,
+                            arrivalDate, departureDate, arrivalTime, departureTime
+                        } = accommodation 
                         return(
                             <div className={'dept' + (curAccommodation?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
-                                    handleAccommodationViewClick(sale)
+                                    handleAccommodationViewClick(accommodation)
                                 }}
                             >
                                 <div className='dets sldets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                    <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
-                                    <div>Bank: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
-                                    <div>Cash: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
-                                    <div>Debts: <b>{'₦'+(Number(totalDebt)+Number(totalShortage)-Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
-                                    <div>Recovered: <b>{'₦'+(Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
-                                    <div className='deptdesc'>{`Number of Sales Made:`} <b>{`${record.length}`}</b></div>
+                                    <div>Room No: <b>{roomNo}</b></div>
+                                    <div>Rented By: <b>{
+                                        customerId
+                                    }</b></div>
+                                    <div>Amount: <b>{'₦'+accommodationAmount.toLocaleString()}</b></div>
+                                    <div>Arrival Date (Time): <b>{`${getDate(arrivalDate)} (${arrivalTime})`}</b></div>
+                                    <div>Departure Date (Time): <b>{`${getDate(departureDate)} (${departureTime})`}</b></div>
+                                    <div className='deptdesc'>{`Accommodation Posted By:`} <b>{
+                                        employees.filter((employee)=>{
+                                            return employee.i_d === employeeId
+                                        })[0]['firstName']
+                                    }</b></div>
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
                                     className='edit'
@@ -469,9 +477,9 @@ const Accommodation = ()=>{
                                     style={{color:'red'}}                           
                                     onClick={()=>{                                        
                                         setAlertState('info')
-                                        setAlert('You are about to delete the selected Accommodation. Please Delete again if you are sure!')
+                                        setAlert('You are about to delete the selected Accommodation Record. Please Delete again if you are sure!')
                                         setAlertTimeout(5000)
-                                        deleteAccommodation(sale)
+                                        deleteAccommodation(accommodation)
                                     }}
                                 >
                                     Delete
@@ -519,7 +527,7 @@ const Accommodation = ()=>{
                             }}
                         />
                     }
-                    {['accommodation','customers'].includes(salesOpts) && (!isView &&
+                    {['accommodation','customers'].includes(salesOpts) &&
                         <MdAdd 
                             className='add slsadd'
                             onClick={()=>{
@@ -533,7 +541,7 @@ const Accommodation = ()=>{
                                     setCurCustomer(null)
                                 }
                             }}
-                        />)
+                        />
                     }
                     <div className='formtitle padtitle'>
                         <div className={'frmttle'}>
@@ -546,14 +554,15 @@ const Accommodation = ()=>{
                             <div name='customers' className={salesOpts==='customers' ? 'slopts': ''}>Customers</div>                            
                             <div name='accommodation' className={salesOpts==='accommodation' ? 'slopts': ''}>Accommodation</div>
                         </div>}
-                        {salesOpts==='accommodation' && (!isView && <div className='addnewsales'>
+                        {salesOpts==='accommodation' && (<div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
                                 <select 
                                     className='forminp'
                                     name='employeeId'
                                     type='text'
-                                    value={accommodationFields.employeeId}                                    
+                                    value={accommodationFields.employeeId} 
+                                    disabled={isView}                                   
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)
                                     }}
@@ -588,6 +597,7 @@ const Accommodation = ()=>{
                                     name='customerId'
                                     type='text'
                                     value={accommodationFields.customerId}
+                                    disabled={isView}
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)                                
                                     }}
@@ -612,6 +622,7 @@ const Accommodation = ()=>{
                                     name='roomNo'
                                     type='text'
                                     value={accommodationFields.roomNo}
+                                    disabled={isView}
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)                                
                                     }}
