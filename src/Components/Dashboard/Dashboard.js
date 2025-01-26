@@ -11,6 +11,7 @@ import Departments from '../Departments/Departments'
 import Attendance from '../Attendance/Attendance'
 import Payroll from '../Payroll/Payroll'
 import Sales from '../Sales/Sales'
+import Accommodation from '../Accommodation/Accommodation'
 import Purchase from '../Purchase/Purchase'
 import Expenses from '../Expenses/Expenses'
 import Reports from '../Reports/Reports'
@@ -44,16 +45,19 @@ const Dashboard = ()=>{
             else if (index === 6 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales'))){
                 setView(<Sales/>)
             }
-            else if (index === 7 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase'))){
+            else if (index === 7 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations'))){
+                setView(<Accommodation/>)            
+            }
+            else if (index === 8 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase'))){
                 setView(<Purchase/>)
             }
-            else if (index === 8 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses'))){
+            else if (index === 9 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses'))){
                 setView(<Expenses/>)
             }
-            else if (index === 9 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports'))){
+            else if (index === 10 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports'))){
                 setView(<Reports/>)
             }
-            else if (index === 10 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
+            else if (index === 11 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
                 setView(<Settings/>)
             }
         }
