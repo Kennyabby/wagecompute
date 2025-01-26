@@ -16,7 +16,7 @@ const Sales = ()=>{
         fetchServer, 
         server, 
         companyRecord, 
-        company, recoveryVal, accommodationVal,
+        company, recoveryVal, 
         employees, setEmployees, getEmployees, 
         sales, setSales, getSales, months, 
         rentals, setRentals, getRentals, 
@@ -718,6 +718,8 @@ const Sales = ()=>{
         }
     }
     const postRentals = async ()=> {
+        setAlertState('info')
+        setAlert('Posting to Rntals...')
         setRentalsStatus('Posting to Rentals...')        
         const newRental = {
             ...rentalFields,
@@ -744,7 +746,7 @@ const Sales = ()=>{
             setRentalFields({...newRental})
             getRentals(company)
             setAlertState('success')
-            setAlert('Sales Posted Successfully!')
+            setAlert('Rentals Posted Successfully!')
             setAlertTimeout(5000)
             setRentalsStatus('Post Rentals')
         }
@@ -1053,8 +1055,7 @@ const Sales = ()=>{
                     <div className='salesfm'>
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
-                            <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>Rentals</div>
-                            {((companyRecord?.status === 'admin') || accommodationVal) && <div name='accommodation' className={salesOpts==='accommodation' ? 'slopts': ''}>Accommodation</div>}
+                            <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>Rentals</div>                            
                             {((companyRecord?.status === 'admin') || recoveryVal) && <div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
                         </div>}
                         {salesOpts==='sales' && (!isView && <div className='addnewsales'>

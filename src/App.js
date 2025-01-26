@@ -27,6 +27,7 @@ function App() {
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
   const [employees, setEmployees] = useState([])
+  const [customers, setCustomers] = useState([])
 
   const [settings, setSettings] = useState([])
   const [colSettings, setColSettings] = useState({})
@@ -37,15 +38,16 @@ function App() {
   
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
+  const [accommodations, setAccommodations] = useState([])
   const [purchase, setPurchase] = useState([])
   const [expenses, setExpenses] = useState([])
   const [rentals, setRentals] = useState([])
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','purchase','expenses','reports','settings','test']
+    'employees','departments','positions','attendance','payroll','sales','accommodations','purchase','expenses','reports','settings','test']
   const dashList = ['dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','purchase','expenses','reports','settings']
+    'employees','departments','positions','attendance','payroll','sales','accommodations','purchase','expenses','reports','settings']
   const months = [
       'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
       'AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'
@@ -67,6 +69,8 @@ function App() {
         getEmployees(cmp_val)
         getDepartments(cmp_val)
         getPositions(cmp_val)
+        getCustomers(cmp_val)
+        getAccommodations(cmp_val)
         getSales(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)
@@ -114,7 +118,13 @@ function App() {
           getExpenses(company)
           Navigate('/expenses')
         }
+        if (companyRecord?.permissions.includes('accommodations')){
+          getCustomers(company)
+          getAccommodations(company)
+          Navigate('/accommodation')
+        }
         if (companyRecord?.permissions.includes('sales')){
+          getAccommodations(company)
           getSales(company)
           getRentals(company)
           Navigate('/sales')
@@ -215,6 +225,8 @@ function App() {
         getEmployees(cmp_val)
         getDepartments(cmp_val)
         getPositions(cmp_val)
+        getCustomers(cmp_val)
+        getAccommodations(cmp_val)
         getSales(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)
@@ -261,6 +273,17 @@ function App() {
     }
   }
 
+  const getCustomers = async (company) =>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Customers", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      setCustomers(resp.record)
+    }
+  }
+
   const getAttendance = async (company) =>{
     const resp = await fetchServer("POST", {
       database: company,
@@ -280,6 +303,17 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setSales(resp.record)
+    }
+  }
+
+  const getAccommodations = async (company) =>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Accommodations", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      setAccommodations(resp.record)
     }
   }
 
@@ -394,8 +428,10 @@ function App() {
           departments, setDepartments, getDepartments,
           positions, setPositions, getPositions,
           employees, setEmployees, getEmployees,
+          customers, setCustomers, getCustomers,
           attendance, setAttendance, getAttendance,
           sales, setSales, getSales,
+          accommodations, setAccommodations, getAccommodations,
           purchase, setPurchase, getPurchase,
           expenses, setExpenses, getExpenses,
           rentals, setRentals, getRentals,
