@@ -9,7 +9,7 @@ const Attendance = () =>{
         server, fetchServer,
         months, monthDays,years,
         company,
-        attendance, setAttendance, getAttendance,
+        attendance, setAttendance, getAttendance, getEmployees,
         employees, settings
     } = useContext(ContextProvider)
     const fileInputRef = useRef(null);
@@ -28,7 +28,16 @@ const Attendance = () =>{
     useEffect(()=>{
         storePath('attendance')  
     },[storePath])
-
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getEmployees(cmp_val)
+            getAttendance(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     const [columns, setColumns] = useState([])
     const [selectedCols, setSelectedCols] = useState([])
     useEffect(()=>{
@@ -40,10 +49,6 @@ const Attendance = () =>{
             setColumns(colSetFilt[0]?colSetFilt[0].import_columns:[])
         }
     },[settings])
-    useEffect(()=>{
-    },[attendance])
-    useEffect(()=>{
-    },[iCols])
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
         const reader = new FileReader();

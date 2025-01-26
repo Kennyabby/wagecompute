@@ -18,12 +18,22 @@ const Departments = () =>{
         fetchServer, 
         server, 
         company,
-        employees,
+        employees,getEmployees,
         departments, setDepartments, getDepartments
     } = useContext(ContextProvider)
     useEffect(()=>{
         storePath('departments')  
     },[storePath])
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getEmployees(cmp_val)
+            getDepartments(cmp_val)           
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
         var depts = [...departments]
         departments.forEach((dept,index) => {

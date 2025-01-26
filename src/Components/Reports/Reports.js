@@ -11,6 +11,7 @@ const Reports = ()=>{
         companyRecord,
         company, getDate, years, monthDays,
         employees, months, expenses, sales, rentals, purchase, attendance,
+        getSales,getRentals, getPurchase, getExpenses,
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
@@ -18,7 +19,20 @@ const Reports = ()=>{
     useEffect(()=>{
         storePath('reports')  
     },[storePath])
-
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            console.log('setting values in Reports Modules')
+            getSales(cmp_val)
+            getRentals(cmp_val)
+            getPurchase(cmp_val)
+            getExpenses(cmp_val)
+            //getAttendance(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))
     const [filterTo, setFilterTo] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const reports = ['PROFIT OR LOSS', 'TRIAL BALANCE', 'BALANCE SHEET']

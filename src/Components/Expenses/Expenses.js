@@ -15,7 +15,7 @@ const Expenses = ()=>{
         fetchServer,
         companyRecord,
         company, getDate,
-        employees, months, getExpenses, setExpenses, expenses,
+        employees, getEmployees, months, getExpenses, setExpenses, expenses,
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
@@ -50,7 +50,16 @@ const Expenses = ()=>{
     useEffect(()=>{
         storePath('expenses')  
     },[storePath])
-   
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getEmployees(cmp_val)
+            getExpenses(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
         if (companyRecord.status!=='admin'){
             setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))

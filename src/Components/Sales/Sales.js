@@ -19,6 +19,7 @@ const Sales = ()=>{
         company, recoveryVal, 
         employees, setEmployees, getEmployees, 
         sales, setSales, getSales, months, 
+        accommodations, getAccommodations,
         rentals, setRentals, getRentals, 
         getDate, removeComma, 
         alert,alertState,alertTimeout,actionMessage, 
@@ -103,6 +104,20 @@ const Sales = ()=>{
     useEffect(()=>{
         storePath('sales')  
     },[storePath])
+
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+            if (cmp_val){
+                console.log('setting values in Sales module')
+                getEmployees(cmp_val)
+                getSales(cmp_val)
+                getRentals(cmp_val)
+                getAccommodations(cmp_val)
+            }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
         if (!recoveryVal){
             setSalesOpts('sales')

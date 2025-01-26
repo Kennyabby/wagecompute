@@ -24,7 +24,15 @@ const Settings = () =>{
     useEffect(()=>{
         storePath('settings')  
     },[storePath])
-  
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getSettings(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     const addColumn = async ()=>{
         if (colname && !colSettings.import_columns?.includes(colname)){
             var postingCols = []
