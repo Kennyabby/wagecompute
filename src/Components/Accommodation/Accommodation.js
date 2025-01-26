@@ -16,7 +16,7 @@ const Accommodation = ()=>{
         server, 
         companyRecord, 
         company, recoveryVal, 
-        employees,
+        employees, getEmployees,
         accommodations, setAccommodations, getAccommodations, months, 
         customers, setCustomers, getCustomers,
         getDate, removeComma, 
@@ -91,6 +91,7 @@ const Accommodation = ()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
           if (cmp_val){
+            getEmployees(cmp_val)
             getCustomers(cmp_val)
             getAccommodations(cmp_val)
           }
@@ -305,27 +306,45 @@ const Accommodation = ()=>{
     }
     const deleteCustomer = async (customer)=>{
         if (deleteCount === customer.createdAt) {
-            setAlertState('info')
-            setAlert('Deleting...')
-            const resps = await fetchServer("POST", {
-                database: company,
-                collection: "Customers", 
-                update: {createdAt: customer.createdAt}
-            }, "removeDoc", server)
-            if (resps.err){
-                console.log(resps.mess)
+            var act=0
+            accommodations.filter((accommodation)=>{
+                if (accommodation.customerId === customer.i_d){
+                    act++
+                }
+                if (act){
+                    return 
+                }
+            })
+            if (act){
+                setActionMessage('')
+                setAlertState('error')
+                setAlert(
+                    `The Customer Record is in use in another Model. Delete the Corresponding Record Before Proceeding`
+                )
+                setAlertTimeout(12000)
+            }else{                
                 setAlertState('info')
-                setAlert(resps.mess)
-                setAlertTimeout(5000)
-            }else{
-                setIsView(false)
-                setCurCustomer(null)
-                setCustomerFields({...defaultCustomerFields})
-                setAlertState('success')
-                setAlert('Customer Deleted Successfully!')
-                setDeleteCount(0)
-                setAlertTimeout(5000)
-                getCustomers(company)
+                setAlert('Deleting...')
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Customers", 
+                    update: {createdAt: customer.createdAt}
+                }, "removeDoc", server)
+                if (resps.err){
+                    console.log(resps.mess)
+                    setAlertState('info')
+                    setAlert(resps.mess)
+                    setAlertTimeout(5000)
+                }else{
+                    setIsView(false)
+                    setCurCustomer(null)
+                    setCustomerFields({...defaultCustomerFields})
+                    setAlertState('success')
+                    setAlert('Customer Deleted Successfully!')
+                    setDeleteCount(0)
+                    setAlertTimeout(5000)
+                    getCustomers(company)
+                }
             }
         }else{
             setDeleteCount(customer.createdAt)
@@ -466,9 +485,9 @@ const Accommodation = ()=>{
                                     <div>Arrival Date (Time): <b>{`${getDate(arrivalDate)} (${arrivalTime})`}</b></div>
                                     <div>Departure Date (Time): <b>{`${getDate(departureDate)} (${departureTime})`}</b></div>
                                     <div className='deptdesc'>{`Accommodation Posted By:`} <b>{
-                                        employees.filter((employee)=>{
+                                        employees.length?employees.filter((employee)=>{
                                             return employee.i_d === employeeId
-                                        })[0]['firstName']
+                                        })[0]['firstName']:''
                                     }</b></div>
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
@@ -505,7 +524,7 @@ const Accommodation = ()=>{
                                     className='edit'
                                     name='delete'         
                                     style={{color:'red'}}                           
-                                    onClick={()=>{                                        
+                                    onClick={()=>{                                                                                
                                         setAlertState('info')
                                         setAlert('You are about to delete the selected Customer Record. Please Delete again if you are sure!')
                                         setAlertTimeout(5000)                                                                                    
