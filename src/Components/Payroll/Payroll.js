@@ -454,7 +454,7 @@ const Payroll = () =>{
                         <div><b>Position: </b>{`${curEmployee.position}`}</div>
                     </div>}
                     {curEmployee && 
-                        attendance.map((att,id)=>{
+                        attendance.sort((a,b)=> {return (b.no - a.no)}).map((att,id)=>{
                             return <PayAttendance
                                 key={id}
                                 att = {att}

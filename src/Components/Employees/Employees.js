@@ -76,6 +76,10 @@ const Employees = () =>{
         }
     }
     const addEmployee = async ()=>{
+        setAlertState('info')
+        setAlert(
+            `Adding Employee...`
+        )
         if (fields.i_d){
             const newEmployee = {
                 ...fields,
@@ -91,17 +95,31 @@ const Employees = () =>{
               
               if (resps.err){
                 console.log(resps.mess)
+                setAlertState('error')
+                setAlert(
+                    resps.mess
+                )
+                setAlertTimeout(5000)
               }else{
                 setEmployees(newEmployees)
                 setCurEmployee(newEmployee)
                 setIsView(true)
                 setFields({...newEmployee})
+                setAlertState('success')
+                setAlert(
+                    'Employee Added Successfully!'
+                )
+                setAlertTimeout(5000)
                 getEmployees(company)
               }
           
         }
     }
     const editEmployee = async ()=>{
+        setAlertState('info')
+        setAlert(
+            `Updating Employee...`
+        )
         const i_d = curEmployee.i_d
         const index = Number(editIndex)
         if (fields.i_d){
@@ -121,11 +139,21 @@ const Employees = () =>{
               
               if (resps.err){
                 console.log(resps.mess)
+                setAlertState('error')
+                setAlert(
+                    resps.mess
+                )
+                setAlertTimeout(5000)
               }else{
                   setEmployees(updatedEmployees)
                   setCurEmployee(updatedEmployee)
                   setIsView(true)
                   setFields({...updatedEmployee})
+                  setAlertState('success')
+                  setAlert(
+                    'Employee Details Updated Successfully!'
+                  )
+                  setAlertTimeout(5000)
                   getEmployees(company)
               }
     
@@ -183,6 +211,10 @@ const Employees = () =>{
             )
             setAlertTimeout(12000)
         }else{
+            setAlertState('info')
+            setAlert(
+                `Deleting Employee...`
+            )
             const i_d = curEmployee.i_d
             const filteredEmp = employees.filter((emp)=>{
                 return emp.i_d!==i_d
@@ -194,12 +226,21 @@ const Employees = () =>{
             }, "removeDoc", server)
             if (resps.err){
                 console.log(resps.mess)
+                setAlertState('error')
+                setAlert(
+                    resps.mess
+                )
+                setAlertTimeout(5000)
             }else{
                 setEmployees(filteredEmp)
                 setCurEmployee(null)
                 setFields({...initFields, i_d:filteredEmp.length+1})
                 setIsView(false)
                 setWriteStatus('New')
+                setAlert(
+                    'Employee Deleted Successfully!'
+                )
+                setAlertTimeout(5000)
                 getEmployees(company)
             }
         }
