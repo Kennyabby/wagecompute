@@ -2,6 +2,8 @@ import './Accommodation.css'
 import { useState, useEffect, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
+import AccommodationReceipt from './AccommodationReport/AccommodationReceipt';
+import AccommodationReport from './AccommodationReport/AccommodationReport';
 import { FaTableCells } from "react-icons/fa6";
 import Notify from '../../Resources/Notify/Notify';
 import { MdAdd } from "react-icons/md";
@@ -61,7 +63,7 @@ const Accommodation = ()=>{
         address: '',
         email: '',
         phoneNo: '',
-        stateOFOrigin: '',
+        stateOfOrigin: '',
         localGovernmentArea: '',
     }
 
@@ -94,7 +96,11 @@ const Accommodation = ()=>{
             setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
         }
     },[curAccommodation])
-    
+    useEffect(()=>{
+        setCustomerFields((customerFields)=>{
+            return {...customerFields, i_d:'CO-'+Number(customers.length+1)}
+        })
+    },[customers])
     useEffect(()=>{
         if (companyRecord.status!=='admin'){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -315,25 +321,25 @@ const Accommodation = ()=>{
     return (
         <>
             <div className='sales'>         
-                {/* {showReport && <SalesReport
+                {showReport && <AccommodationReport
                     reportSales = {reportSales}
                     multiple={isMultiple}
                     setShowReport={(value)=>{
                         setShowReport(value)
-                        if (!saleEmployee){
+                        if (!accommodationCustomer){
                             setReportSales(null)
                         }
                     }}              
                     fromDate = {saleFrom}
                     toDate = {saleTo}
                 />} 
-                {showReceipt && <RentalReceipt
-                    rentalSale = {curRent}
+                {showReceipt && <AccommodationReceipt
+                    curAccommodation = {curAccommodation}
                     month = {months[new Date(Date.now()).getMonth()]}
                     setShowReceipt={(value)=>{
                         setShowReceipt(value)                        
                     }}                                  
-                />}     */}
+                />}    
                 {actionMessage && <Notify        
                     notifyMessage={alert}
                     notifyState = {alertState}
@@ -751,7 +757,7 @@ const Accommodation = ()=>{
                                     name='stateOfOrigin'
                                     type='text'
                                     placeholder='Stae of Origin'
-                                    value={customerFields.stateOFOrigin}
+                                    value={customerFields.stateOfOrigin}
                                     disabled={isView}
                                     onChange={(e)=>{
                                         handleCustomerFieldChange(e)
@@ -817,10 +823,10 @@ const Accommodation = ()=>{
                         >{accommodationStatus}</div>}
                         {salesOpts === 'customers' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:(customerFields.customerFullName && customerFields.customerPhoneNo && customerFields.customerAddress)?'pointer':'not-allowed'
+                                cursor:(customerFields.fullName && customerFields.phoneNo && customerFields.address)?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
-                                if (customerFields.customerFullName && customerFields.customerPhoneNo && customerFields.customerAddress){
+                                if (customerFields.fullName && customerFields.phoneNo && customerFields.address){
                                     addCustomers()
                                 }else{
                                     setActionMessage('')
