@@ -794,7 +794,7 @@ const Accommodation = ()=>{
                                 cursor:accommodationFields.accommodationAmount?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
-                                if (accommodationFields.length){
+                                if (accommodationFields.accommodationAmount){
                                     var ct=0                                    
                                     var requiredNo = accommodationFields.length
                                     accommodationFields.forEach((field)=>{
