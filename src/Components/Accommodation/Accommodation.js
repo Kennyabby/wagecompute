@@ -575,6 +575,7 @@ const Accommodation = ()=>{
                                 </select>
                             </div>
                             <div className='inpcov'>
+                                <div>Select Customer</div>
                                 <select 
                                     className='forminp'
                                     name='customerId'
@@ -584,7 +585,7 @@ const Accommodation = ()=>{
                                         handleAccommodationFieldChange(e)                                
                                     }}
                                 >
-                                    <option value=''>All Customers</option>
+                                    <option value=''>Select Customer</option>
                                     {customers?.map((customer)=>{
                                         return (
                                             <option 
