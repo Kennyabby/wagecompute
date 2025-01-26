@@ -87,7 +87,16 @@ const Accommodation = ()=>{
     useEffect(()=>{
         storePath('accommodations')  
     },[storePath])
-   
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getCustomers(cmp_val)
+            getAccommodations(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
         if (curAccommodation){
             setPostingDate(curAccommodation.postingDate)
