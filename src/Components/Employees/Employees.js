@@ -11,7 +11,10 @@ const Employees = () =>{
         company, companyRecord,
         departments,
         positions,
-        employees, setEmployees, getEmployees
+        employees, setEmployees, getEmployees,
+        sales,purchase,expenses,accommodations,
+        alert,alertState,alertTimeout,actionMessage, 
+        setAlert, setAlertState, setAlertTimeout, setActionMessage 
     } = useContext(ContextProvider)
     const [selform, setSelform] = useState("Basic")
     const [writeStatus, setWriteStatus] = useState('New')
@@ -130,24 +133,75 @@ const Employees = () =>{
     }
 
     const deleteEmployee = async()=>{
-        const i_d = curEmployee.i_d
-        const filteredEmp = employees.filter((emp)=>{
-            return emp.i_d!==i_d
+        var act=0
+        accommodations.filter((accommodation)=>{
+            if (accommodation.employeeId === curEmployee.i_d){
+                act++
+            }
+            if (act){
+                return 
+            }
         })
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Employees", 
-            update: {i_d: i_d}
-        }, "removeDoc", server)
-        if (resps.err){
-            console.log(resps.mess)
+        if (!act){        
+            sales.map((sale)=>{
+                sale.record.filter((record)=>{
+                    if (record.employeeId === curEmployee.i_d){
+                        act++
+                    }
+                    if (act){
+                        return 
+                    }
+                })
+            })
+        }
+        if(!act){
+            purchase.filter((purchase)=>{
+                if (purchase.purchaseHandler === curEmployee.i_d){
+                    act++
+                }
+                if (act){
+                    return 
+                }
+            })
+        }
+        if(!act){
+            expenses.filter((expense)=>{
+                if (expense.expenseHandler === curEmployee.i_d){
+                    act++
+                }
+                if (act){
+                    return 
+                }
+            })
+        }
+
+        if (act){
+            setActionMessage('')
+            setAlertState('error')
+            setAlert(
+                `The Employee Record is in use in another Model. Delete the Corresponding Record Before Proceeding`
+            )
+            setAlertTimeout(12000)
         }else{
-            setEmployees(filteredEmp)
-            setCurEmployee(null)
-            setFields({...initFields, i_d:filteredEmp.length+1})
-            setIsView(false)
-            setWriteStatus('New')
-            getEmployees(company)
+            const i_d = curEmployee.i_d
+            const filteredEmp = employees.filter((emp)=>{
+                return emp.i_d!==i_d
+            })
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Employees", 
+                update: {i_d: i_d}
+            }, "removeDoc", server)
+            if (resps.err){
+                console.log(resps.mess)
+            }else{
+                setEmployees(filteredEmp)
+                setCurEmployee(null)
+                setFields({...initFields, i_d:filteredEmp.length+1})
+                setIsView(false)
+                setWriteStatus('New')
+                getEmployees(company)
+            }
         }
     }
 
