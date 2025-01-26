@@ -796,9 +796,9 @@ const Accommodation = ()=>{
                             onClick={()=>{
                                 if (accommodationFields.accommodationAmount){
                                     var ct=0                                    
-                                    var requiredNo = accommodationFields.length
-                                    accommodationFields.forEach((field)=>{
-                                        if (field){
+                                    var requiredNo = Object.keys(accommodationFields).length
+                                    Object.keys(accommodationFields).forEach((field)=>{
+                                        if (accommodationFields[field]){
                                             ct++
                                         }
                                     })
