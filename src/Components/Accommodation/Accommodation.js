@@ -115,7 +115,6 @@ const Accommodation = ()=>{
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])
-
     useEffect(()=>{
         if (accommodationCustomer){
             calculateAccommodationSales()
@@ -129,7 +128,13 @@ const Accommodation = ()=>{
             handleAccommodationViewClick(reportSales)
         }
     },[reportSales])
-
+    useEffect(()=>{
+        if (salesOpts){
+            setIsView(false)
+            setCurAccomodation(null)
+            setCurCustomer(null)
+        }
+    },[salesOpts])
     const calculateAccommodationSales = ()=>{
 
     }
@@ -474,32 +479,19 @@ const Accommodation = ()=>{
                             </div>
                         )
                   })}
-                    {salesOpts1 === 'customers' && customers?.filter((ftrrent)=>{
-                        const slCreatedAt = new Date(ftrrent.paymentDate).getTime()
-                        const fromDate = new Date(saleFrom).getTime()
-                        const toDate = new Date(saleTo).getTime()
-                        if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
-                        ){                            
-                            return ftrrent
-                        }
-                    }).map((rent, index)=>{
-                        const {createdAt, paymentDate, paymentMonth, paymentAmount, balanceRemaining, expectedPayment, 
-                            rentalSpace, receivedFrom 
-                        } = rent
+                    {salesOpts1 === 'customers' && customers?.map((customer, index)=>{
+                        const {i_d, fullName, email, phoneNo, createdAt, address, localGovernmentArea, stateOfOrigin} = customer
                         return(
                             <div className={'dept' + (curCustomer?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
-                                    handleCustomerViewClick(rent)
+                                    handleCustomerViewClick(customer)
                                 }}
                             >
                                 <div className='dets sldets'>
-                                    <div>Payment Date: <b>{getDate(paymentDate)}</b></div>
-                                    <div>Rental Space: <b>{rentalSpace.toUpperCase()}</b></div>
-                                    <div>For The Month: <b>{paymentMonth}</b></div>
-                                    <div>Expected Payment: <b>{'₦'+(Number(expectedPayment)).toLocaleString()}</b></div>
-                                    <div>Payment Amount: <b>{'₦'+(Number(paymentAmount)).toLocaleString()}</b></div>
-                                    <div>Balance Remaining: <b>{'₦'+(Number(balanceRemaining)).toLocaleString()}</b></div>                                    
-                                    <div className='deptdesc'>{`Payment Received From:`} <b>{`${receivedFrom}`}</b></div>
+                                    <div>Customer ID: <b>{i_d}</b></div>
+                                    <div>Full Name: <b>{fullName}</b></div>
+                                    <div>Phone No: <b>{phoneNo}</b></div>
+                                    {email && <div>Email: <b>{email}</b></div>}
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
                                     className='edit'
@@ -509,7 +501,7 @@ const Accommodation = ()=>{
                                         setAlertState('info')
                                         setAlert('You are about to delete the selected Customer Record. Please Delete again if you are sure!')
                                         setAlertTimeout(5000)                                                                                    
-                                        deleteCustomer(rent)
+                                        deleteCustomer(customer)
                                     }}
                                 >
                                     Delete
@@ -739,6 +731,20 @@ const Accommodation = ()=>{
                                     type='text'
                                     placeholder='Customer Address'
                                     value={customerFields.address}
+                                    disabled={isView}
+                                    onChange={(e)=>{
+                                        handleCustomerFieldChange(e)
+                                    }}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <div>Email Address</div>
+                                <input 
+                                    className='forminp'
+                                    name='email'
+                                    type='text'
+                                    placeholder='Email Address'
+                                    value={customerFields.email}
                                     disabled={isView}
                                     onChange={(e)=>{
                                         handleCustomerFieldChange(e)
