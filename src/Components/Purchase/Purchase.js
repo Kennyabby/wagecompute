@@ -13,7 +13,7 @@ const Purchase = ()=>{
         fetchServer,
         companyRecord,
         company, getDate,
-        employees, months, getPurchase, setPurchase, purchase,
+        employees, getEmployees,months, getPurchase, setPurchase, purchase,
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
@@ -43,7 +43,16 @@ const Purchase = ()=>{
     useEffect(()=>{
         storePath('purchase')  
     },[storePath])
-
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getEmployees(cmp_val)
+            getPurchase(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
         if (companyRecord.status!=='admin'){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))

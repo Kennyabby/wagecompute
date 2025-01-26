@@ -18,12 +18,22 @@ const Positions = () =>{
             fetchServer, 
             server,
             company,
-            employees,
+            employees, getEmployees,
             positions, setPositions, getPositions
     } = useContext(ContextProvider)
     useEffect(()=>{
         storePath('positions')  
     },[storePath])
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getEmployees(cmp_val)
+            getPositions(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
         var postns = [...positions]
         positions.forEach((pos,index) => {

@@ -11,7 +11,7 @@ const Payroll = () =>{
         getDate,
         company, companyRecord,
         monthDays,months, years,
-        employees, sales,
+        employees, getEmployees, sales,
         attendance, getAttendance
     } = useContext(ContextProvider)
     const [selectedMonth, setSelectedMonth] = useState('')
@@ -33,6 +33,16 @@ const Payroll = () =>{
     useEffect(()=>{
         storePath('payroll')  
     },[storePath])
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getEmployees(cmp_val)
+            //getAttendance(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
         setInvoiceNumber(getInvoiceNumber())
     },[company])

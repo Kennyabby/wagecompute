@@ -58,23 +58,20 @@ const Employees = () =>{
         storePath('employees')  
     },[storePath])
     useEffect(()=>{
-        // if (employees.length){
-        //     setFields((fields)=>{
-        //         if (!fields.i_d){
-        //             return {...fields, i_d:employees.length+1}
-        //         }else{
-        //             return fields
-        //         }
-        //     })
-        // }
-    },[employees])
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+          if (cmp_val){
+            getEmployees(cmp_val)
+          }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
     const toggleSelForm = (e)=>{
         const name = e.target.getAttribute('name')
         if (name){
             setSelform(name)
         }
     }
-
     const addEmployee = async ()=>{
         if (fields.i_d){
             const newEmployee = {
