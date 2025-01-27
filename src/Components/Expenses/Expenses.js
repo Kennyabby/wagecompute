@@ -22,6 +22,7 @@ const Expenses = ()=>{
     const [expensesStatus, setExpensesStatus] = useState('Post Expenses')
     const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curExpense, setCurExpense] = useState(null)
+    const [deleteCount, setDeleteCount] = useState(0)
     const [isView, setIsView] = useState(false)
     const [showReport, setShowReport] = useState(false)
     const [expenseFrom, setExpenseFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -84,9 +85,12 @@ const Expenses = ()=>{
     }
     const addExpenses = async ()=>{
         if (fields.expensesAmount && fields.expenseCategory && 
-            fields.expensesDepartment && fields.expensesHandler
+            fields.expensesDepartment && fields.expensesHandler &&
+            fields.expensesVendor
         ){
             setExpensesStatus('Posting Expenses...')
+            setAlertState('info')
+            setAlert('Posting Expenses...')
             const newExpense = {
                 ...fields,
                 postingDate:expensesDate,
@@ -102,6 +106,9 @@ const Expenses = ()=>{
                                           
               if (resps.err){
                 console.log(resps.mess)
+                setAlertState('info')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
                 setExpensesStatus('Post Expenses')
               }else{
                 setExpensesStatus('Post Expenses')
@@ -109,33 +116,48 @@ const Expenses = ()=>{
                 setCurExpense(newExpense)
                 setIsView(true)
                 setFields({...newExpense})
+                setAlertState('success')
+                setAlert('Expenses Record Posted Successfully!')
+                setAlertTimeout(5000)
                 getExpenses(company)
               }
+        }else{
+            setAlertState('error')
+            setAlert('All Fields Are Required! Kindly Fill All.')
+            setAlertTimeout(5000)
         }
     }
 
     const deleteExpenses = async (expense)=>{
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Expenses", 
-            update: {createdAt: expense.createdAt}
-        }, "removeDoc", server)
-        if (resps.err){
-            console.log(resps.mess)
-            // setAlertState('info')
-            // setAlert(resps.mess)
-            // setAlertTimeout(5000)
+        if (deleteCount === expense.createdAt){
+            setAlertState('info')
+            setAlert('Deleting Expenses...')
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Expenses", 
+                update: {createdAt: expense.createdAt}
+            }, "removeDoc", server)
+            if (resps.err){
+                console.log(resps.mess)
+                setAlertState('info')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
+            }else{
+                setIsView(false)
+                setCurExpense(null)
+                setFields({...defaultFields})
+                setAlertState('success')
+                setAlert('Expenses Deleted Successfully!')
+                setAlertTimeout(5000)
+                setDeleteCount(0)
+                getExpenses(company)
+            }        
         }else{
-            setIsView(false)
-            setCurExpense(null)
-            // setCurExpenseDate(null)
-            setFields({...defaultFields})
-            // setAlertState('success')
-            // setAlert('Expenses Deleted Successfully!')
-            // setDeleteCount(0)
-            // setAlertTimeout(5000)
-            getExpenses(company)
-        }        
+            setDeleteCount(expense.createdAt)
+            setTimeout(()=>{
+                setDeleteCount(0)
+            },12000)
+        }
     }
     const calculateReportExpense = ()=>{
         var filteredReportExpenses = expenses.sort((a,b) => {
@@ -289,9 +311,9 @@ const Expenses = ()=>{
                                     name='delete'         
                                     style={{color:'red'}}                           
                                     onClick={()=>{                                        
-                                        // setAlertState('info')
-                                        // setAlert('You are about to delete the selected Expenses. Please Delete again if you are sure!')
-                                        // setAlertTimeout(5000)                                                                                    
+                                        setAlertState('info')
+                                        setAlert('You are about to delete the selected Expense Record. Please Delete again if you are sure!')
+                                        setAlertTimeout(5000)                                                                                    
                                         deleteExpenses(exp)
                                     }}
                                 >
