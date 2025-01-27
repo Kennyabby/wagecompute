@@ -107,10 +107,12 @@ const Accommodation = ()=>{
         }
     },[curAccommodation])
     useEffect(()=>{
-        setCustomerFields((customerFields)=>{
-            return {...customerFields, i_d:'CO-'+Number(customers.length+1)}
-        })
-    },[customers])
+        if (!isView){
+            setCustomerFields((customerFields)=>{
+                return {...customerFields, i_d:'CO-'+Number(customers.length+1)}
+            })
+        }
+    },[customers, isView])
     useEffect(()=>{
         if (companyRecord.status!=='admin'){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -135,7 +137,10 @@ const Accommodation = ()=>{
             setCurAccomodation(null)
             setAccommodationFields({...defaultAccommodationFields})
             setCurCustomer(null)
-            setCustomerFields({...defaultCustomerFields})
+            setCustomerFields({...defaultCustomerFields})    
+            setCustomerFields((customerFields)=>{
+                return {...customerFields, i_d:'CO-'+Number(customers.length+1)}
+            })
         }
     },[salesOpts])
     const calculateAccommodationSales = ()=>{
@@ -733,7 +738,7 @@ const Accommodation = ()=>{
                                     type='text'
                                     placeholder='Customer ID'
                                     value={customerFields.i_d}
-                                    disabled={isView}
+                                    disabled={true}
                                     onChange={(e)=>{
                                         handleCustomerFieldChange(e)
                                     }}
