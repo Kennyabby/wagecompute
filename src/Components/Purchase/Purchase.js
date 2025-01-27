@@ -20,6 +20,7 @@ const Purchase = ()=>{
     const [purchaseStatus, setPurchaseStatus] = useState('Post Purchase')
     const [purchaseDate, setPurchaseDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curPurchase, setCurPurchase] = useState(null)
+    const [deleteCount, setDeleteCount] = useState(0)
     const [isView, setIsView] = useState(false)
     const [showReport, setShowReport] = useState(false)
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -74,7 +75,12 @@ const Purchase = ()=>{
         setIsView(true)
     }
     const addPurchase = async ()=>{
-        if (fields.purchaseAmount){
+        if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
+            fields.purchaseUOM && fields.purchaseHandler && fields.purchaseDepartment &&
+            fields.purchaseCategory
+        ){
+            setAlertState('info')
+            setAlert('Posting Purchase...')
             setPurchaseStatus('Posting Purchase...')
             const newPurchase = {
                 ...fields,
@@ -92,39 +98,57 @@ const Purchase = ()=>{
               if (resps.err){
                 console.log(resps.mess)
                 setPurchaseStatus('Post Purchase')
+                setAlertState('error')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
               }else{
                 setPurchaseStatus('Post Purchase')
                 setPurchase(newPurchases)
                 setCurPurchase(newPurchase)
                 setIsView(true)
                 setFields({...newPurchase})
+                setAlertState('success')
+                setAlert('Purchase Record Posted Successfully!')
+                setAlertTimeout(5000)
                 getPurchase(company)
               }
+        }else{ 
+            setAlertState('error')
+            setAlert('All Fields Are Required! Kindly Fill All')
+            setAlertTimeout(5000)
         }
     }
 
     const deletePurchase = async (purchase)=>{
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Purchase", 
-            update: {createdAt: purchase.createdAt}
-        }, "removeDoc", server)
-        if (resps.err){
-            console.log(resps.mess)
-            // setAlertState('info')
-            // setAlert(resps.mess)
-            // setAlertTimeout(5000)
+        if(deleteCount === purchase.createdAt){
+            setAlertState('info')
+            setAlert('Deleting Purchase...')
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Purchase", 
+                update: {createdAt: purchase.createdAt}
+            }, "removeDoc", server)
+            if (resps.err){
+                console.log(resps.mess)
+                setAlertState('info')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
+            }else{
+                setIsView(false)
+                setCurPurchase(null)
+                setFields({...defaultFields})
+                setAlertState('success')
+                setAlert('Purchase Record Deleted Successfully!')
+                setAlertTimeout(5000)
+                setDeleteCount(0)
+                getPurchase(company)
+            }        
         }else{
-            setIsView(false)
-            setCurPurchase(null)
-            // setCurSaleDate(null)
-            setFields({...defaultFields})
-            // setAlertState('success')
-            // setAlert('Sales Deleted Successfully!')
-            // setDeleteCount(0)
-            // setAlertTimeout(5000)
-            getPurchase(company)
-        }        
+            setDeleteCount(purchase.createdAt)
+            setTimeout(()=>{
+                setDeleteCount(0)
+            },12000)
+        }
     }
 
     const calculateReportPurchase = ()=>{
@@ -236,9 +260,9 @@ const Purchase = ()=>{
                                     name='delete'         
                                     style={{color:'red'}}                           
                                     onClick={()=>{                                        
-                                        // setAlertState('info')
-                                        // setAlert('You are about to delete the selected Sales. Please Delete again if you are sure!')
-                                        // setAlertTimeout(5000)                                                                                    
+                                        setAlertState('info')
+                                        setAlert('You are about to delete the selected Purchase Record. Please Delete again if you are sure!')
+                                        setAlertTimeout(5000)                                                                                    
                                         deletePurchase(pur)
                                     }}
                                 >

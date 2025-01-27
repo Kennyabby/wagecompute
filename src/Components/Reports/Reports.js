@@ -23,12 +23,11 @@ const Reports = ()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
           if (cmp_val){
-            console.log('setting values in Reports Modules')
             getSales(cmp_val)
             getRentals(cmp_val)
             getPurchase(cmp_val)
             getExpenses(cmp_val)
-            //getAttendance(cmp_val)
+            // getAttendance(cmp_val)
           }
         },10000)
         return () => clearInterval(intervalId);

@@ -109,7 +109,6 @@ const Sales = ()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
             if (cmp_val){
-                console.log('setting values in Sales module')
                 getEmployees(cmp_val)
                 getSales(cmp_val)
                 getRentals(cmp_val)
