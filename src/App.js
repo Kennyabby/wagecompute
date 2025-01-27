@@ -111,7 +111,7 @@ function App() {
         if (companyRecord?.permissions.includes('accommodations')){
           getCustomers(company)
           getAccommodations(company)
-          Navigate('/accommodation')
+          Navigate('/accommodations')
         }
         if (companyRecord?.permissions.includes('sales')){
           getAccommodations(company)
