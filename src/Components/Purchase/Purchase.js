@@ -77,7 +77,7 @@ const Purchase = ()=>{
     const addPurchase = async ()=>{
         if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
             fields.purchaseUOM && fields.purchaseHandler && fields.purchaseDepartment &&
-            fields.purchaseCategory
+            fields.itemCategory
         ){
             setAlertState('info')
             setAlert('Posting Purchase...')
