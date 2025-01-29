@@ -46,16 +46,16 @@ const Accommodation = ()=>{
             price: 10000
         },
         '2':{
-            price: 15000
+            price: 10000
         },
         '3':{
-            price: 7000
+            price: 10000
         },
         '4':{
-            price: 5000
+            price: 10000
         },
         '5':{
-            price: 20000
+            price: 15000
         },
     }
     const defaultCustomerFields = {
@@ -219,7 +219,6 @@ const Accommodation = ()=>{
             }
             
         })}
-        // console.log(salesReportList)
         setReportSales([...salesReportList])
     }
     const postAccommodation = async ()=> { 
@@ -1146,13 +1145,13 @@ const Accommodation = ()=>{
                                 cursor:(customerFields.fullName && customerFields.phoneNo && customerFields.address)?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
-                                if (customerFields.fullName && customerFields.phoneNo && customerFields.address){
+                                if (customerFields.fullName && customerFields.phoneNo){
                                     addCustomers()
                                 }else{
                                     setActionMessage('')
                                     setAlertState('error')
                                     setAlert(
-                                        `Customer Name, Phone No, and Customer Address Fields are Required!`
+                                        `Customer Name and Phone No Fields are Required!`
                                     )
                                     setAlertTimeout(10000)   
                                 }
