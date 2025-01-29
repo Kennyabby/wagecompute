@@ -1142,7 +1142,7 @@ const Accommodation = ()=>{
                         >{(fillmode==='payment')? 'Make Payment' : accommodationStatus}</div>}
                         {salesOpts === 'customers' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:(customerFields.fullName && customerFields.phoneNo && customerFields.address)?'pointer':'not-allowed'
+                                cursor:(customerFields.fullName && customerFields.phoneNo)?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
                                 if (customerFields.fullName && customerFields.phoneNo){
