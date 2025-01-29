@@ -1,0 +1,52 @@
+.rcpt-ttl{
+    width: 100%;
+    margin: 15px auto;
+    display: flex;
+    justify-content: space-between;
+    font-weight: 800;
+    font-size: 1em;
+}
+
+.rcpt-dtl{
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: .8em;
+}
+
+.rcpt-field{
+    margin: 10px 40px;
+    margin-left: 0px;
+    text-align: left;
+}
+
+.rcpt-info{
+    font-size: .8em;
+    text-align: left;
+}
+.rcpt-info1{
+    font-size: .8em;
+    text-align: center;
+    margin: 20px auto;
+}
+.rcpt-agd{
+    width: fit-content;
+    padding: 10px 15px;
+    margin: auto;
+    font-weight: 800;
+    border-radius: 5px;
+    border: solid black 1px;
+}
+.rcpt-bx{
+    font-size: .8em;
+    text-align: left;
+    margin-top: 30px;
+}
+.rcpt-footer{
+    font-size: .8em;
+    text-align: left;
+    margin-top: 40px;
+    .div{
+        margin-top: 20px;
+    }
+}
