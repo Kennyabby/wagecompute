@@ -155,6 +155,9 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                             if (payees[0].shortages){
                                                                 deductions+=Number(payees[0].shortages)
                                                             }
+                                                            if (payees[0].prevDebt){
+                                                                deductions+=Number(payees[0].prevDebt)
+                                                            }
                                                             if (payees[0].debtDue){
                                                                 deductions+=Number(payees[0].debtDue)
                                                             }
