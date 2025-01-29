@@ -168,7 +168,7 @@ const Purchase = ()=>{
             <div className='purchase'>
                 {showReport && <PurchaseReport
                     reportPurchases = {reportPurchase}
-                    multiple={true}
+                    multiple = {true}
                     setShowReport={(value)=>{
                         setShowReport(value)                        
                     }}              

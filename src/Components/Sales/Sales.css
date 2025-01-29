@@ -37,6 +37,7 @@
     cursor: pointer;
 }
 .sldets{
+    position: relative;
     width: 95%;
     font-size: .9em;
 }

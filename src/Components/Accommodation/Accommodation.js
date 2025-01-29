@@ -35,8 +35,9 @@ const Accommodation = ()=>{
     const [salesOpts, setSalesOpts] = useState('accommodation')
     const [salesOpts1, setSalesOpts1] = useState('accommodation')
     const [accommodationStatus, setAccommodationStatus] = useState('Post Accommodation')
+    const [fillmode, setFillMode] = useState('')
     const [customerStatus, setCustomerStatus] = useState('Add Customer')
-    const [postingDate, setPostingDate] = useState('')
+    const [postingDate, setPostingDate] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [curAccommodation, setCurAccomodation] = useState(null)
     const [curCustomer, setCurCustomer] = useState(null)
 
@@ -70,12 +71,21 @@ const Accommodation = ()=>{
     const defaultAccommodationFields = {
         employeeId: '',
         customerId:'',
-        arrivalDate:'',
+        arrivalDate: new Date(Date.now()).toISOString().slice(0, 10), 
         departureDate:'',
         arrivalTime: '',
         departureTime: '',
         roomNo: '',
         accommodationAmount: '',
+        paymentStatus: 'Make Payment',
+        paymentAmount: 0,
+        payPoint: '',
+        paymentReceipt:''
+    }
+
+    const payPoints = {
+        'moniepoint1':'', 'moniepoint2':'', 
+        'moniepoint3':'', 'cash':''
     }
 
     const [accommodationFields, setAccommodationFields] = useState({...defaultAccommodationFields})
@@ -141,6 +151,7 @@ const Accommodation = ()=>{
             setCustomerFields((customerFields)=>{
                 return {...customerFields, i_d:'CO-'+Number(customers.length+1)}
             })
+            setFillMode('')
         }
     },[salesOpts])
     const calculateAccommodationSales = ()=>{
@@ -177,9 +188,51 @@ const Accommodation = ()=>{
             setAlert('Accommodation Posted Successfully!')
             setAlertTimeout(5000)
             setAccommodationStatus('Post Accommodation')
+            setFillMode('payment')
         }
     }
 
+    const postPayment = async ()=>{
+        setAlertState('info')
+        setAlert(
+            `Updating Payment Status...`
+        )
+        var paymentStatus = 'Partially Paid'
+        if (accommodationFields.paymentAmount > 0 && Number(accommodationFields.paymentAmount) === Number(accommodationFields.accommodationAmount)){
+            paymentStatus = 'Fully Paid'
+        }
+        const updatedPayment = {
+            paymentAmount: accommodationFields.paymentAmount,
+            payPoint: accommodationFields.payPoint,
+            paymentReceipt: accommodationFields.paymentReceipt,
+            paymentStatus: paymentStatus
+        }
+        
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Accommodations", 
+            prop: [{createdAt: accommodationFields.createdAt}, updatedPayment]
+          }, "updateOneDoc", server)
+          
+          if (resps.err){
+            console.log(resps.mess)
+            setAlertState('error')
+            setAlert(
+                resps.mess
+            )
+            setAlertTimeout(5000)
+          }else{
+              getAccommodations(company)
+              setCurAccomodation({...curAccommodation, ...updatedPayment})
+              setAccommodationFields({...accommodationFields, ...updatedPayment})
+              setIsView(true)
+              setAlertState('success')
+              setAlert(
+                'Payment Updated Successfully!'
+            )
+              setAlertTimeout(5000)
+          }
+    }
     const handleCustomerViewClick = (customer) =>{
         setCurCustomer(customer)
         setSalesOpts('customers')
@@ -191,6 +244,9 @@ const Accommodation = ()=>{
     const handleAccommodationViewClick = (accommodation) =>{
         setCurAccomodation(accommodation)
         setSalesOpts('accommodation')
+        if (fillmode){
+            setFillMode('')
+        }
         setIsView(true)
         setAccommodationFields({...accommodation})
         setIsView(true)
@@ -213,7 +269,7 @@ const Accommodation = ()=>{
             }else{
                 setIsView(false)
                 setCurAccomodation(null)
-                setAccommodationFields({...accommodationFields})
+                setAccommodationFields({...defaultAccommodationFields})
                 setAlertState('success')
                 setAlert('Accommodation Deleted Successfully!')
                 setDeleteCount(0)
@@ -261,12 +317,74 @@ const Accommodation = ()=>{
         if (name){
             if (name==='roomNo'){
                 if (value){
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value, accommodationAmount:rooms[value]['price']}
-                    })    
+                    if (accommodationFields.arrivalDate && accommodationFields.departureDate){
+                        const arrivalDate = new Date(accommodationFields.arrivalDate).getTime()
+                        const departureDate = new Date(accommodationFields.departureDate).getTime()
+                        var defaultDays = 1
+                        const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
+                        defaultDays = multiple > 0 ? multiple : defaultDays
+                        setAccommodationFields((accommodationFields)=>{
+                            return {...accommodationFields, [name]:value, accommodationAmount : defaultDays * rooms[value]['price']}
+                        })
+    
+                    }else{
+                        setAccommodationFields((accommodationFields)=>{
+                            return {...accommodationFields, [name]:value, accommodationAmount : rooms[value]['price']}
+                        })    
+                    }
                 }else{
                     setAccommodationFields((accommodationFields)=>{
                         return {...accommodationFields, [name]:value, accommodationAmount:''}
+                    })
+                }
+            }else if (name==='departureDate'){
+                if (accommodationFields.arrivalDate){
+                    const roomNo = accommodationFields.roomNo
+                    const arrivalDate = new Date(accommodationFields.arrivalDate).getTime()
+                    const departureDate = new Date(value).getTime()
+                    var defaultDays = 1
+                    const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
+                    defaultDays = multiple > 0 ? multiple : defaultDays
+                    setAccommodationFields((accommodationFields)=>{
+                        return {...accommodationFields, [name]:value, accommodationAmount : roomNo ? (defaultDays * rooms[roomNo]['price']): ''}
+                    })
+
+                }else{
+                    setAccommodationFields((accommodationFields)=>{
+                        return {...accommodationFields, [name]:value}
+                    })
+                }
+            }else if (name==='arrivalDate'){
+                if (accommodationFields.arrivalDate){
+                    const roomNo = accommodationFields.roomNo
+                    const arrivalDate = new Date(value).getTime()
+                    const departureDate = new Date(accommodationFields.departureDate).getTime()
+                    var defaultDays = 1
+                    const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
+                    defaultDays = multiple > 0 ? multiple : defaultDays
+                    setAccommodationFields((accommodationFields)=>{
+                        return {...accommodationFields, [name]:value, accommodationAmount : roomNo ? (defaultDays * rooms[roomNo]['price']): ''}
+                    })
+
+                }else{
+                    setAccommodationFields((accommodationFields)=>{
+                        return {...accommodationFields, [name]:value}
+                    })
+                }
+            }else if (name==='payPoint'){
+                if (value==='cash'){
+                    setAccommodationFields((accommodationFields)=>{
+                        return {...accommodationFields, [name]:value, paymentReceipt : 'CASH'}
+                    })
+                }else{
+                    setAccommodationFields((accommodationFields)=>{
+                        return {...accommodationFields, [name]:value}
+                    })
+                }
+            }else if (name==='paymentAmount'){
+                if (value <= Number(accommodationFields.accommodationAmount)){
+                    setAccommodationFields((accommodationFields)=>{
+                        return {...accommodationFields, [name]:value}
                     })
                 }
             }else{
@@ -307,6 +425,7 @@ const Accommodation = ()=>{
             setAlert('Customer Added Successfully!')
             setAlertTimeout(5000)
             setCustomerStatus('Add Customer')
+            setFillMode('payment')
         }
     }
     const deleteCustomer = async (customer)=>{
@@ -375,7 +494,6 @@ const Accommodation = ()=>{
                 />} 
                 {showReceipt && <AccommodationReceipt
                     curAccommodation = {curAccommodation}
-                    month = {months[new Date(Date.now()).getMonth()]}
                     setShowReceipt={(value)=>{
                         setShowReceipt(value)                        
                     }}                                  
@@ -472,21 +590,35 @@ const Accommodation = ()=>{
                         }
                     }).map((accommodation, index)=>{
                         const {createdAt, postingDate, employeeId, customerId, roomNo, accommodationAmount,
-                            arrivalDate, departureDate, arrivalTime, departureTime
+                            arrivalDate, departureDate, arrivalTime, departureTime, paymentStatus, paymentAmount
                         } = accommodation 
                         return(
-                            <div className={'dept' + (curAccommodation?.createdAt===createdAt?' curview':'')} key={index} 
+                            <div className={'dept relative' + (curAccommodation?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
                                     handleAccommodationViewClick(accommodation)
                                 }}
                             >
-                                <div className='dets sldets'>
+                                <div className={'stsvw'+(paymentStatus==='Fully Paid'?' stspd':' stsupd')}
+                                        onClick={()=>{
+
+                                            setFillMode('payment')
+                                        }}
+                                    >
+                                        <div>{paymentStatus}</div>
+                                    </div>
+                                <div className={'dets sldets'}>
+                                    
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Room No: <b>{roomNo}</b></div>
-                                    <div>Rented By: <b>{
-                                        customerId
-                                    }</b></div>
+                                    <div>Rented By: {customers?.map((customer)=>{
+                                        if (customerId === customer.i_d){
+                                            return <b>{`${customer.fullName}`}</b>
+                                        }
+                                        
+                                    })}</div>
                                     <div>Amount: <b>{'₦'+accommodationAmount.toLocaleString()}</b></div>
+                                    <div>Payment Amount: <b>{'₦'+paymentAmount.toLocaleString()}</b></div>
+                                    <div>Debt: <b>{'₦'+(Number(accommodationAmount) - Number(paymentAmount)).toLocaleString()}</b></div>
                                     <div>Arrival Date (Time): <b>{`${getDate(arrivalDate)} (${arrivalTime})`}</b></div>
                                     <div>Departure Date (Time): <b>{`${getDate(departureDate)} (${departureTime})`}</b></div>
                                     <div className='deptdesc'>{`Accommodation Posted By:`} <b>{
@@ -503,7 +635,7 @@ const Accommodation = ()=>{
                                         setAlertState('info')
                                         setAlert('You are about to delete the selected Accommodation Record. Please Delete again if you are sure!')
                                         setAlertTimeout(5000)
-                                        deleteAccommodation(accommodation)
+                                        deleteAccommodation(accommodation)                                        
                                     }}
                                 >
                                     Delete
@@ -556,6 +688,7 @@ const Accommodation = ()=>{
                             className='add slsadd'
                             onClick={()=>{
                                 if (salesOpts==='accommodation'){
+                                    setFillMode('')
                                     setIsView(false)
                                     setAccommodationFields({...defaultAccommodationFields})
                                     setCurAccomodation(null)
@@ -578,7 +711,8 @@ const Accommodation = ()=>{
                             <div name='customers' className={salesOpts==='customers' ? 'slopts': ''}>Customers</div>                            
                             <div name='accommodation' className={salesOpts==='accommodation' ? 'slopts': ''}>Accommodation</div>
                         </div>}
-                        {salesOpts==='accommodation' && (<div className='addnewsales'>
+                        
+                        {salesOpts==='accommodation' && fillmode === '' && <div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
                                 <select 
@@ -593,7 +727,6 @@ const Accommodation = ()=>{
                                 >
                                     <option value=''>Select Sales Person</option>
                                     {employees.filter((fltemp)=>{
-
                                         if (fltemp.dismissalDate){
                                             if (new Date(fltemp.dismissalDate).getMonth() >= new Date(saleFrom).getMonth()){
                                                 return fltemp
@@ -726,9 +859,59 @@ const Accommodation = ()=>{
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
+                            </div>                                             
+                        </div>}
+                        {salesOpts==='accommodation' && fillmode === 'payment' && <div className='addnewsales'>
+                            <div className='acpymdt'>Payment Details</div>
+                            <div className='inpcov'>
+                                <div>Payment Amount</div>
+                                <input 
+                                    className='forminp'
+                                    name='paymentAmount'
+                                    type='number'
+                                    placeholder='Payment Amount'
+                                    value={accommodationFields.paymentAmount}
+                                    disabled={isView && ['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus)}
+                                    onChange={(e)=>{
+                                        handleAccommodationFieldChange(e)
+                                    }}
+                                />
                             </div>
-                                                                          
-                        </div>)}
+                            <div className='inpcov'>
+                                <div>Select Payment Point</div>
+                                <select 
+                                    className='forminp'
+                                    name='payPoint'
+                                    type='text'
+                                    placeholder='Payment Point'
+                                    value={accommodationFields.payPoint}
+                                    disabled={isView && ['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus)}
+                                    onChange={(e)=>{
+                                        handleAccommodationFieldChange(e)
+                                    }}
+                                >
+                                    <option value=''>Select Payment Point</option>
+                                    {Object.keys(payPoints).map((payPoint, index)=>{
+                                        return <option key={index} value={payPoint}>{payPoint.toUpperCase()}</option>
+                                    })}
+                                </select>
+                            </div>                            
+                            <div className='inpcov'>
+                                <div>Payment Receipt</div>
+                                <input 
+                                    className='forminp'
+                                    name='paymentReceipt'
+                                    type='text'
+                                    placeholder='Enter Receipt Number'
+                                    disabled={(isView && ['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus)) || accommodationFields.payPoint === 'cash'}
+                                    value={accommodationFields.paymentReceipt}
+                                    onChange={(e)=>{
+                                        handleAccommodationFieldChange(e)
+                                    }}
+                                />
+                            </div>
+                        </div>}
+                        
                         {salesOpts==='customers' && <div className='basic'>                            
                             <div className='inpcov'>
                                 <div>Customer ID</div>
@@ -830,8 +1013,8 @@ const Accommodation = ()=>{
                             </div>
                         </div>}                        
                     </div>
-                    {(!isView) && <div className='confirm'>     
-                        {salesOpts === 'accommodation' && <div className='inpcov salesinpcov'>
+                    {(!isView || (curAccommodation?.paymentStatus!=='Fully Paid' && fillmode==='payment')) && <div className='confirm'>     
+                        {(salesOpts === 'accommodation' && !fillmode) && <div className='inpcov salesinpcov'>
                             <input 
                                 className='forminp'
                                 name='postingDate'
@@ -845,32 +1028,47 @@ const Accommodation = ()=>{
                             />
                         </div>}  
                                     
-                        {salesOpts === 'accommodation' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
+                        {(salesOpts === 'accommodation' && accommodationFields?.paymentStatus==='Make Payment') && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:accommodationFields.accommodationAmount?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
                                 if (accommodationFields.accommodationAmount){
-                                    var ct=0                                    
-                                    var requiredNo = Object.keys(accommodationFields).length
-                                    Object.keys(accommodationFields).forEach((field)=>{
-                                        if (accommodationFields[field]){
-                                            ct++
+                                    if (fillmode === 'payment'){
+                                        if (accommodationFields.paymentAmount>0 && accommodationFields.payPoint &&
+                                            accommodationFields.paymentReceipt
+                                        ){
+                                            postPayment()
+                                        }else{
+                                            setActionMessage('')
+                                            setAlertState('error')
+                                            setAlert(
+                                                `All Fields Are Required! Kindly Fill All`
+                                            )
+                                            setAlertTimeout(5000)
                                         }
-                                    })
-                                    if (ct===requiredNo){
-                                        postAccommodation()
                                     }else{
-                                        setActionMessage('')
-                                        setAlertState('error')
-                                        setAlert(
-                                            `All Fields Are Required! Kindly Fill All`
-                                        )
-                                        setAlertTimeout(10000)                                        
+                                        var ct=0                                    
+                                        var requiredNo = Object.keys(accommodationFields).length - 3
+                                        Object.keys(accommodationFields).forEach((field)=>{
+                                            if (accommodationFields[field]){
+                                                ct++
+                                            }
+                                        })
+                                        if (ct===requiredNo){
+                                            postAccommodation()
+                                        }else{
+                                            setActionMessage('')
+                                            setAlertState('error')
+                                            setAlert(
+                                                `All Fields Are Required! Kindly Fill All`
+                                            )
+                                            setAlertTimeout(5000)                                        
+                                        }
                                     }
                                 }
                             }}
-                        >{accommodationStatus}</div>}
+                        >{(fillmode==='payment')? 'Make Payment' : accommodationStatus}</div>}
                         {salesOpts === 'customers' && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:(customerFields.fullName && customerFields.phoneNo && customerFields.address)?'pointer':'not-allowed'
