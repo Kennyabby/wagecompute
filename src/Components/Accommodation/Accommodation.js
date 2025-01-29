@@ -57,6 +57,9 @@ const Accommodation = ()=>{
         '5':{
             price: 15000
         },
+        'SHORT REST':{
+            price: 5000
+        }
     }
     const defaultCustomerFields = {
         i_d: '',
@@ -69,7 +72,7 @@ const Accommodation = ()=>{
     }
 
     const defaultAccommodationFields = {
-        employeeId: '',
+        employeeId: companyRecord.emailid,
         customerId:'',
         arrivalDate: new Date(Date.now()).toISOString().slice(0, 10), 
         departureDate:'',
@@ -160,8 +163,9 @@ const Accommodation = ()=>{
             if (!accommodationCustomer){
                 const salesDoc = {}
                 salesDoc.customerId = customer.i_d
+                salesDoc.phoneNo = customer.phoneNo
                 var totalAccommodationAmount = 0
-                var totalPaymentAmount= 0
+                var totalPaymentAmount = 0
                 var totalAccommodationDays = 0
                 accommodations.filter((ftrsale)=>{
                     const slPostingDate = new Date(ftrsale.postingDate).getTime()
@@ -488,8 +492,7 @@ const Accommodation = ()=>{
             setAlertState('success')
             setAlert('Customer Added Successfully!')
             setAlertTimeout(5000)
-            setCustomerStatus('Add Customer')
-            setFillMode('payment')
+            setCustomerStatus('Add Customer')            
         }
     }
     const deleteCustomer = async (customer)=>{
@@ -656,7 +659,13 @@ const Accommodation = ()=>{
                                     return ftrsale
                                 }
                             }else{
-                                return ftrsale
+                                if (companyRecord?.status !== 'admin'){
+                                    if (ftrsale.employeeId === companyRecord.emailid){
+                                        return ftrsale
+                                    }
+                                }else{
+                                    return ftrsale
+                                }
                             }
                         }
                     }).map((accommodation, index)=>{
@@ -791,7 +800,7 @@ const Accommodation = ()=>{
                                     name='employeeId'
                                     type='text'
                                     value={accommodationFields.employeeId} 
-                                    disabled={isView}                                   
+                                    disabled={true}                                   
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)
                                     }}
@@ -1101,7 +1110,7 @@ const Accommodation = ()=>{
                                     
                         {(salesOpts === 'accommodation' && accommodationFields?.paymentStatus==='Make Payment') && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:accommodationFields.accommodationAmount?'pointer':'not-allowed'
+                                cursor:(accommodationFields.accommodationAmount && !accommodationFields.posted)?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
                                 if (accommodationFields.accommodationAmount){
@@ -1127,7 +1136,10 @@ const Accommodation = ()=>{
                                             }
                                         })
                                         if (ct===requiredNo){
-                                            postAccommodation()
+                                            if (!accommodationFields.posted){
+                                                postAccommodation()
+                                            }
+                                            accommodationFields.posted = true
                                         }else{
                                             setActionMessage('')
                                             setAlertState('error')
@@ -1142,11 +1154,23 @@ const Accommodation = ()=>{
                         >{(fillmode==='payment')? 'Make Payment' : accommodationStatus}</div>}
                         {salesOpts === 'customers' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:(customerFields.fullName && customerFields.phoneNo)?'pointer':'not-allowed'
+                                cursor:(customerFields.fullName && customerFields.phoneNo && !customerFields.posted)?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
                                 if (customerFields.fullName && customerFields.phoneNo){
-                                    addCustomers()
+                                    if (String(customerFields.phoneNo).split('').length >= 11){
+                                        if (!customerFields.posted){
+                                            addCustomers()
+                                        }
+                                        customerFields.posted = true
+                                    }else{
+                                        setActionMessage('')
+                                        setAlertState('error')
+                                        setAlert(
+                                            `Please enter a valid phone number!`
+                                        )
+                                        setAlertTimeout(5000) 
+                                    }
                                 }else{
                                     setActionMessage('')
                                     setAlertState('error')

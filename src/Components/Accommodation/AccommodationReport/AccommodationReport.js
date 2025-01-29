@@ -119,6 +119,7 @@ const AccommodationReport = ({
                                             <thead>
                                                 {multiple ? <tr>
                                                     <th><h8 className='theader'>CUSTOMERS</h8></th>
+                                                    <th><h8 className='theader'>PHONE NO</h8></th>
                                                     <th><h8 className='theader'>TOTAL ACCOMMODATION DAYS</h8></th>
                                                     <th><h8 className='theader'>TOTAL ACCOMMODATION AMOUNT</h8></th>                                                    
                                                     <th><h8 className='theader'>TOTAL ACCOMMODATION PAYMENTS</h8></th>
@@ -145,6 +146,7 @@ const AccommodationReport = ({
                                                                 )                                                                                                                
                                                             }
                                                         })}
+                                                        <td className='ttrow'>{saleReport.phoneNo}</td>
                                                         <td className='ttrow'>{saleReport.totalAccommodationDays.toLocaleString()}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.totalAccommodationAmount.toLocaleString()}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.totalPaymentAmount.toLocaleString()}</td>
@@ -173,6 +175,7 @@ const AccommodationReport = ({
                                             {multiple ? <tfoot>
                                                 <tr>
                                                     <th className='theader'>TOTAL</th>
+                                                    <th></th>
                                                     {[''].map((args, id)=>{
                                                         var sumTotalDays = 0
                                                         reportSales?.forEach((saleReport)=>{
