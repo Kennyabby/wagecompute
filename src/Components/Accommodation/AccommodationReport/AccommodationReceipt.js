@@ -72,7 +72,7 @@ const AccommodationReceipt = ({
     const printToPDF = () => {
         const element = targetRef.current;
         const options = {
-            margin:       0.1,
+            margin:       0.2,
             filename:     `ACCOMMODATION RECEIPT ${createdAt} - FOR CUSTOMER ${fullName.toUpperCase()}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
@@ -144,8 +144,8 @@ const AccommodationReceipt = ({
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th>CHECK-IN TIME (12 NOON)</th>
-                                                <th>CHECK-OUT TIME (12 NOON)</th>
+                                                <th>CHECK-IN TIME     12 NOON</th>
+                                                <th>CHECK-OUT TIME    12 NOON</th>
                                                 <th>LATE CHECK-OUT TIME WILL BE CHARGED 50%</th>
                                             </tr>
                                         </thead>
