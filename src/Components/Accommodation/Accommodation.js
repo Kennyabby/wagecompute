@@ -155,7 +155,72 @@ const Accommodation = ()=>{
         }
     },[salesOpts])
     const calculateAccommodationSales = ()=>{
-
+        var salesReportList = []        
+        {customers.forEach((customer)=>{
+            if (!accommodationCustomer){
+                const salesDoc = {}
+                salesDoc.customerId = customer.i_d
+                var totalAccommodationAmount = 0
+                var totalPaymentAmount= 0
+                var totalAccommodationDays = 0
+                accommodations.filter((ftrsale)=>{
+                    const slPostingDate = new Date(ftrsale.postingDate).getTime()
+                    const fromDate = new Date(saleFrom).getTime()
+                    const toDate = new Date(saleTo).getTime()
+                    if ( slPostingDate>= fromDate && slPostingDate<=toDate
+                    ){
+                        return ftrsale
+                    }
+                }).forEach((accommodation,index)=>{
+                    if (accommodation.customerId === customer.i_d){
+                        var accommodationDays = 1
+                        const arrivalDate = new Date(accommodation.arrivalDate).getTime()
+                        const departureDate = new Date(accommodation.departureDate).getTime()
+                        const days = (departureDate - arrivalDate) / (24*60*60*1000)
+                        accommodationDays = days ? days : accommodationDays
+                        totalAccommodationAmount +=  Number(accommodation.accommodationAmount)
+                        totalPaymentAmount += Number(accommodation.paymentAmount) 
+                        totalAccommodationDays += accommodationDays
+                        
+                    }
+                })       
+                salesDoc.totalAccommodationAmount = totalAccommodationAmount
+                salesDoc.totalPaymentAmount = totalPaymentAmount
+                salesDoc.totalAccommodationDays = totalAccommodationDays
+                salesReportList = salesReportList.concat(salesDoc)
+            }else{
+                accommodations.filter((ftrsale)=>{
+                    const slPostingDate = new Date(ftrsale.postingDate).getTime()
+                    const fromDate = new Date(saleFrom).getTime()
+                    const toDate = new Date(saleTo).getTime()
+                    if ( slPostingDate>= fromDate && slPostingDate<=toDate
+                    ){
+                        return ftrsale
+                    }
+                }).forEach((accommodation)=>{
+                    if (accommodation.customerId === customer.i_d && customer.i_d === accommodationCustomer){                                    
+                        const {employeeId, arrivalDate, departureDate,
+                            accommodationAmount, postingDate, roomNo, paymentAmount, payPoint
+                        } = accommodation
+                        var accommodationDays = 1
+                        const days = (new Date(departureDate).getTime() - new Date(arrivalDate).getTime()) / (24*60*60*1000)
+                        accommodationDays = days ? days : accommodationDays
+                        const cusSaleDoc = {}
+                        cusSaleDoc.postingDate = postingDate
+                        cusSaleDoc.roomNo = roomNo
+                        cusSaleDoc.accommodationDays = accommodationDays
+                        cusSaleDoc.accommodationAmount = accommodationAmount
+                        cusSaleDoc.paymentAmount = paymentAmount
+                        cusSaleDoc.payPoint = payPoint
+                        cusSaleDoc.employeeId = employeeId
+                        salesReportList = salesReportList.concat(cusSaleDoc)
+                    }
+                })
+            }
+            
+        })}
+        // console.log(salesReportList)
+        setReportSales([...salesReportList])
     }
     const postAccommodation = async ()=> { 
         setAccommodationStatus('Posting Accommodation...')        
@@ -482,7 +547,8 @@ const Accommodation = ()=>{
             <div className='sales'>         
                 {showReport && <AccommodationReport
                     reportSales = {reportSales}
-                    multiple={isMultiple}
+                    multiple={!accommodationCustomer}
+                    accommodationCustomer={accommodationCustomer}
                     setShowReport={(value)=>{
                         setShowReport(value)
                         if (!accommodationCustomer){
@@ -586,7 +652,13 @@ const Accommodation = ()=>{
 
                         if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
                         ){
-                            return ftrsale
+                            if (accommodationCustomer){
+                                if (accommodationCustomer === ftrsale.customerId){
+                                    return ftrsale
+                                }
+                            }else{
+                                return ftrsale
+                            }
                         }
                     }).map((accommodation, index)=>{
                         const {createdAt, postingDate, employeeId, customerId, roomNo, accommodationAmount,

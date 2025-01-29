@@ -5,10 +5,9 @@ import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
 
 const AccommodationReport = ({
-    reportDebts, multiple,
-    recoveryMonth,
-    setShowDebtReport,
-    recoveryEmployeeId
+    reportSales, multiple,
+    setShowReport,
+    accommodationCustomer
 })=>{
     const [InvoiceNumber, setInvoiceNumber] = useState('')
     
@@ -18,7 +17,7 @@ const AccommodationReport = ({
         getDate,
         company, companyRecord,
         monthDays,
-        employees,
+        employees, customers,
         attendance
     } = useContext(ContextProvider)
    
@@ -66,14 +65,14 @@ const AccommodationReport = ({
               useCORS: true
            }
         },
-        filename: `DEBT REPORT - ${recoveryMonth}.pdf`
+        filename: `ACCOMMODATION REPORT.pdf`
     };
 
     const printToPDF = () => {
         const element = targetRef.current;
         const options = {
             margin:       0.1,
-            filename:     `DEBT REPORT - ${recoveryMonth}.pdf`,
+            filename:     `ACCOMMODATION REPORT.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
@@ -85,10 +84,10 @@ const AccommodationReport = ({
             {<div className='payslip'>
                     <div className='cancelslip'
                         onClick= {()=>{
-                            setShowDebtReport(false)
+                            setShowReport(false)
                         }}
                     >
-                        Cancel
+                        Close
                     </div>
                     <div className='mainslip'>
                         <div className=""  ref={targetRef}>
@@ -103,65 +102,71 @@ const AccommodationReport = ({
                                                 <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p>
                                                 {/* <p className='billfrompayee'>{`SALES FROM `}<b>{`${getDate(fromDate)}`}</b>{` TO `}<b>{`${getDate(toDate)}`}</b></p> */}
-                                                <p className='billfrompayee'><b>{'DEBT AND RECOVERY REPORT FOR THE MONTH - ' + recoveryMonth}</b></p>
+                                                <p className='billfrompayee'><b>{'ACCOMMODATION REPORT'}</b></p>
                                             </div>
                                        </div>
                                     </div>
                                     <div className='tablecover'>
-                                        {!multiple && employees.map((emp)=>{
-                                            if (emp.i_d===recoveryEmployeeId){
+                                        {!multiple && customers.map((customer)=>{
+                                            if (customer.i_d===accommodationCustomer){
                                                 return(
-                                                    <div>{`(${emp.i_d}) ${emp.firstName} ${emp.lastName}`}</div>                                                        
+                                                    <div>{`${customer.fullName}`}</div>                                                        
                                                 )                                                                                                                
                                             }
                                         })} 
-                                        <table className="table payeetable">   
+                                        <div></div>
+                                        <table className="table payeetable">                                               
                                             <thead>
                                                 {multiple ? <tr>
-                                                    <th><h8 className='theader'>EMPLOYEES</h8></th>
-                                                    <th><h8 className='theader'>TOTAL DEBT</h8></th>
-                                                    <th><h8 className='theader'>TOTAL DEBT RECOVERED</h8></th>                                                    
-                                                    <th><h8 className='theader'>OUTSTANDING DEBT</h8></th>
+                                                    <th><h8 className='theader'>CUSTOMERS</h8></th>
+                                                    <th><h8 className='theader'>TOTAL ACCOMMODATION DAYS</h8></th>
+                                                    <th><h8 className='theader'>TOTAL ACCOMMODATION AMOUNT</h8></th>                                                    
+                                                    <th><h8 className='theader'>TOTAL ACCOMMODATION PAYMENTS</h8></th>
                                                 </tr>:
                                                 
                                                 <tr>
                                                     <th><h8 className='theader'>POSTING DATE</h8></th>
-                                                    <th><h8 className='theader'>TRANFERED FROM</h8></th>
-                                                    <th><h8 className='theader'>DEBT</h8></th>                                                    
-                                                    <th><h8 className='theader'>RECOVERED</h8></th>
-                                                    <th><h8 className='theader'>OUTSTANDING DEBT</h8></th>
+                                                    <th><h8 className='theader'>ROOM NO</h8></th>
+                                                    <th><h8 className='theader'>ACCOMMODATION DAYS</h8></th>                                                    
+                                                    <th><h8 className='theader'>ACCOMMODATION AMOUNT</h8></th>
+                                                    <th><h8 className='theader'>PAYMENT AMOUNT</h8></th>
+                                                    <th><h8 className='theader'>PAY POINT</h8></th>
+                                                    <th><h8 className='theader'>HANDLED BY</h8></th>
+                                                    
                                                 </tr>}
                                             </thead>
                                             <tbody>
-                                                {multiple ? reportDebts?.map((debtReport, index)=>{
+                                                {multiple ? reportSales?.map((saleReport, index)=>{
                                                     return <tr key={index}>
-                                                        {employees.map((emp)=>{
-                                                            if (emp.i_d===debtReport.i_d){
+                                                        {customers.map((customer)=>{
+                                                            if (customer.i_d===saleReport.customerId){
                                                                 return(
-                                                                    <td className='ttrow'>{emp.firstName}</td>                                                        
+                                                                    <td>{`${customer.fullName}`}</td>                                                        
                                                                 )                                                                                                                
                                                             }
-                                                        })} 
-                                                        <td className='ttrow'>{'₦'+debtReport.totalDebt.toLocaleString()}</td>
-                                                        <td className='ttrow'>{'₦'+debtReport.totalDebtRecovered.toLocaleString()}</td>
-                                                        <td className='ttrow'>{'₦'+debtReport.totalOutstanding.toLocaleString()}</td>
+                                                        })}
+                                                        <td className='ttrow'>{saleReport.totalAccommodationDays.toLocaleString()}</td>
+                                                        <td className='ttrow'>{'₦'+saleReport.totalAccommodationAmount.toLocaleString()}</td>
+                                                        <td className='ttrow'>{'₦'+saleReport.totalPaymentAmount.toLocaleString()}</td>
                                                     </tr>
                                                 }) : 
-                                                reportDebts?.map((debtReport, index)=>{
+                                                reportSales?.map((saleReport, index)=>{
                                                     return <tr key={index}>
-                                                        <td className='ttrow'>{debtReport.postingDate}</td>
-                                                        {debtReport.transferedFrom !== 'Sales Debt' ? employees.map((emp)=>{
-                                                            if (emp.i_d===debtReport.transferedFrom){
-                                                                return(
-                                                                    <td className='ttrow'>{emp.firstName}</td>                                                        
-                                                                )                                                                                                                
-                                                            }
-                                                        }):
-                                                        <td className='ttrow'>{debtReport.transferedFrom}</td>
-                                                        }                                                        
-                                                        <td className='ttrow'>{'₦'+debtReport.debt.toLocaleString()}</td>
-                                                        <td className='ttrow'>{'₦'+debtReport.debtRecovered.toLocaleString()}</td>
-                                                        <td className='ttrow'>{'₦'+debtReport.debtOutstanding.toLocaleString()}</td>
+                                                        <td className='ttrow'>{saleReport.postingDate}</td>
+                                                        <td className='ttrow'>{'ROOM '+saleReport.roomNo}</td>
+                                                        <td className='ttrow'>{saleReport.accommodationDays}</td>
+                                                        <td className='ttrow'>{'₦'+saleReport.accommodationAmount.toLocaleString()}</td>
+                                                        <td className='ttrow'>{'₦'+saleReport.paymentAmount.toLocaleString()}</td>
+                                                        <td className='ttrow'>{saleReport.payPoint.toUpperCase()}</td>                                                        
+                                                        {
+                                                            employees.map((emp)=>{
+                                                                if (emp.i_d===saleReport.employeeId){
+                                                                    return(
+                                                                        <td className='ttrow'>{`${emp.firstName} ${emp.lastName}`}</td>                                                      
+                                                                    )                                                                                                                
+                                                                }
+                                                            })
+                                                        }
                                                     </tr>
                                                 })}                                                                                                                                                
                                             </tbody>
@@ -169,26 +174,26 @@ const AccommodationReport = ({
                                                 <tr>
                                                     <th className='theader'>TOTAL</th>
                                                     {[''].map((args, id)=>{
-                                                        var sumTotalDebt = 0
-                                                        reportDebts?.forEach((debtReport)=>{
-                                                            sumTotalDebt += debtReport.totalDebt
+                                                        var sumTotalDays = 0
+                                                        reportSales?.forEach((saleReport)=>{
+                                                            sumTotalDays += Number(saleReport.totalAccommodationDays)
                                                         })
-                                                        return <th className='theader' key={id}>{'₦'+sumTotalDebt.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{sumTotalDays.toLocaleString()}</th>
                                                     })}                                                                                        
                                                     {[''].map((args, id)=>{
-                                                        var sumTotalDebtRecovered = 0
-                                                        reportDebts?.forEach((debtReport)=>{
-                                                            sumTotalDebtRecovered += debtReport.totalDebtRecovered
+                                                        var sumTotalAmount = 0
+                                                        reportSales?.forEach((saleReport)=>{
+                                                            sumTotalAmount += Number(saleReport.totalAccommodationAmount)
                                                         })
-                                                        return <th className='theader' key={id}>{'₦'+sumTotalDebtRecovered.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalAmount.toLocaleString()}</th>
                                                     })}                                                                                        
                                                     {[''].map((args, id)=>{
-                                                        var sumTotalOutstanding = 0
-                                                        reportDebts?.forEach((debtReport)=>{
-                                                            sumTotalOutstanding += debtReport.totalOutstanding
+                                                        var sumTotalPayment = 0
+                                                        reportSales?.forEach((saleReport)=>{
+                                                            sumTotalPayment += Number(saleReport.totalPaymentAmount)
                                                         })
-                                                        return <th className='theader' key={id}>{'₦'+sumTotalOutstanding.toLocaleString()}</th>
-                                                    })}                                                                                        
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalPayment.toLocaleString()}</th>
+                                                    })}                                                                                  
                                                 </tr>
                                             </tfoot> : 
                                             <tfoot>
@@ -196,26 +201,28 @@ const AccommodationReport = ({
                                                     <th className='theader'>TOTAL</th>                                                                                        
                                                     <th></th>                                                                                        
                                                     {[''].map((args, id)=>{
-                                                        var sumTotalDebt = 0
-                                                        reportDebts?.forEach((debtReport)=>{
-                                                            sumTotalDebt += debtReport.debt
+                                                        var sumTotalDays = 0
+                                                        reportSales?.forEach((saleReport)=>{
+                                                            sumTotalDays += Number(saleReport.accommodationDays)
                                                         })
-                                                        return <th className='theader' key={id}>{'₦'+sumTotalDebt.toLocaleString()}</th>
-                                                    })}
-                                                    {[''].map((args, id)=>{
-                                                        var sumTotalDebtRecovered = 0
-                                                        reportDebts?.forEach((debtReport)=>{
-                                                            sumTotalDebtRecovered += debtReport.debtRecovered
-                                                        })
-                                                        return <th className='theader' key={id}>{'₦'+sumTotalDebtRecovered.toLocaleString()}</th>
+                                                        return <th className='theader' key={id}>{sumTotalDays.toLocaleString()}</th>
                                                     })}                                                                                        
                                                     {[''].map((args, id)=>{
-                                                        var sumTotalOutstanding = 0
-                                                        reportDebts?.forEach((debtReport)=>{
-                                                            sumTotalOutstanding += debtReport.debtOutstanding
+                                                        var sumTotalAmount = 0
+                                                        reportSales?.forEach((saleReport)=>{
+                                                            sumTotalAmount += Number(saleReport.accommodationAmount)
                                                         })
-                                                        return <th className='theader' key={id}>{'₦'+sumTotalOutstanding.toLocaleString()}</th>
-                                                    })}       
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalAmount.toLocaleString()}</th>
+                                                    })}                                                                                        
+                                                    {[''].map((args, id)=>{
+                                                        var sumTotalPayment = 0
+                                                        reportSales?.forEach((saleReport)=>{
+                                                            sumTotalPayment += Number(saleReport.paymentAmount)
+                                                        })
+                                                        return <th className='theader' key={id}>{'₦'+sumTotalPayment.toLocaleString()}</th>
+                                                    })}
+                                                    <th></th>
+                                                    <th></th>
                                                 </tr>
                                             </tfoot>
                                             }
