@@ -108,8 +108,17 @@ const Sales = ()=>{
 
     useEffect(()=>{
         var accommodationRecord = []
-        if (!isView && !saleEmployee){
-            const postingDate1 = postingDate
+        const postingDate1 = postingDate
+        var ct=0
+        sales.forEach((sale)=>{
+            if (getDate(sale.postingDate) === getDate(postingDate1)){
+                ct++
+            }
+            if(ct){
+                return
+            }
+        })
+        if (!isView && !saleEmployee && !ct){
             var accommodationEmployees = []
             accommodations.forEach((accommodation)=>{
                 const employeeId = accommodation.employeeId
