@@ -94,6 +94,7 @@ const Sales = ()=>{
         paymentAmount: '',
         balanceRemaining: 0
     }
+    const [accommodationRecords, setAccommodationRecords] = useState([])
     const [fields, setFields] = useState([])
     const [recoveryFields, setRecoveryFields] = useState([])
     const [rentalFields, setRentalFields] = useState({
@@ -105,6 +106,61 @@ const Sales = ()=>{
         storePath('sales')  
     },[storePath])
 
+    useEffect(()=>{
+        const postingDate1 = postingDate
+        var accommodationRecord = []
+        var accommodationEmployees = []
+        accommodations.forEach((accommodation)=>{
+            const employeeId = accommodation.employeeId
+            if (!accommodationEmployees.includes(employeeId)){
+                accommodationEmployees = accommodationEmployees.concat(employeeId)
+            }
+        })
+        accommodationEmployees.forEach((employeeId)=>{
+            const saleRecord = {}
+            saleRecord.isAccommodation = true
+            var totalAccommodationAmount = 0
+            var totalPaymentAmount = 0
+            var totalCashSales = 0
+            var totalBankSales = 0
+            const allPayPoints = {
+                'cash':0, 'moniepoint1':0, 'moniepoint2':0, 'moniepoint3':0
+            }
+            var postingDates=[]
+            accommodations.forEach((accommodation)=>{                
+                if (employeeId === accommodation.employeeId){
+                    const {postingDate, payPoint, accommodationAmount, paymentAmount} = accommodation
+                    if (!postingDates.includes(getDate(postingDate)) && postingDate1 === postingDate){
+                        postingDates = postingDate.concat(getDate(postingDate))
+                    }
+                    if (postingDate1 === postingDate){                        
+                        totalAccommodationAmount += Number(accommodationAmount)
+                        totalPaymentAmount += Number(paymentAmount)
+                        allPayPoints[payPoint] += Number(paymentAmount)
+                        totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : ''                  
+                        totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : ''                  
+                    }
+                }
+            })
+            if (postingDates.length && !isView){
+                const salesUnits1 = {...salesUnits}
+                salesUnits1['accomodation'] = {...allPayPoints}
+                saleRecord.employeeId = employeeId
+                saleRecord.totalSales = totalAccommodationAmount
+                saleRecord.cashSales = totalCashSales
+                saleRecord.bankSales = totalBankSales
+                saleRecord.debt = Number(totalAccommodationAmount) - Number(totalPaymentAmount)
+                saleRecord.shortage = ''
+                saleRecord.debtRecovered = ''
+                saleRecord.salesPoint = 'accomodation'
+                Object.keys(salesUnits1).forEach((saleUnit)=>{
+                    saleRecord[saleUnit] = salesUnits1[saleUnit]
+                })
+                accommodationRecord = accommodationRecord.concat(saleRecord)
+            }
+        })
+        setAccommodationRecords(accommodationRecord)
+    },[accommodations, postingDate, isView])    
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
@@ -1499,7 +1555,7 @@ const Sales = ()=>{
                                 />
                             </div>
                         </div>}
-                        {salesOpts==='sales' && fields.map((field, index)=>{
+                        {salesOpts==='sales' && [...accommodationRecords, ...fields].map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
                             // console.log(index)
                             return (
@@ -1553,7 +1609,7 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Debt'
                                                 value={field.debt}
-                                                disabled={isView}
+                                                disabled={isView || (field.isAccommodation && !isView)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -1567,7 +1623,7 @@ const Sales = ()=>{
                                                 type='text'
                                                 placeholder='Sales Point'
                                                 value={field.salesPoint}
-                                                disabled={isView || field.salesPoint}
+                                                disabled={isView || field.salesPoint || (field.isAccommodation && !isView)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -1592,7 +1648,7 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Shortage'
                                                 value={field.shortage}
-                                                disabled={isView}
+                                                disabled={isView || (field.isAccommodation && !isView)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -1837,7 +1893,7 @@ const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isV
                             type='number'
                             placeholder={payPoint}
                             value={field[salesUnit][payPoint]}
-                            disabled={isView}
+                            disabled={isView || (field.isAccommodation && !isView)}
                             onChange={(e)=>{
                                 handleFieldChange({index,e})
                             }}
