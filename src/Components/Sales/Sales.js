@@ -135,7 +135,9 @@ const Sales = ()=>{
                         if (postingDate1 === postingDate){                        
                             totalAccommodationAmount += Number(accommodationAmount)
                             totalPaymentAmount += Number(paymentAmount)
-                            allPayPoints[payPoint] = Number(allPayPoints[payPoint]) + Number(paymentAmount)
+                            if (payPoint){
+                                allPayPoints[payPoint] = Number(allPayPoints[payPoint]) + Number(paymentAmount)
+                            }
                             totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : 0                  
                             totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : 0                  
                         }
