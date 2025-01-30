@@ -107,60 +107,60 @@ const Sales = ()=>{
     },[storePath])
 
     useEffect(()=>{
-        const postingDate1 = postingDate
         var accommodationRecord = []
-        var accommodationEmployees = []
-        accommodations.forEach((accommodation)=>{
-            const employeeId = accommodation.employeeId
-            if (!accommodationEmployees.includes(employeeId)){
-                accommodationEmployees = accommodationEmployees.concat(employeeId)
-            }
-        })
-        accommodationEmployees.forEach((employeeId)=>{
-            const saleRecord = {}
-            saleRecord.isAccommodation = true
-            var totalAccommodationAmount = 0
-            var totalPaymentAmount = 0
-            var totalCashSales = 0
-            var totalBankSales = 0
-            const allPayPoints = {
-                'cash':0, 'moniepoint1':0, 'moniepoint2':0, 'moniepoint3':0
-            }
-            var postingDates=[]
-            accommodations.forEach((accommodation)=>{                
-                if (employeeId === accommodation.employeeId){
-                    const {postingDate, payPoint, accommodationAmount, paymentAmount} = accommodation
-                    if (!postingDates.includes(getDate(postingDate)) && postingDate1 === postingDate){
-                        postingDates = postingDate.concat(getDate(postingDate))
-                    }
-                    if (postingDate1 === postingDate){                        
-                        totalAccommodationAmount += Number(accommodationAmount)
-                        totalPaymentAmount += Number(paymentAmount)
-                        allPayPoints[payPoint] += Number(paymentAmount)
-                        totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : 0                  
-                        totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : 0                  
-                    }
+        if (!isView && !saleEmployee){
+            const postingDate1 = postingDate
+            var accommodationEmployees = []
+            accommodations.forEach((accommodation)=>{
+                const employeeId = accommodation.employeeId
+                if (!accommodationEmployees.includes(employeeId)){
+                    accommodationEmployees = accommodationEmployees.concat(employeeId)
                 }
             })
-            if (postingDates.length && !isView){
-                const salesUnits1 = {...salesUnits}
-                salesUnits1['accomodation'] = {...allPayPoints}
-                saleRecord.employeeId = employeeId
-                saleRecord.totalSales = totalAccommodationAmount
-                saleRecord.cashSales = totalCashSales
-                saleRecord.bankSales = totalBankSales
-                saleRecord.debt = Number(totalAccommodationAmount) - Number(totalPaymentAmount)
-                saleRecord.shortage = ''
-                saleRecord.debtRecovered = ''
-                saleRecord.salesPoint = 'accomodation'
-                Object.keys(salesUnits1).forEach((saleUnit)=>{
-                    saleRecord[saleUnit] = salesUnits1[saleUnit]
+            accommodationEmployees.forEach((employeeId)=>{
+                const saleRecord = {}
+                saleRecord.isAccommodation = true
+                var totalAccommodationAmount = 0
+                var totalPaymentAmount = 0
+                var totalCashSales = 0
+                var totalBankSales = 0
+                const allPayPoints = {...payPoints}
+                var postingDates=[]
+                accommodations.forEach((accommodation)=>{                
+                    if (employeeId === accommodation.employeeId){
+                        const {postingDate, payPoint, accommodationAmount, paymentAmount} = accommodation
+                        if (!postingDates.includes(getDate(postingDate)) && postingDate1 === postingDate){
+                            postingDates = postingDate.concat(getDate(postingDate))
+                        }
+                        if (postingDate1 === postingDate){                        
+                            totalAccommodationAmount += Number(accommodationAmount)
+                            totalPaymentAmount += Number(paymentAmount)
+                            allPayPoints[payPoint] = Number(allPayPoints[payPoint]) + Number(paymentAmount)
+                            totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : 0                  
+                            totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : 0                  
+                        }
+                    }
                 })
-                accommodationRecord = accommodationRecord.concat(saleRecord)
-            }
-        })
+                if (postingDates.length){
+                    const salesUnits1 = {...salesUnits}
+                    salesUnits1['accomodation'] = {...allPayPoints}
+                    saleRecord.employeeId = employeeId
+                    saleRecord.totalSales = totalAccommodationAmount
+                    saleRecord.cashSales = totalCashSales
+                    saleRecord.bankSales = totalBankSales
+                    saleRecord.debt = Number(totalAccommodationAmount) - Number(totalPaymentAmount)
+                    saleRecord.shortage = ''
+                    saleRecord.debtRecovered = ''
+                    saleRecord.salesPoint = 'accomodation'
+                    Object.keys(salesUnits1).forEach((saleUnit)=>{
+                        saleRecord[saleUnit] = salesUnits1[saleUnit]
+                    })
+                    accommodationRecord = accommodationRecord.concat(saleRecord)
+                }
+            })
+        }
         setAccommodationRecords(accommodationRecord)
-    },[accommodations, postingDate, isView])    
+    },[accommodations, postingDate, isView, saleEmployee])    
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
@@ -229,6 +229,10 @@ const Sales = ()=>{
             calculateReportSales()
         }else{
             setReportSales(null)
+            setFields([])
+            setAddEmployeeId('')
+            setCurSale(null)
+            setIsView(false)
         }
     },[saleEmployee])
     useEffect(()=>{
@@ -236,7 +240,12 @@ const Sales = ()=>{
             handleViewClick(reportSales)
         }
     },[reportSales])
-    const handleFieldChange = ({index, e})=>{
+    const handleFieldChange = (prop)=>{
+        const {e} = prop
+        var index = prop.index
+        if(accommodationRecords.length){
+            index = prop.index - 1
+        }
         const name = e.target.getAttribute('name')
         const category = e.target.getAttribute('category')
         const value = e.target.value
@@ -285,7 +294,17 @@ const Sales = ()=>{
                 }
             }
             else{
-                fields[index] = {...fields[index], [name]:value}
+                if (name === 'salesPoint'){
+                    if (value!=='accomodation'){
+                        fields[index] = {...fields[index], [name] : value}
+                    }else{
+                        setAlertState('error')
+                        setAlert('Accommodation Entry is not allowed!')
+                        setAlertTimeout(5000)
+                    }
+                }else{
+                    fields[index] = {...fields[index], [name] : value}
+                }
             }
             return [...fields]
         })
@@ -1631,7 +1650,7 @@ const Sales = ()=>{
                                             >
                                                 <option value=''>Select Sales Point</option>
                                                 {Object.keys(salesUnits).filter((fltslunit)=>{
-                                                   
+                                                    
                                                     return fltslunit
                                                 }).map((saleUnit, index)=>{
                                                     
