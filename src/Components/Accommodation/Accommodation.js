@@ -1101,7 +1101,7 @@ const Accommodation = ()=>{
                                 type='date'
                                 placeholder='Posting Date'
                                 value={postingDate}
-                                disabled={isView}
+                                disabled={!companyRecord.status==='admin'}
                                 onChange={(e)=>{
                                     setPostingDate(e.target.value)
                                 }}
