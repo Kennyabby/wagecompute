@@ -137,8 +137,8 @@ const Sales = ()=>{
                         totalAccommodationAmount += Number(accommodationAmount)
                         totalPaymentAmount += Number(paymentAmount)
                         allPayPoints[payPoint] += Number(paymentAmount)
-                        totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : ''                  
-                        totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : ''                  
+                        totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : 0                  
+                        totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : 0                  
                     }
                 }
             })
@@ -356,7 +356,8 @@ const Sales = ()=>{
             var totalDebt = 0      
             var totalShortage = 0 
             var totalBankSales = 0 
-            fields.forEach((field)=>{
+            const fields1 = [...accommodationRecords, ...fields]
+            fields1.forEach((field)=>{
                 totalCashSales += Number(field.cashSales)
                 totalDebt += Number(field.debt)
                 totalShortage += Number(field.shortage)
@@ -369,7 +370,7 @@ const Sales = ()=>{
                 totalBankSales,
                 totalDebt,
                 totalShortage,
-                record: [...fields]
+                record: [...fields1]
             }
     
             const newSales = [newSale, ...sales]        
@@ -1563,7 +1564,7 @@ const Sales = ()=>{
                                     <div className='pdsalesview'>
                                         {`Pending Sales out of ₦${Number(field.totalSales).toLocaleString()}:`} <b> {'₦'+(Number(field.totalSales) - netTotal).toLocaleString()}</b> <b>{` ${field.postingDate? '('+getDate(field.postingDate)+')' : ''}`}</b>
                                     </div>
-                                    {!isView && <MdDelete 
+                                    {!isView && !field.isAccommodation && <MdDelete 
                                         className='salesdelete'
                                         onClick={()=>{
                                             setFields((fields)=>{
@@ -1609,7 +1610,7 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Debt'
                                                 value={field.debt}
-                                                disabled={isView || (field.isAccommodation && !isView)}
+                                                disabled={isView || (field.isAccommodation)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -1623,7 +1624,7 @@ const Sales = ()=>{
                                                 type='text'
                                                 placeholder='Sales Point'
                                                 value={field.salesPoint}
-                                                disabled={isView || field.salesPoint || (field.isAccommodation && !isView)}
+                                                disabled={isView || field.salesPoint || (field.isAccommodation)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -1648,7 +1649,7 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Shortage'
                                                 value={field.shortage}
-                                                disabled={isView || (field.isAccommodation && !isView)}
+                                                disabled={isView || (field.isAccommodation)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -1893,7 +1894,7 @@ const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isV
                             type='number'
                             placeholder={payPoint}
                             value={field[salesUnit][payPoint]}
-                            disabled={isView || (field.isAccommodation && !isView)}
+                            disabled={isView || (field.isAccommodation)}
                             onChange={(e)=>{
                                 handleFieldChange({index,e})
                             }}
