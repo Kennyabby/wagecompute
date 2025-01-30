@@ -306,11 +306,11 @@ const Sales = ()=>{
             }
             else{
                 if (name === 'salesPoint'){
-                    if (value!=='accomodation'){
+                    if (value!=='accomodation' || companyRecord?.status === 'admin'){
                         fields[index] = {...fields[index], [name] : value}
                     }else{
                         setAlertState('error')
-                        setAlert('Accommodation Entry is not allowed!')
+                        setAlert('You are not allowed to enter Accommodation Sales!')
                         setAlertTimeout(5000)
                     }
                 }else{
@@ -348,10 +348,16 @@ const Sales = ()=>{
                     return [...fields]
                 })
             }else if (name==='recoveryPoint'){
-                setRecoveryFields((fields)=>{
-                    fields[index] = {...fields[index], [name]:value, recoveryTransferId:'',recoveryReceipt:''}
-                    return [...fields]
-                })
+                if(value!=='Employee' || companyRecord?.status === 'admin'){                    
+                    setRecoveryFields((fields)=>{
+                        fields[index] = {...fields[index], [name]:value, recoveryTransferId:'',recoveryReceipt:''}
+                        return [...fields]
+                    })
+                }else{
+                    setAlertState('error')
+                    setAlert('Recovery to Employee is not enabled for you!')
+                    setAlertTimeout(5000)
+                }
             }else if (name==='recoveryTransferId'){
                 setRecoveryFields((fields)=>{
                     fields[index] = {...fields[index], [name]:value, recoveryReceipt:value?`TRANSFER TO ID:${value}`:''}
@@ -1383,7 +1389,7 @@ const Sales = ()=>{
                                                         <option key={index} value={paypoint}>{`${paypoint.toUpperCase()}`}</option>
                                                     )
                                                 })}
-                                                <option value='Employee'>EMPLOYEE</option>
+                                                <option key={'em001'} value='Employee'>EMPLOYEE</option>
                                             </select>
                                         </div>
                                         {field.recoveryPoint === 'Employee' &&
