@@ -1158,7 +1158,7 @@ const Accommodation = ()=>{
                             }}
                             onClick={()=>{
                                 if (customerFields.fullName && customerFields.phoneNo){
-                                    if (String(customerFields.phoneNo).split('').length >= 11){
+                                    if (String(customerFields.phoneNo).split('').length === 11){
                                         if (!customerFields.posted){
                                             addCustomers()
                                         }
