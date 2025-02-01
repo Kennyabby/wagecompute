@@ -204,7 +204,7 @@ const Accommodation = ()=>{
                     }
                 }).forEach((accommodation)=>{
                     if (accommodation.customerId === customer.i_d && customer.i_d === accommodationCustomer){                                    
-                        const {employeeId, arrivalDate, departureDate,
+                        const {employeeId, arrivalDate, departureDate, paymentReceipt,
                             accommodationAmount, postingDate, roomNo, paymentAmount, payPoint
                         } = accommodation
                         var accommodationDays = 1
@@ -217,6 +217,7 @@ const Accommodation = ()=>{
                         cusSaleDoc.accommodationAmount = accommodationAmount
                         cusSaleDoc.paymentAmount = paymentAmount
                         cusSaleDoc.payPoint = payPoint
+                        cusSaleDoc.paymentReceipt = paymentReceipt
                         cusSaleDoc.employeeId = employeeId
                         salesReportList = salesReportList.concat(cusSaleDoc)
                     }
