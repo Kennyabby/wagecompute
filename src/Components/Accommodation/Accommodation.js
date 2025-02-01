@@ -185,13 +185,14 @@ const Accommodation = ()=>{
                         totalAccommodationAmount +=  Number(accommodation.accommodationAmount)
                         totalPaymentAmount += Number(accommodation.paymentAmount) 
                         totalAccommodationDays += accommodationDays
-                        
                     }
                 })       
-                salesDoc.totalAccommodationAmount = totalAccommodationAmount
-                salesDoc.totalPaymentAmount = totalPaymentAmount
-                salesDoc.totalAccommodationDays = totalAccommodationDays
-                salesReportList = salesReportList.concat(salesDoc)
+                if (totalAccommodationDays){
+                    salesDoc.totalAccommodationAmount = totalAccommodationAmount
+                    salesDoc.totalPaymentAmount = totalPaymentAmount
+                    salesDoc.totalAccommodationDays = totalAccommodationDays
+                    salesReportList = salesReportList.concat(salesDoc)
+                }
             }else{
                 accommodations.filter((ftrsale)=>{
                     const slPostingDate = new Date(ftrsale.postingDate).getTime()

@@ -147,7 +147,7 @@ const AccommodationReport = ({
                                                             }
                                                         })}
                                                         <td className='ttrow'>{saleReport.phoneNo}</td>
-                                                        <td className='ttrow'>{saleReport.totalAccommodationDays.toLocaleString()}</td>
+                                                        <td className='ttrow'>{saleReport.totalAccommodationDays}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.totalAccommodationAmount.toLocaleString()}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.totalPaymentAmount.toLocaleString()}</td>
                                                     </tr>
