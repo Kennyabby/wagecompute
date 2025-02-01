@@ -110,11 +110,11 @@ const AccommodationReport = ({
                                         {!multiple && customers.map((customer)=>{
                                             if (customer.i_d===accommodationCustomer){
                                                 return(
-                                                    <div>{`${customer.fullName}`}</div>                                                        
+                                                    <div>{`${customer.fullName} (${customer.phoneNo})`}</div>                                                        
                                                 )                                                                                                                
                                             }
                                         })} 
-                                        <div></div>
+                                        <br/>
                                         <table className="table payeetable">                                               
                                             <thead>
                                                 {multiple ? <tr>
@@ -132,6 +132,7 @@ const AccommodationReport = ({
                                                     <th><h8 className='theader'>ACCOMMODATION AMOUNT</h8></th>
                                                     <th><h8 className='theader'>PAYMENT AMOUNT</h8></th>
                                                     <th><h8 className='theader'>PAY POINT</h8></th>
+                                                    <th><h8 className='theader'>RECEIPT NO</h8></th>
                                                     <th><h8 className='theader'>HANDLED BY</h8></th>
                                                     
                                                 </tr>}
@@ -160,6 +161,7 @@ const AccommodationReport = ({
                                                         <td className='ttrow'>{'₦'+saleReport.accommodationAmount.toLocaleString()}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.paymentAmount.toLocaleString()}</td>
                                                         <td className='ttrow'>{saleReport.payPoint.toUpperCase()}</td>                                                        
+                                                        <td className='ttrow'>{saleReport.paymentReceipt}</td>                                                        
                                                         {
                                                             employees.map((emp)=>{
                                                                 if (emp.i_d===saleReport.employeeId){
@@ -224,6 +226,7 @@ const AccommodationReport = ({
                                                         })
                                                         return <th className='theader' key={id}>{'₦'+sumTotalPayment.toLocaleString()}</th>
                                                     })}
+                                                    <th></th>
                                                     <th></th>
                                                     <th></th>
                                                 </tr>
