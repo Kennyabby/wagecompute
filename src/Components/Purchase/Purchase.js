@@ -173,9 +173,7 @@ const Purchase = ()=>{
                         setShowReport(value)                        
                     }}              
                     fromDate = {saleFrom}
-                    toDate = {saleTo}      
-                    // selectedMonth={selectedMonth}
-                    // selectedYear={selectedYear}
+                    toDate = {saleTo}
                 />}    
                 <div className='purlst'>
                     {companyRecord.status==='admin' && <FaTableCells                         
