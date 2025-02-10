@@ -1161,10 +1161,19 @@ const Accommodation = ()=>{
                             onClick={()=>{
                                 if (customerFields.fullName && customerFields.phoneNo){
                                     if (String(customerFields.phoneNo).split('').length === 11){
-                                        if (!customerFields.posted){
-                                            addCustomers()
+                                        if ((customers.map((customer)=>{return customer.phoneNo})).includes(customerFields.phoneNo)){
+                                            setActionMessage('')
+                                            setAlertState('error')
+                                            setAlert(
+                                                `Customer has been created before. The customer already exists!`
+                                            )
+                                            setAlertTimeout(8000) 
+                                        }else{
+                                            if (!customerFields.posted){
+                                                addCustomers()
+                                            }
+                                            customerFields.posted = true
                                         }
-                                        customerFields.posted = true
                                     }else{
                                         setActionMessage('')
                                         setAlertState('error')
