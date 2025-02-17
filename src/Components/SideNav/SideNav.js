@@ -58,6 +58,7 @@ const SideNav = ()=>{
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions')) && <li name="positions" className={curPath==='positions'?'selected':''}>Positions</li>}
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance')) && <li name="attendance" className={curPath==='attendance'?'selected':''}>Attendance</li>}
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && <li name="payroll" className={curPath==='payroll'?'selected':''}>Payroll</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('inventory')) && <li name="inventory" className={curPath==='inventory'?'selected':''}>Inventory</li>}
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales')) && <li name="sales" className={curPath==='sales'?'selected':''}>Sales</li>}
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && <li name="accommodations" className={curPath==='accommodations'?'selected':''}>Accommodation</li>}
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && <li name="purchase" className={curPath==='purchase'?'selected':''}>Direct Purchase</li>}

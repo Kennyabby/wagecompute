@@ -1,0 +1,84 @@
+.inventory{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background: white;
+}
+.inventoryTop{
+    width: 100%;
+    display: block;
+    padding: 20px 10px;
+}
+.inv-top1{
+    display: flex;
+    flex-wrap: wrap;
+    width: 70%;
+    margin-right: auto;
+    justify-content: space-around;
+}
+.inventoryLabelCover{
+    position: relative;
+}
+.inventoryLabel{
+    font-size: .9em;
+    cursor: pointer;
+    height: fit-content;
+}
+.inventoryLabelClicked, .inventoryLabel:hover{
+    font-weight: 700;
+    background: whitesmoke;
+    border-radius: 5px;
+    padding: 0px 15px;
+    height: fit-content;
+}
+.inventoryDropMenu{
+    position: absolute;
+    display: block;
+    left: 0px;
+    top: 30px;
+    background: white;
+    border: solid black 0.3px;
+    border-radius: 5px;
+    padding: 15px;
+    label{
+        width: max-content;
+        font-size: .9em;
+        margin: 5px auto;
+        cursor: pointer;
+    }
+    z-index: 1;
+}
+.inv-top2{
+    width: 98%;
+    margin: 20px auto;
+    margin-bottom: 0px;
+    display: flex;
+    justify-content: space-between;
+    .new{
+        display: inline-flex;
+        gap: 10px;
+        button{
+            padding: 5px 20px;
+            background: rgb(13, 181, 13);
+            color: white;
+            font-weight: 600;
+            font-size: .9em;
+            outline: none;
+            border: solid black 0px;
+            border-radius: 10px;
+        }
+        label{
+            margin: auto;
+            font-size: .8em;
+        }
+    }
+}
+.inventoryView{
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    border-top: solid rgba(0,0,0,.3) .1em;
+}

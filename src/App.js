@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import './App.css';
 import {Routes, Route, useNavigate } from 'react-router-dom';
 import ContextProvider from './Resources/ContextProvider';
@@ -8,11 +8,11 @@ import Profile from './Components/Profile/Profile';
 import Dashboard from './Components/Dashboard/Dashboard';
 import FormPage from './Components/FormPage/FormPage';
 import Notify from './Resources/Notify/Notify';
+import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
 function App() {
-
   // const SERVER = "http://localhost:3001"
   const SERVER = "https://enterpriseserver.vercel.app"
 
@@ -38,6 +38,7 @@ function App() {
   
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
+  const [products, setProducts] = useState([])
   const [accommodations, setAccommodations] = useState([])
   const [purchase, setPurchase] = useState([])
   const [expenses, setExpenses] = useState([])
@@ -45,9 +46,9 @@ function App() {
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','accommodations','purchase','expenses','reports','settings','test']
+    'employees','departments','positions','attendance','payroll','sales','inventory','accommodations','purchase','expenses','reports','settings','test']
   const dashList = ['dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','accommodations','purchase','expenses','reports','settings']
+    'employees','departments','positions','attendance','payroll','sales','inventory','accommodations','purchase','expenses','reports','settings']
   const months = [
       'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
       'AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'
@@ -67,7 +68,7 @@ function App() {
       if (cmp_val){
         getSettings(cmp_val)
       }
-    },3000)
+    },10000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
 
@@ -100,6 +101,7 @@ function App() {
       if (enableBlockVal){
         logout()
       }else{
+        
         if (companyRecord?.permissions.includes('purchase')){
           getPurchase(company)
           Navigate('/purchase')
@@ -112,6 +114,10 @@ function App() {
           getCustomers(company)
           getAccommodations(company)
           Navigate('/accommodations')
+        }
+        if (companyRecord?.permissions.includes('inventory')){
+          getProducts(company)
+          Navigate('/inventory')
         }
         if (companyRecord?.permissions.includes('sales')){
           getAccommodations(company)
@@ -167,14 +173,108 @@ function App() {
     return numberValue
   }
 
+  const generateSeries = (pre, array, id)=> {
+
+    let max = 0
+    array.forEach((obj=>{
+      let idVal = Number(obj[id].slice(pre.split('').length,))
+      if (idVal > max){
+        max = idVal
+      }
+    }))
+    let numPart = max + 1;
+    let newNumber = pre + numPart.toString().padStart(5, "0");
+
+    return newNumber;
+
+  }
+
+  const exportFile = useCallback((data, fileName) => {
+      const ws = utils.json_to_sheet(data);
+      const wb = utils.book_new();
+      utils.book_append_sheet(wb, ws, "Data");
+      writeFileXLSX(wb, `${fileName}.xlsx`);
+  }, []);
+
+  const importFile = async ({ event, fields, pivot, start }) => {
+    return new Promise((resolve, reject) => {
+      const file = event.target.files[0];
+      if (!file) {
+        reject(new Error("No file selected"));
+        return;
+      }
+  
+      const reader = new FileReader();
+  
+      const columns = Object.keys(fields);
+  
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = read(data, { type: "array" });
+  
+          const sheetNames = workbook.SheetNames;
+          const firstSheetName = sheetNames[pivot];
+          const worksheet = workbook.Sheets[firstSheetName];
+  
+          const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
+  
+          const knownColumnName = columns[0]; // First column name as reference
+          let headerRowIndex = null;
+  
+          // Find the header row
+          for (let i = 0; i < jsonData.length; i++) {
+            if (jsonData[i].includes(knownColumnName)) {
+              headerRowIndex = i;
+              break;
+            }
+          }
+          
+          let headerfound = true
+          if (headerRowIndex === null) {
+            headerfound = false
+            headerRowIndex = 0
+          }
+  
+          // Extract headers and rows starting from the header row
+          const headers = jsonData[headerRowIndex];
+          columns.forEach((column) => {
+            fields[column] = "";
+          });
+          let startIndex = headerRowIndex + 2
+          let rows = jsonData.slice(headerRowIndex + 1);
+          if (start && start > (headerRowIndex + 2)){
+            rows = jsonData.slice(start - 1)
+            startIndex = start
+          }
+          // Map rows to objects
+          const result = rows.map((row) => {
+            let obj = {};
+            row.forEach((cell, index) => {
+              obj[headers[index]] = cell;
+            });
+            return obj;
+          });
+  
+          resolve({
+            headerfound,
+            headers,
+            startIndex,
+            sheetNames,
+            result,
+          });
+        } catch (error) {
+          reject(error);
+        }
+      };
+  
+      reader.onerror = (error) => reject(error);
+      reader.readAsArrayBuffer(file);
+    });
+  };
   const storePath = (path)=>{
     setPath(path)
     window.localStorage.setItem('curr-path',path)
-    // if (window.localStorage.getItem('sess-id') !== null){
-    //   window.localStorage.setItem('curr-path',path)
-    // } else {
-    //   removeSessions()
-    // }
   }
 
   const removeSessions = (path)=>{
@@ -218,6 +318,7 @@ function App() {
         getCustomers(cmp_val)
         getAccommodations(cmp_val)
         getSales(cmp_val)
+        getProducts(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)
         getExpenses(cmp_val)
@@ -293,6 +394,17 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setSales(resp.record)
+    }
+  }
+
+  const getProducts = async (company) =>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Products", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      setProducts(resp.record)
     }
   }
 
@@ -413,7 +525,8 @@ function App() {
           fetchServer,
           server:SERVER,
           loginMessage, setLoginMessage,
-          generateCode,
+          generateCode, generateSeries, 
+          exportFile, importFile,
           companyRecord, setCompanyRecord,  
           departments, setDepartments, getDepartments,
           positions, setPositions, getPositions,
@@ -421,6 +534,7 @@ function App() {
           customers, setCustomers, getCustomers,
           attendance, setAttendance, getAttendance,
           sales, setSales, getSales,
+          products, setProducts, getProducts,
           accommodations, setAccommodations, getAccommodations,
           purchase, setPurchase, getPurchase,
           expenses, setExpenses, getExpenses,

@@ -1,0 +1,203 @@
+.products{
+    width: 100%;
+    height: 100%;
+    background: whitesmoke;
+}
+.product{
+    display: flex;
+    width: 95%;
+    margin: auto;
+    padding: 20px 0px;
+}
+.pr-left{
+    width: 70%;
+    /* height: 100%; */
+}
+.nameInpCov{
+    display: flex;
+    font-size: 1.2em;
+    font-weight: 700;
+    height: fit-content;
+    margin: 20px 0px;
+}
+.nameInp{
+    border: 0px;
+    border-bottom: solid black 1px;
+    width: 60%;
+    padding: 5px 10px;
+    margin: auto 10px;
+    outline: none;
+    background: rgba(0,0,0,0);
+}
+.pr-type{
+    display: flex;
+}
+.pr-type-sub{
+    display: flex;
+    font-size: .9em;
+    font-weight: 500;
+    margin: auto 20px;
+    label{
+        margin: auto 5px;
+    }
+}
+.pr-details{
+    width: 90%;
+    height: 50%;
+    background: white;
+    box-shadow: 1px 1px 9px rgba(0,0,0,.2);
+    border-radius: 10px; 
+    margin: 30px 0px;
+    margin-right: auto;
+}
+.pr-right{
+    margin: 20px;
+    height: fit-content;
+}
+.otherInpCov{
+    display: flex;
+    font-size: .8em;
+    font-weight: 600;
+    margin: auto;
+    margin-bottom: 20px;
+    label{
+        width: 120px;
+    }
+}
+.otherInp{
+    border: 0px;
+    border-bottom: solid black 1px;
+    width: 60%;
+    margin: auto 10px;
+    outline: none;
+    background: rgba(0,0,0,0);
+}
+.pr-settings{
+    position: relative;
+}
+.pr-icon{
+    font-size: 1.1em;
+    margin: auto 5px;
+    cursor: pointer;
+}
+
+.settingsDrop{
+    position: absolute;
+    left: 0;
+    bottom: -10;
+    width: max-content;
+    border: solid black 1px;
+    padding: 5px 10px;
+    background: white;
+    border-radius: 10px;
+    label{
+        cursor: pointer;
+    }
+}
+
+.all-products{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: auto;
+}
+
+.product-card{ 
+    position: relative;
+    display: block;   
+    min-width: 280px;
+    padding: 10px;
+    border: solid black .1px;
+    margin: 10px;
+    cursor: pointer;
+    background: white;
+}
+
+.product-card-name{
+    font-weight: 600;
+    font-size: 1.5em;
+}
+.product-card-others{
+    font-size: .9em;
+}
+.product-card-others-top{
+    position: absolute;
+    font-size: .7em;
+    font-weight: 600;
+    top: 3px;
+    right: 3px;
+    background: rgb(230, 250, 203);
+    padding: 2px 5px;
+    border-radius: 5px;
+}
+.product-import{
+    display: flex;
+    width: 100%;
+    height:100%;
+}
+.imp-left{
+    width: 25%;
+    height: 100%;
+}
+.imp-right{
+    position: relative;
+    width: 75%;
+    height: 100%;
+    background: rgba(67, 240, 67, .5);
+    overflow: auto;
+}
+.exp-format{
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: .8em;
+    transform: translateX(-50%);
+    outline: none;
+    border: none;
+}
+.imp-load{
+    padding: 5px 8px;
+    margin: 5px;
+    font-size: .8em;
+    outline: none;
+    border: solid greenyellow 1.5px;
+    border-radius: 5px;
+}
+.imp-load-det{
+    color: rgb(9, 148, 37);
+    margin: 5px;
+    font-size: .8em;
+}
+.button-contrast{
+    background: rgb(9, 148, 37);
+    color: white;
+    font-weight: 700;
+}
+.pivotOptCov{
+    font-size: .8em;
+    display: block;
+    margin: 20px 5px;    
+}
+.pivotOpt{
+    width: 150px;
+    padding: 5px;
+    outline: none;
+    border-radius: 5px;
+}
+.import-cov{
+    display: block;
+    width: 90%;
+    margin: auto;
+    
+}
+.import-card{
+    display: flex;
+    gap: 20px;
+    div{
+        width: 200px;
+        font-weight: 600
+    };
+    margin: 20px auto;
+}
