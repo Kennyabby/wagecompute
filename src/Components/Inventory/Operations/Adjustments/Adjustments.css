@@ -10,10 +10,14 @@
     padding: 10px;
     background: whitesmoke;
 }
+.adj-right-header{
+    display:block;
+    padding: 10px;
+}
 .adj-right{
     display: flex;
     width: 80%;
-    height: 100%;
+    height: 100%;    
     /* background: yellow; */
 }
 .adj-title{

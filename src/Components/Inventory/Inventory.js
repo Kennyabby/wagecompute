@@ -4,7 +4,7 @@ import { useState, useEffect, useContext } from "react";
 import ContextProvider from "../../Resources/ContextProvider";
 import Products from './Products/Products';
 import Adjustments from './Operations/Adjustments/Adjustments';
-
+import Stock from './Stock/Stock';
 import { FaCloudArrowUp } from "react-icons/fa6";
 import { IoIosSettings } from "react-icons/io";
 
@@ -26,6 +26,7 @@ const Inventory = ()=>{
     const [isSaveValue, setIsSaveValue] = useState(false)
     const [isDeleteValue, setIsDeleteValue] = useState(false)
     const [isImportValue, setIsImportValue] = useState(false)
+    const [isTransferValue, setIsTransferValue] = useState(false)
     const [settingsDrop, setSettingsDrop] = useState(false)
     const [dropLabel, setDropLabel] = useState(null)
     const dropMenu = {
@@ -52,6 +53,12 @@ const Inventory = ()=>{
                 name:'import record',
                 status: 'other'
             }
+        ],
+        Stock:[
+            {
+                name:'internal transfer',
+                status: 'other'
+            },            
         ]
     }
 
@@ -80,6 +87,16 @@ const Inventory = ()=>{
             setIsDeleteValue={setIsDeleteValue}
             isImportClicked={isImportValue === 'Adjustments'}
             setIsImportValue={setIsImportValue}  
+        />,
+        'Stock': <Stock
+            isNewEntry={isNewView === clickedLabel}
+            isSaveClicked={isSaveValue === 'Stock'}
+            setIsSaveValue={setIsSaveValue}
+            setIsNewView={setIsNewView}
+            setIsOnView={setIsOnView}
+            clickedLabel={clickedLabel}
+            isTransferClicked={isTransferValue === 'Stock'}
+            setIsTransferValue={setIsTransferValue}
         />
     }
 
@@ -97,7 +114,7 @@ const Inventory = ()=>{
         }
         setSettingsDrop(false)
     },[clickedLabel, isSaveValue, 
-        isDeleteValue, isImportValue, 
+        isDeleteValue, isImportValue, isTransferValue,
         isNewView,
     ])
     
@@ -113,8 +130,6 @@ const Inventory = ()=>{
             }
             if (name!==dropLabel){
                 setDropLabel(name)
-                // if (Object.keys(dropMenu))  
-                // setClickedLabel(name)  
             }else{
                 setDropLabel(null)
             }
@@ -143,6 +158,7 @@ const Inventory = ()=>{
         setIsNewView(false)
         setIsOnView(false)   
         setIsImportValue(false)
+        setIsTransferValue(false)
     }
 
     const handleSaveAction = (e) =>{
@@ -161,6 +177,11 @@ const Inventory = ()=>{
             setIsNewView(false)
             setIsOnView(false)
             setIsImportValue(clickedLabel)
+        }
+        if (name === 'internal transfer'){
+            setIsNewView(false)
+            setIsOnView(false)
+            setIsTransferValue(clickedLabel)
         }
         setSettingsDrop(false)
     }
@@ -185,20 +206,30 @@ const Inventory = ()=>{
                             )
                         })}
                     </div>
-                    {['Products', 'Adjustments'].includes(clickedLabel) && <div className='inv-top2'>
+                    {['Products', 'Adjustments', 'Stock'].includes(clickedLabel) && <div className='inv-top2'>
                         <div 
                             className='new'                             
                         >
                             {!isNewView && <button onClick={()=>{
+                                if (clickedLabel === 'Stock'){
+                                    setClickedLabel('Products')
+                                    setIsNewView('Products')
+                                }else{
+                                    setIsNewView(clickedLabel)
+                                }
                                 setIsOnView(false)
-                                setIsNewView(clickedLabel)
                                 setIsImportValue(false)
+                                setIsTransferValue(false)
                             }}>New</button>}
+
+                            {isTransferValue && <button onClick={()=>{
+                                setIsSaveValue('Stock')
+                            }}>Post Transfer</button>}
 
                             <label>
                                 {isNewView && '/ '}
                                 <span 
-                                    style={{cursor:(!isNewView) ? (isImportValue ? 'pointer':'') : 'pointer'}} 
+                                    style={{cursor:(!isNewView) ? ((isImportValue || isTransferValue) ? 'pointer':'') : 'pointer'}} 
                                     onClick={handleClickedLabel} 
                                     name={clickedLabel}
                                 >
@@ -206,7 +237,7 @@ const Inventory = ()=>{
                                 </span>           
                                 <div style={{display: 'flex'}}>                                                                                                
                                     {<div className='pr-settings'>                                            
-                                            {!isImportValue && <IoIosSettings 
+                                            {(!isImportValue && !isTransferValue) && <IoIosSettings 
                                                 className='pr-icon' 
                                                 onClick={()=>{                                                    
                                                     setSettingsDrop(!settingsDrop)
