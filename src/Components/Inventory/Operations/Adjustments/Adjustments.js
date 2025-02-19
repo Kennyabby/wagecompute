@@ -116,14 +116,16 @@ const Adjustments = ({
 
     
     useEffect(()=>{
-        if (isSaveClicked){
-            setAlertState('info')
-            setAlert('Posting...')
+        if (isSaveClicked){            
             const adjustments = [...adjustmentEntries]
             var entct = 0
             const fltAdjustments = adjustments.filter((entFlt)=>{
                 return Math.abs(Number(entFlt.difference)) > 0
             })            
+            if (fltAdjustments.length){
+                setAlertState('info')
+                setAlert('Posting...')
+            }
             fltAdjustments.forEach((entry)=>{
                 let absVal = Math.abs(Number(entry.difference))
                 let val = Number(entry.difference)/absVal
@@ -135,6 +137,7 @@ const Adjustments = ({
                 delete entry.index 
                 const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
                 entct++
+                // console.log(adjustedProduct)
                 postAdjustments(adjustedProduct, entry.i_d, fltAdjustments.length, entct)
             })
 
@@ -154,18 +157,20 @@ const Adjustments = ({
     const resetCount = ()=>{
         setAdjustmentEntries([])
         products.forEach((product, index)=>{
-            const entry = {}
-            entry.i_d = product.i_d
-            entry.costPrice = product.costPrice
-            entry.index = index
-            entry.difference = ''
-            entry.baseQuantity = ''
-            entry.counted = ''
-            entry.userId = companyRecord.emailid
+            if (product.type === 'goods'){
+                const entry = {}
+                entry.i_d = product.i_d
+                entry.costPrice = product.costPrice
+                entry.index = index
+                entry.difference = ''
+                entry.baseQuantity = ''
+                entry.counted = ''
+                entry.userId = companyRecord.emailid
 
-            setAdjustmentEntries((adjustmentEntries)=>{
-                return [...adjustmentEntries, entry]
-            })
+                setAdjustmentEntries((adjustmentEntries)=>{
+                    return [...adjustmentEntries, entry]
+                })
+            }
         })
     }
 
@@ -290,10 +295,10 @@ const Adjustments = ({
                                     }else if(col.reference === 'difference'){
                                         return <div className='colrows' key={index1}>{Number(adjustmentEntries[index1]?.difference)?.toLocaleString()}</div>
                                     }else{
-                                        return <div className='colrows' key={index1}>{Number(adjustmentEntries[index1]?.difference * Number(product.costPrice))?.toLocaleString()}</div>
+                                        return <div className='colrows' key={index1}>{(Number(adjustmentEntries[index1]?.difference) * Number(product.costPrice)).toLocaleString()}</div>
                                     }
                                 }else{
-                                    return <div className='colrows' key={index1}>{(col.reference === 'costPrice' ? Number(product[col.reference]) : product[col.reference]).toLocaleString()}</div>
+                                    return <div className='colrows' key={index1}>{(col.reference === 'costPrice' ? Number(product[col.reference]).toLocaleString() : product[col.reference])}</div>
                                 }
 
                             })}
