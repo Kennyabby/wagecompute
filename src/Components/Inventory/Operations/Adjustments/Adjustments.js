@@ -144,14 +144,18 @@ const Adjustments = ({
         }
     },[isSaveClicked])
     
-    const handleInputChange = ({e, index, availableQty})=>{
+    const handleInputChange = ({e, availableQty, productId})=>{
         const {name, value} = e.target
-        if (name === 'counted'){
-            setAdjustmentEntries((adjustmentEntries)=>{
-                adjustmentEntries[index] = {...adjustmentEntries[index], [name]:value, difference: (Number(value) - Number(availableQty))}
-                return [...adjustmentEntries]
-            })
-        }
+        let index
+        adjustmentEntries.forEach((entry, i)=>{
+            if (entry.i_d === productId){
+                index = i
+            }
+        })
+        setAdjustmentEntries((adjustmentEntries)=>{
+            adjustmentEntries[index] = {...adjustmentEntries[index], [name]:value, difference: value === '' ? 0 : (Number(value) - Number(availableQty))}
+            return [...adjustmentEntries]
+        })
     }
 
     const resetCount = ()=>{
@@ -166,7 +170,6 @@ const Adjustments = ({
                 entry.baseQuantity = ''
                 entry.counted = ''
                 entry.userId = companyRecord.emailid
-
                 setAdjustmentEntries((adjustmentEntries)=>{
                     return [...adjustmentEntries, entry]
                 })
@@ -201,6 +204,7 @@ const Adjustments = ({
         }
         setIsSaveValue(false)
     }
+    
     return (
         <>
             <div className='adjustments'>
@@ -289,18 +293,17 @@ const Adjustments = ({
                                             type='number'   
                                             className='countedInp'
                                             name='counted'
-                                            value={adjustmentEntries[index1]?.counted}
-                                            onChange={(e)=>{handleInputChange({e, index: index1, availableQty})}} 
+                                            value={adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.counted}
+                                            onChange={(e)=>{handleInputChange({e, availableQty, productId: product.i_d})}} 
                                         />
                                     }else if(col.reference === 'difference'){
-                                        return <div className='colrows' key={index1}>{Number(adjustmentEntries[index1]?.difference)?.toLocaleString()}</div>
+                                        return <div className='colrows' key={index1}>{Number(adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.difference)?.toLocaleString()}</div>
                                     }else{
-                                        return <div className='colrows' key={index1}>{(Number(adjustmentEntries[index1]?.difference) * Number(product.costPrice)).toLocaleString()}</div>
+                                        return <div className='colrows' key={index1}>{(Number(adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.difference) * Number(product.costPrice)).toLocaleString()}</div>
                                     }
                                 }else{
                                     return <div className='colrows' key={index1}>{(col.reference === 'costPrice' ? Number(product[col.reference]).toLocaleString() : product[col.reference])}</div>
                                 }
-
                             })}
                         </div>
                     })}

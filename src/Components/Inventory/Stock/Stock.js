@@ -110,10 +110,16 @@ const Stock = ({
         }
     },[isSaveClicked])
 
-    const handleInputChange = ({ e, index, product }) => {
+    const handleInputChange = ({ e, productId, costPrice }) => {
         const { name, value } = e.target;
+        let index
+        transferEntries.forEach((entry, i) => {
+            if (entry.productId === productId) {
+                index = i;
+            }
+        });
         if (name === 'quantityToTransfer') {
-            const transferCost = value * product.costPrice;
+            const transferCost = value * costPrice;
             setTransferEntries((transferEntries) => {
                 const newEntries = [...transferEntries];
                 newEntries[index] = {
@@ -342,9 +348,15 @@ const Stock = ({
                                             return <div className='colrows' key={index1}>{availableQty}</div>;
                                         }
                                     } else if (col.reference === 'quantityToTransfer') {
-                                        return <input className='countedInp' type='number' name='quantityToTransfer' value={transferEntries?.[index1]?.quantityToTransfer} onChange={(e) => handleInputChange({ e, index: index1, product })} />;
+                                        return <input 
+                                            className='countedInp' 
+                                            type='number' 
+                                            name='quantityToTransfer' 
+                                            value={transferEntries.filter(entry => product.i_d === entry.productId)[0]?.quantityToTransfer} 
+                                            onChange={(e) => handleInputChange({ e, productId:product.i_d, costPrice:product.costPrice })} 
+                                        />;
                                     } else if (col.reference === 'transferCost') {
-                                        return <div className='colrows' key={index1}>{transferEntries?.[index1]?.transferCost || 0}</div>;
+                                        return <div className='colrows' key={index1}>{transferEntries.filter(entry => product.i_d === entry.productId)[0]?.transferCost || 0}</div>;
                                     } else {
                                         return <div className='colrows' key={index1}>{(['costPrice', 'salesPrice'].includes(col.reference) ? Number(product[col.reference]).toLocaleString() : product[col.reference])}</div>;
                                     }
