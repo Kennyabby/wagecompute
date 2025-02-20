@@ -4,6 +4,9 @@ import { useState, useEffect, useContext } from "react";
 import ContextProvider from "../../Resources/ContextProvider";
 import Products from './Products/Products';
 import Adjustments from './Operations/Adjustments/Adjustments';
+import { MdArrowBackIosNew, MdArrowForwardIos } from "react-icons/md";
+import { PiCards } from "react-icons/pi";
+import { FaThList } from "react-icons/fa";
 import Stock from './Stock/Stock';
 import { FaCloudArrowUp } from "react-icons/fa6";
 import { IoIosSettings } from "react-icons/io";
@@ -28,6 +31,8 @@ const Inventory = ()=>{
     const [isImportValue, setIsImportValue] = useState(false)
     const [isTransferValue, setIsTransferValue] = useState(false)
     const [settingsDrop, setSettingsDrop] = useState(false)
+    const [productView,setProductView] = useState('card')
+    const [curProduct, setCurProduct] = useState(null)
     const [dropLabel, setDropLabel] = useState(null)
     const dropMenu = {
         Overview:[],
@@ -41,6 +46,10 @@ const Inventory = ()=>{
         Products:[
             {
                 name:'import record',
+                status: 'other'
+            },
+            {
+                name:'delete',
                 status: 'other'
             },
             {
@@ -75,6 +84,9 @@ const Inventory = ()=>{
             setIsDeleteValue={setIsDeleteValue}
             isImportClicked={isImportValue === 'Products'}
             setIsImportValue={setIsImportValue}
+            productView={productView}
+            curProduct={curProduct}
+            setCurProduct={setCurProduct}
         />,
         'Adjustments': <Adjustments
             isNewEntry={isNewView === clickedLabel}
@@ -115,7 +127,7 @@ const Inventory = ()=>{
         setSettingsDrop(false)
     },[clickedLabel, isSaveValue, 
         isDeleteValue, isImportValue, isTransferValue,
-        isNewView,
+        isNewView, productView, curProduct
     ])
     
     const handleLabelClick = (e)=>{
@@ -127,6 +139,7 @@ const Inventory = ()=>{
                 setIsSaveValue(false)
                 setIsImportValue(false)
                 setIsDeleteValue(false)
+                setCurProduct(null)
             }
             if (name!==dropLabel){
                 setDropLabel(name)
@@ -141,6 +154,7 @@ const Inventory = ()=>{
                     setIsSaveValue(false)
                     setIsImportValue(false)
                     setIsDeleteValue(false)
+                    setCurProduct(null)
                 }
                 if (Object.keys(dropMenu).includes(innerHTML)){
                     setClickedLabel(name)
@@ -154,11 +168,12 @@ const Inventory = ()=>{
         }
     }
 
-    const handleClickedLabel = (e) =>{
+    const handleClickedLabel = () =>{
         setIsNewView(false)
         setIsOnView(false)   
         setIsImportValue(false)
         setIsTransferValue(false)
+        setCurProduct(null)
     }
 
     const handleSaveAction = (e) =>{
@@ -190,7 +205,7 @@ const Inventory = ()=>{
         <>
             <div className='inventory'>
                 <div className='inventoryTop'>
-                    <div className='inv-top1' onClick={handleLabelClick}>                        
+                    <div className='inv-top1' onClick={(e)=>{handleLabelClick(e)}}>                        
                         {Object.keys(dropMenu).map((mainMenu, mainId)=>{
                             return (
                                 <div key={mainId} className='inventoryLabelCover'>
@@ -230,7 +245,7 @@ const Inventory = ()=>{
                                 {isNewView && '/ '}
                                 <span 
                                     style={{cursor:(!isNewView) ? ((isImportValue || isTransferValue) ? 'pointer':'') : 'pointer'}} 
-                                    onClick={handleClickedLabel} 
+                                    onClick={()=>{handleClickedLabel()}} 
                                     name={clickedLabel}
                                 >
                                     {clickedLabel}
@@ -248,12 +263,20 @@ const Inventory = ()=>{
                                                     {settingsMenu[clickedLabel]?.map((menu, id)=>{
                                                         if (isOnView){
                                                             return (
-                                                                (menu.status === 'view') && <label key={id} name={menu.name}>{menu.name}</label>
+                                                                (menu.status === 'view') && <span key={id} name={menu.name}>{menu.name}</span>
                                                             )
                                                         }else{
-                                                            return (
-                                                                (menu.status === 'other') && <label key={id} name={menu.name}>{menu.name}</label>
-                                                            )                                                        
+                                                            if (menu.status === 'other'){
+                                                                if (productView === 'list'){
+                                                                    return (
+                                                                        (menu.name === 'delete') && <span key={id} name={menu.name}>{menu.name}</span>
+                                                                    )
+                                                                }else{
+                                                                    return (
+                                                                        (menu.name === 'import record') && <span key={id} name={menu.name}>{menu.name}</span>
+                                                                    )                                                        
+                                                                }
+                                                            }
                                                         }
                                                     })}
                                                 </div>
@@ -270,7 +293,55 @@ const Inventory = ()=>{
                             </label>
                         </div>
                         <div className='search'></div>
-                        <div className='filter'></div>
+                        <div className='filter'>
+                            {['Products'].includes(clickedLabel) && curProduct &&
+                                <div className='filterIndex'>
+                                    {products.indexOf(curProduct)+1} / {products.length}
+                                </div>
+                            }
+                            {['Products'].includes(clickedLabel) && 
+                            <div 
+                                className='filterArrow'
+                                onClick={(e)=>{
+                                    const name = e.target.getAttribute('name')
+                                    if (name === 'back'){
+                                        if (curProduct){
+                                            const curIndex = products.indexOf(curProduct)
+                                            if (curIndex > 0){
+                                                setCurProduct(products[curIndex-1])
+                                            }
+                                        }
+                                    }else if (name === 'forward'){
+                                        if (curProduct){
+                                            const curIndex = products.indexOf(curProduct)
+                                            if (curIndex < products.length-1){
+                                                setCurProduct(products[curIndex+1])
+                                            }
+                                        }
+                                    }
+                                }}
+                            >   
+                                <MdArrowBackIosNew name='back' className={'filterArrowIcon'}/>
+                                <MdArrowForwardIos name='forward' className={'filterArrowIcon'}/>
+                            </div>}
+                            {['Products'].includes(clickedLabel) && !isNewView && 
+                            <div 
+                                className='filterViewMode'
+                                onClick={(e)=>{
+                                    const name = e.target.getAttribute('name')
+                                    if (name){
+                                        setProductView(name)
+                                    }
+                                }}
+                            >
+                                <div name='card' className={'filterViewIcon' + (productView === 'card' ? ' viewActive' : '')}>
+                                    <PiCards name='card'/>
+                                </div>
+                                <div name='list' className={'filterViewIcon' + (productView === 'list' ? ' viewActive' : '')}>                                    
+                                    <FaThList name='list'/>
+                                </div>
+                            </div>}
+                        </div>
                     </div>}
                 </div>
                 <div className='inventoryView'>

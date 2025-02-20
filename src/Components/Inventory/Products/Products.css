@@ -81,20 +81,6 @@
     cursor: pointer;
 }
 
-.settingsDrop{
-    position: absolute;
-    left: 0;
-    bottom: -10;
-    width: max-content;
-    border: solid black 1px;
-    padding: 5px 10px;
-    background: white;
-    border-radius: 10px;
-    label{
-        cursor: pointer;
-    }
-}
-
 .all-products{
     display: flex;
     flex-wrap: wrap;
@@ -200,4 +186,25 @@
         font-weight: 600
     };
     margin: 20px auto;
+}
+.product-list{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    overflow: auto;
+    padding: 10px;
+    background: white;
+    margin: 10px 0px;
+    font-size: .9em;
+    div{
+        width: 150px;
+    };
+    input{
+        cursor: pointer;
+    }
+}
+.product-list-head{
+    font-weight: 700;
 }

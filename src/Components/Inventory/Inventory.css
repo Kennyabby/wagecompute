@@ -82,3 +82,61 @@
     overflow: auto;
     border-top: solid rgba(0,0,0,.3) .1em;
 }
+
+
+.settingsDrop{
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    left: 0;
+    bottom: -10;
+    font-size: .8em;
+    width: max-content;
+    border: solid black 1px;
+    padding: 5px 10px;
+    background: white;
+    border-radius: 10px;
+    span{
+        width: fit-content;
+        margin: 5px 0px;
+        cursor: pointer;
+    }
+    z-index: 1;
+}
+
+
+.filter{
+    display: flex;
+    width: fit-content;
+    height: fit-content;
+    margin: auto 0px;
+    gap: 10px;
+}
+
+.filterArrow{
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.filterIndex{
+    font-size: .9em;
+    /* cursor: pointer; */
+}
+.filterViewMode{
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.filterViewIcon{
+    font-size: 1.3em;
+    cursor: pointer;
+    width: fit-content;    
+}
+.filterArrowIcon{
+    font-size: 1.1em;
+    cursor: pointer;
+    background: rgb(242, 254, 238);
+}
+.viewActive{
+    color: rgb(103, 167, 7);
+}
