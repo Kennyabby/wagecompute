@@ -340,7 +340,7 @@ const Purchase = ()=>{
                                 })}
                             </select>
                         </div>
-                        <div className='inpcov'>
+                        {(fields.purchaseUOM || isView) && <div className='inpcov'>
                             <div>Purchase Quantity</div>
                             <input 
                                 className='forminp'
@@ -350,8 +350,8 @@ const Purchase = ()=>{
                                 value={fields.purchaseQuantity}
                                 disabled={isView}
                             />
-                        </div>
-                        <div className='inpcov'>
+                        </div>}
+                        {(fields.purchaseUOM || isView) && <div className='inpcov'>
                             <div>Unit of Measurement</div>
                             <select 
                                 className='forminp'
@@ -367,8 +367,8 @@ const Purchase = ()=>{
                                     )
                                 })}
                             </select>
-                        </div>
-                        <div className='inpcov'>
+                        </div>}
+                        <div className='inpcov'> 
                             <div>Purchase Amount</div>
                             <input 
                                 className='forminp'
@@ -379,6 +379,10 @@ const Purchase = ()=>{
                                 disabled={isView}
                             />
                         </div>
+                        {isView ? (!fields.purchaseUOM && <div className='prd-link'>
+                            View Products
+                        </div>) : 
+                        <div className='prd-link'>Link Products</div>}
                     </div>
                     {!isView && <div className='purchasebuttom'>
                         <div className='inpcov'>

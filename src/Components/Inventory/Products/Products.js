@@ -9,6 +9,7 @@ const Products = ({
     clickedLabel, isSaveClicked, setIsSaveValue,
     isDeleteClicked, setIsDeleteValue,
     isImportClicked, setIsImportValue,
+    productView, setCurProduct, curProduct
 })=>{     
     const {
         server, fetchServer, generateSeries,
@@ -17,18 +18,21 @@ const Products = ({
         settings, exportFile, importFile
     } = useContext(ContextProvider)
     const loadRef = useRef(null)
-    const [curProduct, setCurProduct] = useState(null)
+    const intervalRef = useRef(null)
     const [wrhs, setWrhs] = useState([])
     const [uoms, setUoms] = useState([])
+    const [categories, setCategories] = useState([])
     const [purchaseWrh, setPurchaseWrh] = useState('')
     const [defaultProductType, setDefaultProductType] = useState('goods')
+    const [selectedProducts, setSelectedProducts] = useState([])
     const [deleteCount, setDeleteCount] = useState(0)
     const [productData, setProductData] = useState([])
     const [loadResult, setLoadResult] = useState(null)
     const [loadPivot, setLoadPivot] = useState(0)
     const [startRow, setStartRow] = useState(null)
     const [importCount, setImportCount] = useState(null)
-    const defaultProductFields = {
+    const [defaultBuyTo, setDefaultBuyTo] = useState('central warehouse')
+    const [defaultProductFields, setDefaultProductFields] = useState({
         i_d: generateSeries('PD', products, 'i_d'),
         name: '',
         salesPrice: '',
@@ -38,8 +42,8 @@ const Products = ({
         salesVat:'',
         salesUom:'pcs',
         purchaseUom:'pcs',
-        buyTo: 'central warehouse'
-    }
+        buyTo: ''
+    })
     const productExportFormat = {
         name: '',
         salesPrice: '',
@@ -66,14 +70,20 @@ const Products = ({
     const [productFields, setProductFields] = useState({...defaultProductFields})
     
     useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')
-        const intervalId = setInterval(()=>{
-          if (cmp_val){
-            getProducts(cmp_val)
-          }
-        },10000)
-        return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
+        if (!curProduct){
+            var cmp_val = window.localStorage.getItem('sessn-cmp')
+            intervalRef.current = setInterval(()=>{
+              if (cmp_val){
+                getProducts(cmp_val)
+              }
+            },10000)
+            return () => clearInterval(intervalRef.current);
+        }else{
+            if(intervalRef.current){
+                clearInterval(intervalRef.current)
+            }
+        }
+    },[window.localStorage.getItem('sessn-cmp'), curProduct])
 
     useEffect(()=>{
         if(!isProductView){
@@ -84,11 +94,20 @@ const Products = ({
     },[products, isProductView])
     
     useEffect(()=>{
+        setSelectedProducts([])
+    },[productView])
+
+    useEffect(()=>{
         if (productFields.type){
             setDefaultProductType(productFields.type)
         }
     },[productFields.type])
     
+    useEffect(()=>{
+        if (curProduct){
+            setProductFields({...curProduct})
+        }
+    },[curProduct])
     useEffect(()=>{
         if (settings.length){
             const uomSetFilt = settings.filter((setting)=>{
@@ -103,6 +122,14 @@ const Products = ({
 
             delete wrhSetFilt[0]?._id
             setWrhs(wrhSetFilt[0].name?[...wrhSetFilt[0].warehouses]:[])
+
+            const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
+            delete catSetFilt[0]?._id;
+            setCategories(catSetFilt[0].name ? [...catSetFilt[0].categories] : []);
+            setDefaultProductFields({
+                ...defaultProductFields, 
+                buyTo: catSetFilt[0].categories.filter((category)=>{return category.purchase})[0]?.code
+            })
         }  
     },[settings])
 
@@ -460,9 +487,11 @@ const Products = ({
                                 value={productFields.category}
                             >
                                 <option value={'all'}>All</option>
-                                <option value={'bar'}>Bar</option>
-                                <option value={'kitchen'}>Kitchen</option>
-                                {defaultProductType === 'services' && <option value={'room'}>Room</option>}
+                                {categories.map((category, id)=>{
+                                    return (
+                                        category.type === defaultProductType && <option key={id} value={category.code}>{category.name}</option>
+                                    )
+                                })}
                             </select>
                         </div>
                         <div className='otherInpCov'>
@@ -478,7 +507,7 @@ const Products = ({
                         </div>
                     </div>
                 </div>}
-                {!isImportClicked && !isNewProduct && <div className='all-products'>
+                {!isImportClicked && !isNewProduct && productView === 'card' && <div className='all-products'>
                     {products.map((product, id)=>{
                         return (
                             <div key={id} className='product-card' onClick={()=>{
@@ -486,6 +515,7 @@ const Products = ({
                                 setIsOnView(clickedLabel)
                                 setProductFields({...product})
                                 setIsNewView(clickedLabel)
+                                setCurProduct(product)
                             }}>
                                 <div className='product-card-name'>{product.name}</div>
                                 <div className='product-card-others'>{`[${product.i_d}]`}</div>
@@ -502,6 +532,69 @@ const Products = ({
                                     <div className='product-card-others'>{product.type.toUpperCase()}</div>
                                 }    
                                 <div className='product-card-others-top'>{product.type.toUpperCase()}</div>                            
+                            </div>                            
+                        )
+                    })}
+                </div>}
+                {!isImportClicked && !isNewProduct && productView === 'list' && <div className='all-product-list'>
+                    <div className='product-list product-list-head'>
+                        <input type='checkbox' checked={selectedProducts.length === products.length} onClick={()=>{
+                            if (selectedProducts.length === products.length){
+                                setSelectedProducts([])
+                            }else{
+                                setSelectedProducts(products.map((product)=>{return product.i_d}))
+                            }
+                        }}/>
+                        <div className='product-list-others'>ID</div>
+                        <div className='product-list-name'>Name</div>
+                        <div className='product-list-others'>Price</div>
+                        <div className='product-list-others'>On Hand</div>
+                        <div className='product-list-others-top'>Type</div>
+                    </div>
+                    {products.map((product, id)=>{
+                        return (
+                            <div key={id} className='product-list' onClick={(e)=>{
+                                const name = e.target.getAttribute('name')
+                                if (!selectedProducts.length && name !== 'checkbox'){
+                                    delete product._id
+                                    setIsOnView(clickedLabel)
+                                    setProductFields({...product})
+                                    setIsNewView(clickedLabel)
+                                    setCurProduct(product)
+                                }else{
+                                    if (name !== 'checkbox'){
+                                        setSelectedProducts((selectedProducts)=>{
+                                            return selectedProducts.includes(product.i_d) ? 
+                                            selectedProducts.filter((selectedProduct)=>{
+                                                return selectedProduct !== product.i_d
+                                            }) : [...selectedProducts, product.i_d]
+                                        })
+                                    }   
+                                }
+                            }}>
+                                <input name='checkbox' checked={selectedProducts.includes(product.i_d)} type='checkbox' onClick={()=>{
+                                    setSelectedProducts((selectedProducts)=>{
+                                        return selectedProducts.includes(product.i_d) ? 
+                                        selectedProducts.filter((selectedProduct)=>{
+                                            return selectedProduct !== product.i_d
+                                        }) : [...selectedProducts, product.i_d]
+                                    })
+                                }}/>
+                                <div className='product-list-others'>{`[${product.i_d}]`}</div>
+                                <div className='product-list-name'>{product.name}</div>
+                                <div className='product-list-others'>{`₦${Number(product.salesPrice).toLocaleString()}`}</div>
+                                {product.type === 'goods' ? [''].map((args)=>{
+                                    var availableQty = 0
+                                    wrhs.forEach((wrh)=>{
+                                        product[wrh.name]?.forEach((entry)=>{
+                                            availableQty += Number(entry.baseQuantity)
+                                        })
+                                    })
+                                    return <div className='product-list-others'>{`On Hand: ${availableQty.toLocaleString()} ${product.salesUom}`}</div>
+                                }):
+                                    <div className='product-list-others'>{product.type.toUpperCase()}</div>
+                                }    
+                                <div className='product-list-others-top'>{product.type.toUpperCase()}</div>                            
                             </div>                            
                         )
                     })}

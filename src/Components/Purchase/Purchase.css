@@ -62,3 +62,13 @@
         cursor: pointer;
     }
 }
+.prd-link{
+    margin: auto;
+    padding: 5px 15px;
+    border: solid rgb(92, 145, 13) 2px;
+    border-radius: 5px;
+    font-size: .8em;
+    font-weight: 600;
+    cursor: pointer;
+    /* background: rgb(92, 145, 13); */
+}
