@@ -184,8 +184,12 @@ const Inventory = ()=>{
     const handleSettingAction = (e)=>{
         const name = e.target.getAttribute('name')
         if (name === 'delete'){
-            setIsNewView(clickedLabel)
-            setIsDeleteValue(clickedLabel)
+            if (!isOnView){
+                setIsDeleteValue(clickedLabel)
+            }else{
+                setIsNewView(clickedLabel)
+                setIsDeleteValue(clickedLabel)
+            }
         }
         if (name === 'import record'){
             // setIsNewView(clickedLabel)
@@ -269,7 +273,7 @@ const Inventory = ()=>{
                                                             if (menu.status === 'other'){
                                                                 if (productView === 'list'){
                                                                     return (
-                                                                        (menu.name === 'delete') && <span key={id} name={menu.name}>{menu.name}</span>
+                                                                        (menu.name === 'delete' || menu.name === 'import record') && <span key={id} name={menu.name}>{menu.name}</span>
                                                                     )
                                                                 }else{
                                                                     return (
