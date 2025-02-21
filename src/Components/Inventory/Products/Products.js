@@ -26,6 +26,7 @@ const Products = ({
     const [defaultProductType, setDefaultProductType] = useState('goods')
     const [selectedProducts, setSelectedProducts] = useState([])
     const [deleteCount, setDeleteCount] = useState(0)
+    const [delCount, setDelCount] =  useState(0)
     const [productData, setProductData] = useState([])
     const [loadResult, setLoadResult] = useState(null)
     const [loadPivot, setLoadPivot] = useState(0)
@@ -169,10 +170,12 @@ const Products = ({
         if (isDeleteClicked){
             if (!isProductView){
                 if (selectedProducts.length){
-                    setAlertState('info')
-                    setAlert('You are about to delete the selected product(s). Please Delete again if you are sure!')
-                    setAlertTimeout(5000)
-                    deleteProduct()
+                    if (delCount === 0){
+                        setAlertState('info')
+                        setAlert('You are about to delete the selected product(s). Please Delete again if you are sure!')
+                        setAlertTimeout(2000)                    
+                    }
+                    deleteProduct(selectedProducts[delCount], selectedProducts.length)                                        
                 }else{
                     setAlertState('error')
                     setAlert('No product selected for deletion. Select a product and try again!')
@@ -183,10 +186,10 @@ const Products = ({
                 setAlertState('info')
                 setAlert('You are about to delete this product. Please Delete again if you are sure!')
                 setAlertTimeout(5000)
-                deleteProduct()
+                deleteProduct(productFields.i_d,productFields.createdAt)
             }
         }
-    },[isDeleteClicked, productView, selectedProducts])
+    },[isDeleteClicked, isProductView, selectedProducts, productFields, delCount])
 
     useEffect(()=>{
         if(importCount!==null){
@@ -215,11 +218,15 @@ const Products = ({
                     setAlertTimeout(7000)
                 }
             }else{
-                setImportCount(null)
+                setAlertState('success')
+                setAlert('All Products Imported Successfully!')
                 setAlertTimeout(5000)
+                setImportCount(null)
+                getProducts(company)
                 setIsOnView(false)
                 setIsSaveValue(false)
                 setIsImportValue(false)
+                
             }
         }
     },[importCount])
@@ -305,10 +312,10 @@ const Products = ({
                     setAlert('Updated!')
                     setAlertTimeout(5000)
                     setIsSaveValue(false)
+                    setProducts(newProducts)
+                    // getProducts(company)
                 }
 
-                setProducts(newProducts)
-                getProducts(company)
                 
                 if (productData.length){
                     setAlertState('success')
@@ -327,14 +334,16 @@ const Products = ({
         
     }
 
-    const deleteProduct = async ()=>{
-        if(deleteCount === productFields.createdAt){
-            setAlertState('info')
-            setAlert('Deleting...')
+    const deleteProduct = async (productId, createdAt)=>{        
+        if(deleteCount === createdAt){
+            if (!selectedProducts.length || delCount === 0){
+                setAlertState('info')
+                setAlert('Deleting Product...')
+            }            
             const resps = await fetchServer("POST", {
                 database: company,
                 collection: "Products", 
-                update: {createdAt: productFields.createdAt}
+                update: {i_d: productId}
             }, "removeDoc", server)
             if (resps.err){
                 console.log(resps.mess)
@@ -342,20 +351,44 @@ const Products = ({
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
                 setIsDeleteValue(false)
+                return;
             }else{
-                setIsOnView(false)
-                setIsNewView(false)
-                setCurProduct(null)
-                setProductFields({...defaultProductFields})
-                setAlertState('success')
-                setAlert(`Product [${productFields.i_d}] Deleted Successfully!`)
-                setAlertTimeout(5000)
-                setDeleteCount(0)
-                getProducts(company)
-                setIsDeleteValue(false)
+                if (!selectedProducts.length){
+                    setIsOnView(false)
+                    setIsNewView(false)
+                    setCurProduct(null)
+                    setAlertState('success')
+                    setAlert(`Product [${productId}] Deleted Successfully!`)
+                    setAlertTimeout(8000)
+                    setDeleteCount(0)
+                    setIsDeleteValue(false)
+                    getProducts(company)
+                    setTimeout(()=>{
+                        setProductFields({...defaultProductFields})
+                    },300)
+                }else{
+                    if (delCount === selectedProducts.length - 1){
+                        setAlertState('success')
+                        setAlert(`${selectedProducts.length} products deleted successfully!`)
+                        setAlertTimeout(8000)
+                        setIsDeleteValue(false)
+                        getProducts(company)
+                        setTimeout(()=>{
+                            setSelectedProducts([])
+                            setDelCount(0)
+                            setDeleteCount(0)
+                        },500)
+                    }else{
+                        setAlertState('success')
+                        setAlert(`${delCount + 1} / ${selectedProducts.length} Deleted Successfully!`)
+                        setDelCount((prevCount)=>{
+                            return prevCount + 1
+                        })
+                    }
+                }
             }        
         }else{
-            setDeleteCount(productFields.createdAt)
+            setDeleteCount(createdAt)
             setIsDeleteValue(false)
             setTimeout(()=>{
                 setDeleteCount(0)
@@ -612,6 +645,10 @@ const Products = ({
                             </div>                            
                         )
                     })}
+                </div>}
+                {!isImportClicked && !isNewProduct && products.length === 0 &&
+                <div className='noProducts'>
+                    Your Products Will Appear Here. Click on the "New" button to add a new product OR click on the "Import Record" button to import products from an excel sheet.
                 </div>}
                 {isImportClicked && <div className='product-import'>
                     <div className='imp-left'>
