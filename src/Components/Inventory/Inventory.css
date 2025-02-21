@@ -116,10 +116,11 @@
 .filterArrow{
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 2px;
 }
+
 .filterIndex{
-    font-size: .9em;
+    font-size: .8em;
     /* cursor: pointer; */
 }
 .filterViewMode{
@@ -133,7 +134,8 @@
     width: fit-content;    
 }
 .filterArrowIcon{
-    font-size: 1.1em;
+    font-size: 1.2em;
+    /* padding: 5px; */
     cursor: pointer;
     background: rgb(242, 254, 238);
 }

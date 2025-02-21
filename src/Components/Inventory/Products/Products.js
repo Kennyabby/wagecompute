@@ -167,12 +167,26 @@ const Products = ({
 
     useEffect(()=>{
         if (isDeleteClicked){
-            setAlertState('info')
-            setAlert('You are about to delete this product. Please Delete again if you are sure!')
-            setAlertTimeout(5000)
-            deleteProduct()
+            if (!isProductView){
+                if (selectedProducts.length){
+                    setAlertState('info')
+                    setAlert('You are about to delete the selected product(s). Please Delete again if you are sure!')
+                    setAlertTimeout(5000)
+                    deleteProduct()
+                }else{
+                    setAlertState('error')
+                    setAlert('No product selected for deletion. Select a product and try again!')
+                    setAlertTimeout(5000)
+                    setIsDeleteValue(false)
+                }
+            }else{
+                setAlertState('info')
+                setAlert('You are about to delete this product. Please Delete again if you are sure!')
+                setAlertTimeout(5000)
+                deleteProduct()
+            }
         }
-    },[isDeleteClicked])
+    },[isDeleteClicked, productView, selectedProducts])
 
     useEffect(()=>{
         if(importCount!==null){
@@ -197,7 +211,7 @@ const Products = ({
                     addProduct(newProductField)
                 }else{
                     setAlertState('error')
-                    setAlert('No empty name field allowed. Kindly make sure the name column has its rows filled!')
+                    setAlert('No empty name field allowed. Kindly make sure the "name" column has its rows filled!')
                     setAlertTimeout(7000)
                 }
             }else{
