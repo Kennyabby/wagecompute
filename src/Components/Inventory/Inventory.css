@@ -126,7 +126,7 @@
 .filterViewMode{
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 7px;
 }
 .filterViewIcon{
     font-size: 1.3em;
