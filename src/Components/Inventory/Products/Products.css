@@ -208,3 +208,15 @@
 .product-list-head{
     font-weight: 700;
 }
+.noProducts{
+    width: 90%;
+    height: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-size: 1.1em;
+    color: rgba(124, 126, 124,.4);
+    font-weight: 700;
+    margin: auto;
+}
