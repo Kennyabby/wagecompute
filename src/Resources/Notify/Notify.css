@@ -2,7 +2,7 @@
     position: fixed;
     top: 20px;
     right: 5px;
-    z-index: 2;
+    z-index: 3;
     max-width: 300px;
     border-radius: 10px;
     background: rgba(245, 245, 162, 0.893);

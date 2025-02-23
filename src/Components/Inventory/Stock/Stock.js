@@ -168,7 +168,7 @@ const Stock = ({
             setAlert('Transferring products...');
             let countSuccess = 0;
             for (const entry of validEntries) {
-                const { productId, quantityToTransfer } = entry;
+                const { productId, quantityToTransfer, transferCost } = entry;
                 const product = products.find(p => p.i_d === productId);
                 if (product) {
                     const fromWarehouseData = product[fromWarehouse] || [];
@@ -180,6 +180,7 @@ const Stock = ({
                         documentType: 'Transfer Shipment',
                         transferTo: toWarehouse,
                         baseQuantity: quantityToTransfer * -1,
+                        totalCost: transferCost * -1,
                         createdAt: createdAt
                     });
                     toWarehouseData.push({
@@ -188,6 +189,7 @@ const Stock = ({
                         documentType: 'Transfer Receipt',
                         tranferFrom: fromWarehouse,
                         baseQuantity: quantityToTransfer,
+                        totalCost: transferCost,
                         createdAt: createdAt
                     });
                     const resps = await fetchServer("POST", {

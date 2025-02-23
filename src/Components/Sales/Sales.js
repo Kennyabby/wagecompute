@@ -1638,15 +1638,21 @@ const Sales = ()=>{
                                                 }}
                                             />
                                         </div>
-                                        <div className='inpcov'>
-                                            <div>Debt</div>
+                                        <div 
+                                            title={!field.salesPoint ? 'Please Select Sales Point Before Entering Debt':''}
+                                        className='inpcov'>
+                                            <div
+                                                title={!field.salesPoint ? 'Please Select Sales Point Before Entering Debt':''}
+                                            >Debt</div>
                                             <input 
                                                 className='forminp'
                                                 name='debt'
                                                 type='number'
                                                 placeholder='Debt'
                                                 value={field.debt}
-                                                disabled={isView || (field.isAccommodation)}
+                                                style={{cursor: !field.salesPoint ? 'not-allowed':'auto'}}
+                                                title={!field.salesPoint ? 'Please Select Sales Point Before Entering Debt':''}
+                                                disabled={isView || (field.isAccommodation) || !field.salesPoint}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
