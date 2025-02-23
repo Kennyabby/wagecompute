@@ -133,6 +133,7 @@ const Adjustments = ({
                 entry.baseQuantity = Number(entry.difference)
                 entry.entryType = (val===-1? 'Nagative Entry' : 'Positive Entry')
                 entry.documentType = (val===-1? 'Negative Adjustment' : 'Positive Adjustment')
+                entry.totalCost = Number(entry.difference) * Number(entry.costPrice)
                 entry.createdAt = new Date().getTime()
                 delete entry.index 
                 const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                

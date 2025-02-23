@@ -87,7 +87,7 @@ const Products = ({
     },[window.localStorage.getItem('sessn-cmp'), curProduct])
 
     useEffect(()=>{
-        if(!isProductView){
+        if(!isProductView && delCount===null){
             setProductFields((productFields)=>{
                 return {...productFields, i_d: generateSeries('PD', products, 'i_d')}
             })
@@ -123,14 +123,17 @@ const Products = ({
 
             delete wrhSetFilt[0]?._id
             setWrhs(wrhSetFilt[0].name?[...wrhSetFilt[0].warehouses]:[])
+            setDefaultProductFields({
+                ...defaultProductFields, 
+                buyTo: wrhSetFilt[0].warehouses.filter((wrh)=>{return wrh.purchase})[0]?.name
+            })
+            setProductFields((productFields)=>{
+                return {...productFields, buyTo: wrhSetFilt[0].warehouses.filter((wrh)=>{return wrh.purchase})[0]?.name}
+            })
 
             const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
             delete catSetFilt[0]?._id;
             setCategories(catSetFilt[0].name ? [...catSetFilt[0].categories] : []);
-            setDefaultProductFields({
-                ...defaultProductFields, 
-                buyTo: catSetFilt[0].categories.filter((category)=>{return category.purchase})[0]?.code
-            })
         }  
     },[settings])
 
@@ -168,8 +171,11 @@ const Products = ({
 
     useEffect(()=>{
         if (isDeleteClicked){
+            console.log('')
+            console.log('@ isDeleteClicked =',isDeleteClicked,'and isProductView =',isProductView,'and products length = ', selectedProducts.length,'Count updated to:',delCount)
             if (!isProductView){
                 if (selectedProducts.length){
+                    console.log('deleting...', delCount)
                     if (delCount === 0){
                         setAlertState('info')
                         setAlert('You are about to delete the selected product(s). Please Delete again if you are sure!')
@@ -196,6 +202,19 @@ const Products = ({
             if(importCount === 0){
                 setAlertState('info')
                 setAlert('Uploading...')
+                let nameCount = 0
+                productData.forEach((product)=>{
+                    if (product['name']){
+                        nameCount++
+                    }
+                })
+                if (nameCount!==productData.length){
+                    setAlertState('error')
+                    setAlert('No empty name field allowed. Kindly make sure the "name" column has all its rows filled!')
+                    setAlertTimeout(7000)   
+                    setImportCount(null)
+                    return                 
+                }
             }
             if(importCount<productData.length){
                 const newProductField = {...productExportFormat}
@@ -204,19 +223,7 @@ const Products = ({
                     newProductField[header] = (productData[importCount])[headersMap[header]] ?
                     (productData[importCount])[headersMap[header]] : '' 
                 })
-                let nameCount = 0
-                productData.forEach((product)=>{
-                    if (product['name']){
-                        nameCount++
-                    }
-                })
-                if (nameCount===productData.length){
-                    addProduct(newProductField)
-                }else{
-                    setAlertState('error')
-                    setAlert('No empty name field allowed. Kindly make sure the "name" column has its rows filled!')
-                    setAlertTimeout(7000)
-                }
+                addProduct(newProductField)                
             }else{
                 setAlertState('success')
                 setAlert('All Products Imported Successfully!')
@@ -226,7 +233,7 @@ const Products = ({
                 setIsOnView(false)
                 setIsSaveValue(false)
                 setIsImportValue(false)
-                
+                setImportCount(null)
             }
         }
     },[importCount])
@@ -289,7 +296,7 @@ const Products = ({
                 resps = await fetchServer("POST", {
                     database: company,
                     collection: "Products", 
-                    prop: [{i_d: newProduct.i_d}, newProduct]
+                    prop: [{createdAt: newProduct.createdAt}, newProduct]
                 }, "updateOneDoc", server)
             }                   
             
@@ -303,6 +310,7 @@ const Products = ({
                     setIsOnView(clickedLabel)
                     setIsImportValue(false)
                 }
+                return
             }else{
                 if(!productData.length){
                     setCurProduct(newProduct)
@@ -312,11 +320,10 @@ const Products = ({
                     setAlert('Updated!')
                     setAlertTimeout(5000)
                     setIsSaveValue(false)
-                    setProducts(newProducts)
                     // getProducts(company)
+                    return
                 }
-
-                
+                    setProducts(newProducts)
                 if (productData.length){
                     setAlertState('success')
                     setAlert(`${importCount+1} data uploaded successfully!`)
@@ -367,9 +374,9 @@ const Products = ({
                         setProductFields({...defaultProductFields})
                     },300)
                 }else{
-                    if (delCount === selectedProducts.length - 1){
+                    if (delCount >= selectedProducts.length - 1){
                         setAlertState('success')
-                        setAlert(`${selectedProducts.length} products deleted successfully!`)
+                        setAlert(`${delCount+1} products deleted successfully!`)
                         setAlertTimeout(8000)
                         setIsDeleteValue(false)
                         getProducts(company)
@@ -390,9 +397,11 @@ const Products = ({
         }else{
             setDeleteCount(createdAt)
             setIsDeleteValue(false)
-            setTimeout(()=>{
-                setDeleteCount(0)
-            },10000)
+            if(!selectedProducts.length){
+                setTimeout(()=>{
+                    setDeleteCount(0)
+                },10000)
+            }
         }
     }
 

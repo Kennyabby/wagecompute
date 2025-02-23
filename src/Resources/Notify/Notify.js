@@ -1,11 +1,12 @@
 import './Notify.css'
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef } from "react";
 import ContextProvider from '../ContextProvider';
 const Notify = ({
     notifyMessage,notifyState,
     timeout,
     action,actionMessage
 })=>{
+    const timeoutRef = useRef(null)
     const {
         setAlert, setAlertState, setActionMessage
     } = useContext(ContextProvider)
@@ -26,7 +27,10 @@ const Notify = ({
     },[notifyState])
     useEffect(()=>{
         if (notifyMessage || actionMessage){
-            setTimeout(()=>{
+            if (timeoutRef.current){
+                clearTimeout(timeoutRef.current)
+            }
+            timeoutRef.current = setTimeout(()=>{
                 setAlert('')
                 setAlertState(null)
                 setActionMessage('')                                
