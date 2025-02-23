@@ -4,6 +4,7 @@ import { useState, useEffect, useContext } from "react";
 import ContextProvider from "../../Resources/ContextProvider";
 import Products from './Products/Products';
 import Adjustments from './Operations/Adjustments/Adjustments';
+import Measures from './Settings/Measures/Measures';
 import { MdArrowBackIosNew, MdArrowForwardIos } from "react-icons/md";
 import { PiCards } from "react-icons/pi";
 import { FaThList } from "react-icons/fa";
@@ -23,6 +24,7 @@ const Inventory = ()=>{
     } = useContext(ContextProvider)
 
     const [view, setView] = useState('')
+    const [popModal, setPopModal] = useState('')
     const [isNewView, setIsNewView] = useState(false)
     const [isOnView, setIsOnView] = useState(false)
     const [clickedLabel, setClickedLabel] = useState('Products')
@@ -42,6 +44,7 @@ const Inventory = ()=>{
         Settings:['Warehouses','Locations','Unit of Measures']
     }
     
+    const popModals = ['Unit of Measures', 'Warehouses', 'Locations']
     const settingsMenu = {
         Products:[
             {
@@ -109,6 +112,9 @@ const Inventory = ()=>{
             clickedLabel={clickedLabel}
             isTransferClicked={isTransferValue === 'Stock'}
             setIsTransferValue={setIsTransferValue}
+        />,
+        'Unit of Measures': <Measures
+            setPopModal={setPopModal}
         />
     }
 
@@ -160,7 +166,13 @@ const Inventory = ()=>{
                     setClickedLabel(name)
                     setDropLabel(name)
                 }else{
-                    setClickedLabel(innerHTML)
+                    if (!popModals.includes(innerHTML)){
+                        setClickedLabel(innerHTML)
+                    }else{
+                        setPopModal(
+                            views[innerHTML]
+                        )
+                    }
                     // setDropLabel(name)
                 }
             }
@@ -208,6 +220,7 @@ const Inventory = ()=>{
     return (
         <>
             <div className='inventory'>
+                {popModal && popModal}
                 <div className='inventoryTop'>
                     <div className='inv-top1' onClick={(e)=>{handleLabelClick(e)}}>                        
                         {Object.keys(dropMenu).map((mainMenu, mainId)=>{

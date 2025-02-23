@@ -106,7 +106,17 @@ const Products = ({
     
     useEffect(()=>{
         if (curProduct){
-            setProductFields({...curProduct})
+            let cummulativeUnitCostPrice = 0
+            let totalCostValue = 0
+            let totalBaseQuantity = 0
+            wrhs.forEach((wrh)=>{
+                curProduct[wrh.name].forEach((entry)=>{
+                    totalBaseQuantity += Number(entry.baseQuantity)
+                    totalCostValue += Number(entry.totalCost)
+                })
+            })
+            cummulativeUnitCostPrice = Number(totalCostValue/totalBaseQuantity)
+            setProductFields({...curProduct, costPrice: cummulativeUnitCostPrice})
         }
     },[curProduct])
     useEffect(()=>{
@@ -469,6 +479,7 @@ const Products = ({
                                 name='costPrice'
                                 placeholder='0.00'
                                 value={productFields.costPrice}
+                                disabled={true}
                             />
                         </div>}
                         <div className='otherInpCov'>
