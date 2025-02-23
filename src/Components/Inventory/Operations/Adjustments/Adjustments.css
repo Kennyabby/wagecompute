@@ -40,18 +40,18 @@
     display: block;
     margin: 10px 7px;
     font-size: .8em;
-    max-width: 120px;
+    width: max-content;
 }
 .colname{
-    /* width: 100px; */
-    width: max-content;
+    width: 120px;
+    /* width: max-content; */
     border-bottom: solid black 1px;
     margin-bottom: 5px;
     font-weight: 600;
     /* background: red; */
 }
 .countedInp{
-    max-width: 120px;
+    width: max-content;
     font-size: .8em;
     background: whitesmoke;
     margin: 0px;
@@ -60,5 +60,6 @@
     border: solid black 0px;
 }
 .colrows{
-    margin: 5px 0px
+    margin: 5px 0px;
+    width:max-content
 }
