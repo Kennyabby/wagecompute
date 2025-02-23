@@ -1,0 +1,82 @@
+.modalView{
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    top: 0;
+    left: 0;
+    z-index: 2;
+}
+.measures{
+    position: relative;
+    width: 50%;
+    height: 80%;
+    background: whitesmoke;
+    border-radius: 10px;
+    overflow: auto;
+}
+.closeModal{
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: greenyellow;
+    padding: 5px 15px;
+    border-radius: 5px;
+    font-size: .8em;
+    cursor: pointer;
+}
+.modal-title{
+    font-weight: 700;
+    margin: 10px;
+}
+.new-record{
+    background: greenyellow;
+    padding: 5px 15px;
+    margin-right: 5px;
+    border-radius: 5px;
+    width: fit-content;
+    height: fit-content;
+    font-size: .8em;
+    font-weight: 600;
+    cursor: pointer;
+}
+.measures-list-container{
+    display: block;
+    width: 100%;
+    padding: 10px;
+}
+.measures-list-title{
+    display: flex;
+    justify-content: space-between;
+    font-size: .8em;
+    font-weight: 600;
+    margin: 15px auto;
+    div{
+        width: 150px;
+        margin: 0px 5px;
+    }
+}
+.measures-list-content{
+    display: flex;
+    justify-content: space-between;
+    font-size: .8em;
+    margin: 5px auto;
+    padding: 5px;
+    text-align: left;
+    background: white;
+    div{
+        width: 150px;
+        margin: 0px 5px;
+    };
+    input{
+        width: 110px;
+        margin: 0px 5px;
+    };
+    select{
+        width: 110px;
+        margin: 0px 5px;
+    }
+}
