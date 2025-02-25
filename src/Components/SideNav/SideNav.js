@@ -3,6 +3,20 @@ import './SideNav.css'
 import { useState, useEffect, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { BiSolidDashboard } from "react-icons/bi";
+import { BsTable } from "react-icons/bs";
+import { FaUsers } from "react-icons/fa";
+import { MdSubject } from "react-icons/md";
+import { CgArrangeBack } from "react-icons/cg";
+import { GiPlayerTime } from "react-icons/gi";
+import { SiPayloadcms } from "react-icons/si";
+import { MdInventory } from "react-icons/md";
+import { GiPayMoney } from "react-icons/gi";
+import { FaHotel } from "react-icons/fa6";
+import { GiBuyCard } from "react-icons/gi";
+import { GiExpense } from "react-icons/gi";
+import { RiSettings2Fill } from "react-icons/ri";
+import { MdLogout } from "react-icons/md";
 
 const SideNav = ()=>{
     const {server, fetchServer, company, companyRecord} = useContext(ContextProvider)
@@ -46,30 +60,93 @@ const SideNav = ()=>{
     return(
         <>
         <div className='sidenav'>
-            <div className='navheader'>{companyName}</div>
+            <div className='navheader'>{companyName.toUpperCase()}</div>
             <nav className='navbox' onClick={handleNav}>
-                <ul className='icons'>
-                </ul>
                 <ul className='navbarr'>
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard')) && <li name="dashboard" className={curPath==='dashboard'?'selected':''}>Dashboard</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports')) && <li name="reports" className={curPath==='reports'?'selected':''}>Reports</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees')) && <li name="employees" className={curPath==='employees'?'selected':''}>Employees</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments')) && <li name="departments" className={curPath==='departments'?'selected':''}>Departments</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions')) && <li name="positions" className={curPath==='positions'?'selected':''}>Positions</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance')) && <li name="attendance" className={curPath==='attendance'?'selected':''}>Attendance</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && <li name="payroll" className={curPath==='payroll'?'selected':''}>Payroll</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('inventory')) && <li name="inventory" className={curPath==='inventory'?'selected':''}>Inventory</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales')) && <li name="sales" className={curPath==='sales'?'selected':''}>Sales</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && <li name="accommodations" className={curPath==='accommodations'?'selected':''}>Accommodation</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && <li name="purchase" className={curPath==='purchase'?'selected':''}>Direct Purchase</li>}
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && <li name="expenses" className={curPath==='expenses'?'selected':''}>Admin Expenses</li>}
-                    {(companyRecord?.status === 'admin') && <li name="settings" className={curPath==='settings'?'selected':''}>Settings</li>}
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard')) && 
+                        <div name="dashboard" className={'navdiv ' + (curPath==='dashboard'?'selected':'')}>
+                            <BiSolidDashboard className='navdivicon' name="dashboard"/>
+                            <div name="dashboard">Dashboard</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports')) && 
+                        <div name="reports" className={'navdiv ' + (curPath==='reports'?'selected':'')}>
+                            <BsTable className='navdivicon' name="reports"/>
+                            <div name="reports">Reports</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees')) && 
+                        <div name="employees" className={'navdiv ' + (curPath==='employees'?'selected':'')}>
+                            <FaUsers className='navdivicon' name="employees"/>
+                            <div name="employees">Employees</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments')) && 
+                        <div name="departments" className={'navdiv ' + (curPath==='departments'?'selected':'')}>
+                            <MdSubject className='navdivicon' name="departments"/>
+                            <div name="departments">Departments</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions')) && 
+                        <div name="positions" className={'navdiv ' + (curPath==='positions'?'selected':'')}>
+                            <CgArrangeBack className='navdivicon' name="positions"/>
+                            <div name="positions">Positions</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance')) && 
+                        <div name="attendance" className={'navdiv ' + (curPath==='attendance'?'selected':'')}>
+                            <GiPlayerTime className='navdivicon' name="attendance"/>
+                            <div name="attendance">Attendance</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && 
+                        <div name="payroll" className={'navdiv ' + (curPath==='payroll'?'selected':'')}>
+                            <SiPayloadcms className='navdivicon' name="payroll"/>
+                            <div name="payroll">Payroll</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('inventory')) && 
+                        <div name="inventory" className={'navdiv ' + (curPath==='inventory'?'selected':'')}>
+                            <MdInventory className='navdivicon' name="inventory"/>
+                            <div name="inventory">Inventory</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales')) && 
+                        <div name="sales" className={'navdiv ' + (curPath==='sales'?'selected':'')}>
+                            <GiPayMoney className='navdivicon' name="sales"/>
+                            <div name="sales">Sales</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && 
+                        <div name="accommodations" className={'navdiv ' + (curPath==='accommodations'?'selected':'')}>
+                            <FaHotel className='navdivicon' name="accommodations"/>
+                            <div name="accommodations">Accommodation</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && 
+                        <div name="purchase" className={'navdiv ' + (curPath==='purchase'?'selected':'')}>
+                            <GiBuyCard className='navdivicon' name="purchase"/>
+                            <div name="purchase">Direct Purchase</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && 
+                        <div name="expenses" className={'navdiv ' + (curPath==='expenses'?'selected':'')}>
+                            <GiExpense className='navdivicon' name="expenses"/>
+                            <div name="expenses">Admin Expenses</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin') && 
+                        <div name="settings" className={'navdiv ' + (curPath==='settings'?'selected':'')}>
+                            <RiSettings2Fill className='navdivicon' name="settings"/>
+                            <div name="settings">Settings</div>
+                        </div>
+                    }
                     <div
+                        className ='navlogout'
                         onClick={logout}
-                    >{logStatus}</div>
+                    ><MdLogout className='navlogouticon'/> {logStatus}</div>
                 </ul>
             </nav>
-            
         </div>
         </>
     )
