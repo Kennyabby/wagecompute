@@ -290,7 +290,7 @@ const Inventory = ()=>{
                                                                     )
                                                                 }else{
                                                                     return (
-                                                                        (menu.name === 'import record') && <span key={id} name={menu.name}>{menu.name}</span>
+                                                                        (['import record', 'internal transfer'].includes(menu.name)) && <span key={id} name={menu.name}>{menu.name}</span>
                                                                     )                                                        
                                                                 }
                                                             }
