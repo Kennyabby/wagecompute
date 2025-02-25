@@ -295,7 +295,7 @@ const Stock = ({
                     <h4><b>Internal Transfer</b></h4>
                     <div className='otherInpCov'>
                         <label>From Warehouse:</label>
-                        <select className='otherInp' value={fromWarehouse} onChange={(e) => {
+                        <select className='otherInp stockOtherInp' value={fromWarehouse} onChange={(e) => {
                             setFromWarehouse(e.target.value)
                             setCurWarehouse(e.target.value)
                         }}>
@@ -307,7 +307,7 @@ const Stock = ({
                     </div>
                     <div className='otherInpCov'>
                         <label>To Warehouse:</label>
-                        <select className='otherInp' value={toWarehouse} onChange={(e) => setToWarehouse(e.target.value)}>
+                        <select className='otherInp stockOtherInp' value={toWarehouse} onChange={(e) => setToWarehouse(e.target.value)}>
                             <option value=''>Select Warehouse</option>
                             {wrhs.map(wrh => (
                                 <option key={wrh.name} value={wrh.name}>{wrh.name}</option>
@@ -319,7 +319,7 @@ const Stock = ({
                     {columns.map((col, index) => (
                         col.show && (
                             <div className='adj-right-content' key={index}>
-                                <div className='colname'>{col.name}</div>
+                                <div className='colname stockColname'>{col.name}</div>
                                 {products.filter(prflt => {
                                     if (curCategory === 'all') {
                                         return prflt.type === 'goods';
@@ -350,13 +350,16 @@ const Stock = ({
                                             return <div className='colrows' key={index1}>{availableQty}</div>;
                                         }
                                     } else if (col.reference === 'quantityToTransfer') {
-                                        return <input 
-                                            className='countedInp' 
-                                            type='number' 
-                                            name='quantityToTransfer' 
-                                            value={transferEntries.filter(entry => product.i_d === entry.productId)[0]?.quantityToTransfer} 
-                                            onChange={(e) => handleInputChange({ e, productId:product.i_d, costPrice:product.costPrice })} 
-                                        />;
+                                        
+                                        return <div>
+                                            <input 
+                                                className='countedInp stockCountedInp' 
+                                                type='number' 
+                                                name='quantityToTransfer' 
+                                                value={transferEntries.filter(entry => product.i_d === entry.productId)[0]?.quantityToTransfer} 
+                                                onChange={(e) => handleInputChange({ e, productId:product.i_d, costPrice:product.costPrice })} 
+                                            />
+                                        </div>
                                     } else if (col.reference === 'transferCost') {
                                         return <div className='colrows' key={index1}>{transferEntries.filter(entry => product.i_d === entry.productId)[0]?.transferCost || 0}</div>;
                                     } else {
