@@ -3,7 +3,7 @@
     width: 30%;
     height: 100vh;
     overflow: auto;
-    background: rgb(14, 14, 14);
+    background: rgb(67, 64, 64);
     color: white;
 }
 .navheader{
@@ -11,15 +11,16 @@
     margin: 20px auto;
     font-weight: bold;
     font-size: 1.4rem;
+    text-align: center;
 }
-.navheader::after{
+/* .navheader::after{
     display: block;
     content: '';
     width: 40%;
     margin-right: 10px;
     border: solid greenyellow 2px;
     background-color: greenyellow;
-}
+} */
 
 .navbox{
     display: flex;
@@ -31,22 +32,66 @@
     background: rgb(36, 35, 35);
 }
 .navbarr{
-    width: 90%;
-    li, div{
-       font-size: 1.23em;
-       margin-bottom: 20px; 
-       cursor: pointer
-    };
-    li{
-        background: black;
-    };
-    li:hover{
-        font-weight: bold;
-    }
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    width:fit-content;
+    padding: 0px;
+    /* background: yellow; */
 }
-li{
-    list-style: none;
+.navdiv{
+    width: 110px;
+    padding: 8px 0px;
+    background: rgb(124, 197, 15);
+    display: inline-flex;
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 7px;
+    margin: auto;
+    color: white;
+    div{
+        font-size: 11px;
+        color: white;
+        cursor: pointer;
+    };
+}
+.navdiv:hover{
+    font-weight: bold;
+    color: white;
+    border: solid rgb(255, 255, 255) 2px
+}
+.navdivicon{
+    font-size: 40px;
+    cursor: pointer;
 }
 .selected{
+    background: rgb(78, 125, 8);
     font-weight: bold;
+    color: white;
+    border: solid rgb(255, 255, 255) 2px
+}
+.navlogouticon{
+    font-size: 20px;
+    
+}
+.navlogout{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 8px 0px;
+    background: rgb(119, 194, 7);
+    font-weight: bolder;
+    color: white;
+    cursor: pointer;
+    margin: auto;
+    border-radius: 5px;
+    width: 110px;
+    font-size: 12px;
+    gap: 5px;
 }
