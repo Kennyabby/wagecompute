@@ -329,6 +329,17 @@ const Stock = ({
                                         }
                                     }
                                 }).map((product, index1) => {
+                                    let cummulativeUnitCostPrice = 0
+                                    let totalCostValue = 0
+                                    let totalBaseQuantity = 0
+                                    wrhs.forEach((wrh)=>{
+                                        product[wrh.name].forEach((entry)=>{
+                                            totalBaseQuantity += entry.baseQuantity ? Number(entry.baseQuantity) : 0
+                                            totalCostValue += entry.totalCost ? Number(entry.totalCost) : 0
+                                        })
+                                    })
+                                    cummulativeUnitCostPrice = totalBaseQuantity !== 0 ? (totalCostValue/totalBaseQuantity) : 0
+                                    product.costPrice = cummulativeUnitCostPrice
                                     let availableQty = 0;
                                     if (['available quantity', 'totalCost'].includes(col.reference)) {
                                         wrhs.forEach(wrh => {
