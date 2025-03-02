@@ -101,7 +101,12 @@ function App() {
       if (enableBlockVal){
         logout()
       }else{
-        
+        if (companyRecord?.permissions.includes('employees')){
+          getEmployees(company)
+          getDepartments(company)
+          getPositions(company)
+          Navigate('/employees')
+        }
         if (companyRecord?.permissions.includes('purchase')){
           getPurchase(company)
           Navigate('/purchase')
