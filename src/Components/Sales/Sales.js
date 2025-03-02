@@ -188,6 +188,7 @@ const Sales = ()=>{
                 getSales(cmp_val)
                 getRentals(cmp_val)
                 getAccommodations(cmp_val)
+                getProducts(cmp_val)
             }
         },10000)
         return () => clearInterval(intervalId);
@@ -546,7 +547,7 @@ const Sales = ()=>{
             }
         });
     };
-    const addSales = async (createdAt)=> { 
+    const addSales = async ()=> { 
         if (postingDate){
             setPostStatus('Posting Sales...')
             var totalCashSales = 0
@@ -567,7 +568,7 @@ const Sales = ()=>{
                 totalBankSales,
                 totalDebt,
                 totalShortage,
-                productsRef: createdAt,
+                // productsRef: createdAt,
                 record: [...fields1]
             }
     
@@ -2040,8 +2041,9 @@ const Sales = ()=>{
                                         if (enteredSales === Number(field.totalSales)){
                                             rt++
                                             if (rt===fields.length){
-                                                setIsProductView(false)
-                                                setProductAdd(true)                                
+                                                // setIsProductView(false)
+                                                // setProductAdd(true)   
+                                                addSales()                             
                                             }
                                         }else{
                                             if (enteredSales < Number(field.totalSales)){
@@ -2230,6 +2232,7 @@ const AddProduct = ({
             setSalesEntries(allEntries)
         }
     },[])
+    
     const handleSalesUdpate = (e, index)=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value
