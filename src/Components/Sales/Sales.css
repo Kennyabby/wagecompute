@@ -41,6 +41,47 @@
     width: 95%;
     font-size: .9em;
 }
+.sldept{
+    position: relative;
+}
+.slprd{
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: .7em;
+    background: rgba(149, 234, 20,.4);
+    font-weight: bold;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.slprfl{
+    position: absolute;
+    left: 20px;
+    top: 60px;
+    font-size: .8em;
+}
+.slprwh-cover{
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    display: flex;
+}
+.slprwh{
+    background: rgba(204, 207, 200, 0.4);
+    margin: auto 10px;
+    padding:5px 10px;
+    border-radius: 5px;
+    font-size: .8em;
+    cursor: pointer
+}
+.slprwh-add{
+    padding-top: 50px;
+}
+.slprwh-clicked{
+    border: solid rgb(144, 228, 17) 1.5px;
+    font-weight: bold;
+}
 .salesfm{
     width: 90%;
     height: 75%;

@@ -110,12 +110,14 @@ const Products = ({
             let totalCostValue = 0
             let totalBaseQuantity = 0
             wrhs.forEach((wrh)=>{
-                curProduct[wrh.name].forEach((entry)=>{
-                    totalBaseQuantity += Number(entry.baseQuantity)
-                    totalCostValue += Number(entry.totalCost)
-                })
+                if (wrh.purchase){
+                    curProduct[wrh.name].forEach((entry)=>{
+                        totalBaseQuantity += Number(entry.baseQuantity)
+                        totalCostValue += Number(entry.totalCost)
+                    })
+                }
             })
-            cummulativeUnitCostPrice = Number(totalCostValue/totalBaseQuantity)
+            cummulativeUnitCostPrice = totalBaseQuantity? Number(totalCostValue/totalBaseQuantity) : 0
             setProductFields({...curProduct, costPrice: cummulativeUnitCostPrice})
         }
     },[curProduct])

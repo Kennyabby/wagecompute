@@ -21,7 +21,8 @@ const Sales = ()=>{
         sales, setSales, getSales, months, 
         accommodations, getAccommodations,
         rentals, setRentals, getRentals, 
-        getDate, removeComma, 
+        products, setProducts, getProducts,
+        getDate, removeComma, settings,
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage 
     } = useContext(ContextProvider)
@@ -48,6 +49,13 @@ const Sales = ()=>{
     const [saleEmployee, setSaleEmployee] = useState('')
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
+    const [isProductView, setIsProductView] = useState(false)
+    const [productAdd, setProductAdd] = useState(false)
+    const [postCount, setPostCount] = useState(0)
+    const [uoms, setUoms] = useState([])
+    const [categories, setCategories] = useState([])
+    const [wrhs, setWrhs] = useState([])
+    const [salesEntries, setSalesEntries] = useState({})
     const [recoveryMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
     const [addTotalSales, setAddTotalSales] = useState('')
     const [deleteCount, setDeleteCount] = useState(0)
@@ -184,6 +192,26 @@ const Sales = ()=>{
         },10000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+    useEffect(()=>{
+        if (settings.length){  
+            const uomSetFilt = settings.filter((setting)=>{
+                return setting.name === 'uom'
+            })
+            delete uomSetFilt[0]?._id
+            setUoms(uomSetFilt[0].name?[...uomSetFilt[0].mearsures]:[])
+
+            const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
+            delete catSetFilt[0]?._id;
+            setCategories(catSetFilt[0].name ? [...catSetFilt[0].categories] : []);
+
+            const wrhSetFilt = settings.filter((setting)=>{
+                return setting.name === 'warehouses'
+            })
+
+            delete wrhSetFilt[0]?._id
+            setWrhs(wrhSetFilt[0].name ? [...wrhSetFilt[0].warehouses] : [])
+        }  
+    },[settings])
     useEffect(()=>{
         if (!recoveryVal){
             setSalesOpts('sales')
@@ -385,7 +413,140 @@ const Sales = ()=>{
         })
     }
 
-    const addSales = async ()=> { 
+    const handleProductSales = async ()=>{
+        const timestamp = Date.now()
+        setPostCount(0)
+        var totalAmount = 0
+        var entriesLength = 0
+        const validEntries = {}
+        Object.keys(salesEntries).forEach((wh)=>{   
+            validEntries[wh]=[]             
+            salesEntries[wh].forEach((entry)=>{
+                if (entry.totalSales){
+                    entriesLength += 1
+                    totalAmount += Number(entry.totalSales)
+                    validEntries[wh].push(entry)
+                }
+            })
+        })   
+        if (curSale !== null){            
+            const {createdAt, postingDate, totalCashSales, totalDebt, record, 
+                totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
+            } = curSale
+            var accommodationAmount = 0
+            record.forEach((saleRecord)=>{
+                if (saleRecord.salesPoint === 'accomodation'){
+                    accommodationAmount += Number(saleRecord.totalSales)
+                }
+            })
+            const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
+            if (totalSalesAmount === totalAmount){
+                Object.keys(validEntries).forEach((entryWrh)=>{
+                    postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
+                })
+            }else{
+                setAlertState('error')
+                setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
+                setAlertTimeout(3000)
+            }
+        }else{            
+            var totalCashSales = 0
+            var totalDebt = 0      
+            var totalShortage = 0 
+            var totalBankSales = 0 
+            const fields1 = [...fields]
+            fields1.forEach((field)=>{
+                totalCashSales += Number(field.cashSales)
+                totalDebt += Number(field.debt)
+                totalShortage += Number(field.shortage)
+                totalBankSales += Number(field.bankSales)
+            })
+            const totalSalesAmount = totalCashSales + totalBankSales + totalDebt + totalShortage
+            if (totalSalesAmount === totalAmount){
+                Object.keys(validEntries).forEach((entryWrh)=>{
+                    postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
+                })
+            }else{
+                setAlertState('error')
+                setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
+                setAlertTimeout(3000)
+            }
+        }
+    }
+
+    const postProductsSales = async (entryWrh, validEntries, timestamp, entriesLength) => {
+        const createdAt = timestamp;
+    
+        validEntries.forEach(async (entry, index) => {
+            const productData = products[entry.index][entryWrh];
+            const newProduct = {
+                ...entry,
+                quantity: Number(entry.quantity) * -1,
+                baseQuantity: Number(entry.baseQuantity) * -1,
+                totalCost: Number(entry.costPrice) * Number(entry.baseQuantity) * -1,
+                totalSales: Number(entry.totalSales) * -1,
+                postingDate: new Date(Date.now()).toISOString().slice(0, 10),
+                createdAt: createdAt,
+            };
+    
+            productData.push(newProduct);
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Products",
+                prop: [{ i_d: newProduct.productId }, { [entryWrh]: productData }]
+            }, "updateOneDoc", server);
+    
+            if (resps.err) {
+                console.log(resps.mess);
+                setAlertState('error');
+                setAlert(resps.mess);
+                setAlertTimeout(5000);
+            } else {
+                setPostCount(prevCount => {
+                    const newCount = prevCount + 1;
+                    if (newCount === entriesLength) {
+                        setProductAdd(false);
+                        setAlertState('success');
+                        setAlert(`${entriesLength} Inventory Updated Successfully!`);
+                        getProducts(company);
+                        setProductAdd(false);
+    
+                        if (curSale === null) {
+                            setTimeout(() => addSales(createdAt), 500);
+                        } else {
+                            setTimeout(async () => {
+                                setAlertState('info');
+                                setAlert('Linking to Posted Sales...');
+                                const resps1 = await fetchServer("POST", {
+                                    database: company,
+                                    collection: "Sales",
+                                    prop: [{ createdAt: curSale.createdAt }, { productsRef: createdAt }]
+                                }, "updateOneDoc", server);
+    
+                                if (resps1.err) {
+                                    console.log(resps1.mess);
+                                    setAlertState('info');
+                                    setAlert(resps1.mess);
+                                    setAlertTimeout(5000);
+                                } else {
+                                    setAlertState('success');
+                                    setAlert('Products Linked Successfully!');
+                                    setAlertTimeout(3000);
+                                    getSales(company);
+                                }
+                            }, 1000);
+                        }
+                    } else {
+                        setAlertState('success');
+                        setAlert(`${newCount} / ${entriesLength} Inventory Updated Successfully!`);
+                    }
+    
+                    return newCount;
+                });
+            }
+        });
+    };
+    const addSales = async (createdAt)=> { 
         if (postingDate){
             setPostStatus('Posting Sales...')
             var totalCashSales = 0
@@ -406,6 +567,7 @@ const Sales = ()=>{
                 totalBankSales,
                 totalDebt,
                 totalShortage,
+                productsRef: createdAt,
                 record: [...fields1]
             }
     
@@ -425,6 +587,23 @@ const Sales = ()=>{
             }else{
                 setSales(newSales)
                 setCurSale(newSale)
+                const validEntries = {}
+                wrhs.forEach((wh)=>{   
+                    validEntries[wh.name]=[] 
+                    var ctent = 0    
+                    products.forEach((product)=>{
+                        product[wh.name].forEach((entry)=>{
+                            if (entry.createdAt === newSale.productsRef){
+                                ctent++
+                                validEntries[wh.name].push(entry)
+                            }
+                        })
+                    })        
+                    if (!ctent){
+                        delete validEntries[wh.name]
+                    }
+                })   
+                setSalesEntries({...validEntries})
                 setCurSaleDate(newSale.postingDate)
                 setIsView(true)
                 setFields([...(newSale.record)])
@@ -438,6 +617,24 @@ const Sales = ()=>{
     }
 
     const handleViewClick = (sale) =>{
+        const validEntries = {}
+        wrhs.forEach((wh)=>{   
+            validEntries[wh.name]=[] 
+            var ctent = 0    
+            products.forEach((product)=>{
+                product[wh.name].forEach((entry)=>{
+                    if (entry.createdAt === sale.productsRef){
+                        ctent++
+                        validEntries[wh.name].push(entry)
+                    }
+                })
+            })        
+            if (!ctent){
+                delete validEntries[wh.name]
+            }
+        })   
+       
+        setSalesEntries({...validEntries})
         setCurSale(sale)
         setCurSaleDate(sale.postingDate)
         setSalesOpts('sales')
@@ -912,7 +1109,7 @@ const Sales = ()=>{
                     }}              
                     recoveryEmployeeId={recoveryEmployeeId}
                     recoveryMonth={recoveryMonth}
-                />}    
+                />}                    
                 {showReceipt && <RentalReceipt
                     rentalSale = {curRent}
                     month = {months[new Date(Date.now()).getMonth()]}
@@ -930,6 +1127,19 @@ const Sales = ()=>{
                         acceptSalesDebt()
                     }}
                 />}   
+                {productAdd && <AddProduct
+                    products={products}
+                    setProductAdd={setProductAdd}
+                    uoms={uoms}
+                    categories={categories}
+                    wrhs = {wrhs}
+                    isProductView={isProductView}
+                    curSale={curSale}
+                    setIsProductView={setIsProductView}
+                    handleProductSales={handleProductSales}
+                    salesEntries={salesEntries}
+                    setSalesEntries={setSalesEntries}
+                />}
                 <div className='emplist saleslist'>    
                     {companyRecord.status==='admin' && <FaTableCells                         
                         className='allslrepicon'
@@ -1020,14 +1230,33 @@ const Sales = ()=>{
                         }
                     }).map((sale, index)=>{
                         const {createdAt, postingDate, totalCashSales, totalDebt, record, 
-                            totalShortage, totalDebtRecovered, totalBankSales, recoveryList 
+                            totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
                         } = sale 
                         return(
-                            <div className={'dept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
+                            <div className={'dept sldept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
                                     handleViewClick(sale)
                                 }}
                             >
+                                {productsRef ? 
+                                    <div
+                                        className='slprd'
+                                        onClick={()=>{
+                                            setIsProductView(true)
+                                            setProductAdd(true)
+                                        }}
+                                    > 
+                                        View Products 
+                                    </div> 
+                                    : <div
+                                        className='slprd'
+                                        onClick={()=>{
+                                            setIsProductView(false)
+                                            setProductAdd(true)
+                                        }}
+                                    >
+                                        Add Products
+                                    </div>}
                                 <div className='dets sldets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
@@ -1811,7 +2040,8 @@ const Sales = ()=>{
                                         if (enteredSales === Number(field.totalSales)){
                                             rt++
                                             if (rt===fields.length){
-                                                addSales()                                
+                                                setIsProductView(false)
+                                                setProductAdd(true)                                
                                             }
                                         }else{
                                             if (enteredSales < Number(field.totalSales)){
@@ -1949,3 +2179,190 @@ const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isV
 }
 
 export default Sales
+
+
+const AddProduct = ({
+    products, setProductAdd, categories, uoms, wrhs, isProductView, curSale,
+    setIsProductView, handleProductSales, salesEntries, setSalesEntries 
+})=>{    
+    const [category, setCategory] = useState('all')
+    const [wrh, setWrh] = useState(isProductView ? Object.keys(salesEntries)[0] : 'open bar1' )
+    useEffect(()=>{
+        if (!isProductView){
+            const allEntries = {}
+            const wrhEntries = [...products].map((product, index)=>{
+                const uom1 = uoms.filter((uom)=>{
+                    return uom.code === product.purchaseUom
+                })                
+                let cummulativeUnitCostPrice = 0
+                let totalCostValue = 0
+                let totalBaseQuantity = 0
+                wrhs.forEach((wrh)=>{
+                    if(wrh.purchase){
+                        product[wrh.name].forEach((entry)=>{
+                            totalBaseQuantity += Number(entry.baseQuantity)
+                            totalCostValue += Number(entry.totalCost)
+                        })
+                    }
+                })
+                cummulativeUnitCostPrice = totalBaseQuantity? Number(totalCostValue/totalBaseQuantity) : 0
+                return {                
+                    productId : product.i_d,
+                    index: index,
+                    name: product.name,
+                    category: product.category,
+                    quantity: '',
+                    baseQuantity: 0,
+                    salesUom: product.salesUom,
+                    baseUom: uom1[0]?.base,
+                    costPrice: cummulativeUnitCostPrice,
+                    salesPrice: product.salesPrice,
+                    totalSales: '',
+                    entryType: 'Sales',
+                    documentType: 'Shipment'
+                }
+            })
+            wrhs.forEach((wrh)=>{
+                if (!wrh.purchase){
+                    allEntries[wrh.name] = [...wrhEntries]
+                }
+            })
+            setSalesEntries(allEntries)
+        }
+    },[])
+    const handleSalesUdpate = (e, index)=>{
+        const name = e.target.getAttribute('name')
+        const value = e.target.value
+        if (name){
+            if (name === 'quantity'){
+                const uom2 = uoms.filter((uom)=>{
+                    return uom.code === salesEntries[wrh][index].salesUom
+                })
+                const originalEntries = structuredClone({salesEntries})
+                var updatedWrh = [...salesEntries[wrh]]
+                updatedWrh[index][name] = Number(value)
+                updatedWrh[index].baseQuantity = Number(value) * Number(uom2[0]?.multiple)
+                updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
+                
+                setSalesEntries({...(originalEntries.salesEntries), [wrh]: updatedWrh})
+
+            }else{
+                const originalEntries = structuredClone({salesEntries})
+                setSalesEntries({...(originalEntries.salesEntries), [name]: value})                
+            }
+        }
+    }
+    return (
+        <>
+            <div className='addproduct'>
+                <div className='add-products'>
+                    <div className='slprwh-cover' onClick={(e)=>{
+                        const name = e.target.getAttribute('name')
+                        setCategory('all')
+                        setWrh(name)
+                    }}>{
+                        wrhs.map((wh, id)=>{
+                            if (!wh.purchase){
+                                if (isProductView){
+                                    return Object.keys(salesEntries).includes(wh.name) && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
+                                }else{
+                                    return <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
+                                }
+                            }
+                        })
+                    }</div>
+                    <div>
+                        <select 
+                            className='slprfl'
+                            type='text'
+                            name='category'
+                            value={category}
+                            onChange={(e)=>{setCategory(e.target.value)}}
+                        >
+                            <option value={'all'}>Filter Products</option>
+                            {categories.map((cat, id)=>{
+                                return <option key={id} value={cat.code}>{cat.name}</option>
+                            })}
+                        </select>
+                    </div>
+                    <div className='add-products-title slprwh-add'>Product Sales Details</div>
+                    <div className='add-products-content'>
+                        <div className='add-products-content-title'>
+                            <div>Product Name</div>
+                            <div>Product ID</div>
+                            <div>Sales Quantity</div>
+                            <div>Sales UOM</div>
+                            <div>Sales Amount</div>
+                        </div>
+                        {salesEntries[wrh]?.filter((flent)=>{
+                            if (category === 'all'){
+                                return flent
+                            }else{
+                                return flent.category === category
+                            }
+                        }).sort((a,b) => {
+                            const numA = parseInt(a.productId.replace("PD", ""), 10);
+                            const numB = parseInt(b.productId.replace("PD", ""), 10);
+                            return numA - numB;
+                        }).map((entry, index)=>{
+                            return (
+                                <div key={index} className='add-products-content-entry'>
+                                    <div>{entry.name}</div>
+                                    <div>{entry.productId}</div>
+                                    <div>
+                                        <input 
+                                            type='number'
+                                            name='quantity'
+                                            value={entry.quantity}
+                                            onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
+                                            disabled={isProductView}
+                                        />
+                                    </div>
+                                    <div>
+                                        <select 
+                                            name='salesUom'
+                                            value={entry.salesUom}
+                                            onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
+                                            disabled={isProductView}
+                                        >
+                                            {uoms.map((uom, idx)=>{
+                                                return (
+                                                    <option key={idx} value={uom.code}>{uom.name}</option>
+                                                )
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <input 
+                                            name='totalSales'
+                                            type='number'
+                                            value={entry.totalSales}
+                                            disabled={true}
+                                            onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                    <div className='add-products-button'>
+                        {!isProductView && <div 
+                            className='add-products-button-add'
+                            onClick={handleProductSales}
+                        >{curSale === null ? 'Add and Post' : 'Save'}</div>}
+                        <div 
+                            className='add-products-button-cancel'
+                            onClick={()=>{
+                                setIsProductView(false)
+                                setProductAdd(false)
+                                if(!isProductView){
+                                    setSalesEntries([])
+                                }
+                            }}
+                        >{isProductView?'Close':'Cancel'}</div>
+                    </div>
+                </div>
+            </div>
+        </>
+    )
+}
