@@ -117,39 +117,6 @@ const Purchase = ()=>{
     }
 
     const handleProductPurchase = ()=>{
-        setPostCount(0)
-        if (fields.purchaseUOM!=='units'){
-            var totalQuantity = 0
-            var totalAmount = 0
-            purchaseEntries.filter((entry)=>{
-                const {baseQuantity, totalCost} = entry
-                if (baseQuantity && totalCost){
-                    totalQuantity += Number(baseQuantity)
-                    totalAmount += Number(totalCost)
-                    return entry
-                }
-            })
-            if (Number(totalAmount) === Number(fields.purchaseAmount)){
-                setFields((fields)=>{
-                    return {...fields, purchaseQuantity: totalQuantity, purchaseUOM: 'units'}
-                })     
-                if(curPurchase!==null){
-                    setTimeout(()=>{
-                        updateInventory()
-                        return
-                    },500)
-                }else{
-                    setProductAdd(false)
-                }
-            }else{
-                setAlertState('error')
-                setAlert('Total Purchase Amount does not match the sum of the Products Amounts')
-                setAlertTimeout(5000)
-            }
-        }else{
-            updateInventory()
-        }
-
         const updateInventory = async ()=>{
             if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
                 fields.purchaseUOM && fields.purchaseHandler && fields.purchaseDepartment &&
@@ -256,6 +223,40 @@ const Purchase = ()=>{
                 setAlertTimeout(5000)
             }
         }
+        setPostCount(0)
+        if (fields.purchaseUOM!=='units'){
+            var totalQuantity = 0
+            var totalAmount = 0
+            purchaseEntries.filter((entry)=>{
+                const {baseQuantity, totalCost} = entry
+                if (baseQuantity && totalCost){
+                    totalQuantity += Number(baseQuantity)
+                    totalAmount += Number(totalCost)
+                    return entry
+                }
+            })
+            if (Number(totalAmount) === Number(fields.purchaseAmount)){
+                setFields((fields)=>{
+                    return {...fields, purchaseQuantity: totalQuantity, purchaseUOM: 'units'}
+                })     
+                if(curPurchase!==null){
+                    setTimeout(()=>{
+                        updateInventory()
+                        return
+                    },500)
+                }else{
+                    setProductAdd(false)
+                }
+            }else{
+                setAlertState('error')
+                setAlert('Total Purchase Amount does not match the sum of the Products Amounts')
+                setAlertTimeout(5000)
+            }
+        }else{
+            updateInventory()
+        }
+
+        
     }
 
     const addPurchase = async (productsRef)=>{
