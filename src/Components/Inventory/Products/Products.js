@@ -37,6 +37,7 @@ const Products = ({
         i_d: generateSeries('PD', products, 'i_d'),
         name: '',
         salesPrice: '',
+        vipPrice: '',
         costPrice: '',
         category: 'all',
         purchaseVat:'',
@@ -48,6 +49,7 @@ const Products = ({
     const productExportFormat = {
         name: '',
         salesPrice: '',
+        vipPrice: '',
         costPrice: '',
         category: 'all',
         purchaseVat:'',
@@ -183,8 +185,6 @@ const Products = ({
 
     useEffect(()=>{
         if (isDeleteClicked){
-            console.log('')
-            console.log('@ isDeleteClicked =',isDeleteClicked,'and isProductView =',isProductView,'and products length = ', selectedProducts.length,'Count updated to:',delCount)
             if (!isProductView){
                 if (selectedProducts.length){
                     console.log('deleting...', delCount)
@@ -278,6 +278,7 @@ const Products = ({
             }
             
             newProduct.type = defaultProductType
+            delete newProduct._id
             if (productData.length){
                 newProduct.buyTo = defaultProductFields.buyTo
                 newProduct.type = productFields.type
@@ -308,7 +309,7 @@ const Products = ({
                 resps = await fetchServer("POST", {
                     database: company,
                     collection: "Products", 
-                    prop: [{createdAt: newProduct.createdAt}, newProduct]
+                    prop: [{i_d: newProduct.i_d}, newProduct]
                 }, "updateOneDoc", server)
             }                   
             
@@ -325,7 +326,15 @@ const Products = ({
                 return
             }else{
                 if(!productData.length){
+                    getProducts(company)
                     setCurProduct(newProduct)
+                    if (isProductView){
+                        setTimeout(()=>{
+                        },2000)
+
+                    }else{
+                        setCurProduct(newProduct)
+                    }
                     setIsOnView(clickedLabel)
                     setProductFields({...newProduct})
                     setAlertState('success')
@@ -471,6 +480,16 @@ const Products = ({
                                 name='salesPrice'
                                 placeholder='0.00'
                                 value={productFields.salesPrice}
+                            />
+                        </div>
+                        <div className='otherInpCov'>
+                            <label>VIP price (₦)</label>
+                            <input 
+                                className='otherInp'
+                                type='number'
+                                name='vipPrice'
+                                placeholder='0.00'
+                                value={productFields.vipPrice !== undefined ? productFields.vipPrice: ''}
                             />
                         </div>
                         {defaultProductType === 'goods' && <div className='otherInpCov'>

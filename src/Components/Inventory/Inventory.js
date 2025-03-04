@@ -29,6 +29,7 @@ const Inventory = ()=>{
     const [isOnView, setIsOnView] = useState(false)
     const [clickedLabel, setClickedLabel] = useState('Products')
     const [isSaveValue, setIsSaveValue] = useState(false)
+    const [curProductIndex, setCurProductIndex] = useState(0)
     const [isDeleteValue, setIsDeleteValue] = useState(false)
     const [isImportValue, setIsImportValue] = useState(false)
     const [isTransferValue, setIsTransferValue] = useState(false)
@@ -313,34 +314,47 @@ const Inventory = ()=>{
                         <div className='filter'>
                             {['Products'].includes(clickedLabel) && curProduct &&
                                 <div className='filterIndex'>
-                                    {products.indexOf(curProduct)+1} / {products.length}
+                                    {[''].map((args, ind)=>{
+                                        var currentIndex = 0
+                                        products.forEach((product, index)=>{
+                                            if (product.i_d === curProduct.i_d){
+                                                currentIndex = index
+                                            }
+                                        })
+                                        return (`${currentIndex + 1} / ${products.length}`)
+                                    })}
                                 </div>
                             }
                             {['Products'].includes(clickedLabel) && 
-                            <div 
-                                className='filterArrow'
-                                onClick={(e)=>{
-                                    const name = e.target.getAttribute('name')
-                                    if (name === 'back'){
-                                        if (curProduct){
-                                            const curIndex = products.indexOf(curProduct)
-                                            if (curIndex > 0){
-                                                setCurProduct(products[curIndex-1])
+                                <div 
+                                    className='filterArrow'
+                                    onClick={(e)=>{
+                                        const name = e.target.getAttribute('name')
+                                        var currentIndex = 0
+                                        products.forEach((product, index)=>{
+                                            if (product.i_d === curProduct.i_d){
+                                                currentIndex = index
+                                            }
+                                        })
+                                        if (name === 'back'){
+                                            if (curProduct){
+                                                if (currentIndex > 0){
+                                                    setCurProduct(products[currentIndex-1])
+                                                }
+                                            }
+                                        }else if (name === 'forward'){
+                                            if (curProduct){
+                                                if (currentIndex < products.length-1){
+                                                    setCurProduct(products[currentIndex+1])
+                                                }
                                             }
                                         }
-                                    }else if (name === 'forward'){
-                                        if (curProduct){
-                                            const curIndex = products.indexOf(curProduct)
-                                            if (curIndex < products.length-1){
-                                                setCurProduct(products[curIndex+1])
-                                            }
-                                        }
-                                    }
-                                }}
-                            >   
-                                <MdArrowBackIosNew name='back' className={'filterArrowIcon'}/>
-                                <MdArrowForwardIos name='forward' className={'filterArrowIcon'}/>
-                            </div>}
+                                    }}
+                                >   
+                                    <MdArrowBackIosNew name='back' className={'filterArrowIcon'}/>
+                                    <MdArrowForwardIos name='forward' className={'filterArrowIcon'}/>
+                                </div>
+                            }
                             {['Products'].includes(clickedLabel) && !isNewView && 
                             <div 
                                 className='filterViewMode'
