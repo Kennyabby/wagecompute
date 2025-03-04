@@ -552,7 +552,7 @@ const Accommodation = ()=>{
                 {showReport && <AccommodationReport
                     reportSales = {reportSales}
                     multiple={!accommodationCustomer}
-                    accommodationCustomer={accommodationCustomer}
+                    accommodationCustomer={accommodationCustomer}                  
                     setShowReport={(value)=>{
                         setShowReport(value)
                         if (!accommodationCustomer){
