@@ -25,6 +25,7 @@ const Purchase = ()=>{
     const [isProductView,setIsProductView] = useState(false)
     const [showReport, setShowReport] = useState(false)
     const [purchaseEntries, setPurchaseEntries] = useState([])
+    const [postCount, setPostCount] = useState(0)
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
     const [productPurchased, setProductPurchased] = useState([])
@@ -98,23 +99,26 @@ const Purchase = ()=>{
         }
     }
     const handleViewClick = (pur) =>{
-        const entries = []
-        products.forEach((product)=>{
-            product[product.buyTo].forEach((entry)=>{
-                if (entry.createdAt === pur.productsRef){
-                    entries.push(entry)
-                }
+        if (pur.productsRef){
+            const entries = []
+            products.forEach((product)=>{
+                product[product.buyTo].forEach((entry)=>{
+                    if (entry.createdAt === pur.productsRef){
+                        // console.log('entry',entry,'product', product)
+                        entries.push(entry)
+                    }
+                })
             })
-        })
-        setPurchaseEntries([...entries])
+            setPurchaseEntries([...entries])
+        }
         setCurPurchase(pur)
         setFields({...pur})
         setIsView(true)
     }
 
     const handleProductPurchase = ()=>{
-        var postCount = 0
-        if (!fields.purchaseUOM){
+        setPostCount(0)
+        if (fields.purchaseUOM!=='units'){
             var totalQuantity = 0
             var totalAmount = 0
             purchaseEntries.filter((entry)=>{
@@ -129,13 +133,24 @@ const Purchase = ()=>{
                 setFields((fields)=>{
                     return {...fields, purchaseQuantity: totalQuantity, purchaseUOM: 'units'}
                 })     
-                setProductAdd(false)
+                if(curPurchase!==null){
+                    setTimeout(()=>{
+                        updateInventory()
+                        return
+                    },500)
+                }else{
+                    setProductAdd(false)
+                }
             }else{
                 setAlertState('error')
                 setAlert('Total Purchase Amount does not match the sum of the Products Amounts')
                 setAlertTimeout(5000)
             }
         }else{
+            updateInventory()
+        }
+
+        const updateInventory = async ()=>{
             if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
                 fields.purchaseUOM && fields.purchaseHandler && fields.purchaseDepartment &&
                 fields.itemCategory
@@ -151,7 +166,12 @@ const Purchase = ()=>{
                 const createdAt = Date.now()
                 validEntries.forEach((entry)=>{
                     const purchaseWrh = products[entry.index].buyTo
-                    const purchaseData = products[entry.index][purchaseWrh]
+                    let purchaseData = []
+                    products.forEach((prod)=>{
+                        if (prod.i_d === (entry.i_d || entry.productId)){
+                            purchaseData = prod[purchaseWrh]
+                        }
+                    })
                     const newProduct = {
                         ...entry,
                         postingDate: new Date(Date.now()).toISOString().slice(0,10),
@@ -162,7 +182,7 @@ const Purchase = ()=>{
                     const resps = fetchServer("POST", {
                         database: company,
                         collection: "Products",
-                        prop: [{i_d: newProduct.productId}, {[purchaseWrh]: purchaseData}]
+                        prop: [{i_d: (newProduct.productId || newProduct.i_d)}, {[purchaseWrh]: purchaseData}]
                     }, "updateOneDoc", server)
                     if (resps.err){
                         console.log(resps.mess)
@@ -170,19 +190,64 @@ const Purchase = ()=>{
                         setAlert(resps.mess)
                         setAlertTimeout(5000)
                     }else{
-                        if(postCount === validEntries.length-1){
-                            setProductAdd(false)
-                            setAlertState('success')
-                            setAlert(`${validEntries.length} Inventory Updated Successfully!`)                        
-                            getProducts(company)
-                            setTimeout(()=>{                            
-                                addPurchase(createdAt)
-                            },500)
-                        }else{
-                            setAlertState('success')
-                            setAlert(`${postCount+1} / ${validEntries.length} Inventory Updated Successfully!`)
-                            postCount++
-                        }
+                        setPostCount((prevCount)=>{
+                            const newCount = prevCount + 1
+                            if(newCount === validEntries.length){
+                                setProductAdd(false)
+                                setAlertState('success')
+                                setAlert(`${validEntries.length} Inventory Updated Successfully!`)                        
+                                getProducts(company)
+                                if (curPurchase === null){
+                                    setTimeout(()=>{                            
+                                        addPurchase(createdAt)
+                                    },500)
+                                }else{
+                                    setTimeout(async () => {
+                                        setAlertState('info');
+                                        setAlert('Linking to Posted Purchase...');
+                                        const resps1 = await fetchServer("POST", {
+                                            database: company,
+                                            collection: "Purchase",
+                                            prop: [{ createdAt: curPurchase.createdAt }, { 
+                                                productsRef: createdAt,  
+                                                purchaseQuantity: fields.purchaseQuantity,
+                                                purchaseUOM: 'units'
+                                            }]
+                                        }, "updateOneDoc", server);
+            
+                                        if (resps1.err) {
+                                            console.log(resps1.mess);
+                                            setAlertState('info');
+                                            setAlert(resps1.mess);
+                                            setAlertTimeout(5000);
+                                        } else {
+                                            setAlertState('success');
+                                            setAlert('Products Linked Successfully!');
+                                            setAlertTimeout(3000);
+                                            const entries = []
+                                            products.forEach((product)=>{
+                                                product[product.buyTo].forEach((entry)=>{
+                                                    if (entry.createdAt === createdAt){
+                                                        entries.push(entry)
+                                                    }
+                                                })
+                                            })
+                                            setPurchaseEntries([...entries])
+                                            setFields((fields)=>{
+                                                return {...fields, productsRef: createdAt}
+                                            })
+                                            getPurchase(company);
+                                        }
+                                        return
+                                    }, 1000);
+                                }
+                            }else{
+                                setAlertState('success')
+                                setAlert(`${newCount} / ${validEntries.length} Inventory Updated Successfully!`)
+                            }
+
+                            return newCount
+                        })
                     }        
                 })
             }else{ 
@@ -212,30 +277,30 @@ const Purchase = ()=>{
             }, "createDoc", server)
                                         
             if (resps.err){
-            console.log(resps.mess)
-            setPurchaseStatus('Post Purchase')
-            setAlertState('error')
-            setAlert(resps.mess)
-            setAlertTimeout(5000)
+                console.log(resps.mess)
+                setPurchaseStatus('Post Purchase')
+                setAlertState('error')
+                setAlert(resps.mess)
+                setAlertTimeout(5000)
             }else{
-            setPurchaseStatus('Post Purchase')
-            setPurchase(newPurchases)
-            setCurPurchase(newPurchase)
-            setIsView(true)
-            setFields({...newPurchase})
-            setAlertState('success')
-            setAlert('Purchase Record Posted Successfully!')
-            const entries = []
-            products.forEach((product)=>{
-                product[product.buyTo].forEach((entry)=>{
-                    if (entry.createdAt === newPurchase.productsRef){
-                        entries.push(entry)
-                    }
+                setPurchaseStatus('Post Purchase')
+                setPurchase(newPurchases)
+                setCurPurchase(newPurchase)
+                setIsView(true)
+                setFields({...newPurchase})
+                setAlertState('success')
+                setAlert('Purchase Record Posted Successfully!')
+                const entries = []
+                products.forEach((product)=>{
+                    product[product.buyTo].forEach((entry)=>{
+                        if (entry.createdAt === newPurchase.productsRef){
+                            entries.push(entry)
+                        }
+                    })
                 })
-            })
-            setPurchaseEntries([...entries])
-            setAlertTimeout(5000)
-            getPurchase(company)
+                setPurchaseEntries([...entries])
+                setAlertTimeout(5000)
+                getPurchase(company)
             }
         
     }
@@ -290,6 +355,7 @@ const Purchase = ()=>{
                 {productAdd && <AddProduct
                     products = {products}
                     category = {fields.itemCategory}
+                    curPurchase = {curPurchase}
                     setProductAdd = {setProductAdd}
                     uoms = {uoms}
                     handleProductPurchase = {handleProductPurchase}
@@ -512,7 +578,7 @@ const Purchase = ()=>{
                                 disabled={isView}
                             />
                         </div>
-                        {fields.purchaseUOM === 'units' ? 
+                        {(fields.productsRef || fields.purchaseUOM === 'units') ? 
                         <div 
                             className='prd-link'
                             onClick={()=>{
@@ -522,10 +588,11 @@ const Purchase = ()=>{
                         >
                             {`View All (${fields.purchaseQuantity.toLocaleString()}) Quantities`}
                         </div> : 
-                        (!isView && <div 
+                        (<div 
                             className='prd-link'
                             onClick={()=>{
                                 if (fields.purchaseAmount && fields.itemCategory){
+                                    setIsProductView(false)
                                     setProductAdd(true)
                                 }else{
                                     setAlertState('error')
@@ -573,13 +640,13 @@ const Purchase = ()=>{
 export default Purchase
 
 const AddProduct = ({
-    products,category, setProductAdd, uoms, isProductView, setIsProductView,
+    products, category, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
     handleProductPurchase, purchaseEntries, setPurchaseEntries 
 })=>{    
     useEffect(()=>{
         if (!isProductView){
             const fltProducts = products.filter((product)=>{
-                return product.category === category
+                return product.category === category.toLowerCase()
             })
             setPurchaseEntries(fltProducts.map((product, index)=>{
                 const uom1 = uoms.filter((uom)=>{
@@ -600,7 +667,9 @@ const AddProduct = ({
             }))
         }
     },[])
-
+    useEffect(()=>{
+        // console.log(products)
+    },[products])
     const handlePurchaseUdpate = (e, index)=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value
@@ -685,7 +754,7 @@ const AddProduct = ({
                         {!isProductView && <div 
                             className='add-products-button-add'
                             onClick={handleProductPurchase}
-                        >Add</div>}
+                        >{curPurchase===null ? 'Add' : 'Save'}</div>}
                         <div 
                             className='add-products-button-cancel'
                             onClick={()=>{
