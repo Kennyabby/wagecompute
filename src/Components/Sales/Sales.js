@@ -482,6 +482,7 @@ const Sales = ()=>{
             const productData = products[entry.index][entryWrh];
             const newProduct = {
                 ...entry,
+                productId: entry.productId || entry.i_d,
                 quantity: Number(entry.quantity) * -1,
                 baseQuantity: Number(entry.baseQuantity) * -1,
                 totalCost: Number(entry.costPrice) * Number(entry.baseQuantity) * -1,
