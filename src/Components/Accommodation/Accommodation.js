@@ -1110,7 +1110,7 @@ const Accommodation = ()=>{
                             />
                         </div>}  
                                     
-                        {(salesOpts === 'accommodation' && accommodationFields?.paymentStatus==='Make Payment') && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
+                        {(salesOpts === 'accommodation' && accommodationFields?.paymentStatus==='Make Payment') && ((companyRecord?.status === 'admin') || companyRecord?.permissions.includes('accommodations')) && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:(accommodationFields.accommodationAmount && !accommodationFields.posted)?'pointer':'not-allowed'
                             }}
