@@ -321,7 +321,7 @@ const Settings = () => {
                             </div>
                             <div className='profile-list'>
                                 {profiles.map((profile, index) => (
-                                    <div key={index} className='profile-item' onClick={() => handleProfileSelect(profile)}>
+                                    <div key={index} className={'profile-item ' + (selectedEmployee.emailid === profile.emailid ? 'profile-item-active':'')} onClick={() => handleProfileSelect(profile)}>
                                         {employees.map((employee)=>{
                                             if (employee.i_d === profile.emailid){
                                                 return <>{employee.firstName} {employee.lastName}</>
@@ -385,7 +385,7 @@ const Settings = () => {
                                         </div>
                                         <div> Import Permissions</div>
                                         <div className='permissions'>
-                                            {['imports'].map((permission, index) => (
+                                            {['imports', 'adjustments'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -436,8 +436,10 @@ const Settings = () => {
                                             <span className='slider'></span>
                                         </label>
                                     </div>
-                                    {selectedEmployee.status!=='admin' && <div className='savebtn' onClick={saveLoginDetails}>Save</div>}
-                                    {selectedEmployee.status!=='admin' && <div className='deletebtn' onClick={deleteProfile}>Delete</div>}
+                                    <div style={{display:'flex'}}>
+                                        {selectedEmployee.status!=='admin' && <div className='savebtn' onClick={saveLoginDetails}>Save</div>}
+                                        {selectedEmployee.status!=='admin' && <div className='deletebtn' onClick={deleteProfile}>Delete</div>}
+                                    </div>
                                 </div>
                             ) : (
                                 <div className='employee-form'>
@@ -492,7 +494,7 @@ const Settings = () => {
                                         </div>
                                         <div> Import Permissions</div>
                                         <div className='permissions'>
-                                            {['imports'].map((permission, index) => (
+                                            {['imports', 'adjustments'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'

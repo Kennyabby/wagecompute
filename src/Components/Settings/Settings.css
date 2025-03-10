@@ -284,10 +284,11 @@ input:checked + .slider:before {
     margin-top: 5px;
     font-size: 1em;
 }
-
+.employee-settings{
+    display: flex;
+}
 .sidebar {
     width: 25%;
-    float: left;
     background: #f1f1f1;
     padding: 20px;
     border-right: 1px solid #ccc;
@@ -315,7 +316,7 @@ input:checked + .slider:before {
 }
 
 .profile-list {
-    max-height: 400px;
+    max-height: 500px;
     overflow-y: auto;
 }
 
@@ -328,10 +329,14 @@ input:checked + .slider:before {
     transition: background 0.3s;
 }
 
-.profile-item:hover {
-    background: #d0d0d0;
+.profile-item:hover{
+    background: #6e8f67;
 }
 
+.profile-item-active{
+    background: #6c8767;
+    font-weight: 500;
+}
 .employee-details {
     width: 70%;
     float: right;
