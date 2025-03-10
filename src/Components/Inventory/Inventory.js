@@ -75,6 +75,16 @@ const Inventory = ()=>{
         ]
     }
 
+    if (!companyRecord?.permissions.includes('imports') && 
+        companyRecord?.status !== 'admin'){
+        delete settingsMenu['Products']
+        delete settingsMenu['Ajustments']
+    }
+    if (!companyRecord?.permissions.includes('internal_transfer') && 
+        companyRecord?.status !== 'admin'){
+        delete settingsMenu['Stock']
+    }
+
     const views = {
         'Products': <Products 
             isNewProduct={isNewView === clickedLabel}
@@ -230,9 +240,18 @@ const Inventory = ()=>{
                                     <label className={'inventoryLabel' + ((clickedLabel === mainMenu || dropLabel === mainMenu || (dropMenu[mainMenu].includes(clickedLabel))) ? ' inventoryLabelClicked': '')} name={mainMenu}>{mainMenu}</label>
                                     {((dropLabel === mainMenu) && dropMenu[dropLabel]?.length!==0) && <div className='inventoryDropMenu'>
                                         {dropMenu[dropLabel]?.map((menu, id)=>{
-                                            return (
-                                                <label key={id} name={mainMenu}>{menu}</label>
-                                            )
+                                            if (menu === 'Adjustments'){
+                                                return (                                                
+                                                    (
+                                                        companyRecord?.permissions.includes('adjustments') || 
+                                                        companyRecord?.status === 'admin'
+                                                    ) && <label key={id} name={mainMenu}>{menu}</label>
+                                                )
+                                            }else{
+                                                return (
+                                                    <label key={id} name={mainMenu}>{menu}</label>
+                                                )
+                                            }
                                         })}
                                     </div>}
                                 </div>
@@ -270,7 +289,8 @@ const Inventory = ()=>{
                                 </span>           
                                 <div style={{display: 'flex'}}>                                                                                                
                                     {<div className='pr-settings'>                                            
-                                            {(!isImportValue && !isTransferValue) && <IoIosSettings 
+                                            {(!isImportValue && !isTransferValue)  && 
+                                                <IoIosSettings 
                                                 className='pr-icon' 
                                                 onClick={()=>{                                                    
                                                     setSettingsDrop(!settingsDrop)
