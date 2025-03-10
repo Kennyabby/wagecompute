@@ -81,7 +81,7 @@ function App() {
       //     setEnableBlockVal(bllgnSetFilt[0] ? bllgnSetFilt[0].enabled : false)
       // }
       
-      const updateThisState = async ()=>{
+      const updateThisUserState = async ()=>{
         if (companyRecord?.status!=='admin'){
           var sid = window.localStorage.getItem('sessn-id')
           const resp = await fetchServer("POST", {
@@ -89,13 +89,15 @@ function App() {
             collection: "Profile", 
             sessionId:  sid
           }, "getDocDetails", SERVER)
-          if (![null, undefined].includes(resp.record)){ 
+          if (![null, undefined].includes(resp.record)){
+            setCompanyRecord(resp.record) 
             setRecoveryVal(resp.record.enableDebtRecovery)
             setEnableBlockVal(!resp.record.enableLogin)
           }
         }
       }
-      updateThisState()
+
+      updateThisUserState()
       const colSetFilt = settings.filter((setting)=>{
         return setting.name === 'import_columns'
       })
