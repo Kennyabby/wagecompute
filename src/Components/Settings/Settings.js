@@ -321,7 +321,7 @@ const Settings = () => {
                             </div>
                             <div className='profile-list'>
                                 {profiles.map((profile, index) => (
-                                    <div key={index} className={'profile-item ' + (selectedEmployee.emailid === profile.emailid ? 'profile-item-active':'')} onClick={() => handleProfileSelect(profile)}>
+                                    <div key={index} className={'profile-item ' + (selectedEmployee?.emailid === profile.emailid ? 'profile-item-active':'')} onClick={() => handleProfileSelect(profile)}>
                                         {employees.map((employee)=>{
                                             if (employee.i_d === profile.emailid){
                                                 return <>{employee.firstName} {employee.lastName}</>
