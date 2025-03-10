@@ -1,99 +1,307 @@
 import './Settings.css'
-
-import {useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
-import { useContext } from 'react'
 
-const Settings = () =>{
-    const {storePath, 
-        company,
-        settings, getSettings,
-        server, fetchServer,
-        recoveryVal, setRecoveryVal,
-        changingSettings, setChangingSettings,
-        colSettings, setColSettings,
-        enableBlockVal, setEnableBlockVal
+const Settings = () => {
+    const { storePath, company, companyRecord, 
+        settings, getSettings, server, fetchServer, 
+        recoveryVal, setRecoveryVal, changingSettings, 
+        setChangingSettings, colSettings, setColSettings, 
+        enableBlockVal, setEnableBlockVal, 
+        employees, getEmployees, dashList 
     } = useContext(ContextProvider)
+
     const [colname, setColname] = useState('')
     const [writeStatus, setWriteStatus] = useState('Add')
     const [editCol, setEditCol] = useState(null)
-    // const [columns, setColumns] = useState([])
-    
     const [saveStatus, setSaveStatus] = useState('')
-    
-    useEffect(()=>{
-        storePath('settings')  
-    },[storePath])
-    useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')
-        const intervalId = setInterval(()=>{
-          if (cmp_val){
+    const [currentView, setCurrentView] = useState('employees')
+    const [selectedEmployee, setSelectedEmployee] = useState(null)
+    const [profiles, setProfiles] = useState([])
+    const [currentProfiles, setCurrentProfiles] = useState([])
+    const [loginDetails, setLoginDetails] = useState({
+        email: '',
+        password: '',
+        permissions: [],
+        enableLogin: false,
+        enableDebtRecovery: false
+    })
+
+    useEffect(() => {
+        storePath('settings')
+    }, [storePath])
+
+    useEffect(() => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (cmp_val) {
             getSettings(cmp_val)
-          }
-        },10000)
-        return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
-    const addColumn = async ()=>{
-        if (colname && !colSettings.import_columns?.includes(colname)){
-            var postingCols = []
-            if (writeStatus==='Edit'){
-                const filtcols = colSettings.import_columns?.filter((col)=>{
-                    return col !== editCol
-                }) 
-                postingCols = [...filtcols, colname]   
+            getEmployees(cmp_val)
+            fetchProfiles(cmp_val)
+        }
+    }, [])
+
+    useEffect(()=>{
+        setCurrentProfiles(profiles.map((profile)=>{
+            return profile.emailid
+        }))
+    },[profiles])
+    const fetchProfiles = async (company) => {
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Profile",
+            prop: {}
+        }, "getDocsDetails", server)
+        if (resps.err) {
+            console.log(resps.mess)
+        } else {
+            setProfiles(resps.record)
+        }
+    }
+
+    const handleProfileSelect = (profile) => {
+        setSelectedEmployee(profile)
+        setLoginDetails({
+            email: profile.emailid || '',
+            password: '',
+            permissions: profile.permissions || [],
+            enableLogin: profile.enableLogin || false,
+            enableDebtRecovery: profile.enableDebtRecovery || false
+        })
+    }
+
+    const handleLoginDetailsChange = (e) => {
+        const { name, value, type, checked } = e.target
+        setLoginDetails({
+            ...loginDetails,
+            [name]: type === 'checkbox' ? checked : value
+        })
+    }
+
+    const handlePermissionsChange = (e) => {
+        const { value, checked } = e.target
+        setLoginDetails(prevState => {
+            const permissions = checked
+                ? [...prevState.permissions, value]
+                : prevState.permissions.filter(permission => permission !== value)
+            return { ...prevState, permissions }
+        })
+    }
+
+    const saveLoginDetails = async () => {
+        setSaveStatus('Saving...') 
+        if (selectedEmployee) {
+            delete selectedEmployee._id
+            delete selectedEmployee.sessionId
+            const updatedProfile = {
+                ...selectedEmployee,                
+                permissions: loginDetails.permissions,
+                enableLogin: loginDetails.enableLogin,
+                enableDebtRecovery: loginDetails.enableDebtRecovery
             }
-            else{
-                const columns = colSettings.import_columns?[...colSettings.import_columns]:[]
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Profile",
+                prop: [{ emailid: selectedEmployee.emailid }, updatedProfile]
+            }, "updateOneDoc", server)
+            if (resps.err) {
+                console.log(resps.mess)
+                setSaveStatus(resps.mess)
+                setTimeout(()=>{
+                    setSaveStatus('')
+                },3000)
+            } else {
+                if (loginDetails.password){
+                    const resps = await fetchServer("POST", {
+                        database: "WCDatabase",
+                        collection: "Profiles",
+                        prop: [{ emailid: selectedEmployee.emailid }, {password: loginDetails.password}]
+                    }, "updateOneDoc", server)
+                    if (resps.error){
+                        console.log(resps.mess)
+                        setSaveStatus(resps.mess)
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }else{
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                        fetchProfiles(company)
+                    }                                        
+                }else{
+                    setSaveStatus('Saved')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
+                    fetchProfiles(company)
+                }
+            }
+        } else {
+            if (loginDetails.email && loginDetails.password){
+                const newDBProfile = {
+                    emailid: loginDetails.email,
+                    name: companyRecord.name,
+                    password: loginDetails.password,
+                    db: company
+                }
+                const defaultCompanyRecord = companyRecord
+                delete defaultCompanyRecord._id
+                const newProfile = {
+                    ...companyRecord,
+                    emailid: loginDetails.email,
+                    permissions: loginDetails.permissions,
+                    enableLogin: loginDetails.enableLogin,
+                    enableDebtRecovery: loginDetails.enableDebtRecovery,
+                    sessionId:'',
+                    status: 'user'
+                }
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Profile",
+                    update: newProfile
+                }, "createDoc", server)
+                if (resps.err) {
+                    console.log(resps.mess)
+                    setSaveStatus(resps.mess)
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
+                } else {
+                    const resps1 = await fetchServer("POST", {
+                        database: "WCDatabase",
+                        collection: "Profiles",
+                        update: newDBProfile
+                    }, "postUserDetails", server)
+                    if (resps1.err){
+                        console.log(resps1.mess)
+                        setSaveStatus(resps.mess)
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)                        
+                    }else{
+                        setSaveStatus('Profile Created')                       
+                        fetchProfiles(company)
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                }
+            }
+        }
+    }
+
+    const deleteProfile = async () => {
+        setSaveStatus('Deleting...') 
+        if (selectedEmployee) {
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Profile",
+                update: { emailid: selectedEmployee.emailid }
+            }, "removeDoc", server)
+            if (resps.err) {
+                console.log(resps.mess)
+                setSaveStatus(resps.mess)
+                setTimeout(()=>{
+                    setSaveStatus('')
+                },3000)
+            } else {
+                const resps1 = await fetchServer("POST", {
+                    database: "WCDatabase",
+                    collection: "Profiles",
+                    update: { emailid: selectedEmployee.emailid }
+                }, "removeDoc", server)
+                if (resps1.err) {
+                    console.log(resps.mess)
+                    setSaveStatus(resps.mess)
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
+                }else{
+                    setSaveStatus('Profile Deleted')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
+                    fetchProfiles(company)
+                    setSelectedEmployee(null)
+                    setLoginDetails({
+                        email: '',
+                        password: '',
+                        permissions: [],
+                        enableLogin: false,
+                        enableDebtRecovery: false
+                    })
+                }
+            }
+        }
+    }
+
+    const addProfile = () => {
+        setSelectedEmployee(null)
+        setLoginDetails({
+            email: '',
+            password: '',
+            permissions: [],
+            enableLogin: false,
+            enableDebtRecovery: false
+        })
+    }
+
+    const addColumn = async () => {
+        if (colname && !colSettings.import_columns?.includes(colname)) {
+            let postingCols = []
+            if (writeStatus === 'Edit') {
+                const filtcols = colSettings.import_columns?.filter((col) => col !== editCol)
+                postingCols = [...filtcols, colname]
+            } else {
+                const columns = colSettings.import_columns ? [...colSettings.import_columns] : []
                 postingCols = [...columns, colname]
             }
 
-            if (colSettings.name){
+            if (colSettings.name) {
                 const resps = await fetchServer("POST", {
                     database: company,
-                    collection: "Settings", 
-                    prop: [{name: 'import_columns'}, {...colSettings, import_columns: [...postingCols]}]
+                    collection: "Settings",
+                    prop: [{ name: 'import_columns' }, { ...colSettings, import_columns: [...postingCols] }]
                 }, "updateOneDoc", server)
-                
-                if (resps.err){
-                 console.log(resps.mess)
-                }else{
+
+                if (resps.err) {
+                    console.log(resps.mess)
+                } else {
                     setWriteStatus('Add')
                     getSettings(company)
                 }
-            }else{
+            } else {
                 const resps = await fetchServer("POST", {
                     database: company,
-                    collection: "Settings", 
-                    update: {...colSettings, name:'import_columns',import_columns: [...postingCols]}
+                    collection: "Settings",
+                    update: { ...colSettings, name: 'import_columns', import_columns: [...postingCols] }
                 }, "createDoc", server)
-                if (resps.err){
+                if (resps.err) {
                     console.log(resps.mess)
-                }else{
+                } else {
                     getSettings(company)
                 }
             }
         }
         setColname('')
     }
-    const delColumn = async (e)=>{
+
+    const delColumn = async (e) => {
         setSaveStatus('Saving...')
         setChangingSettings(true)
         const colid = Number(e.target.getAttribute('name'))
-        console.log(colid)
-        const filtcols = colSettings.import_columns.filter((col,index)=>{
-            return index !== colid
-        }) 
-        console.log(filtcols)
+        const filtcols = colSettings.import_columns.filter((col, index) => index !== colid)
         const resps = await fetchServer("POST", {
             database: company,
-            collection: "Settings", 
-            prop: [{name: 'import_columns'}, {...colSettings, import_columns: [...filtcols]}]
+            collection: "Settings",
+            prop: [{ name: 'import_columns' }, { ...colSettings, import_columns: [...filtcols] }]
         }, "updateOneDoc", server)
-        if (resps.err){
+        if (resps.err) {
             console.log(resps.mess)
-            setSaveStatus(resps.mess) 
-            setChangingSettings(false)           
-        }else{
+            setSaveStatus(resps.mess)
+            setChangingSettings(false)
+        } else {
             setSaveStatus('Saved')
             getSettings(company)
             setColname('')
@@ -102,122 +310,304 @@ const Settings = () =>{
         }
     }
 
-    const setRecoveryPermission = async (recoveryVal)=>{
-        setSaveStatus('Saving...')
-        setChangingSettings(true)
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Settings", 
-            prop: [{name: 'debt_recovery'}, {enabled: recoveryVal}]
-        }, "updateOneDoc", server)
-        if (resps.err){
-            console.log(resps.mess)
-            setSaveStatus(resps.mess)
-            setChangingSettings(false)
-        }else{
-            setSaveStatus('Saved')
-            getSettings(company)
-            setChangingSettings(false)
-        }
-    }
-    
-    const setDisableLogin = async (enableBlockVal)=>{
-        setSaveStatus('Saving...')
-        setChangingSettings(true)
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Settings", 
-            prop: [{name: 'enable_block_login'}, {enabled: enableBlockVal}]
-        }, "updateOneDoc", server)
-        if (resps.err){
-            console.log(resps.mess)
-            setSaveStatus(resps.mess)
-            setChangingSettings(false)
-        }else{
-            setSaveStatus('Saved')
-            getSettings(company)
-            setChangingSettings(false)
-        }
-    }
-    return(
-        <>
-            <div className='settings'>
-                {saveStatus && <div className='save-status'>{saveStatus}</div>}
-                <div className='columns'>
-                    <div className='formtitle'>Set Import Columns</div>
-                    <div className='inpcov formpad'>
-                        <div>Column Name</div>
-                        <div className='addsection'>
-                            <input 
-                                className='forminp'
-                                name='colname'
-                                type='text'
-                                placeholder={`${writeStatus} Import Column`}
-                                value={colname}
-                                onChange={(e)=>{
-                                    setColname(e.target.value)
-                                }}
-                            />
-                            <div className='addcolumn'
-                                onClick={addColumn}
-                            >{writeStatus}</div>
-                            {writeStatus === 'Edit' && <div className='addcolumn dcol'
-                                onClick={()=>{
+    const renderView = () => {
+        switch (currentView) {
+            case 'employees':
+                return (
+                    <div className='employee-settings'>
+                        <div className='sidebar'>
+                            <div className='sidebar-header'>
+                                <button className='add-profile-btn' onClick={addProfile}>Add Profile</button>
+                            </div>
+                            <div className='profile-list'>
+                                {profiles.map((profile, index) => (
+                                    <div key={index} className='profile-item' onClick={() => handleProfileSelect(profile)}>
+                                        {employees.map((employee)=>{
+                                            if (employee.i_d === profile.emailid){
+                                                return <>{employee.firstName} {employee.lastName}</>
+                                            }
+                                        })}
+                                        {profile.status === 'admin' && <>Super Admin</>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className='employee-details'>
+                            {selectedEmployee ? (
+                                <div className='employee-form'>
+                                    <div className='formtitle'>Employee Login and Permissions</div>
+                                    <div className='inpcov formpad'>
+                                        <div>EmployeeId</div>
+                                        <select
+                                            className='forminp'
+                                            name='email'
+                                            type='text'
+                                            disabled = {true}
+                                            placeholder='Employee ID'
+                                            value={loginDetails.email}
+                                            onChange={handleLoginDetailsChange}
+                                        >
+                                            <option value={'admin'}>Admin</option>
+                                            {employees.map((employee, index)=>{
+                                                return (
+                                                    <option key={index} value={employee.i_d}>
+                                                        {employee.firstName} {employee.lastName}
+                                                    </option>
+                                                )
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <div>Update Password</div>
+                                        <input
+                                            className='forminp'
+                                            name='password'
+                                            type='password'
+                                            placeholder='Password'
+                                            value={loginDetails.password}
+                                            onChange={handleLoginDetailsChange}
+                                        />
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <div>Module Permissions</div>
+                                        <div className='permissions'>
+                                            {dashList.map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <div> Import Permissions</div>
+                                        <div className='permissions'>
+                                            {['imports'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <div> Stock transfer Permissions</div>
+                                        <div className='permissions'>
+                                            {['internal_transfer'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <div>Enable Login Access</div>
+                                        <label className='toggle-switch'>
+                                            <input
+                                                type='checkbox'
+                                                name='enableLogin'
+                                                checked={loginDetails.enableLogin}
+                                                onChange={handleLoginDetailsChange}
+                                            />
+                                            <span className='slider'></span>
+                                        </label>
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <div>Enable Debt Recovery</div>
+                                        <label className='toggle-switch'>
+                                            <input
+                                                type='checkbox'
+                                                name='enableDebtRecovery'
+                                                checked={loginDetails.enableDebtRecovery}
+                                                onChange={handleLoginDetailsChange}
+                                            />
+                                            <span className='slider'></span>
+                                        </label>
+                                    </div>
+                                    {selectedEmployee.status!=='admin' && <div className='savebtn' onClick={saveLoginDetails}>Save</div>}
+                                    {selectedEmployee.status!=='admin' && <div className='deletebtn' onClick={deleteProfile}>Delete</div>}
+                                </div>
+                            ) : (
+                                <div className='employee-form'>
+                                    <div className='formtitle'>Add New Employee</div>
+                                    <div className='inpcov formpad'>
+                                        <div>EmployeeId</div>
+                                        <select
+                                            className='forminp'
+                                            name='email'
+                                            type='text'
+                                            placeholder='Employee ID'
+                                            value={loginDetails.email}
+                                            onChange={handleLoginDetailsChange}
+                                        >
+                                            <option value={''}>Select Employee</option>
+                                            {employees.map((employee, index)=>{
+                                                if (!currentProfiles.includes(employee.i_d) && !employee.dismissalDate){
+                                                    return (
+                                                        <option key={index} value={employee.i_d}>
+                                                            {employee.firstName} {employee.lastName}
+                                                        </option>
+                                                    )
+                                                }
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <div>New Password</div>
+                                        <input
+                                            className='forminp'
+                                            name='password'
+                                            type='password'
+                                            placeholder='Password'
+                                            value={loginDetails.password}
+                                            onChange={handleLoginDetailsChange}
+                                        />
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <div>Permissions</div>
+                                        <div className='permissions'>
+                                            {dashList.map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission)}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <div> Import Permissions</div>
+                                        <div className='permissions'>
+                                            {['imports'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <div> Stock transfer Permissions</div>
+                                        <div className='permissions'>
+                                            {['internal_transfer'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <div>Enable Login Access</div>
+                                        <label className='toggle-switch'>
+                                            <input
+                                                type='checkbox'
+                                                name='enableLogin'
+                                                checked={loginDetails.enableLogin}
+                                                onChange={handleLoginDetailsChange}
+                                            />
+                                            <span className='slider'></span>
+                                        </label>
+                                    </div>
+                                    <div className='inpcov formpad'>
+                                        <div>Enable Debt Recovery</div>
+                                        <label className='toggle-switch'>
+                                            <input
+                                                type='checkbox'
+                                                name='enableDebtRecovery'
+                                                checked={loginDetails.enableDebtRecovery}
+                                                onChange={handleLoginDetailsChange}
+                                            />
+                                            <span className='slider'></span>
+                                        </label>
+                                    </div>
+                                    <div className='savebtn' onClick={saveLoginDetails}>Save</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
+            case 'payroll':
+                return (
+                    <div className='payroll-settings'>
+                        <div className='formtitle'>Payroll Settings</div>
+                        <div className='inpcov formpad'>
+                            <div>Column Name</div>
+                            <div className='addsection'>
+                                <input
+                                    className='forminp'
+                                    name='colname'
+                                    type='text'
+                                    placeholder={`${writeStatus} Import Column`}
+                                    value={colname}
+                                    onChange={(e) => setColname(e.target.value)}
+                                />
+                                <div className='addcolumn' onClick={addColumn}>{writeStatus}</div>
+                                {writeStatus === 'Edit' && <div className='addcolumn dcol' onClick={() => {
                                     setEditCol(null)
                                     setColname('')
                                     setWriteStatus('Add')
-                                }}
-                            >Discard</div>}
+                                }}>Discard</div>}
+                            </div>
                         </div>
-                    </div>
-                    <div className='columnsbox'>
-                        {colSettings.import_columns?.map((col, id)=>{
-                            return <div className='col' key={id} name={id}
-                                onClick={()=>{
+                        <div className='columnsbox'>
+                            {colSettings.import_columns?.map((col, id) => (
+                                <div className='col' key={id} name={id} onClick={() => {
                                     setWriteStatus('Edit')
                                     setColname(col)
                                     setEditCol(col)
-                                }}
-                            >
-                                {col}
-                                <div className='delcol'
-                                    name={id}
-                                    onClick={delColumn}
-                                >X</div>
-                            </div>
-                        })}
+                                }}>
+                                    {col}
+                                    <div className='delcol' name={id} onClick={delColumn}>X</div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
-                <div className='recovery'>
-                    <div className='formtitle'>Set Debt Recovery Permission</div>
-                    <div className='recovery-block'>
-                        Enable Debt Recovery 
-                        <input 
-                            type='checkbox'
-                            checked={recoveryVal}
-                            onChange={(e)=>{
-                                setRecoveryVal(!recoveryVal)
-                                setRecoveryPermission(!recoveryVal)
-                            }}
-                        />
+                )
+            case 'sales':
+                return (
+                    <div className='sales-settings'>
+                        <div className='formtitle'>Sales Settings</div>
+                        {/* Add sales settings form here */}
                     </div>
-                </div>
-                <div className='recovery'>
-                    <div className='formtitle'>Set Employee Login Access</div>
-                    <div className='recovery-block'>
-                        Disable Access To Login 
-                        <input 
-                            type='checkbox'
-                            checked={enableBlockVal}
-                            onChange={(e)=>{
-                                setEnableBlockVal(!enableBlockVal)
-                                setDisableLogin(!enableBlockVal)
-                            }}
-                        />
-                    </div>
-                </div>
+                )
+            default:
+                return null
+        }
+    }
+
+    return (
+        <div className='settings'>
+            {saveStatus && <div className='save-status'>{saveStatus}</div>}
+            <div className='settings-nav'>
+                <div className={`settings-nav-item ${currentView === 'employees' ? 'active' : ''}`} onClick={() => setCurrentView('employees')}>Employees</div>
+                <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>Payroll</div>
+                <div className={`settings-nav-item ${currentView === 'sales' ? 'active' : ''}`} onClick={() => setCurrentView('sales')}>Sales</div>
             </div>
-        </> 
+            {renderView()}
+        </div>
     )
 }
 

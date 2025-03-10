@@ -15,7 +15,7 @@ const Products = ({
         server, fetchServer, generateSeries,
         setAlert, setAlertState, setAlertTimeout,
         products, company, setProducts, getProducts,
-        settings, exportFile, importFile
+        settings, exportFile, importFile, companyRecord
     } = useContext(ContextProvider)
     const loadRef = useRef(null)
     const intervalRef = useRef(null)
@@ -479,6 +479,7 @@ const Products = ({
                                 type='number'
                                 name='salesPrice'
                                 placeholder='0.00'
+                                disabled={isProductView && companyRecord?.status !== 'admin'}
                                 value={productFields.salesPrice}
                             />
                         </div>
@@ -489,6 +490,7 @@ const Products = ({
                                 type='number'
                                 name='vipPrice'
                                 placeholder='0.00'
+                                disabled={isProductView && companyRecord?.status !== 'admin'}
                                 value={productFields.vipPrice !== undefined ? productFields.vipPrice: ''}
                             />
                         </div>
@@ -510,6 +512,7 @@ const Products = ({
                                 type='number'
                                 name='salesVat'
                                 placeholder='0%'
+                                disabled={isProductView && companyRecord?.status !== 'admin'}
                                 value={productFields.salesVat}
                             />
                         </div>
@@ -520,6 +523,7 @@ const Products = ({
                                 type='number'
                                 name='purchaseVat'
                                 placeholder='0%'
+                                disabled={isProductView && companyRecord?.status !== 'admin'}
                                 value={productFields.purchaseVat}
                             />
                         </div>}
@@ -529,6 +533,7 @@ const Products = ({
                                 className='otherInp'
                                 name='salesUom'
                                 value={productFields.salesUom}
+                                disabled={isProductView && companyRecord?.status !== 'admin'}
                             >
                                 {uoms.map((uom, id)=>{
                                     return (
@@ -543,6 +548,7 @@ const Products = ({
                                 className='otherInp'
                                 name='purchaseUom'
                                 value={productFields.purchaseUom}
+                                disabled={isProductView && companyRecord?.status !== 'admin'}
                             >
                                 {uoms.map((uom, id)=>{
                                     return (
@@ -573,6 +579,7 @@ const Products = ({
                                 name='category'
                                 placeholder='all'
                                 value={productFields.category}
+                                disabled={isProductView && companyRecord?.status !== 'admin'}
                             >
                                 <option value={'all'}>All</option>
                                 {categories.map((category, id)=>{

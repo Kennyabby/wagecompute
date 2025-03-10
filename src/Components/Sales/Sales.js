@@ -1250,15 +1250,15 @@ const Sales = ()=>{
                                     > 
                                         View Products 
                                     </div> 
-                                    : <div
+                                    : <span
                                         className='slprd'
                                         onClick={()=>{
-                                            setIsProductView(false)
                                             setProductAdd(true)
+                                            setIsProductView(false)
                                         }}
                                     >
                                         Add Products
-                                    </div>}
+                                    </span>}
                                 <div className='dets sldets'>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>

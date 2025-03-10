@@ -74,25 +74,40 @@ function App() {
 
   useEffect(()=>{
     if(settings?.length){
-      const bllgnSetFilt = settings.filter((setting)=>{
-        return setting.name === 'enable_block_login'
-      })
-      if (!changingSettings){
-          setEnableBlockVal(bllgnSetFilt[0] ? bllgnSetFilt[0].enabled : false)
-      }
+      // const bllgnSetFilt = settings.filter((setting)=>{
+      //   return setting.name === 'enable_block_login'
+      // })
+      // if (!changingSettings){
+      //     setEnableBlockVal(bllgnSetFilt[0] ? bllgnSetFilt[0].enabled : false)
+      // }
       
+      const updateThisState = async ()=>{
+        if (companyRecord?.status!=='admin'){
+          var sid = window.localStorage.getItem('sessn-id')
+          const resp = await fetchServer("POST", {
+            database: company,
+            collection: "Profile", 
+            sessionId:  sid
+          }, "getDocDetails", SERVER)
+          if (![null, undefined].includes(resp.record)){ 
+            setRecoveryVal(resp.record.enableDebtRecovery)
+            setEnableBlockVal(!resp.record.enableLogin)
+          }
+        }
+      }
+      updateThisState()
       const colSetFilt = settings.filter((setting)=>{
         return setting.name === 'import_columns'
       })
       delete colSetFilt[0]?._id
       setColSettings(colSetFilt[0]?colSetFilt[0]:{})
 
-      const recvSetFilt = settings.filter((setting)=>{
-          return setting.name === 'debt_recovery'
-      })
-      if (!changingSettings){
-          setRecoveryVal(recvSetFilt[0] ? recvSetFilt[0].enabled : false)
-      }        
+      // const recvSetFilt = settings.filter((setting)=>{
+      //     return setting.name === 'debt_recovery'
+      // })
+      // if (!changingSettings){
+      //     setRecoveryVal(recvSetFilt[0] ? recvSetFilt[0].enabled : false)
+      // }        
     }
   },[settings,changingSettings])
 
@@ -310,8 +325,7 @@ function App() {
       collection: "Profile", 
       sessionId: propVal 
     }, "getDocDetails", SERVER)
-    // console.log(resp.record)
-    if ([null, undefined].includes(resp.record)){
+    if ([null, undefined].includes(resp.record)){ 
       removeSessions()
     }else{
       setCompanyRecord(resp.record)
@@ -330,6 +344,8 @@ function App() {
         getAttendance(cmp_val)
         Navigate('/'+currPath)
       }else{
+        setRecoveryVal(resp.record.enableDebtRecovery)
+        setEnableBlockVal(!resp.record.enableLogin)
         getSettings(cmp_val)
         getEmployees(cmp_val)        
       }
