@@ -136,10 +136,10 @@ const Login = () => {
           </AnimatePresence>}
           <div className="lgninpcv" onChange={getFieldInput}>
             <div className="inplgcv">
-              <label>Email ID</label>
+              <label>USER ID</label>
               <input
                 name="emailid"
-                placeholder="yourid@domain.com"
+                placeholder="Your ID"
                 type="email"
                 className="lgninp"
                 defaultValue={field.emailid}
