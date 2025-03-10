@@ -63,6 +63,8 @@ const Dashboard = ()=>{
             }
             else if (index === 12 && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
                 setView(<Settings/>)
+            }else{
+                setView('')
             }
         }
     },[params,companyRecord])
