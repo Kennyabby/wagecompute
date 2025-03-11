@@ -69,6 +69,11 @@ const Employees = () =>{
         },10000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+    useEffect(()=>{
+        if (!editAccess.employees && companyRecord.status!=='admin'){
+            setIsView(true)
+        }
+    },[editAccess])
     const toggleSelForm = (e)=>{
         const name = e.target.getAttribute('name')
         if (name){
