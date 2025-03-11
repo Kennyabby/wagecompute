@@ -480,7 +480,7 @@ const Settings = () => {
                                         />
                                     </div>
                                     <div className='inpcov formpad'>
-                                        <div>Permissions</div>
+                                        <div>Module Permissions</div>
                                         <div className='permissions'>
                                             {dashList.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
