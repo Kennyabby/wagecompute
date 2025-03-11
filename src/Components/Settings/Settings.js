@@ -9,7 +9,8 @@ const Settings = () => {
         setChangingSettings, colSettings, setColSettings, 
         enableBlockVal, setEnableBlockVal, 
         profiles, setProfiles, 
-        employees, getEmployees, dashList, fetchProfiles 
+        employees, getEmployees, dashList, fetchProfiles, 
+        setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
 
     const [colname, setColname] = useState('')
@@ -19,6 +20,7 @@ const Settings = () => {
     const [currentView, setCurrentView] = useState('employees')
     const [selectedEmployee, setSelectedEmployee] = useState(null)
     const [currentProfiles, setCurrentProfiles] = useState([])
+    const [deleteCount, setDeleteCount] = useState(0)
     const [loginDetails, setLoginDetails] = useState({
         email: '',
         password: '',
@@ -47,6 +49,7 @@ const Settings = () => {
     },[profiles])
 
     const handleProfileSelect = (profile) => {
+        setDeleteCount(0)
         setSelectedEmployee(profile)
         setLoginDetails({
             email: profile.emailid || '',
@@ -76,8 +79,9 @@ const Settings = () => {
     }
 
     const saveLoginDetails = async () => {
-        setSaveStatus('Saving...') 
+        setAlert('')
         if (selectedEmployee) {
+            setSaveStatus('Saving...') 
             delete selectedEmployee._id
             delete selectedEmployee.sessionId
             const updatedProfile = {
@@ -126,7 +130,8 @@ const Settings = () => {
                 }
             }
         } else {
-            if (loginDetails.email && loginDetails.password){
+            if (loginDetails.email && loginDetails.password && loginDetails.permissions.length){
+                setSaveStatus('Saving...') 
                 const newDBProfile = {
                     emailid: loginDetails.email,
                     name: companyRecord.name,
@@ -170,57 +175,74 @@ const Settings = () => {
                     }else{
                         setSaveStatus('Profile Created')                       
                         fetchProfiles(company)
+                        handleProfileSelect(newProfile)
                         setTimeout(()=>{
                             setSaveStatus('')
                         },3000)
                     }
                 }
+            }else{
+                setAlertState('error')
+                setAlert('Select Employee, Create New Password and Select at least 1 Permission!')
+                setAlertTimeout(5000)
             }
         }
     }
 
     const deleteProfile = async () => {
-        setSaveStatus('Deleting...') 
-        if (selectedEmployee) {
-            const resps = await fetchServer("POST", {
-                database: company,
-                collection: "Profile",
-                update: { emailid: selectedEmployee.emailid }
-            }, "removeDoc", server)
-            if (resps.err) {
-                console.log(resps.mess)
-                setSaveStatus(resps.mess)
-                setTimeout(()=>{
-                    setSaveStatus('')
-                },3000)
-            } else {
-                const resps1 = await fetchServer("POST", {
-                    database: "WCDatabase",
-                    collection: "Profiles",
+        setAlert('')
+        setSaveStatus('Delete again to confirm deletion!')
+        if(deleteCount === selectedEmployee.emailid){
+            setSaveStatus('Deleting...') 
+            if (selectedEmployee) {
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Profile",
                     update: { emailid: selectedEmployee.emailid }
                 }, "removeDoc", server)
-                if (resps1.err) {
+                if (resps.err) {
                     console.log(resps.mess)
                     setSaveStatus(resps.mess)
                     setTimeout(()=>{
                         setSaveStatus('')
                     },3000)
-                }else{
-                    setSaveStatus('Profile Deleted')
-                    setTimeout(()=>{
-                        setSaveStatus('')
-                    },3000)
-                    fetchProfiles(company)
-                    setSelectedEmployee(null)
-                    setLoginDetails({
-                        email: '',
-                        password: '',
-                        permissions: [],
-                        enableLogin: false,
-                        enableDebtRecovery: false
-                    })
+                } else {
+                    const resps1 = await fetchServer("POST", {
+                        database: "WCDatabase",
+                        collection: "Profiles",
+                        update: { emailid: selectedEmployee.emailid }
+                    }, "removeDoc", server)
+                    if (resps1.err) {
+                        console.log(resps.mess)
+                        setSaveStatus(resps.mess)
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }else{
+                        setSaveStatus('Profile Deleted')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                        fetchProfiles(company)
+                        setSelectedEmployee(null)
+                        setLoginDetails({
+                            email: '',
+                            password: '',
+                            permissions: [],
+                            enableLogin: false,
+                            enableDebtRecovery: false
+                        })
+                    }
                 }
             }
+        }else{
+            setDeleteCount(selectedEmployee.emailid)
+            setTimeout(()=>{
+                setSaveStatus('')
+            },2000)
+            setTimeout(()=>{
+                setDeleteCount(0)
+            },12000)
         }
     }
 
