@@ -10,7 +10,7 @@ const Employees = () =>{
         server, 
         company, companyRecord,
         departments,
-        positions,
+        positions, editAccess,
         employees, setEmployees, getEmployees,
         sales,purchase,expenses,accommodations,
         alert,alertState,alertTimeout,actionMessage, 
@@ -325,7 +325,7 @@ const Employees = () =>{
                                 <div className='deptdesc'>{`${department} Department`}</div>
                                 <div className='deptdesc'><b>Position:</b>{` ${position}`}</div>
                             </div>
-                            {companyRecord.status==='admin' && <div 
+                            {(companyRecord.status==='admin' || editAccess.employees) && <div 
                                 className='edit'
                                 name='edit'
                             >

@@ -371,6 +371,20 @@ const Settings = () => {
                                                 </label>
                                             ))}
                                         </div>
+                                        <div>Edit / Delete Permissions</div>
+                                        <div className='permissions'>
+                                            {['edit_employees'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
                                         <div> Import Permissions</div>
                                         <div className='permissions'>
                                             {['imports', 'adjustments'].map((permission, index) => (
@@ -480,6 +494,20 @@ const Settings = () => {
                                                 </label>
                                             ))}
                                         </div>
+                                        <div>Edit / Delete Permissions</div>
+                                        <div className='permissions'>
+                                            {['edit_employees'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
                                         <div> Import Permissions</div>
                                         <div className='permissions'>
                                             {['imports', 'adjustments'].map((permission, index) => (
@@ -493,7 +521,7 @@ const Settings = () => {
                                                     <span className='permission-text'>{permission}</span>
                                                 </label>
                                             ))}
-                                        </div>
+                                        </div>                                        
                                         <div> Stock transfer Permissions</div>
                                         <div className='permissions'>
                                             {['internal_transfer'].map((permission, index) => (

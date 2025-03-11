@@ -35,6 +35,7 @@ function App() {
   const [recoveryVal, setRecoveryVal] = useState(false)
   const [accommodationVal, setAccommodationVal] = useState(false)
   const [enableBlockVal, setEnableBlockVal] = useState(false)
+  const [editAccess, setEditAccess] = useState({})
   const [changingSettings, setChangingSettings] = useState(false)
   
   const [attendance, setAttendance] = useState([])
@@ -97,6 +98,11 @@ function App() {
             setCompanyRecord(resp.record) 
             setRecoveryVal(resp.record.enableDebtRecovery)
             setEnableBlockVal(!resp.record.enableLogin)
+            setEditAccess((editAccess)=>{
+              return {...editAccess, 
+                employees: resp.record.permissions.includes('edit_employees')
+              }
+            })
           }
         }
       }
@@ -353,6 +359,11 @@ function App() {
         getAttendance(cmp_val)
         Navigate('/'+currPath)
       }else{
+        setEditAccess((editAccess)=>{
+          return {...editAccess, 
+            employees: resp.record.permissions.includes('edit_employees')
+          }
+        })
         setRecoveryVal(resp.record.enableDebtRecovery)
         setEnableBlockVal(!resp.record.enableLogin)
         getSettings(cmp_val)
@@ -588,6 +599,7 @@ function App() {
           colSettings, setColSettings,
           recoveryVal, setRecoveryVal,
           accommodationVal, setAccommodationVal,
+          editAccess, setEditAccess,
           enableBlockVal, setEnableBlockVal,
           changingSettings, setChangingSettings,
 
