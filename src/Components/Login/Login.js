@@ -140,7 +140,7 @@ const Login = () => {
               <input
                 name="emailid"
                 placeholder="Your ID"
-                type="email"
+                type="text"
                 className="lgninp"
                 defaultValue={field.emailid}
                 value={field.emailid}

@@ -8,7 +8,8 @@ const Settings = () => {
         recoveryVal, setRecoveryVal, changingSettings, 
         setChangingSettings, colSettings, setColSettings, 
         enableBlockVal, setEnableBlockVal, 
-        employees, getEmployees, dashList 
+        profiles, setProfiles, 
+        employees, getEmployees, dashList, fetchProfiles 
     } = useContext(ContextProvider)
 
     const [colname, setColname] = useState('')
@@ -17,7 +18,6 @@ const Settings = () => {
     const [saveStatus, setSaveStatus] = useState('')
     const [currentView, setCurrentView] = useState('employees')
     const [selectedEmployee, setSelectedEmployee] = useState(null)
-    const [profiles, setProfiles] = useState([])
     const [currentProfiles, setCurrentProfiles] = useState([])
     const [loginDetails, setLoginDetails] = useState({
         email: '',
@@ -45,18 +45,6 @@ const Settings = () => {
             return profile.emailid
         }))
     },[profiles])
-    const fetchProfiles = async (company) => {
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Profile",
-            prop: {}
-        }, "getDocsDetails", server)
-        if (resps.err) {
-            console.log(resps.mess)
-        } else {
-            setProfiles(resps.record)
-        }
-    }
 
     const handleProfileSelect = (profile) => {
         setSelectedEmployee(profile)
