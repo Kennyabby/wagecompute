@@ -24,11 +24,12 @@ function App() {
   const [sessId, setSessID] = useState(null)
   const [companyRecord, setCompanyRecord] = useState(null)
   const [loginMessage, setLoginMessage] = useState('')
+  const [profiles, setProfiles] = useState([])
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
   const [employees, setEmployees] = useState([])
   const [customers, setCustomers] = useState([])
-
+  const [reloadCount, setReloadCount] = useState(0)
   const [settings, setSettings] = useState([])
   const [colSettings, setColSettings] = useState({})
   const [recoveryVal, setRecoveryVal] = useState(false)
@@ -66,6 +67,9 @@ function App() {
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     const intervalId = setInterval(()=>{
       if (cmp_val){
+        setReloadCount((prevCount)=>{
+          return prevCount + 1
+        })
         getSettings(cmp_val)
       }
     },10000)
@@ -118,38 +122,40 @@ function App() {
       if (enableBlockVal){
         logout()
       }else{
-        if (companyRecord?.permissions.includes('employees')){
-          getEmployees(company)
-          getDepartments(company)
-          getPositions(company)
-          Navigate('/employees')
-        }
-        if (companyRecord?.permissions.includes('purchase')){
-          getPurchase(company)
-          Navigate('/purchase')
-        }
-        if (companyRecord?.permissions.includes('expenses')){
-          getExpenses(company)
-          Navigate('/expenses')
-        }
-        if (companyRecord?.permissions.includes('accommodations')){
-          getCustomers(company)
-          getAccommodations(company)
-          Navigate('/accommodations')
-        }
-        if (companyRecord?.permissions.includes('inventory')){
-          getProducts(company)
-          Navigate('/inventory')
-        }
-        if (companyRecord?.permissions.includes('sales')){
-          getAccommodations(company)
-          getSales(company)
-          getRentals(company)
-          Navigate('/sales')
+        if (!reloadCount){
+          if (companyRecord?.permissions.includes('employees')){
+            getEmployees(company)
+            getDepartments(company)
+            getPositions(company)
+            Navigate('/employees')
+          }
+          if (companyRecord?.permissions.includes('purchase')){
+            getPurchase(company)
+            Navigate('/purchase')
+          }
+          if (companyRecord?.permissions.includes('expenses')){
+            getExpenses(company)
+            Navigate('/expenses')
+          }
+          if (companyRecord?.permissions.includes('accommodations')){
+            getCustomers(company)
+            getAccommodations(company)
+            Navigate('/accommodations')
+          }
+          if (companyRecord?.permissions.includes('inventory')){
+            getProducts(company)
+            Navigate('/inventory')
+          }
+          if (companyRecord?.permissions.includes('sales')){
+            getAccommodations(company)
+            getSales(company)
+            getRentals(company)
+            Navigate('/sales')
+          }
         }
       }
     }
-  },[enableBlockVal, companyRecord, company])
+  },[enableBlockVal, reloadCount, companyRecord, company])
 
   const logout = async ()=>{
     const resps = await fetchServer("POST", {
@@ -333,6 +339,7 @@ function App() {
       setCompanyRecord(resp.record)
       if (resp.record.status==='admin'){
         getSettings(cmp_val)
+        fetchProfiles(cmp_val)
         getEmployees(cmp_val)
         getDepartments(cmp_val)
         getPositions(cmp_val)
@@ -351,6 +358,19 @@ function App() {
         getSettings(cmp_val)
         getEmployees(cmp_val)        
       }
+    }
+  }
+
+  const fetchProfiles = async (company) => {
+    const resps = await fetchServer("POST", {
+        database: company,
+        collection: "Profile",
+        prop: {}
+    }, "getDocsDetails", SERVER)
+    if (resps.err) {
+        console.log(resps.mess)
+    } else {
+        setProfiles(resps.record)
     }
   }
 
@@ -551,6 +571,7 @@ function App() {
           generateCode, generateSeries, 
           exportFile, importFile,
           companyRecord, setCompanyRecord,  
+          profiles, setProfiles, fetchProfiles,
           departments, setDepartments, getDepartments,
           positions, setPositions, getPositions,
           employees, setEmployees, getEmployees,
