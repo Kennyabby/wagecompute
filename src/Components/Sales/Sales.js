@@ -1394,7 +1394,7 @@ const Sales = ()=>{
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
                             <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>Rentals</div>                            
-                            {((companyRecord?.status === 'admin') || recoveryVal) && <div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
+                            {<div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
                         </div>}
                         {salesOpts==='sales' && (!isView && <div className='addnewsales'>
                             <div className='inpcov'>
@@ -1470,7 +1470,7 @@ const Sales = ()=>{
                                 Add Employee Sales
                             </div>                                                
                         </div>)} 
-                        {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='addnewrecovery'>
+                        {salesOpts === 'recovery' && <div className='addnewrecovery'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
                                 <select 
@@ -1515,7 +1515,7 @@ const Sales = ()=>{
                             </div>
                         </div>}
                         {
-                            salesOpts==='recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && recoveryFields.map((field, index)=>{
+                            salesOpts==='recovery' && recoveryFields.map((field, index)=>{
                                 return (
                                     <div className='recoveryblk' key={index}>
                                         <MdDelete 
@@ -2009,7 +2009,7 @@ const Sales = ()=>{
                                 }}
                             />
                         </div>}  
-                        {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='inpcov salesinpcov'>
+                        {salesOpts === 'recovery' && <div className='inpcov salesinpcov'>
                             <select 
                                 className='forminp'
                                 name='recoveryMonth'
