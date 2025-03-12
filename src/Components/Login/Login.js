@@ -173,7 +173,7 @@ const Login = () => {
               </div>
             </div>
             <div className="lgnfg">Forgot Password?</div>
-            <div className="lreminder"><b>Please Note:</b> Your Account Information is <b>Private</b> to You alone. <b>Do not disclose</b> to any person are personel claiming to be from <b> The Light Rays Technologies</b>! We would never ask you for your details for any reason.</div>
+            <div className="lreminder"><b>Please Note:</b> Your Account Information is <b>Private</b> to You alone. <b>Do not disclose</b> to any person or personel claiming to be from <b> The Light Rays Technologies</b>! We would never ask you for your details for any reason.</div>
           </div>
           <div className="lgnbtn">
             <div className="signin"
