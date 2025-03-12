@@ -21,6 +21,9 @@ const Settings = () => {
     const [selectedEmployee, setSelectedEmployee] = useState(null)
     const [currentProfiles, setCurrentProfiles] = useState([])
     const [deleteCount, setDeleteCount] = useState(0)
+    const [accessValue, setAccessValue] = useState('')
+    const magicWord = 'oh ye server. deny all '
+    const activationWord = 'oh ye server. allow all into your world '
     const [loginDetails, setLoginDetails] = useState({
         email: '',
         password: '',
@@ -47,6 +50,38 @@ const Settings = () => {
             return profile.emailid
         }))
     },[profiles])
+
+    useEffect(()=>{
+        const updateDBStatus = async()=>{
+            if (accessValue === magicWord || accessValue === activationWord){
+                setAccessValue('updating activation....') 
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Profile",
+                    prop: [{ name: 'activation' }, { pauseDB: accessValue===magicWord}]
+                }, "updateOneDoc", server)            
+                if (resps.err) {
+                    console.log(resps.mess)
+                } else {
+                    fetchProfiles(company)
+                    setAccessValue('updated activation')
+                    setTimeout(()=>{
+                        setAccessValue('')
+                    },[2000])                
+                }                                             
+            }
+        }
+        updateDBStatus()
+    },[accessValue])
+
+    const handleSecretAccess = (e)=>{
+        const {name, value} = e.target
+        if (name === 'access'){
+            setAccessValue(value)
+        }else{
+            setAccessValue('')
+        }
+    }
 
     const handleProfileSelect = (profile) => {
         setDeleteCount(0)
@@ -637,9 +672,18 @@ const Settings = () => {
                 return null
         }
     }
-
+    
+    
     return (
-        <div className='settings'>
+        <div className='settings' onClick={handleSecretAccess}>
+            <input
+                className='saccess1'
+                name = 'access'
+                value={accessValue}                           
+                onChange={handleSecretAccess}  
+                autoComplete={false}
+                disabled={accessValue === magicWord || accessValue === activationWord}       
+            />
             {saveStatus && <div className='save-status'>{saveStatus}</div>}
             <div className='settings-nav'>
                 <div className={`settings-nav-item ${currentView === 'employees' ? 'active' : ''}`} onClick={() => setCurrentView('employees')}>Employees</div>

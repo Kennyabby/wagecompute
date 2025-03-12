@@ -1,9 +1,22 @@
 .settings {
+    position: relative;
     height: 100%;
     background: #f9f9f9;
     overflow: auto;
     padding: 20px;
     font-family: 'Arial', sans-serif;
+}
+
+.saccess1{
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 100px;
+    cursor: default;
+    background: rgba(0,0,0,0);
+    border: solid black 0px;
+    outline: none;
+    font-size: .8em;
 }
 
 .save-status {

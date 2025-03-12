@@ -17,6 +17,7 @@ function App() {
   // const SERVER = "http://localhost:3001"
   const SERVER = "https://enterpriseserver.vercel.app"
 
+  const [viewAccess, setViewAccess] = useState(null)
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
@@ -64,16 +65,19 @@ function App() {
   const years = ['2030','2029','2028','2027','2026','2025','2024','2023',
       '2022','2021','2020']
 
+  const [hostDb, setHostDb] = useState('The_Plantain_Planet')
   const Navigate = useNavigate()
 
   useEffect(()=>{
     var cmp_val = window.localStorage.getItem('sessn-cmp')
+    getViewAccess(hostDb)
     const intervalId = setInterval(()=>{
       if (cmp_val){
         setReloadCount((prevCount)=>{
           return prevCount + 1
         })
         getSettings(cmp_val)
+        getViewAccess(hostDb)
       }
     },10000)
     return () => clearInterval(intervalId);
@@ -173,6 +177,7 @@ function App() {
       console.log(resps.mess)
     }else{
       window.localStorage.removeItem('ps-vw')
+      window.localStorage.removeItem('acc-vw')
       if (!pauseView){
         window.localStorage.setItem('lgt-mess', 'Login Access Denied. Please Request For Access!')      
       }
@@ -376,12 +381,32 @@ function App() {
       }
     }
   }
-
+  const getViewAccess = async (company) => {
+    if (!window.localStorage.getItem('acc-vw')){
+      const resps = await fetchServer("POST", {
+          database: company,
+          collection: "Profile",
+          prop: {'name': 'activation'}
+      }, "getDocsDetails", SERVER)
+      if (resps.err) {
+          console.log(resps.mess)
+      } else {
+          setViewAccess(resps.record[0].pauseDB)
+          if (resps.record[0].pauseDB){
+            window.localStorage.removeItem('ps-vw')
+          }else{
+            window.localStorage.setItem('ps-vw', 'true')
+          }
+          setPauseView(resps.record[0].pauseDB)
+      }
+    }
+  }
+  
   const fetchProfiles = async (company) => {
     const resps = await fetchServer("POST", {
         database: company,
         collection: "Profile",
-        prop: {}
+        prop: {'verified': true}
     }, "getDocsDetails", SERVER)
     if (resps.err) {
         console.log(resps.mess)
@@ -582,7 +607,7 @@ function App() {
     <>
         <ContextProvider.Provider value={{
           fetchServer,
-          server:SERVER,
+          server:SERVER, viewAccess,
           pauseView, setPauseView,
           loginMessage, setLoginMessage,
           generateCode, generateSeries, 
