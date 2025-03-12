@@ -54,6 +54,7 @@ const SideNav = ()=>{
            setLogStatus('Log Out')
         }else{
             window.localStorage.setItem('lgt-mess', 'Logged Out Successfully!')
+            window.localStorage.removeItem('ps-vw')
             window.location.reload()
         }
     }

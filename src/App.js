@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import './App.css';
 import {Routes, Route, useNavigate } from 'react-router-dom';
 import ContextProvider from './Resources/ContextProvider';
+import PauseView from './Components/PauseView/PauseView';
 import LoadingPage from './Components/LoadingPage/LoadingPage';
 import Login from './Components/Login/Login';
 import Profile from './Components/Profile/Profile';
@@ -16,6 +17,7 @@ function App() {
   // const SERVER = "http://localhost:3001"
   const SERVER = "https://enterpriseserver.vercel.app"
 
+  const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
   const [alertTimeout, setAlertTimeout] = useState(5000)
@@ -79,13 +81,6 @@ function App() {
 
   useEffect(()=>{
     if(settings?.length){
-      // const bllgnSetFilt = settings.filter((setting)=>{
-      //   return setting.name === 'enable_block_login'
-      // })
-      // if (!changingSettings){
-      //     setEnableBlockVal(bllgnSetFilt[0] ? bllgnSetFilt[0].enabled : false)
-      // }
-      
       const updateThisUserState = async ()=>{
         if (companyRecord?.status!=='admin'){
           var sid = window.localStorage.getItem('sessn-id')
@@ -113,13 +108,6 @@ function App() {
       })
       delete colSetFilt[0]?._id
       setColSettings(colSetFilt[0]?colSetFilt[0]:{})
-
-      // const recvSetFilt = settings.filter((setting)=>{
-      //     return setting.name === 'debt_recovery'
-      // })
-      // if (!changingSettings){
-      //     setRecoveryVal(recvSetFilt[0] ? recvSetFilt[0].enabled : false)
-      // }        
     }
   },[settings,changingSettings])
 
@@ -163,6 +151,18 @@ function App() {
     }
   },[enableBlockVal, reloadCount, companyRecord, company])
 
+  useEffect(()=>{
+    if (pauseView){
+      if (companyRecord){
+        logout()
+      }
+    }
+  },[pauseView, companyRecord])
+
+  useEffect(()=>{
+    setPauseView(!window.localStorage.getItem('ps-vw'))    
+  },[window.localStorage.getItem('ps-vw')])
+
   const logout = async ()=>{
     const resps = await fetchServer("POST", {
       database: company,
@@ -172,7 +172,10 @@ function App() {
     if (resps.err){
       console.log(resps.mess)
     }else{
-      window.localStorage.setItem('lgt-mess', 'Login Access Denied. Please Request For Access!')      
+      window.localStorage.removeItem('ps-vw')
+      if (!pauseView){
+        window.localStorage.setItem('lgt-mess', 'Login Access Denied. Please Request For Access!')      
+      }
       window.location.reload()
     }        
   }
@@ -306,6 +309,7 @@ function App() {
       reader.readAsArrayBuffer(file);
     });
   };
+
   const storePath = (path)=>{
     setPath(path)
     window.localStorage.setItem('curr-path',path)
@@ -318,13 +322,14 @@ function App() {
     window.localStorage.removeItem('curr-path')
     window.localStorage.removeItem('slvw')
     window.localStorage.removeItem('sldtl')
-    window.localStorage.removeItem('sessn-cmp')
+    window.localStorage.removeItem('sessn-cmp') 
+    
     setSessID(null)
     Navigate("/")
     setTimeout(()=>{
       if (path !== undefined){
         Navigate("/"+path)
-      }else{
+      }else{        
         Navigate("/login")
       }
     },5000)
@@ -578,6 +583,7 @@ function App() {
         <ContextProvider.Provider value={{
           fetchServer,
           server:SERVER,
+          pauseView, setPauseView,
           loginMessage, setLoginMessage,
           generateCode, generateSeries, 
           exportFile, importFile,
@@ -623,13 +629,15 @@ function App() {
               notifyState = {alertState}
               timeout = {alertTimeout}             
           />}
-          <Routes>
+          {!pauseView ? <Routes>
             <Route path='/' element={<LoadingPage/>}></Route>
             <Route path='/login' element={<Login/>}></Route>
             <Route path='/profile' element={<Profile/>}></Route>
             <Route path='/test' element={<FormPage/>}></Route>
             <Route path='/:id' element={<Dashboard/>}></Route>
-          </Routes>
+          </Routes> :
+          <PauseView/>
+          }
         </ContextProvider.Provider>
     </>
   );

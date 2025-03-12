@@ -1,0 +1,23 @@
+.pause-view{
+    background: rgb(248, 246, 246);
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: .9em;
+    font-weight: 600;
+    letter-spacing: .8px;
+    z-index: 5;
+}
+
+.saccess{
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    cursor: default;
+    background: rgba(0,0,0,0);
+    border: solid black 0px;
+    outline: none;
+}
