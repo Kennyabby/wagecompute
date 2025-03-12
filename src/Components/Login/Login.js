@@ -110,7 +110,7 @@ const Login = () => {
                 Don't have an account? <label 
                   className="loginsignup"
                   onClick={(()=>{
-                    Navigate('/signup')
+                    // Navigate('/signup')
                   })} 
                 > Create an Account</label>
               </div>
