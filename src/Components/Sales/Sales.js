@@ -2252,7 +2252,9 @@ const AddProduct = ({
 
             }else{
                 const originalEntries = structuredClone({salesEntries})
-                setSalesEntries({...(originalEntries.salesEntries), [name]: value})                
+                var updatedWrh = [...salesEntries[wrh]]
+                updatedWrh[index][name] = Number(value)
+                setSalesEntries({...(originalEntries.salesEntries), [wrh]: updatedWrh})                
             }
         }
     }
@@ -2296,7 +2298,7 @@ const AddProduct = ({
                             <div>Product ID</div>
                             <div>Sales Quantity</div>
                             <div>Sales UOM</div>
-                            <div>Sales Amount</div>
+                            <div>Total Sales Amount</div>
                         </div>
                         {salesEntries[wrh]?.filter((flent)=>{
                             if (category === 'all'){
@@ -2341,7 +2343,7 @@ const AddProduct = ({
                                             name='totalSales'
                                             type='number'
                                             value={entry.totalSales}
-                                            disabled={true}
+                                            // disabled={true}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
                                         />
                                     </div>
