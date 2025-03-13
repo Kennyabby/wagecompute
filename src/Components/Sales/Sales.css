@@ -68,6 +68,11 @@
     top: 10px;
     display: flex;
 }
+.slprwh-cover-txt{
+    margin: auto;
+    font-size: .8em;
+    font-weight: 600;
+}
 .slprwh{
     background: rgba(204, 207, 200, 0.4);
     margin: auto 10px;

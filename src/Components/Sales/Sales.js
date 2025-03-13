@@ -2190,6 +2190,8 @@ const AddProduct = ({
 })=>{    
     const [category, setCategory] = useState('all')
     const [wrh, setWrh] = useState(isProductView ? Object.keys(salesEntries)[0] : 'open bar1' )
+    const [totalSalesAmount, setTotalSalesAmount] = useState(0)
+    const [totalAmount, setTotalAmount] = useState(0)
     useEffect(()=>{
         if (!isProductView){
             const allEntries = {}
@@ -2234,6 +2236,30 @@ const AddProduct = ({
         }
     },[])
     
+    useEffect(()=>{
+        var totalAmount = 0
+        Object.keys(salesEntries).forEach((wh)=>{   
+            salesEntries[wh].forEach((entry)=>{
+                if (entry.totalSales){
+                    totalAmount += Number(entry.totalSales)
+                }
+            })
+        })
+        setTotalAmount(totalAmount)
+        const {createdAt, postingDate, totalCashSales, totalDebt, record, 
+            totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
+        } = (curSale || {})
+        var accommodationAmount = 0
+        record.forEach((saleRecord)=>{
+            if (saleRecord.salesPoint === 'accomodation'){
+                accommodationAmount += Number(saleRecord.totalSales)
+            }
+        })
+        const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
+        setTotalSalesAmount(totalSalesAmount)
+
+    },[salesEntries])
+
     const handleSalesUdpate = (e, index)=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value
@@ -2266,17 +2292,20 @@ const AddProduct = ({
                         const name = e.target.getAttribute('name')
                         setCategory('all')
                         setWrh(name)
-                    }}>{
-                        wrhs.map((wh, id)=>{
-                            if (!wh.purchase){
-                                if (isProductView){
-                                    return Object.keys(salesEntries).includes(wh.name) && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
-                                }else{
-                                    return <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
+                    }}>
+                        {
+                            wrhs.map((wh, id)=>{
+                                if (!wh.purchase){
+                                    if (isProductView){
+                                        return Object.keys(salesEntries).includes(wh.name) && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
+                                    }else{
+                                        return <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
+                                    }
                                 }
-                            }
-                        })
-                    }</div>
+                            })                        
+                        }
+                        <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Number(totalAmount)).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
+                    </div>
                     <div>
                         <select 
                             className='slprfl'
