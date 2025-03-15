@@ -2304,7 +2304,7 @@ const AddProduct = ({
                                 }
                             })                        
                         }
-                        <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Number(totalAmount)).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
+                        <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
                     </div>
                     <div>
                         <select 
@@ -2348,7 +2348,7 @@ const AddProduct = ({
                                         <input 
                                             type='number'
                                             name='quantity'
-                                            value={entry.quantity}
+                                            value={isProductView? Math.abs(Number(entry.quantity)) : entry.quantity}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
                                             disabled={isProductView}
                                         />
@@ -2371,7 +2371,7 @@ const AddProduct = ({
                                         <input 
                                             name='totalSales'
                                             type='number'
-                                            value={entry.totalSales}
+                                            value={isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}
                                             // disabled={true}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
                                         />

@@ -51,9 +51,9 @@ function App() {
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','inventory','accommodations','purchase','expenses','reports','settings','test']
+    'employees','departments','positions','attendance','payroll','pos','sales','inventory','accommodations','purchase','expenses','reports','settings','test']
   const dashList = ['dashboard', 
-    'employees','departments','positions','attendance','payroll','sales','inventory','accommodations','purchase','expenses','reports','settings']
+    'employees','departments','positions','attendance','payroll', 'pos', 'sales','inventory','accommodations','purchase','expenses','reports','settings']
   const months = [
       'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
       'AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'
