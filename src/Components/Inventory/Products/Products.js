@@ -428,8 +428,8 @@ const Products = ({
 
     return (
         <>
-            <div className='products'>
-                {!isImportClicked && isNewProduct && <div className='product' onChange={handleProductFieldChange}>
+            <div className='pr-products'>
+                {!isImportClicked && isNewProduct && <div className='pr-product' onChange={handleProductFieldChange}>
                     <div className='pr-left'>
                         <div className='nameInpCov'>
                             <label>Product Name</label>
@@ -602,10 +602,10 @@ const Products = ({
                         </div>
                     </div>
                 </div>}
-                {!isImportClicked && !isNewProduct && productView === 'card' && <div className='all-products'>
+                {!isImportClicked && !isNewProduct && productView === 'card' && <div className='pr-all-products'>
                     {products.map((product, id)=>{
                         return (
-                            <div key={id} className='product-card' onClick={()=>{
+                            <div key={id} className='pr-product-card' onClick={()=>{
                                 delete product._id
                                 setIsOnView(clickedLabel)
                                 setProductFields({...product})

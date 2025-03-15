@@ -164,7 +164,7 @@ const Payroll = () =>{
                         <div className="row">
                             <div >
                                 <div className="col-md-12">
-                                    <div className="row">
+                                    <div className="pr-row">
                                        <div className='invhead'>
                                             {/* <img src={''} className='invlogo'/> */}
                                             <div className="billfrom">
@@ -208,7 +208,7 @@ const Payroll = () =>{
                                     </div>
                                     <br />
                                     <div>
-                                        <table className="table">
+                                        <table className="pr-table">
                                             <thead>
                                                 <tr>
                                                     <th><h5>Expected Work Days: {curEmployee.expectedWorkDays?curEmployee.expectedWorkDays:monthDays[curAtt.month]}</h5></th>
@@ -237,7 +237,7 @@ const Payroll = () =>{
                                         </table>
                                     </div>
                                     <div>
-                                        <table className="table">
+                                        <table className="pr-table">
                                             <thead>
                                                 <tr>
                                                     <th><h5>Descriptions</h5></th>
@@ -348,7 +348,7 @@ const Payroll = () =>{
                                     <div>(MANAGING DIRECTOR)</div>
                                 </div>
                             </div>
-                            <div>
+                            <div className='pr-info'>
                                 <div>Customer debt repayment after 24hrs = 20%.</div>
                                 <div>Staff debt repayment after a week and must not exceed as graduated below;</div>
                                 <div> Manager: ₦6,000</div>

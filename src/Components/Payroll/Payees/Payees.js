@@ -92,10 +92,10 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                     <div className='mainslip'>
                         <div className=""  ref={targetRef}>
                         <div className="">
-                        <div className="row payeerow">
+                        <div className="pr-row payeerow">
                             <div>
                                 <div className="">
-                                    <div className="row payeerow">
+                                    <div className="pr-row payeerow">
                                        <div className='invhead'>
                                             <div className="billfrom">
                                                 <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
@@ -108,9 +108,9 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                     </div>
                                     
                                     <div className='tablecover'>
-                                        <table className="table payeetable">   
+                                        <table className="pr-table">   
                                             <thead>
-                                                <tr>
+                                                <tr className='theader'>
                                                     <th><h8 className='theader'>S/N</h8></th>
                                                     <th><h8 className='theader'>ID</h8></th>
                                                     <th><h8 className='theader'>NAME</h8></th>
@@ -183,7 +183,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                             totalNetPay += netPay
                                                             return (
                                                                 <>
-                                                                    <tr key={index} >       
+                                                                    <tr key={index}>       
                                                                         <td className='trow'>{index+1}</td>                                                                         
                                                                         <td className='trow'>{employee.i_d}</td>                                                                         
                                                                         <td className='trow'>{`${employee.lastName} ${employee.firstName} ${employee.otherName}`}</td>                                                                         

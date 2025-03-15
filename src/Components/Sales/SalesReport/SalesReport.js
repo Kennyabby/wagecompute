@@ -190,10 +190,10 @@ const SalesReport = ({
                     <div className='mainslip'>
                         <div className=""  ref={targetRef}>
                         <div className="">
-                        <div className="row payeerow">
+                        <div className="prr-row1">
                             <div>
                                 <div className="">
-                                    <div className="row payeerow">
+                                    <div className="prr-row headerrow">
                                        <div className='invhead'>
                                             <div className="billfrom">
                                                 <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
@@ -206,134 +206,134 @@ const SalesReport = ({
                                     </div>
                                     <div className='tablecover'>
                                         <div>SALES SUMMARY</div>
-                                        <table className="table payeetable">   
+                                        <table className="prr-table payeetable">   
                                             <thead>
                                                 <tr>
-                                                    <th><h8 className='theader'>NAMES</h8></th>
+                                                    <th><h8 className='prr-theader'>NAMES</h8></th>
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
+                                                            <th><h8 className='prr-theader'>{emp.firstName}</h8></th>                                                        
                                                         )                                                        
                                                     })}
-                                                    <th><h8 className='theader'>TOTAL</h8></th>
+                                                    <th><h8 className='prr-theader'>TOTAL</h8></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                    <td className='ttrow'> </td>                                                        
+                                                    <td className='prr-ttrow'> </td>                                                        
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <th><h8 className='ttrow'>{'₦'}</h8></th>                                                        
+                                                            <th><h8 className='prr-ttrow'>{'₦'}</h8></th>                                                        
                                                         )                                                                                                                
                                                     })}                                                    
-                                                    <td className='ttrow'>₦</td>                                                        
+                                                    <td className='prr-ttrow'>₦</td>                                                        
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>SALES</td>
+                                                    <td className='prr-ttrow'>SALES</td>
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allSales']).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allSales']).toLocaleString()}</td>
                                                         )                                                        
                                                     })} 
-                                                    {<td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)+Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}                                                        
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)+Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}                                                        
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>DEBT</td>                                                        
+                                                    <td className='prr-ttrow'>DEBT</td>                                                        
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
                                                         )                                                        
                                                     })}
-                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>TOTAL</td>                                                        
+                                                    <td className='prr-ttrow'>TOTAL</td>                                                        
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allSales'] - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allSales'] - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
                                                         )                                                                
                                                     })}                                                   
-                                                    {<td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>
                                         <div>SUMMARY OF DAILY COLLECTIONS</div>
-                                        <table className="table payeetable">   
+                                        <table className="prr-table payeetable">   
                                             <thead>
                                                 <tr>
-                                                    <th><h8 className='theader'>NAMES</h8></th>
+                                                    <th><h8 className='prr-theader'>NAMES</h8></th>
                                                         {reportEmployees.map((emp)=>{
                                                             return(
-                                                                <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
+                                                                <th><h8 className='prr-theader'>{emp.firstName}</h8></th>                                                        
                                                             )                                                        
                                                         })}
-                                                    <th><h8 className='theader'>TOTAL</h8></th>
+                                                    <th><h8 className='prr-theader'>TOTAL</h8></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                <td className='ttrow'>PAYMENT POINT</td>                                                        
+                                                <td className='prr-ttrow'>PAYMENT POINT</td>                                                        
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <th><h8 className='ttrow'>{'₦'}</h8></th>                                                        
+                                                            <th><h8 className='prr-ttrow'>{'₦'}</h8></th>                                                        
                                                         )                                                                                                                
                                                     })}                                                    
-                                                    <td className='ttrow'>₦</td>                                                        
+                                                    <td className='prr-ttrow'>₦</td>                                                        
                                                 </tr>
                                                 {Object.keys(payPoints).map((payPoint)=>{
                                                     var totalPaypointAmount = 0
                                                     return (
                                                         <tr>
-                                                            <td className='ttrow'>{payPoint.toUpperCase()}</td>                                                        
+                                                            <td className='prr-ttrow'>{payPoint.toUpperCase()}</td>                                                        
                                                             {reportEmployees.map((emp)=>{
                                                                 totalPaypointAmount += reportAllPayPoints[payPoint][emp.i_d]
                                                                 return(
-                                                                    <td className='ttrow'>{(reportAllPayPoints[payPoint][emp.i_d]).toLocaleString()}</td>                                                                    
+                                                                    <td className='prr-ttrow'>{(reportAllPayPoints[payPoint][emp.i_d]).toLocaleString()}</td>                                                                    
                                                                 )
                                                                 
                                                             })}                                                                                                                        
-                                                            <td className='ttrow'>{(totalPaypointAmount).toLocaleString()}</td>                                                       
+                                                            <td className='prr-ttrow'>{(totalPaypointAmount).toLocaleString()}</td>                                                       
                                                         </tr>
                                                     )
                                                 })}                                               
                                                 <tr>
-                                                    <td className='ttrow'>TOTAL</td>  
+                                                    <td className='prr-ttrow'>TOTAL</td>  
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allSales'] - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allSales'] - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
                                                         )                                                                
                                                     })}                                                      
                                                     
-                                                    {<td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>
                                         <div>DAILY SALES SUMMARY</div>
-                                        <table className="table payeetable">   
+                                        <table className="prr-table payeetable">   
                                             <thead>
                                                 <tr>
-                                                    <th><h8 className='theader'>PAYMENT POINT</h8></th>
+                                                    <th><h8 className='prr-theader'>PAYMENT POINT</h8></th>
                                                     {Object.keys(payPoints).map((paypoint)=>{
                                                         return(
-                                                            <th><h8 className='theader'>{paypoint.toUpperCase()}</h8></th>
+                                                            <th><h8 className='prr-theader'>{paypoint.toUpperCase()}</h8></th>
                                                         )
                                                     })}
-                                                    <th><h8 className='theader'>SUB TOTAL</h8></th>
-                                                    <th><h8 className='theader'>DEBT</h8></th>
-                                                    <th><h8 className='theader'>TOTAL</h8></th>
+                                                    <th><h8 className='prr-theader'>SUB TOTAL</h8></th>
+                                                    <th><h8 className='prr-theader'>DEBT</h8></th>
+                                                    <th><h8 className='prr-theader'>TOTAL</h8></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                    <td className='ttrow'>SALES UNIT</td>                                                        
+                                                    <td className='prr-ttrow'>SALES UNIT</td>                                                        
                                                     {Object.keys(payPoints).map(()=>{
                                                         return(
-                                                            <td className='ttrow'>₦</td>
+                                                            <td className='prr-ttrow'>₦</td>
                                                         )
                                                     })}
-                                                    <td className='ttrow'>₦</td>                                                        
-                                                    <td className='ttrow'>₦</td>                                                        
-                                                    <td className='ttrow'>₦</td>                                                        
+                                                    <td className='prr-ttrow'>₦</td>                                                        
+                                                    <td className='prr-ttrow'>₦</td>                                                        
+                                                    <td className='prr-ttrow'>₦</td>                                                        
                                                 </tr>
                                                 {Object.keys(salesUnits).map((salesunit)=>{
                                                     var totalSaleUnitAmount = 0
@@ -341,27 +341,27 @@ const SalesReport = ({
                                                     var cursaleunits1 = []
                                                     return (
                                                         <tr>
-                                                            <td className='ttrow'>{salesunit.toUpperCase()}</td>                                                        
+                                                            <td className='prr-ttrow'>{salesunit.toUpperCase()}</td>                                                        
                                                             {Object.keys(payPoints).map((paypoint)=>{  
                                                                 if (reportAllSalesUnits[salesunit]){
                                                                     totalSaleUnitAmount += reportAllSalesUnits[salesunit][paypoint]                                                            
                                                                     return (
-                                                                        <td className='ttrow'>{reportAllSalesUnits[salesunit][paypoint].toLocaleString()}</td>                                                        
+                                                                        <td className='prr-ttrow'>{reportAllSalesUnits[salesunit][paypoint].toLocaleString()}</td>                                                        
                                                                     )
                                                                 }else{
                                                                     return (
-                                                                        <td className='ttrow'>0</td>                                                        
+                                                                        <td className='prr-ttrow'>0</td>                                                        
                                                                     )
                                                                 } 
                                                             })}
-                                                            {<td className='ttrow'>{(totalSaleUnitAmount).toLocaleString()}</td>}                                                        
+                                                            {<td className='prr-ttrow'>{(totalSaleUnitAmount).toLocaleString()}</td>}                                                        
                                                             {reportAllSalesDebts[salesunit]!==undefined && <td className='ttrow'>{(reportAllSalesDebts[salesunit]).toLocaleString()}</td>}                                                        
                                                             {reportAllSalesDebts[salesunit]!==undefined && <td className='ttrow'>{(totalSaleUnitAmount + reportAllSalesDebts[salesunit]).toLocaleString()}</td>}                                                                                                                                                                            
                                                         </tr>
                                                     )
                                                 })}                                               
                                                 <tr>
-                                                    <td className='ttrow'>TOTAL</td>  
+                                                    <td className='prr-ttrow'>TOTAL</td>  
                                                     {Object.keys(payPoints).map((paypoint)=>{
                                                         var totalPaypointAmount = 0
                                                         Object.keys(salesUnits).forEach((salesunit)=>{
@@ -370,67 +370,67 @@ const SalesReport = ({
                                                             }
                                                         })
                                                         return (                                                            
-                                                            <td className='ttrow'>{(totalPaypointAmount).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(totalPaypointAmount).toLocaleString()}</td>
                                                         )                                                                                                                
                                                     })}
-                                                    {<td className='ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
-                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
-                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)+Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)+Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>
                                         <div style={{marginTop:'120px'}}></div>
                                         <div>DAILY DEBT RECOVERY</div>
-                                        <table className="table payeetable">   
+                                        <table className="prr-table payeetable">   
                                             <thead>
                                                 <tr>
-                                                    <th><h8 className='theader'>NAMES</h8></th>
+                                                    <th><h8 className='prr-theader'>NAMES</h8></th>
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <th><h8 className='theader'>{emp.firstName}</h8></th>                                                        
+                                                            <th><h8 className='prr-theader'>{emp.firstName}</h8></th>                                                        
                                                         )                                                                
                                                     })}
                                                     
-                                                    <th><h8 className='theader'>TOTAL</h8></th>
+                                                    <th><h8 className='prr-theader'>TOTAL</h8></th>
                                                     {/* <th><h8 className='theader'>MODE OF PAYMENT</h8></th> */}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                    <td className='ttrow'> </td>   
+                                                    <td className='prr-ttrow'> </td>   
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='ttrow'>₦</td>
+                                                            <td className='prr-ttrow'>₦</td>
                                                         )                                                                
                                                     })}                                                                                                         
-                                                    <td className='ttrow'>₦</td>                                                        
+                                                    <td className='prr-ttrow'>₦</td>                                                        
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>DEBT</td> 
+                                                    <td className='prr-ttrow'>DEBT</td> 
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
                                                         )                                                        
                                                     })}                                                                                                           
-                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}                                                        
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}                                                        
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>DEBTS RECOVERED</td>     
+                                                    <td className='prr-ttrow'>DEBTS RECOVERED</td>     
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allDebtRecovered']).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allDebtRecovered']).toLocaleString()}</td>
                                                         )                                                        
                                                     })}                                                                                                        
-                                                    {<td className='ttrow'>{(Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
                                                 </tr>
                                                 <tr>
-                                                    <td className='ttrow'>OUTSTANDING DEBT</td>                                                        
+                                                    <td className='prr-ttrow'>OUTSTANDING DEBT</td>                                                        
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='ttrow'>{(reportAllSales[emp.i_d]['allDebt'] - reportAllSales[emp.i_d]['allDebtRecovered']).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allDebt'] - reportAllSales[emp.i_d]['allDebtRecovered']).toLocaleString()}</td>
                                                         )                                                        
                                                     })}
-                                                    {<td className='ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)-Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)-Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>

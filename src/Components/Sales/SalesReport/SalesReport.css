@@ -2,6 +2,36 @@
     width: fit-content;
     margin: auto;
 }
-.ttrow{
+.prr-table {
+    /* margin: 10px auto; */
+    width: 90%;
+    page-break-inside: auto;
+}
+
+.prr-theader{
     font-size: .6em;
+    padding: 0;
+    margin: 0px;
+}
+.prr-row{
+    width: 90%;
+    margin: 0px;
+}
+.prr-row1{
+    width: 90%;
+    margin: auto;
+    margin-left: 20px;
+}
+.headerrow{
+
+    margin: auto
+}
+.prr-trow{
+    font-size: .6em;
+    margin: 0px;
+}
+.prr-ttrow{
+    font-weight: bold;
+    font-size: .6em;
+    margin: 0px;
 }
