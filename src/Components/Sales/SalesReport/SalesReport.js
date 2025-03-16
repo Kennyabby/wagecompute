@@ -14,7 +14,7 @@ const SalesReport = ({
     const [InvoiceNumber, setInvoiceNumber] = useState('')
     const payPoints = {
         'moniepoint1':'', 'moniepoint2':'', 
-        'moniepoint3':'', 'cash':''
+        'moniepoint3':'', 'moniepoint4':'', 'cash':''
     }
     const salesUnits = {
         'open bar1':{...payPoints}, 'open bar2':{...payPoints}, 

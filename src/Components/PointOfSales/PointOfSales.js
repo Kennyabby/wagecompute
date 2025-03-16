@@ -8,6 +8,7 @@ const PointOfSales = () => {
     // 1. Context and State Management
     // =========================================
     const { 
+        storePath,
         fetchServer, server, company, 
         setAlert, setAlertState, setAlertTimeout,
         settings 
@@ -18,6 +19,10 @@ const PointOfSales = () => {
     const [tables, setTables] = useState([]);
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+
+    useEffect(()=>{
+        storePath('pos')  
+    },[storePath])
 
     // Order States
     const [currentOrder, setCurrentOrder] = useState({
