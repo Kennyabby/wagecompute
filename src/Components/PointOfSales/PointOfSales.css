@@ -1,3 +1,6 @@
+/* =========================================
+   1. Base Container
+   ========================================= */
 .pos-container {
     display: flex;
     flex-direction: column;
@@ -5,13 +8,596 @@
     background-color: #f5f5f5;
 }
 
-.pos-header {
+.pos-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+/* =========================================
+   2. Header Styles
+   ========================================= */
+.pos-mini-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: 0.5rem 1rem;
     background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.table-name {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #875A7B;
+}
+
+.order-number {
+    font-size: 1rem;
+    color: #666;
+    padding: 0.25rem 0.5rem;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+/* =========================================
+   3. Tables View
+   ========================================= */
+.pos-tables-view {
+    padding: 2rem;
+    height: calc(100vh - 80px);
+    overflow: auto;
+}
+
+.tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+/* Table Card Styles */
+.table-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.table-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.table-card.available {
+    border-left: 4px solid #4caf50;
+}
+
+.table-card.occupied {
+    border-left: 4px solid #f44336;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.table-card.reserved {
+    border-left: 4px solid #ff9800;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.table-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.table-capacity {
+    color: #666;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.table-status {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.table-status.available {
+    background: #e8f5e9;
+    color: #4caf50;
+}
+
+.table-status.occupied {
+    background: #ffebee;
+    color: #f44336;
+}
+
+.table-status.reserved {
+    background: #fff3e0;
+    color: #ff9800;
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.table-action-btn {
+    padding: 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    flex: 1;
+    transition: all 0.2s;
+}
+
+.table-action-btn.edit {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.table-action-btn.select {
+    background: #875A7B;
+    color: white;
+}
+
+.table-action-btn:hover {
+    opacity: 0.9;
+}
+
+.table-action-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* =========================================
+   4. Order Screen Layout
+   ========================================= */
+.order-screen {
+    display: grid;
+    grid-template-columns: 40% 60%;
+    gap: 1rem;
+    height: calc(100vh - 80px);
+    padding: 1rem;
+}
+
+/* =========================================
+   5. Order Entry Panel
+   ========================================= */
+.order-entry {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1rem;
+    gap: 1rem;
+    overflow: auto;
+}
+
+/* Selected Items */
+.selected-items {
+    flex: 1;
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.selected-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 1rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+/* =========================================
+   6. Products Panel
+   ========================================= */
+.products-panel {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: auto;
+}
+
+.categories-bar {
+    padding: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    border-bottom: 1px solid #eee;
+}
+
+.category-btn {
+    padding: 0.5rem 1rem;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.category-btn.active {
+    background: #875A7B;
+    color: white;
+    border-color: #875A7B;
+}
+
+.products-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+/* Update product card styles */
+.product-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.product-card:hover {
+    border-color: #875A7B;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.product-card.active {
+    border: 2px solid #875A7B;
+    background-color: rgba(135, 90, 123, 0.1);
+}
+
+.product-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border-radius: 50%;
+    margin-bottom: 0.5rem;
+    color: #875A7B;
+    font-size: 1.2rem;
+}
+
+.product-image {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.product-name {
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 0.25rem;
+    color: #333;
+    font-weight: 500;
+}
+
+.product-price {
+    color: #875A7B;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+/* =========================================
+   7. Keypad Section
+   ========================================= */
+.keypad-section {
+    padding: 1rem;
+}
+
+.quantity-display {
+    background: #f5f5f5;
+    padding: 1rem;
+    text-align: right;
+    font-size: 1.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.keypad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.keypad-btn {
+    padding: 1rem;
+    font-size: 1.2rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.keypad-btn:hover {
+    background: #f0f0f0;
+}
+
+.keypad-btn.enter {
+    grid-column: span 3;
+    background: #875A7B;
+    color: white;
+    border: none;
+}
+
+.keypad-btn.enter:hover {
+    background: #6d4863;
+}
+
+/* =========================================
+   8. Modal Styles
+   ========================================= */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.modal-header {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.modal-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.modal-btn.cancel {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+}
+
+.modal-btn.save {
+    background: #875A7B;
+    color: white;
+    border: none;
+}
+
+.payment-modal {
+    max-width: 500px;
+}
+
+.payment-methods {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.payment-method-btn {
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.payment-method-btn.active {
+    background: #875A7B;
+    color: white;
+    border-color: #875A7B;
+}
+
+/* =========================================
+   9. Button Styles
+   ========================================= */
+.action-btn {
+    padding: 0.5rem 1rem;
+    background: #875A7B;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: #6d4863;
+}
+
+.place-order-btn {
+    width: 100%;
+    padding: 1rem;
+    background: #875A7B;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    margin-top: 1rem;
+}
+
+.place-order-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* =========================================
+   10. Utility Classes
+   ========================================= */
+.remove-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    margin: 0;
+}
+
+.close-btn:hover {
+    color: #333;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+}
+
+.form-group select:focus {
+    outline: none;
+    border-color: #875A7B;
+}
+
+.order-switcher {
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 1rem;
+}
+
+.order-switch-btn {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.order-switch-btn.active {
+    background: #875A7B;
+    color: white;
+    border-color: #875A7B;
+}
+
+.order-switch-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.order-status {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 10px;
+    background: #f0f0f0;
+}
+
+.order-switch-btn.pending .order-status {
+    background: #ffc107;
+    color: #000;
+}
+
+.order-switch-btn.completed .order-status {
+    background: #4caf50;
+    color: white;
+}
+
+.order-switch-btn.cancelled .order-status {
+    background: #f44336;
+    color: white;
+}
+
+/* Add mini header styles */
+.pos-header {
+    display: none;
 }
 
 .nav-buttons {
@@ -19,20 +605,22 @@
     gap: 1rem;
 }
 
-.pos-content {
-    flex: 1;
-    padding: 1rem;
-    overflow-y: auto;
+.pos-header-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
 }
 
-/* .tables-layout {
+.pos-tables-layout {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 1rem;
     padding: 1rem;
 }
 
-.table {
+.pos-table {
+    /* width: 100%; */
+    /* height: 100%; */
     aspect-ratio: 1;
     display: flex;
     align-items: center;
@@ -44,32 +632,24 @@
     transition: transform 0.2s;
 }
 
-.table:hover {
+.pos-table:hover {
     transform: scale(1.05);
 }
 
-.table.available {
+.pos-table.available {
     background-color: #4caf50;
     color: white;
 }
 
-.table.occupied {
+.pos-table.occupied {
     background-color: #f44336;
     color: white;
 }
 
-.table.reserved {
+.pos-table.reserved {
     background-color: #ff9800;
     color: white;
-} */
-
-.order-screen {
-    display: grid;
-    grid-template-columns: 40% 60%;
-    gap: 1rem;
-    height: calc(100vh - 80px);
-    padding: 1rem;
-}
+} 
 
 .menu-section {
     flex: 2;
@@ -131,26 +711,10 @@
 }
 
 /* Left Panel - Order Entry */
-.order-entry {
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
 .selected-items {
     flex: 1;
-    overflow-y: auto;
+    /* overflow-y: auto; */
     padding: 1rem;
-    border-bottom: 1px solid #eee;
-}
-
-.selected-item {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 1rem;
-    padding: 0.5rem;
     border-bottom: 1px solid #eee;
 }
 
@@ -201,11 +765,14 @@
 
 /* Right Panel - Products */
 .products-panel {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: auto;
 }
 
 .categories-bar {
@@ -240,15 +807,17 @@
     overflow-y: auto;
 }
 
+/* Update product card styles */
 .product-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 0.5rem;
+    padding: 1rem;
     border: 1px solid #ddd;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
+    background: white;
 }
 
 .product-card:hover {
@@ -256,36 +825,36 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.product-image {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
-    border-radius: 4px;
+.product-card.active {
+    border: 2px solid #875A7B;
+    background-color: rgba(135, 90, 123, 0.1);
+}
+
+.product-icon {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border-radius: 50%;
     margin-bottom: 0.5rem;
+    color: #875A7B;
+    font-size: 1.2rem;
 }
 
 .product-name {
     font-size: 0.9rem;
     text-align: center;
     margin-bottom: 0.25rem;
+    color: #333;
+    font-weight: 500;
 }
 
 .product-price {
     color: #875A7B;
     font-weight: bold;
-}
-
-/* Table Creation Modal */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-size: 1rem;
 }
 
 .modal-content {
@@ -300,6 +869,9 @@
     margin-bottom: 1rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .form-group {
@@ -340,4 +912,339 @@
     background: #875A7B;
     color: white;
     border: none;
+}
+
+.payment-modal {
+    max-width: 500px;
+}
+
+.payment-methods {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.payment-method-btn {
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.payment-method-btn.active {
+    background: #875A7B;
+    color: white;
+    border-color: #875A7B;
+}
+
+/* Add styles for remove button */
+.remove-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+/* Add styles for place order button */
+.place-order-btn {
+    width: 100%;
+    padding: 1rem;
+    background: #875A7B;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    margin-top: 1rem;
+}
+
+.place-order-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Add styles for orders list */
+.orders-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.order-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+}
+
+.order-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.order-card.pending {
+    border-left: 4px solid #ffc107;
+}
+
+.order-card.completed {
+    border-left: 4px solid #4caf50;
+}
+
+.order-card.cancelled {
+    border-left: 4px solid #f44336;
+}
+
+/* Update tables layout styling */
+.pos-tables-view {
+    padding: 2rem;
+    height: calc(100vh - 80px);
+    overflow: auto;
+}
+
+.tables-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+.table-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.table-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.table-card.available {
+    border-left: 4px solid #4caf50;
+}
+
+.table-card.occupied {
+    border-left: 4px solid #f44336;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.table-card.reserved {
+    border-left: 4px solid #ff9800;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.table-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.table-capacity {
+    color: #666;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.table-status {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.table-status.available {
+    background: #e8f5e9;
+    color: #4caf50;
+}
+
+.table-status.occupied {
+    background: #ffebee;
+    color: #f44336;
+}
+
+.table-status.reserved {
+    background: #fff3e0;
+    color: #ff9800;
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.table-action-btn {
+    padding: 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    flex: 1;
+    transition: all 0.2s;
+}
+
+.table-action-btn.edit {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.table-action-btn.select {
+    background: #875A7B;
+    color: white;
+}
+
+.table-action-btn:hover {
+    opacity: 0.9;
+}
+
+.table-action-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Add to your existing PointOfSales.css file */
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    margin: 0;
+}
+
+.close-btn:hover {
+    color: #333;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+}
+
+.form-group select:focus {
+    outline: none;
+    border-color: #875A7B;
+}
+
+.order-switcher {
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 1rem;
+}
+
+.order-switch-btn {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.order-switch-btn.active {
+    background: #875A7B;
+    color: white;
+    border-color: #875A7B;
+}
+
+/* Update tables view */
+.pos-tables-view {
+    padding: 2rem;
+}
+
+.tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+.table-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    position: relative;
+}
+
+.table-card .order-count {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    background: #875A7B;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Add Table Box Styles */
+.add-table-box {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    border: 2px dashed #875A7B;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-table-box:hover {
+    background-color: rgba(135, 90, 123, 0.1);
+    transform: scale(1.05);
+}
+
+.add-table-box .plus-icon {
+    font-size: 2rem;
+    color: #875A7B;
+    margin-bottom: 0.5rem;
+}
+
+.add-table-box .add-text {
+    color: #875A7B;
+    font-size: 0.9rem;
 }
