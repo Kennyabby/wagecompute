@@ -219,6 +219,9 @@ const Sales = ()=>{
         }
     },[recoveryVal])
     useEffect(()=>{
+        console.log(fields)
+    },[fields])
+    useEffect(()=>{
         if (salesOpts!=='sales'){
             setIsView(false)
             setFields([])
@@ -284,7 +287,7 @@ const Sales = ()=>{
         const {e} = prop
         var index = prop.index
         if(accommodationRecords.length){
-            index = prop.index - 1
+            index = prop.index - accommodationRecords.length
         }
         const name = e.target.getAttribute('name')
         const category = e.target.getAttribute('category')
