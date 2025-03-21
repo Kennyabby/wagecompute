@@ -39,6 +39,7 @@ function App() {
   const [accommodationVal, setAccommodationVal] = useState(false)
   const [enableBlockVal, setEnableBlockVal] = useState(false)
   const [editAccess, setEditAccess] = useState({})
+  const [allowBacklogs, setAllowBacklogs] = useState(false)
   const [changingSettings, setChangingSettings] = useState(false)
   
   const [attendance, setAttendance] = useState([])
@@ -97,6 +98,9 @@ function App() {
             setCompanyRecord(resp.record) 
             setRecoveryVal(resp.record.enableDebtRecovery)
             setEnableBlockVal(!resp.record.enableLogin)
+            setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
+              resp.record.permissions.includes('all')
+            )
             setEditAccess((editAccess)=>{
               return {...editAccess, 
                 employees: resp.record.permissions.includes('edit_employees')
@@ -353,6 +357,9 @@ function App() {
       removeSessions()
     }else{
       setCompanyRecord(resp.record)
+      setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
+          resp.record.permissions.includes('all')
+        )
       if (resp.record.status==='admin'){
         getSettings(cmp_val)
         fetchProfiles(cmp_val)
@@ -375,7 +382,7 @@ function App() {
           }
         })
         setRecoveryVal(resp.record.enableDebtRecovery)
-        setEnableBlockVal(!resp.record.enableLogin)
+        setEnableBlockVal(!resp.record.enableLogin)        
         getSettings(cmp_val)
         getEmployees(cmp_val)        
       }
@@ -630,6 +637,7 @@ function App() {
           colSettings, setColSettings,
           recoveryVal, setRecoveryVal,
           accommodationVal, setAccommodationVal,
+          allowBacklogs, setAllowBacklogs,
           editAccess, setEditAccess,
           enableBlockVal, setEnableBlockVal,
           changingSettings, setChangingSettings,

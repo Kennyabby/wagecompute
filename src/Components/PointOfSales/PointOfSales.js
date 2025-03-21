@@ -9,17 +9,23 @@ const PointOfSales = () => {
     // =========================================
     const { 
         storePath,
-        fetchServer, server, company, 
+        fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
-        settings 
+        settings, getDate 
     } = useContext(ContextProvider);
 
     // Core States
+    const [loading, setLoading] = useState(false);
     const [activeScreen, setActiveScreen] = useState('home');
     const [tables, setTables] = useState([]);
+    const [sessions, setSessions] = useState([]);
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
-
+    const [openingCash, setOpeningCash] = useState(0);
+    const [bankBalance, setBankBalance] = useState(0);
+    const [cashBalance, setCashBalance] = useState(0);
+    const [startSession, setStartSession] = useState(false);
+    const [endSession, setEndSession] = useState(false);
     useEffect(()=>{
         storePath('pos')  
     },[storePath])
@@ -68,7 +74,7 @@ const PointOfSales = () => {
     // Settings States
     const [uoms, setUoms] = useState([]);
     const [wrhs, setWrhs] = useState([]);
-
+    const [wrh, setWrh] = useState(null);
     // =========================================
     // 2. Effects and Data Loading
     // =========================================
@@ -105,6 +111,96 @@ const PointOfSales = () => {
         }  
     },[settings])
 
+    const getOrderSales = (orders) =>{
+        let bankSales = 0
+        let cashSales = 0
+        orders.forEach((order)=>{
+            if (order.payment.method === 'cash'){
+                cashSales += order.total
+            } else {
+                bankSales += order.total
+            }
+        })
+        return {bankSales, cashSales}
+    }
+    const createSession = async ()=>{
+        const newSession = {
+            employee_id: companyRecord.emailid,
+            start: new Date().getTime(),
+            end: null,
+            active: true,
+            wrh: wrh,
+            totalBankSales: 0,
+            totalCashSales: 0,
+            openingCash: openingCash,
+            debtDue: 0
+        }
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "Sessions",
+            update: {
+                ...newSession
+            }
+        }, "createDoc", server);
+    
+        if (response.err) {
+            setAlertState('error');
+            setAlert('Could not load session. Please check you internet connection!');
+        } else {
+            setAlertState('success');
+            setAlert('Welcome Back!');
+            setStartSession(false)
+            setSessions([...sessions, newSession]);
+        }
+    }
+
+    const stopSession = async (session, sessionOrders)=>{
+        const {bankSales, cashSales} = getOrderSales(sessionOrders)
+        const openingCash = session.openingCash
+        let netBalance = 0
+        if (bankBalance !== bankSales || cashBalance !== (cashSales + openingCash)){
+            netBalance = (bankBalance + cashBalance) - (bankSales + cashSales + openingCash)
+        } 
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "Sessions",
+            update: [{start: session.start},{
+                end: new Date().getTime(),
+                active: false,
+                totalBankSales: bankBalance,
+                totalCashSales: cashBalance,
+                debtDue: netBalance
+            }]
+        }, "updateDoc", server);
+    
+        if (response.err) {
+            setAlertState('error');
+            setAlert('Could not load session. Please check you internet connection!');
+        } else {
+            setAlertState('success');
+            setAlert('Welcome Back!');
+            setStartSession(false)
+            setSessions([...sessions, response.record[0]]);
+        }
+    }
+
+    useState(()=>{
+        const previousSession = sessions.filter((session)=> session.active)
+        if (previousSession.length){
+            if(getDate(previousSession[0].start) !== getDate(new Date().getTime())){                
+                setStartSession(false)
+                setEndSession(true)
+            }
+        } else {
+            let oldSession = null
+            if (sessions.length){
+                oldSession = sessions[sessions.length - 1]
+                setOpeningCash(oldSession.totalCashSales)
+            }
+            setStartSession(true)
+            setEndSession(false)
+        }
+    },[sessions])
     // =========================================
     // 3. Data Loading Functions
     // =========================================
@@ -121,6 +217,12 @@ const PointOfSales = () => {
             collection: "Products"
         }, "getDocsDetails", server);
 
+        const sessionsResponse = await fetchServer("POST", {
+            database: company,
+            collection: "POSSessions",
+            prop: {'employee_id': companyRecord.emailid}
+        }, "getDocsDetails", server);
+
         if (tablesResponse.err || productsResponse.err) {
             setAlertState('error');
             setAlert('Error loading data');
@@ -131,11 +233,16 @@ const PointOfSales = () => {
             if(!productsResponse.err){
                 setProducts(productsResponse.record)
             }
+            if(!sessionsResponse.err){
+                setSessions(sessionsResponse.record)
+            }
         } else {
+            setSessions(sessionsResponse.record)
             setTables(tablesResponse.record);
             setProducts(productsResponse.record);
         }
     };
+
 
     const handleSettingsUpdate = () => {
         if (settings.length){  
@@ -340,7 +447,7 @@ const PointOfSales = () => {
         const existingItem = currentOrder.items.find(item => item.i_d === product.i_d);
         let updatedItems;
     
-        if (existingItem) {
+        if (existingItem){
             updatedItems = currentOrder.items.map(item =>
                 item.i_d === product.i_d 
                     ? { ...item, quantity: quantity ? item.quantity + quantity : item.quantity + 1 }
@@ -522,6 +629,123 @@ const PointOfSales = () => {
     // =========================================
     // 8. UI Rendering Functions
     // =========================================
+
+    const renderSessionEntry = () => {
+
+        const handleStartSession = async () => {
+            setLoading(true);
+            await createSession();
+            setLoading(false);
+        };
+
+        const handleEndSession = async () => {
+            setLoading(true);
+            await stopSession(sessions.find(session => session.active), orders);
+            setLoading(false);
+        };
+
+        return (
+            <>
+                {startSession && (
+                    <div className='openingsession'>
+                        <div className="session-entry">
+                            <h2>Start New Session</h2>
+                            <div className="form-group">
+                                <label>Opening Cash</label>
+                                <input 
+                                    type="number" 
+                                    value={openingCash} 
+                                    onChange={(e) => setOpeningCash(parseFloat(e.target.value) || 0)} 
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Warehouse</label>
+                                <select 
+                                    value={wrh} 
+                                    onChange={(e) => setWrh(e.target.value)}
+                                    disabled={loading}
+                                >
+                                    {wrhs.map((warehouse, index) => (
+                                        <option key={index} value={warehouse.name}>
+                                            {warehouse.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="session-actions">
+                                <button 
+                                    className="session-btn start" 
+                                    onClick={handleStartSession}
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Starting...' : 'Start Session'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {endSession && (
+                    <div className='closingsession'>
+                        <div className="session-entry">
+                            <h2>End Session</h2>
+                            <div className="form-group">
+                                <label>Total Bank Sales</label>
+                                <input 
+                                    type="number" 
+                                    value={sessions.find(session => session.active)?.totalBankSales || 0} 
+                                    readOnly
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Total Cash Sales</label>
+                                <input 
+                                    type="number" 
+                                    value={sessions.find(session => session.active)?.totalCashSales || 0} 
+                                    readOnly
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Bank Balance</label>
+                                <input 
+                                    type="number" 
+                                    value={bankBalance} 
+                                    onChange={(e) => setBankBalance(parseFloat(e.target.value) || 0)} 
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Cash Balance</label>
+                                <input 
+                                    type="number" 
+                                    value={cashBalance} 
+                                    onChange={(e) => setCashBalance(parseFloat(e.target.value) || 0)} 
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Actual Session Balance</label>
+                                <input 
+                                    type="number" 
+                                    value={(bankBalance + cashBalance).toFixed(2)} 
+                                    readOnly
+                                />
+                            </div>
+                            <div className="session-actions">
+                                <button 
+                                    className="session-btn end" 
+                                    onClick={handleEndSession}
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Ending...' : 'End Session'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    };
     const renderKeypad = () => (
         <div className="keypad-section">
             <div className="quantity-display">{quantity || '0'}</div>
@@ -654,35 +878,49 @@ const PointOfSales = () => {
         switch (activeScreen) {
             case 'home':
                 return (
-                    <div className="pos-tables-layout">
-                        <div 
-                            className="add-table-box"
-                            onClick={handleAddTableClick}
-                        >
-                            <div className="plus-icon">+</div>
-                            <div className="add-text">Add Table</div>
+                    <>
+                        <div className='pos-wh-cover' onClick={(e)=>{
+                            const name = e.target.getAttribute('name')
+                            setWrh(name)
+                        }}>
+                            {
+                                wrhs.map((wh, id)=>{
+                                    if (!wh.purchase){
+                                        return <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>                                        
+                                    }
+                                })                        
+                            }
                         </div>
-                        {[...tables]
-                            .sort((a, b) => {
-                                const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
-                                const numB = parseInt(b.name.replace(/[^0-9]/g, ''));
-                                return numA - numB;
-                            })
-                            .map(table => (
-                                <div 
-                                    key={table._id}
-                                    className={`pos-table ${table.status}`}
-                                    onClick={() => handleTableSelect(table)}
-                                >
-                                    {table.name}
-                                    {tableOrders[table._id]?.length > 0 && (
-                                        <div className="order-count">
-                                            {tableOrders[table._id].length}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                    </div>
+                        <div className="pos-tables-layout">
+                            <div 
+                                className="add-table-box"
+                                onClick={handleAddTableClick}
+                            >
+                                <div className="plus-icon">+</div>
+                                <div className="add-text">Add Table</div>
+                            </div>
+                            {[...tables]
+                                .sort((a, b) => {
+                                    const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
+                                    const numB = parseInt(b.name.replace(/[^0-9]/g, ''));
+                                    return numA - numB;
+                                })
+                                .map(table => (
+                                    <div 
+                                        key={table._id}
+                                        className={`pos-table ${table.status}`}
+                                        onClick={() => handleTableSelect(table)}
+                                    >
+                                        {table.name}
+                                        {tableOrders[table._id]?.length > 0 && (
+                                            <div className="order-count">
+                                                {tableOrders[table._id].length}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                        </div>
+                    </>
                 );
 
             case 'order':
@@ -890,6 +1128,7 @@ const PointOfSales = () => {
     // =========================================
     return (
         <div className="pos-container">
+            {renderSessionEntry()}
             {activeScreen === 'order' && (
                 <div className="pos-mini-header">
                     <div className="header-info">
