@@ -444,7 +444,7 @@ const Settings = () => {
                                         </div>
                                         <div>Allow Backlogs</div>
                                         <div className='permissions'>
-                                            {['allowBcklogs'].map((permission, index) => (
+                                            {['allowBacklogs'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
