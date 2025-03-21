@@ -11,7 +11,7 @@ const Purchase = ()=>{
     const { storePath,
         server, 
         fetchServer,
-        companyRecord,
+        companyRecord, allowBacklogs,
         company, getDate, products, getProducts, setProducts,
         employees, getEmployees,months, getPurchase, setPurchase, purchase,
         settings, setAlert, setAlertState, setAlertTimeout, setActionMessage
@@ -401,7 +401,7 @@ const Purchase = ()=>{
                                 type='date'
                                 placeholder='From'
                                 value={saleFrom}
-                                disabled={companyRecord.status!=='admin'}
+                                disabled={!allowBacklogs}
                                 onChange={(e)=>{
                                     setSaleFrom(e.target.value)
                                 }}
@@ -415,7 +415,7 @@ const Purchase = ()=>{
                                 type='date'
                                 placeholder='To'
                                 value={saleTo}
-                                disabled={companyRecord.status!=='admin'}
+                                disabled={!allowBacklogs}
                                 onChange={(e)=>{
                                     setSaleTo(e.target.value)
                                 }}

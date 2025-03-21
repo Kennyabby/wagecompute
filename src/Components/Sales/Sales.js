@@ -16,7 +16,7 @@ const Sales = ()=>{
         fetchServer, 
         server, 
         companyRecord, 
-        company, recoveryVal, 
+        company, recoveryVal, allowBacklogs,
         employees, setEmployees, getEmployees, 
         sales, setSales, getSales, months, 
         accommodations, getAccommodations,
@@ -1164,7 +1164,7 @@ const Sales = ()=>{
                                 type='date'
                                 placeholder='From'
                                 value={saleFrom}
-                                disabled={companyRecord.status!=='admin'}
+                                disabled={!allowBacklogs}
                                 onChange={(e)=>{
                                     setSaleFrom(e.target.value)
                                     setSaleEmployee('')
@@ -1179,7 +1179,7 @@ const Sales = ()=>{
                                 type='date'
                                 placeholder='To'
                                 value={saleTo}
-                                disabled={companyRecord.status!=='admin'}
+                                disabled={!allowBacklogs}
                                 onChange={(e)=>{
                                     setSaleTo(e.target.value)
                                     setSaleEmployee('')
