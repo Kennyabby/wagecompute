@@ -263,7 +263,7 @@ const Sales = ()=>{
         }
     },[rentalFields.rentalSpace])
     useEffect(()=>{
-        if (companyRecord.status!=='admin'){
+        if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])
@@ -1144,6 +1144,7 @@ const Sales = ()=>{
                     handleProductSales={handleProductSales}
                     salesEntries={salesEntries}
                     setSalesEntries={setSalesEntries}
+                    fields={fields}
                 />}
                 <div className='emplist saleslist'>    
                     {companyRecord.status==='admin' && <FaTableCells                         
@@ -2045,9 +2046,9 @@ const Sales = ()=>{
                                         if (enteredSales === Number(field.totalSales)){
                                             rt++
                                             if (rt===fields.length){
-                                                // setIsProductView(false)
-                                                // setProductAdd(true)   
-                                                addSales()                             
+                                                setIsProductView(false)
+                                                setProductAdd(true)   
+                                                // addSales()                             
                                             }
                                         }else{
                                             if (enteredSales < Number(field.totalSales)){
@@ -2189,7 +2190,7 @@ export default Sales
 
 const AddProduct = ({
     products, setProductAdd, categories, uoms, wrhs, isProductView, curSale,
-    setIsProductView, handleProductSales, salesEntries, setSalesEntries 
+    setIsProductView, handleProductSales, salesEntries, setSalesEntries, fields 
 })=>{    
     const [category, setCategory] = useState('all')
     const [wrh, setWrh] = useState(isProductView ? Object.keys(salesEntries)[0] : 'open bar1' )
@@ -2249,17 +2250,32 @@ const AddProduct = ({
             })
         })
         setTotalAmount(totalAmount)
-        const {createdAt, postingDate, totalCashSales, totalDebt, record, 
-            totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
-        } = (curSale || {})
-        var accommodationAmount = 0
-        record.forEach((saleRecord)=>{
-            if (saleRecord.salesPoint === 'accomodation'){
-                accommodationAmount += Number(saleRecord.totalSales)
-            }
-        })
-        const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
-        setTotalSalesAmount(totalSalesAmount)
+        if (curSale!==null){
+            const {createdAt, postingDate, totalCashSales, totalDebt, record, 
+                totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
+            } = (curSale || {})
+            var accommodationAmount = 0
+            record.forEach((saleRecord)=>{
+                if (saleRecord.salesPoint === 'accomodation'){
+                    accommodationAmount += Number(saleRecord.totalSales)
+                }
+            })
+            const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
+            setTotalSalesAmount(totalSalesAmount)
+        }else{
+            var totalCashSales = 0
+            var totalDebt = 0      
+            var totalShortage = 0 
+            var totalBankSales = 0             
+            fields.forEach((field)=>{
+                totalCashSales += Number(field.cashSales)
+                totalDebt += Number(field.debt)
+                totalShortage += Number(field.shortage)
+                totalBankSales += Number(field.bankSales)
+            })
+            const totalSalesAmount = totalCashSales + totalBankSales + totalDebt + totalShortage
+            setTotalSalesAmount(totalSalesAmount)
+        }
 
     },[salesEntries])
 
