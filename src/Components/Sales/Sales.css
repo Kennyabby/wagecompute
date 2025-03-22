@@ -139,6 +139,7 @@
 .addempsales{
     width: fit-content;
     margin: auto;
+    height: fit-content;
     background: greenyellow;
     padding: 10px 15px;
     cursor: pointer;
@@ -213,7 +214,7 @@
 }
 .salesyesbtn{
     height: fit-content ;
-    margin: auto 10px;
+    margin: 7px 10px;
 }
 .salesinpcov{
     margin: 0px;
