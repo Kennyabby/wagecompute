@@ -2226,6 +2226,7 @@ const AddProduct = ({
                     baseUom: uom1[0]?.base,
                     costPrice: cummulativeUnitCostPrice,
                     salesPrice: product.salesPrice,
+                    vipPrice: product.vipPrice,
                     totalSales: '',
                     entryType: 'Sales',
                     documentType: 'Shipment'
@@ -2290,9 +2291,12 @@ const AddProduct = ({
                 const originalEntries = structuredClone({salesEntries})
                 var updatedWrh = [...salesEntries[wrh]]
                 updatedWrh[index][name] = Number(value)
-                updatedWrh[index].baseQuantity = Number(value) * Number(uom2[0]?.multiple)
-                updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
-                
+                updatedWrh[index].baseQuantity = Number(value) * Number(uom2[0]?.multiple)                
+                if (wrh === 'vip'){
+                    updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * (Number(updatedWrh[index].vipPrice) || Number(updatedWrh[index].salesPrice))
+                }else{
+                    updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
+                }
                 setSalesEntries({...(originalEntries.salesEntries), [wrh]: updatedWrh})
 
             }else{
