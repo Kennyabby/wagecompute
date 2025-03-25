@@ -11,14 +11,15 @@ const PointOfSales = () => {
         storePath,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
-        settings, getDate 
+        settings, getDate, posWrhAccess
     } = useContext(ContextProvider);
 
     // Core States
     const [loading, setLoading] = useState(false);
     const [activeScreen, setActiveScreen] = useState('home');
     const [tables, setTables] = useState([]);
-    const [sessions, setSessions] = useState([]);
+    const [orderTables, setOrderTables] = useState([]);
+    const [sessions, setSessions] = useState(null);
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [openingCash, setOpeningCash] = useState(0);
@@ -26,6 +27,9 @@ const PointOfSales = () => {
     const [cashBalance, setCashBalance] = useState(0);
     const [startSession, setStartSession] = useState(false);
     const [endSession, setEndSession] = useState(false);
+    const [curSession, setCurrSession] = useState(null);
+    const [loadSession, setLoadSession] = useState(true);
+
     useEffect(()=>{
         storePath('pos')  
     },[storePath])
@@ -39,8 +43,8 @@ const PointOfSales = () => {
         total: 0,
         status: 'pending'
     });
-    const [orders, setOrders] = useState([]);
-    const [tableOrders, setTableOrders] = useState({});
+    const [allOrders, setAllOrders] = useState([]);
+    const [tableOrders, setTableOrders] = useState([]);
     const [orderType, setOrderType] = useState('dine-in');
 
     // Product States
@@ -65,23 +69,24 @@ const PointOfSales = () => {
         name: '',
         phone: ''
     });
-    const [paymentDetails, setPaymentDetails] = useState({
-        method: 'cash',
+    const paymentDetail = {
         amount: 0,
         change: 0
-    });
+    }
+    const paymentDetailClone = structuredClone({paymentDetail})
+    const payPoints = {
+        'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
+        'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail}, 'cash':{...paymentDetailClone.paymentDetail}
+    }
+    const [paymentDetails, setPaymentDetails] = useState({...payPoints});
 
     // Settings States
     const [uoms, setUoms] = useState([]);
     const [wrhs, setWrhs] = useState([]);
-    const [wrh, setWrh] = useState(null);
+    const [wrh, setWrh] = useState('');
     // =========================================
     // 2. Effects and Data Loading
     // =========================================
-    useEffect(() => {
-        loadInitialData();
-    }, []);
-
     useEffect(() => {
         handleSettingsUpdate();
     }, [settings]);
@@ -91,26 +96,54 @@ const PointOfSales = () => {
     }, [activeCategory, products]);
 
     useEffect(()=> {
-        if (settings.length){  
-            const uomSetFilt = settings.filter((setting)=> {
-                return setting.name === 'uom'
-            })
-            delete uomSetFilt[0]?._id
-            setUoms(uomSetFilt[0].name?[...uomSetFilt[0].mearsures]:[])
-
-            const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
-            delete catSetFilt[0]?._id;
-            setCategories(catSetFilt[0].name ? [...catSetFilt[0].categories] : []);
-
-            const wrhSetFilt = settings.filter((setting)=> {
-                return setting.name === 'warehouses'
-            })
-
-            delete wrhSetFilt[0]?._id
-            setWrhs(wrhSetFilt[0].name ? [...wrhSetFilt[0].warehouses] : [])
-        }  
+         loadInitialData()
     },[settings])
 
+    useEffect(()=>{
+        // console.log(posWrhAccess)
+    },[posWrhAccess])
+    useEffect(()=>{
+        if (tables.length && wrh){
+            setOrderTables((orderTables)=>{
+                const activeTables = []
+                wrhs.forEach((warehouse)=>{
+                    tables[warehouse]?.activeTables?.forEach((activeTable)=>{
+                        activeTables.concat(activeTable)
+                    })
+                })
+                orderTables.forEach((orderTable)=>{
+                    const myTableOrders = []
+                    const otherTableOrders  = []
+                    activeTables.forEach((activeTable)=>{
+                        if (
+                            activeTable.tableId === orderTable.i_d &&
+                            activeTable.sessionId === curSession.i_d &&
+                            activeTable.handlerId === companyRecord.emailid &&
+                            activeTable.wrh === wrh
+                        ){
+                            myTableOrders.concat(activeTable)
+                        }else{
+                            otherTableOrders.concat(activeTable)
+                        }
+                    })
+                    if (myTableOrders.length){
+                        orderTable.status = 'available'
+                        orderTable.activeOrders = myTableOrders.length
+                    }else{
+                        if (otherTableOrders.length){
+                            orderTable.status = 'unavailable'
+                            orderTable.activeOrders = otherTableOrders.length
+                        }else{
+                            orderTable.status = 'available'
+                            orderTable.activeOrders = 0
+                        }                        
+                    }
+                    
+                })
+                return [...orderTables]
+            })
+        }
+    },[tables,wrh])
     const getOrderSales = (orders) =>{
         let bankSales = 0
         let cashSales = 0
@@ -124,33 +157,40 @@ const PointOfSales = () => {
         return {bankSales, cashSales}
     }
     const createSession = async ()=>{
-        const newSession = {
-            employee_id: companyRecord.emailid,
-            start: new Date().getTime(),
-            end: null,
-            active: true,
-            wrh: wrh,
-            totalBankSales: 0,
-            totalCashSales: 0,
-            openingCash: openingCash,
-            debtDue: 0
-        }
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Sessions",
-            update: {
-                ...newSession
+        if (wrh){
+            const newSession = {
+                employee_id: companyRecord.emailid,
+                i_d: new Date().getTime(),
+                start: new Date().getTime(),
+                end: null,
+                active: true,            
+                totalBankSales: 0,
+                totalCashSales: 0,
+                openingCash: openingCash,
+                debtDue: 0
             }
-        }, "createDoc", server);
-    
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Could not load session. Please check you internet connection!');
-        } else {
-            setAlertState('success');
-            setAlert('Welcome Back!');
-            setStartSession(false)
-            setSessions([...sessions, newSession]);
+            const response = await fetchServer("POST", {
+                database: company,
+                collection: "POSSessions",
+                update: {
+                    ...newSession
+                }
+            }, "createDoc", server);
+        
+            if (response.err) {
+                setAlertState('error');
+                setAlert('Could not load session. Please check your internet connection!');
+            } else {
+                setAlertState('success');
+                setAlert('Welcome Back!');
+                setStartSession(false)
+                setCurrSession(newSession)
+                setSessions([...sessions, newSession]);
+            }
+        }else{
+            setAlert('info')
+            setAlert('Please Select Your Sales Post')
+            setAlertTimeout(5000)
         }
     }
 
@@ -163,49 +203,77 @@ const PointOfSales = () => {
         } 
         const response = await fetchServer("POST", {
             database: company,
-            collection: "Sessions",
-            update: [{start: session.start},{
+            collection: "POSSessions",
+            prop: [{start: session.start},{
                 end: new Date().getTime(),
                 active: false,
                 totalBankSales: bankBalance,
                 totalCashSales: cashBalance,
-                debtDue: netBalance
+                debtDue: netBalance < 0 ? netBalance : 0
             }]
-        }, "updateDoc", server);
+        }, "updateOneDoc", server);
     
         if (response.err) {
             setAlertState('error');
-            setAlert('Could not load session. Please check you internet connection!');
+            setAlert('Could not end session. Please check your internet connection!');
         } else {
             setAlertState('success');
-            setAlert('Welcome Back!');
-            setStartSession(false)
-            setSessions([...sessions, response.record[0]]);
+            setAlert('Session Ended!');
+            setEndSession(false)
+            setStartSession(true)
+            setAlertTimeout(5000)
+            // setSessions([...sessions, response.record[0]]);
         }
     }
 
-    useState(()=>{
-        const previousSession = sessions.filter((session)=> session.active)
-        if (previousSession.length){
-            if(getDate(previousSession[0].start) !== getDate(new Date().getTime())){                
-                setStartSession(false)
-                setEndSession(true)
+    const UpdateSessionState = (sessions, loadSession)=>{
+        if (!loadSession && sessions?.length){            
+            const previousSession = sessions.filter((session)=> session.active)
+            if (previousSession.length){
+                setCurrSession(previousSession[0])
+                if(getDate(previousSession[0].start) !== getDate(new Date().getTime())){                
+                    setStartSession(false)
+                    setEndSession(true)
+                }else{
+                    setStartSession(false)
+                    setEndSession(false)
+                }
+            } else {
+                let oldSession = null
+                if (sessions.length){
+                    oldSession = sessions[sessions.length - 1]
+                    setOpeningCash(oldSession.totalCashSales)
+                }
+                setStartSession(true)
+                setEndSession(false)
             }
-        } else {
-            let oldSession = null
-            if (sessions.length){
-                oldSession = sessions[sessions.length - 1]
-                setOpeningCash(oldSession.totalCashSales)
-            }
-            setStartSession(true)
-            setEndSession(false)
         }
-    },[sessions])
+    } 
+    useState(()=>{
+        UpdateSessionState(sessions, loadSession)
+    },[loadSession])
     // =========================================
     // 3. Data Loading Functions
     // =========================================
-    const loadInitialData = async () => {
-        // Fetch tables
+
+    const loadTableData = () =>{
+        let orderTables = []
+        for (let i=0; i<20; i++){
+            const orderTable = {}
+            orderTable.i_d = i+1
+            orderTable.name = `Table ${i+1}`
+            orderTable.capacity = 5
+            orderTable.status = 'available'
+            orderTable.activeOrders = 0
+            orderTable.createdAt = Date.now()
+            orderTables.push(orderTable)
+        }
+        setOrderTables(orderTables)
+    }
+
+     const loadInitialData = async () => {
+         // Fetch tables
+         loadTableData()
         const tablesResponse = await fetchServer("POST", {
             database: company,
             collection: "Tables"
@@ -222,27 +290,47 @@ const PointOfSales = () => {
             collection: "POSSessions",
             prop: {'employee_id': companyRecord.emailid}
         }, "getDocsDetails", server);
-
-        if (tablesResponse.err || productsResponse.err) {
-            setAlertState('error');
-            setAlert('Error loading data');
-            setAlertTimeout(5000);
-            if (!tablesResponse.err){
-                setTables(tablesResponse.record)                
+        if (curSession){
+            const ordersResponse = await fetchServer("POST", {
+                database: company,
+                collection: "Orders",
+                prop: { handlerId:companyRecord.emailid, sessionId: curSession.i_d,}
+            }, "getDocsDetails", server);
+            if(!ordersResponse.err){
+                setAllOrders(ordersResponse.record) 
+            }else{
+                setAlertState('info');
+                setAlert('Error Loading Session Data. Network is not stable!');
             }
-            if(!productsResponse.err){
-                setProducts(productsResponse.record)
-            }
-            if(!sessionsResponse.err){
-                setSessions(sessionsResponse.record)
-            }
-        } else {
-            setSessions(sessionsResponse.record)
-            setTables(tablesResponse.record);
-            setProducts(productsResponse.record);
         }
-    };
 
+        if (!tablesResponse.err){
+            setTables(tablesResponse.record)                
+        }else{
+            setAlertState('info');
+            setAlert('Error Loading Session Data. Network is not stable!');
+        }
+
+        if(!productsResponse.err){
+            setProducts(productsResponse.record)
+        }else{
+            setAlertState('info');
+            setAlert('Error Loading Session Data. Network is not stable!');
+        }
+
+        if(!sessionsResponse.err){
+            setAlertTimeout(5000)
+            setSessions(sessionsResponse.record)
+            setLoadSession(false)
+            UpdateSessionState(sessionsResponse.record, false)
+            // console.log('loadSession: ',false)
+            // console.log(sessionsResponse.record)
+        }else{
+            setAlertState('info');
+            setAlert('Error Loading Session Data. Network is not stable!');
+        }
+        
+    };
 
     const handleSettingsUpdate = () => {
         if (settings.length){  
@@ -272,9 +360,12 @@ const PointOfSales = () => {
         const newOrder = {
             orderNumber: generateOrderNumber(),
             tableId: table.i_d,
+            handlerId: companyRecord.emailid,
+            wrh:wrh,
+            sessionId: curSession.i_d,
             tableName: table.name,
-            items: [],
-            total: 0,
+            items: [],            
+            ...payPoints,
             status: 'pending',
             createdAt: new Date().getTime()
         };
@@ -287,52 +378,37 @@ const PointOfSales = () => {
             setAlert('This table is not available');
             return;
         }
-
-        // Fetch ALL orders for this table (removed status filter)
+        // Fetch ALL orders for this table and session(removed status filter)
+        setAlertState('info');
+        setAlert('Loading table orders...');
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
-            filter: { tableId: table.i_d }
+            prop: { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh}
         }, "getDocsDetails", server);
 
         if (!response.err && response.record.length > 0) {
+            setAlertTimeout(1000)
             // Store all table orders in state
-            setTableOrders({
-                ...tableOrders,
-                [table._id]: response.record
-            });
+            setTableOrders(response.record);
             // Set the most recent pending order as active, or create new one if none pending
-            const pendingOrder = response.record.find(order => order.status === 'pending');
-            if (pendingOrder) {
-                setCurrentOrder(pendingOrder);
+            const pendingOrders = response.record.filter(order => order.status === 'pending');
+            const ordersNumber = pendingOrders.length
+            if (ordersNumber) {
+                setCurrentOrder(pendingOrders[ordersNumber-1]);
             } else {
                 createNewOrder(table);
             }
         } else {
             createNewOrder(table);
+            setActiveScreen('order');
         }
-        setActiveScreen('order');
     };
 
-    const handleCreateTable = async () => {
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            update: {
-                ...newTableData,
-                createdAt: new Date().getTime()
-            }
-        }, "createDoc", server);
-    
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error creating table');
-        } else {
-            setAlertState('success');
-            setAlert('Table created successfully');
-            loadInitialData(); // Refresh tables
-            setShowNewTableModal(false);
-        }
+    const handleCreateTable = () => {
+        setOrderTables((orderTables)=>{
+            return [...orderTables, newTableData]
+        })
     };
 
     const handleEditTable = (table) => {
@@ -340,50 +416,45 @@ const PointOfSales = () => {
         setShowNewTableModal(true);
     };
 
-    const handleUpdateTable = async (updatedData) => {
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            update: {
-                ...editingTable,
-                ...updatedData
-            }
-        }, "updateDoc", server);
+    // const handleUpdateTable = async (updatedData) => {
+    //     const tablesResponse = await fetchServer("POST", {
+    //         database: company,
+    //         collection: "Tables"
+    //     }, "getDocsDetails", server);
     
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error updating table');
-        } else {
-            setAlertState('success');
-            setAlert('Table updated successfully');
-            loadInitialData();
-            setShowNewTableModal(false);
-            setEditingTable(null);
-        }
-    };
+    //     if (tablesResponse.err) {
+    //         console.log('error')
+    //         setAlertState('info');
+    //         setAlert('Network not stable!');
+    //     } else {
+    //         setAlertTimeout(1000)
+    //         setTables(tablesResponse.record)
+    //         // loadInitialData();
+    //     }
+    // };
 
-    const updateTableStatus = async (tableId, status) => {
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            update: {
-                i_d: tableId,
-                status: status
-            }
-        }, "updateDoc", server);
+    // const updateTableStatus = async (tableId, status) => {
+    //     const response = await fetchServer("POST", {
+    //         database: company,
+    //         collection: "Tables",
+    //         prop: {
+    //             i_d: tableId,
+    //             status: status
+    //         }
+    //     }, "updateOneDoc", server);
     
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error updating table status');
-            setAlertTimeout(5000);
-        } else {
-            // Refresh tables after status update
-            loadInitialData();
-        }
-    };
+    //     if (response.err) {
+    //         setAlertState('error');
+    //         setAlert('Error updating table status');
+    //         setAlertTimeout(5000);
+    //     } else {
+    //         // Refresh tables after status update
+    //         loadInitialData();
+    //     }
+    // };
 
     const getNextTableNumber = () => {
-        const tableNumbers = tables
+        const tableNumbers = orderTables
             .map(table => parseInt(table.name.replace(/[^0-9]/g, '')))
             .filter(num => !isNaN(num));
         const maxNumber = Math.max(0, ...tableNumbers);
@@ -404,10 +475,27 @@ const PointOfSales = () => {
     // =========================================
     const handlePlaceOrder = async () => {
         // Save the current order to database
+        const activeTable = {
+            tableId: currentOrder.tableId,
+            sessionId: currentOrder.sessionId,
+            handlerId: companyRecord.emailid,
+            wrh: wrh,
+        }
+        const resp = await fetchServer("POST", {
+            database: company,
+            collection: "Tables",
+            prop: [{'wrh':wrh}, {activeTables: [...tables[wrh]?.activeTables || [], activeTable]}]
+        }, "updateOneDoc", server)
+        if (resp.err){
+            setAlertState('error');
+            setAlert('Error updating table');
+            return;
+        }
+    
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
-            update: currentOrder
+            update: {...currentOrder}
         }, "createDoc", server);
     
         if (response.err) {
@@ -417,28 +505,27 @@ const PointOfSales = () => {
         }
     
         // Update tableOrders state with the new order
-        setTableOrders(prev => ({
-            ...prev,
-            [currentOrder.tableId]: [...(prev[currentOrder.tableId] || []), response.record]
-        }));
+        setTableOrders(prev => ([
+            ...prev, currentOrder
+        ]));
     
         setAlertState('success');
         setAlert('Order placed successfully');
+        // View Payment Modal
+        setShowPaymentModal(true);
         
-        // Create new order for the same table
-        createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
     };
-    const handleNewOrder = () => {
-        setCurrentOrder({
-            orderNumber: generateOrderNumber(),
-            tableId: null,
-            tableName: null,
-            items: [],
-            total: 0,
-            status: 'pending'
-        });
-        setActiveScreen('order');
-    };
+    // const handleNewOrder = () => {
+    //     setCurrentOrder({
+    //         orderNumber: generateOrderNumber(),
+    //         tableId: null,
+    //         tableName: null,
+    //         items: [],
+    //         total: 0,
+    //         status: 'pending'
+    //     });
+    //     setActiveScreen('order');
+    // };
 
     // Update the handleAddItem function to separate selection from adding
     const handleAddItem = (product, quantity = 1) => {
@@ -456,7 +543,7 @@ const PointOfSales = () => {
         } else {
             updatedItems = [...currentOrder.items, { 
                 ...product,
-                id: product.i_d,
+                i_d: product.i_d,
                 quantity: quantity || 1
             }];
         }
@@ -464,7 +551,7 @@ const PointOfSales = () => {
         setCurrentOrder({
             ...currentOrder,
             items: updatedItems,
-            total: calculateTotal(updatedItems)
+            totalSales: calculateTotal(updatedItems)
         });
     };
 
@@ -473,7 +560,7 @@ const PointOfSales = () => {
         setCurrentOrder({
             ...currentOrder,
             items: updatedItems,
-            total: calculateTotal(updatedItems)
+            totalSales: calculateTotal(updatedItems)
         });
     };
 
@@ -482,6 +569,9 @@ const PointOfSales = () => {
     };
 
     const calculateTotal = (items) => {
+        if (wrh === 'vip'){
+            return items.reduce((sum, item) => sum + ((item.vipPrice || item.salesPrice) * item.quantity), 0);
+        }
         return items.reduce((sum, item) => sum + (item.salesPrice * item.quantity), 0);
     };
 
@@ -491,54 +581,79 @@ const PointOfSales = () => {
         setShowOrdersModal(false);
     
         // Update table orders if this is a table order
-        if (order.tableId) {
-            setTableOrders(prev => ({
-                ...prev,
-                [order.tableId]: prev[order.tableId]?.map(o => 
-                    o.orderNumber === order.orderNumber ? order : o
-                ) || [order]
-            }));
-        }
+        // if (order.tableId) {
+        //     setTableOrders(prev => ({
+        //         ...prev,
+        //         [order.tableId]: prev[order.tableId]?.map(o => 
+        //             o.orderNumber === order.orderNumber ? order : o
+        //         ) || [order]
+        //     }));
+        // }
     };
 
     // =========================================
     // 6. Payment Processing
     // =========================================
     const handlePayment = async () => {
-        if (paymentDetails.amount < currentOrder.total) {
+        var totalPayment = 0
+        var totalChange = 0
+        Object.keys(paymentDetails).forEach((payPoint)=>{
+            totalPayment += payPoint.amount
+            totalChange += payPoint.change
+        })
+        if (totalPayment < currentOrder.totalSales) {
             setAlertState('error');
             setAlert('Insufficient payment amount');
             return;
         }
 
-        const orderData = {
-            ...currentOrder,
-            payment: {
-                ...paymentDetails,
-                paidAt: new Date().getTime()
-            },
+        const paymentData = {}
+        Object.keys(paymentDetails).forEach((payPoint)=>{
+            paymentData[payPoint] = Number(paymentDetails.amount)
+        })
+        const paymentDataUpdate = {
+            ...paymentData,
+            totalPayment: totalPayment,
+            cashChange: Number(paymentDetails['cash'].change),
             status: 'completed'
         };
 
+        const newOrder = {
+            ...currentOrder,
+            ...paymentDataUpdate
+        }
+        const resp = await fetchServer("POST", {
+            database: company,
+            collection: "Tables",
+            prop: [{'wrh':wrh}, {activeTables: [
+                ...tables[wrh].activeTables.filter((table)=>{return (
+                    table.tableId !== currentOrder.tableId && 
+                    table.sessionId !== currentOrder.sessionId &&
+                    table.handlerId !== companyRecord.emailid
+                )})
+            ]}]
+        }, "updateOneDoc", server)
+        if (resp.err){
+            setAlertState('error');
+            setAlert('Error updating table');
+            return;
+        }
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
-            update: orderData
-        }, "createDoc", server);
+            prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
+        }, "updateOneDoc", server);
 
         if (response.err) {
             setAlertState('error');
             setAlert('Error processing payment');
         } else {
-            printReceipt(orderData);
+            printReceipt(newOrder);
             setAlertState('success');
             setAlert('Payment processed successfully');
             setShowPaymentModal(false);
-            setActiveScreen('home');
-            // Update table status if it's a dine-in order
-            if (orderData.tableId) {
-                updateTableStatus(orderData.tableId, 'available');
-            }
+            createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
+            setPaymentDetails({...payPoints})
         }
     };
 
@@ -546,22 +661,22 @@ const PointOfSales = () => {
         const receiptContent = `
             <div class="receipt">
                 <h2>${company}</h2>
-                <p>Order #${orderData._id}</p>
+                <p>Order #${orderData.orderNumber}</p>
                 <p>Date: ${new Date().toLocaleString()}</p>
                 <hr/>
                 ${orderData.items.map(item => `
                     <div class="receipt-item">
                         <span>${item.name} x ${item.quantity}</span>
-                        <span>₦${(item.salesPrice * item.quantity).toFixed(2)}</span>
+                        <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                     </div>
                 `).join('')}
                 <hr/>
                 <div class="receipt-total">
-                    <p>Subtotal: ₦${orderData.total.toFixed(2)}</p>
-                    <p>Tax: ₦${(orderData.total * 0.1).toFixed(2)}</p>
-                    <p>Total: ₦${(orderData.total * 1.1).toFixed(2)}</p>
-                    <p>Paid: ₦${orderData.payment.amount}</p>
-                    <p>Change: ₦${orderData.payment.change}</p>
+                    <p>Subtotal: ₦${orderData.totalSales.toFixed(2)}</p>
+                    <p>Tax: ₦${(orderData.totalSales * 0.075).toFixed(2)}</p>
+                    <p>Total: ₦${(orderData.totalSales * 1.075).toFixed(2)}</p>
+                    <p>Paid: ₦${orderData.totalPayment}</p>
+                    <p>Change: ₦${orderData.cashChange}</p>
                 </div>
                 <p>Thank you for your business!</p>
             </div>
@@ -640,12 +755,17 @@ const PointOfSales = () => {
 
         const handleEndSession = async () => {
             setLoading(true);
-            await stopSession(sessions.find(session => session.active), orders);
+            await stopSession(curSession, allOrders);
             setLoading(false);
         };
 
         return (
             <>
+                {loadSession && (
+                    <div className='openingsession' style={{color: 'white', fontSize:'1.2rem', fontWeight:'600'}}>
+                        Loading Session...
+                    </div>
+                )}
                 {startSession && (
                     <div className='openingsession'>
                         <div className="session-entry">
@@ -660,16 +780,17 @@ const PointOfSales = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Warehouse</label>
+                                <label>Sales Post</label>
                                 <select 
                                     value={wrh} 
                                     onChange={(e) => setWrh(e.target.value)}
                                     disabled={loading}
                                 >
+                                    <option>Select Sales Post</option>
                                     {wrhs.map((warehouse, index) => (
-                                        <option key={index} value={warehouse.name}>
-                                            {warehouse.name}
-                                        </option>
+                                            posWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
+                                                {warehouse.name}
+                                            </option>                                        
                                     ))}
                                 </select>
                             </div>
@@ -778,7 +899,7 @@ const PointOfSales = () => {
                         <div key={item.id} className="selected-item">
                             <span>{item.name}</span>
                             <span>{item.quantity}</span>
-                            <span>₦{item.salesPrice * item.quantity}</span>
+                            <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>
                             <button 
                                 className="remove-btn"
                                 onClick={() => handleRemoveItem(item.id)}
@@ -791,10 +912,10 @@ const PointOfSales = () => {
                 {selectedProduct && renderKeypad()}
                 <button 
                     className="place-order-btn"
-                    onClick={() => setShowPaymentModal(true)}
+                    onClick={() => handlePlaceOrder()}
                     disabled={!currentOrder.items.length}
                 >
-                    Place Order (₦{currentOrder.total.toFixed(2)})
+                    Place Order (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>
             </div>
             <div className="products-panel">
@@ -826,7 +947,7 @@ const PointOfSales = () => {
                                 <MdShoppingBasket />
                             </div>
                             <div className="product-name">{product.name}</div>
-                            <div className="product-price">₦{product.salesPrice}</div>
+                            <div className="product-price">₦{wrh === 'vip' ? (product.vipPrice || product.salesPrice) : product.salesPrice}</div>
                         </div>
                     ))}
                 </div>
@@ -834,45 +955,45 @@ const PointOfSales = () => {
         </div>
     );
 
-    const renderTablesView = () => (
-        <div className="pos-tables-view">
-            <div className="tables-grid">
-                <div 
-                    className="add-table-box"
-                    onClick={handleAddTableClick}
-                >
-                    <div className="plus-icon">+</div>
-                    <div className="add-text">Add Table</div>
-                </div>
-                {[...tables]
-                    .sort((a, b) => {
-                        const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
-                        const numB = parseInt(b.name.replace(/[^0-9]/g, ''));
-                        return numA - numB;
-                    })
-                    .map(table => (
-                        <div 
-                            key={table._id}
-                            className={`table-card ${table.status}`}
-                            onClick={() => handleTableSelect(table)}
-                        >
-                            <div className="table-name">{table.name}</div>
-                            <div className="table-capacity">
-                                <span>Capacity: {table.capacity}</span>
-                            </div>
-                            <div className={`table-status ${table.status}`}>
-                                {table.status}
-                            </div>
-                            {tableOrders[table._id]?.length > 0 && (
-                                <div className="order-count">
-                                    {tableOrders[table._id].length}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-            </div>
-        </div>
-    );
+    // const renderTablesView = () => (
+    //     <div className="pos-tables-view">
+    //         <div className="tables-grid">
+    //             <div 
+    //                 className="add-table-box"
+    //                 onClick={handleAddTableClick}
+    //             >
+    //                 <div className="plus-icon">+</div>
+    //                 <div className="add-text">Add Table</div>
+    //             </div>
+    //             {[...orderTables]
+    //                 .sort((a, b) => {
+    //                     const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
+    //                     const numB = parseInt(b.name.replace(/[^0-9]/g, ''));
+    //                     return numA - numB;
+    //                 })
+    //                 .map(table => (
+    //                     <div 
+    //                         key={table._id}
+    //                         className={`table-card ${table.status}`}
+    //                         onClick={() => handleTableSelect(table)}
+    //                     >
+    //                         <div className="table-name">{table.name}</div>
+    //                         <div className="table-capacity">
+    //                             <span>Capacity: {table.capacity}</span>
+    //                         </div>
+    //                         <div className={`table-status ${table.status}`}>
+    //                             {table.status}
+    //                         </div>
+    //                         {tableOrders[table._id]?.length > 0 && (
+    //                             <div className="order-count">
+    //                                 {tableOrders[table._id].length}
+    //                             </div>
+    //                         )}
+    //                     </div>
+    //                 ))}
+    //         </div>
+    //     </div>
+    // );
 
     const renderScreen = () => {
         switch (activeScreen) {
@@ -886,7 +1007,7 @@ const PointOfSales = () => {
                             {
                                 wrhs.map((wh, id)=>{
                                     if (!wh.purchase){
-                                        return <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>                                        
+                                        return (posWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
                                     }
                                 })                        
                             }
@@ -899,7 +1020,7 @@ const PointOfSales = () => {
                                 <div className="plus-icon">+</div>
                                 <div className="add-text">Add Table</div>
                             </div>
-                            {[...tables]
+                            {[...orderTables]
                                 .sort((a, b) => {
                                     const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
                                     const numB = parseInt(b.name.replace(/[^0-9]/g, ''));
@@ -907,14 +1028,14 @@ const PointOfSales = () => {
                                 })
                                 .map(table => (
                                     <div 
-                                        key={table._id}
+                                        key={table.i_d}
                                         className={`pos-table ${table.status}`}
                                         onClick={() => handleTableSelect(table)}
                                     >
                                         {table.name}
-                                        {tableOrders[table._id]?.length > 0 && (
+                                        {table.activeOrders > 0 && (
                                             <div className="order-count">
-                                                {tableOrders[table._id].length}
+                                                {table.activeOrders}
                                             </div>
                                         )}
                                     </div>
@@ -977,15 +1098,15 @@ const PointOfSales = () => {
                     <button onClick={() => setShowOrdersModal(false)}>×</button>
                 </div>
                 <div className="orders-list">
-                    {orders.map(order => (
+                    {tableOrders?.map(order => (
                         <div 
                             key={order.i_d}
                             className={`order-card ${order.status}`}
                             onClick={() => handleOrderSelect(order)}
                         >
-                            <div>Order #{order.i_d}</div>
+                            <div>Order #{order.orderNumber}</div>
                             <div>Table: {order.tableId}</div>
-                            <div>Total: ₦{order.total}</div>
+                            <div>Total: ₦{order.totalSales}</div>
                             <div>Status: {order.status}</div>
                             <div>{new Date(order.createdAt).toLocaleString()}</div>
                         </div>
@@ -1001,58 +1122,24 @@ const PointOfSales = () => {
         const [change, setChange] = useState(0);
 
         const handleAmountChange = (value) => {
+
             setAmount(value);
             const amountNum = parseFloat(value) || 0;
-            const changeAmount = amountNum - currentOrder.total;
+            const changeAmount = amountNum - currentOrder.totalSales;
             setChange(changeAmount >= 0 ? changeAmount : 0);
-        };
 
-        const handlePayment = async () => {
-            if (parseFloat(amount) < currentOrder.total) {
-                setAlertState('error');
-                setAlert('Insufficient payment amount');
-                return;
-            }
-
-            const paymentData = {
-                method,
-                amount: parseFloat(amount),
-                change: change,
-                paidAt: new Date().getTime()
-            };
-
-            const orderData = {
-                ...currentOrder,
-                payment: paymentData,
-                status: 'completed'
-            };
-
-            const response = await fetchServer("POST", {
-                database: company,
-                collection: "Orders",
-                update: orderData
-            }, "createDoc", server);
-
-            if (response.err) {
-                setAlertState('error');
-                setAlert('Error processing payment');
-            } else {
-                // Update table status if it's a dine-in order
-                if (currentOrder.tableId) {
-                    await updateTableStatus(currentOrder.tableId, 'available');
-                }
-                
-                printReceipt(orderData);
-                setAlertState('success');
-                setAlert('Payment processed successfully');
-                setShowPaymentModal(false);
-                setActiveScreen('home');
-                setCurrentOrder({
-                    tableId: null,
-                    items: [],
-                    total: 0,
-                    status: 'pending'
-                });
+            if (method === 'cash'){
+                setPaymentDetails((paymentDetails)=>{
+                    return {
+                        ...paymentDetails, [method]: {...paymentDetails[method], amount: amountNum, change: changeAmount}
+                    }
+                })
+            }else{
+                setPaymentDetails((paymentDetails)=>{
+                    return {
+                        ...paymentDetails, [method]: {...paymentDetails[method], amount: amountNum}
+                    }
+                })
             }
         };
 
@@ -1064,44 +1151,47 @@ const PointOfSales = () => {
                         <button onClick={() => setShowPaymentModal(false)}>×</button>
                     </div>
                     <div className="payment-methods">
-                        {['cash', 'card', 'mobile'].map(payMethod => (
+                        {Object.keys(payPoints).map(payMethod => (
                             <button
                                 key={payMethod}
                                 className={`payment-method-btn ${method === payMethod ? 'active' : ''}`}
                                 onClick={() => setMethod(payMethod)}
                             >
-                                {payMethod.charAt(0).toUpperCase() + payMethod.slice(1)}
+                                {payMethod.toUpperCase()}
                             </button>
                         ))}
                     </div>
                     <div className="form-group">
-                        <label>Total Amount: ₦{currentOrder.total.toFixed(2)}</label>
+                        <label>Total Amount: ₦{currentOrder.totalSales.toFixed(2)}</label>
                     </div>
                     <div className="form-group">
                         <label>Payment Amount:</label>
                         <input
                             type="number"
-                            value={amount}
+                            value={paymentDetails[method].amount}
                             onChange={(e) => handleAmountChange(e.target.value)}
                             placeholder="Enter amount"
                         />
                     </div>
                     {method === 'cash' && amount && (
                         <div className="form-group">
-                            <label>Change: ₦{change.toFixed(2)}</label>
+                            <label>Change: ₦{paymentDetails[method].change.toFixed(2)}</label>
                         </div>
                     )}
                     <div className="modal-actions">
                         <button 
                             className="modal-btn cancel"
-                            onClick={() => setShowPaymentModal(false)}
+                            onClick={() => {
+                                setPaymentDetails({...payPoints})
+                                setShowPaymentModal(false)
+                            }}
                         >
                             Cancel
                         </button>
                         <button
                             className="modal-btn save"
                             onClick={handlePayment}
-                            disabled={!amount || parseFloat(amount) < currentOrder.total}
+                            disabled={!amount || parseFloat(amount) < currentOrder.totalSales}
                         >
                             Complete Payment
                         </button>
@@ -1138,9 +1228,9 @@ const PointOfSales = () => {
                         )}
                     </div>
                     <div className="header-actions">
-                        {tableOrders[currentOrder.tableId]?.length > 0 && (
+                        {/* {tableOrders?.length > 0 && (
                             <div className="order-switcher">
-                                {tableOrders[currentOrder.tableId]
+                                {tableOrders
                                     .sort((a, b) => b.createdAt - a.createdAt) // Sort by newest first
                                     .map(order => (
                                         <button
@@ -1153,12 +1243,18 @@ const PointOfSales = () => {
                                         </button>
                                     ))}
                             </div>
-                        )}
+                        )} */}
                         <button 
                             className="action-btn"
                             onClick={() => createNewOrder({ _id: currentOrder.tableId, name: currentOrder.tableName })}
                         >
                             New Order
+                        </button>
+                        <button 
+                            className="action-btn"
+                            onClick={() => setShowOrdersModal(true)}
+                        >
+                            All Orders
                         </button>
                         <button 
                             className="action-btn"

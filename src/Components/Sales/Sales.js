@@ -2046,9 +2046,9 @@ const Sales = ()=>{
                                         if (enteredSales === Number(field.totalSales)){
                                             rt++
                                             if (rt===fields.length){
-                                                setIsProductView(false)
-                                                setProductAdd(true)   
-                                                // addSales()                             
+                                                // setIsProductView(false)
+                                                // setProductAdd(true)   
+                                                addSales()                             
                                             }
                                         }else{
                                             if (enteredSales < Number(field.totalSales)){

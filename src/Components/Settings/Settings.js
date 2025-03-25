@@ -428,6 +428,23 @@ const Settings = () => {
                                                 </label>
                                             ))}
                                         </div>
+                                        <div>Sales Posts Permissions</div>
+                                        <div className='permissions'>
+                                            {['pos_open bar1','pos_open bar2','pos_vip','pos_kitchen'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <br/>
+                                        <h3>Other Permissions</h3>
+                                        <br/>
                                         <div>Edit / Delete Permissions</div>
                                         <div className='permissions'>
                                             {['edit_employees'].map((permission, index) => (
