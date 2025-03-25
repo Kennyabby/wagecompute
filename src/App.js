@@ -39,6 +39,7 @@ function App() {
   const [accommodationVal, setAccommodationVal] = useState(false)
   const [enableBlockVal, setEnableBlockVal] = useState(false)
   const [editAccess, setEditAccess] = useState({})
+  const [posWrhAccess, setPosWrhAccess] = useState({})
   const [allowBacklogs, setAllowBacklogs] = useState(false)
   const [changingSettings, setChangingSettings] = useState(false)
   
@@ -103,9 +104,18 @@ function App() {
             )
             setEditAccess((editAccess)=>{
               return {...editAccess, 
-                employees: resp.record.permissions.includes('edit_employees')
+                employees: (resp.record.permissions.includes('edit_employees') || resp.record.permissions.includes('all'))
               }
             })
+            setPosWrhAccess((posWrhAccess)=>{
+              return {...posWrhAccess, 
+                ['open bar1']: (resp.record.permissions.includes('pos_open bar1') || resp.record.permissions.includes('all')),
+                ['open bar2']: (resp.record.permissions.includes('pos_open bar2') || resp.record.permissions.includes('all')),
+                ['vip']: (resp.record.permissions.includes('pos_vip') || resp.record.permissions.includes('all')),
+                ['kitchen']: (resp.record.permissions.includes('pos_kitchen') || resp.record.permissions.includes('all')),
+              }
+            })
+
           }
         }
       }
@@ -359,7 +369,15 @@ function App() {
       setCompanyRecord(resp.record)
       setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
           resp.record.permissions.includes('all')
-        )
+      )
+      setPosWrhAccess((posWrhAccess)=>{
+        return {...posWrhAccess, 
+          ['open bar1']: (resp.record.permissions.includes('pos_open bar1') || resp.record.permissions.includes('all')),
+          ['open bar2']: (resp.record.permissions.includes('pos_open bar2') || resp.record.permissions.includes('all')),
+          ['vip']: (resp.record.permissions.includes('pos_vip') || resp.record.permissions.includes('all')),
+          ['kitchen']: (resp.record.permissions.includes('pos_kitchen') || resp.record.permissions.includes('all')),
+        }
+      })
       if (resp.record.status==='admin'){
         getSettings(cmp_val)
         fetchProfiles(cmp_val)
@@ -639,6 +657,7 @@ function App() {
           accommodationVal, setAccommodationVal,
           allowBacklogs, setAllowBacklogs,
           editAccess, setEditAccess,
+          posWrhAccess, setPosWrhAccess, 
           enableBlockVal, setEnableBlockVal,
           changingSettings, setChangingSettings,
 
