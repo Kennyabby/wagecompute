@@ -69,6 +69,8 @@ const PointOfSales = () => {
         name: '',
         phone: ''
     });
+    const [placingOrder, setPlacingOrder] = useState(false)
+    const [makingPayment, setMakingPayment] = useState(false)
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('cash');
     const [change, setChange] = useState(0);
@@ -120,7 +122,6 @@ const PointOfSales = () => {
                         activeTables.concat(activeTable)
                     })
                 })
-                console.log('activeTables:',activeTables)
                 orderTables.forEach((orderTable)=>{
                     const myTableOrders = []
                     const otherTableOrders  = []
@@ -158,10 +159,13 @@ const PointOfSales = () => {
         let bankSales = 0
         let cashSales = 0
         orders.forEach((order)=>{
-            if (order.payment.method === 'cash'){
-                cashSales += order.total
+            if (order['cash']){
+                cashSales += (Number(order['cash']) || 0)
+                if (order.totalSales > Number(order['cash'] || 0)){
+                    bankSales += Number(order.totalSales) - Number(order['cash'] || 0)
+                }                
             } else {
-                bankSales += order.total
+                bankSales += order.totalSales
             }
         })
         return {bankSales, cashSales}
@@ -219,7 +223,8 @@ const PointOfSales = () => {
                 active: false,
                 totalBankSales: bankBalance,
                 totalCashSales: cashBalance,
-                debtDue: netBalance < 0 ? netBalance : 0
+                debtDue: netBalance < 0 ? Math.abs(netBalance) : 0,
+                unAccountedSales : netBalance > 0 ? netBalance : 0
             }]
         }, "updateOneDoc", server);
     
@@ -494,6 +499,7 @@ const PointOfSales = () => {
     const handlePlaceOrder = async () => {
         setAlertState('info')
         setAlert('Placing Order...')
+        setPlacingOrder(true)
         // Save the current order to database
         const activeTable = {
             tableId: currentOrder.tableId,
@@ -509,30 +515,37 @@ const PointOfSales = () => {
         if (resp.err){
             setAlertState('error');
             setAlert('Error updating table');
+            setPlacingOrder(false)
             return;
         }
-    
+        
+        const placedOrder = {
+            ...currentOrder, status: 'pending'
+        }
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
-            update: {...currentOrder, status: 'pending',}
+            update: {...placedOrder}
         }, "createDoc", server);
     
         if (response.err) {
             setAlertState('error');
             setAlert('Error saving order');
+            setPlacingOrder(false)
             return;
         }
-    
-        // Update tableOrders state with the new order
-        setTableOrders(prev => ([
-            ...prev, currentOrder
-        ]));
-    
-        setAlertState('success');
-        setAlert('Order placed successfully');
-        // View Payment Modal
-        setShowPaymentModal(true);
+        else{
+            // Update tableOrders state with the new order
+            setTableOrders(prev => ([
+                ...prev, placedOrder
+            ]));
+            setCurrentOrder(placedOrder)
+            setPlacingOrder(false)
+            setAlertState('success');
+            setAlert('Order placed successfully');
+            // View Payment Modal
+            setShowPaymentModal(true);
+        }
         
     };
     // const handleNewOrder = () => {
@@ -617,21 +630,23 @@ const PointOfSales = () => {
     const handlePayment = async () => {
         setAlertState('info');
         setAlert('Processing Payment...');
+        setMakingPayment(true)
         var totalPayment = 0
         var totalChange = 0
         Object.keys(paymentDetails).forEach((payPoint)=>{
-            totalPayment += payPoint.amount
-            totalChange += payPoint.change
+            totalPayment += Number(paymentDetails[payPoint].amount || 0)
+            totalChange += Number(paymentDetails[payPoint].change || 0)
         })
         if (totalPayment < currentOrder.totalSales) {
             setAlertState('error');
             setAlert('Insufficient payment amount');
+            setMakingPayment(false)
             return;
         }
 
         const paymentData = {}
         Object.keys(paymentDetails).forEach((payPoint)=>{
-            paymentData[payPoint] = Number(paymentDetails.amount)
+            paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0)
         })
         const paymentDataUpdate = {
             ...paymentData,
@@ -659,6 +674,7 @@ const PointOfSales = () => {
         if (resp.err){
             setAlertState('error');
             setAlert('Error updating table');
+            setMakingPayment(false)
             return;
         }
         const response = await fetchServer("POST", {
@@ -670,8 +686,11 @@ const PointOfSales = () => {
         if (response.err) {
             setAlertState('error');
             setAlert('Error processing payment');
+            setMakingPayment(false)
+            return
         } else {
             printReceipt(newOrder);
+            setMakingPayment(false)
             setAlertState('success');
             setAlert('Payment processed successfully');
             setShowPaymentModal(false);
@@ -769,7 +788,7 @@ const PointOfSales = () => {
     // =========================================
 
     const renderSessionEntry = () => {
-
+        const {bankSales, cashSales} = getOrderSales(allOrders)
         const handleStartSession = async () => {
             setLoading(true);
             await createSession();
@@ -840,7 +859,7 @@ const PointOfSales = () => {
                                 <label>Total Bank Sales</label>
                                 <input 
                                     type="number" 
-                                    value={sessions.find(session => session.active)?.totalBankSales || 0} 
+                                    value={bankSales || 0} 
                                     readOnly
                                 />
                             </div>
@@ -848,12 +867,12 @@ const PointOfSales = () => {
                                 <label>Total Cash Sales</label>
                                 <input 
                                     type="number" 
-                                    value={sessions.find(session => session.active)?.totalCashSales || 0} 
+                                    value={cashSales || 0} 
                                     readOnly
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Bank Balance</label>
+                                <label>Enter Bank Balance</label>
                                 <input 
                                     type="number" 
                                     value={bankBalance} 
@@ -862,7 +881,7 @@ const PointOfSales = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Cash Balance</label>
+                                <label>Enter Cash Balance</label>
                                 <input 
                                     type="number" 
                                     value={cashBalance} 
@@ -926,12 +945,12 @@ const PointOfSales = () => {
                             <span>{item.name}</span>
                             <span>{item.quantity}</span>
                             <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>
-                            <button 
+                            {currentOrder.status==='new' && <button 
                                 className="remove-btn"
                                 onClick={() => handleRemoveItem(item.id)}
                             >
                                 ×
-                            </button>
+                            </button>}
                         </div>
                     ))}
                 </div>
@@ -939,14 +958,14 @@ const PointOfSales = () => {
                 {currentOrder.status === 'new' && <button 
                     className="place-order-btn"
                     onClick={() => handlePlaceOrder()}
-                    disabled={!currentOrder.items.length}
+                    disabled={!currentOrder.items.length || placingOrder}
                 >
                     Place Order (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
                 {currentOrder.status === 'pending' && <button 
                     className="place-order-btn"
                     onClick={() => setShowPaymentModal(true)}
-                    disabled={!currentOrder.totalSales}
+                    disabled={!currentOrder.totalSales || makingPayment}
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
