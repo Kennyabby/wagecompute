@@ -119,12 +119,12 @@ const SideNav = ()=>{
                             <div name="sales">Sales</div>
                         </div>
                     }
-                    {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos')) && 
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos')) && 
                         <div name="pos" className={'navdiv ' + (curPath==='pos'?'selected':'')}>
                             <GiPayMoney className='navdivicon' name="pos"/>
                             <div name="pos">POS</div>
                         </div>
-                    } */}
+                    }
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && 
                         <div name="accommodations" className={'navdiv ' + (curPath==='accommodations'?'selected':'')}>
                             <FaHotel className='navdivicon' name="accommodations"/>

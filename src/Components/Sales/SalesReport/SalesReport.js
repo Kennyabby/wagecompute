@@ -91,7 +91,7 @@ const SalesReport = ({
                          reportSales.record.forEach((sale)=>{
                              if (emp.i_d === sale.employeeId){
                                  Object.keys(salesUnits).forEach((unit)=>{
-                                     totalpaypoint += Number(sale[unit][payPoint])
+                                     totalpaypoint += Number(sale[unit][payPoint] || 0)
                                  })                         
                              }
                          })                                
@@ -108,7 +108,7 @@ const SalesReport = ({
              Object.keys(payPoints).forEach((paypoint)=>{
                  newSaleUnits[saleunit][paypoint] = 0
                  reportSales.record.forEach((record)=>{
-                     newSaleUnits[saleunit][paypoint] += Number(record[saleunit][paypoint])
+                     newSaleUnits[saleunit][paypoint] += Number(record[saleunit][paypoint] || 0)
                  })
              })
          })

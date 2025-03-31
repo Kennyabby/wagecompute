@@ -69,16 +69,19 @@ const PointOfSales = () => {
         name: '',
         phone: ''
     });
+    const [amount, setAmount] = useState('');
+    const [method, setMethod] = useState('cash');
+    const [change, setChange] = useState(0);
     const paymentDetail = {
-        amount: 0,
-        change: 0
+        amount: '',
+        change: ''
     }
     const paymentDetailClone = structuredClone({paymentDetail})
-    const payPoints = {
+    const [payPoints, setPayPoints] = useState({
         'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
         'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail}, 'cash':{...paymentDetailClone.paymentDetail}
-    }
-    const [paymentDetails, setPaymentDetails] = useState({...payPoints});
+    })
+    const [paymentDetails, setPaymentDetails] = useState({...structuredClone({payPoints}).payPoints});
 
     // Settings States
     const [uoms, setUoms] = useState([]);
@@ -90,7 +93,13 @@ const PointOfSales = () => {
     useEffect(() => {
         handleSettingsUpdate();
     }, [settings]);
-
+    useEffect(()=>{
+        if (window.localStorage.getItem('pos-wrh')){
+            setWrh(window.localStorage.getItem('pos-wrh'))
+        }else{
+            setWrh(Object.keys(posWrhAccess)[0])
+        }
+    },[])
     useEffect(() => {
         handleCategoryFilter();
     }, [activeCategory, products]);
@@ -98,7 +107,6 @@ const PointOfSales = () => {
     useEffect(()=> {
          loadInitialData()
     },[settings])
-
     useEffect(()=>{
         // console.log(posWrhAccess)
     },[posWrhAccess])
@@ -107,10 +115,12 @@ const PointOfSales = () => {
             setOrderTables((orderTables)=>{
                 const activeTables = []
                 wrhs.forEach((warehouse)=>{
-                    tables[warehouse]?.activeTables?.forEach((activeTable)=>{
+                    const prevTable = tables.find((table)=>{return table['wrh'] === warehouse.name})
+                    prevTable?.activeTables?.forEach((activeTable)=>{
                         activeTables.concat(activeTable)
                     })
                 })
+                console.log('activeTables:',activeTables)
                 orderTables.forEach((orderTable)=>{
                     const myTableOrders = []
                     const otherTableOrders  = []
@@ -298,6 +308,7 @@ const PointOfSales = () => {
             }, "getDocsDetails", server);
             if(!ordersResponse.err){
                 setAllOrders(ordersResponse.record) 
+                setTableOrders(ordersResponse.record.filter(order => order.tableId === currentOrder.tableId && order.sessionId === curSession.i_d && order.wrh === wrh))
             }else{
                 setAlertState('info');
                 setAlert('Error Loading Session Data. Network is not stable!');
@@ -366,7 +377,7 @@ const PointOfSales = () => {
             tableName: table.name,
             items: [],            
             ...payPoints,
-            status: 'pending',
+            status: 'new',
             createdAt: new Date().getTime()
         };
         setCurrentOrder(newOrder);
@@ -378,6 +389,7 @@ const PointOfSales = () => {
             setAlert('This table is not available');
             return;
         }
+        setTableOrders([])
         // Fetch ALL orders for this table and session(removed status filter)
         setAlertState('info');
         setAlert('Loading table orders...');
@@ -386,22 +398,28 @@ const PointOfSales = () => {
             collection: "Orders",
             prop: { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh}
         }, "getDocsDetails", server);
-
-        if (!response.err && response.record.length > 0) {
-            setAlertTimeout(1000)
-            // Store all table orders in state
-            setTableOrders(response.record);
-            // Set the most recent pending order as active, or create new one if none pending
-            const pendingOrders = response.record.filter(order => order.status === 'pending');
-            const ordersNumber = pendingOrders.length
-            if (ordersNumber) {
-                setCurrentOrder(pendingOrders[ordersNumber-1]);
+        if (!response.err){
+            if (response.record.length > 0) {
+                setAlertTimeout(1000)
+                // Store all table orders in state
+                setTableOrders(response.record);
+                // Set the most recent pending order as active, or create new one if none pending
+                const pendingOrders = response.record.filter(order => order.status === 'pending');
+                const ordersNumber = pendingOrders.length
+                if (ordersNumber) {
+                    setCurrentOrder(pendingOrders[ordersNumber-1]);
+                } else {
+                    createNewOrder(table);
+                }
+                setActiveScreen('order');
             } else {
                 createNewOrder(table);
+                setActiveScreen('order');
             }
-        } else {
-            createNewOrder(table);
-            setActiveScreen('order');
+        }else{
+            setAlertState('info')
+            setAlert('Slow Network. Could Not Load Table Orders!')
+            setAlertTimeout(1000)
         }
     };
 
@@ -474,6 +492,8 @@ const PointOfSales = () => {
     // 5. Order Management
     // =========================================
     const handlePlaceOrder = async () => {
+        setAlertState('info')
+        setAlert('Placing Order...')
         // Save the current order to database
         const activeTable = {
             tableId: currentOrder.tableId,
@@ -495,7 +515,7 @@ const PointOfSales = () => {
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
-            update: {...currentOrder}
+            update: {...currentOrder, status: 'pending',}
         }, "createDoc", server);
     
         if (response.err) {
@@ -595,6 +615,8 @@ const PointOfSales = () => {
     // 6. Payment Processing
     // =========================================
     const handlePayment = async () => {
+        setAlertState('info');
+        setAlert('Processing Payment...');
         var totalPayment = 0
         var totalChange = 0
         Object.keys(paymentDetails).forEach((payPoint)=>{
@@ -622,11 +644,12 @@ const PointOfSales = () => {
             ...currentOrder,
             ...paymentDataUpdate
         }
+        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
         const resp = await fetchServer("POST", {
             database: company,
             collection: "Tables",
             prop: [{'wrh':wrh}, {activeTables: [
-                ...tables[wrh].activeTables.filter((table)=>{return (
+                ...prevTable.activeTables.filter((table)=>{return (
                     table.tableId !== currentOrder.tableId && 
                     table.sessionId !== currentOrder.sessionId &&
                     table.handlerId !== companyRecord.emailid
@@ -783,7 +806,10 @@ const PointOfSales = () => {
                                 <label>Sales Post</label>
                                 <select 
                                     value={wrh} 
-                                    onChange={(e) => setWrh(e.target.value)}
+                                    onChange={(e) => {
+                                        setWrh(e.target.value)
+                                        window.localStorage.setItem('pos-wrh',e.target.value)
+                                    }}
                                     disabled={loading}
                                 >
                                     <option>Select Sales Post</option>
@@ -910,13 +936,20 @@ const PointOfSales = () => {
                     ))}
                 </div>
                 {selectedProduct && renderKeypad()}
-                <button 
+                {currentOrder.status === 'new' && <button 
                     className="place-order-btn"
                     onClick={() => handlePlaceOrder()}
                     disabled={!currentOrder.items.length}
                 >
                     Place Order (₦{currentOrder.totalSales?.toFixed(2)})
-                </button>
+                </button>}
+                {currentOrder.status === 'pending' && <button 
+                    className="place-order-btn"
+                    onClick={() => setShowPaymentModal(true)}
+                    disabled={!currentOrder.totalSales}
+                >
+                    Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
+                </button>}
             </div>
             <div className="products-panel">
                 <div className="categories-bar">
@@ -1003,6 +1036,7 @@ const PointOfSales = () => {
                         <div className='pos-wh-cover' onClick={(e)=>{
                             const name = e.target.getAttribute('name')
                             setWrh(name)
+                            window.localStorage.setItem('pos-wrh',name)
                         }}>
                             {
                                 wrhs.map((wh, id)=>{
@@ -1116,91 +1150,6 @@ const PointOfSales = () => {
         </div>
     );
 
-    const PaymentModal = () => {
-        const [amount, setAmount] = useState('');
-        const [method, setMethod] = useState('cash');
-        const [change, setChange] = useState(0);
-
-        const handleAmountChange = (value) => {
-
-            setAmount(value);
-            const amountNum = parseFloat(value) || 0;
-            const changeAmount = amountNum - currentOrder.totalSales;
-            setChange(changeAmount >= 0 ? changeAmount : 0);
-
-            if (method === 'cash'){
-                setPaymentDetails((paymentDetails)=>{
-                    return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: amountNum, change: changeAmount}
-                    }
-                })
-            }else{
-                setPaymentDetails((paymentDetails)=>{
-                    return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: amountNum}
-                    }
-                })
-            }
-        };
-
-        return (
-            <div className="modal-overlay">
-                <div className="modal-content payment-modal">
-                    <div className="modal-header">
-                        <h3>Payment</h3>
-                        <button onClick={() => setShowPaymentModal(false)}>×</button>
-                    </div>
-                    <div className="payment-methods">
-                        {Object.keys(payPoints).map(payMethod => (
-                            <button
-                                key={payMethod}
-                                className={`payment-method-btn ${method === payMethod ? 'active' : ''}`}
-                                onClick={() => setMethod(payMethod)}
-                            >
-                                {payMethod.toUpperCase()}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="form-group">
-                        <label>Total Amount: ₦{currentOrder.totalSales.toFixed(2)}</label>
-                    </div>
-                    <div className="form-group">
-                        <label>Payment Amount:</label>
-                        <input
-                            type="number"
-                            value={paymentDetails[method].amount}
-                            onChange={(e) => handleAmountChange(e.target.value)}
-                            placeholder="Enter amount"
-                        />
-                    </div>
-                    {method === 'cash' && amount && (
-                        <div className="form-group">
-                            <label>Change: ₦{paymentDetails[method].change.toFixed(2)}</label>
-                        </div>
-                    )}
-                    <div className="modal-actions">
-                        <button 
-                            className="modal-btn cancel"
-                            onClick={() => {
-                                setPaymentDetails({...payPoints})
-                                setShowPaymentModal(false)
-                            }}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            className="modal-btn save"
-                            onClick={handlePayment}
-                            disabled={!amount || parseFloat(amount) < currentOrder.totalSales}
-                        >
-                            Complete Payment
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     // =========================================
     // 10. Utility Functions
     // =========================================
@@ -1270,9 +1219,108 @@ const PointOfSales = () => {
             </div>
             {showNewTableModal && <TableModal />}
             {showOrdersModal && <OrdersModal />}
-            {showPaymentModal && <PaymentModal />}
+            {showPaymentModal && 
+            <PaymentModal 
+                amount={amount}
+                setAmount={setAmount}
+                currentOrder={currentOrder}
+                method={method}
+                setMethod={setMethod}
+                paymentDetails={paymentDetails}
+                setPaymentDetails={setPaymentDetails}
+                setShowPaymentModal={setShowPaymentModal}
+                handlePayment={handlePayment}
+                payPoints={payPoints}
+            />}
         </div>
     );
 };
 
 export default PointOfSales;
+
+const PaymentModal = ({
+    amount, setAmount, 
+    currentOrder, 
+    method, setMethod,
+    paymentDetails, setPaymentDetails,
+    setShowPaymentModal, handlePayment,
+    payPoints,
+}) => {
+    const handleAmountChange = (e) => {
+        const value = e.target.value;
+        setAmount(value);
+        const amountNum = parseFloat(value) || 0;
+        const changeAmount = amountNum - currentOrder.totalSales;
+
+        if (method === 'cash'){
+            setPaymentDetails((paymentDetails)=>{
+                return {
+                    ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: changeAmount}
+                }
+            })
+        }else{
+            setPaymentDetails((paymentDetails)=>{
+                return {
+                    ...paymentDetails, [method]: {...paymentDetails[method], amount: value}
+                }
+            })
+        }
+    };
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content payment-modal">
+                <div className="modal-header">
+                    <h3>Payment</h3>
+                    <button onClick={() => setShowPaymentModal(false)}>×</button>
+                </div>
+                <div className="payment-methods">
+                    {Object.keys(payPoints).map(payMethod => (
+                        <button
+                            key={payMethod}
+                            className={`payment-method-btn ${method === payMethod ? 'active' : ''}`}
+                            onClick={() => setMethod(payMethod)}
+                        >
+                            {payMethod.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
+                <div className="form-group">
+                    <label>Total Amount: ₦{currentOrder.totalSales.toFixed(2)}</label>
+                </div>
+                <div className="form-group">
+                    <label>Payment Amount:</label>
+                    <input
+                        type="number"
+                        value={paymentDetails[method].amount}
+                        onChange={(e) => handleAmountChange(e)}
+                        placeholder="Enter amount"
+                    />
+                </div>
+                {method === 'cash' && amount && (
+                    <div className="form-group">
+                        <label>Change: ₦{Number(paymentDetails[method].change).toFixed(2)}</label>
+                    </div>
+                )}
+                <div className="modal-actions">
+                    <button 
+                        className="modal-btn cancel"
+                        onClick={() => {
+                            setPaymentDetails({...payPoints})
+                            setShowPaymentModal(false)
+                        }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        className="modal-btn save"
+                        onClick={handlePayment}
+                        disabled={!amount || parseFloat(amount) < currentOrder.totalSales}
+                    >
+                        Complete Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};

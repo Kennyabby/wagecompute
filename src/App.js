@@ -342,7 +342,7 @@ function App() {
     window.localStorage.removeItem('slvw')
     window.localStorage.removeItem('sldtl')
     window.localStorage.removeItem('sessn-cmp') 
-    
+    window.localStorage.removeItem('pos-wrh')
     setSessID(null)
     Navigate("/")
     setTimeout(()=>{
@@ -586,7 +586,26 @@ function App() {
       return resp.url
     }
   }
-
+  function excelDateToTimestamp(excelDateValue) {
+    if (String(excelDateValue).split('').includes('/') ||
+    String(excelDateValue).split('').includes('-')){
+        return excelDateValue
+    }else{
+        const secondsInDay = 86400; // 24 hours * 60 minutes * 60 seconds
+        const millisecondsInDay = secondsInDay * 1000;
+    
+        // Excel epoch is December 30, 1899
+        const excelEpoch = new Date('1899-12-30').getTime();
+    
+        // Convert Excel date value to JavaScript timestamp
+        var timestamp = excelEpoch + (Number(excelDateValue) - 1) * millisecondsInDay;
+        if (excelDateValue >= 60) {
+            timestamp += millisecondsInDay; // Add one day for dates after February 29, 1900
+        }
+    
+        return timestamp;
+    }
+  }
   const getDate = (dateval) =>{
     const current = dateval? new Date(dateval): new Date();
     const date = `${current.getDate()}/${current.getMonth() + 1}/${current.getFullYear()}`;
@@ -670,6 +689,7 @@ function App() {
           dashList, 
           loadPage,
           getImage,
+          excelDateToTimestamp,
           getDate,
           removeComma,
           removeSessions,
