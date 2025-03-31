@@ -29,25 +29,27 @@ const FormPage = ()=>{
         value:'',
         desc:''
     })
-    const {storePath} = useContext(ContextProvider)
+    const {storePath, getDate, excelDateToTimestamp} = useContext(ContextProvider)
     const [excludedentry, setExcludedEntry] = useState('')
     const [dateExcludedEntry, setDateExcludedEntry] = useState('')
     const [employeeDate, setEmployeeDate] = useState('')
     const [focusedEmployee, setFocusedEmployee] = useState(null)
     const [exportData, setExportData] =  useState([])
     const [holidays, setHolidays] = useState([
-        { "value": "2024-01-01", "desc": "New Year's Day" },
-        { "value": "2024-04-19", "desc": "Good Friday" },
-        { "value": "2024-04-22", "desc": "Easter Monday" },
-        { "value": "2024-05-01", "desc": "Workers' Day" },
-        { "value": "2024-06-12", "desc": "Democracy Day" },
-        { "value": "2024-06-16", "desc": "Father's Day" },
-        { "value": "2024-10-01", "desc": "Independence Day" },
-        { "value": "2024-12-25", "desc": "Christmas Day" },
-        { "value": "2024-12-26", "desc": "Boxing Day" },
-        { "value": "2024-04-10", "desc": "Eid al-Fitr (Tentative Date)" },
-        { "value": "2024-06-17", "desc": "Eid al-Adha (Tentative Date)" },
-        { "value": "2024-06-18", "desc": "Eid al-Adha (Public Holiday)" },
+        { "value": "2025-01-01", "desc": "New Year's Day" },
+        { "value": "2025-04-19", "desc": "Good Friday" },
+        { "value": "2025-04-22", "desc": "Easter Monday" },
+        { "value": "2025-05-01", "desc": "Workers' Day" },
+        { "value": "2025-06-12", "desc": "Democracy Day" },
+        { "value": "2025-06-16", "desc": "Father's Day" },
+        { "value": "2025-10-01", "desc": "Independence Day" },
+        { "value": "2025-12-25", "desc": "Christmas Day" },
+        { "value": "2025-12-26", "desc": "Boxing Day" },
+        { "value": "2025-03-29", "desc": "Eid al-Fitr (Tentative Date)" },
+        { "value": "2025-03-30", "desc": "Eid al-Fitr (Tentative Date)" },
+        { "value": "2025-03-31", "desc": "Eid al-Fitr (Tentative Date)" },
+        { "value": "2025-07-04", "desc": "Eid al-Adha (Tentative Date)" },
+        { "value": "2025-07-04", "desc": "Eid al-Adha (Public Holiday)" },
     ])
     const [excludeEmployees, setExcludeEmployees] = useState([])
     const [dateexcludeEmployees, setDateExcludeEmployees] = useState([])
@@ -122,7 +124,7 @@ const FormPage = ()=>{
                 }
             })
             if (empSalary!==undefined){
-                employeeSalary = Number(empSalary[0]['Salary'])
+                employeeSalary = Number(empSalary[0]?.['Salary']) || 0
             }
             const excludeIDs = excludeEmployees.map((employee)=>{
                 return employee['Employee ID']
@@ -417,9 +419,12 @@ const FormPage = ()=>{
     }
 
     const calculateTotalTime = (clockIn, clockOut) => {
+
         if (clockOut !== null){
-            const clockInTime = new Date(`1970-01-01T${clockIn}:00`);
-            let clockOutTime = new Date(`1970-01-01T${clockOut}:00`);
+            var clockInlength = clockIn.split(':').length
+            var clockOutlength = clockOut.split(':').length
+            const clockInTime = new Date(`1970-01-01T${clockIn}${clockInlength==2?':00':''}`);
+            let clockOutTime = new Date(`1970-01-01T${clockOut}${clockOutlength==2?':00':''}`);
             if (clockOutTime < clockInTime) {
                 clockOutTime.setDate(clockOutTime.getDate() + 1); // Adjust for crossing midnight
             }
@@ -454,6 +459,7 @@ const FormPage = ()=>{
             const employeeDept = punch['Department'];
             const employeeFpunch = punch['First Punch'];
             const employeeLpunch = punch['Last Punch'];
+            punch['Date'] = getDate(excelDateToTimestamp(punch['Date']))
             const punchDate = punch['Date'];
             var nextPunch = null;
             if (index < expdata.length - 1) {
