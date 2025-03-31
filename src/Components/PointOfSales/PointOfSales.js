@@ -96,6 +96,7 @@ const PointOfSales = () => {
         handleSettingsUpdate();
     }, [settings]);
     useEffect(()=>{
+        loadTableData()
         if (window.localStorage.getItem('pos-wrh')){
             setWrh(window.localStorage.getItem('pos-wrh'))
         }else{
@@ -288,7 +289,7 @@ const PointOfSales = () => {
 
      const loadInitialData = async () => {
          // Fetch tables
-         loadTableData()
+        //  loadTableData()
         const tablesResponse = await fetchServer("POST", {
             database: company,
             collection: "Tables"
@@ -432,6 +433,7 @@ const PointOfSales = () => {
         setOrderTables((orderTables)=>{
             return [...orderTables, newTableData]
         })
+        setShowNewTableModal(false)
     };
 
     const handleEditTable = (table) => {
@@ -1054,8 +1056,10 @@ const PointOfSales = () => {
                     <>
                         <div className='pos-wh-cover' onClick={(e)=>{
                             const name = e.target.getAttribute('name')
-                            setWrh(name)
-                            window.localStorage.setItem('pos-wrh',name)
+                            if (name){
+                                setWrh(name)
+                                window.localStorage.setItem('pos-wrh',name)
+                            }
                         }}>
                             {
                                 wrhs.map((wh, id)=>{
