@@ -476,9 +476,14 @@
 .modal-content {
     background: white;
     padding: 2rem;
-    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     width: 100%;
-    max-width: 400px;
+    max-width: 500px;
+    height: fit-content;
+    max-height: 90%;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header {
@@ -713,6 +718,7 @@
 .pos-table {
     /* width: 100%; */
     /* height: 100%; */
+    position: relative;
     aspect-ratio: 1;
     display: flex;
     align-items: center;
@@ -1295,7 +1301,7 @@
     position: relative;
 }
 
-.table-card .order-count {
+.table-card, .order-count {
     position: absolute;
     top: -0.5rem;
     right: -0.5rem;
@@ -1309,6 +1315,9 @@
     justify-content: center;
     font-size: 0.8rem;
     font-weight: bold;
+}
+.table-unavailable{
+    background: red
 }
 
 /* Add Table Box Styles */

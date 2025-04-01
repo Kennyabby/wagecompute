@@ -21,7 +21,7 @@ function App() {
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
-  const [alertTimeout, setAlertTimeout] = useState(5000)
+  const [alertTimeout, setAlertTimeout] = useState(100000)
   const [actionMessage, setActionMessage] = useState('')
   const [action, setAction] = useState('')
   const [sessId, setSessID] = useState(null)
@@ -115,7 +115,6 @@ function App() {
                 ['kitchen']: (resp.record.permissions.includes('pos_kitchen') || resp.record.permissions.includes('all')),
               }
             })
-
           }
         }
       }
