@@ -620,9 +620,11 @@ const PointOfSales = () => {
         setMakingPayment(true)
         var totalPayment = 0
         var totalChange = 0
+        var receipts = {}
         Object.keys(paymentDetails).forEach((payPoint)=>{
             totalPayment += Number(paymentDetails[payPoint].amount || 0)
             totalChange += Number(paymentDetails[payPoint].change || 0)
+            receipts[payPoint] = paymentDetails[payPoint].receipt
         })
         if (totalPayment < currentOrder.totalSales) {
             setAlertState('error');
@@ -639,6 +641,7 @@ const PointOfSales = () => {
             ...paymentData,
             totalPayment: totalPayment,
             cashChange: Number(paymentDetails['cash'].change),
+            receipts,
             status: 'completed'
         };
 
@@ -1266,7 +1269,7 @@ const PaymentModal = ({
                         <button
                             key={payMethod}
                             className={`payment-method-btn ${method === payMethod ? 'active' : ''}`}
-                            disabled={payMethod === 'cash' && paymentSum > 0}
+                            disabled={paymentDetails['cash'].amount}
                             onClick={() => {
                                 setMethod(payMethod)
                                 if (payMethod === 'cash'){
