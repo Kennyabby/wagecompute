@@ -739,8 +739,8 @@
     color: white;
 }
 
-.pos-table.occupied {
-    background-color: #f44336;
+.pos-table.unavailable {
+    background-color: #ef645a;
     color: white;
 }
 
@@ -1317,7 +1317,8 @@
     font-weight: bold;
 }
 .table-unavailable{
-    background: red
+    background: red;
+    border: solid white 1px
 }
 
 /* Add Table Box Styles */

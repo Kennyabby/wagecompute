@@ -413,7 +413,7 @@ function App() {
           prop: {'name': 'activation'}
       }, "getDocsDetails", SERVER)
       if (resps.err) {
-          console.log(resps.mess)
+          // console.log(resps.mess)
       } else {
           setViewAccess(resps.record[0].pauseDB)
           if (resps.record[0].pauseDB){
