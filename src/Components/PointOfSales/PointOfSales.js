@@ -126,7 +126,6 @@ const PointOfSales = () => {
                     activeOrders.forEach((activeOrder)=>{
                         if (
                             activeOrder.tableId === orderTable.i_d &&
-                            activeOrder.sessionId === curSession.i_d &&
                             activeOrder.wrh === wrh
                         ){
                             if (                                
@@ -151,6 +150,7 @@ const PointOfSales = () => {
                         }                        
                     }
                 })
+                // console.log(orderTables)
                 return [...orderTables]
             })
         }
@@ -259,6 +259,11 @@ const PointOfSales = () => {
                     oldSession = sessions[sessions.length - 1]
                     setOpeningCash(oldSession.totalCashSales)
                 }
+                setStartSession(true)
+                setEndSession(false)
+            }
+        }else{
+            if (!loadSession && !sessions.length){
                 setStartSession(true)
                 setEndSession(false)
             }
