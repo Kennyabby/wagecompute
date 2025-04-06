@@ -31,6 +31,7 @@ const PointOfSales = () => {
     const [endSession, setEndSession] = useState(false);
     const [sessionEnded, setSessionEnded] = useState(false);
     const [curSession, setCurrSession] = useState(null);
+    const [sessionUser, setSessionUser] = useState(null);
     const [loadSession, setLoadSession] = useState(true);
     const orderControllerRef = useRef(null)
     const tableControllerRef = useRef(null)
@@ -151,11 +152,7 @@ const PointOfSales = () => {
                         orderTable.activeOrders = myTableOrders.length
                     }else{
                         if (otherTableOrders.length){
-                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-                                orderTable.status = 'available'
-                            }else{
-                                orderTable.status = 'unavailable'
-                            }
+                            orderTable.status = 'unavailable'
                             orderTable.activeOrders = otherTableOrders.length
                         }else{
                             orderTable.status = 'available'
@@ -491,7 +488,7 @@ const PointOfSales = () => {
     };
     
     const handleTableSelect = async (table) => {
-        if (table.status !== 'available') {
+        if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions'))) {
             setAlertState('error');
             setAlert('This table is not available. Still in use!');
             setAlertTimeout(2000)
@@ -504,7 +501,7 @@ const PointOfSales = () => {
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
-            prop: { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
+            prop: { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: ((sessionUser !== null) ? sessionUser.handlerId : companyRecord.emailid)}
         }, "getDocsDetails", server);
         if (!response.err){
             if (response.record.length > 0) {
