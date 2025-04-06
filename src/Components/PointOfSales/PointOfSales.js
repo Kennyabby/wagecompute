@@ -136,8 +136,9 @@ const PointOfSales = () => {
                         if (
                             activeOrder.tableId === orderTable.i_d &&
                             activeOrder.wrh === wrh &&
-                            getSessionEnd(new Date(orderDate).getTime()) > new Date().getTime()
+                            getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)                            
                         ){
+                            
                             if (                                
                                 activeOrder.handlerId === companyRecord.emailid
                             ){
@@ -224,23 +225,23 @@ const PointOfSales = () => {
     }
 
     const stopSession = async (session, sessionOrders)=>{
-        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [
-                ...prevTable.activeTables.filter((tableOrder)=>{return (
-                    tableOrder.sessionId !== curSession.i_d &&
-                    tableOrder.handlerId !== companyRecord.emailid                    
-                )})
-            ]}]
-        }, "updateOneDoc", server)
-        if (resp.err){
-            setAlertState('error');
-            setAlert('Error updating table');
-            setAlertTimeout(3000)
-            return;
-        }
+        // const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        // const resp = await fetchServer("POST", {
+        //     database: company,
+        //     collection: "Tables",
+        //     prop: [{'wrh':wrh}, {activeTables: [
+        //         ...prevTable.activeTables.filter((tableOrder)=>{return (
+        //             tableOrder.sessionId !== curSession.i_d &&
+        //             tableOrder.handlerId !== companyRecord.emailid                    
+        //         )})
+        //     ]}]
+        // }, "updateOneDoc", server)
+        // if (resp.err){
+        //     setAlertState('error');
+        //     setAlert('Error updating table');
+        //     setAlertTimeout(3000)
+        //     return;
+        // }
         const {bankSales, cashSales} = getOrderSales(sessionOrders)
         const openingCash = session.openingCash
         let netBalance = 0
@@ -498,20 +499,36 @@ const PointOfSales = () => {
         setAlertState('info');
         setAlert('Loading table orders...');
         setAlertTimeout(100000)
+        const orderFilter = { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
+        if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+            delete orderFilter.sessionId
+            delete orderFilter.handlerId
+        }
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
-            prop: { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: ((sessionUser !== null) ? sessionUser.handlerId : companyRecord.emailid)}
+            prop: {...orderFilter}
         }, "getDocsDetails", server);
         if (!response.err){
             if (response.record.length > 0) {
                 // Store all table orders in state
-                setTableOrders(response.record);
+                var ordersUpdate = response.record
+                if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+                    setTableOrders(ordersUpdate.filter((order)=>{
+                        var orderDate = '01/01/2020'
+                        if (order.createdAt){
+                            orderDate = order.createdAt
+                        }
+                        return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
+                    }))
+                }else{
+                    setTableOrders(response.record);
+                }
                 // Set the most recent pending order as active, or create new one if none pending
                 const pendingOrders = response.record.filter(order => order.status === 'pending');
                 const ordersNumber = pendingOrders.length
                 if (ordersNumber) {
-                    setCurrentOrder(pendingOrders[ordersNumber-1]);
+                    setCurrentOrder(pendingOrders[0]);
                 } else {
                     createNewOrder(table);
                 }
@@ -529,7 +546,7 @@ const PointOfSales = () => {
         }else{
             setAlertState('info')
             setAlert('Slow Network. Could Not Load Table Orders!')
-            setAlertTimeout(1000)
+            setAlertTimeout(3000)
         }
     };
 
