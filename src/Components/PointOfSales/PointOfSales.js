@@ -21,6 +21,7 @@ const PointOfSales = () => {
     const [activeScreen, setActiveScreen] = useState('home');
     const [tables, setTables] = useState([]);
     const [orderTables, setOrderTables] = useState([]);
+    const [currentTable, setCurrentTable] = useState(null)
     const [sessions, setSessions] = useState(null);
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -129,7 +130,7 @@ const PointOfSales = () => {
                     const myTableOrders = []
                     const otherTableOrders  = []
                     activeOrders.forEach((activeOrder)=>{
-                        var orderDate = '01/01/2020'
+                        var orderDate = '01/01/1970'
                         if (activeOrder.createdAt){
                             orderDate = activeOrder.createdAt
                         }
@@ -390,19 +391,40 @@ const PointOfSales = () => {
             const ordersResponse = await fetchServer("POST", {
                 database: company,
                 collection: "Orders",
-                prop: { handlerId:companyRecord.emailid, sessionId: curSession.i_d,}
+                prop: {}
             }, "getDocsDetails", server, orderController.signal);
             if(!ordersResponse.err){
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
                     if(ordersResponse.record?.length){
-                        setAllOrders(ordersResponse.record) 
+                        setAllOrders(ordersResponse.record.filter((order) =>{
+                            return (order.sessionId === curSession.i_d && order.handlerId === companyRecord.emailid)
+                        })) 
+                        var ordersUpdate = ordersResponse.record
                         if (currentOrder!==null){
-                            const myTableOrders = ordersResponse.record.filter(order => 
-                                order.tableId === currentOrder.tableId
-                                && order.wrh === wrh
-                            )
-                            setTableOrders(myTableOrders)
+                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+                                setTableOrders(ordersUpdate.filter((order)=>{
+                                    var orderDate = '01/01/1970'
+                                    if (order.createdAt){
+                                        orderDate = order.createdAt
+                                    }
+                                    if (
+                                        order.tableId === currentOrder.tableId
+                                        && order.wrh === wrh 
+                                    ){
+                                        // Check if the order is from the current session
+                                        return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
+                                    }
+                                }))
+                            }else{
+                                const myTableOrders = ordersUpdate.filter(order => 
+                                    order.tableId === currentOrder.tableId
+                                    && order.wrh === wrh &&
+                                    order.sessionId === curSession.i_d &&
+                                    order.handlerId === companyRecord.emailid
+                                )
+                                setTableOrders(myTableOrders)
+                            }
                         }
                     }
                 }
@@ -511,11 +533,12 @@ const PointOfSales = () => {
         }, "getDocsDetails", server);
         if (!response.err){
             if (response.record.length > 0) {
+                setCurrentTable(table)
                 // Store all table orders in state
                 var ordersUpdate = response.record
                 if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
                     setTableOrders(ordersUpdate.filter((order)=>{
-                        var orderDate = '01/01/2020'
+                        var orderDate = '01/01/1970'
                         if (order.createdAt){
                             orderDate = order.createdAt
                         }
@@ -537,6 +560,7 @@ const PointOfSales = () => {
                 setAlert('Loaded table orders...');
                 setAlertTimeout(50)
             } else {
+                setCurrentTable(table);
                 createNewOrder(table);
                 setActiveScreen('order');
                 setAlertState('info');
@@ -1044,7 +1068,7 @@ const PointOfSales = () => {
                 {currentOrder.status === 'pending' && <button 
                     className="place-order-btn"
                     onClick={() => setShowPaymentModal(true)}
-                    disabled={!currentOrder.totalSales || makingPayment}
+                    disabled={!currentOrder.totalSales || makingPayment || currentTable.status === 'unavailable'}
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
@@ -1228,7 +1252,7 @@ const PointOfSales = () => {
                         
                         <button 
                             className="action-btn"
-                            disabled={placingOrder || makingPayment}
+                            disabled={placingOrder || makingPayment || currentTable.status === 'unavailable'}
                             onClick={() => createNewOrder({ _id: currentOrder.tableId, name: currentOrder.tableName })}
                         >
                             New Order
@@ -1246,6 +1270,7 @@ const PointOfSales = () => {
                             onClick={() => {
                                 setTableOrders([])
                                 setActiveScreen('home')
+                                setCurrentTable(null)
                                 setCurrentOrder(null)
                                 setPlacingOrder(false)
                                 setMakingPayment(false)
