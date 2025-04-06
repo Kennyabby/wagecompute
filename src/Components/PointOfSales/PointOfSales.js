@@ -11,7 +11,7 @@ const PointOfSales = () => {
         storePath,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
-        settings, getDate, posWrhAccess
+        settings, getDate, posWrhAccess, employees
     } = useContext(ContextProvider);
 
     // Core States
@@ -117,7 +117,7 @@ const PointOfSales = () => {
         // console.log(posWrhAccess)
     },[posWrhAccess])
     useEffect(()=>{
-        if (tables.length && wrh && curSession){
+        if (tables.length && wrh && curSession && employees.length){
             setOrderTables((orderTables)=>{
                 const activeOrders = []
                 wrhs.forEach((warehouse)=>{
@@ -129,6 +129,7 @@ const PointOfSales = () => {
                 orderTables.forEach((orderTable)=>{
                     const myTableOrders = []
                     const otherTableOrders  = []
+                    var tableUser = null
                     activeOrders.forEach((activeOrder)=>{
                         var orderDate = '01/01/1970'
                         if (activeOrder.createdAt){
@@ -143,8 +144,10 @@ const PointOfSales = () => {
                             if (                                
                                 activeOrder.handlerId === companyRecord.emailid
                             ){
+                                tableUser = employees.find(employee => employee.i_d === activeOrder.handlerId)
                                 myTableOrders.push(activeOrder)
                             }else{
+                                tableUser = employees.find(employee => employee.i_d === activeOrder.handlerId)
                                 otherTableOrders.push(activeOrder)
                             }
                         }
@@ -161,11 +164,19 @@ const PointOfSales = () => {
                             orderTable.activeOrders = 0
                         }                        
                     }
+                    if ([null, undefined].includes(tableUser) && orderTable.activeOrders){
+                        orderTable.tableUser = {
+                            firstName: 'Admin',
+                            lastName: ''
+                        }
+                    }else{
+                        orderTable.tableUser = tableUser
+                    }
                 })
                 return [...orderTables]
             })
         }
-    },[tables,curSession, wrh])
+    },[tables,curSession, wrh, employees])
     const getOrderSales = (orders) =>{
         let bankSales = 0
         let cashSales = 0
@@ -517,6 +528,7 @@ const PointOfSales = () => {
             setAlertTimeout(2000)
             return;
         }
+        setSelectedProduct(null)
         // Fetch ALL orders for this table and session(removed status filter)
         setAlertState('info');
         setAlert('Loading table orders...');
@@ -716,6 +728,7 @@ const PointOfSales = () => {
     };
 
     const handleOrderSelect = (order) => {
+        setSelectedProduct(null)
         setCurrentOrder(order);
         setActiveScreen('order');
         setShowOrdersModal(false);
@@ -1058,14 +1071,14 @@ const PointOfSales = () => {
                     ))}
                 </div>
                 {selectedProduct && renderKeypad()}
-                {currentOrder.status === 'new' && <button 
+                {(currentOrder.status!=='cancelled' && currentOrder.status === 'new') && <button 
                     className="place-order-btn"
                     onClick={() => handlePlaceOrder()}
                     disabled={!currentOrder.items.length || placingOrder || sessionEnded}
                 >
                     Place Order (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
-                {currentOrder.status === 'pending' && <button 
+                {(currentOrder.status!=='cancelled' && currentOrder.status === 'pending') && <button 
                     className="place-order-btn"
                     onClick={() => setShowPaymentModal(true)}
                     disabled={!currentOrder.totalSales || makingPayment || currentTable.status === 'unavailable'}
@@ -1165,6 +1178,11 @@ const PointOfSales = () => {
                                         {table.activeOrders > 0 && (
                                             <div className={table.status === 'available' ? "order-count" : "order-count table-unavailable"}>
                                                 {table.activeOrders}
+                                            </div>
+                                        )}
+                                        {table.activeOrders > 0 && (
+                                            <div className="table-user">
+                                                {`${table.tableUser.firstName} ${table.tableUser.lastName}`}
                                             </div>
                                         )}
                                     </div>
@@ -1290,6 +1308,8 @@ const PointOfSales = () => {
                 tableOrders={tableOrders}
                 handleOrderSelect={handleOrderSelect}
                 setShowOrdersModal={setShowOrdersModal}
+                tables={tables}
+                wrh={wrh}
             />}
             {showPaymentModal && 
             <PaymentModal 
@@ -1448,29 +1468,83 @@ const PaymentModal = ({
         </div>
     );
 };
+const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, tables }) => {
+    const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
 
-const OrdersModal = ({tableOrders, handleOrderSelect, setShowOrdersModal}) => (
-    <div className="modal-overlay">
-        <div className="modal-content orders-modal">
-            <div className="modal-header">
-                <h3>All Orders</h3>
-                <button onClick={() => setShowOrdersModal(false)}>×</button>
-            </div>
-            <div className="orders-list">
-                {tableOrders?.map(order => (
-                    <div 
-                        key={order.i_d}
-                        className={`order-card ${order.status}`}
-                        onClick={() => handleOrderSelect(order)}
-                    >
-                        <div>Order #{order.orderNumber}</div>
-                        <div>Table: {order.tableId}</div>
-                        <div>Total: ₦{order.totalSales}</div>
-                        <div>Status: {order.status}</div>
-                        <div>{new Date(order.createdAt).toLocaleString()}</div>
-                    </div>
-                ))}
+    const handleDeleteOrder = async (order) => {
+        const confirmDelete = window.confirm(`Are you sure you want to delete Order #${order.orderNumber}?`);
+        if (!confirmDelete) return;
+        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        const resp = await fetchServer("POST", {
+            database: company,
+            collection: "Tables",
+            prop: [{'wrh':wrh}, {activeTables: [
+                ...prevTable.activeTables.filter((tableOrder)=>{return (
+                    tableOrder.tableId !== order.tableId && 
+                    tableOrder.sessionId !== order.sessionId &&
+                    tableOrder.orderId !== order.orderNumber
+                )})
+            ]}]
+        }, "updateOneDoc", server)
+        if (resp.err){
+            setAlertState('error');
+            setAlert('Error updating table');
+            setAlertTimeout(3000)
+            return;
+        }
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "Orders",
+            prop: [{orderNumber: order.orderNumber}, { status: 'cancelled' }]
+        }, "updateOneDoc", server);
+
+        if (response.err) {
+            setAlertState('error');
+            setAlert('Error cancelling order');
+            setAlertTimeout(3000);
+        } else {
+            setAlertState('success');
+            setAlert('Order cancelled successfully');
+            setAlertTimeout(2000);
+            setShowOrdersModal(false); // Close modal after deletion
+        }
+    };
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content orders-modal">
+                <div className="modal-header">
+                    <h3>All Orders</h3>
+                    <button onClick={() => setShowOrdersModal(false)}>×</button>
+                </div>
+                <div className="orders-list">
+                    {tableOrders?.map(order => (
+                        <div 
+                            key={order.i_d}
+                            className={`order-card ${order.status}`}
+                        >
+                            <div onClick={() => handleOrderSelect(order)}>
+                                <div>Order #{order.orderNumber}</div>
+                                <div>Table: {order.tableId}</div>
+                                <div>Total: ₦{order.totalSales}</div>
+                                <div>Status: {order.status}</div>
+                                <div>Delivery: {(order.delivery || 'pending')}</div>
+                                <div>{new Date(order.createdAt).toLocaleString()}</div>
+                            </div>
+                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) &&
+                            !['cancelled','completed'].includes(order.status) && (
+                                <button 
+                                    className="cancel-order-btn"
+                                    onClick={() => handleDeleteOrder(order)}
+                                    title="Cancel Order"
+                                >
+                                    🗑️
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};

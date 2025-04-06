@@ -1144,6 +1144,21 @@
     border-left: 4px solid #f44336;
 }
 
+.cancel-order-btn{
+    background: rgba(155,0,0,0.5);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-left: auto;
+    z-index: 2;
+}
 /* Update tables layout styling */
 .pos-tables-view {
     padding: 2rem;
@@ -1362,7 +1377,19 @@
     background: red;
     border: solid white 1px
 }
-
+.table-user{
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: .6em;
+    width: 95%;
+    height: fit-content;
+    padding: 5px;
+    border-radius: 7px;
+    text-align: center;
+    background: rgba(0,0,0,0.4);
+}
 /* Add Table Box Styles */
 .add-table-box {
     aspect-ratio: 1;
