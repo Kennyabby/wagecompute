@@ -15,6 +15,8 @@ const PointOfSales = () => {
     } = useContext(ContextProvider);
 
     // Core States
+    const [isLive, setIsLive] = useState(true)
+    const [liveErrorMessages, setLiveErrorMessages] = useState('')
     const [loading, setLoading] = useState(false);
     const [activeScreen, setActiveScreen] = useState('home');
     const [tables, setTables] = useState([]);
@@ -27,6 +29,7 @@ const PointOfSales = () => {
     const [cashBalance, setCashBalance] = useState(0);
     const [startSession, setStartSession] = useState(false);
     const [endSession, setEndSession] = useState(false);
+    const [sessionEnded, setSessionEnded] = useState(false);
     const [curSession, setCurrSession] = useState(null);
     const [loadSession, setLoadSession] = useState(true);
     const orderControllerRef = useRef(null)
@@ -53,6 +56,7 @@ const PointOfSales = () => {
     const [showNewTableModal, setShowNewTableModal] = useState(false);
     const [showOrdersModal, setShowOrdersModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [showSessions, setShowSessions] = useState(false);
     const [editingTable, setEditingTable] = useState(null);
 
     // Form States
@@ -124,9 +128,14 @@ const PointOfSales = () => {
                     const myTableOrders = []
                     const otherTableOrders  = []
                     activeOrders.forEach((activeOrder)=>{
+                        var orderDate = '01/01/2020'
+                        if (activeOrder.createdAt){
+                            orderDate = activeOrder.createdAt
+                        }
                         if (
                             activeOrder.tableId === orderTable.i_d &&
-                            activeOrder.wrh === wrh
+                            activeOrder.wrh === wrh &&
+                            getSessionEnd(new Date(orderDate).getTime()) > new Date().getTime()
                         ){
                             if (                                
                                 activeOrder.handlerId === companyRecord.emailid
@@ -142,7 +151,11 @@ const PointOfSales = () => {
                         orderTable.activeOrders = myTableOrders.length
                     }else{
                         if (otherTableOrders.length){
-                            orderTable.status = 'unavailable'
+                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+                                orderTable.status = 'available'
+                            }else{
+                                orderTable.status = 'unavailable'
+                            }
                             orderTable.activeOrders = otherTableOrders.length
                         }else{
                             orderTable.status = 'available'
@@ -150,7 +163,6 @@ const PointOfSales = () => {
                         }                        
                     }
                 })
-                // console.log(orderTables)
                 return [...orderTables]
             })
         }
@@ -194,12 +206,18 @@ const PointOfSales = () => {
             if (response.err) {
                 setAlertState('error');
                 setAlert('Could not load session. Please check your internet connection!');
+                setAlertTimeout(3000)
             } else {
                 setAlertState('success');
                 setAlert('Welcome Back!');
+                setAlertTimeout(2000)
                 setStartSession(false)
                 setCurrSession(newSession)
-                setSessions([...sessions, newSession]);
+                if (sessions!==null){
+                    setSessions([...sessions, newSession]);
+                }else{
+                    setSessions([newSession])
+                }
             }
         }else{
             setAlert('info')
@@ -209,12 +227,29 @@ const PointOfSales = () => {
     }
 
     const stopSession = async (session, sessionOrders)=>{
+        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        const resp = await fetchServer("POST", {
+            database: company,
+            collection: "Tables",
+            prop: [{'wrh':wrh}, {activeTables: [
+                ...prevTable.activeTables.filter((tableOrder)=>{return (
+                    tableOrder.sessionId !== curSession.i_d &&
+                    tableOrder.handlerId !== companyRecord.emailid                    
+                )})
+            ]}]
+        }, "updateOneDoc", server)
+        if (resp.err){
+            setAlertState('error');
+            setAlert('Error updating table');
+            setAlertTimeout(3000)
+            return;
+        }
         const {bankSales, cashSales} = getOrderSales(sessionOrders)
         const openingCash = session.openingCash
         let netBalance = 0
         if (bankBalance !== bankSales || cashBalance !== (cashSales + openingCash)){
             netBalance = (bankBalance + cashBalance) - (bankSales + cashSales + openingCash)
-        } 
+        }  
         const response = await fetchServer("POST", {
             database: company,
             collection: "POSSessions",
@@ -231,24 +266,43 @@ const PointOfSales = () => {
         if (response.err) {
             setAlertState('error');
             setAlert('Could not end session. Please check your internet connection!');
+            setAlertTimeout(3000)
         } else {
             setAlertState('success');
             setAlert('Session Ended!');
+            setAlertTimeout(3000)
             setEndSession(false)
+            setSessions(null)
+            setCurrSession(null)
             setStartSession(true)
             setAlertTimeout(5000)
-            // setSessions([...sessions, response.record[0]]);
         }
     }
 
+    const getSessionEnd = (sessionStart) => {
+        const closingHour = 8
+        const sessionStartDate = new Date(sessionStart);
+        const sessionEndDate = new Date(sessionStartDate);
+
+        // Set the session end time to 8am of the same day
+        sessionEndDate.setHours(closingHour, 0, 0, 0);
+
+        // If the session started after 8am, set the end time to 8am of the next day
+        if (sessionStartDate.getTime() >= sessionEndDate.getTime()) {
+            sessionEndDate.setDate(sessionStartDate.getDate() + 1);
+        }
+
+        return sessionEndDate.getTime();
+    };
     const UpdateSessionState = (sessions, loadSession)=>{
         if (!loadSession && sessions?.length){            
             const previousSession = sessions.filter((session)=> session.active)
             if (previousSession.length){
                 setCurrSession(previousSession[0])
-                if(getDate(previousSession[0].start) !== getDate(new Date().getTime())){                
+                if(new Date().getTime() >= getSessionEnd(previousSession[0].start)){                
                     setStartSession(false)
-                    setEndSession(true)
+                    setSessionEnded(true)
+                    // setEndSession(true)
                 }else{
                     setStartSession(false)
                     setEndSession(false)
@@ -341,6 +395,7 @@ const PointOfSales = () => {
                 prop: { handlerId:companyRecord.emailid, sessionId: curSession.i_d,}
             }, "getDocsDetails", server, orderController.signal);
             if(!ordersResponse.err){
+                setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
                     if(ordersResponse.record?.length){
                         setAllOrders(ordersResponse.record) 
@@ -355,39 +410,41 @@ const PointOfSales = () => {
                 }
             }else{
                 if (ordersResponse.mess !== 'Request aborted'){
-                    setAlertState('info');
-                    setAlert('Error Loading Session Data. Network is not stable!');
+                    setIsLive(false)
+                    setLiveErrorMessages('Slow Network. Check Connection')
                 }
             }
         }
 
         if (!tablesResponse.err){
-            setTables(tablesResponse.record)                
+            setTables(tablesResponse.record)  
+            setIsLive(true)              
         }else{
             if (tablesResponse.mess !== 'Request aborted'){
-                setAlertState('info');
-                setAlert('Error Loading Session Data. Network is not stable!');
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
             }
         }
 
         if(!productsResponse.err){
             setProducts(productsResponse.record)
+            setIsLive(true)
         }else{
             if (productsResponse.mess !== 'Request aborted'){
-                setAlertState('info');
-                setAlert('Error Loading Session Data. Network is not stable!');
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
             }
         }
 
         if(!sessionsResponse.err){
-            setAlertTimeout(0)
             setSessions(sessionsResponse.record)
             setLoadSession(false)
+            setIsLive(true)
             UpdateSessionState(sessionsResponse.record, false)
         }else{
             if (sessionsResponse.mess !== 'Request aborted'){
-                setAlertState('info');
-                setAlert('Error Loading Session Data. Network is not stable!');
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
             }
         }
         
@@ -436,12 +493,14 @@ const PointOfSales = () => {
     const handleTableSelect = async (table) => {
         if (table.status !== 'available') {
             setAlertState('error');
-            setAlert('This table is not available');
+            setAlert('This table is not available. Still in use!');
+            setAlertTimeout(2000)
             return;
         }
         // Fetch ALL orders for this table and session(removed status filter)
         setAlertState('info');
         setAlert('Loading table orders...');
+        setAlertTimeout(100000)
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
@@ -460,11 +519,15 @@ const PointOfSales = () => {
                     createNewOrder(table);
                 }
                 setActiveScreen('order');
-                setAlertTimeout(0)
+                setAlertState('info');
+                setAlert('Loaded table orders...');
+                setAlertTimeout(50)
             } else {
                 createNewOrder(table);
                 setActiveScreen('order');
-                setAlertTimeout(0)
+                setAlertState('info');
+                setAlert('Loaded table orders...');
+                setAlertTimeout(50)
             }
         }else{
             setAlertState('info')
@@ -509,6 +572,7 @@ const PointOfSales = () => {
     const handlePlaceOrder = async () => {
         setAlertState('info')
         setAlert('Placing Order...')
+        setAlertTimeout(1000000)
         setPlacingOrder(true)
         // Save the current order to database
         const activeOrder = {
@@ -517,6 +581,7 @@ const PointOfSales = () => {
             handlerId: companyRecord.emailid,
             wrh: wrh,
             orderId: currentOrder.orderNumber,
+            createdAt: new Date().getTime()
         }
         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
         const resp = await fetchServer("POST", {
@@ -527,6 +592,7 @@ const PointOfSales = () => {
         if (resp.err){
             setAlertState('error');
             setAlert('Error updating table');
+            setAlertTimeout(3000)
             setPlacingOrder(false)
         }
         
@@ -542,6 +608,7 @@ const PointOfSales = () => {
         if (response.err) {
             setAlertState('error');
             setAlert('Error saving order');
+            setAlertTimeout(3000)
             setPlacingOrder(false)
             return;
         }
@@ -622,6 +689,7 @@ const PointOfSales = () => {
     const handlePayment = async () => {
         setAlertState('info');
         setAlert('Processing Payment...');
+        setAlertTimeout(1000000)
         setMakingPayment(true)
         var totalPayment = 0
         var totalChange = 0
@@ -634,6 +702,7 @@ const PointOfSales = () => {
         if (totalPayment < currentOrder.totalSales) {
             setAlertState('error');
             setAlert('Insufficient payment amount');
+            setAlertTimeout(3000)
             setMakingPayment(false)
             return;
         }
@@ -670,6 +739,7 @@ const PointOfSales = () => {
         if (resp.err){
             setAlertState('error');
             setAlert('Error updating table');
+            setAlertTimeout(3000)
             return;
         }
         const response = await fetchServer("POST", {
@@ -826,7 +896,7 @@ const PointOfSales = () => {
                                     }}
                                     disabled={loading}
                                 >
-                                    <option>Select Sales Post</option>
+                                    <option value={''}>Select Sales Post</option>
                                     {wrhs.map((warehouse, index) => (
                                             posWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
                                                 {warehouse.name}
@@ -953,7 +1023,7 @@ const PointOfSales = () => {
                 {currentOrder.status === 'new' && <button 
                     className="place-order-btn"
                     onClick={() => handlePlaceOrder()}
-                    disabled={!currentOrder.items.length || placingOrder}
+                    disabled={!currentOrder.items.length || placingOrder || sessionEnded}
                 >
                     Place Order (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
@@ -1020,6 +1090,17 @@ const PointOfSales = () => {
                                         return (posWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
                                     }
                                 })                        
+                            }
+                            {
+                                <div className={'live-nav'}>
+                                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
+                                        className="action-btn"
+                                        onClick={() => setShowSessions(true)}
+                                    >
+                                        All Sessions
+                                    </button>}
+                                    <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
+                                </div>
                             }
                         </div>
                         <div className="pos-tables-layout">
@@ -1125,24 +1206,12 @@ const PointOfSales = () => {
                         {currentOrder.orderNumber && (
                             <span className="order-number">#{currentOrder.orderNumber}</span>
                         )}
+                        {
+                            <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
+                        }
                     </div>
                     <div className="header-actions">
-                        {/* {tableOrders?.length > 0 && (
-                            <div className="order-switcher">
-                                {tableOrders
-                                    .sort((a, b) => b.createdAt - a.createdAt) // Sort by newest first
-                                    .map(order => (
-                                        <button
-                                            key={order.orderNumber}
-                                            className={`order-switch-btn ${order.orderNumber === currentOrder.orderNumber ? 'active' : ''} ${order.status}`}
-                                            onClick={() => handleSwitchOrder(order)}
-                                        >
-                                            #{order.orderNumber}
-                                            <span className="order-status">{order.status}</span>
-                                        </button>
-                                    ))}
-                            </div>
-                        )} */}
+                        
                         <button 
                             className="action-btn"
                             disabled={placingOrder || makingPayment}
@@ -1227,7 +1296,7 @@ const PaymentModal = ({
         if (Number(currentOrder.totalSales)>paymentSum){
             setAlertState('info')
             setAlert('Insufficient payment amount')
-            setAlertTimeout(3000)
+            // setAlertTimeout(3000)
         }else{
             handlePayment()
         }

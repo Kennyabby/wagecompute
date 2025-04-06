@@ -16,6 +16,44 @@
     overflow-y: auto;
 }
 
+.live-nav{
+    display: flex;
+    flex-wrap: wrap;
+    width: fit-content;
+    height: fit-content;
+    margin-left: auto;
+    margin-right: 20px;
+    gap: 10px;
+}
+
+.live-state{
+    font-size: .7em;
+    font-weight: bold;
+    color: #4caf50;
+    border-radius: 5px;
+    border: solid #4caf50 1.5px;
+    padding: 0.2em 0.5em;
+    height: fit-content;
+    margin: auto 0px;
+}
+
+.error-state{
+    font-size: .7em;
+    font-weight: bold;
+    color: #f44336;
+    border-radius: 5px;
+    border: solid #f44336 1.5px;
+    padding: 0.2em 0.5em;
+}
+
+.session-ended{
+    font-size: .7em;
+    font-weight: bold;
+    color: rgb(199, 87, 87);
+    border-radius: 5px;
+    border: solid rgb(199, 87, 87) 1.5px;
+    padding: 0.2em 0.5em;
+}
 
 .openingsession, .closingsession {
     position: absolute;
