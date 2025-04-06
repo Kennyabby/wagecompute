@@ -44,6 +44,8 @@
     border-radius: 5px;
     border: solid #f44336 1.5px;
     padding: 0.2em 0.5em;
+    height: fit-content;
+    margin: auto 0px;
 }
 
 .session-ended{
@@ -53,6 +55,8 @@
     border-radius: 5px;
     border: solid rgb(199, 87, 87) 1.5px;
     padding: 0.2em 0.5em;
+    height: fit-content;
+    margin: auto 0px;
 }
 
 .openingsession, .closingsession {
