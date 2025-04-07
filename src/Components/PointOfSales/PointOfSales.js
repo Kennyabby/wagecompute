@@ -11,39 +11,45 @@ const PointOfSales = () => {
         storePath,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
-        settings, getDate, posWrhAccess, employees
+        settings, getDate, posWrhAccess, employees, 
+        profiles, fetchProfiles
     } = useContext(ContextProvider);
 
     // Core States
-    const [isLive, setIsLive] = useState(true)
-    const [liveErrorMessages, setLiveErrorMessages] = useState('')
+    const [isLive, setIsLive] = useState(false)
+    const [liveErrorMessages, setLiveErrorMessages] = useState('Loading...')
     const [loading, setLoading] = useState(false);
     const [activeScreen, setActiveScreen] = useState('home');
     const [tables, setTables] = useState([]);
     const [orderTables, setOrderTables] = useState([]);
     const [currentTable, setCurrentTable] = useState(null)
+    const [allSessions, setAllSessions] = useState([])
     const [sessions, setSessions] = useState(null);
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [openingCash, setOpeningCash] = useState(0);
-    const [bankBalance, setBankBalance] = useState(0);
-    const [cashBalance, setCashBalance] = useState(0);
+    const [countedSales, setCountedSales] = useState({})
+    const [posSalesDifference, setPosSalesDifference] = useState({})
     const [startSession, setStartSession] = useState(false);
     const [endSession, setEndSession] = useState(false);
     const [sessionEnded, setSessionEnded] = useState(false);
     const [curSession, setCurrSession] = useState(null);
     const [sessionUser, setSessionUser] = useState(null);
+    const [viewSesions, setViewSessions] = useState(false);
     const [loadSession, setLoadSession] = useState(true);
+    const posContainerRef = useRef(null)
     const orderControllerRef = useRef(null)
     const tableControllerRef = useRef(null)
     const productControllerRef = useRef(null)
     const sessionControllerRef = useRef(null)
+    const [orderFetchCount, setOrderFetchCount] = useState(0)
     useEffect(()=>{
         storePath('pos')  
     },[storePath])
 
     // Order States
     const [currentOrder, setCurrentOrder] = useState(null);
+    const [allSessionOrders, setAllSessionOrders] = useState([])
     const [allOrders, setAllOrders] = useState([]);
     const [tableOrders, setTableOrders] = useState([]);
     const [orderType, setOrderType] = useState('dine-in');
@@ -58,7 +64,6 @@ const PointOfSales = () => {
     const [showNewTableModal, setShowNewTableModal] = useState(false);
     const [showOrdersModal, setShowOrdersModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [showSessions, setShowSessions] = useState(false);
     const [editingTable, setEditingTable] = useState(null);
 
     // Form States
@@ -112,10 +117,17 @@ const PointOfSales = () => {
 
     useEffect(()=> {
          loadInitialData()
+         fetchProfiles(company)
     },[settings, currentOrder])
     useEffect(()=>{
-        // console.log(posWrhAccess)
-    },[posWrhAccess])
+        if (posContainerRef.current){
+            if (loadSession || startSession || endSession){
+                posContainerRef.current.style.overflow = 'hidden'
+            }else{
+                posContainerRef.current.style.overflow = 'auto'
+            }
+        }
+    },[posContainerRef, loadSession, startSession, endSession])
     useEffect(()=>{
         if (tables.length && wrh && curSession && employees.length){
             setOrderTables((orderTables)=>{
@@ -177,25 +189,40 @@ const PointOfSales = () => {
             })
         }
     },[tables,curSession, wrh, employees])
-    const getOrderSales = (orders) =>{
-        let bankSales = 0
-        let cashSales = 0
-        orders.forEach((order)=>{
-            if (order['cash']){
-                cashSales += (Number(order['cash']) || 0)
-                if (order.totalSales > Number(order['cash'] || 0)){
-                    bankSales += Number(order.totalSales) - Number(order['cash'] || 0)
-                }                
-            } else {
-                bankSales += order.totalSales
-            }
+    const getSessionSales = (orders) =>{
+        const payPointList = Object.keys(payPoints)
+        const allSales = {}
+        var totalCashChange = 0
+        var totalPendingSales = 0
+        var totalCancelledSales = 0
+        var totalUnattendedSales = 0
+        payPointList.forEach((payPoint)=>{
+            allSales[payPoint] = 0
         })
-        return {bankSales, cashSales}
+        orders.forEach((order)=>{
+            if (order.status !== 'cancelled'){
+                if (order.status === 'pending'){
+                    if (order.delivery === 'completed'){
+                        totalPendingSales += Number(order.totalSales || 0)                    
+                    }else{
+                        totalUnattendedSales += Number(order.totalSales || 0)
+                    }
+                }else{
+                    payPointList.forEach((payPoint)=>{
+                        allSales[payPoint] += Number(order[payPoint] || 0)
+                    })
+                }
+                totalCashChange += Number(order.cashChange || 0)
+            }else{
+                totalCancelledSales += Number(order.totalSales || 0)
+            }          
+        })
+        return {allSales, totalPendingSales, totalUnattendedSales, totalCancelledSales, totalCashChange}
     }
-    const createSession = async ()=>{
+    const createSession = async (sessionUser)=>{
         if (wrh){
             const newSession = {
-                employee_id: companyRecord.emailid,
+                employee_id: (sessionUser.profile).emailid,
                 i_d: new Date().getTime(),
                 start: new Date().getTime(),
                 end: null,
@@ -217,59 +244,63 @@ const PointOfSales = () => {
                 setAlertState('error');
                 setAlert('Could not load session. Please check your internet connection!');
                 setAlertTimeout(3000)
+                return
             } else {
                 setAlertState('success');
                 setAlert('Welcome Back!');
                 setAlertTimeout(2000)
                 setStartSession(false)
                 setCurrSession(newSession)
-                if (sessions!==null){
-                    setSessions([...sessions, newSession]);
-                }else{
-                    setSessions([newSession])
+                setOpeningCash(0)
+                setAllSessions((allSessions)=>{return [...allSessions, newSession]})
+                if (sessionUser.profile.emailid !== companyRecord.emailid){
+                    setSessions([newSession])                    
                 }
+                return
             }
         }else{
             setAlert('info')
             setAlert('Please Select Your Sales Post')
             setAlertTimeout(5000)
+            return
         }
     }
 
     const stopSession = async (session, sessionOrders)=>{
-        // const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        // const resp = await fetchServer("POST", {
-        //     database: company,
-        //     collection: "Tables",
-        //     prop: [{'wrh':wrh}, {activeTables: [
-        //         ...prevTable.activeTables.filter((tableOrder)=>{return (
-        //             tableOrder.sessionId !== curSession.i_d &&
-        //             tableOrder.handlerId !== companyRecord.emailid                    
-        //         )})
-        //     ]}]
-        // }, "updateOneDoc", server)
-        // if (resp.err){
-        //     setAlertState('error');
-        //     setAlert('Error updating table');
-        //     setAlertTimeout(3000)
-        //     return;
-        // }
-        const {bankSales, cashSales} = getOrderSales(sessionOrders)
+        const {
+            allSales, totalPendingSales, totalCancelledSales, totalCashChange
+        } = getSessionSales(sessionOrders)
         const openingCash = session.openingCash
         let netBalance = 0
-        if (bankBalance !== bankSales || cashBalance !== (cashSales + openingCash)){
-            netBalance = (bankBalance + cashBalance) - (bankSales + cashSales + openingCash)
-        }  
+        let allSalesAmount = 0
+        const salesDifference = {}
+        Object.keys(payPoints).forEach((payPoint)=>{
+            if (payPoint === 'cash'){
+                var expectedCash = Number(openingCash) + Number(allSales[payPoint] || 0) - Number(totalCashChange)
+                salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - expectedCash
+                allSalesAmount += (Number(allSales[payPoint] || 0) - Number(totalCashChange))
+            }else{
+                salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - Number(allSales[payPoint] || 0)
+                allSalesAmount += Number(allSales[payPoint] || 0)
+            }
+            netBalance += Number(salesDifference[payPoint])
+        })
+        netBalance += (-1 * Number(totalPendingSales || 0))
         const response = await fetchServer("POST", {
             database: company,
             collection: "POSSessions",
             prop: [{start: session.start},{
                 end: new Date().getTime(),
+                endedby: companyRecord.emailid,
                 active: false,
-                totalBankSales: bankBalance,
-                totalCashSales: cashBalance,
-                debtDue: netBalance < 0 ? Math.abs(netBalance) : 0,
-                unAccountedSales : netBalance > 0 ? netBalance : 0
+                orders: sessionOrders,
+                ...allSales,
+                totalCashChange,
+                totalSalesAmount: allSalesAmount,
+                totalPendingSales,
+                totalCancelledSales,
+                debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
+                unAccountedSales : (netBalance > 0) ? netBalance : 0
             }]
         }, "updateOneDoc", server);
     
@@ -277,6 +308,7 @@ const PointOfSales = () => {
             setAlertState('error');
             setAlert('Could not end session. Please check your internet connection!');
             setAlertTimeout(3000)
+            return
         } else {
             setAlertState('success');
             setAlert('Session Ended!');
@@ -284,8 +316,9 @@ const PointOfSales = () => {
             setEndSession(false)
             setSessions(null)
             setCurrSession(null)
-            setStartSession(true)
+            setCountedSales({})
             setAlertTimeout(5000)
+            return
         }
     }
 
@@ -310,12 +343,11 @@ const PointOfSales = () => {
             if (previousSession.length){
                 setCurrSession(previousSession[0])
                 if(new Date().getTime() >= getSessionEnd(previousSession[0].start)){                
-                    setStartSession(false)
+                    // setStartSession(false)
                     setSessionEnded(true)
-                    // setEndSession(true)
                 }else{
-                    setStartSession(false)
-                    setEndSession(false)
+                    // setStartSession(false)
+                    // setEndSession(false)
                 }
             } else {
                 let oldSession = null
@@ -324,7 +356,7 @@ const PointOfSales = () => {
                     setOpeningCash(oldSession.totalCashSales)
                 }
                 setStartSession(true)
-                setEndSession(false)
+                // setEndSession(false)
             }
         }else{
             if (!loadSession && !sessions.length){
@@ -358,7 +390,9 @@ const PointOfSales = () => {
      const loadInitialData = async () => {
         //abort previous request if it exists
         if (orderControllerRef.current) {
-            orderControllerRef.current.abort();
+            if (orderFetchCount>2){
+                orderControllerRef.current.abort();
+            }
         }
         if (tableControllerRef.current) {
             tableControllerRef.current.abort();
@@ -366,20 +400,20 @@ const PointOfSales = () => {
         if (productControllerRef.current) {
             productControllerRef.current.abort();
         }
-        if (sessionControllerRef.current) {
-            sessionControllerRef.current.abort();
-        }
+        // if (sessionControllerRef.current) {
+        //     sessionControllerRef.current.abort();
+        // }
         // Create new AbortControllers
         const orderController = new AbortController();
         const tableController = new AbortController();
         const productController = new AbortController();
-        const sessionController = new AbortController();
+        // const sessionController = new AbortController();
 
         // Store the controllers in refs
         orderControllerRef.current = orderController;
         tableControllerRef.current = tableController;
         productControllerRef.current = productController;
-        sessionControllerRef.current = sessionController;
+        // sessionControllerRef.current = sessionController;
 
          // Fetch tables
         const tablesResponse = await fetchServer("POST", {
@@ -396,8 +430,7 @@ const PointOfSales = () => {
         const sessionsResponse = await fetchServer("POST", {
             database: company,
             collection: "POSSessions",
-            prop: {'employee_id': companyRecord.emailid}
-        }, "getDocsDetails", server, sessionController.signal);
+        }, "getDocsDetails", server);
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
                 database: company,
@@ -408,6 +441,7 @@ const PointOfSales = () => {
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
                     if(ordersResponse.record?.length){
+                        setAllSessionOrders(ordersResponse.record)
                         setAllOrders(ordersResponse.record.filter((order) =>{
                             return (order.sessionId === curSession.i_d && order.handlerId === companyRecord.emailid)
                         })) 
@@ -439,6 +473,7 @@ const PointOfSales = () => {
                         }
                     }
                 }
+                setOrderFetchCount((prevCount)=>{return prevCount + 1})
             }else{
                 if (ordersResponse.mess !== 'Request aborted'){
                     setIsLive(false)
@@ -448,8 +483,11 @@ const PointOfSales = () => {
         }
 
         if (!tablesResponse.err){
-            setTables(tablesResponse.record)  
-            setIsLive(true)              
+            if (sessions?.length){
+                setTables(tablesResponse.record)  
+                setLoadSession(false)
+                setIsLive(true)              
+            }
         }else{
             if (tablesResponse.mess !== 'Request aborted'){
                 setIsLive(false)
@@ -459,7 +497,9 @@ const PointOfSales = () => {
 
         if(!productsResponse.err){
             setProducts(productsResponse.record)
-            setIsLive(true)
+            if (sessions?.length && tables.length){
+                setIsLive(true)
+            }
         }else{
             if (productsResponse.mess !== 'Request aborted'){
                 setIsLive(false)
@@ -468,9 +508,14 @@ const PointOfSales = () => {
         }
 
         if(!sessionsResponse.err){
-            setSessions(sessionsResponse.record)
-            setLoadSession(false)
-            setIsLive(true)
+            setSessions(sessionsResponse.record.filter((session)=>{
+                return session.employee_id === companyRecord.emailid
+            }))
+            setAllSessions(sessionsResponse.record)
+            if (tables?.length){
+                setLoadSession(false)
+                setIsLive(true)
+            }
             UpdateSessionState(sessionsResponse.record, false)
         }else{
             if (sessionsResponse.mess !== 'Request aborted'){
@@ -522,67 +567,69 @@ const PointOfSales = () => {
     };
     
     const handleTableSelect = async (table) => {
-        if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions'))) {
-            setAlertState('error');
-            setAlert('This table is not available. Still in use!');
-            setAlertTimeout(2000)
-            return;
-        }
-        setSelectedProduct(null)
-        // Fetch ALL orders for this table and session(removed status filter)
-        setAlertState('info');
-        setAlert('Loading table orders...');
-        setAlertTimeout(100000)
-        const orderFilter = { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
-        if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-            delete orderFilter.sessionId
-            delete orderFilter.handlerId
-        }
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Orders",
-            prop: {...orderFilter}
-        }, "getDocsDetails", server);
-        if (!response.err){
-            if (response.record.length > 0) {
-                setCurrentTable(table)
-                // Store all table orders in state
-                var ordersUpdate = response.record
-                if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-                    setTableOrders(ordersUpdate.filter((order)=>{
-                        var orderDate = '01/01/1970'
-                        if (order.createdAt){
-                            orderDate = order.createdAt
-                        }
-                        return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
-                    }))
-                }else{
-                    setTableOrders(response.record);
-                }
-                // Set the most recent pending order as active, or create new one if none pending
-                const pendingOrders = response.record.filter(order => order.status === 'pending');
-                const ordersNumber = pendingOrders.length
-                if (ordersNumber) {
-                    setCurrentOrder(pendingOrders[0]);
-                } else {
-                    createNewOrder(table);
-                }
-                setActiveScreen('order');
-                setAlertState('info');
-                setAlert('Loaded table orders...');
-                setAlertTimeout(50)
-            } else {
-                setCurrentTable(table);
-                createNewOrder(table);
-                setActiveScreen('order');
-                setAlertState('info');
-                setAlert('Loaded table orders...');
-                setAlertTimeout(50)
+        if (!loadSession && !startSession && !endSession){
+            if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions'))) {
+                setAlertState('error');
+                setAlert('This table is not available. Still in use!');
+                setAlertTimeout(2000)
+                return;
             }
-        }else{
-            setAlertState('info')
-            setAlert('Slow Network. Could Not Load Table Orders!')
-            setAlertTimeout(3000)
+            setSelectedProduct(null)
+            // Fetch ALL orders for this table and session(removed status filter)
+            setAlertState('info');
+            setAlert('Loading table orders...');
+            setAlertTimeout(100000)
+            const orderFilter = { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
+            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+                delete orderFilter.sessionId
+                delete orderFilter.handlerId
+            }
+            const response = await fetchServer("POST", {
+                database: company,
+                collection: "Orders",
+                prop: {...orderFilter}
+            }, "getDocsDetails", server);
+            if (!response.err){
+                if (response.record.length > 0) {
+                    setCurrentTable(table)
+                    // Store all table orders in state
+                    var ordersUpdate = response.record
+                    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+                        setTableOrders(ordersUpdate.filter((order)=>{
+                            var orderDate = '01/01/1970'
+                            if (order.createdAt){
+                                orderDate = order.createdAt
+                            }
+                            return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
+                        }))
+                    }else{
+                        setTableOrders(response.record);
+                    }
+                    // Set the most recent pending order as active, or create new one if none pending
+                    const pendingOrders = response.record.filter(order => order.status === 'pending');
+                    const ordersNumber = pendingOrders.length
+                    if (ordersNumber) {
+                        setCurrentOrder(pendingOrders[0]);
+                    } else {
+                        createNewOrder(table);
+                    }
+                    setActiveScreen('order');
+                    setAlertState('info');
+                    setAlert('Loaded table orders...');
+                    setAlertTimeout(50)
+                } else {
+                    setCurrentTable(table);
+                    createNewOrder(table);
+                    setActiveScreen('order');
+                    setAlertState('info');
+                    setAlert('Loaded table orders...');
+                    setAlertTimeout(50)
+                }
+            }else{
+                setAlertState('info')
+                setAlert('Slow Network. Could Not Load Table Orders!')
+                setAlertTimeout(3000)
+            }
         }
     };
 
@@ -904,18 +951,68 @@ const PointOfSales = () => {
     // 8. UI Rendering Functions
     // =========================================
     const handleStartSession = async () => {
-            setLoading(true);
-            await createSession();
-            setLoading(false);
-        };
+        if (companyRecord.status === 'admin' || companyRecord.permissions.includes('access_pos_sessions')){
+            if (sessionUser!==null){
+                setWrh('')
+                setLoading(true);
+                await createSession(sessionUser);
+                setLoading(false);
+            }else{
 
-        const handleEndSession = async () => {
-            setLoading(true);
-            await stopSession(curSession, allOrders);
-            setLoading(false);
-        };
+            }
+        }else{
+            setAlertState('info')
+            setAlert('You do not have access to this feature')
+            setAlertTimeout(5000)
+            return
+        }
+    };
+
+    const handleEndSession = async () => {
+        if (sessionUser !== null) {            
+            if (allSessionOrders.length){
+                const allUserOrders = allSessionOrders.filter((order) =>{
+                    return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
+                })
+                setLoading(true);
+                await stopSession(sessionUser.curSession, allUserOrders);
+                setLoading(false);
+                setPosSalesDifference({})
+                setCountedSales({})
+            }else{
+                setAlertState('info')
+                setAlert('Could not load orders. Please check your connection and try again.')
+                setAlertTimeout(5000)
+                setLoading(false)
+                return
+            }
+        }
+    };
     const renderSessionEntry = () => {
-        const {bankSales, cashSales} = getOrderSales(allOrders)
+
+        const allUserOrders = allSessionOrders.filter((order) =>{
+            if (sessionUser!==null && sessionUser?.curSession){
+                return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
+            }else{
+                return ((order.sessionId === curSession.i_d) && (order.handlerId === companyRecord.emailid))
+            }
+        })        
+
+        const {
+            allSales, totalPendingSales,
+            totalCancelledSales, totalCashChange
+        } = getSessionSales(allUserOrders)
+
+        const handleCountedSalesEntry = (e)=>{
+            const {name, value} = e.target
+
+            setCountedSales((countedSales)=>{
+                return {...countedSales, [name]: value}
+            })
+            setPosSalesDifference((posSalesDifference)=>{
+                return {...posSalesDifference, [name] : (Number(value) - Number(allSales[name] || 0))}
+            })
+        }
 
         return (
             <>
@@ -927,7 +1024,22 @@ const PointOfSales = () => {
                 {startSession && (
                     <div className='openingsession'>
                         <div className="session-entry">
-                            <h2>Start New Session</h2>
+                            <div className="modal-header">
+                                <h2>Start Session {
+                                    [''].map((args)=>{
+                                        const userProfile = employees.find((employee)=>{return (employee.i_d === ((sessionUser === null) ? curSession.employee_id : sessionUser.profile.emailid))})
+                                        return (userProfile ? <span>{`(${userProfile.firstName})`}</span> : <span>(Admin)</span>)
+                                    })
+                                }</h2>
+                                {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_sessions')) && 
+                                    <button 
+                                        onClick={() => {
+                                            setStartSession(false)
+                                            setSessionUser(null)
+                                        }}
+                                    >×</button>
+                                }
+                            </div>
                             <div className="form-group">
                                 <label>Opening Cash</label>
                                 <input 
@@ -970,53 +1082,129 @@ const PointOfSales = () => {
                 {endSession && (
                     <div className='closingsession'>
                         <div className="session-entry">
-                            <h2>End Session</h2>
+                            <div className="modal-header">
+                                <h2>End Session {
+                                    [''].map((args)=>{
+                                        const userProfile = employees.find((employee)=>{return (employee.i_d === ((sessionUser === null) ? curSession.employee_id : sessionUser.profile.emailid))})
+                                        return (userProfile ? <span>{`(${userProfile.firstName})`}</span> : <span>(Admin)</span>)
+                                    })
+                                }</h2>
+                                <button 
+                                    onClick={() => {
+                                        setEndSession(false)
+                                        setSessionUser(null)
+                                        setCountedSales({})
+                                        setPosSalesDifference({})
+                                    }}
+                                >×</button>
+                            </div>
                             <div className="form-group">
                                 <label>Total Bank Sales</label>
-                                <input 
-                                    type="number" 
-                                    value={bankSales || 0} 
-                                    readOnly
-                                />
+                                {Object.keys(allSales).map((payPoint) => {
+                                    if (payPoint !== 'cash'){
+                                        return (
+                                            <div key={payPoint}>
+                                                <label>{payPoint.toUpperCase()}</label>
+                                                <div className='session-entry-inputs'>
+                                                    <input 
+                                                        style={{cursor:'not-allowed'}}
+                                                        type="number" 
+                                                        value={allSales[payPoint] || 0} 
+                                                        disabled={true}
+                                                        readOnly
+                                                    />
+                                                    <span>{'->'}</span>
+                                                    <input 
+                                                        type="number" 
+                                                        name={payPoint}
+                                                        value={countedSales[payPoint]} 
+                                                        placeholder={'Counted Amount'}
+                                                        onChange={(e) => handleCountedSalesEntry(e)} 
+                                                        disabled={loading}
+                                                    />
+                                                </div>
+                                                <input 
+                                                    style={{cursor:'not-allowed'}}
+                                                    type="number" 
+                                                    value={posSalesDifference[payPoint] || 0} 
+                                                    disabled={true}                                                    
+                                                    readOnly
+                                                />
+                                            </div>
+                                        );
+                                    }
+                                })}
                             </div>
                             <div className="form-group">
                                 <label>Total Cash Sales</label>
+                                <div>
+                                    <input 
+                                        style={{cursor:'not-allowed'}}
+                                        type="number" 
+                                        value={allSales['cash'] || 0} 
+                                        disabled={true}
+                                        readOnly
+                                    />
+                                    <span>{'->'}</span>
+                                    <input 
+                                        type="number" 
+                                        value={countedSales['cash']} 
+                                        name='cash'
+                                        placeholder={'Counted Amount'}
+                                        onChange={(e) => handleCountedSalesEntry(e)} 
+                                        disabled={loading}
+                                    />
+                                </div>
                                 <input 
+                                    style={{cursor:'not-allowed'}}
                                     type="number" 
-                                    value={cashSales || 0} 
+                                    value={posSalesDifference['cash'] || 0} 
+                                    disabled={true}
                                     readOnly
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Enter Bank Balance</label>
+                                <label>Opening Cash</label>
                                 <input 
+                                    style={{cursor:'not-allowed'}}
                                     type="number" 
-                                    value={bankBalance} 
-                                    onChange={(e) => setBankBalance(parseFloat(e.target.value) || 0)} 
-                                    disabled={loading}
+                                    value={(sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash} 
+                                    readOnly
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Enter Cash Balance</label>
+                                <label>Total Cash Change</label>
                                 <input 
+                                    style={{cursor:'not-allowed'}}
                                     type="number" 
-                                    value={cashBalance} 
-                                    onChange={(e) => setCashBalance(parseFloat(e.target.value) || 0)} 
-                                    disabled={loading}
+                                    value={totalCashChange} 
+                                    readOnly
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Actual Session Balance</label>
+                                <label>Total Pending Sales</label>
                                 <input 
+                                    style={{cursor:'not-allowed'}}
                                     type="number" 
-                                    value={(bankBalance + cashBalance).toFixed(2)} 
+                                    value={totalPendingSales} 
+                                    readOnly
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Total Cancelled Sales</label>
+                                <input 
+                                    style={{cursor:'not-allowed'}}
+                                    type="number" 
+                                    value={totalCancelledSales} 
                                     readOnly
                                 />
                             </div>
                             <div className="session-actions">
                                 <button 
                                     className="session-btn end" 
-                                    onClick={handleEndSession}
+                                    onClick={()=>{
+                                        handleEndSession()
+                                    }}
                                     disabled={loading}
                                 >
                                     {loading ? 'Ending...' : 'End Session'}
@@ -1146,7 +1334,7 @@ const PointOfSales = () => {
                                 <div className={'live-nav'}>
                                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
                                         className="action-btn"
-                                        onClick={() => setShowSessions(true)}
+                                        onClick={() => setViewSessions(true)}
                                     >
                                         All Sessions
                                     </button>}
@@ -1253,80 +1441,110 @@ const PointOfSales = () => {
     // 11. Main Render
     // =========================================
     return (
-        <div className="pos-container">
+        <div className="pos-container" ref={posContainerRef}>
             {renderSessionEntry()}
-            {activeScreen === 'order' && (
-                <div className="pos-mini-header">
-                    <div className="header-info">
-                        <span className="table-name">{currentOrder.tableName}</span>
-                        {currentOrder.orderNumber && (
-                            <span className="order-number">#{currentOrder.orderNumber}</span>
-                        )}
-                        {
-                            <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
-                        }
-                    </div>
-                    <div className="header-actions">
-                        
-                        <button 
-                            className="action-btn"
-                            disabled={placingOrder || makingPayment || currentTable.status === 'unavailable'}
-                            onClick={() => createNewOrder({ _id: currentOrder.tableId, name: currentOrder.tableName })}
-                        >
-                            New Order
-                        </button>
-                        <button 
-                            className="action-btn"
-                            disabled={placingOrder || makingPayment}
-                            onClick={() => setShowOrdersModal(true)}
-                        >
-                            All Orders
-                        </button>
-                        <button 
-                            className="action-btn"
-                            disabled={placingOrder || makingPayment}
-                            onClick={() => {
-                                setTableOrders([])
-                                setActiveScreen('home')
-                                setCurrentTable(null)
-                                setCurrentOrder(null)
-                                setPlacingOrder(false)
-                                setMakingPayment(false)
-                            }}
-                        >
-                            Back to Tables
-                        </button>
-                    </div>
-                </div>
-            )}
-            <div className="pos-content">
-                {renderScreen()}
-            </div>
-            {showNewTableModal && <TableModal />}
-            {showOrdersModal && 
-            <OrdersModal 
-                tableOrders={tableOrders}
-                handleOrderSelect={handleOrderSelect}
-                setShowOrdersModal={setShowOrdersModal}
-                tables={tables}
-                wrh={wrh}
-            />}
-            {showPaymentModal && 
-            <PaymentModal 
-                amount={amount}
-                setAmount={setAmount}
-                currentOrder={currentOrder}
-                method={method}
-                setMethod={setMethod}
-                paymentDetails={paymentDetails}
-                setPaymentDetails={setPaymentDetails}
-                setShowPaymentModal={setShowPaymentModal}
-                handlePayment={handlePayment}
-                payPoints={payPoints}
-                setAlert={setAlert}
+            {viewSesions ? 
+            <POSDashboard
+                setViewSessions={setViewSessions}
+                setStartSession={setStartSession}
+                setEndSession={setEndSession}
+                sessions={sessions}
+                allSessions={allSessions}
+                allOrders={allOrders}
+                setSessionUser={setSessionUser}
+                companyRecord = {companyRecord}
+                employees={employees}
+                profiles={profiles}
+                isLive={isLive}
+                liveErrorMessages={liveErrorMessages}
+                sessionEnded={sessionEnded}
+                getSessionEnd = {getSessionEnd}
+                setWrh={setWrh}
+                posWrhAccess={posWrhAccess}
+                allSessionOrders={allSessionOrders}
+                getSessionSales={getSessionSales}
                 setAlertState={setAlertState}
+                setAlert={setAlert}
                 setAlertTimeout={setAlertTimeout}
-            />}
+            />:
+            <div>                
+                {activeScreen === 'order' && (
+                    <div className="pos-mini-header">
+                        <div className="header-info">
+                            <span className="table-name">{currentOrder.tableName}</span>
+                            {currentOrder.orderNumber && (
+                                <span className="order-number">#{currentOrder.orderNumber}</span>
+                            )}
+                            {
+                                <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
+                            }
+                        </div>
+                        <div className="header-actions">
+                            
+                            <button 
+                                className="action-btn"
+                                disabled={placingOrder || makingPayment || currentTable.status === 'unavailable'}
+                                onClick={() => createNewOrder({ _id: currentOrder.tableId, name: currentOrder.tableName })}
+                            >
+                                New Order
+                            </button>
+                            <button 
+                                className="action-btn"
+                                disabled={placingOrder || makingPayment}
+                                onClick={() => setShowOrdersModal(true)}
+                            >
+                                All Orders
+                            </button>
+                            <button 
+                                className="action-btn"
+                                disabled={placingOrder || makingPayment}
+                                onClick={() => {
+                                    setTableOrders([])
+                                    setActiveScreen('home')
+                                    setCurrentTable(null)
+                                    setCurrentOrder(null)
+                                    setPlacingOrder(false)
+                                    setMakingPayment(false)
+                                }}
+                            >
+                                Back to Tables
+                            </button>
+                        </div>
+                    </div>
+                )}
+                <div className="pos-content">
+                    {renderScreen()}
+                </div>
+                {showNewTableModal && <TableModal />}
+                {showOrdersModal && 
+                <OrdersModal 
+                    tableOrders={tableOrders}
+                    handleOrderSelect={handleOrderSelect}
+                    setShowOrdersModal={setShowOrdersModal}
+                    tables={tables}
+                    wrh={wrh}
+                    currentOrder={currentOrder}
+                    setCurrentOrder={setCurrentOrder}
+                    createNewOrder={createNewOrder}
+                />}
+                {showPaymentModal && 
+                <PaymentModal 
+                    amount={amount}
+                    setAmount={setAmount}
+                    currentOrder={currentOrder}
+                    method={method}
+                    setMethod={setMethod}
+                    paymentDetails={paymentDetails}
+                    setPaymentDetails={setPaymentDetails}
+                    setShowPaymentModal={setShowPaymentModal}
+                    handlePayment={handlePayment}
+                    payPoints={payPoints}
+                    setAlert={setAlert}
+                    setAlertState={setAlertState}
+                    setAlertTimeout={setAlertTimeout}
+                />}
+            </div>
+            }
         </div>
     );
 };
@@ -1355,7 +1573,7 @@ const PaymentModal = ({
         if (Number(currentOrder.totalSales)>paymentSum){
             setAlertState('info')
             setAlert('Insufficient payment amount')
-            // setAlertTimeout(3000)
+            setAlertTimeout(3000)
         }else{
             handlePayment()
         }
@@ -1468,45 +1686,59 @@ const PaymentModal = ({
         </div>
     );
 };
-const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, tables }) => {
+const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, 
+    tables, currentOrder, setCurrentOrder, createNewOrder 
+}) => {
     const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
 
-    const handleDeleteOrder = async (order) => {
-        const confirmDelete = window.confirm(`Are you sure you want to delete Order #${order.orderNumber}?`);
-        if (!confirmDelete) return;
-        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [
-                ...prevTable.activeTables.filter((tableOrder)=>{return (
-                    tableOrder.tableId !== order.tableId && 
-                    tableOrder.sessionId !== order.sessionId &&
-                    tableOrder.orderId !== order.orderNumber
-                )})
-            ]}]
-        }, "updateOneDoc", server)
-        if (resp.err){
+    const handleCancelOrder = async (order) => {
+        if (order.delivery !== 'completed'){
+            const cancelOrder = window.confirm(`Are you sure you want to Cancel Order #${order.orderNumber}?`);
+            if (!cancelOrder) return;
+            setAlertState('info')
+            setAlert('Cancelling Order...')
+            setAlertTimeout(1000000)
+            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':wrh}, {activeTables: [
+                    ...prevTable.activeTables.filter((tableOrder)=>{return (
+                        tableOrder.tableId !== order.tableId && 
+                        tableOrder.sessionId !== order.sessionId &&
+                        tableOrder.orderId !== order.orderNumber
+                    )})
+                ]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                return;
+            }
+            const response = await fetchServer("POST", {
+                database: company,
+                collection: "Orders",
+                prop: [{orderNumber: order.orderNumber}, {status: 'cancelled', cancelledBy: companyRecord.emailid}]
+            }, "updateOneDoc", server);
+    
+            if (response.err) {
+                setAlertState('error');
+                setAlert('Error cancelling order');
+                setAlertTimeout(3000);
+            } else {
+                setAlertState('success');
+                setAlert('Order cancelled successfully');
+                setAlertTimeout(2000);
+                if (currentOrder.orderNumber === order.orderNumber){
+                    createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
+                }
+                setShowOrdersModal(false); // Close modal after deletion
+            }
+        }else{
             setAlertState('error');
-            setAlert('Error updating table');
+            setAlert('Please Cancel Delivery First Before Cancelling Order!');
             setAlertTimeout(3000)
-            return;
-        }
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Orders",
-            prop: [{orderNumber: order.orderNumber}, { status: 'cancelled' }]
-        }, "updateOneDoc", server);
-
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error cancelling order');
-            setAlertTimeout(3000);
-        } else {
-            setAlertState('success');
-            setAlert('Order cancelled successfully');
-            setAlertTimeout(2000);
-            setShowOrdersModal(false); // Close modal after deletion
         }
     };
 
@@ -1535,7 +1767,7 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, 
                             !['cancelled','completed'].includes(order.status) && (
                                 <button 
                                     className="cancel-order-btn"
-                                    onClick={() => handleDeleteOrder(order)}
+                                    onClick={() => handleCancelOrder(order)}
                                     title="Cancel Order"
                                 >
                                     🗑️
@@ -1548,3 +1780,127 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, 
         </div>
     );
 };
+
+const POSDashboard = ({sessions, profiles, employees, companyRecord, 
+    isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
+    setViewSessions, allSessions, setSessionUser, getSessionEnd, setWrh, posWrhAccess,
+    allSessionOrders, getSessionSales, setAlertState, setAlert, setAlertTimeout
+})=>{
+
+    useEffect(()=>{
+    },[profiles])
+    return (
+        <>
+            <div className='pos-sessions'>
+                <div className='pos-sessions-nav'>
+                    <div className={'live-nav'}>
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
+                            className="action-btn"
+                            onClick={() => {    
+                                var wrhAccess = Object.keys(posWrhAccess).filter((wrh)=>{
+                                    return posWrhAccess[wrh]
+                                })
+                                setWrh(wrhAccess[0])
+                                setViewSessions(false)                                
+                            }}
+                        >
+                            POS Tables
+                        </button>}
+                        <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
+                    </div>
+                </div>
+                <div className='pos-sessions-view'>
+                    <div className='pos-sessions-list'>                        
+                        {profiles.map((profile)=>{
+                            if(profile.permissions.includes('pos') || profile.permissions.includes('all')){                                
+                                const {firstName, lastName} = ((profile.status === 'admin')? {
+                                    firstName: 'Admin', lastName: ''
+                                } : employees.find(employee => {return employee.i_d === profile.emailid}))
+                                const employeeSessions = allSessions.filter(session => {
+                                    return (
+                                        session.employee_id === profile.emailid
+                                    )
+                                })
+                                var employeeSession = null
+                                var sessionLive = false
+                                if (employeeSessions.length > 0){
+                                    employeeSession = employeeSessions[employeeSessions.length-1]
+                                    if ((new Date().getTime()) >= getSessionEnd(employeeSession.start)){
+                                        sessionLive = false
+                                    }else{
+                                        sessionLive = true
+                                    }
+                                }
+                                return (
+                                    <div className='pos-sessions-card' key={profile.emailid}>
+                                        <span className='pos-sessions-card-name'>{`${firstName} ${lastName}`}</span>
+                                        <span className='pos-sessions-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
+                                        <div>
+                                            <h4 className='pos-sessions-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
+                                            <div 
+                                                className='pos-sessions-card-action'
+                                                onClick={()=>{   
+                                                    var viewModal = true
+                                                    const validateSession = ()=>{
+                                                        const allUserOrders = allSessionOrders.filter((order) =>{
+                                                            return ((order.sessionId === employeeSession.i_d) && (order.handlerId === profile.emailid))                                                        
+                                                        })
+                                                        const {
+                                                            totalUnattendedSales
+                                                        } = getSessionSales(allUserOrders)  
+                                                        if (totalUnattendedSales){
+                                                            viewModal = false
+                                                            setAlertState('error')
+                                                            setAlert('You Have Incomplete Sales Pending, it was neither delivered nor paid. Please resolve before proceeding!')
+                                                            setAlertTimeout(5000)
+                                                        }                                               
+                                                    }
+                                                    if (sessionLive){
+                                                        validateSession()
+                                                    }else{
+                                                        if(![null, undefined].includes(employeeSession)){
+                                                            if (!employeeSession.end){
+                                                                validateSession()
+                                                            }
+                                                        }
+                                                    }
+                                                    if (viewModal){
+                                                        if (sessionLive){
+                                                            setSessionUser({
+                                                                profile: profile,
+                                                                curSession: employeeSession
+                                                            })
+                                                            setEndSession(true)
+                                                        }else{
+                                                            setSessionUser({
+                                                                profile: profile,
+                                                            })
+                                                            setWrh('')
+                                                            if ([null, undefined].includes(employeeSession)){
+                                                                setStartSession(true)
+                                                            }else{
+                                                                if (employeeSession.end){
+                                                                    setStartSession(true)
+                                                                }else{
+                                                                    setSessionUser({
+                                                                        profile: profile,
+                                                                        curSession: employeeSession
+                                                                    })
+                                                                    setEndSession(true)
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }}
+                                            >{sessionLive? 'End Session' : ([null, undefined].includes(employeeSession) ? 'Start Session' : (employeeSession.end ? 'Start Session' : 'End Session'))}</div>
+                                        </div>
+                                    </div>
+                                )
+                            }
+                        })}
+                    </div>
+                </div>
+            </div>
+        </>
+    )
+}

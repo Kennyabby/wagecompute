@@ -19,7 +19,10 @@ import { RiSettings2Fill } from "react-icons/ri";
 import { MdLogout } from "react-icons/md";
 
 const SideNav = ()=>{
-    const {server, fetchServer, company, companyRecord} = useContext(ContextProvider)
+    const {
+        server, fetchServer, company, companyRecord,
+        setAlertState, setAlert, setAlertTimeout,
+    } = useContext(ContextProvider)
     const [companyName, setCompanyName] = useState('....') 
     const [curPath, setCurPath] = useState('')
     const [logStatus, setLogStatus] = useState('Log Out')
@@ -38,6 +41,9 @@ const SideNav = ()=>{
     const handleNav = (e)=>{
         const name = e.target.getAttribute('name')
         if(name){
+          setAlertState('success')
+          setAlert('.')
+          setAlertTimeout(1)
           Navigate('/'+name)  
         }
     }
