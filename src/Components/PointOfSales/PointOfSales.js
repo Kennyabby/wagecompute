@@ -446,7 +446,6 @@ const PointOfSales = () => {
             const ordersResponse = await fetchServer("POST", {
                 database: company,
                 collection: "Orders",
-                prop: {}
             }, "getDocsDetails", server, orderController.signal);
             if(!ordersResponse.err){
                 setIsLive(true)
@@ -1859,18 +1858,25 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                                                 onClick={()=>{   
                                                     var viewModal = true
                                                     const validateSession = ()=>{
-                                                        const allUserOrders = allSessionOrders.filter((order) =>{
-                                                            return ((order.sessionId === employeeSession.i_d) && (order.handlerId === profile.emailid))                                                        
-                                                        })
-                                                        const {
-                                                            totalUnattendedSales
-                                                        } = getSessionSales(allUserOrders)  
-                                                        if (totalUnattendedSales){
+                                                        if (!allSessionOrders.length){
                                                             viewModal = false
-                                                            setAlertState('error')
-                                                            setAlert('You Have Incomplete Sales Pending, it was neither delivered nor paid. Please resolve before proceeding!')
-                                                            setAlertTimeout(5000)
-                                                        }                                               
+                                                            setAlertState('info')
+                                                            setAlert('Could not load Orders. Please try again in a few moment.')
+                                                            setAlertTimeout(3000)                                                            
+                                                        }else{
+                                                            const allUserOrders = allSessionOrders.filter((order) =>{
+                                                                return ((order.sessionId === employeeSession.i_d) && (order.handlerId === profile.emailid))                                                        
+                                                            })
+                                                            const {
+                                                                totalUnattendedSales
+                                                            } = getSessionSales(allUserOrders)  
+                                                            if (totalUnattendedSales){
+                                                                viewModal = false
+                                                                setAlertState('error')
+                                                                setAlert('You Have Incomplete Sales Pending, it was neither delivered nor paid. Please resolve before proceeding!')
+                                                                setAlertTimeout(5000)
+                                                            }                                               
+                                                        }
                                                     }
                                                     if (sessionLive){
                                                         validateSession()
