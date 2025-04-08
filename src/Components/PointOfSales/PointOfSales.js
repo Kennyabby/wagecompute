@@ -38,11 +38,11 @@ const PointOfSales = () => {
     const [viewSesions, setViewSessions] = useState(false);
     const [loadSession, setLoadSession] = useState(true);
     const posContainerRef = useRef(null)
-    const orderControllerRef = useRef(null)
-    const tableControllerRef = useRef(null)
-    const productControllerRef = useRef(null)
     const sessionControllerRef = useRef(null)
-    const [orderFetchCount, setOrderFetchCount] = useState(0)
+    const tableControllerRef = useRef(null)
+    const orderControllerRef = useRef(null)
+    const productControllerRef = useRef(null)
+    const [tableFetchCount, setTableFetchCount] = useState(0)
     useEffect(()=>{
         storePath('pos')  
     },[storePath])
@@ -222,9 +222,10 @@ const PointOfSales = () => {
     const createSession = async (sessionUser)=>{
         if (wrh){
             const newSession = {
-                employee_id: (sessionUser.profile).emailid,
+                employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
                 i_d: new Date().getTime(),
                 start: new Date().getTime(),
+                startedBy: companyRecord.emailid,
                 end: null,
                 active: true,            
                 totalBankSales: 0,
@@ -247,14 +248,22 @@ const PointOfSales = () => {
                 return
             } else {
                 setAlertState('success');
-                setAlert('Welcome Back!');
+                if (![null, undefined].includes(sessionUser)){
+                    setAlert('User Session Started Successfully!');
+                }else{
+                    setAlert('Welcome Back!');
+                }
                 setAlertTimeout(2000)
                 setStartSession(false)
                 setCurrSession(newSession)
                 setOpeningCash(0)
                 setAllSessions((allSessions)=>{return [...allSessions, newSession]})
-                if (sessionUser.profile.emailid !== companyRecord.emailid){
-                    setSessions([newSession])                    
+                if (![null, undefined].includes(sessionUser)){
+                    if (sessionUser.profile.emailid === companyRecord.emailid){
+                        setSessions([newSession])                    
+                    }
+                }else{
+                    setSessions([newSession]) 
                 }
                 return
             }
@@ -346,7 +355,8 @@ const PointOfSales = () => {
                     // setStartSession(false)
                     setSessionEnded(true)
                 }else{
-                    // setStartSession(false)
+                    setStartSession(false)
+                    setSessionEnded(false)
                     // setEndSession(false)
                 }
             } else {
@@ -361,13 +371,13 @@ const PointOfSales = () => {
         }else{
             if (!loadSession && !sessions.length){
                 setStartSession(true)
-                setEndSession(false)
+                // setEndSession(false)
             }
         }
     } 
     useState(()=>{
         UpdateSessionState(sessions, loadSession)
-    },[loadSession])
+    },[loadSession,sessions])
     // =========================================
     // 3. Data Loading Functions
     // =========================================
@@ -390,36 +400,37 @@ const PointOfSales = () => {
      const loadInitialData = async () => {
         //abort previous request if it exists
         if (orderControllerRef.current) {
-            if (orderFetchCount>2){
-                orderControllerRef.current.abort();
-            }
-        }
-        if (tableControllerRef.current) {
-            tableControllerRef.current.abort();
+            orderControllerRef.current.abort();            
         }
         if (productControllerRef.current) {
             productControllerRef.current.abort();
         }
+        // if (tableControllerRef.current) {
+        //     if (tableFetchCount>2){
+        //         tableControllerRef.current.abort();
+        //     }
+        // }
+       
         // if (sessionControllerRef.current) {
         //     sessionControllerRef.current.abort();
         // }
         // Create new AbortControllers
         const orderController = new AbortController();
-        const tableController = new AbortController();
         const productController = new AbortController();
+        // const tableController = new AbortController();
         // const sessionController = new AbortController();
 
         // Store the controllers in refs
         orderControllerRef.current = orderController;
-        tableControllerRef.current = tableController;
         productControllerRef.current = productController;
+        // tableControllerRef.current = tableController;
         // sessionControllerRef.current = sessionController;
 
          // Fetch tables
         const tablesResponse = await fetchServer("POST", {
             database: company,
             collection: "Tables"
-        }, "getDocsDetails", server, tableController.signal);
+        }, "getDocsDetails", server);
 
         // Fetch products
         const productsResponse = await fetchServer("POST", {
@@ -472,8 +483,7 @@ const PointOfSales = () => {
                             }
                         }
                     }
-                }
-                setOrderFetchCount((prevCount)=>{return prevCount + 1})
+                }                
             }else{
                 if (ordersResponse.mess !== 'Request aborted'){
                     setIsLive(false)
@@ -483,10 +493,12 @@ const PointOfSales = () => {
         }
 
         if (!tablesResponse.err){
-            if (sessions?.length){
+            if (sessions?.length){                
                 setTables(tablesResponse.record)  
                 setLoadSession(false)
-                setIsLive(true)              
+                setIsLive(true)       
+                UpdateSessionState(sessions, false)   
+                // setTableFetchCount((prevCount)=>{return prevCount + 1})    
             }
         }else{
             if (tablesResponse.mess !== 'Request aborted'){
@@ -499,6 +511,8 @@ const PointOfSales = () => {
             setProducts(productsResponse.record)
             if (sessions?.length && tables.length){
                 setIsLive(true)
+                setLoadSession(false)
+                UpdateSessionState(sessions, false)
             }
         }else{
             if (productsResponse.mess !== 'Request aborted'){
@@ -508,15 +522,16 @@ const PointOfSales = () => {
         }
 
         if(!sessionsResponse.err){
-            setSessions(sessionsResponse.record.filter((session)=>{
+            const thisSessions = sessionsResponse.record.filter((session)=>{
                 return session.employee_id === companyRecord.emailid
-            }))
+            })
+            setSessions(thisSessions)
             setAllSessions(sessionsResponse.record)
             if (tables?.length){
                 setLoadSession(false)
                 setIsLive(true)
+                UpdateSessionState(thisSessions, false)
             }
-            UpdateSessionState(sessionsResponse.record, false)
         }else{
             if (sessionsResponse.mess !== 'Request aborted'){
                 setIsLive(false)
@@ -958,12 +973,14 @@ const PointOfSales = () => {
                 await createSession(sessionUser);
                 setLoading(false);
             }else{
-
+                setLoading(true);
+                await createSession();
+                setLoading(false);
             }
         }else{
-            setAlertState('info')
-            setAlert('You do not have access to this feature')
-            setAlertTimeout(5000)
+            setAlertState('error')
+            setAlert('You do not have access to this feature. Get your admin to start your session!')
+            setAlertTimeout(7000)
             return
         }
     };
@@ -1027,8 +1044,8 @@ const PointOfSales = () => {
                             <div className="modal-header">
                                 <h2>Start Session {
                                     [''].map((args)=>{
-                                        const userProfile = employees.find((employee)=>{return (employee.i_d === ((sessionUser === null) ? curSession.employee_id : sessionUser.profile.emailid))})
-                                        return (userProfile ? <span>{`(${userProfile.firstName})`}</span> : <span>(Admin)</span>)
+                                        const userProfile = employees.find((employee)=>{return (employee.i_d === ((sessionUser === null) ? curSession?.employee_id : sessionUser.profile.emailid))})
+                                        return (userProfile ? <span>{`(${userProfile.firstName})`}</span> : <span>{(curSession === null) ? '' : `(Admin)`}</span>)
                                     })
                                 }</h2>
                                 {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_sessions')) && 
