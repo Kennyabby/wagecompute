@@ -227,9 +227,7 @@ const PointOfSales = () => {
                 start: new Date().getTime(),
                 startedBy: companyRecord.emailid,
                 end: null,
-                active: true,            
-                totalBankSales: 0,
-                totalCashSales: 0,
+                active: true, 
                 openingCash: openingCash,
                 debtDue: 0
             }
@@ -265,6 +263,7 @@ const PointOfSales = () => {
                 }else{
                     setSessions([newSession]) 
                 }
+                setSessionUser(null)
                 return
             }
         }else{
@@ -295,10 +294,7 @@ const PointOfSales = () => {
             netBalance += Number(salesDifference[payPoint])
         })
         netBalance += (-1 * Number(totalPendingSales || 0))
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "POSSessions",
-            prop: [{start: session.start},{
+        const sessionUpdate = {
                 end: new Date().getTime(),
                 endedby: companyRecord.emailid,
                 active: false,
@@ -310,6 +306,12 @@ const PointOfSales = () => {
                 totalCancelledSales,
                 debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
                 unAccountedSales : (netBalance > 0) ? netBalance : 0
+        }
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "POSSessions",
+            prop: [{start: session.start},{
+                ...sessionUpdate
             }]
         }, "updateOneDoc", server);
     
@@ -320,12 +322,16 @@ const PointOfSales = () => {
             return
         } else {
             setAlertState('success');
-            setAlert('Session Ended!');
+            if (![null, undefined].includes(sessionUser)){
+                setAlert('User Session Ended Successfully!');
+            }else{
+                setAlert('Session Ended!');
+            }
             setAlertTimeout(3000)
             setEndSession(false)
-            setSessions(null)
-            setCurrSession(null)
+            setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
             setCountedSales({})
+            setSessionUser(null)
             setAlertTimeout(5000)
             return
         }
@@ -348,7 +354,7 @@ const PointOfSales = () => {
     };
     const UpdateSessionState = (sessions, loadSession)=>{
         if (!loadSession && sessions?.length){            
-            const previousSession = sessions.filter((session)=> session.active)
+            const previousSession = sessions.filter((session)=> session.active)            
             if (previousSession.length){
                 setCurrSession(previousSession[0])
                 if(new Date().getTime() >= getSessionEnd(previousSession[0].start)){                
@@ -363,9 +369,13 @@ const PointOfSales = () => {
                 let oldSession = null
                 if (sessions.length){
                     oldSession = sessions[sessions.length - 1]
-                    setOpeningCash(oldSession.totalCashSales)
+                    setCurrSession(oldSession)
+                    setSessionEnded(true)
+                    setOpeningCash((Number(oldSession.openingCash || 0) + Number(oldSession.cash || 0) - Number(oldSession.totalCashChange || 0)))
                 }
-                setStartSession(true)
+                if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_sessions')){
+                    setStartSession(true)
+                }
                 // setEndSession(false)
             }
         }else{
@@ -866,7 +876,6 @@ const PointOfSales = () => {
             setMakingPayment(false)
             return
         } else {
-            printReceipt(newOrder);
             setMakingPayment(false)
             setAlertState('success');
             setAlert('Payment processed successfully');
@@ -874,6 +883,7 @@ const PointOfSales = () => {
             setShowPaymentModal(false);
             createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
             setPaymentDetails({...payPoints})
+            printReceipt(newOrder);
         }
     };
 
@@ -994,7 +1004,6 @@ const PointOfSales = () => {
                 await stopSession(sessionUser.curSession, allUserOrders);
                 setLoading(false);
                 setPosSalesDifference({})
-                setCountedSales({})
             }else{
                 setAlertState('info')
                 setAlert('Could not load orders. Please check your connection and try again.')
@@ -1464,8 +1473,11 @@ const PointOfSales = () => {
                 setViewSessions={setViewSessions}
                 setStartSession={setStartSession}
                 setEndSession={setEndSession}
+                curSession={curSession}
                 sessions={sessions}
                 allSessions={allSessions}
+                setAllSessions={setAllSessions}
+                setAllSessionOrders={setAllSessionOrders}
                 allOrders={allOrders}
                 setSessionUser={setSessionUser}
                 companyRecord = {companyRecord}
@@ -1799,12 +1811,47 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
 
 const POSDashboard = ({sessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
-    setViewSessions, allSessions, setSessionUser, getSessionEnd, setWrh, posWrhAccess,
-    allSessionOrders, getSessionSales, setAlertState, setAlert, setAlertTimeout
+    setViewSessions, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
+    setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
+    setAlertState, setAlert, setAlertTimeout
 })=>{
+     const {fetchServer, server, company} = useContext(ContextProvider)
+     const [pendingSessions, setPendingSessions] = useState([])
+    useEffect(()=>{
+        var pendingSessions = allSessions.filter((session)=>{
+            return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
+                session.active && (new Date().getTime() === getSessionEnd(session.start))
+            )
+        })
+        // console.log(curSession)
+        setPendingSessions(pendingSessions)        
+    },[allSessions])
 
     useEffect(()=>{
-    },[profiles])
+        const getSessionsData = async ()=>{
+            const ordersResponse = await fetchServer("POST", {
+                database: company,
+                collection: "Orders",
+            }, "getDocsDetails", server); 
+            const sessionsResponse = await fetchServer("POST", {
+                database: company,
+                collection: "POSSessions",
+            }, "getDocsDetails", server); 
+            if(!ordersResponse.err){
+                setAllSessionOrders(ordersResponse.record)
+            }
+            if(!sessionsResponse.err){
+                setAllSessions(sessionsResponse.record)
+            }
+        }
+        getSessionsData()
+    },[])
+
+    const showPendingSessionAlert = ()=>{
+        setAlertState('error')
+        setAlert('Please End All Other Sessions Before Starting A New One!')
+        setAlertTimeout(3000)
+    }
     return (
         <>
             <div className='pos-sessions'>
@@ -1828,97 +1875,135 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                 <div className='pos-sessions-view'>
                     <div className='pos-sessions-list'>                        
                         {profiles.map((profile)=>{
-                            if(profile.permissions.includes('pos') || profile.permissions.includes('all')){                                
-                                const {firstName, lastName} = ((profile.status === 'admin')? {
-                                    firstName: 'Admin', lastName: ''
-                                } : employees.find(employee => {return employee.i_d === profile.emailid}))
-                                const employeeSessions = allSessions.filter(session => {
-                                    return (
-                                        session.employee_id === profile.emailid
-                                    )
-                                })
-                                var employeeSession = null
-                                var sessionLive = false
-                                if (employeeSessions.length > 0){
-                                    employeeSession = employeeSessions[employeeSessions.length-1]
-                                    if ((new Date().getTime()) >= getSessionEnd(employeeSession.start)){
-                                        sessionLive = false
-                                    }else{
-                                        sessionLive = true
+                            if (profile.status !== 'admin' || companyRecord.status === 'admin'){
+                                if(profile.permissions.includes('pos') || profile.permissions.includes('all')){                                
+                                    const {firstName, lastName} = ((profile.status === 'admin')? {
+                                        firstName: 'Admin', lastName: ''
+                                    } : employees.find(employee => {return employee.i_d === profile.emailid}))
+                                    
+                                    const employeeSessions = allSessions.filter(session => {
+                                        return (
+                                            session.employee_id === profile.emailid                                        
+                                        )
+                                    })
+                                    var employeeSession = null
+                                    var sessionLive = false
+                                    if (employeeSessions.length > 0){
+                                        employeeSession = employeeSessions.find((session)=>{return !session.end})
+                                        if ([null, undefined].includes(employeeSession)){
+                                            employeeSession = employeeSessions[employeeSessions.length-1]
+                                        }
+                                        if ((new Date().getTime()) >= getSessionEnd(employeeSession.start) || employeeSession.end){
+                                            sessionLive = false
+                                        }else{
+                                            sessionLive = true
+                                        }
                                     }
-                                }
-                                return (
-                                    <div className='pos-sessions-card' key={profile.emailid}>
-                                        <span className='pos-sessions-card-name'>{`${firstName} ${lastName}`}</span>
-                                        <span className='pos-sessions-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
-                                        <div>
-                                            <h4 className='pos-sessions-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
-                                            <div 
-                                                className='pos-sessions-card-action'
-                                                onClick={()=>{   
-                                                    var viewModal = true
-                                                    const validateSession = ()=>{
-                                                        if (!allSessionOrders.length){
-                                                            viewModal = false
-                                                            setAlertState('info')
-                                                            setAlert('Could not load Orders. Please try again in a few moment.')
-                                                            setAlertTimeout(3000)                                                            
-                                                        }else{
-                                                            const allUserOrders = allSessionOrders.filter((order) =>{
-                                                                return ((order.sessionId === employeeSession.i_d) && (order.handlerId === profile.emailid))                                                        
-                                                            })
-                                                            const {
-                                                                totalUnattendedSales
-                                                            } = getSessionSales(allUserOrders)  
-                                                            if (totalUnattendedSales){
-                                                                viewModal = false
-                                                                setAlertState('error')
-                                                                setAlert('You Have Incomplete Sales Pending, it was neither delivered nor paid. Please resolve before proceeding!')
-                                                                setAlertTimeout(5000)
-                                                            }                                               
-                                                        }
-                                                    }
-                                                    if (sessionLive){
-                                                        validateSession()
-                                                    }else{
-                                                        if(![null, undefined].includes(employeeSession)){
-                                                            if (!employeeSession.end){
-                                                                validateSession()
-                                                            }
-                                                        }
-                                                    }
-                                                    if (viewModal){
-                                                        if (sessionLive){
-                                                            setSessionUser({
-                                                                profile: profile,
-                                                                curSession: employeeSession
-                                                            })
-                                                            setEndSession(true)
-                                                        }else{
-                                                            setSessionUser({
-                                                                profile: profile,
-                                                            })
-                                                            setWrh('')
-                                                            if ([null, undefined].includes(employeeSession)){
-                                                                setStartSession(true)
-                                                            }else{
-                                                                if (employeeSession.end){
-                                                                    setStartSession(true)
+                                    return (
+                                        <div className='pos-sessions-card' key={profile.emailid}>
+                                            <span className='pos-sessions-card-name'>{`${firstName} ${lastName}`}</span>
+                                            <span className='pos-sessions-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
+                                            <div>
+                                                <h4 className='pos-sessions-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
+                                                <div 
+                                                    className='pos-sessions-card-action'
+                                                    onClick={()=>{   
+                                                        if (profile.status !== 'admin' || companyRecord.status === 'admin'){
+                                                            var viewModal = true
+                                                            const validateUserSession = async ()=>{
+                                                                if (!allSessionOrders.length){
+                                                                    viewModal = false
+                                                                    setAlertState('info')
+                                                                    setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
+                                                                    setAlertTimeout(3000)     
+                                                                    const ordersResponse = await fetchServer("POST", {
+                                                                        database: company,
+                                                                        collection: "Orders",
+                                                                    }, "getDocsDetails", server); 
+                                                                    if (ordersResponse.err){
+                                                                        setAlertState('error')
+                                                                        setAlert('Could not load Orders. Please check your network connection!')
+                                                                        setAlertTimeout(3000)
+                                                                        return           
+                                                                    }else{
+                                                                        if (![null, undefined].includes(ordersResponse.record)){
+                                                                            setAllSessionOrders(ordersResponse.record)
+                                                                            setAlertState('info')
+                                                                            setAlert('Orders Calculated. Please proceed with the ending of user session!')
+                                                                            setAlertTimeout(3000)
+                                                                        }                                                          
+                                                                    }                                              
                                                                 }else{
+                                                                    const allUserOrders = allSessionOrders.filter((order) =>{
+                                                                        return ((order.sessionId === employeeSession.i_d) && (order.handlerId === profile.emailid))                                                        
+                                                                    })
+                                                                    const {
+                                                                        totalUnattendedSales
+                                                                    } = getSessionSales(allUserOrders)  
+                                                                    if (totalUnattendedSales){
+                                                                        viewModal = false
+                                                                        setAlertState('error')
+                                                                        setAlert('This User Have Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!')
+                                                                        setAlertTimeout(3000)
+                                                                    }                                               
+                                                                }
+                                                            }
+                                                            if (sessionLive){
+                                                                validateUserSession()
+                                                            }else{
+                                                                if(![null, undefined].includes(employeeSession)){
+                                                                    if (!employeeSession.end){
+                                                                        validateUserSession()
+                                                                    }
+                                                                }
+                                                            }
+                                                            if (viewModal){
+                                                                if (sessionLive){
                                                                     setSessionUser({
                                                                         profile: profile,
                                                                         curSession: employeeSession
                                                                     })
                                                                     setEndSession(true)
+                                                                }else{
+                                                                    setSessionUser({
+                                                                        profile: profile,
+                                                                    })
+                                                                    if ([null, undefined].includes(employeeSession)){
+                                                                        if (pendingSessions.length){
+                                                                            showPendingSessionAlert()
+                                                                        }else{
+                                                                            setWrh('')
+                                                                            setStartSession(true)
+                                                                        }
+                                                                    }else{
+                                                                        if (employeeSession.end){
+                                                                            if (pendingSessions.length){
+                                                                                showPendingSessionAlert()
+                                                                            }else{
+                                                                                setWrh('')
+                                                                                setStartSession(true)
+                                                                            }
+                                                                        }else{
+                                                                            setSessionUser({
+                                                                                profile: profile,
+                                                                                curSession: employeeSession
+                                                                            })
+                                                                            setEndSession(true)
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
+                                                        }else{
+                                                            setAlertState('error')
+                                                            setAlert('Only the Super Admin can interact with this Session!')
+                                                            setAlertTimeout(3000)
                                                         }
-                                                    }
-                                                }}
-                                            >{sessionLive? 'End Session' : ([null, undefined].includes(employeeSession) ? 'Start Session' : (employeeSession.end ? 'Start Session' : 'End Session'))}</div>
+                                                    }}
+                                                >{sessionLive? 'End Session' : ([null, undefined].includes(employeeSession) ? 'Start Session' : (employeeSession.end ? 'Start Session' : 'End Session'))}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                )
+                                    )
+                                }
                             }
                         })}
                     </div>
