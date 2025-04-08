@@ -450,12 +450,12 @@ const PointOfSales = () => {
 
         const sessionsResponse = await fetchServer("POST", {
             database: company,
-            collection: "POSSessions",
+            collection: "POSSessions"
         }, "getDocsDetails", server);
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
                 database: company,
-                collection: "Orders",
+                collection: "Orders"
             }, "getDocsDetails", server, orderController.signal);
             if(!ordersResponse.err){
                 setIsLive(true)
@@ -502,8 +502,8 @@ const PointOfSales = () => {
         }
 
         if (!tablesResponse.err){
-            if (sessions?.length){                
-                setTables(tablesResponse.record)  
+            setTables(tablesResponse.record)  
+            if (sessions!==null){                
                 setLoadSession(false)
                 setIsLive(true)       
                 UpdateSessionState(sessions, false)   
