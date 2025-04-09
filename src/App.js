@@ -40,6 +40,7 @@ function App() {
   const [enableBlockVal, setEnableBlockVal] = useState(false)
   const [editAccess, setEditAccess] = useState({})
   const [posWrhAccess, setPosWrhAccess] = useState({})
+  const [deliveryWrhAccess, setDeliveryWrhAccess] = useState({})
   const [allowBacklogs, setAllowBacklogs] = useState(false)
   const [changingSettings, setChangingSettings] = useState(false)
   
@@ -53,9 +54,9 @@ function App() {
   const [company, setCompany] = useState(null)
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
-    'employees','departments','positions','attendance','payroll','pos','sales','inventory','accommodations','purchase','expenses','reports','settings','test']
+    'employees','departments','positions','attendance','payroll','pos','delivery','sales','inventory','accommodations','purchase','expenses','reports','settings','test']
   const dashList = ['dashboard', 
-    'employees','departments','positions','attendance','payroll', 'pos', 'sales','inventory','accommodations','purchase','expenses','reports','settings']
+    'employees','departments','positions','attendance','payroll', 'pos', 'delivery', 'sales','inventory','accommodations','purchase','expenses','reports','settings']
   const months = [
       'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
       'AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'
@@ -113,6 +114,14 @@ function App() {
                 ['open bar2']: (resp.record.permissions.includes('pos_open bar2') || resp.record.permissions.includes('all')),
                 ['vip']: (resp.record.permissions.includes('pos_vip') || resp.record.permissions.includes('all')),
                 ['kitchen']: (resp.record.permissions.includes('pos_kitchen') || resp.record.permissions.includes('all')),
+              }
+            })
+            setDeliveryWrhAccess((deliveryWrhAccess)=>{
+              return {...deliveryWrhAccess, 
+                ['open bar1']: (resp.record.permissions.includes('delivery_open bar1') || resp.record.permissions.includes('all')),
+                ['open bar2']: (resp.record.permissions.includes('delivery_open bar2') || resp.record.permissions.includes('all')),
+                ['vip']: (resp.record.permissions.includes('delivery_vip') || resp.record.permissions.includes('all')),
+                ['kitchen']: (resp.record.permissions.includes('delivery_kitchen') || resp.record.permissions.includes('all')),
               }
             })
           }
@@ -375,6 +384,14 @@ function App() {
           ['open bar2']: (resp.record.permissions.includes('pos_open bar2') || resp.record.permissions.includes('all')),
           ['vip']: (resp.record.permissions.includes('pos_vip') || resp.record.permissions.includes('all')),
           ['kitchen']: (resp.record.permissions.includes('pos_kitchen') || resp.record.permissions.includes('all')),
+        }
+      })
+      setDeliveryWrhAccess((deliveryWrhAccess)=>{
+        return {...deliveryWrhAccess, 
+          ['open bar1']: (resp.record.permissions.includes('delivery_open bar1') || resp.record.permissions.includes('all')),
+          ['open bar2']: (resp.record.permissions.includes('delivery_open bar2') || resp.record.permissions.includes('all')),
+          ['vip']: (resp.record.permissions.includes('delivery_vip') || resp.record.permissions.includes('all')),
+          ['kitchen']: (resp.record.permissions.includes('delivery_kitchen') || resp.record.permissions.includes('all')),
         }
       })
       if (resp.record.status==='admin'){
@@ -676,6 +693,7 @@ function App() {
           allowBacklogs, setAllowBacklogs,
           editAccess, setEditAccess,
           posWrhAccess, setPosWrhAccess, 
+          deliveryWrhAccess, setDeliveryWrhAccess,
           enableBlockVal, setEnableBlockVal,
           changingSettings, setChangingSettings,
 

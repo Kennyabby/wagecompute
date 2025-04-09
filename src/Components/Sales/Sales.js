@@ -261,7 +261,7 @@ const Sales = ()=>{
                 })
             }
         }
-    },[rentalFields.rentalSpace])
+    },[rentalFields.rentalSpace, rentalFields.paymentMonth])
     useEffect(()=>{
         if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))

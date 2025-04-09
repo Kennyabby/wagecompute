@@ -224,6 +224,7 @@ const PointOfSales = () => {
             const newSession = {
                 employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
                 i_d: new Date().getTime(),
+                type:'sales',
                 start: new Date().getTime(),
                 startedBy: companyRecord.emailid,
                 end: null,
@@ -361,8 +362,10 @@ const PointOfSales = () => {
                     // setStartSession(false)
                     setSessionEnded(true)
                 }else{
-                    setStartSession(false)
-                    setSessionEnded(false)
+                    if (sessionUser === null){
+                        setStartSession(false)
+                        setSessionEnded(false)
+                    }
                     // setEndSession(false)
                 }
             } else {
@@ -450,7 +453,8 @@ const PointOfSales = () => {
 
         const sessionsResponse = await fetchServer("POST", {
             database: company,
-            collection: "POSSessions"
+            collection: "POSSessions",
+            prop: {type:'sales'}
         }, "getDocsDetails", server);
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
@@ -718,7 +722,7 @@ const PointOfSales = () => {
         }
         
         const placedOrder = {
-            ...currentOrder, status: 'pending'
+            ...currentOrder, status: 'pending', placedAt: new Date().getTime()
         }
         const response = await fetchServer("POST", {
             database: company,
@@ -835,6 +839,7 @@ const PointOfSales = () => {
         })
         const paymentDataUpdate = {
             ...paymentData,
+            payedAt: new Date().getTime(),
             totalPayment: totalPayment,
             cashChange: Number(paymentDetails['cash'].change),
             receipts,
@@ -884,6 +889,7 @@ const PointOfSales = () => {
             createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
             setPaymentDetails({...payPoints})
             printReceipt(newOrder);
+            return
         }
     };
 
@@ -1028,6 +1034,21 @@ const PointOfSales = () => {
             totalCancelledSales, totalCashChange
         } = getSessionSales(allUserOrders)
 
+        var posSalesAccess = []
+        if (sessionUser!==null){
+            const userSalesWrhAccess = { 
+                ['open bar1']: ((sessionUser.profile).permissions.includes('pos_open bar1') || (sessionUser.profile).permissions.includes('all')),
+                ['open bar2']: ((sessionUser.profile).permissions.includes('pos_open bar2') || (sessionUser.profile).permissions.includes('all')),
+                ['vip']: ((sessionUser.profile).permissions.includes('pos_vip') || (sessionUser.profile).permissions.includes('all')),
+                ['kitchen']: ((sessionUser.profile).permissions.includes('pos_kitchen') || (sessionUser.profile).permissions.includes('all')),
+            }
+            Object.keys(userSalesWrhAccess).forEach((wrh)=>{
+                if (userSalesWrhAccess[wrh]){
+                    posSalesAccess.push(wrh)
+                }
+            })
+        }
+
         const handleCountedSalesEntry = (e)=>{
             const {name, value} = e.target
 
@@ -1085,11 +1106,17 @@ const PointOfSales = () => {
                                     disabled={loading}
                                 >
                                     <option value={''}>Select Sales Post</option>
-                                    {wrhs.map((warehouse, index) => (
+                                    {sessionUser ===  null ? wrhs.map((warehouse, index) => (
                                             posWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
                                                 {warehouse.name}
                                             </option>                                        
-                                    ))}
+                                    )):
+                                    posSalesAccess.map((warehouse, index) => (
+                                        <option key={index} value={warehouse}>
+                                            {warehouse}
+                                        </option>                                        
+                                    ))
+                                    }
                                 </select>
                             </div>
                             <div className="session-actions">
@@ -1584,12 +1611,13 @@ const PaymentModal = ({
     currentOrder, 
     method, setMethod,
     paymentDetails, setPaymentDetails,
-    setShowPaymentModal, handlePayment,
+    setShowPaymentModal, handlePayment, allPaymentReceipts,
     payPoints, setAlertState, setAlert, setAlertTimeout
 }) => {
     const [paymentSum, setPaymentSum] = useState(0)
     const [cashAmount, setCashAmount] = useState(0)
-
+    const [loading, setLoading] = useState(false)
+    const [receipts, setReceipts] = useState({})
     useEffect(()=>{
         var paymentAmount = 0
         Object.keys(paymentDetails).forEach((payPoint)=>{
@@ -1597,13 +1625,54 @@ const PaymentModal = ({
         })
         setPaymentSum(paymentAmount)
     },[paymentDetails])
-    const validatePayment = ()=>{
-        if (Number(currentOrder.totalSales)>paymentSum){
-            setAlertState('info')
-            setAlert('Insufficient payment amount')
-            setAlertTimeout(3000)
+    const confirmReceiptsAvailable = (receipts)=>{
+        var available = true
+        const receiptNumbers = Object.values(receipts)
+
+        return available
+
+    }
+    const validatePayment = async ()=>{
+        var payPointsWithNoReceipts = []        
+        if (!paymentDetails['cash'].amount || (Number(paymentDetails['cash'].amount || 0) < Number(currentOrder.totalSales || 0))){
+            Object.keys(paymentDetails).forEach((payPoint)=>{
+                if (payPoint !== 'cash'){
+                    if (paymentDetails[payPoint].amount && !paymentDetails[payPoint]['receipt']){
+                        payPointsWithNoReceipts.push(payPoint.toUpperCase())
+                    }
+                }
+            })
+        }
+        if (!payPointsWithNoReceipts.length){
+            const isReceiptsAvailable = confirmReceiptsAvailable(receipts)
+            if (isReceiptsAvailable){
+                if (Number(currentOrder.totalSales)>paymentSum){
+                    const remainingDifference = Number(currentOrder.totalSales) - paymentSum
+                    setAlertState('info')
+                    setAlert(`Insufficient payment amount. Remaining ${Number(remainingDifference).toLocaleString()}!`)
+                    setAlertTimeout(5000)
+                }else{
+                    setLoading(true)
+                    await handlePayment()
+                    setLoading (false)
+                }
+            }
         }else{
-            handlePayment()
+            var errmess = ''
+            payPointsWithNoReceipts.forEach((payPoint, index)=>{
+                if (!index){
+                    errmess += String(payPoint)
+                }else{
+                    if (index === payPointsWithNoReceipts.length -1){
+                        errmess += ' and '+String(payPoint)
+                    }else{
+                        errmess += ', '+String(payPoint)
+                    }
+                }
+            })
+            setAlertState('info')
+            setAlert(`Please Enter Receipt Number for the following Pay Points: ${errmess} !`)
+            setAlertTimeout(5000)
         }
     }
     const handleAmountChange = (e) => {
@@ -1633,6 +1702,11 @@ const PaymentModal = ({
                     ...paymentDetails, [method]: {...paymentDetails[method], [name]: value}
                 }
             })
+            if (name==='receipt'){
+                setReceipts((receipts)=>{
+                    return {...receipts, [method]: value}
+                })
+            }
         }
     };
 
@@ -1641,7 +1715,7 @@ const PaymentModal = ({
             <div className="modal-content payment-modal">
                 <div className="modal-header">
                     <h3>Payment</h3>
-                    <button onClick={() => setShowPaymentModal(false)}>×</button>
+                    <button disabled={loading} onClick={() => setShowPaymentModal(false)}>×</button>
                 </div>
                 <div className="payment-methods">
                     {Object.keys(payPoints).map(payMethod => (
@@ -1696,6 +1770,7 @@ const PaymentModal = ({
                 <div className="modal-actions">
                     <button 
                         className="modal-btn cancel"
+                        diabled={loading}
                         onClick={() => {
                             setPaymentDetails({...payPoints})
                             setShowPaymentModal(false)
@@ -1704,6 +1779,7 @@ const PaymentModal = ({
                         Cancel
                     </button>
                     <button
+                        disabled={loading}
                         className="modal-btn save"
                         onClick={validatePayment}
                     >
@@ -1718,11 +1794,12 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
     tables, currentOrder, setCurrentOrder, createNewOrder 
 }) => {
     const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
-
+    const [cancelling, setCancelling] = useState(false)
     const handleCancelOrder = async (order) => {
         if (order.delivery !== 'completed'){
             const cancelOrder = window.confirm(`Are you sure you want to Cancel Order #${order.orderNumber}?`);
             if (!cancelOrder) return;
+            setCancelling(true)
             setAlertState('info')
             setAlert('Cancelling Order...')
             setAlertTimeout(1000000)
@@ -1742,18 +1819,27 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                 setAlertState('error');
                 setAlert('Error updating table');
                 setAlertTimeout(3000)
+                setCancelling(false)
                 return;
             }
             const response = await fetchServer("POST", {
                 database: company,
                 collection: "Orders",
-                prop: [{orderNumber: order.orderNumber}, {status: 'cancelled', cancelledBy: companyRecord.emailid}]
+                prop: [{orderNumber: order.orderNumber}, 
+                    {
+                        status: 'cancelled', 
+                        cancelledBy: companyRecord.emailid,
+                        cancelledAt: new Date().getTime()
+                    }
+                ]
             }, "updateOneDoc", server);
     
             if (response.err) {
                 setAlertState('error');
                 setAlert('Error cancelling order');
                 setAlertTimeout(3000);
+                setCancelling(false)
+                return
             } else {
                 setAlertState('success');
                 setAlert('Order cancelled successfully');
@@ -1761,12 +1847,16 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                 if (currentOrder.orderNumber === order.orderNumber){
                     createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
                 }
+                setCancelling(false)
                 setShowOrdersModal(false); // Close modal after deletion
+                return
             }
         }else{
             setAlertState('error');
             setAlert('Please Cancel Delivery First Before Cancelling Order!');
             setAlertTimeout(3000)
+            setCancelling(false)
+            return
         }
     };
 
@@ -1775,7 +1865,7 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
             <div className="modal-content orders-modal">
                 <div className="modal-header">
                     <h3>All Orders</h3>
-                    <button onClick={() => setShowOrdersModal(false)}>×</button>
+                    <button disabled={cancelling} onClick={() => setShowOrdersModal(false)}>×</button>
                 </div>
                 <div className="orders-list">
                     {tableOrders?.map(order => (
@@ -1794,6 +1884,7 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                             {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) &&
                             !['cancelled','completed'].includes(order.status) && (
                                 <button 
+                                    disabled={cancelling}
                                     className="cancel-order-btn"
                                     onClick={() => handleCancelOrder(order)}
                                     title="Cancel Order"
@@ -1836,6 +1927,7 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",
+                prop: {type: 'sales'}
             }, "getDocsDetails", server); 
             if(!ordersResponse.err){
                 setAllSessionOrders(ordersResponse.record)
@@ -1876,7 +1968,20 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                     <div className='pos-sessions-list'>                        
                         {profiles.map((profile)=>{
                             if (profile.status !== 'admin' || companyRecord.status === 'admin'){
-                                if(profile.permissions.includes('pos') || profile.permissions.includes('all')){                                
+                                var hasPosSalesAccess = false
+                                const userSalesWrhAccess = { 
+                                    ['open bar1']: (profile.permissions.includes('pos_open bar1') || profile.permissions.includes('all')),
+                                    ['open bar2']: (profile.permissions.includes('pos_open bar2') || profile.permissions.includes('all')),
+                                    ['vip']: (profile.permissions.includes('pos_vip') || profile.permissions.includes('all')),
+                                    ['kitchen']: (profile.permissions.includes('pos_kitchen') || profile.permissions.includes('all')),
+                                }
+                                Object.keys(userSalesWrhAccess).forEach((wrh)=>{
+                                    if (userSalesWrhAccess[wrh]){
+                                        hasPosSalesAccess = true
+                                        return
+                                    }
+                                })
+                                if((profile.permissions.includes('pos') && hasPosSalesAccess) || profile.permissions.includes('all')){                                
                                     const {firstName, lastName} = ((profile.status === 'admin')? {
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))

@@ -12,6 +12,7 @@ import { GiPlayerTime } from "react-icons/gi";
 import { SiPayloadcms } from "react-icons/si";
 import { MdInventory } from "react-icons/md";
 import { GiPayMoney } from "react-icons/gi";
+import { MdDeliveryDining } from "react-icons/md";
 import { FaHotel } from "react-icons/fa6";
 import { GiBuyCard } from "react-icons/gi";
 import { GiExpense } from "react-icons/gi";
@@ -129,6 +130,12 @@ const SideNav = ()=>{
                         <div name="pos" className={'navdiv ' + (curPath==='pos'?'selected':'')}>
                             <GiPayMoney className='navdivicon' name="pos"/>
                             <div name="pos">POS</div>
+                        </div>
+                    }
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('delivery')) && 
+                        <div name="delivery" className={'navdiv ' + (curPath==='delivery'?'selected':'')}>
+                            <MdDeliveryDining className='navdivicon' name="delivery"/>
+                            <div name="delivery">Order Delivery</div>
                         </div>
                     }
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && 
