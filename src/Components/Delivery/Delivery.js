@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
-import './PointOfSales.css';
+import '../PointOfSales/PointOfSales.css'
 import { MdShoppingBasket } from 'react-icons/md';
 
-const PointOfSales = () => {
+const Delivery = () => {
     // =========================================
     // 1. Context and State Management
     // =========================================
@@ -11,7 +11,7 @@ const PointOfSales = () => {
         storePath,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
-        settings, getDate, posWrhAccess, employees, 
+        settings, getDate, deliveryWrhAccess, employees, 
         profiles, fetchProfiles
     } = useContext(ContextProvider);
 
@@ -44,7 +44,7 @@ const PointOfSales = () => {
     const productControllerRef = useRef(null)
     const [tableFetchCount, setTableFetchCount] = useState(0)
     useEffect(()=>{
-        storePath('pos')  
+        storePath('delivery')  
     },[storePath])
 
     // Order States
@@ -108,7 +108,7 @@ const PointOfSales = () => {
         if (window.localStorage.getItem('pos-wrh')){
             setWrh(window.localStorage.getItem('pos-wrh'))
         }else{
-            setWrh(Object.keys(posWrhAccess)[0])
+            setWrh(Object.keys(deliveryWrhAccess)[0])
         }
     },[])
     useEffect(() => {
@@ -224,13 +224,12 @@ const PointOfSales = () => {
             const newSession = {
                 employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
                 i_d: new Date().getTime(),
-                type:'sales',
+                type:'delivery',
                 start: new Date().getTime(),
                 startedBy: companyRecord.emailid,
                 end: null,
                 active: true, 
-                openingCash: openingCash,
-                debtDue: 0
+                shortage: 0
             }
             const response = await fetchServer("POST", {
                 database: company,
@@ -376,7 +375,7 @@ const PointOfSales = () => {
                     setSessionEnded(true)
                     setOpeningCash((Number(oldSession.openingCash || 0) + Number(oldSession.cash || 0) - Number(oldSession.totalCashChange || 0)))
                 }
-                if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_sessions')){
+                if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_deliveries')){
                     setStartSession(true)
                 }
                 // setEndSession(false)
@@ -454,7 +453,7 @@ const PointOfSales = () => {
         const sessionsResponse = await fetchServer("POST", {
             database: company,
             collection: "POSSessions",
-            prop: {type:'sales'}
+            prop: {type:'delivery'}
         }, "getDocsDetails", server);
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
@@ -471,7 +470,7 @@ const PointOfSales = () => {
                         })) 
                         var ordersUpdate = ordersResponse.record
                         if (currentOrder!==null){
-                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
                                 setTableOrders(ordersUpdate.filter((order)=>{
                                     var orderDate = '01/01/1970'
                                     if (order.createdAt){
@@ -596,7 +595,7 @@ const PointOfSales = () => {
     
     const handleTableSelect = async (table) => {
         if (!loadSession && !startSession && !endSession){
-            if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions'))) {
+            if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_deliveries'))) {
                 setAlertState('error');
                 setAlert('This table is not available. Still in use!');
                 setAlertTimeout(2000)
@@ -608,7 +607,7 @@ const PointOfSales = () => {
             setAlert('Loading table orders...');
             setAlertTimeout(100000)
             const orderFilter = { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
-            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
                 delete orderFilter.sessionId
                 delete orderFilter.handlerId
             }
@@ -622,7 +621,7 @@ const PointOfSales = () => {
                     setCurrentTable(table)
                     // Store all table orders in state
                     var ordersUpdate = response.record
-                    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+                    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
                         setTableOrders(ordersUpdate.filter((order)=>{
                             var orderDate = '01/01/1970'
                             if (order.createdAt){
@@ -981,7 +980,7 @@ const PointOfSales = () => {
     // 8. UI Rendering Functions
     // =========================================
     const handleStartSession = async () => {
-        if (companyRecord.status === 'admin' || companyRecord.permissions.includes('access_pos_sessions')){
+        if (companyRecord.status === 'admin' || companyRecord.permissions.includes('access_pos_deliveries')){
             if (sessionUser!==null){
                 setWrh('')
                 setLoading(true);
@@ -1034,17 +1033,17 @@ const PointOfSales = () => {
             totalCancelledSales, totalCashChange
         } = getSessionSales(allUserOrders)
 
-        var posSalesAccess = []
+        var posDeliveryAccess = []
         if (sessionUser!==null){
-            const userSalesWrhAccess = { 
-                ['open bar1']: ((sessionUser.profile).permissions.includes('pos_open bar1') || (sessionUser.profile).permissions.includes('all')),
-                ['open bar2']: ((sessionUser.profile).permissions.includes('pos_open bar2') || (sessionUser.profile).permissions.includes('all')),
-                ['vip']: ((sessionUser.profile).permissions.includes('pos_vip') || (sessionUser.profile).permissions.includes('all')),
-                ['kitchen']: ((sessionUser.profile).permissions.includes('pos_kitchen') || (sessionUser.profile).permissions.includes('all')),
+            const userDeliveryWrhAccess = { 
+                ['open bar1']: ((sessionUser.profile).permissions.includes('delivery_open bar1') || (sessionUser.profile).permissions.includes('all')),
+                ['open bar2']: ((sessionUser.profile).permissions.includes('delivery_open bar2') || (sessionUser.profile).permissions.includes('all')),
+                ['vip']: ((sessionUser.profile).permissions.includes('delivery_vip') || (sessionUser.profile).permissions.includes('all')),
+                ['kitchen']: ((sessionUser.profile).permissions.includes('delivery_kitchen') || (sessionUser.profile).permissions.includes('all')),
             }
-            Object.keys(userSalesWrhAccess).forEach((wrh)=>{
-                if (userSalesWrhAccess[wrh]){
-                    posSalesAccess.push(wrh)
+            Object.keys(userDeliveryWrhAccess).forEach((wrh)=>{
+                if (userDeliveryWrhAccess[wrh]){
+                    posDeliveryAccess.push(wrh)
                 }
             })
         }
@@ -1077,7 +1076,7 @@ const PointOfSales = () => {
                                         return (userProfile ? <span>{`(${userProfile.firstName})`}</span> : <span>{(curSession === null) ? '' : `(Admin)`}</span>)
                                     })
                                 }</h2>
-                                {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_sessions')) && 
+                                {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_deliveries')) && 
                                     <button 
                                         onClick={() => {
                                             setStartSession(false)
@@ -1103,15 +1102,15 @@ const PointOfSales = () => {
                                         setWrh(e.target.value)
                                         window.localStorage.setItem('pos-wrh',e.target.value)
                                     }}
-                                    disabled={loading}
+                                    disabled={loading} 
                                 >
                                     <option value={''}>Select Sales Post</option>
                                     {sessionUser ===  null ? wrhs.map((warehouse, index) => (
-                                            posWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
+                                            deliveryWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
                                                 {warehouse.name}
                                             </option>                                        
                                     )):
-                                    posSalesAccess.map((warehouse, index) => (
+                                    posDeliveryAccess.map((warehouse, index) => (
                                         <option key={index} value={warehouse}>
                                             {warehouse}
                                         </option>                                        
@@ -1378,13 +1377,13 @@ const PointOfSales = () => {
                             {
                                 wrhs.map((wh, id)=>{
                                     if (!wh.purchase){
-                                        return (posWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
+                                        return (deliveryWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
                                     }
                                 })                        
                             }
                             {
                                 <div className={'live-nav'}>
-                                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
+                                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                                         className="action-btn"
                                         onClick={() => setViewSessions(true)}
                                     >
@@ -1515,7 +1514,7 @@ const PointOfSales = () => {
                 sessionEnded={sessionEnded}
                 getSessionEnd = {getSessionEnd}
                 setWrh={setWrh}
-                posWrhAccess={posWrhAccess}
+                deliveryWrhAccess={deliveryWrhAccess}
                 allSessionOrders={allSessionOrders}
                 getSessionSales={getSessionSales}
                 setAlertState={setAlertState}
@@ -1604,20 +1603,20 @@ const PointOfSales = () => {
     );
 };
 
-export default PointOfSales;
+export default Delivery;
 
 const PaymentModal = ({
     amount, setAmount, 
     currentOrder, 
     method, setMethod,
     paymentDetails, setPaymentDetails,
-    setShowPaymentModal, handlePayment, allPaymentReceipts,
+    setShowPaymentModal, handlePayment,
     payPoints, setAlertState, setAlert, setAlertTimeout
 }) => {
     const [paymentSum, setPaymentSum] = useState(0)
     const [cashAmount, setCashAmount] = useState(0)
     const [loading, setLoading] = useState(false)
-    const [receipts, setReceipts] = useState({})
+    const [receipts, setReceipts] = useState(0)
     useEffect(()=>{
         var paymentAmount = 0
         Object.keys(paymentDetails).forEach((payPoint)=>{
@@ -1625,54 +1624,16 @@ const PaymentModal = ({
         })
         setPaymentSum(paymentAmount)
     },[paymentDetails])
-    const confirmReceiptsAvailable = (receipts)=>{
-        var available = true
-        const receiptNumbers = Object.values(receipts)
-
-        return available
-
-    }
     const validatePayment = async ()=>{
-        var payPointsWithNoReceipts = []        
-        if (!paymentDetails['cash'].amount || (Number(paymentDetails['cash'].amount || 0) < Number(currentOrder.totalSales || 0))){
-            Object.keys(paymentDetails).forEach((payPoint)=>{
-                if (payPoint !== 'cash'){
-                    if (paymentDetails[payPoint].amount && !paymentDetails[payPoint]['receipt']){
-                        payPointsWithNoReceipts.push(payPoint.toUpperCase())
-                    }
-                }
-            })
-        }
-        if (!payPointsWithNoReceipts.length){
-            const isReceiptsAvailable = confirmReceiptsAvailable(receipts)
-            if (isReceiptsAvailable){
-                if (Number(currentOrder.totalSales)>paymentSum){
-                    const remainingDifference = Number(currentOrder.totalSales) - paymentSum
-                    setAlertState('info')
-                    setAlert(`Insufficient payment amount. Remaining ${Number(remainingDifference).toLocaleString()}!`)
-                    setAlertTimeout(5000)
-                }else{
-                    setLoading(true)
-                    await handlePayment()
-                    setLoading (false)
-                }
-            }
-        }else{
-            var errmess = ''
-            payPointsWithNoReceipts.forEach((payPoint, index)=>{
-                if (!index){
-                    errmess += String(payPoint)
-                }else{
-                    if (index === payPointsWithNoReceipts.length -1){
-                        errmess += ' and '+String(payPoint)
-                    }else{
-                        errmess += ', '+String(payPoint)
-                    }
-                }
-            })
+        if (Number(currentOrder.totalSales)>paymentSum){
+            
             setAlertState('info')
-            setAlert(`Please Enter Receipt Number for the following Pay Points: ${errmess} !`)
-            setAlertTimeout(5000)
+            setAlert('Insufficient payment amount')
+            setAlertTimeout(3000)
+        }else{
+            setLoading(true)
+            await handlePayment()
+            setLoading (false)
         }
     }
     const handleAmountChange = (e) => {
@@ -1702,11 +1663,6 @@ const PaymentModal = ({
                     ...paymentDetails, [method]: {...paymentDetails[method], [name]: value}
                 }
             })
-            if (name==='receipt'){
-                setReceipts((receipts)=>{
-                    return {...receipts, [method]: value}
-                })
-            }
         }
     };
 
@@ -1881,7 +1837,7 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                                 <div>Delivery: {(order.delivery || 'pending')}</div>
                                 <div>{new Date(order.createdAt).toLocaleString()}</div>
                             </div>
-                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) &&
+                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) &&
                             !['cancelled','completed'].includes(order.status) && (
                                 <button 
                                     disabled={cancelling}
@@ -1902,8 +1858,8 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
 
 const POSDashboard = ({sessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
-    setViewSessions, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
-    setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
+    setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
+    setWrh, allSessionOrders, getSessionSales, curSession,
     setAlertState, setAlert, setAlertTimeout
 })=>{
      const {fetchServer, server, company} = useContext(ContextProvider)
@@ -1927,7 +1883,7 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",
-                prop: {type: 'sales'}
+                prop: {type: 'delivery'}
             }, "getDocsDetails", server); 
             if(!ordersResponse.err){
                 setAllSessionOrders(ordersResponse.record)
@@ -1949,11 +1905,13 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
             <div className='pos-sessions'>
                 <div className='pos-sessions-nav'>
                     <div className={'live-nav'}>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                             className="action-btn"
                             onClick={() => {    
-                                var wrhAccess = Object.keys(posWrhAccess).filter((wrh)=>{
-                                    return posWrhAccess[wrh]
+                                
+                                  
+                                var wrhAccess = Object.keys(deliveryWrhAccess).filter((wrh)=>{
+                                    return deliveryWrhAccess[wrh]
                                 })
                                 setWrh(wrhAccess[0])
                                 setViewSessions(false)                                
@@ -1968,20 +1926,20 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                     <div className='pos-sessions-list'>                        
                         {profiles.map((profile)=>{
                             if (profile.status !== 'admin' || companyRecord.status === 'admin'){
-                                var hasPosSalesAccess = false
-                                const userSalesWrhAccess = { 
-                                    ['open bar1']: (profile.permissions.includes('pos_open bar1') || profile.permissions.includes('all')),
-                                    ['open bar2']: (profile.permissions.includes('pos_open bar2') || profile.permissions.includes('all')),
-                                    ['vip']: (profile.permissions.includes('pos_vip') || profile.permissions.includes('all')),
-                                    ['kitchen']: (profile.permissions.includes('pos_kitchen') || profile.permissions.includes('all')),
+                                var hasPosDeliveryAccess = false
+                                const userDeliveryWrhAccess = { 
+                                    ['open bar1']: (profile.permissions.includes('delivery_open bar1') || profile.permissions.includes('all')),
+                                    ['open bar2']: (profile.permissions.includes('delivery_open bar2') || profile.permissions.includes('all')),
+                                    ['vip']: (profile.permissions.includes('delivery_vip') || profile.permissions.includes('all')),
+                                    ['kitchen']: (profile.permissions.includes('delivery_kitchen') || profile.permissions.includes('all')),
                                 }
-                                Object.keys(userSalesWrhAccess).forEach((wrh)=>{
-                                    if (userSalesWrhAccess[wrh]){
-                                        hasPosSalesAccess = true
+                                Object.keys(userDeliveryWrhAccess).forEach((wrh)=>{
+                                    if (userDeliveryWrhAccess[wrh]){
+                                        hasPosDeliveryAccess = true
                                         return
                                     }
                                 })
-                                if((profile.permissions.includes('pos') && hasPosSalesAccess) || profile.permissions.includes('all')){                                
+                                if((profile.permissions.includes('pos') && hasPosDeliveryAccess) || profile.permissions.includes('all')){                                
                                     const {firstName, lastName} = ((profile.status === 'admin')? {
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
