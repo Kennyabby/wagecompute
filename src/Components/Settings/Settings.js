@@ -442,12 +442,40 @@ const Settings = () => {
                                                 </label>
                                             ))}
                                         </div>
+                                        <div>Delivery Posts Permissions</div>
+                                        <div className='permissions'>
+                                            {['delivery_open bar1','delivery_open bar2','delivery_vip','delivery_kitchen'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
                                         <br/>
-                                        <h3>Other Permissions</h3>
+                                        <h4>Other Permissions</h4>
                                         <br/>
                                         <div>Edit / Delete Permissions</div>
                                         <div className='permissions'>
                                             {['edit_employees'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <div>POS Admin Permissions</div>
+                                        <div className='permissions'>
+                                            {['access_pos_sessions', 'access_pos_deliveries'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
