@@ -135,7 +135,9 @@ const PointOfSales = () => {
                 wrhs.forEach((warehouse)=>{
                     const prevTable = tables.find((table)=>{return table['wrh'] === warehouse.name})
                     prevTable?.activeTables?.forEach((activeOrder)=>{
-                        activeOrders.push(activeOrder)
+                        if (activeOrder.status === 'pending'){
+                            activeOrders.push(activeOrder)
+                        }
                     })
                 })
                 orderTables.forEach((orderTable)=>{
@@ -151,8 +153,7 @@ const PointOfSales = () => {
                             activeOrder.tableId === orderTable.i_d &&
                             activeOrder.wrh === wrh &&
                             getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)                            
-                        ){
-                            
+                        ){                            
                             if (                                
                                 activeOrder.handlerId === companyRecord.emailid
                             ){
@@ -704,6 +705,8 @@ const PointOfSales = () => {
             tableId: currentOrder.tableId,
             sessionId: currentOrder.sessionId,
             handlerId: companyRecord.emailid,
+            status: 'pending',
+            delivery: 'pending',
             wrh: wrh,
             orderId: currentOrder.orderNumber,
             createdAt: new Date().getTime()
@@ -722,7 +725,10 @@ const PointOfSales = () => {
         }
         
         const placedOrder = {
-            ...currentOrder, status: 'pending', placedAt: new Date().getTime()
+            ...currentOrder, 
+            status: 'pending', 
+            placedAt: new Date().getTime(),
+            delivery: 'pending'
         }
         const response = await fetchServer("POST", {
             database: company,
@@ -850,24 +856,26 @@ const PointOfSales = () => {
             ...currentOrder,
             ...paymentDataUpdate
         }
-        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [
-                ...prevTable.activeTables.filter((table)=>{return (
-                    table.tableId !== currentOrder.tableId && 
-                    table.sessionId !== currentOrder.sessionId &&
-                    table.handlerId !== companyRecord.emailid && 
-                    table.orderId !== currentOrder.orderNumber
-                )})
-            ]}]
-        }, "updateOneDoc", server)
-        if (resp.err){
-            setAlertState('error');
-            setAlert('Error updating table');
-            setAlertTimeout(3000)
-            return;
+        if (currentOrder.delivery === 'completed'){
+            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':wrh}, {activeTables: [
+                    ...prevTable.activeTables.filter((table)=>{return (
+                        table.tableId !== currentOrder.tableId && 
+                        table.sessionId !== currentOrder.sessionId &&
+                        table.handlerId !== companyRecord.emailid && 
+                        table.orderId !== currentOrder.orderNumber
+                    )})
+                ]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                return;
+            }
         }
         const response = await fetchServer("POST", {
             database: company,
