@@ -167,6 +167,7 @@ const Accommodation = ()=>{
                 var totalAccommodationAmount = 0
                 var totalPaymentAmount = 0
                 var totalAccommodationDays = 0
+                const roomDays = {}
                 accommodations.filter((ftrsale)=>{
                     const slPostingDate = new Date(ftrsale.postingDate).getTime()
                     const fromDate = new Date(saleFrom).getTime()
@@ -182,6 +183,7 @@ const Accommodation = ()=>{
                         const departureDate = new Date(accommodation.departureDate).getTime()
                         const days = (departureDate - arrivalDate) / (24*60*60*1000)
                         accommodationDays = days ? days : accommodationDays
+                        roomDays[accommodation.roomNo] = Number(roomDays[accommodation.roomNo] || 0) + accommodationDays
                         totalAccommodationAmount +=  Number(accommodation.accommodationAmount)
                         totalPaymentAmount += Number(accommodation.paymentAmount) 
                         totalAccommodationDays += accommodationDays
@@ -190,6 +192,7 @@ const Accommodation = ()=>{
                 if (totalAccommodationDays){
                     salesDoc.totalAccommodationAmount = totalAccommodationAmount
                     salesDoc.totalPaymentAmount = totalPaymentAmount
+                    salesDoc.roomDays = roomDays
                     salesDoc.totalAccommodationDays = totalAccommodationDays
                     salesReportList = salesReportList.concat(salesDoc)
                 }
@@ -550,6 +553,7 @@ const Accommodation = ()=>{
         <>
             <div className='sales'>         
                 {showReport && <AccommodationReport
+                    rooms={rooms}
                     reportSales = {reportSales}
                     multiple={!accommodationCustomer}
                     accommodationCustomer={accommodationCustomer}                  

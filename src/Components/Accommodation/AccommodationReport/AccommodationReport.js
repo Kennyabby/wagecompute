@@ -5,6 +5,7 @@ import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
 
 const AccommodationReport = ({
+    rooms,
     reportSales, multiple,
     fromDate, toDate,
     setShowReport,
@@ -27,8 +28,6 @@ const AccommodationReport = ({
         return "INV_"+company+invdate
     }
 
-    
-    
     const options = {
         // default is `save`
         // method: 'open',
@@ -121,7 +120,10 @@ const AccommodationReport = ({
                                                 {multiple ? <tr>
                                                     <th><h8 className='theader'>CUSTOMERS</h8></th>
                                                     <th><h8 className='theader'>PHONE NO</h8></th>
-                                                    <th><h8 className='theader'>TOTAL ACCOMMODATION DAYS</h8></th>
+                                                    {Object.keys(rooms).map((roomNo)=>{
+                                                        return <th><h8 className='theader'>{`ROOM ${roomNo}`}</h8></th>
+                                                    })}
+                                                    <th><h8 className='theader'>TOTAL ROOM DAYS</h8></th>                                                    
                                                     <th><h8 className='theader'>TOTAL ACCOMMODATION AMOUNT</h8></th>                                                    
                                                     <th><h8 className='theader'>TOTAL ACCOMMODATION PAYMENTS</h8></th>
                                                 </tr>:
@@ -149,6 +151,9 @@ const AccommodationReport = ({
                                                             }
                                                         })}
                                                         <td className='ttrow'>{saleReport.phoneNo}</td>
+                                                        {Object.keys(rooms).map((roomNo)=>{
+                                                            return <td className='ttrow'>{Number(saleReport.roomDays[roomNo] || 0).toLocaleString()}</td>
+                                                        })}
                                                         <td className='ttrow'>{saleReport.totalAccommodationDays}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.totalAccommodationAmount.toLocaleString()}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.totalPaymentAmount.toLocaleString()}</td>
@@ -179,6 +184,13 @@ const AccommodationReport = ({
                                                 <tr>
                                                     <th className='theader'>TOTAL</th>
                                                     <th></th>
+                                                    {Object.keys(rooms).map((roomNo, id)=>{
+                                                        var sumTotalDays = 0
+                                                        reportSales?.forEach((saleReport)=>{
+                                                            sumTotalDays += Number(saleReport.roomDays[roomNo] || 0)
+                                                        })
+                                                        return <th className='theader' key={id}>{sumTotalDays.toLocaleString()}</th>
+                                                    })}                                                                                        
                                                     {[''].map((args, id)=>{
                                                         var sumTotalDays = 0
                                                         reportSales?.forEach((saleReport)=>{

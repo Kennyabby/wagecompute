@@ -135,7 +135,9 @@ const Delivery = () => {
                 wrhs.forEach((warehouse)=>{
                     const prevTable = tables.find((table)=>{return table['wrh'] === warehouse.name})
                     prevTable?.activeTables?.forEach((activeOrder)=>{
-                        activeOrders.push(activeOrder)
+                        if (activeOrder.delivery === 'pending'){
+                            activeOrders.push(activeOrder)
+                        }
                     })
                 })
                 orderTables.forEach((orderTable)=>{
