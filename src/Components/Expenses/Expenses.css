@@ -7,6 +7,11 @@
     width: 100%;
     height: 100vh;
 }
+.add-expense{
+    cursor: pointer;
+    margin: 2px 0px;
+    margin-right: 5px;
+}
 .purlst{
     width: 36%;
     height: 98%;
