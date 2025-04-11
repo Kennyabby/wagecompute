@@ -44,6 +44,7 @@ function App() {
   const [allowBacklogs, setAllowBacklogs] = useState(false)
   const [changingSettings, setChangingSettings] = useState(false)
   
+  const [chartOfAccounts, setChartOfAccounts] = useState([])
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
   const [products, setProducts] = useState([])
@@ -80,6 +81,7 @@ function App() {
           return prevCount + 1
         })
         getSettings(cmp_val)
+        getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
     },10000)
@@ -394,6 +396,7 @@ function App() {
           ['kitchen']: (resp.record.permissions.includes('delivery_kitchen') || resp.record.permissions.includes('all')),
         }
       })
+      getChartOfAccounts(cmp_val)
       if (resp.record.status==='admin'){
         getSettings(cmp_val)
         fetchProfiles(cmp_val)
@@ -456,6 +459,16 @@ function App() {
     }
   }
 
+  const getChartOfAccounts = async (company) => {
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "ChartOfAccounts", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      setChartOfAccounts(resp.record)
+    }
+  }
   const getDepartments = async (company) =>{
     const resp = await fetchServer("POST", {
       database: company,
@@ -673,6 +686,7 @@ function App() {
           generateCode, generateSeries, 
           exportFile, importFile,
           companyRecord, setCompanyRecord,  
+          chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
           profiles, setProfiles, fetchProfiles,
           departments, setDepartments, getDepartments,
           positions, setPositions, getPositions,
