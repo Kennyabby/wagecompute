@@ -4,6 +4,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import html2pdf from 'html2pdf.js';
 import { useScroll } from 'framer-motion'
 import { MdAdd } from 'react-icons/md'
+import { FaPlus } from "react-icons/fa";
 import { FaTableCells, FaPrint } from 'react-icons/fa6'
 import { FaAngleDown, FaAngleUp } from "react-icons/fa";
 import ExpensesReport from './ExpensesReport/ExpensesReport'
@@ -15,6 +16,7 @@ const Expenses = ()=>{
         fetchServer,
         companyRecord,
         company, getDate,
+        chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
         employees, getEmployees, months, getExpenses, setExpenses, expenses,
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage
@@ -28,29 +30,39 @@ const Expenses = ()=>{
     const [expenseFrom, setExpenseFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
     const [expenseTo, setExpenseTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [reportExpense, setReportExpense] = useState(null)
+    const [showExpenseModal, setShowExpenseModal] = useState(false)
     const defaultFields = {
         expensesDepartment:'',
         expensesHandler:'',
         expenseCategory:'',
         expensesAmount:'',
+        expensesBank:'',
         expensesVendor:'',
         expensesDescription:'',
     }
+    const payPoints = [
+        'moniepoint1', 'moniepoint2', 
+        'moniepoint3', 'moniepoint4', 
+        'cash'
+    ]
     const [fields, setFields] = useState({...defaultFields})
     const departments = ['Admin']
-    const expensesCategory = ['Electrical Repairs', 'Plumbing Repairs', 'MTN Subscription',
-        'DSTV Subscription', 'Diesel & Lubricant', 'Generator Repairs', 'Refrigerator Repairs',
-        'Sewage Evacuation', 'Sanitation & Waste','Musical Expenses','Other Expenses',
-        'Printing and Stationery', 'Furniture Maintenance', 'Staff Salary', 'Security Salary', 'Adhoc Staff',
-        'Transport', 'NEPA', 'PR', 'Telephone Subscription',
-        'Fitting & Lighting', 'Laundry Services', 'Staff Uniform', 'CCTV Maintenance',
-        'Entertainment', 'Building Maintenance', 'Computer Maintenance', 'Cooking gas',
-        'Salary & Wages', 'First Aid', 'Hiring', 'Donation', 'Staff Welfare',
-        'Director Remuneration', 'Medical', 'General Maintenance'
-    ]    
+    const [expensesCategory, setExpensesCategory] = useState([])
     useEffect(()=>{
         storePath('expenses')  
     },[storePath])
+    useEffect(()=>{
+        const expenseLedger = chartOfAccounts.find((acc)=>{
+            return acc.name === 'Expenses'                
+        })
+        const allExpenseAccounts = expenseLedger.accounts
+        var expensesCategory = allExpenseAccounts.filter((account)=>{
+            return ![null, undefined].includes(account.type)
+        }).map((acc)=>{
+            return acc.name
+        })
+        setExpensesCategory(expensesCategory)
+    },[chartOfAccounts])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
@@ -86,7 +98,7 @@ const Expenses = ()=>{
     const addExpenses = async ()=>{
         if (fields.expensesAmount && fields.expenseCategory && 
             fields.expensesDepartment && fields.expensesHandler &&
-            fields.expensesVendor
+            fields.expensesVendor && fields.expensesBank
         ){
             setExpensesStatus('Posting Expenses...')
             setAlertState('info')
@@ -174,6 +186,9 @@ const Expenses = ()=>{
         setReportExpense(filteredReportExpenses)
     }
 
+    const addExpenseCategory = async () =>{
+
+    }
     const printToPDF = (e) => {        
         const element = e.target.parentElement.parentElement
         const options = {
@@ -377,7 +392,12 @@ const Expenses = ()=>{
                             </select>
                         </div>
                         <div className='inpcov'>
-                            <div>Expense Category</div>
+                            {companyRecord.status === 'admin' && <div><FaPlus
+                                className='add-expense'
+                                onClick={()=>{
+                                    setShowExpenseModal(true)
+                                }}
+                            /> Expense Category</div>}
                             <select 
                                 className='forminp'
                                 name='expenseCategory'
@@ -415,6 +435,20 @@ const Expenses = ()=>{
                                 disabled={isView}
                             />
                         </div>
+                        <div className='inpcov'>
+                            <div>Expenses Bank</div>
+                            <select
+                                className='forminp'
+                                type='text'
+                                value={fields.expensesBank}
+                                diabled={isView}
+                            >
+                                <option value={''}>Select Expenses Bank</option>
+                                {payPoints.map((payPoint,id)=>{
+                                    return <option key={id} value={payPoint}>{payPoint.toUpperCase()}</option>
+                                })}
+                            </select>
+                        </div>
                     </div>
                     {!isView && <div className='expensesbuttom'>
                         <div className='inpcov'>
@@ -436,8 +470,207 @@ const Expenses = ()=>{
                     </div>}
                 </div>
             </div>
+            {showExpenseModal && <AddExpenseAccount
+                isOpen={showExpenseModal}
+                onClose={()=>{
+                    setShowExpenseModal(false)
+                }}
+                addExpenseCategory={addExpenseCategory}
+            />}
         </>
     )
 }
 
 export default Expenses
+
+const AddExpenseAccount = ({ isOpen, onClose, addExpenseCategory}) => {
+    const [accountDetails, setAccountDetails] = useState({
+        'sub-header': '',
+        'type': '',
+        'name': '',
+        'g/l code': ''
+    })
+
+    const subHeaders = [
+        'Operating Expenses',
+        'Administrative Expenses', 
+        'Financial Expenses'
+    ]
+
+    const accountTypes = [
+        'Asset',
+        'Liability',
+        'Equity',
+        'Revenue', 
+        'Expense'
+    ]
+
+    const handleChange = (e) => {
+        const { name, value } = e.target
+        setAccountDetails(prev => ({
+            ...prev,
+            [name]: value
+        }))
+    }
+
+    const handleSubmit = (e) => {
+        e.preventDefault()
+        // Add logic to save new expense account
+        addExpenseCategory(accountDetails)
+        onClose()
+    }
+
+    if (!isOpen) return null
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <div className="modal-header">
+                    <h2>Add New Expense Account</h2>
+                    <button className="close-btn" onClick={onClose}>&times;</button>
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label>Sub Header</label>
+                        <select 
+                            name="sub-header"
+                            value={accountDetails['sub-header']}
+                            onChange={handleChange}
+                            required
+                        >
+                            <option value="">Select Sub Header</option>
+                            {subHeaders.map((header, idx) => (
+                                <option key={idx} value={header}>{header}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Account Type</label>
+                        <select
+                            name="type" 
+                            value={accountDetails.type}
+                            onChange={handleChange}
+                            required
+                        >
+                            <option value="">Select Account Type</option>
+                            {accountTypes.map((type, idx) => (
+                                <option key={idx} value={type}>{type}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>name</label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={accountDetails.name}
+                            onChange={handleChange}
+                            placeholder="Enter account name"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>G/L Code</label>
+                        <input
+                            type="text"
+                            name="g/l code"
+                            value={accountDetails['g/l code']}
+                            onChange={handleChange}
+                            placeholder="Enter G/L code"
+                            required
+                        />
+                    </div>
+
+                    <div className="modal-footer">
+                        <button type="button" onClick={onClose}>Cancel</button>
+                        <button type="submit">Add Account</button>
+                    </div>
+                </form>
+            </div>
+
+            <style jsx>{`
+                .modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+
+                .modal-content {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    width: 90%;
+                    max-width: 500px;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                }
+
+                .modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                }
+
+                .close-btn {
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: #666;
+                }
+
+                .form-group {
+                    margin-bottom: 15px;
+                }
+
+                label {
+                    display: block;
+                    margin-bottom: 5px;
+                    font-weight: 500;
+                }
+
+                input, select {
+                    width: 100%;
+                    padding: 8px 12px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+
+                .modal-footer {
+                    margin-top: 20px;
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                }
+
+                button {
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    border: none;
+                    cursor: pointer;
+                }
+
+                button[type="submit"] {
+                    background-color: #4CAF50;
+                    color: white;
+                }
+
+                button[type="button"] {
+                    background-color: #f1f1f1;
+                }
+            `}</style>
+        </div>
+    )
+}
