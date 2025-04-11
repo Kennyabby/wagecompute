@@ -713,3 +713,320 @@ const Settings = () => {
 }
 
 export default Settings
+
+
+/** 
+* Paste one or more documents here
+*/
+// {
+//     "_id": {
+//       "$oid": "67f85d4d68ace6c4be01a91f"
+//     },
+//     "g/l code": 50001,
+//     "begin-code": 50001,
+//     "name": "Expenses",
+//     "end-code": 60000,
+//     "header-type": "header",
+//     "accounts":[
+//       {
+//         "header-code": 50001,
+//         "g/l code": 50002,
+//         "begin-code": 50002,
+//         "name":"IT Expenses",
+//         "end-code": 51000,
+//         "header-type": "sub-header"
+//       },
+//       {
+//         "header-code": 50001,
+//         "g/l code": 51001,
+//         "begin-code": 51001,
+//         "name":"Admin Expenses",
+//         "end-code": 52000,
+//         "header-type": "sub-header"
+//       },
+//       {
+//         "header-code": 50001,
+//         "g/l code": 52001,
+//         "begin-code": 52001,
+//         "name":"Maintenance Expenses",
+//         "end-code": 53000,
+//         "header-type": "sub-header"
+//       },
+//       {
+//         "header-code": 50001,
+//         "g/l code": 53001,
+//         "begin-code": 53001,
+//         "name":"Hotel&Travels Expenses",
+//         "end-code": 54000,
+//         "header-type": "sub-header"
+//       },
+//       {
+//         "header-code": 50001,
+//         "g/l code": 54001,
+//         "begin-code": 54001,
+//         "name":"Salary and Wages",
+//         "end-code": 55000,
+//         "header-type": "sub-header"
+//       },
+//       {
+//         "header-code": 50001,
+//         "g/l code": 55001,
+//         "begin-code": 55001,
+//         "name":"Other Expenses",
+//         "end-code": 56000,
+//         "header-type": "sub-header"
+//       },
+//         {
+//         "header-code": 50001,
+//         "sub-header-code": 50002,
+//         "g/l code": 50020,
+//         "name": "MTN Subscription",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 50002,
+//         "g/l code": 50030,
+//         "name": "Computer Maintenance",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51020,
+//         "name": "Diesel & Lubricant",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51030,
+//         "name": "Printing and Stationery",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51040,
+//         "name": "NEPA",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51050,
+//         "name": "DSTV Subscription",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51060,
+//         "name": "Telephone Subscription",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51070,
+//         "name": "Fitting & Lighting",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51080,
+//         "name": "Sewage Evacuation",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51090,
+//         "name": "Sanitation & Waste",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51100,
+//         "name": "Cooking gas",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51110,
+//         "name": "Staff Uniform",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 51001,
+//         "g/l code": 51120,
+//         "name": "First Aid",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52020,
+//         "name": "Electrical Repairs",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52030,
+//         "name": "Plumbing Repairs",
+//         "type": ""
+//       }, 
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52040,
+//         "name": "Generator Repairs",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52050,
+//         "name": "Refrigerator Repairs",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52060,
+//         "name": "General Maintenance",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52070,
+//         "name": "Furniture Maintenance",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52080,
+//         "name": "Building Maintenance",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52090,
+//         "name": "CCTV Maintenance",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 52001,
+//         "g/l code": 52100,
+//         "name": "Musical Expenses",
+//         "type": ""
+//       },
+//           {
+//         "header-code": 50001,
+//         "sub-header-code": 53001,
+//         "g/l code": 53020,
+//         "name": "Transport",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 54001,
+//         "g/l code": 54020,
+//         "name": "Staff Salary",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 54001,
+//         "g/l code": 54030,
+//         "name": "Security Salary",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 54001,
+//         "g/l code": 54040,
+//         "name": "Staff Welfare",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 54001,
+//         "g/l code": 54050,
+//         "name": "Adhoc Staff",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 54001,
+//         "g/l code": 54060,
+//         "name": "Salary & Wages",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 54001,
+//         "g/l code": 54070,
+//         "name": "Medical",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 54001,
+//         "g/l code": 54080,
+//         "name": "Hiring",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 54001,
+//         "g/l code": 54090,
+//         "name": "Laundry Services",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 55001,
+//         "g/l code": 55020,
+//         "name": "Other Expenses",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 55001,
+//         "g/l code": 55030,
+//         "name": "Entertainment",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 55001,
+//         "g/l code": 55040,
+//         "name": "Donation",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 55001,
+//         "g/l code": 55050,
+//         "name": "Director Remuneration",
+//         "type": ""
+//       },
+//       {
+//         "header-code": 50001,
+//         "sub-header-code": 55001,
+//         "g/l code": 55060,
+//         "name": "PR",
+//         "type": ""
+//       }   
+//       ]
+//   }
