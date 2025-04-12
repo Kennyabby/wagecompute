@@ -207,7 +207,7 @@ const Expenses = ()=>{
         }else{
             setAlertState('success')
             setAlert('New Expense Account Has Been Added!')
-            setTimeout(10)
+            setAlertTimeout(10)
             return
         }
     }
