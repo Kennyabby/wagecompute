@@ -30,6 +30,8 @@ const Expenses = ()=>{
     const [expenseFrom, setExpenseFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
     const [expenseTo, setExpenseTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [reportExpense, setReportExpense] = useState(null)
+    const [expenseCode, setExpenseCode] = useState(null)
+    const [allExpenseAccounts, setAllExpenseAccounts] = useState([])
     const [showExpenseModal, setShowExpenseModal] = useState(false)
     const defaultFields = {
         expensesDepartment:'',
@@ -55,13 +57,15 @@ const Expenses = ()=>{
         const expenseLedger = chartOfAccounts.find((acc)=>{
             return acc.name === 'Expenses'                
         })
-        const allExpenseAccounts = expenseLedger.accounts
-        var expensesCategory = allExpenseAccounts.filter((account)=>{
-            return ![null, undefined].includes(account.type)
-        }).map((acc)=>{
-            return acc.name
-        })
-        setExpensesCategory(expensesCategory)
+        if (expenseLedger){
+            setExpenseCode(expenseLedger['g/l code'])
+            var allExpenseAccounts = expenseLedger.accounts
+            setAllExpenseAccounts(allExpenseAccounts)
+            var expensesCategory = allExpenseAccounts.filter((account)=>{
+                return ![null, undefined].includes(account.type)
+            })
+            setExpensesCategory(expensesCategory)
+        }
     },[chartOfAccounts])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
@@ -186,8 +190,26 @@ const Expenses = ()=>{
         setReportExpense(filteredReportExpenses)
     }
 
-    const addExpenseCategory = async () =>{
-
+    const addExpenseCategory = async (newExpenseAccount) =>{
+        setAlertState('info')
+        setAlert('Creating New Expense Account...')
+        setAlertTimeout(100000)
+        const resp = await fetchServer("POST", {
+            database: company,
+            collection: "ChartOfAccounts",
+            prop: [{'name':'Expenses'}, {accounts: [...allExpenseAccounts || [], newExpenseAccount]}]
+        }, "updateOneDoc", server)
+        if (resp.err){
+            setAlertState('error')
+            setAlert('Could not create new category. No internet connection!')
+            setAlertTimeout(10)
+            return
+        }else{
+            setAlertState('success')
+            setAlert('New Expense Account Has Been Added!')
+            setTimeout(10)
+            return
+        }
     }
     const printToPDF = (e) => {        
         const element = e.target.parentElement.parentElement
@@ -397,7 +419,7 @@ const Expenses = ()=>{
                                 onClick={()=>{
                                     setShowExpenseModal(true)
                                 }}
-                            /> Expense Category</div>}
+                            /> Expense Account</div>}
                             <select 
                                 className='forminp'
                                 name='expenseCategory'
@@ -408,7 +430,7 @@ const Expenses = ()=>{
                                 <option value=''>Expense Category</option>
                                 {expensesCategory.sort((a,b) => a - b).map((category, index)=>{
                                     return (
-                                        <option key={index} value={category}>{category}</option>
+                                        <option key={index} value={category.name}>{`${category.name} ${category['g/l code']}`}</option>
                                     )
                                 })}
                             </select>
@@ -439,6 +461,7 @@ const Expenses = ()=>{
                             <div>Expenses Bank</div>
                             <select
                                 className='forminp'
+                                name='expensesBank'
                                 type='text'
                                 value={fields.expensesBank}
                                 diabled={isView}
@@ -474,8 +497,10 @@ const Expenses = ()=>{
                 isOpen={showExpenseModal}
                 onClose={()=>{
                     setShowExpenseModal(false)
-                }}
+                }}                
+                expenseCode={expenseCode}
                 addExpenseCategory={addExpenseCategory}
+                allExpenseAccounts={allExpenseAccounts}
             />}
         </>
     )
@@ -483,27 +508,45 @@ const Expenses = ()=>{
 
 export default Expenses
 
-const AddExpenseAccount = ({ isOpen, onClose, addExpenseCategory}) => {
+const AddExpenseAccount = ({ 
+    isOpen, onClose, expenseCode,
+    addExpenseCategory, allExpenseAccounts
+}) => {
+    const [defaultGLCode, setDefaultGLCode] = useState(Number(expenseCode) + 20)
     const [accountDetails, setAccountDetails] = useState({
-        'sub-header': '',
-        'type': '',
+        'header-code': expenseCode,
+        'sub-header-code': null,
+        'g/l code': defaultGLCode,
         'name': '',
-        'g/l code': ''
+        'type': ''
     })
 
-    const subHeaders = [
-        'Operating Expenses',
-        'Administrative Expenses', 
-        'Financial Expenses'
-    ]
+    const subHeaders = allExpenseAccounts.filter((account)=>{
+        return account['header-type'] === 'sub-header'
+    })
 
     const accountTypes = [
-        'Asset',
-        'Liability',
-        'Equity',
-        'Revenue', 
-        'Expense'
+        'Balance Sheet',
+        'Income Statement'
     ]
+
+    useEffect(()=>{
+        if (accountDetails['sub-header-code']){
+            var allCategoryCodes = allExpenseAccounts.filter((account)=>{
+                return Number(account['sub-header-code']) === Number(accountDetails['sub-header-code'])
+            })
+            var lastCode = allCategoryCodes[allCategoryCodes.length -1]?.['g/l code']
+            console.log(lastCode)
+            if (lastCode){
+                setDefaultGLCode(Number(lastCode) + 10)
+                setAccountDetails((accountDetails)=>{
+                    return {...accountDetails, ['g/l code']: Number(lastCode)+10}
+                })
+            }else{
+                setDefaultGLCode(Number(expenseCode) + 20)
+            }
+        }
+    },[accountDetails['sub-header-code']])
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -534,14 +577,14 @@ const AddExpenseAccount = ({ isOpen, onClose, addExpenseCategory}) => {
                     <div className="form-group">
                         <label>Sub Header</label>
                         <select 
-                            name="sub-header"
-                            value={accountDetails['sub-header']}
+                            name="sub-header-code"
+                            value={accountDetails['sub-header-code']}
                             onChange={handleChange}
                             required
                         >
                             <option value="">Select Sub Header</option>
                             {subHeaders.map((header, idx) => (
-                                <option key={idx} value={header}>{header}</option>
+                                <option key={idx} value={header['g/l code']}>{`${header.name} ${header['g/l code']}`}</option>
                             ))}
                         </select>
                     </div>
@@ -562,25 +605,25 @@ const AddExpenseAccount = ({ isOpen, onClose, addExpenseCategory}) => {
                     </div>
 
                     <div className="form-group">
-                        <label>name</label>
+                        <label>G/L Code</label>
+                        <input
+                            type="number"
+                            name="g/l code"
+                            value={accountDetails['g/l code']}
+                            onChange={handleChange}
+                            placeholder="Enter G/L code"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Account Name</label>
                         <input
                             type="text"
                             name="name"
                             value={accountDetails.name}
                             onChange={handleChange}
                             placeholder="Enter account name"
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>G/L Code</label>
-                        <input
-                            type="text"
-                            name="g/l code"
-                            value={accountDetails['g/l code']}
-                            onChange={handleChange}
-                            placeholder="Enter G/L code"
                             required
                         />
                     </div>
