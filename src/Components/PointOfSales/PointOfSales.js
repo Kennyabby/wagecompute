@@ -38,9 +38,9 @@ const PointOfSales = () => {
     const [viewSesions, setViewSessions] = useState(false);
     const [loadSession, setLoadSession] = useState(true);
     const posContainerRef = useRef(null)
+    const orderControllerRef = useRef(null)
     const sessionControllerRef = useRef(null)
     const tableControllerRef = useRef(null)
-    const orderControllerRef = useRef(null)
     const productControllerRef = useRef(null)
     const [tableFetchCount, setTableFetchCount] = useState(0)
     useEffect(()=>{
@@ -416,9 +416,9 @@ const PointOfSales = () => {
         if (orderControllerRef.current) {
             orderControllerRef.current.abort();            
         }
-        if (productControllerRef.current) {
-            productControllerRef.current.abort();
-        }
+        // if (productControllerRef.current) {
+        //     productControllerRef.current.abort();
+        // }
         // if (tableControllerRef.current) {
         //     if (tableFetchCount>2){
         //         tableControllerRef.current.abort();
@@ -430,13 +430,13 @@ const PointOfSales = () => {
         // }
         // Create new AbortControllers
         const orderController = new AbortController();
-        const productController = new AbortController();
+        // const productController = new AbortController();
         // const tableController = new AbortController();
         // const sessionController = new AbortController();
 
         // Store the controllers in refs
         orderControllerRef.current = orderController;
-        productControllerRef.current = productController;
+        // productControllerRef.current = productController;
         // tableControllerRef.current = tableController;
         // sessionControllerRef.current = sessionController;
 
@@ -445,18 +445,61 @@ const PointOfSales = () => {
             database: company,
             collection: "Tables"
         }, "getDocsDetails", server);
-
+        if (!tablesResponse.err){
+            setTables(tablesResponse.record)  
+            if (sessions!==null){                
+                setLoadSession(false)
+                setIsLive(true)       
+                UpdateSessionState(sessions, false)   
+                // setTableFetchCount((prevCount)=>{return prevCount + 1})    
+            }
+        }else{
+            if (tablesResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
         // Fetch products
         const productsResponse = await fetchServer("POST", {
             database: company,
             collection: "Products"
-        }, "getDocsDetails", server, productController.signal);
-
+        }, "getDocsDetails", server);
+        if(!productsResponse.err){
+            setProducts(productsResponse.record)
+            if (sessions?.length && tables.length){
+                setIsLive(true)
+                setLoadSession(false)
+                UpdateSessionState(sessions, false)
+            }
+        }else{
+            if (productsResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
+        // Feth Sessions
         const sessionsResponse = await fetchServer("POST", {
             database: company,
             collection: "POSSessions",
             prop: {type:'sales'}
         }, "getDocsDetails", server);
+        if(!sessionsResponse.err){
+            const thisSessions = sessionsResponse.record.filter((session)=>{
+                return session.employee_id === companyRecord.emailid
+            })
+            setSessions(thisSessions)
+            setAllSessions(sessionsResponse.record)
+            if (tables?.length){
+                setLoadSession(false)
+                setIsLive(true)
+                UpdateSessionState(thisSessions, false)
+            }
+        }else{
+            if (sessionsResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
                 database: company,
@@ -503,53 +546,6 @@ const PointOfSales = () => {
                     setIsLive(false)
                     setLiveErrorMessages('Slow Network. Check Connection')
                 }
-            }
-        }
-
-        if (!tablesResponse.err){
-            setTables(tablesResponse.record)  
-            if (sessions!==null){                
-                setLoadSession(false)
-                setIsLive(true)       
-                UpdateSessionState(sessions, false)   
-                // setTableFetchCount((prevCount)=>{return prevCount + 1})    
-            }
-        }else{
-            if (tablesResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-
-        if(!productsResponse.err){
-            setProducts(productsResponse.record)
-            if (sessions?.length && tables.length){
-                setIsLive(true)
-                setLoadSession(false)
-                UpdateSessionState(sessions, false)
-            }
-        }else{
-            if (productsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-
-        if(!sessionsResponse.err){
-            const thisSessions = sessionsResponse.record.filter((session)=>{
-                return session.employee_id === companyRecord.emailid
-            })
-            setSessions(thisSessions)
-            setAllSessions(sessionsResponse.record)
-            if (tables?.length){
-                setLoadSession(false)
-                setIsLive(true)
-                UpdateSessionState(thisSessions, false)
-            }
-        }else{
-            if (sessionsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
             }
         }
         
@@ -619,7 +615,7 @@ const PointOfSales = () => {
                 prop: {...orderFilter}
             }, "getDocsDetails", server);
             if (!response.err){
-                if (response.record.length > 0) {
+                if (response.record?.length > 0) {
                     setCurrentTable(table)
                     // Store all table orders in state
                     var ordersUpdate = response.record
@@ -645,14 +641,14 @@ const PointOfSales = () => {
                     setActiveScreen('order');
                     setAlertState('info');
                     setAlert('Loaded table orders...');
-                    setAlertTimeout(50)
+                    setAlertTimeout(10)
                 } else {
                     setCurrentTable(table);
                     createNewOrder(table);
                     setActiveScreen('order');
                     setAlertState('info');
                     setAlert('Loaded table orders...');
-                    setAlertTimeout(50)
+                    setAlertTimeout(10)
                 }
             }else{
                 setAlertState('info')
@@ -708,7 +704,7 @@ const PointOfSales = () => {
             status: 'pending',
             delivery: 'pending',
             wrh: wrh,
-            orderId: currentOrder.orderNumber,
+            orderNumber: currentOrder.orderNumber,
             createdAt: new Date().getTime()
         }
         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
@@ -754,7 +750,7 @@ const PointOfSales = () => {
             setAlert('Order placed successfully');
             setAlertTimeout(2000)
             // View Payment Modal
-            setShowPaymentModal(true);
+            // setShowPaymentModal(true);
         }
         
     };
@@ -777,7 +773,9 @@ const PointOfSales = () => {
             updatedItems = [...currentOrder.items, { 
                 ...product,
                 i_d: product.i_d,
-                quantity: quantity || 1
+                quantity: quantity || 1,
+                orderNumber: currentOrder.orderNumber,
+                tableId: currentOrder.tableId
             }];
         }
     
@@ -789,7 +787,7 @@ const PointOfSales = () => {
     };
 
     const handleRemoveItem = (itemId) => {
-        const updatedItems = currentOrder.items.filter(item => item.id !== itemId);
+        const updatedItems = currentOrder.items.filter(item => item.i_d !== itemId);
         setCurrentOrder({
             ...currentOrder,
             items: updatedItems,
@@ -904,7 +902,7 @@ const PointOfSales = () => {
     const printReceipt = (orderData) => {
         const receiptContent = `
             <div class="receipt">
-                <h2>${company}</h2>
+                <h2>${companyRecord.name}</h2>
                 <p>Order #${orderData.orderNumber}</p>
                 <p>Date: ${new Date().toLocaleString()}</p>
                 <hr/>
@@ -916,11 +914,11 @@ const PointOfSales = () => {
                 `).join('')}
                 <hr/>
                 <div class="receipt-total">
-                    <p>Subtotal: ₦${orderData.totalSales.toFixed(2)}</p>
-                    <p>Tax: ₦${(orderData.totalSales * 0.075).toFixed(2)}</p>
-                    <p>Total: ₦${(orderData.totalSales * 1.075).toFixed(2)}</p>
+                    <p>Subtotal: ₦${(Number(orderData.totalSales || 0) * 0.925).toFixed(2)}</p>
+                    <p>Tax: ₦${(Number(orderData.totalSales || 0) * 0.075).toFixed(2)}</p>
+                    <p>Total: ₦${(Number(orderData.totalSales || 0) * 1).toFixed(2)}</p>
                     <p>Paid: ₦${orderData.totalPayment}</p>
-                    <p>Change: ₦${orderData.cashChange}</p>
+                    ${orderData.cashChange ? `<p>{Change: ₦${orderData.cashChange}}</p>`: ''}
                 </div>
                 <p>Thank you for your business!</p>
             </div>
@@ -940,7 +938,7 @@ const PointOfSales = () => {
             </html>
         `);
         printWindow.print();
-        printWindow.close();
+        // printWindow.close();
     };
 
     // =========================================

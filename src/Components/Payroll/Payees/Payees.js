@@ -143,7 +143,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                         var payees = []
                                                         if (attd.length){
                                                             payees = attd[0].payees.filter((payee)=>{
-                                                                if (payee['Person ID'] === employee.i_d){
+                                                                if (payee['Person ID'] === employee.i_d && !employee.dismissalDate){
                                                                     return payee
                                                                 }
                                                             })

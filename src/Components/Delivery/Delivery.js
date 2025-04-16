@@ -38,9 +38,9 @@ const Delivery = () => {
     const [viewSesions, setViewSessions] = useState(false);
     const [loadSession, setLoadSession] = useState(true);
     const posContainerRef = useRef(null)
+    const orderControllerRef = useRef(null)
     const sessionControllerRef = useRef(null)
     const tableControllerRef = useRef(null)
-    const orderControllerRef = useRef(null)
     const productControllerRef = useRef(null)
     const [tableFetchCount, setTableFetchCount] = useState(0)
     useEffect(()=>{
@@ -49,6 +49,7 @@ const Delivery = () => {
 
     // Order States
     const [currentOrder, setCurrentOrder] = useState(null);
+    const [posCurrentOrder, setPosCurrentOrder] = useState(null); 
     const [allSessionOrders, setAllSessionOrders] = useState([])
     const [allOrders, setAllOrders] = useState([]);
     const [tableOrders, setTableOrders] = useState([]);
@@ -97,12 +98,27 @@ const Delivery = () => {
     const [uoms, setUoms] = useState([]);
     const [wrhs, setWrhs] = useState([]);
     const [wrh, setWrh] = useState('');
+    const [wrhCategories, setWrhCategories] = useState({})
     // =========================================
     // 2. Effects and Data Loading
     // =========================================
     useEffect(() => {
         handleSettingsUpdate();
     }, [settings]);
+    useEffect(()=>{
+        if (wrhs.length){
+            setWrhCategories((wrhCategories)=>{
+                 const cat = {}
+                 wrhs.forEach((wrh)=>{
+                    if (!wrh.purchase){
+                        cat[wrh.name] = wrh.productCategories
+                    }
+                 })
+                 return {...cat}
+            })
+        }
+    },[wrhs])
+
     useEffect(()=>{
         loadTableData()
         if (window.localStorage.getItem('pos-wrh')){
@@ -111,6 +127,7 @@ const Delivery = () => {
             setWrh(Object.keys(deliveryWrhAccess)[0])
         }
     },[])
+
     useEffect(() => {
         handleCategoryFilter();
     }, [activeCategory, products]);
@@ -119,6 +136,7 @@ const Delivery = () => {
          loadInitialData()
          fetchProfiles(company)
     },[settings, currentOrder])
+
     useEffect(()=>{
         if (posContainerRef.current){
             if (loadSession || startSession || endSession){
@@ -128,6 +146,7 @@ const Delivery = () => {
             }
         }
     },[posContainerRef, loadSession, startSession, endSession])
+
     useEffect(()=>{
         if (tables.length && wrh && curSession && employees.length){
             setOrderTables((orderTables)=>{
@@ -144,6 +163,7 @@ const Delivery = () => {
                     const myTableOrders = []
                     const otherTableOrders  = []
                     var tableUser = null
+                    var wrhPendingItems = []
                     activeOrders.forEach((activeOrder)=>{
                         var orderDate = '01/01/1970'
                         if (activeOrder.createdAt){
@@ -151,24 +171,29 @@ const Delivery = () => {
                         }
                         if (
                             activeOrder.tableId === orderTable.i_d &&
-                            activeOrder.wrh === wrh &&
+                            (activeOrder.wrh === wrh || wrh === 'kitchen') &&
                             getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)                            
                         ){
+                            let actualOrder = allOrders.find(order => order.orderNumber === activeOrder.orderNumber)     
+                            // console.log(actualOrder)                       
+                            if (![null, undefined].includes(actualOrder)){
+                                actualOrder.items.forEach((item)=>{
+                                    if (wrhCategories[wrh].includes(item.category) && item.delivery!=='completed'){
+                                        wrhPendingItems.push(item)
+                                    }
+                                })
+                            }
                             
-                            if (                                
-                                activeOrder.handlerId === companyRecord.emailid
-                            ){
+                            if (wrhPendingItems.length){
                                 tableUser = employees.find(employee => employee.i_d === activeOrder.handlerId)
                                 myTableOrders.push(activeOrder)
-                            }else{
-                                tableUser = employees.find(employee => employee.i_d === activeOrder.handlerId)
-                                otherTableOrders.push(activeOrder)
-                            }
+                            }                            
                         }
                     })
                     if (myTableOrders.length){
                         orderTable.status = 'available'
                         orderTable.activeOrders = myTableOrders.length
+                        
                     }else{
                         if (otherTableOrders.length){
                             orderTable.status = 'unavailable'
@@ -186,11 +211,12 @@ const Delivery = () => {
                     }else{
                         orderTable.tableUser = tableUser
                     }
+                    orderTable.pendingItems = wrhPendingItems
                 })
                 return [...orderTables]
             })
         }
-    },[tables,curSession, wrh, employees])
+    },[tables,curSession, wrh, employees, allOrders])
     const getSessionSales = (orders) =>{
         const payPointList = Object.keys(payPoints)
         const allSales = {}
@@ -202,7 +228,7 @@ const Delivery = () => {
             allSales[payPoint] = 0
         })
         orders.forEach((order)=>{
-            if (order.status !== 'cancelled'){
+            if (order.status !== 'cancelled'){  
                 if (order.status === 'pending'){
                     if (order.delivery === 'completed'){
                         totalPendingSales += Number(order.totalSales || 0)                    
@@ -354,6 +380,7 @@ const Delivery = () => {
 
         return sessionEndDate.getTime();
     };
+
     const UpdateSessionState = (sessions, loadSession)=>{
         if (!loadSession && sessions?.length){            
             const previousSession = sessions.filter((session)=> session.active)            
@@ -389,9 +416,11 @@ const Delivery = () => {
             }
         }
     } 
+
     useState(()=>{
         UpdateSessionState(sessions, loadSession)
     },[loadSession,sessions])
+
     // =========================================
     // 3. Data Loading Functions
     // =========================================
@@ -416,9 +445,9 @@ const Delivery = () => {
         if (orderControllerRef.current) {
             orderControllerRef.current.abort();            
         }
-        if (productControllerRef.current) {
-            productControllerRef.current.abort();
-        }
+        // if (productControllerRef.current) {
+        //     productControllerRef.current.abort();
+        // }
         // if (tableControllerRef.current) {
         //     if (tableFetchCount>2){
         //         tableControllerRef.current.abort();
@@ -430,13 +459,13 @@ const Delivery = () => {
         // }
         // Create new AbortControllers
         const orderController = new AbortController();
-        const productController = new AbortController();
+        // const productController = new AbortController();
         // const tableController = new AbortController();
         // const sessionController = new AbortController();
 
         // Store the controllers in refs
         orderControllerRef.current = orderController;
-        productControllerRef.current = productController;
+        // productControllerRef.current = productController;
         // tableControllerRef.current = tableController;
         // sessionControllerRef.current = sessionController;
 
@@ -445,18 +474,65 @@ const Delivery = () => {
             database: company,
             collection: "Tables"
         }, "getDocsDetails", server);
+        if (!tablesResponse.err){
+            setTables(tablesResponse.record)  
+            if (sessions!==null){                
+                setLoadSession(false)
+                setIsLive(true)       
+                UpdateSessionState(sessions, false)   
+                // setTableFetchCount((prevCount)=>{return prevCount + 1})    
+            }
+        }else{
+            if (tablesResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
 
         // Fetch products
         const productsResponse = await fetchServer("POST", {
             database: company,
             collection: "Products"
-        }, "getDocsDetails", server, productController.signal);
+        }, "getDocsDetails", server);
+        if(!productsResponse.err){
+            setProducts(productsResponse.record)
+            if (sessions?.length && tables.length){
+                setIsLive(true)
+                setLoadSession(false)
+                UpdateSessionState(sessions, false)
+            }
+        }else{
+            if (productsResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
 
+        // Fetch Sessions
         const sessionsResponse = await fetchServer("POST", {
             database: company,
             collection: "POSSessions",
             prop: {type:'delivery'}
         }, "getDocsDetails", server);
+        if(!sessionsResponse.err){
+            const thisSessions = sessionsResponse.record.filter((session)=>{
+                return session.employee_id === companyRecord.emailid
+            })
+            setSessions(thisSessions)
+            setAllSessions(sessionsResponse.record)
+            if (tables?.length){
+                setLoadSession(false)
+                setIsLive(true)
+                UpdateSessionState(thisSessions, false)
+            }
+        }else{
+            if (sessionsResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
+
+        // Fetch Orders
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
                 database: company,
@@ -468,7 +544,9 @@ const Delivery = () => {
                     if(ordersResponse.record?.length){
                         setAllSessionOrders(ordersResponse.record)
                         setAllOrders(ordersResponse.record.filter((order) =>{
-                            return (order.sessionId === curSession.i_d && order.handlerId === companyRecord.emailid)
+                            if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){
+                                return order
+                            }                            
                         })) 
                         var ordersUpdate = ordersResponse.record
                         if (currentOrder!==null){
@@ -480,7 +558,7 @@ const Delivery = () => {
                                     }
                                     if (
                                         order.tableId === currentOrder.tableId
-                                        && order.wrh === wrh 
+                                        && (order.wrh === wrh || wrh === 'kitchen') 
                                     ){
                                         // Check if the order is from the current session
                                         return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
@@ -503,53 +581,6 @@ const Delivery = () => {
                     setIsLive(false)
                     setLiveErrorMessages('Slow Network. Check Connection')
                 }
-            }
-        }
-
-        if (!tablesResponse.err){
-            setTables(tablesResponse.record)  
-            if (sessions!==null){                
-                setLoadSession(false)
-                setIsLive(true)       
-                UpdateSessionState(sessions, false)   
-                // setTableFetchCount((prevCount)=>{return prevCount + 1})    
-            }
-        }else{
-            if (tablesResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-
-        if(!productsResponse.err){
-            setProducts(productsResponse.record)
-            if (sessions?.length && tables.length){
-                setIsLive(true)
-                setLoadSession(false)
-                UpdateSessionState(sessions, false)
-            }
-        }else{
-            if (productsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-
-        if(!sessionsResponse.err){
-            const thisSessions = sessionsResponse.record.filter((session)=>{
-                return session.employee_id === companyRecord.emailid
-            })
-            setSessions(thisSessions)
-            setAllSessions(sessionsResponse.record)
-            if (tables?.length){
-                setLoadSession(false)
-                setIsLive(true)
-                UpdateSessionState(thisSessions, false)
-            }
-        }else{
-            if (sessionsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
             }
         }
         
@@ -608,51 +639,54 @@ const Delivery = () => {
             setAlertState('info');
             setAlert('Loading table orders...');
             setAlertTimeout(100000)
-            const orderFilter = { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
-            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
-                delete orderFilter.sessionId
-                delete orderFilter.handlerId
-            }
+            const orderFilter = { tableId: table.i_d}
+            // if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
+            //     delete orderFilter.sessionId
+            //     delete orderFilter.handlerId
+            // }
             const response = await fetchServer("POST", {
                 database: company,
                 collection: "Orders",
                 prop: {...orderFilter}
             }, "getDocsDetails", server);
             if (!response.err){
-                if (response.record.length > 0) {
+                if (response.record?.length > 0) {
                     setCurrentTable(table)
                     // Store all table orders in state
                     var ordersUpdate = response.record
-                    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
-                        setTableOrders(ordersUpdate.filter((order)=>{
-                            var orderDate = '01/01/1970'
-                            if (order.createdAt){
-                                orderDate = order.createdAt
-                            }
-                            return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
-                        }))
-                    }else{
-                        setTableOrders(response.record);
-                    }
+                    const pendingOrders = ordersUpdate.filter((order)=>{
+                        var orderDate = '01/01/1970'
+                        if (order.createdAt){
+                            orderDate = order.createdAt
+                        }
+                        return (getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start) &&
+                            (order.wrh === wrh || wrh === 'kitchen') &&
+                            (order.delivery === 'pending' || order.delivery === 'partial')
+                        )
+                    })
+                    setTableOrders(pendingOrders)
+                    
                     // Set the most recent pending order as active, or create new one if none pending
-                    const pendingOrders = response.record.filter(order => order.status === 'pending');
                     const ordersNumber = pendingOrders.length
                     if (ordersNumber) {
-                        setCurrentOrder(pendingOrders[0]);
-                    } else {
-                        createNewOrder(table);
-                    }
+                        var firstOrder = pendingOrders[0]
+                        const orderClone = structuredClone({firstOrder})
+                        setCurrentOrder(orderClone.firstOrder);
+                        setPosCurrentOrder(orderClone.firstOrder)
+                    }else{
+                        createNewOrder(table)
+                    } 
                     setActiveScreen('order');
                     setAlertState('info');
                     setAlert('Loaded table orders...');
-                    setAlertTimeout(50)
+                    setAlertTimeout(10)
                 } else {
+                    createNewOrder(table)
                     setCurrentTable(table);
-                    createNewOrder(table);
                     setActiveScreen('order');
                     setAlertState('info');
                     setAlert('Loaded table orders...');
-                    setAlertTimeout(50)
+                    setAlertTimeout(10)
                 }
             }else{
                 setAlertState('info')
@@ -695,101 +729,50 @@ const Delivery = () => {
     // =========================================
     // 5. Order Management
     // =========================================
-    const handlePlaceOrder = async () => {
-        setAlertState('info')
-        setAlert('Placing Order...')
-        setAlertTimeout(1000000)
-        setPlacingOrder(true)
-        // Save the current order to database
-        const activeOrder = {
-            tableId: currentOrder.tableId,
-            sessionId: currentOrder.sessionId,
-            handlerId: companyRecord.emailid,
-            wrh: wrh,
-            orderId: currentOrder.orderNumber,
-            createdAt: new Date().getTime()
-        }
-        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [...prevTable?.activeTables || [], activeOrder]}]
-        }, "updateOneDoc", server)
-        if (resp.err){
-            setAlertState('error');
-            setAlert('Error updating table');
-            setAlertTimeout(3000)
-            setPlacingOrder(false)
-        }
-        
-        const placedOrder = {
-            ...currentOrder, status: 'pending', placedAt: new Date().getTime()
-        }
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Orders",
-            update: {...placedOrder}
-        }, "createDoc", server);
-    
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error saving order');
-            setAlertTimeout(3000)
-            setPlacingOrder(false)
-            return;
-        }
-        else{
-            // Update tableOrders state with the new order
-            setTableOrders(prev => ([
-                ...prev, placedOrder
-            ]));
-            setCurrentOrder(placedOrder)
-            setPlacingOrder(false)
-            setAlertState('success');
-            setAlert('Order placed successfully');
-            setAlertTimeout(2000)
-            // View Payment Modal
-            setShowPaymentModal(true);
-        }
-        
-    };
-    
 
     // Update the handleAddItem function to separate selection from adding
     const handleAddItem = (product, quantity = 1) => {
         if (!product) return;
-
+        const originalItem = posCurrentOrder.items.find(item => item.i_d === product.i_d);
         const existingItem = currentOrder.items.find(item => item.i_d === product.i_d);
+        
         let updatedItems;
     
         if (existingItem){
             updatedItems = currentOrder.items.map(item =>
                 item.i_d === product.i_d 
-                    ? { ...item, quantity: quantity ? item.quantity + quantity : item.quantity + 1 }
+                    ? { ...item, quantity: quantity ? quantity: item.quantity + 1 }
                     : item
             );
         } else {
             updatedItems = [...currentOrder.items, { 
                 ...product,
                 i_d: product.i_d,
-                quantity: quantity || 1
+                quantity: quantity || 1,
+                orderNumber: currentOrder.orderNumber,
+                tableId: currentOrder.tableId
             }];
         }
-    
+        let updatedItem = updatedItems.find(item => item.i_d === product.i_d)
+        if (Number(updatedItem.quantity) > (Number(originalItem.quantity) - Number(originalItem.remainingQuantity || 0))){
+            setAlertState('error');
+            setAlert('Delivery quantity cannot be greater than ordered quantity!');
+            setAlertTimeout(3000)
+            return
+        }
         setCurrentOrder({
             ...currentOrder,
             items: updatedItems,
-            totalSales: calculateTotal(updatedItems)
         });
     };
 
     const handleRemoveItem = (itemId) => {
-        const updatedItems = currentOrder.items.filter(item => item.id !== itemId);
+        const updatedItems = currentOrder.items.filter(item => item.i_d !== itemId);
         setCurrentOrder({
             ...currentOrder,
             items: updatedItems,
-            totalSales: calculateTotal(updatedItems)
         });
+        setSelectedProduct(null)
     };
 
     const handleSwitchOrder = (order) => {
@@ -804,92 +787,107 @@ const Delivery = () => {
     };
 
     const handleOrderSelect = (order) => {
+        const orderClone = structuredClone({order})
         setSelectedProduct(null)
-        setCurrentOrder(order);
-        setActiveScreen('order');
-        setShowOrdersModal(false);
+        setCurrentOrder(orderClone.order);
+        setPosCurrentOrder(orderClone.order)
     };
 
     // =========================================
-    // 6. Payment Processing
+    // 6. Delivery Processing
     // =========================================
-    const handlePayment = async () => {
+    const handleOrderDelivery = async () => {
         setAlertState('info');
-        setAlert('Processing Payment...');
+        setAlert('Processing Delivery...');
         setAlertTimeout(1000000)
-        setMakingPayment(true)
-        var totalPayment = 0
-        var totalChange = 0
-        var receipts = {}
-        Object.keys(paymentDetails).forEach((payPoint)=>{
-            totalPayment += Number(paymentDetails[payPoint].amount || 0)
-            totalChange += Number(paymentDetails[payPoint].change || 0)
-            receipts[payPoint] = paymentDetails[payPoint].receipt
-        })
-        if (totalPayment < currentOrder.totalSales) {
-            setAlertState('error');
-            setAlert('Insufficient payment amount');
-            setAlertTimeout(3000)
-            setMakingPayment(false)
-            return;
-        }
+        setPlacingOrder(true)
 
         const paymentData = {}
         Object.keys(paymentDetails).forEach((payPoint)=>{
             paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0)
         })
-        const paymentDataUpdate = {
-            ...paymentData,
-            payedAt: new Date().getTime(),
-            totalPayment: totalPayment,
-            cashChange: Number(paymentDetails['cash'].change),
-            receipts,
-            status: 'completed'
+        const deliveryDataUpdate = {
+            deliveredAt: new Date().getTime(),
+            deliveredBy: companyRecord.emailid
         };
 
-        const newOrder = {
-            ...currentOrder,
-            ...paymentDataUpdate
-        }
-        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [
-                ...prevTable.activeTables.filter((table)=>{return (
-                    table.tableId !== currentOrder.tableId && 
-                    table.sessionId !== currentOrder.sessionId &&
-                    table.handlerId !== companyRecord.emailid && 
-                    table.orderId !== currentOrder.orderNumber
-                )})
-            ]}]
-        }, "updateOneDoc", server)
-        if (resp.err){
-            setAlertState('error');
-            setAlert('Error updating table');
-            setAlertTimeout(3000)
-            return;
+        // Tag delivered Items
+        var pendingOrderItems = posCurrentOrder.items
+        var edittedOrderItems = currentOrder.items
+        var deliveredOrderItems = []
+        edittedOrderItems.forEach((item, index)=>{
+            var previousItemState = pendingOrderItems.find((itm)=>{
+                return itm.i_d === item.i_d
+            })
+            if (Number(previousItemState.quantity) === Number(item.quantity) && wrhCategories[wrh].includes(item.category)){
+                previousItemState.deliveredQuantity = Number(previousItemState.remainingQuantity || 0) + Number(item.quantity)
+                previousItemState.remainingQuantity = Number(previousItemState.quantity) - Number(previousItemState.deliveredQuantity)
+                previousItemState.delivery = 'completed'                
+            }           
+            deliveredOrderItems.push(previousItemState)
+        })
+
+        const updatedOrderItems = []
+
+        let totalDelivered = 0
+        pendingOrderItems.forEach((item)=>{
+            var deliveredItem = deliveredOrderItems.find((itm)=>{
+                return itm.i_d  === item.i_d
+            })
+            
+            if (![null, undefined].includes(deliveredItem)){
+                if (deliveredItem.delivery==='completed'){
+                    totalDelivered += 1
+                }
+                updatedOrderItems.push(deliveredItem)
+            }else{
+                updatedOrderItems.push(item)
+            }            
+        })
+
+        deliveryDataUpdate.delivery = (totalDelivered === updatedOrderItems.length) ? 'completed' : 'pending'
+        deliveryDataUpdate.items = updatedOrderItems
+        if (currentOrder.status === 'completed'){
+            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':wrh}, {activeTables: [
+                    ...prevTable.activeTables.filter((table)=>{return (
+                        table.tableId !== currentOrder.tableId && 
+                        table.sessionId !== currentOrder.sessionId &&
+                        table.handlerId !== companyRecord.emailid && 
+                        table.orderId !== currentOrder.orderNumber
+                    )})
+                ]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                setPlacingOrder(false)
+                return;
+            }
         }
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
-            prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
+            prop: [{orderNumber: currentOrder.orderNumber}, {...deliveryDataUpdate}]
         }, "updateOneDoc", server);
 
         if (response.err) {
             setAlertState('error');
-            setAlert('Error processing payment');
-            setMakingPayment(false)
+            setAlert('Error processing delivery');
+            setPlacingOrder(false)
             return
         } else {
-            setMakingPayment(false)
+            setPlacingOrder(false)
             setAlertState('success');
-            setAlert('Payment processed successfully');
+            setAlert('Delivery processed successfully');
             setAlertTimeout(2000)
-            setShowPaymentModal(false);
-            createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
-            setPaymentDetails({...payPoints})
-            printReceipt(newOrder);
+            setCurrentOrder((currentOrder)=>{
+                return {...currentOrder, ...deliveryDataUpdate}
+            })                                               
             return
         }
     };
@@ -1087,7 +1085,7 @@ const Delivery = () => {
                                     >×</button>
                                 }
                             </div>
-                            <div className="form-group">
+                            {/* <div className="form-group">
                                 <label>Opening Cash</label>
                                 <input 
                                     type="number" 
@@ -1095,7 +1093,7 @@ const Delivery = () => {
                                     onChange={(e) => setOpeningCash(parseFloat(e.target.value) || 0)} 
                                     disabled={loading}
                                 />
-                            </div>
+                            </div> */}
                             <div className="form-group">
                                 <label>Sales Post</label>
                                 <select 
@@ -1298,13 +1296,26 @@ const Delivery = () => {
             <div className="order-entry">
                 <div className="selected-items">
                     {currentOrder.items.map(item => (
-                        <div key={item.id} className="selected-item">
+                        item.delivery !== 'completed' && wrhCategories[wrh].includes(item.category) && 
+                        <div 
+                            key={item.id} 
+                            className="selected-item" 
+                            onClick={()=>{
+                                if (selectedProduct?.i_d !== item.i_d){
+                                    setSelectedProduct(item)
+                                }
+                            }}
+                        >
                             <span>{item.name}</span>
                             <span>{item.quantity}</span>
-                            <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>
-                            {currentOrder.status==='new' && <button 
-                                className="remove-btn"
-                                onClick={() => handleRemoveItem(item.id)}
+                            {/* {!curSession.type === 'delivery' && <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>} */}
+                            {(currentOrder.status === 'new' || currentOrder.delivery === 'pending') && <button 
+                                className = "remove-btn"
+                                onClick={() => {
+                                    if (selectedProduct?.i_d === item.i_d){
+                                        handleRemoveItem(item.i_d)
+                                    }
+                                }}
                             >
                                 ×
                             </button>}
@@ -1312,53 +1323,25 @@ const Delivery = () => {
                     ))}
                 </div>
                 {selectedProduct && renderKeypad()}
-                {(currentOrder.status!=='cancelled' && currentOrder.status === 'new') && <button 
+                {(currentOrder.delivery!=='cancelled' && currentOrder.delivery!=='completed') && <button 
                     className="place-order-btn"
-                    onClick={() => handlePlaceOrder()}
-                    disabled={!currentOrder.items.length || placingOrder || sessionEnded}
+                    onClick={() => handleOrderDelivery()}
+                    disabled={currentOrder?.items.length === 0 || placingOrder}
                 >
-                    Place Order (₦{currentOrder.totalSales?.toFixed(2)})
-                </button>}
-                {(currentOrder.status!=='cancelled' && currentOrder.status === 'pending') && <button 
-                    className="place-order-btn"
-                    onClick={() => setShowPaymentModal(true)}
-                    disabled={!currentOrder.totalSales || makingPayment || currentTable.status === 'unavailable'}
-                >
-                    Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
+                    Place Delivery (#{currentOrder.orderNumber})
                 </button>}
             </div>
             <div className="products-panel">
-                <div className="categories-bar">
-                    <button 
-                        className={`category-btn ${!activeCategory ? 'active' : ''}`}
-                        onClick={() => setActiveCategory(null)}
-                    >
-                        All
-                    </button>
-                    {categories.map(category => (
-                        <button 
-                            key={category.code}
-                            className={`category-btn ${activeCategory === category.code ? 'active' : ''}`}
-                            onClick={() => setActiveCategory(category.code)}
-                        >
-                            {category.name}
-                        </button>
-                    ))}
-                </div>
-                <div className="products-grid">
-                    {filteredProducts.map(product => (
-                        <div 
-                            key={product.i_d}
-                            className={`product-card ${selectedProduct?.i_d === product.i_d ? 'active' : ''}`}
-                            onClick={() => handleProductClick(product)} // Changed from handleAddItem to handleProductClick
-                        >
-                            <div className="product-icon">
-                                <MdShoppingBasket />
-                            </div>
-                            <div className="product-name">{product.name}</div>
-                            <div className="product-price">₦{wrh === 'vip' ? (product.vipPrice || product.salesPrice) : product.salesPrice}</div>
-                        </div>
-                    ))}
+               
+                <div className="orders-grid">
+                    <OrdersModal 
+                        tableOrders={tableOrders}
+                        handleOrderSelect={handleOrderSelect}
+                        tables={tables}
+                        wrh={wrh}
+                        currentOrder={currentOrder}
+                        setCurrentOrder={setCurrentOrder}
+                    />
                 </div>
             </div>
         </div>
@@ -1412,7 +1395,7 @@ const Delivery = () => {
                                 .map(table => (
                                     <div 
                                         key={table.i_d}
-                                        className={`pos-table ${table.status}`}
+                                        className={`pos-table1 tables-${table.status}`}
                                         onClick={() => handleTableSelect(table)}
                                     >
                                         {table.name}
@@ -1497,7 +1480,7 @@ const Delivery = () => {
         <div className="pos-container" ref={posContainerRef}>
             {renderSessionEntry()}
             {viewSesions ? 
-            <POSDashboard
+            <DeliveryDashboard
                 setViewSessions={setViewSessions}
                 setStartSession={setStartSession}
                 setEndSession={setEndSession}
@@ -1536,21 +1519,6 @@ const Delivery = () => {
                             }
                         </div>
                         <div className="header-actions">
-                            
-                            <button 
-                                className="action-btn"
-                                disabled={placingOrder || makingPayment || currentTable.status === 'unavailable'}
-                                onClick={() => createNewOrder({ _id: currentOrder.tableId, name: currentOrder.tableName })}
-                            >
-                                New Order
-                            </button>
-                            <button 
-                                className="action-btn"
-                                disabled={placingOrder || makingPayment}
-                                onClick={() => setShowOrdersModal(true)}
-                            >
-                                All Orders
-                            </button>
                             <button 
                                 className="action-btn"
                                 disabled={placingOrder || makingPayment}
@@ -1571,34 +1539,7 @@ const Delivery = () => {
                 <div className="pos-content">
                     {renderScreen()}
                 </div>
-                {showNewTableModal && <TableModal />}
-                {showOrdersModal && 
-                <OrdersModal 
-                    tableOrders={tableOrders}
-                    handleOrderSelect={handleOrderSelect}
-                    setShowOrdersModal={setShowOrdersModal}
-                    tables={tables}
-                    wrh={wrh}
-                    currentOrder={currentOrder}
-                    setCurrentOrder={setCurrentOrder}
-                    createNewOrder={createNewOrder}
-                />}
-                {showPaymentModal && 
-                <PaymentModal 
-                    amount={amount}
-                    setAmount={setAmount}
-                    currentOrder={currentOrder}
-                    method={method}
-                    setMethod={setMethod}
-                    paymentDetails={paymentDetails}
-                    setPaymentDetails={setPaymentDetails}
-                    setShowPaymentModal={setShowPaymentModal}
-                    handlePayment={handlePayment}
-                    payPoints={payPoints}
-                    setAlert={setAlert}
-                    setAlertState={setAlertState}
-                    setAlertTimeout={setAlertTimeout}
-                />}
+                {showNewTableModal && <TableModal />}                
             </div>
             }
         </div>
@@ -1607,258 +1548,105 @@ const Delivery = () => {
 
 export default Delivery;
 
-const PaymentModal = ({
-    amount, setAmount, 
-    currentOrder, 
-    method, setMethod,
-    paymentDetails, setPaymentDetails,
-    setShowPaymentModal, handlePayment,
-    payPoints, setAlertState, setAlert, setAlertTimeout
-}) => {
-    const [paymentSum, setPaymentSum] = useState(0)
-    const [cashAmount, setCashAmount] = useState(0)
-    const [loading, setLoading] = useState(false)
-    const [receipts, setReceipts] = useState(0)
-    useEffect(()=>{
-        var paymentAmount = 0
-        Object.keys(paymentDetails).forEach((payPoint)=>{
-            paymentAmount += Number(paymentDetails[payPoint].amount || 0)
-        })
-        setPaymentSum(paymentAmount)
-    },[paymentDetails])
-    const validatePayment = async ()=>{
-        if (Number(currentOrder.totalSales)>paymentSum){
-            
-            setAlertState('info')
-            setAlert('Insufficient payment amount')
-            setAlertTimeout(3000)
-        }else{
-            setLoading(true)
-            await handlePayment()
-            setLoading (false)
-        }
-    }
-    const handleAmountChange = (e) => {
-        const name = e.target.getAttribute('name')
-        const value = e.target.value;
-        setAmount(value);
-        if (method === 'cash'){
-            const amountNum = parseFloat(value) || 0;
-            if (cashAmount===0){
-                const changeAmount = amountNum - currentOrder.totalSales;
-                setPaymentDetails((paymentDetails)=>{
-                    return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: changeAmount}
-                    }
-                })
-            }else{
-                const changeAmount = amountNum - cashAmount;
-                setPaymentDetails((paymentDetails)=>{
-                    return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: changeAmount}
-                    }
-                })
-            }
-        }else{
-            setPaymentDetails((paymentDetails)=>{
-                return {
-                    ...paymentDetails, [method]: {...paymentDetails[method], [name]: value}
-                }
-            })
-        }
-    };
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content payment-modal">
-                <div className="modal-header">
-                    <h3>Payment</h3>
-                    <button disabled={loading} onClick={() => setShowPaymentModal(false)}>×</button>
-                </div>
-                <div className="payment-methods">
-                    {Object.keys(payPoints).map(payMethod => (
-                        <button
-                            key={payMethod}
-                            className={`payment-method-btn ${method === payMethod ? 'active' : ''}`}
-                            disabled={paymentDetails['cash'].amount}
-                            onClick={() => {
-                                setMethod(payMethod)
-                                if (payMethod === 'cash'){
-                                    setCashAmount(currentOrder.totalSales - paymentSum)
-                                }else{
-                                    setCashAmount(0)
-                                }
-                            }}
-                        >
-                            {payMethod.toUpperCase()}
-                        </button>
-                    ))}
-                </div>
-                <div className="form-group">
-                    <label>Total Amount Remaining: ₦{(currentOrder.totalSales - paymentSum).toFixed(2)}</label>
-                </div>
-                <div className="form-group">
-                    <label>Payment Amount:</label>
-                    <input
-                        type="number"
-                        name='amount'
-                        value={paymentDetails[method].amount}
-                        onChange={(e) => handleAmountChange(e)}
-                        placeholder="Enter amount"
-                    />
-                </div>
-                {method === 'cash' && amount && (
-                    <div className="form-group">
-                        <label>Change: ₦{Number(paymentDetails[method].change).toFixed(2)}</label>
-                    </div>
-                )}
-                {method !== 'cash' && amount && (
-                    <div className="form-group">
-                        <label>Receipt No:</label>
-                        <input
-                            type="text"
-                            name='receipt'
-                            value={paymentDetails[method].receipt}
-                            onChange={(e) => handleAmountChange(e)}
-                            placeholder="Enter Receipt No"
-                        />
-                    </div>
-                )}
-                
-                <div className="modal-actions">
-                    <button 
-                        className="modal-btn cancel"
-                        diabled={loading}
-                        onClick={() => {
-                            setPaymentDetails({...payPoints})
-                            setShowPaymentModal(false)
-                        }}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        disabled={loading}
-                        className="modal-btn save"
-                        onClick={validatePayment}
-                    >
-                        Complete Payment
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, 
-    tables, currentOrder, setCurrentOrder, createNewOrder 
+const OrdersModal = ({ tableOrders, wrh, handleOrderSelect,
+    tables, currentOrder, setCurrentOrder
 }) => {
     const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
     const [cancelling, setCancelling] = useState(false)
     const handleCancelOrder = async (order) => {
-        if (order.delivery !== 'completed'){
-            const cancelOrder = window.confirm(`Are you sure you want to Cancel Order #${order.orderNumber}?`);
-            if (!cancelOrder) return;
-            setCancelling(true)
-            setAlertState('info')
-            setAlert('Cancelling Order...')
-            setAlertTimeout(1000000)
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-            const resp = await fetchServer("POST", {
-                database: company,
-                collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [
-                    ...prevTable.activeTables.filter((tableOrder)=>{return (
-                        tableOrder.tableId !== order.tableId && 
-                        tableOrder.sessionId !== order.sessionId &&
-                        tableOrder.orderId !== order.orderNumber
-                    )})
-                ]}]
-            }, "updateOneDoc", server)
-            if (resp.err){
-                setAlertState('error');
-                setAlert('Error updating table');
-                setAlertTimeout(3000)
-                setCancelling(false)
-                return;
-            }
-            const response = await fetchServer("POST", {
-                database: company,
-                collection: "Orders",
-                prop: [{orderNumber: order.orderNumber}, 
-                    {
-                        status: 'cancelled', 
-                        cancelledBy: companyRecord.emailid,
-                        cancelledAt: new Date().getTime()
-                    }
-                ]
-            }, "updateOneDoc", server);
-    
-            if (response.err) {
-                setAlertState('error');
-                setAlert('Error cancelling order');
-                setAlertTimeout(3000);
-                setCancelling(false)
-                return
-            } else {
-                setAlertState('success');
-                setAlert('Order cancelled successfully');
-                setAlertTimeout(2000);
-                if (currentOrder.orderNumber === order.orderNumber){
-                    createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
-                }
-                setCancelling(false)
-                setShowOrdersModal(false); // Close modal after deletion
-                return
-            }
-        }else{
+        const cancelOrder = window.confirm(`Are you sure you want to Cancel Order Delivery #${order.orderNumber}?`);
+        if (!cancelOrder) return;
+        setCancelling(true)
+        setAlertState('info')
+        setAlert('Cancelling Delivery...')
+        setAlertTimeout(1000000)
+        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        const resp = await fetchServer("POST", {
+            database: company,
+            collection: "Tables",
+            prop: [{'wrh':wrh}, {activeTables: [
+                ...prevTable.activeTables.filter((tableOrder)=>{return (
+                    tableOrder.tableId !== order.tableId && 
+                    tableOrder.sessionId !== order.sessionId &&
+                    tableOrder.orderId !== order.orderNumber
+                )})
+            ]}]
+        }, "updateOneDoc", server)
+        if (resp.err){
             setAlertState('error');
-            setAlert('Please Cancel Delivery First Before Cancelling Order!');
+            setAlert('Error updating table');
             setAlertTimeout(3000)
             setCancelling(false)
-            return
+            return;
         }
+        var deliveryUpdate = {
+            delivery: 'cancelled', 
+            deliverycancelledBy: companyRecord.emailid,
+            deliverycancelledAt: new Date().getTime()
+        }
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "Orders",
+            prop: [{orderNumber: order.orderNumber}, 
+                {...deliveryUpdate}
+            ]
+        }, "updateOneDoc", server);
+
+        if (response.err) {
+            setAlertState('error');
+            setAlert('Error cancelling order');
+            setAlertTimeout(3000);
+            setCancelling(false)
+            return
+        } else {
+            setAlertState('success');
+            setAlert('Order cancelled successfully');
+            setAlertTimeout(2000);
+            setCurrentOrder({...currentOrder, ...deliveryUpdate})
+            // if (currentOrder.orderNumber === order.orderNumber){
+            //     createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
+            // }
+            setCancelling(false)
+            return
+        }        
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content orders-modal">
-                <div className="modal-header">
-                    <h3>All Orders</h3>
-                    <button disabled={cancelling} onClick={() => setShowOrdersModal(false)}>×</button>
-                </div>
-                <div className="orders-list">
-                    {tableOrders?.map(order => (
-                        <div 
-                            key={order.i_d}
-                            className={`order-card ${order.status}`}
-                        >
-                            <div onClick={() => handleOrderSelect(order)}>
-                                <div>Order #{order.orderNumber}</div>
-                                <div>Table: {order.tableId}</div>
-                                <div>Total: ₦{order.totalSales}</div>
-                                <div>Status: {order.status}</div>
-                                <div>Delivery: {(order.delivery || 'pending')}</div>
-                                <div>{new Date(order.createdAt).toLocaleString()}</div>
-                            </div>
-                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) &&
-                            !['cancelled','completed'].includes(order.status) && (
-                                <button 
-                                    disabled={cancelling}
-                                    className="cancel-order-btn"
-                                    onClick={() => handleCancelOrder(order)}
-                                    title="Cancel Order"
-                                >
-                                    🗑️
-                                </button>
-                            )}
+        <div>
+            <div className="modal-header">
+                <h3>All Orders</h3>
+            </div>
+            <div className="orders-list">
+                {tableOrders?.map(order => (
+                    <div 
+                        key={order.i_d}
+                        className={`order-card ${order.status}`}
+                    >
+                        <div onClick={() => handleOrderSelect(order)}>
+                            <div>Order #{order.orderNumber}</div>
+                            <div>Table: {order.tableId}</div>
+                            <div>Delivery: {order.delivery}</div>
+                            <div>{new Date(order.createdAt).toLocaleString()}</div>
                         </div>
-                    ))}
-                </div>
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) &&
+                        !['cancelled','completed','partial'].includes(order.delivery) && (
+                            <button 
+                                disabled={cancelling}
+                                className="cancel-order-btn"
+                                onClick={() => handleCancelOrder(order)}
+                                title="Cancel Order"
+                            >
+                                🗑️
+                            </button>
+                        )}
+                    </div>
+                ))}
             </div>
         </div>
     );
 };
 
-const POSDashboard = ({sessions, profiles, employees, companyRecord, 
+const DeliveryDashboard = ({sessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, allSessionOrders, getSessionSales, curSession,
