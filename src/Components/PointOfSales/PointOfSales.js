@@ -775,7 +775,7 @@ const PointOfSales = () => {
                 i_d: product.i_d,
                 quantity: quantity || 1,
                 orderNumber: currentOrder.orderNumber,
-                tableId: currentOrder.tableId
+                tableId: currentOrder.tableId,
             }];
         }
     
@@ -1309,7 +1309,7 @@ const PointOfSales = () => {
                             <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>
                             {currentOrder.status==='new' && <button 
                                 className="remove-btn"
-                                onClick={() => handleRemoveItem(item.id)}
+                                onClick={() => handleRemoveItem(item.i_d)}
                             >
                                 ×
                             </button>}
