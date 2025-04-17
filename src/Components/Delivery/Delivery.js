@@ -302,38 +302,12 @@ const Delivery = () => {
         }
     }
 
-    const stopSession = async (session, sessionOrders)=>{
-        const {
-            allSales, totalPendingSales, totalCancelledSales, totalCashChange
-        } = getSessionSales(sessionOrders)
-        const openingCash = session.openingCash
-        let netBalance = 0
-        let allSalesAmount = 0
-        const salesDifference = {}
-        Object.keys(payPoints).forEach((payPoint)=>{
-            if (payPoint === 'cash'){
-                var expectedCash = Number(openingCash) + Number(allSales[payPoint] || 0) - Number(totalCashChange)
-                salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - expectedCash
-                allSalesAmount += (Number(allSales[payPoint] || 0) - Number(totalCashChange))
-            }else{
-                salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - Number(allSales[payPoint] || 0)
-                allSalesAmount += Number(allSales[payPoint] || 0)
-            }
-            netBalance += Number(salesDifference[payPoint])
-        })
-        netBalance += (-1 * Number(totalPendingSales || 0))
+    const stopSession = async (session, salesShortages)=>{
         const sessionUpdate = {
                 end: new Date().getTime(),
                 endedby: companyRecord.emailid,
                 active: false,
-                orders: sessionOrders,
-                ...allSales,
-                totalCashChange,
-                totalSalesAmount: allSalesAmount,
-                totalPendingSales,
-                totalCancelledSales,
-                debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
-                unAccountedSales : (netBalance > 0) ? netBalance : 0
+                shortage: salesShortages,
         }
         const response = await fetchServer("POST", {
             database: company,
@@ -660,8 +634,9 @@ const Delivery = () => {
                             orderDate = order.createdAt
                         }
                         return (getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start) &&
-                            (order.wrh === wrh || wrh === 'kitchen') &&
-                            (order.delivery === 'pending' || order.delivery === 'partial')
+                            (order.wrh === wrh || wrh === 'kitchen') 
+                            // &&
+                            // (order.delivery === 'pending' || order.delivery === 'partial')
                         )
                     })
                     setTableOrders(pendingOrders)
@@ -753,6 +728,7 @@ const Delivery = () => {
                 tableId: currentOrder.tableId
             }];
         }
+
         let updatedItem = updatedItems.find(item => item.i_d === product.i_d)
         if (Number(updatedItem.quantity) > (Number(originalItem.quantity) - Number(originalItem.remainingQuantity || 0))){
             setAlertState('error');
@@ -770,7 +746,7 @@ const Delivery = () => {
         const updatedItems = currentOrder.items.filter(item => item.i_d !== itemId);
         setCurrentOrder({
             ...currentOrder,
-            items: updatedItems,
+            items: updatedItems,    
         });
         setSelectedProduct(null)
     };
@@ -787,8 +763,8 @@ const Delivery = () => {
     };
 
     const handleOrderSelect = (order) => {
-        const orderClone = structuredClone({order})
-        setSelectedProduct(null)
+        const orderClone = structuredClone({order});
+        setSelectedProduct(null);
         setCurrentOrder(orderClone.order);
         setPosCurrentOrder(orderClone.order)
     };
@@ -999,14 +975,14 @@ const Delivery = () => {
         }
     };
 
-    const handleEndSession = async () => {
+    const handleEndSession = async (salesShortages) => {
         if (sessionUser !== null) {            
             if (allSessionOrders.length){
                 const allUserOrders = allSessionOrders.filter((order) =>{
                     return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
                 })
                 setLoading(true);
-                await stopSession(sessionUser.curSession, allUserOrders);
+                await stopSession(sessionUser.curSession, salesShortages);
                 setLoading(false);
                 setPosSalesDifference({})
             }else{
@@ -1019,19 +995,6 @@ const Delivery = () => {
         }
     };
     const renderSessionEntry = () => {
-
-        const allUserOrders = allSessionOrders.filter((order) =>{
-            if (sessionUser!==null && sessionUser?.curSession){
-                return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
-            }else{
-                return ((order.sessionId === curSession.i_d) && (order.handlerId === companyRecord.emailid))
-            }
-        })        
-
-        const {
-            allSales, totalPendingSales,
-            totalCancelledSales, totalCashChange
-        } = getSessionSales(allUserOrders)
 
         var posDeliveryAccess = []
         if (sessionUser!==null){
@@ -1046,18 +1009,39 @@ const Delivery = () => {
                     posDeliveryAccess.push(wrh)
                 }
             })
+        }else{
+            posDeliveryAccess = wrhs.filter((wrh)=>{return deliveryWrhAccess[wrh.name]})
         }
 
-        const handleCountedSalesEntry = (e)=>{
-            const {name, value} = e.target
-
-            setCountedSales((countedSales)=>{
-                return {...countedSales, [name]: value}
-            })
-            setPosSalesDifference((posSalesDifference)=>{
-                return {...posSalesDifference, [name] : (Number(value) - Number(allSales[name] || 0))}
-            })
-        }
+        var salesShortages = 0     
+        allSessionOrders.forEach((order) =>{
+            if (sessionUser!==null && sessionUser?.curSession){
+                if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd((sessionUser.curSession).start)
+                    && order.delivery !== 'completed'
+                ){                    
+                    order.items.forEach((item)=>{
+                        posDeliveryAccess.forEach((posWrh)=>{
+                            if (item.delivery !== 'completed' && wrhCategories[posWrh].includes(item.category)){
+                                salesShortages += (Number(item.quantity) - Number(item.deliveredQuantity || 0)) * (order.wrh === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice))
+                            }
+                        })
+                    })
+                }
+                return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
+            }else{
+                if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)
+                    && order.delivery !== 'completed'
+                ){                    
+                    order.items.forEach((item)=>{
+                        posDeliveryAccess.forEach((posWrh)=>{
+                            if (item.delivery !== 'completed' && wrhCategories[posWrh].includes(item.category)){
+                                salesShortages += (Number(item.quantity) - Number(item.deliveredQuantity || 0)) * (order.wrh === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice))
+                            }
+                        })
+                    })
+                }
+            }
+        })        
 
         return (
             <>
@@ -1084,16 +1068,7 @@ const Delivery = () => {
                                         }}
                                     >×</button>
                                 }
-                            </div>
-                            {/* <div className="form-group">
-                                <label>Opening Cash</label>
-                                <input 
-                                    type="number" 
-                                    value={openingCash} 
-                                    onChange={(e) => setOpeningCash(parseFloat(e.target.value) || 0)} 
-                                    disabled={loading}
-                                />
-                            </div> */}
+                            </div>                            
                             <div className="form-group">
                                 <label>Sales Post</label>
                                 <select 
@@ -1149,104 +1124,14 @@ const Delivery = () => {
                                     }}
                                 >×</button>
                             </div>
+                            
                             <div className="form-group">
-                                <label>Total Bank Sales</label>
-                                {Object.keys(allSales).map((payPoint) => {
-                                    if (payPoint !== 'cash'){
-                                        return (
-                                            <div key={payPoint}>
-                                                <label>{payPoint.toUpperCase()}</label>
-                                                <div className='session-entry-inputs'>
-                                                    <input 
-                                                        style={{cursor:'not-allowed'}}
-                                                        type="number" 
-                                                        value={allSales[payPoint] || 0} 
-                                                        disabled={true}
-                                                        readOnly
-                                                    />
-                                                    <span>{'->'}</span>
-                                                    <input 
-                                                        type="number" 
-                                                        name={payPoint}
-                                                        value={countedSales[payPoint]} 
-                                                        placeholder={'Counted Amount'}
-                                                        onChange={(e) => handleCountedSalesEntry(e)} 
-                                                        disabled={loading}
-                                                    />
-                                                </div>
-                                                <input 
-                                                    style={{cursor:'not-allowed'}}
-                                                    type="number" 
-                                                    value={posSalesDifference[payPoint] || 0} 
-                                                    disabled={true}                                                    
-                                                    readOnly
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                })}
-                            </div>
-                            <div className="form-group">
-                                <label>Total Cash Sales</label>
-                                <div>
-                                    <input 
-                                        style={{cursor:'not-allowed'}}
-                                        type="number" 
-                                        value={allSales['cash'] || 0} 
-                                        disabled={true}
-                                        readOnly
-                                    />
-                                    <span>{'->'}</span>
-                                    <input 
-                                        type="number" 
-                                        value={countedSales['cash']} 
-                                        name='cash'
-                                        placeholder={'Counted Amount'}
-                                        onChange={(e) => handleCountedSalesEntry(e)} 
-                                        disabled={loading}
-                                    />
-                                </div>
+                                <label>Total Product Shortages</label>                                
                                 <input 
                                     style={{cursor:'not-allowed'}}
                                     type="number" 
-                                    value={posSalesDifference['cash'] || 0} 
+                                    value={salesShortages} 
                                     disabled={true}
-                                    readOnly
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Opening Cash</label>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
-                                    value={(sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash} 
-                                    readOnly
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Total Cash Change</label>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
-                                    value={totalCashChange} 
-                                    readOnly
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Total Pending Sales</label>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
-                                    value={totalPendingSales} 
-                                    readOnly
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Total Cancelled Sales</label>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
-                                    value={totalCancelledSales} 
                                     readOnly
                                 />
                             </div>
@@ -1254,7 +1139,7 @@ const Delivery = () => {
                                 <button 
                                     className="session-btn end" 
                                     onClick={()=>{
-                                        handleEndSession()
+                                        handleEndSession(salesShortages)
                                     }}
                                     disabled={loading}
                                 >
@@ -1379,13 +1264,13 @@ const Delivery = () => {
                             }
                         </div>
                         <div className="pos-tables-layout">
-                            <div 
+                            {/* <div 
                                 className="add-table-box"
                                 onClick={handleAddTableClick}
                             >
                                 <div className="plus-icon">+</div>
                                 <div className="add-text">Add Table</div>
-                            </div>
+                            </div> */}
                             {[...orderTables]
                                 .sort((a, b) => {
                                     const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
