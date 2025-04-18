@@ -77,7 +77,7 @@ const Purchase = ()=>{
     },[settings])
 
     useEffect(()=>{
-        if (companyRecord.status!=='admin'){
+        if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])

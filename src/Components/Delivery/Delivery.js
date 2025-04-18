@@ -1010,37 +1010,43 @@ const Delivery = () => {
                 }
             })
         }else{
-            posDeliveryAccess = wrhs.filter((wrh)=>{return deliveryWrhAccess[wrh.name]})
+            // wrhs.forEach((wrh)=>{
+            //     if (deliveryWrhAccess[wrh.name] && !wrh.purchase){
+            //         posDeliveryAccess.push(wrh.name)
+            //     }
+            // })
         }
 
         var salesShortages = 0     
         allSessionOrders.forEach((order) =>{
             if (sessionUser!==null && sessionUser?.curSession){
-                if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd((sessionUser.curSession).start)
+                if (getSessionEnd(order.createdAt) === getSessionEnd((sessionUser.curSession).start)
                     && order.delivery !== 'completed'
                 ){                    
                     order.items.forEach((item)=>{
                         posDeliveryAccess.forEach((posWrh)=>{
-                            if (item.delivery !== 'completed' && wrhCategories[posWrh].includes(item.category)){
+                            if (item.delivery !== 'completed' && (order.wrh === posWrh ||  posWrh === 'kitchen') && wrhCategories[posWrh].includes(item.category)){
                                 salesShortages += (Number(item.quantity) - Number(item.deliveredQuantity || 0)) * (order.wrh === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice))
                             }
                         })
                     })
                 }
                 return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
-            }else{
-                if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)
-                    && order.delivery !== 'completed'
-                ){                    
-                    order.items.forEach((item)=>{
-                        posDeliveryAccess.forEach((posWrh)=>{
-                            if (item.delivery !== 'completed' && wrhCategories[posWrh].includes(item.category)){
-                                salesShortages += (Number(item.quantity) - Number(item.deliveredQuantity || 0)) * (order.wrh === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice))
-                            }
-                        })
-                    })
-                }
             }
+            
+            // else{
+            //     if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)
+            //         && order.delivery !== 'completed'
+            //     ){                    
+            //         order.items.forEach((item)=>{
+            //             posDeliveryAccess.forEach((posWrh)=>{
+            //                 if (item.delivery !== 'completed' && wrhCategories[posWrh].includes(item.category)){
+            //                     salesShortages += (Number(item.quantity) - Number(item.deliveredQuantity || 0)) * (order.wrh === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice))
+            //                 }
+            //             })
+            //         })
+            //     }
+            // }
         })        
 
         return (
@@ -1363,7 +1369,7 @@ const Delivery = () => {
     // =========================================
     return (
         <div className="pos-container" ref={posContainerRef}>
-            {renderSessionEntry()}
+            {(loadSession || startSession || endSession) && renderSessionEntry()}
             {viewSesions ? 
             <DeliveryDashboard
                 setViewSessions={setViewSessions}
@@ -1671,19 +1677,6 @@ const DeliveryDashboard = ({sessions, profiles, employees, companyRecord,
                                                                             setAlertTimeout(3000)
                                                                         }                                                          
                                                                     }                                              
-                                                                }else{
-                                                                    const allUserOrders = allSessionOrders.filter((order) =>{
-                                                                        return ((order.sessionId === employeeSession.i_d) && (order.handlerId === profile.emailid))                                                        
-                                                                    })
-                                                                    const {
-                                                                        totalUnattendedSales
-                                                                    } = getSessionSales(allUserOrders)  
-                                                                    if (totalUnattendedSales){
-                                                                        viewModal = false
-                                                                        setAlertState('error')
-                                                                        setAlert('This User Have Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!')
-                                                                        setAlertTimeout(3000)
-                                                                    }                                               
                                                                 }
                                                             }
                                                             if (sessionLive){
