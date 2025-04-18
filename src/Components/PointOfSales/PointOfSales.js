@@ -1500,7 +1500,7 @@ const PointOfSales = () => {
     // =========================================
     return (
         <div className="pos-container" ref={posContainerRef}>
-            {renderSessionEntry()}
+            {(loadSession || startSession || endSession) && renderSessionEntry()}
             {viewSesions ? 
             <POSDashboard
                 setViewSessions={setViewSessions}
