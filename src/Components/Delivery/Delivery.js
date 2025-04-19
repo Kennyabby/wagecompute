@@ -132,6 +132,23 @@ const Delivery = () => {
         handleCategoryFilter();
     }, [activeCategory, products]);
 
+    useEffect(()=>{
+        if (curSession!==null){
+            setAllOrders(allSessionOrders.filter((order) =>{
+                if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){
+                    return order
+                }                            
+            })) 
+        }
+    },[allSessionOrders, curSession])
+
+    useEffect(()=>{
+        if (products.length && tables.length && sessions?.length){
+            setIsLive(true)
+            setLoadSession(false)
+            UpdateSessionState(sessions, false)
+        }  
+    },[tables, products, sessions])
     useEffect(()=> {
          loadInitialData()
          fetchProfiles(company)
@@ -506,12 +523,21 @@ const Delivery = () => {
             }
         }
 
+        const ordersResponse = await fetchServer("POST", {
+            database: company,
+            collection: "Orders"
+        }, "getDocsDetails", server);
+        if (!ordersResponse.err){
+            setAllSessionOrders(ordersResponse.record)        
+        }
+
         // Fetch Orders
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
                 database: company,
                 collection: "Orders"
             }, "getDocsDetails", server, orderController.signal);
+            
             if(!ordersResponse.err){
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
