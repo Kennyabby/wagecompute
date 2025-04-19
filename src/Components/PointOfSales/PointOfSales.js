@@ -115,6 +115,14 @@ const PointOfSales = () => {
         handleCategoryFilter();
     }, [activeCategory, products]);
 
+    useEffect(()=>{
+        if (products.length && tables.length && sessions?.length){
+            setIsLive(true)
+            setLoadSession(false)
+            UpdateSessionState(sessions, false)
+        }  
+    },[tables, products, sessions])
+    
     useEffect(()=> {
          loadInitialData()
          fetchProfiles(company)
@@ -1541,7 +1549,6 @@ const PointOfSales = () => {
                             }
                         </div>
                         <div className="header-actions">
-                            
                             <button 
                                 className="action-btn"
                                 disabled={placingOrder || makingPayment || currentTable.status === 'unavailable'}
