@@ -18,7 +18,8 @@ const Sales = ()=>{
         companyRecord, 
         company, recoveryVal, allowBacklogs,
         employees, setEmployees, getEmployees, 
-        sales, setSales, getSales, months, 
+        sales, setSales, getSales, months,
+        allSessions, getAllSessions, 
         accommodations, getAccommodations,
         rentals, setRentals, getRentals, 
         products, setProducts, getProducts,
@@ -179,7 +180,79 @@ const Sales = ()=>{
             })
         }
         setAccommodationRecords(accommodationRecord)
-    },[accommodations, postingDate, isView, saleEmployee])    
+    },[accommodations, postingDate, isView, saleEmployee]) 
+    
+    useEffect(()=>{
+        var payPointsRecord = {}
+        wrhs.forEach((wh)=>{
+            payPointsRecord[wh.name] = []
+        })
+
+        const postingDate1 = postingDate
+        var ct=0
+        sales.forEach((sale)=>{
+            if (getDate(sale.postingDate) === getDate(postingDate1)){
+                ct++
+            }
+            if(ct){
+                return
+            }
+        })
+
+        if (!isView && !saleEmployee && !ct){
+            var sessionEmployees = []
+            allSessions.forEach((session)=>{
+                const employeeId = session.handlerId
+                if (!sessionEmployees.includes(employeeId)){
+                    sessionEmployees = sessionEmployees.concat(employeeId)
+                }
+            })
+            sessionEmployees.forEach((employeeId)=>{
+                const saleRecord = {}
+                saleRecord.isSession = true
+                // var totalAccommodationAmount = 0
+                // var totalPaymentAmount = 0
+                // var totalCashSales = 0
+                // var totalBankSales = 0
+                // const allPayPoints = {...payPoints}
+                // var postingDates=[]
+                // accommodations.forEach((accommodation)=>{                
+                //     if (employeeId === accommodation.employeeId){
+                //         const {postingDate, payPoint, accommodationAmount, paymentAmount} = accommodation
+                //         if (!postingDates.includes(getDate(postingDate)) && postingDate1 === postingDate){
+                //             postingDates = postingDate.concat(getDate(postingDate))
+                //         }
+                //         if (postingDate1 === postingDate){                        
+                //             totalAccommodationAmount += Number(accommodationAmount)
+                //             totalPaymentAmount += Number(paymentAmount)
+                //             if (payPoint){
+                //                 allPayPoints[payPoint] = Number(allPayPoints[payPoint]) + Number(paymentAmount)
+                //             }
+                //             totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : 0                  
+                //             totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : 0                  
+                //         }
+                //     }
+                // })
+                // if (postingDates.length){
+                //     const salesUnits1 = {...salesUnits}
+                //     salesUnits1['accomodation'] = {...allPayPoints}
+                //     saleRecord.employeeId = employeeId
+                //     saleRecord.totalSales = totalAccommodationAmount
+                //     saleRecord.cashSales = totalCashSales
+                //     saleRecord.bankSales = totalBankSales
+                //     saleRecord.debt = Number(totalAccommodationAmount) - Number(totalPaymentAmount)
+                //     saleRecord.shortage = ''
+                //     saleRecord.debtRecovered = ''
+                //     saleRecord.salesPoint = 'accomodation'
+                //     Object.keys(salesUnits1).forEach((saleUnit)=>{
+                //         saleRecord[saleUnit] = salesUnits1[saleUnit]
+                //     })
+                //     accommodationRecord = accommodationRecord.concat(saleRecord)
+                // }
+            })
+        }
+        // setAccommodationRecords(accommodationRecord)
+    },[allSessions, postingDate, isView, saleEmployee])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
@@ -187,6 +260,7 @@ const Sales = ()=>{
                 getEmployees(cmp_val)
                 getSales(cmp_val)
                 getRentals(cmp_val)
+                getAllSessions(cmp_val)
                 getAccommodations(cmp_val)
                 getProducts(cmp_val)
             }

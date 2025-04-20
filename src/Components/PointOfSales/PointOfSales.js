@@ -97,6 +97,7 @@ const PointOfSales = () => {
     const [uoms, setUoms] = useState([]);
     const [wrhs, setWrhs] = useState([]);
     const [wrh, setWrh] = useState('');
+    const [wrhCategories, setWrhCategories] = useState({})
     // =========================================
     // 2. Effects and Data Loading
     // =========================================
@@ -108,13 +109,29 @@ const PointOfSales = () => {
         if (window.localStorage.getItem('pos-wrh')){
             setWrh(window.localStorage.getItem('pos-wrh'))
         }else{
-            setWrh(Object.keys(posWrhAccess)[0])
+            if  (curSession){
+                setWrh(curSession.wrh || Object.keys(posWrhAccess)[0])
+            }
         }
-    },[])
+    },[curSession])
+
     useEffect(() => {
         handleCategoryFilter();
     }, [activeCategory, products]);
 
+    useEffect(()=>{
+        if (wrhs.length){
+            setWrhCategories((wrhCategories)=>{
+                const cat = {}
+                wrhs.forEach((wrh)=>{
+                    if (!wrh.purchase){
+                        cat[wrh.name] = wrh.productCategories
+                    }
+                })
+                return {...cat}
+            })
+        }
+    },[wrhs])
     useEffect(()=>{
         if (products.length && tables.length && sessions?.length){
             setIsLive(true)
@@ -122,7 +139,7 @@ const PointOfSales = () => {
             UpdateSessionState(sessions, false)
         }  
     },[tables, products, sessions])
-    
+
     useEffect(()=> {
          loadInitialData()
          fetchProfiles(company)
@@ -136,6 +153,17 @@ const PointOfSales = () => {
             }
         }
     },[posContainerRef, loadSession, startSession, endSession])
+
+    useEffect(()=>{
+        if (curSession!==null){
+            setAllOrders(allSessionOrders.filter((order) =>{
+                if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){
+                    return order
+                }                            
+            })) 
+        }
+    },[allSessionOrders, curSession])
+
     useEffect(()=>{
         if (tables.length && wrh && curSession && employees.length){
             setOrderTables((orderTables)=>{
@@ -234,6 +262,7 @@ const PointOfSales = () => {
                 employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
                 i_d: new Date().getTime(),
                 type:'sales',
+                wrh: wrh,
                 start: new Date().getTime(),
                 startedBy: companyRecord.emailid,
                 end: null,
@@ -508,6 +537,15 @@ const PointOfSales = () => {
                 setLiveErrorMessages('Slow Network. Check Connection')
             }
         }
+
+        const ordersResponse = await fetchServer("POST", {
+            database: company,
+            collection: "Orders"
+        }, "getDocsDetails", server);
+        if (!ordersResponse.err){
+            setAllSessionOrders(ordersResponse.record)        
+        }
+
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
                 database: company,
@@ -832,10 +870,12 @@ const PointOfSales = () => {
         var totalPayment = 0
         var totalChange = 0
         var receipts = {}
+        var salesPosts = {}
         Object.keys(paymentDetails).forEach((payPoint)=>{
             totalPayment += Number(paymentDetails[payPoint].amount || 0)
             totalChange += Number(paymentDetails[payPoint].change || 0)
             receipts[payPoint] = paymentDetails[payPoint].receipt
+            salesPosts[payPoint] = paymentDetails[payPoint].salesPost
         })
         if (totalPayment < currentOrder.totalSales) {
             setAlertState('error');
@@ -849,12 +889,14 @@ const PointOfSales = () => {
         Object.keys(paymentDetails).forEach((payPoint)=>{
             paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0)
         })
+
         const paymentDataUpdate = {
             ...paymentData,
             payedAt: new Date().getTime(),
             totalPayment: totalPayment,
             cashChange: Number(paymentDetails['cash'].change),
             receipts,
+            salesPosts,
             status: 'completed'
         };
 
@@ -862,6 +904,7 @@ const PointOfSales = () => {
             ...currentOrder,
             ...paymentDataUpdate
         }
+
         if (currentOrder.delivery === 'completed'){
             const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
             const resp = await fetchServer("POST", {
@@ -883,6 +926,7 @@ const PointOfSales = () => {
                 return;
             }
         }
+
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
@@ -1602,6 +1646,9 @@ const PointOfSales = () => {
                     currentOrder={currentOrder}
                     method={method}
                     setMethod={setMethod}
+                    wrh={wrh}
+                    wrhCategories={wrhCategories}
+                    curSession={curSession}
                     paymentDetails={paymentDetails}
                     setPaymentDetails={setPaymentDetails}
                     setShowPaymentModal={setShowPaymentModal}
@@ -1622,8 +1669,8 @@ export default PointOfSales;
 const PaymentModal = ({
     amount, setAmount, 
     currentOrder, 
-    method, setMethod,
-    paymentDetails, setPaymentDetails,
+    method, setMethod, wrh, curSession,
+    paymentDetails, setPaymentDetails, wrhCategories,
     setShowPaymentModal, handlePayment, allPaymentReceipts,
     payPoints, setAlertState, setAlert, setAlertTimeout
 }) => {
@@ -1688,6 +1735,29 @@ const PaymentModal = ({
             setAlertTimeout(5000)
         }
     }
+
+    const suggestSalesPoint = ()=>{
+        var kc = 0
+        var bc = 0
+        
+        currentOrder.items.forEach((item)=>{
+            if (wrhCategories[wrh].includes(item.category)){
+                bc++
+            }else if (wrhCategories['kitchen'].includes(item.category)){
+                kc++
+            }
+
+            if (bc > 0 && kc > 0){
+                return 'all'
+            }
+        })
+
+        if (bc > 0 && kc === 0){
+            return wrh
+        }else if (kc > 0 && bc === 0){
+            return 'kitchen'
+        }
+    }
     const handleAmountChange = (e) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value;
@@ -1721,6 +1791,13 @@ const PaymentModal = ({
                 })
             }
         }
+        if (name === 'amount'){
+            setPaymentDetails((paymentDetails)=>{
+                return {
+                    ...paymentDetails, [method]: {...paymentDetails[method], ['salesPost']: suggestSalesPoint()}
+                }
+            })
+        }        
     };
 
     return (
@@ -1777,6 +1854,22 @@ const PaymentModal = ({
                             onChange={(e) => handleAmountChange(e)}
                             placeholder="Enter Receipt No"
                         />
+                    </div>
+                )}
+                {amount && (
+                    <div className="form-group">
+                        <label>Select Payment Post:</label>
+                        <select
+                            type="text"
+                            name='salesPost'
+                            value={paymentDetails[method]['salesPost']}
+                            onChange={(e) => handleAmountChange(e)}
+                        >
+                            <option value=''>Select Payment Post</option>
+                            <option value='all'>{'all'}</option>
+                            <option value={wrh}>{wrh}</option>
+                            <option value={'kitchen'}>{'kitchen'}</option>
+                        </select>
                     </div>
                 )}
                 
