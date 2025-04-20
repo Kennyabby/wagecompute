@@ -47,6 +47,7 @@ function App() {
   const [chartOfAccounts, setChartOfAccounts] = useState([])
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
+  const [allSessions, setAllSessions] = useState([])
   const [products, setProducts] = useState([])
   const [accommodations, setAccommodations] = useState([])
   const [purchase, setPurchase] = useState([])
@@ -469,6 +470,17 @@ function App() {
       setChartOfAccounts(resp.record)
     }
   }
+
+  const getAllSessions = async (company) => {
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "POSSessions", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      setAllSessions(resp.record)
+    }
+  }
   const getDepartments = async (company) =>{
     const resp = await fetchServer("POST", {
       database: company,
@@ -693,6 +705,7 @@ function App() {
           employees, setEmployees, getEmployees,
           customers, setCustomers, getCustomers,
           attendance, setAttendance, getAttendance,
+          allSessions, setAllSessions, getAllSessions,
           sales, setSales, getSales,
           products, setProducts, getProducts,
           accommodations, setAccommodations, getAccommodations,

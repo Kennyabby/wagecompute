@@ -124,9 +124,11 @@ const Delivery = () => {
         if (window.localStorage.getItem('pos-wrh')){
             setWrh(window.localStorage.getItem('pos-wrh'))
         }else{
-            setWrh(Object.keys(deliveryWrhAccess)[0])
+            if  (curSession){
+                setWrh(curSession.wrh || Object.keys(deliveryWrhAccess)[0])
+            }
         }
-    },[])
+    },[curSession])
 
     useEffect(() => {
         handleCategoryFilter();
@@ -270,6 +272,7 @@ const Delivery = () => {
                 employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
                 i_d: new Date().getTime(),
                 type:'delivery',
+                wrh: wrh,
                 start: new Date().getTime(),
                 startedBy: companyRecord.emailid,
                 end: null,
@@ -756,7 +759,7 @@ const Delivery = () => {
         }
 
         let updatedItem = updatedItems.find(item => item.i_d === product.i_d)
-        if (Number(updatedItem.quantity) > (Number(originalItem.quantity) - Number(originalItem.remainingQuantity || 0))){
+        if (Number(updatedItem.quantity) > (Number(originalItem.quantity) - Number(originalItem.deliveredQuantity || 0))){
             setAlertState('error');
             setAlert('Delivery quantity cannot be greater than ordered quantity!');
             setAlertTimeout(3000)
@@ -821,12 +824,15 @@ const Delivery = () => {
             var previousItemState = pendingOrderItems.find((itm)=>{
                 return itm.i_d === item.i_d
             })
-            if (Number(previousItemState.quantity) === Number(item.quantity) && wrhCategories[wrh].includes(item.category)){
+            if (wrhCategories[wrh].includes(item.category)){
                 previousItemState.deliveredQuantity = Number(previousItemState.remainingQuantity || 0) + Number(item.quantity)
                 previousItemState.remainingQuantity = Number(previousItemState.quantity) - Number(previousItemState.deliveredQuantity)
-                previousItemState.delivery = 'completed'                
-            }           
-            deliveredOrderItems.push(previousItemState)
+
+                if (Number(previousItemState.quantity) === Number(item.quantity)){
+                    previousItemState.delivery = 'completed'                
+                }           
+                deliveredOrderItems.push(previousItemState)
+            }
         })
 
         const updatedOrderItems = []
@@ -834,11 +840,11 @@ const Delivery = () => {
         let totalDelivered = 0
         pendingOrderItems.forEach((item)=>{
             var deliveredItem = deliveredOrderItems.find((itm)=>{
-                return itm.i_d  === item.i_d
+                return itm.i_d === item.i_d
             })
             
             if (![null, undefined].includes(deliveredItem)){
-                if (deliveredItem.delivery==='completed'){
+                if (deliveredItem.delivery === 'completed'){
                     totalDelivered += 1
                 }
                 updatedOrderItems.push(deliveredItem)
@@ -870,7 +876,35 @@ const Delivery = () => {
                 setPlacingOrder(false)
                 return;
             }
+        }else if (deliveryDataUpdate.delivery === 'completed'){
+            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':wrh}, {activeTables: [
+                    ...prevTable.activeTables.filter((table)=>{return (
+                        table.tableId !== currentOrder.tableId && 
+                        table.sessionId !== currentOrder.sessionId &&
+                        table.handlerId !== companyRecord.emailid && 
+                        table.orderId !== currentOrder.orderNumber
+                    )}),
+                    {...prevTable.activeTables.find((table)=>{return (
+                        table.tableId !== currentOrder.tableId && 
+                        table.sessionId !== currentOrder.sessionId &&
+                        table.handlerId !== companyRecord.emailid && 
+                        table.orderId !== currentOrder.orderNumber
+                    )}), 
+                    delivery: 'completed'}
+                ]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                return;
+            }
         }
+        // Update the order with the new delivery data
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
@@ -1224,7 +1258,7 @@ const Delivery = () => {
                             }}
                         >
                             <span>{item.name}</span>
-                            <span>{item.quantity}</span>
+                            <span>{Number(item.quantity) - Number(item.deliveredQuantity || 0) }</span>
                             {/* {!curSession.type === 'delivery' && <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>} */}
                             {(currentOrder.status === 'new' || currentOrder.delivery === 'pending') && <button 
                                 className = "remove-btn"
