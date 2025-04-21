@@ -165,7 +165,10 @@ function App() {
             getAccommodations(company)
             Navigate('/accommodations')
           }
-          if (companyRecord?.permissions.includes('inventory')){
+          if (companyRecord?.permissions.includes('inventory') ||
+            companyRecord?.permissions.includes('pos') ||
+            companyRecord?.permissions.includes('delivery')
+          ){
             getProducts(company)
             Navigate('/inventory')
           }
