@@ -149,7 +149,7 @@ const Delivery = () => {
             setIsLive(true)
             setLoadSession(false)
             UpdateSessionState(sessions, false)
-        } else if (tables?.length){
+        } else if(tables?.length){
             setIsLive(true)
             setLoadSession(false)
             UpdateSessionState(sessions, false)
@@ -421,7 +421,7 @@ const Delivery = () => {
                 // setEndSession(false)
             }
         }else{
-            if (!loadSession && !sessions.length){
+            if (!loadSession && !sessions?.length){
                 setStartSession(true)
                 // setEndSession(false)
             }
