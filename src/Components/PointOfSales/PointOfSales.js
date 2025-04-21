@@ -437,7 +437,7 @@ const PointOfSales = () => {
                 // setEndSession(false)
             }
         }else{
-            if (!loadSession && !sessions.length){
+            if (!loadSession && !sessions?.length){
                 setStartSession(true)
                 // setEndSession(false)
             }
