@@ -133,11 +133,15 @@ const PointOfSales = () => {
         }
     },[wrhs])
     useEffect(()=>{
-        if (tables.length && sessions?.length){
+        if (tables?.length && sessions?.length){
             setIsLive(true)
             setLoadSession(false)
             UpdateSessionState(sessions, false)
-        }  
+        } else if (tables?.length){
+            setIsLive(true)
+            setLoadSession(false)
+            UpdateSessionState(sessions, false)
+        }
     },[tables, sessions])
 
     useEffect(()=> {
