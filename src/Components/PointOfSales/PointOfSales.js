@@ -12,7 +12,8 @@ const PointOfSales = () => {
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, posWrhAccess, employees, 
-        profiles, fetchProfiles
+        profiles, fetchProfiles,
+        products, getProducts, setProducts,
     } = useContext(ContextProvider);
 
     // Core States
@@ -25,7 +26,6 @@ const PointOfSales = () => {
     const [currentTable, setCurrentTable] = useState(null)
     const [allSessions, setAllSessions] = useState([])
     const [sessions, setSessions] = useState(null);
-    const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [openingCash, setOpeningCash] = useState(0);
     const [countedSales, setCountedSales] = useState({})
@@ -133,17 +133,30 @@ const PointOfSales = () => {
         }
     },[wrhs])
     useEffect(()=>{
-        if (products.length && tables.length && sessions?.length){
+        if (tables.length && sessions?.length){
             setIsLive(true)
             setLoadSession(false)
             UpdateSessionState(sessions, false)
         }  
-    },[tables, products, sessions])
+    },[tables, sessions])
 
     useEffect(()=> {
-         loadInitialData()
-         fetchProfiles(company)
+        // Fetch products
+        getProducts(company)
+         
+        loadInitialData()
+
+        // Fetch prpfiles
+        fetchProfiles(company)
+
+        // Fetch tables
+        fetchTables(company)
+        
+         
+        // Feth Sessions
+         fetchSessions(company)
     },[settings, currentOrder])
+
     useEffect(()=>{
         if (posContainerRef.current){
             if (loadSession || startSession || endSession){
@@ -448,6 +461,41 @@ const PointOfSales = () => {
         setOrderTables(orderTables)
     }
 
+    const fetchTables = async (company) => {
+        const tablesResponse = await fetchServer("POST", {
+            database: company,
+            collection: "Tables"
+        }, "getDocsDetails", server);
+        if (!tablesResponse.err){
+            setTables(tablesResponse.record)  
+        }else{
+            if (tablesResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
+    }
+
+    const fetchSessions = async (company) => {
+        const sessionsResponse = await fetchServer("POST", {
+            database: company,
+            collection: "POSSessions",
+            prop: {type:'sales'}
+        }, "getDocsDetails", server);
+ 
+        if(!sessionsResponse.err){
+            const thisSessions = sessionsResponse.record.filter((session)=>{
+                return session.employee_id === companyRecord.emailid
+            })
+            setSessions(thisSessions)
+            setAllSessions(sessionsResponse.record)
+        }else{
+            if (sessionsResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
+    }
      const loadInitialData = async () => {
         //abort previous request if it exists
         if (orderControllerRef.current) {
@@ -476,67 +524,7 @@ const PointOfSales = () => {
         // productControllerRef.current = productController;
         // tableControllerRef.current = tableController;
         // sessionControllerRef.current = sessionController;
-
-         // Fetch tables
-        const tablesResponse = await fetchServer("POST", {
-            database: company,
-            collection: "Tables"
-        }, "getDocsDetails", server);
-        if (!tablesResponse.err){
-            setTables(tablesResponse.record)  
-            if (sessions!==null){                
-                setLoadSession(false)
-                setIsLive(true)       
-                UpdateSessionState(sessions, false)   
-                // setTableFetchCount((prevCount)=>{return prevCount + 1})    
-            }
-        }else{
-            if (tablesResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-        // Fetch products
-        const productsResponse = await fetchServer("POST", {
-            database: company,
-            collection: "Products"
-        }, "getDocsDetails", server);
-        if(!productsResponse.err){
-            setProducts(productsResponse.record)
-            if (sessions?.length && tables.length){
-                setIsLive(true)
-                setLoadSession(false)
-                UpdateSessionState(sessions, false)
-            }
-        }else{
-            if (productsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-        // Feth Sessions
-        const sessionsResponse = await fetchServer("POST", {
-            database: company,
-            collection: "POSSessions",
-            prop: {type:'sales'}
-        }, "getDocsDetails", server);
-        if(!sessionsResponse.err){
-            const thisSessions = sessionsResponse.record.filter((session)=>{
-                return session.employee_id === companyRecord.emailid
-            })
-            setSessions(thisSessions)
-            setAllSessions(sessionsResponse.record)
-            if (tables?.length){
-                setLoadSession(false)
-                setIsLive(true)
-                UpdateSessionState(thisSessions, false)
-            }
-        }else{
-            if (sessionsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
+        
 
         const ordersResponse = await fetchServer("POST", {
             database: company,
@@ -925,6 +913,33 @@ const PointOfSales = () => {
                 setAlertTimeout(3000)
                 return;
             }
+        }else{
+            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':wrh}, {activeTables: [
+                    ...prevTable.activeTables.filter((table)=>{return (
+                        table.tableId !== currentOrder.tableId && 
+                        table.sessionId !== currentOrder.sessionId &&
+                        table.handlerId !== companyRecord.emailid && 
+                        table.orderId !== currentOrder.orderNumber
+                    )}),
+                    {...prevTable.activeTables.find((table)=>{return (
+                        table.tableId !== currentOrder.tableId && 
+                        table.sessionId !== currentOrder.sessionId &&
+                        table.handlerId !== companyRecord.emailid && 
+                        table.orderId !== currentOrder.orderNumber
+                    )}), 
+                    status: 'completed'}
+                ]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                return;
+            }
         }
 
         const response = await fetchServer("POST", {
@@ -1083,7 +1098,7 @@ const PointOfSales = () => {
             if (sessionUser!==null && sessionUser?.curSession){
                 return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
             }else{
-                return ((order.sessionId === curSession.i_d) && (order.handlerId === companyRecord.emailid))
+                return ((order.sessionId === curSession?.i_d) && (order.handlerId === companyRecord.emailid))
             }
         })        
 
@@ -1690,7 +1705,6 @@ const PaymentModal = ({
         const receiptNumbers = Object.values(receipts)
 
         return available
-
     }
     const validatePayment = async ()=>{
         var payPointsWithNoReceipts = []        

@@ -12,7 +12,8 @@ const Delivery = () => {
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, deliveryWrhAccess, employees, 
-        profiles, fetchProfiles
+        profiles, fetchProfiles, 
+        products, setProducts, getProducts,
     } = useContext(ContextProvider);
 
     // Core States
@@ -25,7 +26,6 @@ const Delivery = () => {
     const [currentTable, setCurrentTable] = useState(null)
     const [allSessions, setAllSessions] = useState([])
     const [sessions, setSessions] = useState(null);
-    const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [openingCash, setOpeningCash] = useState(0);
     const [countedSales, setCountedSales] = useState({})
@@ -145,15 +145,28 @@ const Delivery = () => {
     },[allSessionOrders, curSession])
 
     useEffect(()=>{
-        if (products.length && tables.length && sessions?.length){
+        if (tables.length && sessions?.length){
             setIsLive(true)
             setLoadSession(false)
             UpdateSessionState(sessions, false)
         }  
-    },[tables, products, sessions])
+    },[tables, sessions])
+    
     useEffect(()=> {
-         loadInitialData()
-         fetchProfiles(company)
+        // Fetch products
+        getProducts(company)
+            
+        loadInitialData()
+
+        // Fetch prpfiles
+        fetchProfiles(company)
+
+        // Fetch tables
+        fetchTables(company)
+        
+            
+        // Feth Sessions
+            fetchSessions(company)
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -434,6 +447,41 @@ const Delivery = () => {
         setOrderTables(orderTables)
     }
 
+    const fetchTables = async (company) => {
+        const tablesResponse = await fetchServer("POST", {
+            database: company,
+            collection: "Tables"
+        }, "getDocsDetails", server);
+        if (!tablesResponse.err){
+            setTables(tablesResponse.record)  
+        }else{
+            if (tablesResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
+    }
+
+    const fetchSessions = async (company) => {
+        const sessionsResponse = await fetchServer("POST", {
+            database: company,
+            collection: "POSSessions",
+            prop: {type:'sales'}
+        }, "getDocsDetails", server);
+ 
+        if(!sessionsResponse.err){
+            const thisSessions = sessionsResponse.record.filter((session)=>{
+                return session.employee_id === companyRecord.emailid
+            })
+            setSessions(thisSessions)
+            setAllSessions(sessionsResponse.record)
+        }else{
+            if (sessionsResponse.mess !== 'Request aborted'){
+                setIsLive(false)
+                setLiveErrorMessages('Slow Network. Check Connection')
+            }
+        }
+    }
      const loadInitialData = async () => {
         //abort previous request if it exists
         if (orderControllerRef.current) {
@@ -463,68 +511,6 @@ const Delivery = () => {
         // tableControllerRef.current = tableController;
         // sessionControllerRef.current = sessionController;
 
-         // Fetch tables
-        const tablesResponse = await fetchServer("POST", {
-            database: company,
-            collection: "Tables"
-        }, "getDocsDetails", server);
-        if (!tablesResponse.err){
-            setTables(tablesResponse.record)  
-            if (sessions!==null){                
-                setLoadSession(false)
-                setIsLive(true)       
-                UpdateSessionState(sessions, false)   
-                // setTableFetchCount((prevCount)=>{return prevCount + 1})    
-            }
-        }else{
-            if (tablesResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-
-        // Fetch products
-        const productsResponse = await fetchServer("POST", {
-            database: company,
-            collection: "Products"
-        }, "getDocsDetails", server);
-        if(!productsResponse.err){
-            setProducts(productsResponse.record)
-            if (sessions?.length && tables.length){
-                setIsLive(true)
-                setLoadSession(false)
-                UpdateSessionState(sessions, false)
-            }
-        }else{
-            if (productsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-
-        // Fetch Sessions
-        const sessionsResponse = await fetchServer("POST", {
-            database: company,
-            collection: "POSSessions",
-            prop: {type:'delivery'}
-        }, "getDocsDetails", server);
-        if(!sessionsResponse.err){
-            const thisSessions = sessionsResponse.record.filter((session)=>{
-                return session.employee_id === companyRecord.emailid
-            })
-            setSessions(thisSessions)
-            setAllSessions(sessionsResponse.record)
-            if (tables?.length){
-                setLoadSession(false)
-                setIsLive(true)
-                UpdateSessionState(thisSessions, false)
-            }
-        }else{
-            if (sessionsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
 
         const ordersResponse = await fetchServer("POST", {
             database: company,
