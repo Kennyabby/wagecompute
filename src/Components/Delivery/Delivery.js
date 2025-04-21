@@ -470,7 +470,7 @@ const Delivery = () => {
         const sessionsResponse = await fetchServer("POST", {
             database: company,
             collection: "POSSessions",
-            prop: {type:'sales'}
+            prop: {type:'delivery'}
         }, "getDocsDetails", server);
  
         if(!sessionsResponse.err){
