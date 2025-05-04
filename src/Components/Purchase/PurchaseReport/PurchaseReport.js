@@ -115,8 +115,16 @@ const PurchaseReport = ({
                                     </div>
                                     <div className='tablecover'>
                                         {departments.map((department)=>{
-                                            const totalPurchaseAMont = reportPurchases?calculatePurchaseAmount(department):0
-                                        
+                                            const totalPurchaseAmont = reportPurchases?calculatePurchaseAmount(department):0
+                                            const categories = []
+                                            reportPurchases.forEach((pur)=>{
+                                                if (pur.purchaseDepartment===department){
+                                                    if (!categories.includes(pur.itemCategory.toUpperCase())){
+                                                        categories.push(pur.itemCategory.toUpperCase())
+                                                    }
+                                                }                                       
+                                            })
+                                            // console.log(department, categories)
                                             return (
                                                 <div className='purtablecv'>
                                                     <div>{`${department.toUpperCase()} - DIRECT COST REPORT`}</div>
@@ -127,27 +135,42 @@ const PurchaseReport = ({
                                                                 <th><h8 className='theader'>SUPPLIERS</h8></th>
                                                                 <th><h8 className='theader'>DETAIL OF ITEMS</h8></th>
                                                                 <th><h8 className='theader'>AMOUNT</h8></th>
-                                                                
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {reportPurchases?.map((pur)=>{
-                                                                if (pur.purchaseDepartment === department){
-                                                                    return(
+                                                            {categories.map((cat)=>{
+                                                                const totalCatAmount = reportPurchases?reportPurchases.filter(pur=>pur.itemCategory.toUpperCase()===cat && pur.purchaseDepartment===department).reduce((acc, pur)=> acc + Number(pur.purchaseAmount), 0):0                                                                
+                                                                // console.log(cat, totalCatAmount)
+                                                                return(
+                                                                    <>
+                                                                        {reportPurchases?.map((pur)=>{
+                                                                            if (pur.purchaseDepartment === department && pur.itemCategory.toUpperCase() === cat){
+                                                                                return(
+                                                                                    <tr>
+                                                                                        <td><h8 className='ttrow'>{getDate(pur.postingDate)}</h8></td>                                                        
+                                                                                        <td><h8 className='ttrow'>{pur.purchaseVendor}</h8></td>                                                        
+                                                                                        <td><h8 className='ttrow'>{pur.itemCategory.toUpperCase()}</h8></td>                                                        
+                                                                                        <td><h8 className='ttrow'>{'₦'+Number(pur.purchaseAmount).toLocaleString()}</h8></td>                                                        
+                                                                                    </tr>
+                                                                                )                                                                                                                
+                                                                            }
+                                                                        })}      
+                                                            
                                                                         <tr>
-                                                                            <td><h8 className='ttrow'>{getDate(pur.postingDate)}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{pur.purchaseVendor}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{pur.itemCategory}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{'₦'+Number(pur.purchaseAmount).toLocaleString()}</h8></td>                                                        
-                                                                        </tr>
-                                                                    )                                                                                                                
-                                                                }
-                                                            })}                                                                                                                                                    
+                                                                            <td className='ttrow'>{`${cat} SUB-TOTAL`}</td>                                                        
+                                                                            <td className='ttrow'></td>                                                        
+                                                                            <td className='ttrow'></td>                                                        
+                                                                            <td className='ttrow'>{'₦'+totalCatAmount.toLocaleString()}</td>                                                      
+                                                                        </tr>                                                                                                                                                
+                                                                    </>
+                                                                )
+                                                                
+                                                            })}
                                                             <tr>
                                                                 <td className='ttrow'>TOTAL</td>                                                        
                                                                 <td className='ttrow'></td>                                                        
                                                                 <td className='ttrow'></td>                                                        
-                                                                <td className='ttrow'>{'₦'+totalPurchaseAMont.toLocaleString()}</td>                                                      
+                                                                <td className='ttrow'>{'₦'+totalPurchaseAmont.toLocaleString()}</td>                                                      
                                                             </tr>                                                                                                
                                                         </tbody>
                                                     </table>                                        

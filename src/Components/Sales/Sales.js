@@ -1,5 +1,5 @@
 import './Sales.css'
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
@@ -10,6 +10,7 @@ import Notify from '../../Resources/Notify/Notify';
 import { MdAdd } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
+import { use } from 'react';
 
 const Sales = ()=>{
     const {storePath, 
@@ -24,6 +25,10 @@ const Sales = ()=>{
         rentals, setRentals, getRentals, 
         products, setProducts, getProducts,
         getDate, removeComma, settings,
+        saleFrom, saleTo,
+        setSaleFrom, setSaleTo,
+        nextSales, setNextSales,
+        setSalesLoadCount, salesLoadCount,
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage 
     } = useContext(ContextProvider)
@@ -45,8 +50,6 @@ const Sales = ()=>{
     const [showReceipt, setShowReceipt] = useState(false)
     const [reportSales, setReportSales] = useState(null)
     const [isMultiple, setIsMultiple] = useState(false)
-    const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
-    const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [saleEmployee, setSaleEmployee] = useState('')
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
@@ -69,6 +72,9 @@ const Sales = ()=>{
     const [curSale, setCurSale] = useState(null)
     const [curRent, setCurRent] = useState(null)
     const [curSaleDate, setCurSaleDate] = useState(null)
+    const scrollRef = useRef(null)
+    const loadRef = useRef(null)
+
     const defaultFields = {
         employeeId: '',
         totalSales: '',
@@ -110,6 +116,40 @@ const Sales = ()=>{
         ...defaultRentalFields
     })
     const [isView, setIsView] = useState(false)
+
+    useEffect(()=>{
+        const divElement = scrollRef.current;
+        const handleScroll = () => {
+            if (divElement && loadRef.current) {
+                const topPosition = loadRef.current.offsetTop - divElement.scrollTop;
+                const scrollDivHeight = divElement.offsetHeight;
+                const scrollElementHeight = loadRef.current.offsetHeight; 
+                console.log(topPosition, scrollDivHeight, scrollElementHeight)
+                if (topPosition <= scrollDivHeight - scrollElementHeight + 500) {
+                    if (nextSales?.length){
+                        // console.log('getting more sales...')
+                        const lastCreatedAt = nextSales[nextSales.length - 1].createdAt
+                        // console.log('fetching next sales from ', lastCreatedAt, 'which should be converted to:', new Date(lastCreatedAt).getTime())
+                        getSales(company, 'next', saleFrom, lastCreatedAt, 10)
+                    }
+                }
+            }
+        };
+
+        if (divElement) {
+            divElement.addEventListener('scroll', handleScroll);
+            return () => {
+                divElement.removeEventListener('scroll', handleScroll);
+            };
+        }
+        
+    },[loadRef.current, nextSales, salesLoadCount])
+
+    useEffect(()=>{
+        setNextSales(null)
+        setSalesLoadCount(0)    
+        getSales(company, 'first', saleFrom, saleTo, 10)
+    },[saleFrom, saleTo])
 
     useEffect(()=>{
         storePath('sales')  
@@ -181,7 +221,7 @@ const Sales = ()=>{
         }
         setAccommodationRecords(accommodationRecord)
     },[accommodations, postingDate, isView, saleEmployee]) 
-    
+
     useEffect(()=>{
         var payPointsRecord = {}
         wrhs.forEach((wh)=>{
@@ -253,20 +293,22 @@ const Sales = ()=>{
         }
         // setAccommodationRecords(accommodationRecord)
     },[allSessions, postingDate, isView, saleEmployee])
+
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 getEmployees(cmp_val)
-                getSales(cmp_val)
+                // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
                 getRentals(cmp_val)
-                getAllSessions(cmp_val)
+                // getAllSessions(cmp_val)
                 getAccommodations(cmp_val)
-                getProducts(cmp_val)
+                // getProducts(cmp_val)
             }
         },10000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+
     useEffect(()=>{
         if (settings.length){  
             const uomSetFilt = settings.filter((setting)=>{
@@ -287,14 +329,17 @@ const Sales = ()=>{
             setWrhs(wrhSetFilt[0].name ? [...wrhSetFilt[0].warehouses] : [])
         }  
     },[settings])
+
     useEffect(()=>{
         if (!recoveryVal){
             setSalesOpts('sales')
         }
     },[recoveryVal])
+
     useEffect(()=>{
         // console.log(fields)
     },[fields])
+
     useEffect(()=>{
         if (salesOpts!=='sales'){
             setIsView(false)
@@ -307,6 +352,7 @@ const Sales = ()=>{
             setRentalFields({...defaultRentalFields})
         }
     },[salesOpts])
+
     useEffect(()=>{
         if (curSale){
             setPostingDate(curSale.postingDate)
@@ -315,6 +361,7 @@ const Sales = ()=>{
             setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
         }
     },[curSale])
+
     useEffect(()=>{
         if (curRent===null){
             var previousRental = null
@@ -336,11 +383,13 @@ const Sales = ()=>{
             }
         }
     },[rentalFields.rentalSpace, rentalFields.paymentMonth])
+
     useEffect(()=>{
         if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])
+
     useEffect(()=>{
         if (saleEmployee){
             calculateReportSales()
@@ -352,11 +401,13 @@ const Sales = ()=>{
             setIsView(false)
         }
     },[saleEmployee])
+
     useEffect(()=>{
         if (reportSales){
             handleViewClick(reportSales)
         }
     },[reportSales])
+
     const handleFieldChange = (prop)=>{
         const {e} = prop
         var index = prop.index
@@ -1220,7 +1271,7 @@ const Sales = ()=>{
                     setSalesEntries={setSalesEntries}
                     fields={fields}
                 />}
-                <div className='emplist saleslist'>    
+                <div className='emplist saleslist' ref={scrollRef}>    
                     {companyRecord.status==='admin' && <FaTableCells                         
                         className='allslrepicon'
                         onClick={()=>{
@@ -1352,7 +1403,7 @@ const Sales = ()=>{
                                     style={{color:'red'}}                           
                                     onClick={()=>{                                        
                                         setAlertState('info')
-                                        setAlert('You are about to delete the selected Sales. Please Delete again if you are sure!')
+                                        setAlert('You are about to delete the selected Sales Record. Please Delete again if you are sure!')
                                         setAlertTimeout(5000)
                                                                                     
                                         deleteSales(sale)
@@ -1362,7 +1413,7 @@ const Sales = ()=>{
                                 </div>}
                             </div>
                         )
-                  })}
+                    })}
                     {salesOpts1 === 'rentals' && rentals.filter((ftrrent)=>{
                         const slCreatedAt = new Date(ftrrent.paymentDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
@@ -1396,7 +1447,7 @@ const Sales = ()=>{
                                     style={{color:'red'}}                           
                                     onClick={()=>{                                        
                                         setAlertState('info')
-                                        setAlert('You are about to delete the selected Rental Sales. Please Delete again if you are sure!')
+                                        setAlert('You are about to delete the selected Rental Record. Please Delete again if you are sure!')
                                         setAlertTimeout(5000)                                                                                    
                                         deleteRental(rent)
                                     }}
@@ -1406,6 +1457,14 @@ const Sales = ()=>{
                             </div>
                         )
                   })}
+                  {(nextSales === null || salesLoadCount) ? <div ref={loadRef} className='scrollLoad'>
+                    Loading...
+                  </div> :
+                  <div ref={loadRef} className='scrollLoad'>...</div>
+                  }
+                  {nextSales?.length === 0 && <div ref={loadRef} className='scrollLoad'>
+                    No More Sales To Load!
+                  </div>}
                 </div>
                 <div className='empview salesview'>
                     {isView && salesOpts==='sales' && 

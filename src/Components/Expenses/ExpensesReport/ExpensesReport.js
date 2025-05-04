@@ -116,7 +116,14 @@ const ExpensesReport = ({
                                     <div className='tablecover'>
                                         {departments.map((department)=>{
                                             const totalPurchaseAmount = reportExpense?calculateExpenseAmount(department):0
-                                        
+                                            const categories = []
+                                            reportExpense.forEach((exp)=>{
+                                                if (exp.expensesDepartment===department){
+                                                    if (!categories.includes(exp.expenseCategory.toUpperCase())){
+                                                        categories.push(exp.expenseCategory.toUpperCase())
+                                                    }
+                                                }                                       
+                                            })
                                             return (
                                                 <div className='purtablecv'>
                                                     <div>{`${department.toUpperCase()} EXPENSES REPORT`}</div>
@@ -132,23 +139,38 @@ const ExpensesReport = ({
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {reportExpense?.sort((a,b)=>{
-                                                                return a.postingDate - b.postingDate
-                                                            }).map((exp)=>{
-                                                                if (exp.expensesDepartment === department){
-                                                                    return(
+                                                            {categories.map((cat)=>{
+                                                                const totalCatAmount = reportExpense?reportExpense.filter(exp=>exp.expenseCategory.toUpperCase()===cat && exp.expensesDepartment===department).reduce((acc, exp)=> acc + Number(exp.expensesAmount), 0):0                                                                
+                                                                // console.log(cat, totalCatAmount)
+                                                                return(
+                                                                    <>
+                                                                        {reportExpense?.sort((a,b)=>{
+                                                                            return a.postingDate - b.postingDate
+                                                                        }).map((exp)=>{
+                                                                            if (exp.expensesDepartment === department && exp.expenseCategory.toUpperCase()===cat){
+                                                                                return(
+                                                                                    <tr>
+                                                                                        <td><h8 className='ttrow'>{getDate(exp.postingDate)}</h8></td>                                                        
+                                                                                        <td><h8 className='ttrow'>{employees.filter((emp)=>{
+                                                                                            return emp.i_d === exp.expensesHandler
+                                                                                        })[0].firstName}</h8></td>                                                        
+                                                                                        <td><h8 className='ttrow'>{exp.expensesVendor}</h8></td>                                                        
+                                                                                        <td><h8 className='ttrow'>{exp.expenseCategory.toUpperCase()}</h8></td>                                                        
+                                                                                        <td><h8 className='ttrow'>{'₦'+Number(exp.expensesAmount).toLocaleString()}</h8></td>                                                        
+                                                                                    </tr>
+                                                                                )                                                                                                                
+                                                                            }
+                                                                        })}       
                                                                         <tr>
-                                                                            <td><h8 className='ttrow'>{getDate(exp.postingDate)}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{employees.filter((emp)=>{
-                                                                                return emp.i_d === exp.expensesHandler
-                                                                            })[0].firstName}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{exp.expensesVendor}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{exp.expenseCategory}</h8></td>                                                        
-                                                                            <td><h8 className='ttrow'>{'₦'+Number(exp.expensesAmount).toLocaleString()}</h8></td>                                                        
-                                                                        </tr>
-                                                                    )                                                                                                                
-                                                                }
-                                                            })}                                                                                                                                                    
+                                                                            <td className='ttrow'>{`${cat} SUB-TOTAL`}</td>                                                        
+                                                                            <td className='ttrow'></td>                                                        
+                                                                            <td className='ttrow'></td>                                                        
+                                                                            <td className='ttrow'></td>                                                        
+                                                                            <td className='ttrow'>{'₦'+totalCatAmount.toLocaleString()}</td>                                                      
+                                                                        </tr>                                                                                                                                             
+                                                                    </>
+                                                                )
+                                                            })}
                                                             <tr>
                                                                 <td className='ttrow'>TOTAL</td>                                                        
                                                                 <td className='ttrow'></td>                                                        

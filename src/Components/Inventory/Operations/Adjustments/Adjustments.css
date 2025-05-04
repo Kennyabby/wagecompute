@@ -52,14 +52,22 @@
 }
 .countedInp{
     width: max-content;
-    font-size: .8em;
+    /* font-size: .8em; */
     background: whitesmoke;
     margin: 0px;
-    margin-bottom: 5px;
+    padding: 5px 5px;
+    /* margin-bottom: 5px; */
+    /* margin-top: 5px; */
+    height: 30px;
     outline: none;
     border: solid black 0px;
+    border-bottom: solid black 1.3px
 }
 .colrows{
-    margin: 5px 0px;
-    width:max-content
+    margin: 0px;
+    padding: 5px 0px;
+    min-width: 120px;
+    width:max-content;
+    height: 30px;
+    border-bottom: solid black 1.3px
 }
