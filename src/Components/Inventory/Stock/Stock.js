@@ -137,9 +137,9 @@ const Stock = ({
             return (entry.quantityToTransfer > 0 && entry.type === 'goods')
         });
         const insufficientProducts = [];
-        if (validEntries.length > 0 && fromWarehouse && toWarehouse) {
+        if (validEntries.length > 0 && fromWarehouse && toWarehouse){
             // Validate if the warehouse selected as fromWarehouse has availableQuantity >= quantityToTransfer specified for each product
-            for (const entry of validEntries) {
+            for (const entry of validEntries){
                 const { productId, quantityToTransfer } = entry;
                 const product = products.find(p => p.i_d === productId);
                 if (product ) {
@@ -369,6 +369,7 @@ const Stock = ({
                                                 className='countedInp stockCountedInp' 
                                                 type='number' 
                                                 name='quantityToTransfer' 
+                                                placeholder='enter'
                                                 value={transferEntries.filter(entry => product.i_d === entry.productId)[0]?.quantityToTransfer} 
                                                 onChange={(e) => handleInputChange({ e, productId:product.i_d, costPrice:product.costPrice })} 
                                             />

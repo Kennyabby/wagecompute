@@ -14,11 +14,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
 function App() {
+
   // const SERVER = "http://localhost:3001"
   const SERVER = "https://enterpriseserver.vercel.app"
-
+  // const SERVER = "http://3.251.76.94"
+  
   const [viewAccess, setViewAccess] = useState(null)
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
+
+  const [saleNextFrom, setSaleNextFrom] = useState(null)
+  const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+  const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
+
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
   const [alertTimeout, setAlertTimeout] = useState(100000)
@@ -47,6 +54,8 @@ function App() {
   const [chartOfAccounts, setChartOfAccounts] = useState([])
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
+  const [salesLoadCount, setSalesLoadCount] = useState(0)
+  const [nextSales, setNextSales] = useState(null)
   const [allSessions, setAllSessions] = useState([])
   const [products, setProducts] = useState([])
   const [accommodations, setAccommodations] = useState([])
@@ -174,7 +183,7 @@ function App() {
           }
           if (companyRecord?.permissions.includes('sales')){
             getAccommodations(company)
-            getSales(company)
+            getSales(company, 'first', saleFrom, saleTo, 10)
             getRentals(company)
             Navigate('/sales')
           }
@@ -409,7 +418,7 @@ function App() {
         getPositions(cmp_val)
         getCustomers(cmp_val)
         getAccommodations(cmp_val)
-        getSales(cmp_val)
+        getSales(cmp_val, 'first', saleFrom, saleTo, 10)
         getProducts(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)
@@ -429,6 +438,7 @@ function App() {
       }
     }
   }
+
   const getViewAccess = async (company) => {
     if (!window.localStorage.getItem('acc-vw')){
       const resps = await fetchServer("POST", {
@@ -539,15 +549,90 @@ function App() {
     }
   }
 
-  const getSales = async (company) =>{
-    const resp = await fetchServer("POST", {
+  const getSales = async (company, type=null, fromDate=null, toDate=null, limit=null) =>{
+    
+    var defaultEndPoint = 'getDocsDetails'
+    
+    const body = {
       database: company,
       collection: "Sales", 
       prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setSales(resp.record)
     }
+
+    const salesFromDate = new Date(fromDate)
+    const salesToDate = new Date(toDate)
+    if (type !== null){
+      if (fromDate){
+        body.fromDate = new Date(fromDate).getTime()
+      }
+      if (toDate){
+        body.toDate = new Date(toDate).getTime()
+      }
+      body.limit = limit
+      if (type === 'first' || nextSales === null){
+        salesFromDate.setDate(salesFromDate.getDate() - 1)
+        salesToDate.setDate(salesToDate.getDate() + 3)
+        body.fromDate = salesFromDate.getTime()
+        body.toDate = salesToDate.getTime()
+        defaultEndPoint = 'getDocsDetailsFirst'
+      }else{
+        defaultEndPoint = 'getDocsDetailsNext'
+      }
+    }
+
+    // console.log('sales Load Count is:', salesLoadCount)
+    if (!salesLoadCount){
+      setSalesLoadCount((prevCount)=>{
+        return prevCount + 1
+      })
+      // console.log('fetching sales...')
+      const resp = await fetchServer("POST", {
+       ...body
+      }, defaultEndPoint, SERVER)
+      if (resp.record){
+        setSalesLoadCount(0)
+        // console.log('got sales record response. Resetting Sales Load Count!')
+        // console.log('sales fetch type is :', type)
+        if (!type){
+          setSales(resp.record)
+        }else{
+          const salesResp = resp.record
+          // console.log('checking if response is empty:', salesResp)
+          if (salesResp.length){
+            // console.log('response is not empty')
+            // console.log(salesResp[salesResp.length -1].createdAt, nextSales[nextSales.length -1]?.createdAt)
+            // console.log('conditioning with this variables->','nextSales:', nextSales, 'salesResp:', salesResp)
+            if (nextSales === null || salesResp[salesResp.length -1].createdAt !== nextSales[nextSales.length -1]?.createdAt){
+              // console.log('setting next sales')
+              setNextSales(resp.record)
+              // console.log(resp.record)
+              if (type==='next' && nextSales !== null){
+                // console.log('type is next, so appending to sales Record!')
+                setSales((sales)=>{
+                  return [...sales, ...resp.record]
+                })
+              }else{
+                // console.log('type is first, so resetting sales Record to this!')
+                setSales(resp.record)
+              } 
+            }else{
+              // console.log('sales record is same as next sales record. Not setting next sales!')
+              // console.log('nextSales:', nextSales[nextSales.length -1].createdAt, 'salesResp:', salesResp[salesResp.length -1].createdAt)
+              setNextSales(null)
+            }
+          }
+        }
+      }
+      if (resp.err){
+        setSalesLoadCount(0)
+      }
+    }else{
+      // console.log('not fetching sales. Another sales fetch is in progress!')
+    }
+    
+
+    
+
   }
 
   const getProducts = async (company) =>{
@@ -556,6 +641,7 @@ function App() {
       collection: "Products", 
       prop: {} 
     }, "getDocsDetails", SERVER)
+
     if (resp.record){
       setProducts(resp.record)
     }
@@ -709,7 +795,13 @@ function App() {
           customers, setCustomers, getCustomers,
           attendance, setAttendance, getAttendance,
           allSessions, setAllSessions, getAllSessions,
+
+          saleFrom, setSaleFrom,
+          saleTo, setSaleTo,
+          saleNextFrom, setSaleNextFrom,
+          salesLoadCount, setSalesLoadCount, 
           sales, setSales, getSales,
+          nextSales, setNextSales, 
           products, setProducts, getProducts,
           accommodations, setAccommodations, getAccommodations,
           purchase, setPurchase, getPurchase,

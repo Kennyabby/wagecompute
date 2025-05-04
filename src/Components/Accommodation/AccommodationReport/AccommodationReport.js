@@ -121,11 +121,12 @@ const AccommodationReport = ({
                                                     <th><h8 className='theader'>CUSTOMERS</h8></th>
                                                     <th><h8 className='theader'>PHONE NO</h8></th>
                                                     {Object.keys(rooms).map((roomNo)=>{
-                                                        return <th><h8 className='theader'>{`ROOM ${roomNo}`}</h8></th>
+                                                        return isNaN(roomNo) ? <th><h8 className='theader'>REST</h8></th> : <th><h8 className='theader'>{`RM ${roomNo}`}</h8></th>
                                                     })}
-                                                    <th><h8 className='theader'>TOTAL ROOM DAYS</h8></th>                                                    
-                                                    <th><h8 className='theader'>TOTAL ACCOMMODATION AMOUNT</h8></th>                                                    
-                                                    <th><h8 className='theader'>TOTAL ACCOMMODATION PAYMENTS</h8></th>
+                                                    <th><h8 className='theader'>RM DAYS</h8></th>                                                    
+                                                    <th><h8 className='theader'>RM AMOUNT</h8></th>                                                    
+                                                    <th><h8 className='theader'>RM PAYMENTS</h8></th>
+                                                    <th><h8 className='theader'>OUTSTANDING</h8></th>
                                                 </tr>:
                                                 
                                                 <tr>
@@ -157,6 +158,7 @@ const AccommodationReport = ({
                                                         <td className='ttrow'>{saleReport.totalAccommodationDays}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.totalAccommodationAmount.toLocaleString()}</td>
                                                         <td className='ttrow'>{'₦'+saleReport.totalPaymentAmount.toLocaleString()}</td>
+                                                        <td className='ttrow'>{'₦'+(Number(saleReport.totalAccommodationAmount) -Number(saleReport.totalPaymentAmount)).toLocaleString()}</td>
                                                     </tr>
                                                 }) : 
                                                 reportSales?.map((saleReport, index)=>{
@@ -204,13 +206,23 @@ const AccommodationReport = ({
                                                             sumTotalAmount += Number(saleReport.totalAccommodationAmount)
                                                         })
                                                         return <th className='theader' key={id}>{'₦'+sumTotalAmount.toLocaleString()}</th>
-                                                    })}                                                                                        
+                                                    })}     
                                                     {[''].map((args, id)=>{
                                                         var sumTotalPayment = 0
                                                         reportSales?.forEach((saleReport)=>{
                                                             sumTotalPayment += Number(saleReport.totalPaymentAmount)
                                                         })
                                                         return <th className='theader' key={id}>{'₦'+sumTotalPayment.toLocaleString()}</th>
+                                                    })}                                                                                    
+                                                    {[''].map((args, id)=>{
+                                                        var sumTotalAmount = 0
+                                                        var sumTotalPayment = 0
+                                                        
+                                                        reportSales?.forEach((saleReport)=>{
+                                                            sumTotalAmount += Number(saleReport.totalAccommodationAmount)
+                                                            sumTotalPayment += Number(saleReport.totalPaymentAmount)
+                                                        })
+                                                        return <th className='theader' key={id}>{'₦'+(Number(sumTotalAmount)-Number(sumTotalPayment)).toLocaleString()}</th>
                                                     })}                                                                                  
                                                 </tr>
                                             </tfoot> : 

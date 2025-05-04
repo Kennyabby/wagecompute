@@ -37,8 +37,8 @@ const FormPage = ()=>{
     const [exportData, setExportData] =  useState([])
     const [holidays, setHolidays] = useState([
         { "value": "2025-01-01", "desc": "New Year's Day" },
-        { "value": "2025-04-19", "desc": "Good Friday" },
-        { "value": "2025-04-22", "desc": "Easter Monday" },
+        { "value": "2025-04-18", "desc": "Good Friday" },
+        { "value": "2025-04-21", "desc": "Easter Monday" },
         { "value": "2025-05-01", "desc": "Workers' Day" },
         { "value": "2025-06-12", "desc": "Democracy Day" },
         { "value": "2025-06-16", "desc": "Father's Day" },
@@ -108,7 +108,7 @@ const FormPage = ()=>{
     }
 
     const computeMonthlyHours = (totalTimeObject)=>{
-        const holidayDates = holidays.map((holiday)=>{return holiday.value})
+        const holidayDates = holidays.map((holiday)=>{return getDate(holiday.value)})
         const expectedPunchedDays = punchedDays.filter((punchday)=>{
             return !holidayDates.includes(punchday)
         })
