@@ -183,7 +183,8 @@ function App() {
           }
           if (companyRecord?.permissions.includes('sales')){
             getAccommodations(company)
-            getSales(company, 'first', saleFrom, saleTo, 10)
+            getSales(company)
+            // getSales(company, 'first', saleFrom, saleTo, 10)
             getRentals(company)
             Navigate('/sales')
           }
@@ -418,7 +419,8 @@ function App() {
         getPositions(cmp_val)
         getCustomers(cmp_val)
         getAccommodations(cmp_val)
-        getSales(cmp_val, 'first', saleFrom, saleTo, 10)
+        // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
+        getSales(cmp_val)
         getProducts(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)

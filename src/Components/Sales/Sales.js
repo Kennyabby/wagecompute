@@ -117,39 +117,39 @@ const Sales = ()=>{
     })
     const [isView, setIsView] = useState(false)
 
-    useEffect(()=>{
-        const divElement = scrollRef.current;
-        const handleScroll = () => {
-            if (divElement && loadRef.current) {
-                const topPosition = loadRef.current.offsetTop - divElement.scrollTop;
-                const scrollDivHeight = divElement.offsetHeight;
-                const scrollElementHeight = loadRef.current.offsetHeight; 
-                console.log(topPosition, scrollDivHeight, scrollElementHeight)
-                if (topPosition <= scrollDivHeight - scrollElementHeight + 500) {
-                    if (nextSales?.length){
-                        // console.log('getting more sales...')
-                        const lastCreatedAt = nextSales[nextSales.length - 1].createdAt
-                        // console.log('fetching next sales from ', lastCreatedAt, 'which should be converted to:', new Date(lastCreatedAt).getTime())
-                        getSales(company, 'next', saleFrom, lastCreatedAt, 10)
-                    }
-                }
-            }
-        };
+    // useEffect(()=>{
+    //     const divElement = scrollRef.current;
+    //     const handleScroll = () => {
+    //         if (divElement && loadRef.current) {
+    //             const topPosition = loadRef.current.offsetTop - divElement.scrollTop;
+    //             const scrollDivHeight = divElement.offsetHeight;
+    //             const scrollElementHeight = loadRef.current.offsetHeight; 
+    //             console.log(topPosition, scrollDivHeight, scrollElementHeight)
+    //             if (topPosition <= scrollDivHeight - scrollElementHeight + 500) {
+    //                 if (nextSales?.length){
+    //                     // console.log('getting more sales...')
+    //                     const lastCreatedAt = nextSales[nextSales.length - 1].createdAt
+    //                     // console.log('fetching next sales from ', lastCreatedAt, 'which should be converted to:', new Date(lastCreatedAt).getTime())
+    //                     getSales(company, 'next', saleFrom, lastCreatedAt, 10)
+    //                 }
+    //             }
+    //         }
+    //     };
 
-        if (divElement) {
-            divElement.addEventListener('scroll', handleScroll);
-            return () => {
-                divElement.removeEventListener('scroll', handleScroll);
-            };
-        }
+    //     if (divElement) {
+    //         divElement.addEventListener('scroll', handleScroll);
+    //         return () => {
+    //             divElement.removeEventListener('scroll', handleScroll);
+    //         };
+    //     }
         
-    },[loadRef.current, nextSales, salesLoadCount])
+    // },[loadRef.current, nextSales, salesLoadCount])
 
-    useEffect(()=>{
-        setNextSales(null)
-        setSalesLoadCount(0)    
-        getSales(company, 'first', saleFrom, saleTo, 10)
-    },[saleFrom, saleTo])
+    // useEffect(()=>{
+    //     setNextSales(null)
+    //     setSalesLoadCount(0)    
+    //     getSales(company, 'first', saleFrom, saleTo, 10)
+    // },[saleFrom, saleTo])
 
     useEffect(()=>{
         storePath('sales')  

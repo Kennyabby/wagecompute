@@ -172,7 +172,6 @@ const Reports = ()=>{
                     reportSalary.postingDate = postingDate
                     reportSalary.docType = 'salary'
                     reportSalary.salaryAmount = salaryAmount
-    
                     expenseData = expenseData.concat(reportSalary)
                 }
             })
@@ -258,6 +257,7 @@ const Reports = ()=>{
         balance = sumSalesAmount + sumRentalAmount - sumPurchaseAmount - sumExpenseAmount
         return balance 
     }
+    
     const printToPDF = () => {
         const element = reportRef.current;
         const options = {
@@ -269,6 +269,7 @@ const Reports = ()=>{
         };
         html2pdf().set(options).from(element).save();
     };
+
     return (
         <>
             <div className='reports'>
