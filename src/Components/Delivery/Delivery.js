@@ -791,6 +791,100 @@ const Delivery = () => {
     // =========================================
     // 6. Delivery Processing
     // =========================================
+
+    // const depleteInventory = async (validEntries) => {
+    //     const insufficientProducts = [];
+    //     if (validEntries.length){
+    //         // Validate if the warehouse selected as fromWarehouse has availableQuantity >= quantityToTransfer specified for each product
+    //         for (const entry of validEntries){
+    //             const { i_d, quantity } = entry;
+    //             const product = products.find(p => p.i_d === productId);
+    //             if (product ) {
+    //                 const fromWarehouseData = product[wrh] || [];
+    //                 let countBaseQuantity = 0;
+    //                 fromWarehouseData.forEach(item => {
+    //                     countBaseQuantity += Number(item.baseQuantity);
+    //                 });
+    //                 if (countBaseQuantity < Number(quantityToTransfer)) {
+    //                     insufficientProducts.push(productId);
+    //                 }
+    //             }
+    //         }
+    
+    //         // If there are products with insufficient quantity, display an error message
+    //         if (insufficientProducts.length > 0) {
+    //             setAlertState('error');
+    //             setAlert(`Insufficient quantity in the selected warehouse for the following products: ${insufficientProducts.join(', ')}`);
+    //             setAlertTimeout(8000);
+    //             setIsSaveValue(false)
+    //             return;
+    //         }
+    
+    //         // Proceed with the transfer if all validations pass
+    //         setAlertState('info');
+    //         setAlert('Transferring products...');
+    //         let countSuccess = 0;
+    //         for (const entry of validEntries) {
+    //             const { productId, quantityToTransfer, transferCost } = entry;
+    //             const product = products.find(p => p.i_d === productId);
+    //             if (product) {
+    //                 const fromWarehouseData = product[fromWarehouse] || [];
+    //                 const toWarehouseData = product[toWarehouse] || [];
+    //                 const createdAt = new Date().getTime();
+    //                 fromWarehouseData.push({
+    //                     productID: productId,
+    //                     entryType: 'Shipment',
+    //                     documentType: 'Transfer Shipment',
+    //                     transferTo: toWarehouse,
+    //                     baseQuantity: quantityToTransfer * -1,
+    //                     totalCost: transferCost * -1,
+    //                     createdAt: createdAt
+    //                 });
+    //                 toWarehouseData.push({
+    //                     productID: productId,
+    //                     entryType: 'Receipt',
+    //                     documentType: 'Transfer Receipt',
+    //                     tranferFrom: fromWarehouse,
+    //                     baseQuantity: quantityToTransfer,
+    //                     totalCost: transferCost,
+    //                     createdAt: createdAt
+    //                 });
+    //                 const resps = await fetchServer("POST", {
+    //                     database: company,
+    //                     collection: "Products",
+    //                     prop: [{ i_d: productId }, { [fromWarehouse]: fromWarehouseData, [toWarehouse]: toWarehouseData }]
+    //                 }, "updateOneDoc", server);
+    //                 if (resps.error) {
+    //                     setAlertState('info');
+    //                     setAlert(resps.message);
+    //                     setAlertTimeout(5000);
+    //                     setIsOnView(false);
+    //                     setIsSaveValue(false);
+    //                     setIsTransferValue(false);                        
+    //                     setFromWarehouse('');
+    //                     setToWarehouse('');
+    //                     return;
+    //                 }else{
+    //                     countSuccess++;
+    //                     setAlertState('success');
+    //                     setAlert(`${countSuccess}/${validEntries.length} product(s) transferred successfully`);
+    //                 }
+    //             }
+    //         }
+    //         if (countSuccess === validEntries.length) {
+    //             setAlertState('success');
+    //             setAlert('All Products Transfered Successful!');
+    //             setAlertTimeout(5000);
+    //             setIsOnView(false);
+    //             setIsSaveValue(false);
+    //             setIsTransferValue(false);                        
+    //             setFromWarehouse('');
+    //             setToWarehouse('');
+    //             getProducts(company);
+    //             resetCount();
+    //         }
+    //     }
+    // }
     const handleOrderDelivery = async () => {
         setAlertState('info');
         setAlert('Processing Delivery...');
@@ -895,6 +989,7 @@ const Delivery = () => {
             }
         }
         // Update the order with the new delivery data
+
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
@@ -916,6 +1011,8 @@ const Delivery = () => {
             })                                               
             return
         }
+
+
     };
 
     const printReceipt = (orderData) => {
