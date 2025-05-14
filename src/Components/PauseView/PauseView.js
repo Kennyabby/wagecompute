@@ -3,7 +3,7 @@ import { useEffect, useState, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 
 const PauseView = ()=>{
-    const { pauseView, setPauseView, viewAccess} = useContext(ContextProvider)
+    const { pauseView, setPauseView, viewAccess, generateCode} = useContext(ContextProvider)
     const [accessValue, setAccessValue] = useState('')
     const magicWord = 'oh ye server. allow thee into your world '
     const handleSecretAccess = (e)=>{
@@ -33,7 +33,10 @@ const PauseView = ()=>{
                     value={accessValue} 
                     autoComplete={false}                                   
                 />
-                { viewAccess === null ?'' : 'Deployment Paused'}
+                <label>
+                    { viewAccess === null ? '' : 'This deployment is temporarily paused'}
+                </label>
+                {viewAccess !==null && <div className='pause-base-code'>{`cpt1 : : ${generateCode(5)}-${generateCode(13)}-d${generateCode(5)}aaef${generateCode(2)}`}</div>}
             </div>
         </>
     )
