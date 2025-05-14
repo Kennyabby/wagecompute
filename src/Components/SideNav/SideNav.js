@@ -70,6 +70,7 @@ const SideNav = ()=>{
         <>
         <div className='sidenav'>
             <div className='navheader'>{companyName.toUpperCase()}</div>
+            {/* <div className='navheader'>{'ENTERPRISE COMPUTE'}</div> */}
             <nav className='navbox' onClick={handleNav}>
                 <ul className='navbarr'>
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard')) && 

@@ -238,12 +238,16 @@ function App() {
     return array
   }
 
-  const generateCode = () => {
+  const generateCode = (length) => {
     let number = '0123456789987654321001234567899876543210'
-    var list = number.split('')
-    var shuffledList = shuffleList(list)
-    const code = shuffledList.slice(6, 12).join('')
-    return code
+    if (length && length<=number.length){
+      var list = number.split('')
+      var shuffledList = shuffleList(list)
+      const code = shuffledList.slice(0, length).join('')
+      return code
+    }else{
+      return null
+    }
   }
 
   const removeComma = (value)=>{
