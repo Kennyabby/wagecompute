@@ -15,7 +15,7 @@ const fetchServer = async (method, body, endpoint, server, signal)=>{
         delete data.signal
     }
     try {
-        const resp = await fetch(server + '/'+endpoint, data)
+        const resp = await fetch('/'+endpoint, data)
         const response = await resp.json()
         return {err: false, ...response}
     } catch (error) {
