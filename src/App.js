@@ -455,6 +455,7 @@ function App() {
       }, "getDocsDetails", SERVER)
       if (resps.err) {
           // console.log(resps.mess)
+          setViewAccess('405')
       } else {
           setViewAccess(resps.record[0].pauseDB)
           if (resps.record[0].pauseDB){
