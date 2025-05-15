@@ -34,7 +34,7 @@ const PauseView = ()=>{
                     autoComplete={false}                                   
                 />
                 <label>
-                    { viewAccess === null ? '' : 'This deployment is temporarily paused'}
+                    { viewAccess === null ? '405 ERROR COULD NO SERVER RESPONSE' : 'This deployment is temporarily paused'}
                 </label>
                 {viewAccess !==null && <div className='pause-base-code'>{`cpt1 : : ${generateCode(5)}-${generateCode(13)}-d${generateCode(5)}aaef${generateCode(2)}`}</div>}
             </div>
