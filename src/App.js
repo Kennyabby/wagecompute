@@ -454,7 +454,7 @@ function App() {
           prop: {'name': 'activation'}
       }, "getDocsDetails", SERVER)
       if (resps.err) {
-          // console.log(resps.mess)
+          console.log(resps.mess)
           setViewAccess('405')
       } else {
           setViewAccess(resps.record[0].pauseDB)
