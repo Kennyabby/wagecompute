@@ -36,7 +36,7 @@ const PauseView = ()=>{
                 <label>
                     { viewAccess === null ? '' : (viewAccess === '405' ? '405 ERROR, NO SERVER RESPONSE - METHOD NOT ALLOWED' : 'This deployment is temporarily paused')}
                 </label>
-                {viewAccess !==null && <div className='pause-base-code'>{`cpt1 : : ${generateCode(5)}-${generateCode(13)}-d${generateCode(5)}aaef${generateCode(2)}`}</div>}
+                {viewAccess !==null && viewAccess!=='405' && <div className='pause-base-code'>{`cpt1 : : ${generateCode(5)}-${generateCode(13)}-d${generateCode(5)}aaef${generateCode(2)}`}</div>}
             </div>
         </>
     )
