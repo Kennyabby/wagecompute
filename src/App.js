@@ -16,8 +16,8 @@ import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 function App() {
 
   // const SERVER = "http://localhost:3001"
-  const SERVER = "https://enterpriseserver.vercel.app"
-  // const SERVER = "https://hserver.techpros.com.ng"
+  // const SERVER = "https://enterpriseserver.vercel.app"
+  const SERVER = "https://hserver.techpros.com.ng"
   // const SERVER = "http://3.251.76.94"
   
   const [viewAccess, setViewAccess] = useState(null)
