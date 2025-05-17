@@ -145,14 +145,16 @@ const Delivery = () => {
     },[allSessionOrders, curSession])
 
     useEffect(()=>{
-        if (tables?.length && sessions?.length){
-            setIsLive(true)
-            setLoadSession(false)
-            UpdateSessionState(sessions, false)
-        } else if(tables?.length){
-            setIsLive(true)
-            setLoadSession(false)
-            UpdateSessionState(sessions, false)
+        if (tables?.length && sessions !== null){
+            if (sessions.length){
+                setIsLive(true)
+                setLoadSession(false)
+                UpdateSessionState(sessions, false)
+            }else{
+                setIsLive(true)
+                setLoadSession(false)
+                setStartSession(true)
+            }
         }
     },[tables, sessions])
     
@@ -323,10 +325,10 @@ const Delivery = () => {
                 setAllSessions((allSessions)=>{return [...allSessions, newSession]})
                 if (![null, undefined].includes(sessionUser)){
                     if (sessionUser.profile.emailid === companyRecord.emailid){
-                        setSessions([newSession])                    
+                        setSessions([...sessions, newSession])                 
                     }
                 }else{
-                    setSessions([newSession]) 
+                    setSessions([...sessions, newSession]) 
                 }
                 setSessionUser(null)
                 return
@@ -395,9 +397,11 @@ const Delivery = () => {
     const UpdateSessionState = (sessions, loadSession)=>{
         if (!loadSession && sessions?.length){            
             const previousSession = sessions.filter((session)=> session.active)            
+            let lastSessionIndex = 0
             if (previousSession.length){
-                setCurrSession(previousSession[0])
-                if(new Date().getTime() >= getSessionEnd(previousSession[0].start)){                
+                lastSessionIndex = previousSession.length - 1
+                setCurrSession(previousSession[lastSessionIndex])
+                if(new Date().getTime() >= getSessionEnd(previousSession[lastSessionIndex].start)){                
                     // setStartSession(false)
                     setSessionEnded(true)
                 }else{
@@ -418,11 +422,6 @@ const Delivery = () => {
                 if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_deliveries')){
                     setStartSession(true)
                 }
-                // setEndSession(false)
-            }
-        }else{
-            if (!loadSession && !sessions?.length){
-                setStartSession(true)
                 // setEndSession(false)
             }
         }
@@ -735,21 +734,21 @@ const Delivery = () => {
         if (existingItem){
             updatedItems = currentOrder.items.map(item =>
                 item.i_d === product.i_d 
-                    ? { ...item, quantity: quantity ? quantity: item.quantity + 1 }
+                    ? { ...item, orderQuantity: quantity ? quantity : item.quantity + 1 }
                     : item
             );
         } else {
             updatedItems = [...currentOrder.items, { 
                 ...product,
                 i_d: product.i_d,
-                quantity: quantity || 1,
+                orderQuantity: quantity || 1,
                 orderNumber: currentOrder.orderNumber,
                 tableId: currentOrder.tableId
             }];
         }
 
         let updatedItem = updatedItems.find(item => item.i_d === product.i_d)
-        if (Number(updatedItem.quantity) > (Number(originalItem.quantity) - Number(originalItem.deliveredQuantity || 0))){
+        if (Number(updatedItem.orderQuantity) > (Number(originalItem.quantity) - Number(originalItem.deliveredQuantity || 0))){
             setAlertState('error');
             setAlert('Delivery quantity cannot be greater than ordered quantity!');
             setAlertTimeout(3000)
@@ -909,10 +908,13 @@ const Delivery = () => {
                 return itm.i_d === item.i_d
             })
             if (wrhCategories[wrh].includes(item.category)){
-                previousItemState.deliveredQuantity = Number(previousItemState.remainingQuantity || 0) + Number(item.quantity)
+                previousItemState.deliveredQuantity = Number(previousItemState.deliveredQuantity || 0) + Number(item.orderQuantity || (item.remainingQuantity || item.quantity))
                 previousItemState.remainingQuantity = Number(previousItemState.quantity) - Number(previousItemState.deliveredQuantity)
 
-                if (Number(previousItemState.quantity) === Number(item.quantity)){
+                // if (Number(previousItemState.quantity) === Number(item.quantity)){
+                //     previousItemState.delivery = 'completed'                
+                // }           
+                if (Number(previousItemState.remainingQuantity) === 0){
                     previousItemState.delivery = 'completed'                
                 }           
                 deliveredOrderItems.push(previousItemState)
@@ -939,18 +941,17 @@ const Delivery = () => {
 
         deliveryDataUpdate.delivery = (totalDelivered === updatedOrderItems.length) ? 'completed' : 'pending'
         deliveryDataUpdate.items = updatedOrderItems
-        if (currentOrder.status === 'completed'){
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        if (currentOrder.status === 'completed' && deliveryDataUpdate.delivery === 'completed'){
+            const prevTable = tables.find((table)=>{return table['wrh'] === currentOrder.wrh})
             const resp = await fetchServer("POST", {
                 database: company,
                 collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [
-                    ...prevTable.activeTables.filter((table)=>{return (
+                prop: [{'wrh':currentOrder.wrh}, {activeTables: [
+                    ...(prevTable.activeTables.filter((table)=>{return (
                         table.tableId !== currentOrder.tableId && 
                         table.sessionId !== currentOrder.sessionId &&
-                        table.handlerId !== companyRecord.emailid && 
-                        table.orderId !== currentOrder.orderNumber
-                    )})
+                        table.orderNumber !== currentOrder.orderNumber
+                    )}))
                 ]}]
             }, "updateOneDoc", server)
             if (resp.err){
@@ -961,24 +962,25 @@ const Delivery = () => {
                 return;
             }
         }else if (deliveryDataUpdate.delivery === 'completed'){
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const prevTable = tables.find((table)=>{return table['wrh'] === currentOrder.wrh})
+            const activeTablesUpdate = [
+                ...(prevTable.activeTables.filter((table)=>{return (
+                    table.tableId !== currentOrder.tableId && 
+                    table.sessionId !== currentOrder.sessionId &&
+                    table.orderNumber !== currentOrder.orderNumber
+                )})),
+                {...(prevTable.activeTables.find((table)=>{return (
+                    table.tableId === currentOrder.tableId && 
+                    table.sessionId === currentOrder.sessionId &&
+                    table.orderNumber === currentOrder.orderNumber
+                )})), 
+                delivery: 'completed'}
+            ]
             const resp = await fetchServer("POST", {
                 database: company,
                 collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [
-                    ...prevTable.activeTables.filter((table)=>{return (
-                        table.tableId !== currentOrder.tableId && 
-                        table.sessionId !== currentOrder.sessionId &&
-                        table.handlerId !== companyRecord.emailid && 
-                        table.orderId !== currentOrder.orderNumber
-                    )}),
-                    {...prevTable.activeTables.find((table)=>{return (
-                        table.tableId !== currentOrder.tableId && 
-                        table.sessionId !== currentOrder.sessionId &&
-                        table.handlerId !== companyRecord.emailid && 
-                        table.orderId !== currentOrder.orderNumber
-                    )}), 
-                    delivery: 'completed'}
+                prop: [{'wrh':currentOrder.wrh}, {activeTables: [
+                    ...activeTablesUpdate
                 ]}]
             }, "updateOneDoc", server)
             if (resp.err){
@@ -1011,8 +1013,6 @@ const Delivery = () => {
             })                                               
             return
         }
-
-
     };
 
     const printReceipt = (orderData) => {
@@ -1345,7 +1345,7 @@ const Delivery = () => {
                             }}
                         >
                             <span>{item.name}</span>
-                            <span>{Number(item.quantity) - Number(item.deliveredQuantity || 0) }</span>
+                            <span>{Number(item.orderQuantity || (item.remainingQuantity || item.quantity))}</span>
                             {/* {!curSession.type === 'delivery' && <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>} */}
                             {(currentOrder.status === 'new' || currentOrder.delivery === 'pending') && <button 
                                 className = "remove-btn"
@@ -1658,21 +1658,22 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect,
                 {tableOrders?.map(order => (
                     <div 
                         key={order.i_d}
-                        className={`order-card ${order.status}`}
+                        className={`order-card ${order.delivery}`}
                     >
                         <div onClick={() => handleOrderSelect(order)}>
                             <div>Order #{order.orderNumber}</div>
+                            <div>Delivery: {`${order.delivery}`}</div>
+                            <div>Payment: {order.status}</div>
                             <div>Table: {order.tableId}</div>
-                            <div>Delivery: {order.delivery}</div>
                             <div>{new Date(order.createdAt).toLocaleString()}</div>
                         </div>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) &&
-                        !['cancelled','completed','partial'].includes(order.delivery) && (
+                        !['cancelled'].includes(order.delivery) && !['completed'].includes(order.status) && (
                             <button 
                                 disabled={cancelling}
                                 className="cancel-order-btn"
                                 onClick={() => handleCancelOrder(order)}
-                                title="Cancel Order"
+                                title="Cancel Delivery"
                             >
                                 🗑️
                             </button>

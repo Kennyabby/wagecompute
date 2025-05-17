@@ -132,15 +132,18 @@ const PointOfSales = () => {
             })
         }
     },[wrhs])
+    
     useEffect(()=>{
-        if (tables?.length && sessions?.length){
-            setIsLive(true)
-            setLoadSession(false)
-            UpdateSessionState(sessions, false)
-        } else if (tables?.length){
-            setIsLive(true)
-            setLoadSession(false)
-            UpdateSessionState(sessions, false)
+        if (tables?.length && sessions !== null){
+            if (sessions.length){
+                setIsLive(true)
+                setLoadSession(false)
+                UpdateSessionState(sessions, false)
+            }else{
+                setIsLive(true)
+                setLoadSession(false)
+                setStartSession(true)
+            }
         }
     },[tables, sessions])
 
@@ -314,10 +317,12 @@ const PointOfSales = () => {
                 setAllSessions((allSessions)=>{return [...allSessions, newSession]})
                 if (![null, undefined].includes(sessionUser)){
                     if (sessionUser.profile.emailid === companyRecord.emailid){
-                        setSessions([newSession])                    
+                        setSessions([...sessions, newSession])                    
                     }
                 }else{
-                    setSessions([newSession]) 
+                    if (sessions!==null){
+                        setSessions([...sessions, newSession]) 
+                    }
                 }
                 setSessionUser(null)
                 return
@@ -411,9 +416,11 @@ const PointOfSales = () => {
     const UpdateSessionState = (sessions, loadSession)=>{
         if (!loadSession && sessions?.length){            
             const previousSession = sessions.filter((session)=> session.active)            
+            let lastSessionIndex = 0
             if (previousSession.length){
-                setCurrSession(previousSession[0])
-                if(new Date().getTime() >= getSessionEnd(previousSession[0].start)){                
+                lastSessionIndex = previousSession.length - 1
+                setCurrSession(previousSession[lastSessionIndex])
+                if(new Date().getTime() >= getSessionEnd(previousSession[lastSessionIndex].start)){                
                     // setStartSession(false)
                     setSessionEnded(true)
                 }else{
@@ -432,13 +439,9 @@ const PointOfSales = () => {
                     setOpeningCash((Number(oldSession.openingCash || 0) + Number(oldSession.cash || 0) - Number(oldSession.totalCashChange || 0)))
                 }
                 if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_sessions')){
+                    // console.log('starting session')
                     setStartSession(true)
                 }
-                // setEndSession(false)
-            }
-        }else{
-            if (!loadSession && !sessions?.length){
-                setStartSession(true)
                 // setEndSession(false)
             }
         }
@@ -749,7 +752,7 @@ const PointOfSales = () => {
         const resp = await fetchServer("POST", {
             database: company,
             collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [...prevTable?.activeTables || [], activeOrder]}]
+            prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables) || [], activeOrder]}]
         }, "updateOneDoc", server)
         if (resp.err){
             setAlertState('error');
@@ -903,12 +906,12 @@ const PointOfSales = () => {
                 database: company,
                 collection: "Tables",
                 prop: [{'wrh':wrh}, {activeTables: [
-                    ...prevTable.activeTables.filter((table)=>{return (
+                    ...(prevTable.activeTables.filter((table)=>{return (
                         table.tableId !== currentOrder.tableId && 
                         table.sessionId !== currentOrder.sessionId &&
                         table.handlerId !== companyRecord.emailid && 
-                        table.orderId !== currentOrder.orderNumber
-                    )})
+                        table.orderNumber !== currentOrder.orderNumber
+                    )}))
                 ]}]
             }, "updateOneDoc", server)
             if (resp.err){
@@ -923,18 +926,18 @@ const PointOfSales = () => {
                 database: company,
                 collection: "Tables",
                 prop: [{'wrh':wrh}, {activeTables: [
-                    ...prevTable.activeTables.filter((table)=>{return (
+                    ...(prevTable.activeTables.filter((table)=>{return (
                         table.tableId !== currentOrder.tableId && 
                         table.sessionId !== currentOrder.sessionId &&
                         table.handlerId !== companyRecord.emailid && 
-                        table.orderId !== currentOrder.orderNumber
-                    )}),
-                    {...prevTable.activeTables.find((table)=>{return (
-                        table.tableId !== currentOrder.tableId && 
-                        table.sessionId !== currentOrder.sessionId &&
-                        table.handlerId !== companyRecord.emailid && 
-                        table.orderId !== currentOrder.orderNumber
-                    )}), 
+                        table.orderNumber !== currentOrder.orderNumber
+                    )})),
+                    {...(prevTable.activeTables.find((table)=>{return (
+                        table.tableId === currentOrder.tableId && 
+                        table.sessionId === currentOrder.sessionId &&
+                        table.handlerId === companyRecord.emailid && 
+                        table.orderNumber === currentOrder.orderNumber
+                    )})), 
                     status: 'completed'}
                 ]}]
             }, "updateOneDoc", server)
@@ -2118,9 +2121,10 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                                     var employeeSession = null
                                     var sessionLive = false
                                     if (employeeSessions.length > 0){
+                                        // console.log(employeeSessions)
                                         employeeSession = employeeSessions.find((session)=>{return !session.end})
                                         if ([null, undefined].includes(employeeSession)){
-                                            employeeSession = employeeSessions[employeeSessions.length-1]
+                                            employeeSession = employeeSessions[employeeSessions.length - 1]
                                         }
                                         if ((new Date().getTime()) >= getSessionEnd(employeeSession.start) || employeeSession.end){
                                             sessionLive = false
