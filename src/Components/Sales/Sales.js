@@ -615,7 +615,7 @@ const Sales = ()=>{
                 baseQuantity: Number(entry.baseQuantity) * -1,
                 totalCost: Number(entry.costPrice) * Number(entry.baseQuantity) * -1,
                 totalSales: Number(entry.totalSales) * -1,
-                postingDate: new Date(Date.now()).toISOString().slice(0, 10),
+                postingDate: postingDate,
                 createdAt: createdAt,
             };
     
@@ -676,7 +676,7 @@ const Sales = ()=>{
             }
         });
     };
-    const addSales = async ()=> { 
+    const addSales = async (reference)=> { 
         if (postingDate){
             setPostStatus('Posting Sales...')
             var totalCashSales = 0
@@ -700,7 +700,9 @@ const Sales = ()=>{
                 // productsRef: createdAt,
                 record: [...fields1]
             }
-    
+            if (curSale === null){
+                newSale.productsRef = reference
+            }
             const newSales = [newSale, ...sales]        
             const resps = await fetchServer("POST", {
                 database: company,

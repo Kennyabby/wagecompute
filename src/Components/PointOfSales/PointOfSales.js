@@ -1053,8 +1053,10 @@ const PointOfSales = () => {
 
     // Update the click handler in the products grid to only select the product
     const handleProductClick = (product) => {
-        setSelectedProduct(product);
-        setQuantity(''); // Reset quantity when new product is selected
+        if (!sessionEnded){
+            setSelectedProduct(product);
+            setQuantity(''); // Reset quantity when new product is selected
+        }
     };
 
     // =========================================
@@ -1394,7 +1396,7 @@ const PointOfSales = () => {
                 {(currentOrder.status!=='cancelled' && currentOrder.status === 'new') && <button 
                     className="place-order-btn"
                     onClick={() => handlePlaceOrder()}
-                    disabled={!currentOrder.items.length || placingOrder || sessionEnded}
+                    disabled={!currentOrder.items.length || placingOrder || sessionEnded || !curSession.active}
                 >
                     Place Order (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
@@ -1429,7 +1431,7 @@ const PointOfSales = () => {
                         <div 
                             key={product.i_d}
                             className={`product-card ${selectedProduct?.i_d === product.i_d ? 'active' : ''}`}
-                            onClick={() => handleProductClick(product)} // Changed from handleAddItem to handleProductClick
+                            onClick={() => handleProductClick(product)}
                         >
                             <div className="product-icon">
                                 <MdShoppingBasket />
@@ -1660,6 +1662,8 @@ const PointOfSales = () => {
                     currentOrder={currentOrder}
                     setCurrentOrder={setCurrentOrder}
                     createNewOrder={createNewOrder}
+                    curSession={curSession}
+                    employees={employees}
                 />}
                 {showPaymentModal && 
                 <PaymentModal 
@@ -1918,7 +1922,7 @@ const PaymentModal = ({
     );
 };
 const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, 
-    tables, currentOrder, setCurrentOrder, createNewOrder 
+    tables, currentOrder, setCurrentOrder, createNewOrder, curSession, employees 
 }) => {
     const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
     const [cancelling, setCancelling] = useState(false)
@@ -1935,11 +1939,11 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                 database: company,
                 collection: "Tables",
                 prop: [{'wrh':wrh}, {activeTables: [
-                    ...prevTable.activeTables.filter((tableOrder)=>{return (
+                    ...(prevTable.activeTables.filter((tableOrder)=>{return (
                         tableOrder.tableId !== order.tableId && 
                         tableOrder.sessionId !== order.sessionId &&
-                        tableOrder.orderId !== order.orderNumber
-                    )})
+                        tableOrder.orderNumber !== order.orderNumber
+                    )}))
                 ]}]
             }, "updateOneDoc", server)
             if (resp.err){
@@ -2006,10 +2010,12 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                                 <div>Total: ₦{order.totalSales}</div>
                                 <div>Status: {order.status}</div>
                                 <div>Delivery: {(order.delivery || 'pending')}</div>
+                                <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
                                 <div>{new Date(order.createdAt).toLocaleString()}</div>
                             </div>
                             {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) &&
-                            !['cancelled','completed'].includes(order.status) && (
+                            !['cancelled','completed'].includes(order.status) 
+                            && curSession.active &&  (
                                 <button 
                                     disabled={cancelling}
                                     className="cancel-order-btn"
