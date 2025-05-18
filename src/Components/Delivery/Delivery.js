@@ -1,3 +1,5 @@
+import './Delivery.css'
+
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import '../PointOfSales/PointOfSales.css'
@@ -60,6 +62,7 @@ const Delivery = () => {
     const [activeCategory, setActiveCategory] = useState(null);
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [quantity, setQuantity] = useState('');
+    const [postCount, setPostCount] = useState(0)
 
     // Modal States
     const [showNewTableModal, setShowNewTableModal] = useState(false);
@@ -537,6 +540,7 @@ const Delivery = () => {
                         setAllSessionOrders(ordersResponse.record)
                         setAllOrders(ordersResponse.record.filter((order) =>{
                             if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){
+                                // console.log('order:',order,'session: ',curSession)
                                 return order
                             }                            
                         })) 
@@ -784,106 +788,95 @@ const Delivery = () => {
         const orderClone = structuredClone({order});
         setSelectedProduct(null);
         setCurrentOrder(orderClone.order);
-        setPosCurrentOrder(orderClone.order)
+        setPosCurrentOrder((structuredClone({order})).order)
     };
 
     // =========================================
     // 6. Delivery Processing
     // =========================================
 
-    // const depleteInventory = async (validEntries) => {
-    //     const insufficientProducts = [];
-    //     if (validEntries.length){
-    //         // Validate if the warehouse selected as fromWarehouse has availableQuantity >= quantityToTransfer specified for each product
-    //         for (const entry of validEntries){
-    //             const { i_d, quantity } = entry;
-    //             const product = products.find(p => p.i_d === productId);
-    //             if (product ) {
-    //                 const fromWarehouseData = product[wrh] || [];
-    //                 let countBaseQuantity = 0;
-    //                 fromWarehouseData.forEach(item => {
-    //                     countBaseQuantity += Number(item.baseQuantity);
-    //                 });
-    //                 if (countBaseQuantity < Number(quantityToTransfer)) {
-    //                     insufficientProducts.push(productId);
-    //                 }
-    //             }
-    //         }
+    const updateInventory = async (items, deliveryDataUpdate) => {
+        const createdAt = new Date().getTime()
+        items.forEach( async (item)=>{
+            const uom1 = uoms.filter((uom)=>{
+                return uom.code === item.purchaseUom
+            })
+            const product = products.find((prd)=> {return prd.i_d === item.i_d})
+            // const itemWrh = wrhCategories[currentOrder.wrh].includes(item.category) ? currentOrder.wrh : 'kitchen'
+            const itemWrh = wrh
+            const productData = product[itemWrh];
+            let cummulativeUnitCostPrice = 0
+            let totalCostValue = 0
+            let totalBaseQuantity = 0
+            wrhs.forEach((wrh)=>{
+                if(wrh.purchase){
+                    product[wrh.name].forEach((entry)=>{
+                        totalBaseQuantity += Number(entry.baseQuantity)
+                        totalCostValue += Number(entry.totalCost)
+                    })
+                }
+            })
+            cummulativeUnitCostPrice = totalBaseQuantity? Number(totalCostValue/totalBaseQuantity) : 0
+            const depletedItem = {
+                productId: item.i_d,
+                name: item.name,
+                category: item.category,
+                quantity: -1 * Number(item.depletedQuantity),
+                baseQuantity: -1 * Number(item.depletedQuantity) * Number(uom1[0]?.multiple),
+                salesUom: item.salesUom,
+                baseUom: uom1[0]?.base,
+                costPrice: cummulativeUnitCostPrice,
+                salesPrice: item.salesPrice,
+                vipPrice: item.vipPrice,
+                totalSales: currentOrder.wrh === 'vip' ? (-1 * Number(item.depletedQuantity) * Number(item.vipPrice || item.salesPrice)) : (-1 * Number(item.depletedQuantity) * Number(item.salesPrice)),                
+                totalCost: -1 * Number(item.depletedQuantity) * cummulativeUnitCostPrice,
+                entryType: 'Sales',
+                documentType: 'Shipment',
+                orderNumber: currentOrder.orderNumber,
+                sessionId: currentOrder.sessionId,
+                tableId: currentOrder.tableId,
+                handlerId: currentOrder.handlerId,
+                deliveredBy: companyRecord.emailid,
+                postingDate: new Date(Date.now()).toISOString().slice(0, 10),
+                createdAt: createdAt
+            }
+
+            productData.push(depletedItem)
+            const resps = await fetchServer("POST", {
+                database: company,
+                collection: "Products",
+                prop: [{ i_d: depletedItem.productId }, { [itemWrh]: productData }]
+            }, "updateOneDoc", server);
     
-    //         // If there are products with insufficient quantity, display an error message
-    //         if (insufficientProducts.length > 0) {
-    //             setAlertState('error');
-    //             setAlert(`Insufficient quantity in the selected warehouse for the following products: ${insufficientProducts.join(', ')}`);
-    //             setAlertTimeout(8000);
-    //             setIsSaveValue(false)
-    //             return;
-    //         }
+            if (resps.err) {
+                console.log(resps.mess);
+                setAlertState('error');
+                setAlert(resps.mess);
+                setAlertTimeout(5000);
+            } else {
+                setPostCount(prevCount => {
+                    const newCount = prevCount + 1;
+                    if (newCount === items.length) {
+                        setPlacingOrder(false)
+                        setAlertState('success');
+                        setAlert('Delivery processed successfully');
+                        setAlertTimeout(2000)
+                        setCurrentOrder((currentOrder)=>{
+                            return {...currentOrder, ...deliveryDataUpdate}
+                        })                           
+                        getProducts(company);                        
+                    } else {
+                        setAlertState('success');
+                        setAlert(`${newCount} / ${items.length} Inventory Updated Successfully!`);
+                    }
     
-    //         // Proceed with the transfer if all validations pass
-    //         setAlertState('info');
-    //         setAlert('Transferring products...');
-    //         let countSuccess = 0;
-    //         for (const entry of validEntries) {
-    //             const { productId, quantityToTransfer, transferCost } = entry;
-    //             const product = products.find(p => p.i_d === productId);
-    //             if (product) {
-    //                 const fromWarehouseData = product[fromWarehouse] || [];
-    //                 const toWarehouseData = product[toWarehouse] || [];
-    //                 const createdAt = new Date().getTime();
-    //                 fromWarehouseData.push({
-    //                     productID: productId,
-    //                     entryType: 'Shipment',
-    //                     documentType: 'Transfer Shipment',
-    //                     transferTo: toWarehouse,
-    //                     baseQuantity: quantityToTransfer * -1,
-    //                     totalCost: transferCost * -1,
-    //                     createdAt: createdAt
-    //                 });
-    //                 toWarehouseData.push({
-    //                     productID: productId,
-    //                     entryType: 'Receipt',
-    //                     documentType: 'Transfer Receipt',
-    //                     tranferFrom: fromWarehouse,
-    //                     baseQuantity: quantityToTransfer,
-    //                     totalCost: transferCost,
-    //                     createdAt: createdAt
-    //                 });
-    //                 const resps = await fetchServer("POST", {
-    //                     database: company,
-    //                     collection: "Products",
-    //                     prop: [{ i_d: productId }, { [fromWarehouse]: fromWarehouseData, [toWarehouse]: toWarehouseData }]
-    //                 }, "updateOneDoc", server);
-    //                 if (resps.error) {
-    //                     setAlertState('info');
-    //                     setAlert(resps.message);
-    //                     setAlertTimeout(5000);
-    //                     setIsOnView(false);
-    //                     setIsSaveValue(false);
-    //                     setIsTransferValue(false);                        
-    //                     setFromWarehouse('');
-    //                     setToWarehouse('');
-    //                     return;
-    //                 }else{
-    //                     countSuccess++;
-    //                     setAlertState('success');
-    //                     setAlert(`${countSuccess}/${validEntries.length} product(s) transferred successfully`);
-    //                 }
-    //             }
-    //         }
-    //         if (countSuccess === validEntries.length) {
-    //             setAlertState('success');
-    //             setAlert('All Products Transfered Successful!');
-    //             setAlertTimeout(5000);
-    //             setIsOnView(false);
-    //             setIsSaveValue(false);
-    //             setIsTransferValue(false);                        
-    //             setFromWarehouse('');
-    //             setToWarehouse('');
-    //             getProducts(company);
-    //             resetCount();
-    //         }
-    //     }
-    // }
+                    return newCount;
+                });
+            }
+        })
+        
+    }
+
     const handleOrderDelivery = async () => {
         setAlertState('info');
         setAlert('Processing Delivery...');
@@ -903,14 +896,17 @@ const Delivery = () => {
         var pendingOrderItems = posCurrentOrder.items
         var edittedOrderItems = currentOrder.items
         var deliveredOrderItems = []
+        var itemsToDeplete = []
         edittedOrderItems.forEach((item, index)=>{
             var previousItemState = pendingOrderItems.find((itm)=>{
                 return itm.i_d === item.i_d
             })
             if (wrhCategories[wrh].includes(item.category)){
-                previousItemState.deliveredQuantity = Number(previousItemState.deliveredQuantity || 0) + Number(item.orderQuantity || (item.remainingQuantity || item.quantity))
+                const depletedQuantity = Number(item.orderQuantity || (item.remainingQuantity || item.quantity))
+                previousItemState.deliveredQuantity = Number(previousItemState.deliveredQuantity || 0) + depletedQuantity
                 previousItemState.remainingQuantity = Number(previousItemState.quantity) - Number(previousItemState.deliveredQuantity)
-
+                item.depletedQuantity = depletedQuantity
+                itemsToDeplete.push(item)
                 // if (Number(previousItemState.quantity) === Number(item.quantity)){
                 //     previousItemState.delivery = 'completed'                
                 // }           
@@ -921,9 +917,32 @@ const Delivery = () => {
             }
         })
 
-        const updatedOrderItems = []
+        const insufficientProducts = []
+        for (const entry of itemsToDeplete){
+            const product = products.find(p => p.i_d === entry.i_d);
+            if (product) {
+                const warehouseData = product[wrh] || [];
+                let countBaseQuantity = 0;
+                warehouseData.forEach(item => {
+                    countBaseQuantity += Number(item.baseQuantity);
+                });
+                if (countBaseQuantity < Number(entry.depletedQuantity)) {
+                    insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`);
+                }
+            }
+        }
 
+        if (insufficientProducts.length > 0) {
+            setAlertState('error');
+            setAlert(`Insufficient quantity in "${wrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
+            setAlertTimeout(8000);
+            setPlacingOrder(false)
+            return;
+        }
+        
+        const updatedOrderItems = []
         let totalDelivered = 0
+
         pendingOrderItems.forEach((item)=>{
             var deliveredItem = deliveredOrderItems.find((itm)=>{
                 return itm.i_d === item.i_d
@@ -1004,13 +1023,7 @@ const Delivery = () => {
             setPlacingOrder(false)
             return
         } else {
-            setPlacingOrder(false)
-            setAlertState('success');
-            setAlert('Delivery processed successfully');
-            setAlertTimeout(2000)
-            setCurrentOrder((currentOrder)=>{
-                return {...currentOrder, ...deliveryDataUpdate}
-            })                                               
+            updateInventory(itemsToDeplete, deliveryDataUpdate)                                                        
             return
         }
     };
@@ -1344,7 +1357,7 @@ const Delivery = () => {
                                 }
                             }}
                         >
-                            <span>{item.name}</span>
+                            <span>{`[${item.i_d}] ${item.name}`}</span>
                             <span>{Number(item.orderQuantity || (item.remainingQuantity || item.quantity))}</span>
                             {/* {!curSession.type === 'delivery' && <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>} */}
                             {(currentOrder.status === 'new' || currentOrder.delivery === 'pending') && <button 
@@ -1361,10 +1374,11 @@ const Delivery = () => {
                     ))}
                 </div>
                 {selectedProduct && renderKeypad()}
-                {(currentOrder.delivery!=='cancelled' && currentOrder.delivery!=='completed') && <button 
+                {(currentOrder.delivery!=='cancelled' && currentOrder.delivery!=='completed') 
+                && <button 
                     className="place-order-btn"
                     onClick={() => handleOrderDelivery()}
-                    disabled={currentOrder?.items.length === 0 || placingOrder}
+                    disabled={currentOrder?.items.length === 0 || placingOrder || !curSession.active}
                 >
                     Place Delivery (#{currentOrder.orderNumber})
                 </button>}
@@ -1379,6 +1393,8 @@ const Delivery = () => {
                         wrh={wrh}
                         currentOrder={currentOrder}
                         setCurrentOrder={setCurrentOrder}
+                        curSession={curSession}
+                        employees = {employees}
                     />
                 </div>
             </div>
@@ -1587,7 +1603,7 @@ const Delivery = () => {
 export default Delivery;
 
 const OrdersModal = ({ tableOrders, wrh, handleOrderSelect,
-    tables, currentOrder, setCurrentOrder
+    tables, currentOrder, setCurrentOrder, curSession, employees
 }) => {
     const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
     const [cancelling, setCancelling] = useState(false)
@@ -1603,11 +1619,11 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect,
             database: company,
             collection: "Tables",
             prop: [{'wrh':wrh}, {activeTables: [
-                ...prevTable.activeTables.filter((tableOrder)=>{return (
+                ...(prevTable.activeTables.filter((tableOrder)=>{return (
                     tableOrder.tableId !== order.tableId && 
                     tableOrder.sessionId !== order.sessionId &&
-                    tableOrder.orderId !== order.orderNumber
-                )})
+                    tableOrder.orderNumber !== order.orderNumber
+                )}))
             ]}]
         }, "updateOneDoc", server)
         if (resp.err){
@@ -1658,17 +1674,19 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect,
                 {tableOrders?.map(order => (
                     <div 
                         key={order.i_d}
-                        className={`order-card ${order.delivery}`}
+                        className={`order-card ${order.delivery} ${order.orderNumber ===  currentOrder.orderNumber ? 'selected-delivery' : ''}`}
                     >
                         <div onClick={() => handleOrderSelect(order)}>
                             <div>Order #{order.orderNumber}</div>
                             <div>Delivery: {`${order.delivery}`}</div>
                             <div>Payment: {order.status}</div>
                             <div>Table: {order.tableId}</div>
+                            <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
                             <div>{new Date(order.createdAt).toLocaleString()}</div>
                         </div>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) &&
-                        !['cancelled'].includes(order.delivery) && !['completed'].includes(order.status) && (
+                        !['cancelled', 'pending'].includes(order.delivery) && !['completed'].includes(order.status) 
+                        && curSession.active && (
                             <button 
                                 disabled={cancelling}
                                 className="cancel-order-btn"
