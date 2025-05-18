@@ -56,6 +56,7 @@ const Delivery = () => {
     const [allOrders, setAllOrders] = useState([]);
     const [tableOrders, setTableOrders] = useState([]);
     const [orderType, setOrderType] = useState('dine-in');
+    const [cancelling, setCancelling] = useState(false)
 
     // Product States
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -795,12 +796,23 @@ const Delivery = () => {
     // 6. Delivery Processing
     // =========================================
 
-    const updateInventory = async (items, deliveryDataUpdate) => {
+    const updateInventory = async (action, items, deliveryDataUpdate) => {
+        setPostCount(0)
+        const isDeplete = (action === 'deplete')
         const createdAt = new Date().getTime()
         items.forEach( async (item)=>{
+            const quantityUpdate = isDeplete ? (-1 * Number(item.depletedQuantity)) : Number(item.deliveredQuantity)
             const uom1 = uoms.filter((uom)=>{
                 return uom.code === item.purchaseUom
             })
+            // console.log(item)
+            // console.log(products)
+            if (!products.length){
+                setAlertState('error');
+                setAlert(`Wait for Products to load, or refresh and try again!`);
+                setAlertTimeout(3000);
+                return
+            }
             const product = products.find((prd)=> {return prd.i_d === item.i_d})
             // const itemWrh = wrhCategories[currentOrder.wrh].includes(item.category) ? currentOrder.wrh : 'kitchen'
             const itemWrh = wrh
@@ -821,17 +833,17 @@ const Delivery = () => {
                 productId: item.i_d,
                 name: item.name,
                 category: item.category,
-                quantity: -1 * Number(item.depletedQuantity),
-                baseQuantity: -1 * Number(item.depletedQuantity) * Number(uom1[0]?.multiple),
+                quantity: quantityUpdate,
+                baseQuantity: quantityUpdate,
                 salesUom: item.salesUom,
                 baseUom: uom1[0]?.base,
                 costPrice: cummulativeUnitCostPrice,
                 salesPrice: item.salesPrice,
                 vipPrice: item.vipPrice,
-                totalSales: currentOrder.wrh === 'vip' ? (-1 * Number(item.depletedQuantity) * Number(item.vipPrice || item.salesPrice)) : (-1 * Number(item.depletedQuantity) * Number(item.salesPrice)),                
-                totalCost: -1 * Number(item.depletedQuantity) * cummulativeUnitCostPrice,
+                totalSales: currentOrder.wrh === 'vip' ? (quantityUpdate * Number(item.vipPrice || item.salesPrice)) : (quantityUpdate * Number(item.salesPrice)),                
+                totalCost: quantityUpdate * cummulativeUnitCostPrice,
                 entryType: 'Sales',
-                documentType: 'Shipment',
+                documentType: isDeplete ? 'Shipment' : 'Return',
                 orderNumber: currentOrder.orderNumber,
                 sessionId: currentOrder.sessionId,
                 tableId: currentOrder.tableId,
@@ -857,13 +869,21 @@ const Delivery = () => {
                 setPostCount(prevCount => {
                     const newCount = prevCount + 1;
                     if (newCount === items.length) {
-                        setPlacingOrder(false)
-                        setAlertState('success');
-                        setAlert('Delivery processed successfully');
-                        setAlertTimeout(2000)
-                        setCurrentOrder((currentOrder)=>{
-                            return {...currentOrder, ...deliveryDataUpdate}
-                        })                           
+                        if (action === 'deplete'){
+                            setPlacingOrder(false)
+                            setAlertState('success');
+                            setAlert('Delivery processed successfully');
+                            setAlertTimeout(2000)
+                            setCurrentOrder((currentOrder)=>{
+                                return {...currentOrder, ...deliveryDataUpdate}
+                            })                           
+                        }else{
+                            setAlertState('success');
+                            setAlert('Order cancelled successfully');
+                            setAlertTimeout(2000);
+                            setCurrentOrder({...currentOrder, ...deliveryDataUpdate})           
+                            setCancelling(false)
+                        }
                         getProducts(company);                        
                     } else {
                         setAlertState('success');
@@ -932,13 +952,13 @@ const Delivery = () => {
             }
         }
 
-        if (insufficientProducts.length > 0) {
-            setAlertState('error');
-            setAlert(`Insufficient quantity in "${wrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
-            setAlertTimeout(8000);
-            setPlacingOrder(false)
-            return;
-        }
+        // if (insufficientProducts.length > 0) {
+        //     setAlertState('error');
+        //     setAlert(`Insufficient quantity in "${wrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
+        //     setAlertTimeout(8000);
+        //     setPlacingOrder(false)
+        //     return;
+        // }
         
         const updatedOrderItems = []
         let totalDelivered = 0
@@ -1023,7 +1043,7 @@ const Delivery = () => {
             setPlacingOrder(false)
             return
         } else {
-            updateInventory(itemsToDeplete, deliveryDataUpdate)                                                        
+            updateInventory('deplete', itemsToDeplete, deliveryDataUpdate)                                                        
             return
         }
     };
@@ -1391,10 +1411,14 @@ const Delivery = () => {
                         handleOrderSelect={handleOrderSelect}
                         tables={tables}
                         wrh={wrh}
+                        wrhCategories={wrhCategories}
                         currentOrder={currentOrder}
                         setCurrentOrder={setCurrentOrder}
                         curSession={curSession}
                         employees = {employees}
+                        updateInventory={updateInventory}
+                        cancelling={cancelling}
+                        setCancelling={setCancelling}
                     />
                 </div>
             </div>
@@ -1602,42 +1626,70 @@ const Delivery = () => {
 
 export default Delivery;
 
-const OrdersModal = ({ tableOrders, wrh, handleOrderSelect,
-    tables, currentOrder, setCurrentOrder, curSession, employees
+const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
+    tables, currentOrder, setCurrentOrder, curSession, employees,
+    updateInventory, cancelling, setCancelling
 }) => {
-    const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
-    const [cancelling, setCancelling] = useState(false)
-    const handleCancelOrder = async (order) => {
+    const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);    
+    const handleCancelDelivery = async (order) => {
         const cancelOrder = window.confirm(`Are you sure you want to Cancel Order Delivery #${order.orderNumber}?`);
         if (!cancelOrder) return;
         setCancelling(true)
         setAlertState('info')
         setAlert('Cancelling Delivery...')
         setAlertTimeout(1000000)
-        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [
-                ...(prevTable.activeTables.filter((tableOrder)=>{return (
-                    tableOrder.tableId !== order.tableId && 
-                    tableOrder.sessionId !== order.sessionId &&
-                    tableOrder.orderNumber !== order.orderNumber
-                )}))
-            ]}]
-        }, "updateOneDoc", server)
-        if (resp.err){
-            setAlertState('error');
-            setAlert('Error updating table');
-            setAlertTimeout(3000)
-            setCancelling(false)
-            return;
-        }
+        // const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        // const resp = await fetchServer("POST", {
+        //     database: company,
+        //     collection: "Tables",
+        //     prop: [{'wrh':wrh}, {activeTables: [
+        //         ...(prevTable.activeTables.filter((tableOrder)=>{return (
+        //             tableOrder.tableId !== order.tableId && 
+        //             tableOrder.sessionId !== order.sessionId &&
+        //             tableOrder.orderNumber !== order.orderNumber
+        //         )}))
+        //     ]}]
+        // }, "updateOneDoc", server)
+        // if (resp.err){
+        //     setAlertState('error');
+        //     setAlert('Error updating table');
+        //     setAlertTimeout(3000)
+        //     setCancelling(false)
+        //     return;
+        // }
+        const deliveredItems = currentOrder.items.filter((item)=>{
+            if (wrhCategories[wrh].includes(item.category)){
+                return Number(item.deliveredQuantity || 0) > 0
+            }
+        })
         var deliveryUpdate = {
-            delivery: 'cancelled', 
-            deliverycancelledBy: companyRecord.emailid,
-            deliverycancelledAt: new Date().getTime()
+            delivery: 'pending',
+            cancelDetails: [
+                ...(currentOrder?.cancelDetails || []),
+                {
+                    items: deliveredItems,
+                    deliverycancelledBy: companyRecord.emailid,
+                    deliverycancelledAt: new Date().getTime()
+                }
+            ], 
+            lastCancelledAt: new Date().getTime()
+
         }
+
+        const itemUpdate = currentOrder.items.map((item)=>{
+            var deliveredItem = [...deliveredItems].find((itm)=>{return itm.i_d === item.i_d})
+            if (deliveredItem){
+                deliveredItem.delivery = null
+                deliveredItem.deliveredQuantity = null
+                deliveredItem.remainingQuantity = null
+                return deliveredItem
+            }else{
+                return item
+            }
+        })
+
+        deliveryUpdate.item = itemUpdate
+        
         const response = await fetchServer("POST", {
             database: company,
             collection: "Orders",
@@ -1653,14 +1705,8 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect,
             setCancelling(false)
             return
         } else {
-            setAlertState('success');
-            setAlert('Order cancelled successfully');
-            setAlertTimeout(2000);
-            setCurrentOrder({...currentOrder, ...deliveryUpdate})
-            // if (currentOrder.orderNumber === order.orderNumber){
-            //     createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
-            // }
-            setCancelling(false)
+            
+            updateInventory('cancel', deliveredItems, deliveryUpdate)            
             return
         }        
     };
@@ -1671,33 +1717,44 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect,
                 <h3>All Orders</h3>
             </div>
             <div className="orders-list">
-                {tableOrders?.map(order => (
-                    <div 
-                        key={order.i_d}
-                        className={`order-card ${order.delivery} ${order.orderNumber ===  currentOrder.orderNumber ? 'selected-delivery' : ''}`}
-                    >
-                        <div onClick={() => handleOrderSelect(order)}>
-                            <div>Order #{order.orderNumber}</div>
-                            <div>Delivery: {`${order.delivery}`}</div>
-                            <div>Payment: {order.status}</div>
-                            <div>Table: {order.tableId}</div>
-                            <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
-                            <div>{new Date(order.createdAt).toLocaleString()}</div>
+                {tableOrders?.map(order => {
+                    var totalItems = 0
+                    var deliveredQuantity = 0
+                    const deliveredItems = order.items.filter((item)=>{
+                        if (wrhCategories[wrh].includes(item.category)){
+                            totalItems += Number(item.quantity)
+                            deliveredQuantity += Number(item.deliveredQuantity || 0)
+                            return Number(item.deliveredQuantity || 0) > 0
+                        }
+                    })
+                    return (                    
+                        <div 
+                            key={order.i_d}
+                            className={`order-card ${order.delivery} ${order.orderNumber ===  currentOrder.orderNumber ? 'selected-delivery' : ''}`}
+                        >
+                            <div onClick={() => handleOrderSelect(order)}>
+                                <div>Order #{order.orderNumber}</div>
+                                <div>Delivery: {`${order.delivery} (${deliveredQuantity}/${totalItems})`}</div>
+                                <div>Payment: {order.status}</div>
+                                <div>Table: {order.tableId}</div>
+                                <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
+                                <div>{new Date(order.createdAt).toLocaleString()}</div>
+                            </div>
+                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) &&
+                            deliveredQuantity > 0 && !['completed'].includes(order.status) && curSession.active 
+                            && (
+                                <button 
+                                    disabled={cancelling}
+                                    className="cancel-order-btn cancel-delivery-btn"
+                                    onClick={() => handleCancelDelivery(order)}
+                                    title="Cancel Delivery"
+                                >
+                                    Cancel Delivery
+                                </button>
+                            )}
                         </div>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) &&
-                        !['cancelled', 'pending'].includes(order.delivery) && !['completed'].includes(order.status) 
-                        && curSession.active && (
-                            <button 
-                                disabled={cancelling}
-                                className="cancel-order-btn"
-                                onClick={() => handleCancelOrder(order)}
-                                title="Cancel Delivery"
-                            >
-                                🗑️
-                            </button>
-                        )}
-                    </div>
-                ))}
+                    )
+                })}
             </div>
         </div>
     );

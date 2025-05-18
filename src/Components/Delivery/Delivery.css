@@ -2,3 +2,11 @@
   background-color: #f0f0f0;
   border: 1.3px solid purple;
 }
+
+.cancel-delivery-btn{
+    font-size: .8em;
+    font-weight: bold;
+    width: fit-content;
+    color: red;
+    background: rgb(243, 185, 185);
+}
