@@ -5,7 +5,7 @@ import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import ContextProvider from '../../Resources/ContextProvider';
 import { motion, AnimatePresence } from "framer-motion";
-// import bidlogo from '../../assets/images/auctionbidlogo.png'
+import applogo from '../../Resources/assets/images/enterprisecompute.png'
 
 const Login = () => {
   const { server, fetchServer, storePath,
@@ -97,14 +97,14 @@ const Login = () => {
       <div className="login">
         <div className="loginblock">
           <div className="lgnabout">
-          {/* <div 
+          <div 
             className="mbidlogocover"
             onClick={()=>{
-              Navigate('/')
+              Navigate('/login')
             }}
           >
-            <img src={bidlogo} className="mbidlogo"/>
-          </div> */}
+            <img src={applogo} className="mbidlogo"/>
+          </div>
             <div className="lgntitle">LOGIN</div>
             <div className="lgnmsg">
                 Don't have an account? <label 
@@ -173,7 +173,7 @@ const Login = () => {
               </div>
             </div>
             <div className="lgnfg">Forgot Password?</div>
-            <div className="lreminder"><b>Please Note:</b> Your Account Information is <b>Private</b> to You alone. <b>Do not disclose</b> to any person or personel claiming to be from <b> The Light Rays Technologies</b>! We would never ask you for your details for any reason.</div>
+            <div className="lreminder"><b>Please Note:</b> Your Account Information is <b>Private</b> to You alone. <b>Do not disclose</b> to any persons or personels claiming to be from <b> The Light Rays Technologies</b>! We would never ask you for your personal details for any reason.</div>
           </div>
           <div className="lgnbtn">
             <div className="signin"
@@ -184,14 +184,14 @@ const Login = () => {
           </div>
         </div>
         <div className="loginbanner">
-          {/* <div 
+          <div 
             className="bidlogocover"
             onClick={()=>{
-              Navigate('/')
+              Navigate('/login')
             }}
           >
-            <img src={bidlogo} className="bidlogo"/>
-          </div> */}
+            <img src={applogo} className="bidlogo"/>
+          </div>
         </div>
       </div>
     </>
