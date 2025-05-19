@@ -173,10 +173,11 @@ const Settings = () => {
                     password: loginDetails.password,
                     db: company
                 }
-                const defaultCompanyRecord = companyRecord
+                const companyRecordClone = structuredClone({companyRecord})
+                const defaultCompanyRecord = companyRecordClone.companyRecord
                 delete defaultCompanyRecord._id
                 const newProfile = {
-                    ...companyRecord,
+                    ...defaultCompanyRecord,
                     emailid: loginDetails.email,
                     permissions: loginDetails.permissions,
                     enableLogin: loginDetails.enableLogin,

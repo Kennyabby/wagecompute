@@ -1,6 +1,6 @@
 import './LoadingPage.css'
 import { useEffect, useState } from 'react'
-
+import applogo from '../../Resources/assets/images/enterprisecompute.png'
 
 const LoadingPage = ()=>{
 
@@ -8,7 +8,12 @@ const LoadingPage = ()=>{
         <>
             <div className='loadingpage'>
                 <div>
-                    YOUR ENTERPRISE COMPUTE
+                    <div 
+                        className="loadinglogocover"                        
+                    >
+                        <img src={applogo} className="loadinglogo"/>
+                    </div>
+                    <h3>YOUR ENTERPRISE COMPUTE</h3>                    
                 </div>
             </div>
         </>

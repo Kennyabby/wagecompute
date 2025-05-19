@@ -1,19 +1,28 @@
 
 .login{
+    position: fixed;
+    left: 0;
+    top: 0;
     width: 100vw;
     height: 100vh;
     display: flex;
+    justify-content: center;
+    align-items: center;
 }
 .loginblock{
     padding: 20px;
-    width: 55vw;
+    display: block;
+    width: 55%;
+    height: 100%;
     background: white;
-    overflow: auto;
+    overflow-y: auto;
 }
 .loginbanner{
-    display: block;
-    width: 45vw;
-    background: rgba(247, 220, 86, 0.85);
+    width: 45%;
+    height: 100%;
+    background: rgb(241, 236, 236)
+    /* background: rgba(247, 220, 86, 0.85); */
+
 }
 .lgnabout{
     margin: auto;
@@ -151,14 +160,19 @@
     cursor: pointer;
 }
 .bidlogocover{
-    width: 80%;
+    width: 100%;
     margin: auto;
     margin-top: 50%;
     transform: translate(0,-50%);
     cursor: pointer;
+    justify-content: center;
 }
 .bidlogo{
-    width:80%;
+    width:70%;
+    margin: auto;
+    margin-left: 50%;
+    transform: translate(-50%,0);
+    border-radius: 50%;
 }
 .mbidlogocover{
     display: none;
@@ -188,6 +202,7 @@
     }
     .mbidlogo{
         margin: auto;
-        width:60vw;
+        width:50vw;
+        border-radius: 50%;
     }
 }

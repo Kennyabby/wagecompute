@@ -797,6 +797,9 @@ const Delivery = () => {
     // =========================================
 
     const updateInventory = async (action, items, deliveryDataUpdate) => {
+        setAlertState('info')
+        setAlert('Updating Inventory...')
+        setAlertTimeout(1000000)
         setPostCount(0)
         const isDeplete = (action === 'deplete')
         const createdAt = new Date().getTime()
@@ -878,11 +881,11 @@ const Delivery = () => {
                                 return {...currentOrder, ...deliveryDataUpdate}
                             })                           
                         }else{
-                            setAlertState('success');
-                            setAlert('Order cancelled successfully');
-                            setAlertTimeout(2000);
-                            setCurrentOrder({...currentOrder, ...deliveryDataUpdate})           
                             setCancelling(false)
+                            setAlertState('success');
+                            setAlert('Delivery cancelled successfully');
+                            setAlertTimeout(2000);
+                            setCurrentOrder((currentOrder)=>{ return {...currentOrder, ...deliveryDataUpdate} })           
                         }
                         getProducts(company);                        
                     } else {
@@ -894,7 +897,6 @@ const Delivery = () => {
                 });
             }
         })
-        
     }
 
     const handleOrderDelivery = async () => {
@@ -1043,7 +1045,9 @@ const Delivery = () => {
             setPlacingOrder(false)
             return
         } else {
-            updateInventory('deplete', itemsToDeplete, deliveryDataUpdate)                                                        
+            setTimeout(()=>{
+                updateInventory('deplete', itemsToDeplete, deliveryDataUpdate)                                                        
+            },1000)
             return
         }
     };
@@ -1638,42 +1642,60 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
         setAlertState('info')
         setAlert('Cancelling Delivery...')
         setAlertTimeout(1000000)
-        // const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        // const resp = await fetchServer("POST", {
-        //     database: company,
-        //     collection: "Tables",
-        //     prop: [{'wrh':wrh}, {activeTables: [
-        //         ...(prevTable.activeTables.filter((tableOrder)=>{return (
-        //             tableOrder.tableId !== order.tableId && 
-        //             tableOrder.sessionId !== order.sessionId &&
-        //             tableOrder.orderNumber !== order.orderNumber
-        //         )}))
-        //     ]}]
-        // }, "updateOneDoc", server)
-        // if (resp.err){
-        //     setAlertState('error');
-        //     setAlert('Error updating table');
-        //     setAlertTimeout(3000)
-        //     setCancelling(false)
-        //     return;
-        // }
+        
+        var orderItemsQuantity = 0
+        var deliveredItemsQuantity = 0
         const deliveredItems = currentOrder.items.filter((item)=>{
+            orderItemsQuantity += Number(item.quantity)
             if (wrhCategories[wrh].includes(item.category)){
+                deliveredItemsQuantity += Number(item.deliveredQuantity || 0)
                 return Number(item.deliveredQuantity || 0) > 0
             }
         })
+        const itemsToCancel = structuredClone({deliveredItems})
+
+        if (orderItemsQuantity === deliveredItemsQuantity){
+            // Save the current order to table
+            const prevTable = tables.find((table)=>{return table['wrh'] === currentOrder.wrh})
+            const activeTablesUpdate = [
+                ...(prevTable.activeTables.filter((table)=>{return (
+                    table.tableId !== currentOrder.tableId && 
+                    table.sessionId !== currentOrder.sessionId &&
+                    table.orderNumber !== currentOrder.orderNumber
+                )})),
+                {...(prevTable.activeTables.find((table)=>{return (
+                    table.tableId === currentOrder.tableId && 
+                    table.sessionId === currentOrder.sessionId &&
+                    table.orderNumber === currentOrder.orderNumber
+                )})), 
+                delivery: 'pending'}
+            ]
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':currentOrder.wrh}, {activeTables: [
+                    ...activeTablesUpdate
+                ]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                setCancelling(false)
+                return;
+            }
+        }
         var deliveryUpdate = {
             delivery: 'pending',
             cancelDetails: [
                 ...(currentOrder?.cancelDetails || []),
                 {
-                    items: deliveredItems,
+                    items: itemsToCancel.deliveredItems,
                     deliverycancelledBy: companyRecord.emailid,
                     deliverycancelledAt: new Date().getTime()
                 }
             ], 
             lastCancelledAt: new Date().getTime()
-
         }
 
         const itemUpdate = currentOrder.items.map((item)=>{
@@ -1688,7 +1710,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
             }
         })
 
-        deliveryUpdate.item = itemUpdate
+        deliveryUpdate.items = itemUpdate
         
         const response = await fetchServer("POST", {
             database: company,
@@ -1705,8 +1727,11 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
             setCancelling(false)
             return
         } else {
-            
-            updateInventory('cancel', deliveredItems, deliveryUpdate)            
+            setAlertState('info')
+            setAlert('Delivery Cancelled!')
+            setTimeout(()=>{
+                updateInventory('cancel', itemsToCancel.deliveredItems, deliveryUpdate)            
+            },1000)
             return
         }        
     };

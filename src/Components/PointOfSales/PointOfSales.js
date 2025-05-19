@@ -759,6 +759,7 @@ const PointOfSales = () => {
             setAlert('Error updating table');
             setAlertTimeout(3000)
             setPlacingOrder(false)
+            return
         }
         
         const placedOrder = {
