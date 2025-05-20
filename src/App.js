@@ -36,6 +36,7 @@ function App() {
   const [companyRecord, setCompanyRecord] = useState(null)
   const [loginMessage, setLoginMessage] = useState('')
   const [profiles, setProfiles] = useState([])
+  const [DBProfiles, setDBProfiles] = useState([])
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
   const [employees, setEmployees] = useState([])
@@ -81,6 +82,7 @@ function App() {
       '2022','2021','2020']
 
   const [hostDb, setHostDb] = useState('The_Plantain_Planet')
+  const genDb = 'WCDatabase'
   const Navigate = useNavigate()
 
   useEffect(()=>{
@@ -452,18 +454,20 @@ function App() {
           database: company,
           collection: "Profile",
           prop: {'name': 'activation'}
-      }, "getDocsDetails", SERVER)
+      }, "getActivationDetails", SERVER)
       if (resps.err) {
           console.log(resps.mess)
           setViewAccess('405')
       } else {
-          setViewAccess(resps.record[0].pauseDB)
-          if (resps.record[0].pauseDB){
-            window.localStorage.removeItem('ps-vw')
-          }else{
-            window.localStorage.setItem('ps-vw', 'true')
+          if (!resps.mess){
+            setViewAccess(resps.record[0].pauseDB)
+            if (resps.record[0].pauseDB){
+              window.localStorage.removeItem('ps-vw')
+            }else{
+              window.localStorage.setItem('ps-vw', 'true')
+            }
+            setPauseView(resps.record[0].pauseDB)
           }
-          setPauseView(resps.record[0].pauseDB)
       }
     }
   }
@@ -478,6 +482,19 @@ function App() {
         console.log(resps.mess)
     } else {
         setProfiles(resps.record)
+    }
+  }
+  
+  const fetchDBProfiles = async (company) => {
+    const resps = await fetchServer("POST", {
+        database: genDb,
+        collection: "Profiles",
+        prop: {'db': company}
+    }, "getDocsDetails", SERVER)
+    if (resps.err) {
+        console.log(resps.mess)
+    } else {
+        setDBProfiles(resps.record)
     }
   }
 
@@ -790,6 +807,7 @@ function App() {
         <ContextProvider.Provider value={{
           fetchServer,
           server:SERVER, viewAccess,
+          genDb,
           pauseView, setPauseView,
           loginMessage, setLoginMessage,
           generateCode, generateSeries, 
@@ -797,6 +815,7 @@ function App() {
           companyRecord, setCompanyRecord,  
           chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
           profiles, setProfiles, fetchProfiles,
+          DBProfiles, setDBProfiles, fetchDBProfiles,
           departments, setDepartments, getDepartments,
           positions, setPositions, getPositions,
           employees, setEmployees, getEmployees,

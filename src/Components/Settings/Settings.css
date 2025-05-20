@@ -297,6 +297,18 @@ input:checked + .slider:before {
     margin-top: 5px;
     font-size: 1em;
 }
+
+.pass-detail{
+    display: flex;
+    font-size: .8em;
+    color: grey;
+    span{
+        color: #4caf50;
+        font-weight: 600;
+        margin-right: 10px;
+        cursor: pointer;
+    }
+}
 .employee-settings{
     display: flex;
 }

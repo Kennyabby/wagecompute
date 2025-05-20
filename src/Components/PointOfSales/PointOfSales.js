@@ -474,7 +474,9 @@ const PointOfSales = () => {
             collection: "Tables"
         }, "getDocsDetails", server);
         if (!tablesResponse.err){
-            setTables(tablesResponse.record)  
+            if (!tablesResponse.mess){
+                setTables(tablesResponse.record)  
+            }
         }else{
             if (tablesResponse.mess !== 'Request aborted'){
                 setIsLive(false)
@@ -491,11 +493,16 @@ const PointOfSales = () => {
         }, "getDocsDetails", server);
  
         if(!sessionsResponse.err){
-            const thisSessions = sessionsResponse.record.filter((session)=>{
-                return session.employee_id === companyRecord.emailid
-            })
-            setSessions(thisSessions)
-            setAllSessions(sessionsResponse.record)
+            if (sessionsResponse.mess){
+                setIsLive(false)
+                // setLiveErrorMessages(sessionsResponse.mess)
+            }else{
+                const thisSessions = sessionsResponse.record.filter((session)=>{
+                    return session.employee_id === companyRecord.emailid
+                })
+                setSessions(thisSessions)
+                setAllSessions(sessionsResponse.record)
+            }
         }else{
             if (sessionsResponse.mess !== 'Request aborted'){
                 setIsLive(false)
@@ -546,7 +553,7 @@ const PointOfSales = () => {
                 database: company,
                 collection: "Orders"
             }, "getDocsDetails", server, orderController.signal);
-            if(!ordersResponse.err){
+            if(!ordersResponse.err && !ordersResponse.mess){
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
                     if(ordersResponse.record?.length){

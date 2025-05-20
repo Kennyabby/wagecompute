@@ -8,6 +8,7 @@ const Settings = () => {
         recoveryVal, setRecoveryVal, changingSettings, 
         setChangingSettings, colSettings, setColSettings, 
         enableBlockVal, setEnableBlockVal, 
+        genDb, DBProfiles, setDBProfiles, fetchDBProfiles,
         profiles, setProfiles, 
         employees, getEmployees, dashList, fetchProfiles, 
         setAlert, setAlertState, setAlertTimeout
@@ -16,6 +17,7 @@ const Settings = () => {
     const [colname, setColname] = useState('')
     const [writeStatus, setWriteStatus] = useState('Add')
     const [editCol, setEditCol] = useState(null)
+    const [showPass, setShowPass] = useState(false)
     const [saveStatus, setSaveStatus] = useState('')
     const [currentView, setCurrentView] = useState('employees')
     const [selectedEmployee, setSelectedEmployee] = useState(null)
@@ -42,9 +44,10 @@ const Settings = () => {
             getSettings(cmp_val)
             getEmployees(cmp_val)
             fetchProfiles(cmp_val)
+            fetchDBProfiles(cmp_val)
         }
     }, [])
-
+    
     useEffect(()=>{
         setCurrentProfiles(profiles.map((profile)=>{
             return profile.emailid
@@ -84,6 +87,7 @@ const Settings = () => {
     }
 
     const handleProfileSelect = (profile) => {
+        setShowPass(false)
         setDeleteCount(0)
         setSelectedEmployee(profile)
         setLoginDetails({
@@ -139,7 +143,7 @@ const Settings = () => {
             } else {
                 if (loginDetails.password){
                     const resps = await fetchServer("POST", {
-                        database: "WCDatabase",
+                        database: genDb,
                         collection: "Profiles",
                         prop: [{ emailid: selectedEmployee.emailid }, {password: loginDetails.password}]
                     }, "updateOneDoc", server)
@@ -189,7 +193,7 @@ const Settings = () => {
                     database: company,
                     collection: "Profile",
                     update: newProfile
-                }, "createDoc", server)
+                }, "postUserDetails", server)
                 if (resps.err) {
                     console.log(resps.mess)
                     setSaveStatus(resps.mess)
@@ -201,7 +205,7 @@ const Settings = () => {
                         database: "WCDatabase",
                         collection: "Profiles",
                         update: newDBProfile
-                    }, "postUserDetails", server)
+                    }, "createDoc", server)
                     if (resps1.err){
                         console.log(resps1.mess)
                         setSaveStatus(resps.mess)
@@ -211,6 +215,9 @@ const Settings = () => {
                     }else{
                         setSaveStatus('Profile Created')                       
                         fetchProfiles(company)
+                        setDBProfiles((DBProfiles)=>{
+                            return [...DBProfiles, newDBProfile]
+                        })
                         handleProfileSelect(newProfile)
                         setTimeout(()=>{
                             setSaveStatus('')
@@ -397,7 +404,7 @@ const Settings = () => {
                                             {employees.map((employee, index)=>{
                                                 return (
                                                     <option key={index} value={employee.i_d}>
-                                                        {employee.firstName} {employee.lastName}
+                                                        {employee.firstName} {employee.lastName} {`(${employee.i_d})`}
                                                     </option>
                                                 )
                                             })}
@@ -414,6 +421,16 @@ const Settings = () => {
                                             onChange={handleLoginDetailsChange}
                                         />
                                     </div>
+                                    {DBProfiles.length > 0 && <div className='pass-detail'>
+                                        <span
+                                            onClick={()=>{
+                                                setShowPass(!showPass)
+                                            }}
+                                        >
+                                            {showPass ? 'Hide Password ' : 'View Password '}
+                                        </span>
+                                        {`${showPass ? (DBProfiles.find((profile=>{return profile.emailid === loginDetails.email}))['password'] || 'loading..') : '************'}`}
+                                    </div>}
                                     <div className='inpcov formpad'>
                                         <div>Module Permissions</div>
                                         <div className='permissions'>
@@ -578,7 +595,7 @@ const Settings = () => {
                                                 if (!currentProfiles.includes(employee.i_d) && !employee.dismissalDate){
                                                     return (
                                                         <option key={index} value={employee.i_d}>
-                                                            {employee.firstName} {employee.lastName}
+                                                            {employee.firstName} {employee.lastName} {`(${employee.i_d})`}
                                                         </option>
                                                     )
                                                 }
