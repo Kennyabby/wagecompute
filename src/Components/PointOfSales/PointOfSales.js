@@ -158,10 +158,9 @@ const PointOfSales = () => {
 
         // Fetch tables
         fetchTables(company)
-        
          
         // Feth Sessions
-         fetchSessions(company)
+        fetchSessions(company)
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -328,7 +327,7 @@ const PointOfSales = () => {
                 return
             }
         }else{
-            setAlert('info')
+            setAlertState('info')
             setAlert('Please Select Your Sales Post')
             setAlertTimeout(5000)
             return
@@ -808,19 +807,32 @@ const PointOfSales = () => {
     // Update the handleAddItem function to separate selection from adding
     const handleAddItem = (product, quantity = 1) => {
         if (!product) return;
-
+        const productClone = structuredClone({product}); 
+        const productCopy = productClone.product
+        wrhs.forEach((warehouse)=>{
+            var wrh = warehouse.name
+            delete productCopy[wrh]
+        })
         const existingItem = currentOrder.items.find(item => item.i_d === product.i_d);
         let updatedItems;
     
         if (existingItem){
-            updatedItems = currentOrder.items.map(item =>
-                item.i_d === product.i_d 
-                    ? { ...item, quantity: quantity ? item.quantity + quantity : item.quantity + 1 }
-                    : item
-            );
+            updatedItems = currentOrder.items.map((item) =>{
+                const itemClone = structuredClone({item})
+                const itemCopy = itemClone.item
+                wrhs.forEach((warehouse)=>{
+                    var wrh = warehouse.name
+                    delete itemCopy[wrh]
+                })
+                return(
+                    itemCopy.i_d === product.i_d 
+                        ? { ...itemCopy, quantity: quantity ? itemCopy.quantity + quantity :itemCopy.quantity + 1 }
+                        : itemCopy
+                )
+            });
         } else {
             updatedItems = [...currentOrder.items, { 
-                ...product,
+                ...productCopy,
                 i_d: product.i_d,
                 quantity: quantity || 1,
                 orderNumber: currentOrder.orderNumber,
