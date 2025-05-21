@@ -338,7 +338,7 @@ const Delivery = () => {
                 return
             }
         }else{
-            setAlert('info')
+            setAlertState('info')
             setAlert('Please Select Your Sales Post')
             setAlertTimeout(5000)
             return
