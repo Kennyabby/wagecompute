@@ -306,6 +306,7 @@ const Products = ({
                     update: newProduct
                 }, "createDoc", server)
             }else{
+                // console.log('updating...', newProduct)
                 resps = await fetchServer("POST", {
                     database: company,
                     collection: "Products", 
@@ -325,8 +326,10 @@ const Products = ({
                 }
                 return
             }else{
+                // console.log('product added successfully')
                 if(!productData.length){
                     getProducts(company)
+                    // console.log('product added: ', newProduct)
                     setCurProduct(newProduct)
                     if (isProductView){
                         setTimeout(()=>{
