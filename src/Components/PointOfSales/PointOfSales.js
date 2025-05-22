@@ -25,6 +25,7 @@ const PointOfSales = () => {
     const [orderTables, setOrderTables] = useState([]);
     const [currentTable, setCurrentTable] = useState(null)
     const [allSessions, setAllSessions] = useState([])
+    const [deliverySessions, setDeliverySessions] = useState([])
     const [sessions, setSessions] = useState(null);
     const [categories, setCategories] = useState([]);
     const [openingCash, setOpeningCash] = useState(0);
@@ -261,6 +262,13 @@ const PointOfSales = () => {
                     if (order.delivery === 'completed'){
                         totalPendingSales += Number(order.totalSales || 0)                    
                     }else{
+                        // const deliverySessionsList = order.deliverySessions
+                        // if (deliverySessionsList?.length){
+                        //     deliverySessionsList.forEach((session)=>{
+                        //         var deliverySession = deliverySessions.find((deliverySession)=>{return deliverySession.i_d === session})
+
+                        //     })
+                        // }
                         totalUnattendedSales += Number(order.totalSales || 0)
                     }
                 }else{
@@ -340,6 +348,7 @@ const PointOfSales = () => {
         } = getSessionSales(sessionOrders)
         const openingCash = session.openingCash
         let netBalance = 0
+        let unAccounted = 0
         let allSalesAmount = 0
         const salesDifference = {}
         Object.keys(payPoints).forEach((payPoint)=>{
@@ -351,7 +360,11 @@ const PointOfSales = () => {
                 salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - Number(allSales[payPoint] || 0)
                 allSalesAmount += Number(allSales[payPoint] || 0)
             }
-            netBalance += Number(salesDifference[payPoint])
+            if (salesDifference[payPoint] < 0){
+                netBalance += Number(salesDifference[payPoint])
+            }else{
+                unAccounted += Number(salesDifference[payPoint])
+            }
         })
         netBalance += (-1 * Number(totalPendingSales || 0))
         const sessionUpdate = {
@@ -365,7 +378,7 @@ const PointOfSales = () => {
                 totalPendingSales,
                 totalCancelledSales,
                 debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
-                unAccountedSales : (netBalance > 0) ? netBalance : 0
+                unAccountedSales : unAccounted
         }
         const response = await fetchServer("POST", {
             database: company,
@@ -1295,7 +1308,11 @@ const PointOfSales = () => {
                                     <input 
                                         style={{cursor:'not-allowed'}}
                                         type="number" 
-                                        value={allSales['cash'] || 0} 
+                                        value={
+                                            ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash) 
+                                            + (allSales['cash'] || 0) 
+                                            - totalCashChange
+                                        } 
                                         disabled={true}
                                         readOnly
                                     />
@@ -1304,7 +1321,7 @@ const PointOfSales = () => {
                                         type="number" 
                                         value={countedSales['cash']} 
                                         name='cash'
-                                        placeholder={'Counted Amount'}
+                                        placeholder={'Counted Cash Amount'}
                                         onChange={(e) => handleCountedSalesEntry(e)} 
                                         disabled={loading}
                                     />
@@ -1312,7 +1329,11 @@ const PointOfSales = () => {
                                 <input 
                                     style={{cursor:'not-allowed'}}
                                     type="number" 
-                                    value={posSalesDifference['cash'] || 0} 
+                                    value={
+                                        (posSalesDifference['cash'] || 0)
+                                        - ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash) 
+                                        + totalCashChange
+                                    } 
                                     disabled={true}
                                     readOnly
                                 />
@@ -1606,6 +1627,8 @@ const PointOfSales = () => {
                 sessions={sessions}
                 allSessions={allSessions}
                 setAllSessions={setAllSessions}
+                deliverySessions={deliverySessions}
+                setDeliverySessions={setDeliverySessions}
                 setAllSessionOrders={setAllSessionOrders}
                 allOrders={allOrders}
                 setSessionUser={setSessionUser}
@@ -1793,7 +1816,7 @@ const PaymentModal = ({
             }
 
             if (bc > 0 && kc > 0){
-                return 'all'
+                return 'mulitple'
             }
         })
 
@@ -1889,7 +1912,7 @@ const PaymentModal = ({
                         <label>Change: ₦{Number(paymentDetails[method].change).toFixed(2)}</label>
                     </div>
                 )}
-                {method !== 'cash' && amount && (
+                {method !== 'cash' && paymentDetails[method].amount && (
                     <div className="form-group">
                         <label>Receipt No:</label>
                         <input
@@ -1901,17 +1924,19 @@ const PaymentModal = ({
                         />
                     </div>
                 )}
-                {amount && (
+                {paymentDetails[method].amount && (
                     <div className="form-group">
-                        <label>Select Payment Post:</label>
+                        <label>Payment Post:</label>
                         <select
                             type="text"
                             name='salesPost'
                             value={paymentDetails[method]['salesPost']}
                             onChange={(e) => handleAmountChange(e)}
+                            disabled={true}
+                            readOnly
                         >
-                            <option value=''>Select Payment Post</option>
-                            <option value='all'>{'all'}</option>
+                            <option value=''>Payment Post</option>
+                            <option value='multiple'>{'multiple'}</option>
                             <option value={wrh}>{wrh}</option>
                             <option value={'kitchen'}>{'kitchen'}</option>
                         </select>
@@ -2055,7 +2080,7 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
 
 const POSDashboard = ({sessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
-    setViewSessions, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
+    setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
     setAlertState, setAlert, setAlertTimeout
 })=>{
@@ -2077,17 +2102,25 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                 database: company,
                 collection: "Orders",
             }, "getDocsDetails", server); 
+            if(!ordersResponse.err){
+                setAllSessionOrders(ordersResponse.record)
+            }
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",
                 prop: {type: 'sales'}
-            }, "getDocsDetails", server); 
-            if(!ordersResponse.err){
-                setAllSessionOrders(ordersResponse.record)
-            }
+            }, "getDocsDetails", server);             
             if(!sessionsResponse.err){
                 setAllSessions(sessionsResponse.record)
             }
+            // const deliverySessionsResponse = await fetchServer("POST", {
+            //     database: company,
+            //     collection: "POSSessions",
+            //     prop: {type: 'delivery'}
+            // }, "getDocsDetails", server);             
+            // if(!deliverySessionsResponse.err){
+            //     setDeliverySessions(deliverySessionsResponse.record)
+            // }
         }
         getSessionsData()
     },[])
@@ -2203,7 +2236,7 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                                                                         viewModal = false
                                                                         setAlertState('error')
                                                                         setAlert('This User Have Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!')
-                                                                        setAlertTimeout(3000)
+                                                                        setAlertTimeout(5000)
                                                                     }                                               
                                                                 }
                                                             }
