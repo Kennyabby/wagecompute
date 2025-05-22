@@ -910,9 +910,18 @@ const Delivery = () => {
             paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0)
         })
         const deliveryDataUpdate = {
-            deliveredAt: new Date().getTime(),
-            deliveredBy: companyRecord.emailid
+            lastDeliveredAt: new Date().getTime(),
+            lastDeliveredBy: companyRecord.emailid
         };
+
+        // Track Delivery Sessions
+        if (currentOrder.deliverySessions?.length){
+            if (!currentOrder.deliverySessions.includes(curSession.i_d)){                
+                deliveryDataUpdate.deliverySessions = [...currentOrder.deliverySessions, curSession.i_d]   
+            }
+        }else{
+            deliveryDataUpdate.deliverySessions = [curSession.i_d]
+        }
 
         // Tag delivered Items
         var pendingOrderItems = posCurrentOrder.items
@@ -927,6 +936,10 @@ const Delivery = () => {
                 const depletedQuantity = Number(item.orderQuantity || (item.remainingQuantity || item.quantity))
                 previousItemState.deliveredQuantity = Number(previousItemState.deliveredQuantity || 0) + depletedQuantity
                 previousItemState.remainingQuantity = Number(previousItemState.quantity) - Number(previousItemState.deliveredQuantity)
+                previousItemState.lastDeliveredBy = companyRecord.emailid
+                previousItemState.lastDeliveredAt = deliveryDataUpdate.lastDeliveredAt
+                previousItemState.lastDeliverySession = curSession.i_d
+                previousItemState.lastDelvieredQuantity = depletedQuantity
                 item.depletedQuantity = depletedQuantity
                 itemsToDeplete.push(item)
                 // if (Number(previousItemState.quantity) === Number(item.quantity)){
@@ -1691,8 +1704,9 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                 ...(currentOrder?.cancelDetails || []),
                 {
                     items: itemsToCancel.deliveredItems,
-                    deliverycancelledBy: companyRecord.emailid,
-                    deliverycancelledAt: new Date().getTime()
+                    deliveryCancelledBy: companyRecord.emailid,
+                    deliveryCancelledAt: new Date().getTime(),
+                    cancellingSession: curSession.i_d,
                 }
             ], 
             lastCancelledAt: new Date().getTime()
