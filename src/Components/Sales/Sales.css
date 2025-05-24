@@ -69,6 +69,17 @@
     top: 10px;
     display: flex;
 }
+.slprwh-print{
+    /* position: absolute; */
+    margin: auto 20px;
+    font-size: .8em;
+    cursor: pointer;
+    font-weight: bold;
+    color: rgb(39, 215, 39);
+    background: rgb(205, 211, 205);
+    padding: 5px;
+    border-radius: 5px;
+}
 .slprwh-cover-txt{
     margin: auto;
     font-size: .8em;

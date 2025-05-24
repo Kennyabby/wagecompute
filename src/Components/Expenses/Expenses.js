@@ -416,7 +416,7 @@ const Expenses = ()=>{
                             </select>
                         </div>
                         <div className='inpcov'>
-                            {companyRecord.status === 'admin' && <div><FaPlus
+                            {(companyRecord.status === 'admin' || companyRecord?.permissions.includes('add_expense_category')) && <div><FaPlus
                                 className='add-expense'
                                 onClick={()=>{
                                     setShowExpenseModal(true)
