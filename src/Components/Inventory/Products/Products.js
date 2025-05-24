@@ -73,13 +73,14 @@ const Products = ({
     const [productFields, setProductFields] = useState({...defaultProductFields})
     
     useEffect(()=>{
+        getProducts(cmp_val)
         if (!curProduct){
             var cmp_val = window.localStorage.getItem('sessn-cmp')
             intervalRef.current = setInterval(()=>{
               if (cmp_val){
                 getProducts(cmp_val)
               }
-            },10000)
+            },45000)
             return () => clearInterval(intervalRef.current);
         }else{
             if(intervalRef.current){

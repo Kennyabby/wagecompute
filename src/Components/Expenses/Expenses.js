@@ -69,12 +69,14 @@ const Expenses = ()=>{
     },[chartOfAccounts])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getEmployees(cmp_val)
+        getExpenses(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
             getEmployees(cmp_val)
             getExpenses(cmp_val)
           }
-        },10000)
+        },60000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{

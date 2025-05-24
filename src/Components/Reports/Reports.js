@@ -21,6 +21,10 @@ const Reports = ()=>{
     },[storePath])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getSales(cmp_val)
+        getRentals(cmp_val)
+        getPurchase(cmp_val)
+        getExpenses(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
             getSales(cmp_val)
@@ -29,7 +33,7 @@ const Reports = ()=>{
             getExpenses(cmp_val)
             // getAttendance(cmp_val)
           }
-        },10000)
+        },50000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))

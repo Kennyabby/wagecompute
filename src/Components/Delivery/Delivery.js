@@ -173,10 +173,9 @@ const Delivery = () => {
 
         // Fetch tables
         fetchTables(company)
-        
             
         // Feth Sessions
-            fetchSessions(company)
+        fetchSessions(company)
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -624,6 +623,9 @@ const Delivery = () => {
     };
     
     const handleTableSelect = async (table) => {
+        fetchSessions(company)
+        fetchTables(company)
+        getProducts(company)
         if (!loadSession && !startSession && !endSession){
             if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_deliveries'))) {
                 setAlertState('error');
@@ -872,6 +874,10 @@ const Delivery = () => {
                 setPostCount(prevCount => {
                     const newCount = prevCount + 1;
                     if (newCount === items.length) {
+                        fetchSessions(company)
+                        fetchTables(company)
+                        getProducts(company)
+                        loadInitialData()
                         if (action === 'deplete'){
                             setPlacingOrder(false)
                             setAlertState('success');
@@ -900,6 +906,9 @@ const Delivery = () => {
     }
 
     const handleOrderDelivery = async () => {
+        fetchSessions(company)
+        fetchTables(company)
+        getProducts(company)
         setAlertState('info');
         setAlert('Processing Delivery...');
         setAlertTimeout(1000000)
@@ -1618,6 +1627,9 @@ const Delivery = () => {
                                 className="action-btn"
                                 disabled={placingOrder || makingPayment}
                                 onClick={() => {
+                                    fetchSessions(company)
+                                    fetchTables(company)
+                                    getProducts(company)
                                     setTableOrders([])
                                     setActiveScreen('home')
                                     setCurrentTable(null)

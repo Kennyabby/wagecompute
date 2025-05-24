@@ -16,8 +16,8 @@ import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 function App() {
 
   // const SERVER = "http://localhost:3001"
-  // const SERVER = "https://enterpriseserver.vercel.app"
-  const SERVER = "https://hserver.techpros.com.ng"
+  const SERVER = "https://enterpriseserver.vercel.app"
+  // const SERVER = "https://hserver.techpros.com.ng"
   // const SERVER = "http://3.251.76.94"
   
   const [viewAccess, setViewAccess] = useState(null)
@@ -88,6 +88,8 @@ function App() {
   useEffect(()=>{
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     getViewAccess(hostDb)
+    getSettings(cmp_val)
+    getChartOfAccounts(cmp_val)
     const intervalId = setInterval(()=>{
       if (cmp_val){
         setReloadCount((prevCount)=>{
@@ -97,7 +99,7 @@ function App() {
         getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
-    },10000)
+    },50000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
 

@@ -39,15 +39,16 @@ const Stock = ({
     const [transferEntries, setTransferEntries] = useState([]);
 
     useEffect(() => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp');
+        getProducts(cmp_val)
         if (!isTransferClicked){
-            const cmp_val = window.localStorage.getItem('sessn-cmp');
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
             if (cmp_val) {
                 intervalRef.current = setInterval(() => {
                     getProducts(cmp_val);
-                }, 10000);
+                }, 45000);
             }
             return () => {
                 if (intervalRef.current) {
