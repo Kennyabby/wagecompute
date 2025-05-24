@@ -2104,7 +2104,7 @@ const Sales = ()=>{
                                                 }}
                                             />
                                         </div>
-                                        {field.unAccountedSales && <div className='inpcov'>
+                                        {![0, undefined, null].includes(field.unAccountedSales) && <div className='inpcov'>
                                             <div>Un-Accounted</div>
                                             <input 
                                                 className='forminp'
