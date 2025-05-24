@@ -16,8 +16,8 @@ import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 function App() {
 
   // const SERVER = "http://localhost:3001"
-  const SERVER = "https://enterpriseserver.vercel.app"
-  // const SERVER = "https://hserver.techpros.com.ng"
+  // const SERVER = "https://enterpriseserver.vercel.app"
+  const SERVER = "https://hserver.techpros.com.ng"
   // const SERVER = "http://3.251.76.94"
   
   const [viewAccess, setViewAccess] = useState(null)
@@ -226,6 +226,21 @@ function App() {
     }        
   }
 
+  const getSessionEnd = (sessionStart) => {
+      const closingHour = 8
+      const sessionStartDate = new Date(sessionStart);
+      const sessionEndDate = new Date(sessionStartDate);
+
+      // Set the session end time to 8am of the same day
+      sessionEndDate.setHours(closingHour, 0, 0, 0);
+
+      // If the session started after 8am, set the end time to 8am of the next day
+      if (sessionStartDate.getTime() >= sessionEndDate.getTime()) {
+          sessionEndDate.setDate(sessionStartDate.getDate() + 1);
+      }
+
+      return sessionEndDate.getTime();
+  };
   const shuffleList = (array) => {
     var currentIndex = array.length,
       randomIndex,
@@ -654,10 +669,6 @@ function App() {
     }else{
       // console.log('not fetching sales. Another sales fetch is in progress!')
     }
-    
-
-    
-
   }
 
   const getProducts = async (company) =>{
@@ -812,6 +823,7 @@ function App() {
           loginMessage, setLoginMessage,
           generateCode, generateSeries, 
           exportFile, importFile,
+          getSessionEnd,
           companyRecord, setCompanyRecord,  
           chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
           profiles, setProfiles, fetchProfiles,

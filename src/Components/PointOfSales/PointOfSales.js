@@ -12,7 +12,7 @@ const PointOfSales = () => {
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, posWrhAccess, employees, 
-        profiles, fetchProfiles,
+        profiles, fetchProfiles, getSessionEnd,
         products, getProducts, setProducts,
     } = useContext(ContextProvider);
 
@@ -351,7 +351,9 @@ const PointOfSales = () => {
         let unAccounted = 0
         let allSalesAmount = 0
         const salesDifference = {}
+        const allCountedSales = {}
         Object.keys(payPoints).forEach((payPoint)=>{
+
             if (payPoint === 'cash'){
                 var expectedCash = Number(openingCash) + Number(allSales[payPoint] || 0) - Number(totalCashChange)
                 salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - expectedCash
@@ -360,26 +362,32 @@ const PointOfSales = () => {
                 salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - Number(allSales[payPoint] || 0)
                 allSalesAmount += Number(allSales[payPoint] || 0)
             }
+
+            allCountedSales[payPoint] = Number(countedSales[payPoint])
+            
             if (salesDifference[payPoint] < 0){
                 netBalance += Number(salesDifference[payPoint])
             }else{
                 unAccounted += Number(salesDifference[payPoint])
             }
         })
+
         netBalance += (-1 * Number(totalPendingSales || 0))
+        
         const sessionUpdate = {
-                end: new Date().getTime(),
-                endedby: companyRecord.emailid,
-                active: false,
-                orders: sessionOrders,
-                ...allSales,
-                totalCashChange,
-                totalSalesAmount: allSalesAmount,
-                totalPendingSales,
-                totalCancelledSales,
-                debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
-                unAccountedSales : unAccounted
+            end: new Date().getTime(),
+            endedby: companyRecord.emailid,
+            active: false,
+            orders: sessionOrders,
+            ...allCountedSales,
+            totalCashChange,
+            totalSalesAmount: allSalesAmount,
+            totalPendingSales,
+            totalCancelledSales,
+            debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
+            unAccountedSales : unAccounted
         }
+
         const response = await fetchServer("POST", {
             database: company,
             collection: "POSSessions",
@@ -410,21 +418,6 @@ const PointOfSales = () => {
         }
     }
 
-    const getSessionEnd = (sessionStart) => {
-        const closingHour = 8
-        const sessionStartDate = new Date(sessionStart);
-        const sessionEndDate = new Date(sessionStartDate);
-
-        // Set the session end time to 8am of the same day
-        sessionEndDate.setHours(closingHour, 0, 0, 0);
-
-        // If the session started after 8am, set the end time to 8am of the next day
-        if (sessionStartDate.getTime() >= sessionEndDate.getTime()) {
-            sessionEndDate.setDate(sessionStartDate.getDate() + 1);
-        }
-
-        return sessionEndDate.getTime();
-    };
     const UpdateSessionState = (sessions, loadSession)=>{
         if (!loadSession && sessions?.length){            
             const previousSession = sessions.filter((session)=> session.active)            
@@ -2050,7 +2043,7 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                             className={`order-card ${order.status}`}
                         >
                             <div onClick={() => handleOrderSelect(order)}>
-                                <div>Order #{order.orderNumber}</div>
+                                <div>Order: #{order.orderNumber}</div>
                                 <div>Table: {order.tableId}</div>
                                 <div>Total: ₦{order.totalSales}</div>
                                 <div>Status: {order.status}</div>

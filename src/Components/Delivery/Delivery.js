@@ -1772,8 +1772,8 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                             className={`order-card ${order.delivery} ${order.orderNumber ===  currentOrder.orderNumber ? 'selected-delivery' : ''}`}
                         >
                             <div onClick={() => handleOrderSelect(order)}>
-                                <div>Order #{order.orderNumber}</div>
-                                <div>Delivery: {`${order.delivery} (${deliveredQuantity}/${totalItems})`}</div>
+                                <div>Order: #{order.orderNumber}</div>
+                                <div>{`Placed Delivery (${deliveredQuantity}/${totalItems}): `} {`${order.delivery}`}</div>
                                 <div>Payment: {order.status}</div>
                                 <div>Table: {order.tableId}</div>
                                 <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
