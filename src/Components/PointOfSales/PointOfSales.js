@@ -645,6 +645,10 @@ const PointOfSales = () => {
     };
     
     const handleTableSelect = async (table) => {
+        fetchSessions(company)
+        fetchTables(company)
+        getProducts(company)
+        loadInitialData()
         if (!loadSession && !startSession && !endSession){
             if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions'))) {
                 setAlertState('error');
@@ -702,6 +706,10 @@ const PointOfSales = () => {
                     setAlertState('info');
                     setAlert('Loaded table orders...');
                     setAlertTimeout(10)
+                    fetchSessions(company)
+                    fetchTables(company)
+                    getProducts(company)
+                    loadInitialData()
                 }
             }else{
                 setAlertState('info')
@@ -745,6 +753,10 @@ const PointOfSales = () => {
     // 5. Order Management
     // =========================================
     const handlePlaceOrder = async () => {
+        fetchSessions(company)
+        fetchTables(company)
+        getProducts(company)
+        loadInitialData()
         setAlertState('info')
         setAlert('Placing Order...')
         setAlertTimeout(1000000)
@@ -798,6 +810,10 @@ const PointOfSales = () => {
             setTableOrders(prev => ([
                 ...prev, placedOrder
             ]));
+            fetchSessions(company)
+            fetchTables(company)
+            getProducts(company)
+            loadInitialData()
             setCurrentOrder(placedOrder)
             setPlacingOrder(false)
             setAlertState('success');
@@ -884,6 +900,10 @@ const PointOfSales = () => {
     // 6. Payment Processing
     // =========================================
     const handlePayment = async () => {
+        fetchSessions(company)
+        fetchTables(company)
+        getProducts(company)
+        loadInitialData()
         setAlertState('info');
         setAlert('Processing Payment...');
         setAlertTimeout(1000000)
@@ -987,6 +1007,10 @@ const PointOfSales = () => {
             setMakingPayment(false)
             return
         } else {
+            fetchSessions(company)
+            fetchTables(company)
+            getProducts(company)
+            loadInitialData()
             setMakingPayment(false)
             setAlertState('success');
             setAlert('Payment processed successfully');

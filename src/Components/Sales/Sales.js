@@ -159,17 +159,18 @@ const Sales = ()=>{
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getAllSessions(cmp_val)
+        getEmployees(cmp_val)
+        getRentals(cmp_val)
+        getAccommodations(cmp_val)
+        getAllSessions(cmp_val)
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 getEmployees(cmp_val)
-                // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
                 getRentals(cmp_val)
-                // getAllSessions(cmp_val)
                 getAccommodations(cmp_val)
-                // getProducts(cmp_val)
                 getAllSessions(cmp_val)
             }
-        },10000)
+        },60000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
