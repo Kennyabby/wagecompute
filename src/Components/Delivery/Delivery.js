@@ -1894,7 +1894,7 @@ const DeliveryDashboard = ({sessions, profiles, employees, companyRecord,
                                         return
                                     }
                                 })
-                                if((profile.permissions.includes('pos') && hasPosDeliveryAccess) || profile.permissions.includes('all')){                                
+                                if((profile.permissions.includes('delivery') && hasPosDeliveryAccess) || profile.permissions.includes('all')){                                
                                     const {firstName, lastName} = ((profile.status === 'admin')? {
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
