@@ -133,7 +133,8 @@ const ExpensesReport = ({
                                                                 <th><h8 className='theader'>DATE</h8></th>
                                                                 <th><h8 className='theader'>HANDLER</h8></th>
                                                                 <th><h8 className='theader'>VENDOR</h8></th>
-                                                                <th><h8 className='theader'>EXPENSE CATEGORY</h8></th>
+                                                                <th><h8 className='theader'>CATEGORY</h8></th>
+                                                                <th><h8 className='theader'>DESCRIPTION</h8></th>
                                                                 <th><h8 className='theader'>AMOUNT</h8></th>
                                                                 
                                                             </tr>
@@ -156,6 +157,7 @@ const ExpensesReport = ({
                                                                                         })[0].firstName}</h8></td>                                                        
                                                                                         <td><h8 className='ttrow'>{exp.expensesVendor}</h8></td>                                                        
                                                                                         <td><h8 className='ttrow'>{exp.expenseCategory.toUpperCase()}</h8></td>                                                        
+                                                                                        <td><h8 className='ttrow exp-dets'>{exp.expensesDescription.toUpperCase()}</h8></td>                                                        
                                                                                         <td><h8 className='ttrow'>{'₦'+Number(exp.expensesAmount).toLocaleString()}</h8></td>                                                        
                                                                                     </tr>
                                                                                 )                                                                                                                
@@ -166,6 +168,7 @@ const ExpensesReport = ({
                                                                             <td className='ttrow'></td>                                                        
                                                                             <td className='ttrow'></td>                                                        
                                                                             <td className='ttrow'></td>                                                        
+                                                                            <td className='ttrow'></td>                                                        
                                                                             <td className='ttrow'>{'₦'+totalCatAmount.toLocaleString()}</td>                                                      
                                                                         </tr>                                                                                                                                             
                                                                     </>
@@ -173,6 +176,7 @@ const ExpensesReport = ({
                                                             })}
                                                             <tr>
                                                                 <td className='ttrow'>TOTAL</td>                                                        
+                                                                <td className='ttrow'></td>                                                        
                                                                 <td className='ttrow'></td>                                                        
                                                                 <td className='ttrow'></td>                                                        
                                                                 <td className='ttrow'></td>                                                        
