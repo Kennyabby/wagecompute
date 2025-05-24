@@ -157,7 +157,7 @@ const SideNav = ()=>{
                             <div name="expenses">Admin Expenses</div>
                         </div>
                     }
-                    {(companyRecord?.status === 'admin') && 
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings')) && 
                         <div name="settings" className={'navdiv ' + (curPath==='settings'?'selected':'')}>
                             <RiSettings2Fill className='navdivicon' name="settings"/>
                             <div name="settings">Settings</div>

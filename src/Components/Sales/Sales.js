@@ -3,6 +3,8 @@ import { useState, useEffect, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
+import generatePDF, { Resolution, Margin } from 'react-to-pdf';
+import html2pdf from 'html2pdf.js';
 import SalesReport from './SalesReport/SalesReport';
 import RentalReceipt from './RentalReceipt/RentalReceipt';
 import DebtReport from './DebtReport/DebtReport';
@@ -1292,6 +1294,7 @@ const Sales = ()=>{
                     }}
                 />}   
                 {productAdd && <AddProduct
+                    companyRecord={companyRecord}
                     products={products}
                     setProductAdd={setProductAdd}
                     uoms={uoms}
@@ -1304,6 +1307,7 @@ const Sales = ()=>{
                     salesEntries={salesEntries}
                     setSalesEntries={setSalesEntries}
                     fields={fields}
+                    getDate={getDate}
                 />}
                 <div className='emplist saleslist' ref={scrollRef}>    
                     {companyRecord.status==='admin' && <FaTableCells                         
@@ -1366,7 +1370,7 @@ const Sales = ()=>{
                             <option value=''>All Sales Persons</option>
                             {employees.filter((fltemp)=>{
                                 if (fltemp.dismissalDate){
-                                    if (new Date(fltemp.dismissalDate).getMonth() >= new Date(saleFrom).getMonth()){
+                                    if (new Date(fltemp.dismissalDate).getTime()>= new Date(saleFrom).getTime()){
                                         return fltemp
                                     }
                                 }else{
@@ -1592,7 +1596,7 @@ const Sales = ()=>{
                                         })
                                         if (!ct){
                                             if (fltemp.dismissalDate){
-                                                if (new Date(fltemp.dismissalDate).getMonth() >= new Date(saleFrom).getMonth()){
+                                                if (new Date(fltemp.dismissalDate).getTime()>= new Date(saleFrom).getTime()){
                                                     return fltemp
                                                 }
                                             }else{
@@ -2376,12 +2380,26 @@ export default Sales
 
 const AddProduct = ({
     products, setProductAdd, categories, uoms, wrhs, isProductView, curSale,
-    setIsProductView, handleProductSales, salesEntries, setSalesEntries, fields 
+    setIsProductView, handleProductSales, salesEntries, setSalesEntries, fields,
+    getDate, companyRecord
 })=>{    
     const [category, setCategory] = useState('all')
     const [wrh, setWrh] = useState(isProductView ? Object.keys(salesEntries)[0] : 'open bar1' )
     const [totalSalesAmount, setTotalSalesAmount] = useState(0)
     const [totalAmount, setTotalAmount] = useState(0)
+    const targetRef = useRef(null)
+
+    const printToPDF = () => {
+    const element = targetRef.current;
+    const options = {
+        margin:       0.1,
+        filename:     `PRODUCT SALES DETAILS ${getDate(curSale.postingDate)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+    };
+    html2pdf().set(options).from(element).save();
+};
     useEffect(()=>{
         if (!isProductView){
             const allEntries = {}
@@ -2484,7 +2502,6 @@ const AddProduct = ({
                     updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
                 }
                 setSalesEntries({...(originalEntries.salesEntries), [wrh]: updatedWrh})
-
             }else{
                 const originalEntries = structuredClone({salesEntries})
                 var updatedWrh = [...salesEntries[wrh]]
@@ -2496,11 +2513,13 @@ const AddProduct = ({
     return (
         <>
             <div className='addproduct'>
-                <div className='add-products'>
+                <div className='add-products' ref={targetRef}>
                     <div className='slprwh-cover' onClick={(e)=>{
                         const name = e.target.getAttribute('name')
-                        setCategory('all')
-                        setWrh(name)
+                        if (name){
+                            setCategory('all')
+                            setWrh(name)
+                        }
                     }}>
                         {
                             wrhs.map((wh, id)=>{
@@ -2514,6 +2533,12 @@ const AddProduct = ({
                             })                        
                         }
                         <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
+                        {companyRecord.status==='admin' && isProductView && <div
+                            className='slprwh-print'
+                            onClick={()=>{
+                                printToPDF()
+                            }}
+                        >Print Product</div>}
                     </div>
                     <div>
                         <select 
@@ -2581,7 +2606,7 @@ const AddProduct = ({
                                             name='totalSales'
                                             type='number'
                                             value={isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}
-                                            // disabled={true}
+                                            disabled={true}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
                                         />
                                     </div>
