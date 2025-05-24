@@ -681,7 +681,9 @@ function App() {
     }, "getDocsDetails", SERVER)
 
     if (resp.record){
-      setProducts(resp.record)
+      if (resp.record?.length){
+        setProducts(resp.record)
+      }
     }
   }
 

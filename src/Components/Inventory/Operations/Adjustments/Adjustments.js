@@ -125,7 +125,8 @@ const Adjustments = ({
             })            
             if (fltAdjustments.length){
                 setAlertState('info')
-                setAlert('Posting...')
+                setAlert('Posting Adjustments...')
+                setAlertTimeout(100000)
             }
             fltAdjustments.forEach((entry)=>{
                 let absVal = Math.abs(Number(entry.difference))
@@ -182,6 +183,7 @@ const Adjustments = ({
     const postAdjustments = async (adjustedProduct, i_d, length, count)=>{        
         setAlertState('info')
         setAlert(`Adjusting ${count} / ${length} ...`)
+        setAlertTimeout(100000)
         const resps = await fetchServer("POST", {
             database: company,
             collection: "Products", 
