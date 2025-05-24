@@ -20,7 +20,7 @@ const Sales = ()=>{
         company, recoveryVal, allowBacklogs,
         employees, setEmployees, getEmployees, 
         sales, setSales, getSales, months,
-        allSessions, getAllSessions, 
+        allSessions, getAllSessions, getSessionEnd,
         accommodations, getAccommodations,
         rentals, setRentals, getRentals, 
         products, setProducts, getProducts,
@@ -110,6 +110,7 @@ const Sales = ()=>{
         balanceRemaining: 0
     }
     const [accommodationRecords, setAccommodationRecords] = useState([])
+    const [sessionSalesRecords, setSessionSalesRecords] = useState([])
     const [fields, setFields] = useState([])
     const [recoveryFields, setRecoveryFields] = useState([])
     const [rentalFields, setRentalFields] = useState({
@@ -154,6 +155,23 @@ const Sales = ()=>{
     useEffect(()=>{
         storePath('sales')  
     },[storePath])
+    
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getAllSessions(cmp_val)
+        const intervalId = setInterval(()=>{
+            if (cmp_val){
+                getEmployees(cmp_val)
+                // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
+                getRentals(cmp_val)
+                // getAllSessions(cmp_val)
+                getAccommodations(cmp_val)
+                // getProducts(cmp_val)
+                getAllSessions(cmp_val)
+            }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
 
     useEffect(()=>{
         var accommodationRecord = []
@@ -223,9 +241,12 @@ const Sales = ()=>{
     },[accommodations, postingDate, isView, saleEmployee]) 
 
     useEffect(()=>{
-        var payPointsRecord = {}
+        var sessionSalesRecords = []
+        var wrhPoints = []
         wrhs.forEach((wh)=>{
-            payPointsRecord[wh.name] = []
+            if (!wh.purchase){
+                wrhPoints.push(wh.name)
+            }
         })
 
         const postingDate1 = postingDate
@@ -242,72 +263,79 @@ const Sales = ()=>{
         if (!isView && !saleEmployee && !ct){
             var sessionEmployees = []
             allSessions.forEach((session)=>{
-                const employeeId = session.handlerId
+                const employeeId = session.employee_id
                 if (!sessionEmployees.includes(employeeId)){
                     sessionEmployees = sessionEmployees.concat(employeeId)
                 }
             })
-            sessionEmployees.forEach((employeeId)=>{
-                const saleRecord = {}
-                saleRecord.isSession = true
-                // var totalAccommodationAmount = 0
-                // var totalPaymentAmount = 0
-                // var totalCashSales = 0
-                // var totalBankSales = 0
-                // const allPayPoints = {...payPoints}
-                // var postingDates=[]
-                // accommodations.forEach((accommodation)=>{                
-                //     if (employeeId === accommodation.employeeId){
-                //         const {postingDate, payPoint, accommodationAmount, paymentAmount} = accommodation
-                //         if (!postingDates.includes(getDate(postingDate)) && postingDate1 === postingDate){
-                //             postingDates = postingDate.concat(getDate(postingDate))
-                //         }
-                //         if (postingDate1 === postingDate){                        
-                //             totalAccommodationAmount += Number(accommodationAmount)
-                //             totalPaymentAmount += Number(paymentAmount)
-                //             if (payPoint){
-                //                 allPayPoints[payPoint] = Number(allPayPoints[payPoint]) + Number(paymentAmount)
-                //             }
-                //             totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : 0                  
-                //             totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : 0                  
-                //         }
-                //     }
-                // })
-                // if (postingDates.length){
-                //     const salesUnits1 = {...salesUnits}
-                //     salesUnits1['accomodation'] = {...allPayPoints}
-                //     saleRecord.employeeId = employeeId
-                //     saleRecord.totalSales = totalAccommodationAmount
-                //     saleRecord.cashSales = totalCashSales
-                //     saleRecord.bankSales = totalBankSales
-                //     saleRecord.debt = Number(totalAccommodationAmount) - Number(totalPaymentAmount)
-                //     saleRecord.shortage = ''
-                //     saleRecord.debtRecovered = ''
-                //     saleRecord.salesPoint = 'accomodation'
-                //     Object.keys(salesUnits1).forEach((saleUnit)=>{
-                //         saleRecord[saleUnit] = salesUnits1[saleUnit]
-                //     })
-                //     accommodationRecord = accommodationRecord.concat(saleRecord)
-                // }
+            sessionEmployees.forEach((employeeId)=>{                
+                let totalWrhTransactions = {}
+                wrhPoints.forEach((wh)=>{
+                    const payPointsClone = structuredClone({payPoints})
+                    const allPayPoints = {...(payPointsClone.payPoints)}
+                    totalWrhTransactions[wh] = {
+                        totalSales: 0,
+                        cashSales: 0,
+                        bankSales: 0,
+                        debt: 0,
+                        unAccountedSales: 0,
+                        allPayPoints,
+                        postingDates:[]
+                    }
+                })
+                wrhPoints.forEach((wh)=>{
+                    const saleRecord = {}
+                    saleRecord.isSession = true
+                    const wrhSessions = allSessions.filter((session)=>{
+                        
+                        const salesEndDate = new Date(postingDate1)
+                        salesEndDate.setDate(salesEndDate.getDate() + 1);
+
+                        if (session.wrh === wh && session.end && 
+                            session.type==='sales' && session.employee_id === employeeId                           
+                            && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
+                        ){
+                            return session
+                        }
+                    })
+                    
+                    wrhSessions.forEach((session)=>{
+                        const {totalSalesAmount, debtDue, unAccountedSales} = session
+                        totalWrhTransactions[wh].totalSales += Number(totalSalesAmount)
+                        totalWrhTransactions[wh].debt += Number(debtDue)
+                        totalWrhTransactions[wh].unAccountedSales = Number(unAccountedSales)
+                        Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
+                            if (session[payPoint]){
+                                totalWrhTransactions[wh].allPayPoints[payPoint]  += Number(session[payPoint])
+                                totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? Number(session['cash']) : 0)
+                                totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? Number(session[payPoint]) : 0)
+                            }                            
+                        })
+
+                    })
+                    
+                    if (wrhSessions.length){
+                        const salesUnits1 = {...salesUnits}
+                        salesUnits1[wh] = {...(totalWrhTransactions[wh].allPayPoints)}
+                        saleRecord.employeeId = employeeId
+                        saleRecord.totalSales = totalWrhTransactions[wh].totalSales
+                        saleRecord.cashSales = totalWrhTransactions[wh].cashSales
+                        saleRecord.bankSales = totalWrhTransactions[wh].bankSales
+                        saleRecord.debt = totalWrhTransactions[wh].debt
+                        saleRecord.unAccountedSales = totalWrhTransactions[wh].unAccountedSales
+                        saleRecord.shortage = ''
+                        saleRecord.debtRecovered = ''
+                        saleRecord.salesPoint = wh
+                        Object.keys(salesUnits1).forEach((saleUnit)=>{
+                            saleRecord[saleUnit] = salesUnits1[saleUnit]
+                        })
+                        sessionSalesRecords.push(saleRecord)
+                    }
+                })
             })
         }
-        // setAccommodationRecords(accommodationRecord)
+        setSessionSalesRecords(sessionSalesRecords)
     },[allSessions, postingDate, isView, saleEmployee])
-
-    useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')
-        const intervalId = setInterval(()=>{
-            if (cmp_val){
-                getEmployees(cmp_val)
-                // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
-                getRentals(cmp_val)
-                // getAllSessions(cmp_val)
-                getAccommodations(cmp_val)
-                // getProducts(cmp_val)
-            }
-        },10000)
-        return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
 
     useEffect(()=>{
         if (settings.length){  
@@ -413,6 +441,9 @@ const Sales = ()=>{
         var index = prop.index
         if(accommodationRecords.length){
             index = prop.index - accommodationRecords.length
+        }
+        if(sessionSalesRecords.length){
+            index = prop.index - sessionSalesRecords.length
         }
         const name = e.target.getAttribute('name')
         const category = e.target.getAttribute('category')
@@ -683,7 +714,7 @@ const Sales = ()=>{
             var totalDebt = 0      
             var totalShortage = 0 
             var totalBankSales = 0 
-            const fields1 = [...accommodationRecords, ...fields]
+            const fields1 = [...accommodationRecords, ...sessionSalesRecords, ...fields]
             fields1.forEach((field)=>{
                 totalCashSales += Number(field.cashSales)
                 totalDebt += Number(field.debt)
@@ -1962,15 +1993,15 @@ const Sales = ()=>{
                                 />
                             </div>
                         </div>}
-                        {salesOpts==='sales' && [...accommodationRecords, ...fields].map((field, index)=>{
-                            const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
+                        {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...fields].map((field, index)=>{
+                            const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage) - Number(field.unAccountedSales || 0)
                             // console.log(index)
                             return (
                                 <div key={index} className='empsalesblk'>
                                     <div className='pdsalesview'>
                                         {`Pending Sales out of ₦${Number(field.totalSales).toLocaleString()}:`} <b> {'₦'+(Number(field.totalSales) - netTotal).toLocaleString()}</b> <b>{` ${field.postingDate? '('+getDate(field.postingDate)+')' : ''}`}</b>
                                     </div>
-                                    {!isView && !field.isAccommodation && <MdDelete 
+                                    {!isView && !field.isAccommodation && !field.isSession && <MdDelete 
                                         className='salesdelete'
                                         onClick={()=>{
                                             setFields((fields)=>{
@@ -1983,7 +2014,9 @@ const Sales = ()=>{
                                     />}
                                     <div className='empsalesttl'>
                                         {employees.filter((employee)=>{
-                                            return employee.i_d === field.employeeId
+                                            if (employee.i_d === field.employeeId){
+                                                return employee
+                                            }
                                         }).map((emp, idt)=>{
                                             return (
                                                 <div key={idt}>
@@ -2010,10 +2043,13 @@ const Sales = ()=>{
                                         </div>
                                         <div 
                                             title={!field.salesPoint ? 'Please Select Sales Point Before Entering Debt':''}
-                                        className='inpcov'>
+                                            className='inpcov'
+                                        >
                                             <div
                                                 title={!field.salesPoint ? 'Please Select Sales Point Before Entering Debt':''}
-                                            >Debt</div>
+                                            >
+                                                Debt
+                                            </div>
                                             <input 
                                                 className='forminp'
                                                 name='debt'
@@ -2022,7 +2058,7 @@ const Sales = ()=>{
                                                 value={field.debt}
                                                 style={{cursor: !field.salesPoint ? 'not-allowed':'auto'}}
                                                 title={!field.salesPoint ? 'Please Select Sales Point Before Entering Debt':''}
-                                                disabled={isView || (field.isAccommodation) || !field.salesPoint}
+                                                disabled={isView || (field.isAccommodation) || (field.isSession) || !field.salesPoint}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -2036,7 +2072,7 @@ const Sales = ()=>{
                                                 type='text'
                                                 placeholder='Sales Point'
                                                 value={field.salesPoint}
-                                                disabled={isView || field.salesPoint || (field.isAccommodation)}
+                                                disabled={isView || field.salesPoint || (field.isAccommodation) || (field.isSession)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -2061,12 +2097,26 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Shortage'
                                                 value={field.shortage}
-                                                disabled={isView || (field.isAccommodation)}
+                                                disabled={isView || (field.isAccommodation) || (field.isSession)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
                                             />
                                         </div>
+                                        {field.unAccountedSales && <div className='inpcov'>
+                                            <div>Un-Accounted</div>
+                                            <input 
+                                                className='forminp'
+                                                name='unAccountedSales'
+                                                type='number'
+                                                placeholder='Un-Accounted'
+                                                value={field.unAccountedSales}
+                                                disabled={isView || (field.isAccommodation) || (field.isSession)}
+                                                onChange={(e)=>{
+                                                    handleFieldChange({index, e})
+                                                }}
+                                            />
+                                        </div>}
                                         <div className='inpcov'>
                                             <div>Debt Recovered</div>
                                             <input 
@@ -2177,7 +2227,7 @@ const Sales = ()=>{
                                     var wt = 0
                                     fields.forEach((field)=>{
                                         const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
-                                        Number(field.debt) + Number(field.shortage)
+                                        Number(field.debt) + Number(field.shortage) - Number(field.unAccountedSales || 0)
                                         if (enteredSales === Number(field.totalSales)){
                                             rt++
                                             if (rt===fields.length){
@@ -2308,7 +2358,7 @@ const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isV
                             type='number'
                             placeholder={payPoint}
                             value={field[salesUnit][payPoint]}
-                            disabled={isView || (field.isAccommodation)}
+                            disabled={isView || (field.isAccommodation) || (field.isSession)}
                             onChange={(e)=>{
                                 handleFieldChange({index,e})
                             }}

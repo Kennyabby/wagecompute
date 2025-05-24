@@ -44,6 +44,9 @@
       "last 1 safari version"
     ]
   },
+  "engines": {
+    "node": "20.x"
+  },
   "devDependencies": {
     "html2pdf.js": "^0.10.2"
   }
