@@ -145,8 +145,9 @@ const Adjustments = ({
                 const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
                 entct++
                 setAdjustmentPostCount((adjustmentPostCount)=>{
-                    const newCount = adjustmentPostCount + 1
-                    postAdjustments(adjustedProduct, entry.i_d, fltAdjustments.length, newCount)
+                    var newCount = adjustmentPostCount + 1 
+                    postAdjustments(adjustedProduct, entry.i_d, fltAdjustments.length, newCount+1)
+                    return newCount
                 })
                 // console.log(adjustedProduct)
             })
@@ -188,6 +189,7 @@ const Adjustments = ({
     }
 
     const postAdjustments = async (adjustedProduct, i_d, length, count)=>{        
+        console.log(count)
         setAlertState('info')
         setAlert(`Adjusting ${count} / ${length} ...`)
         setAlertTimeout(100000)
