@@ -1791,7 +1791,8 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                                 <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
                                 <div>{new Date(order.createdAt).toLocaleString()}</div>
                             </div>
-                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) &&
+                            {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && */}
+                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('cancel_delivery_order')) &&
                             deliveredQuantity > 0 && !['completed'].includes(order.status) && curSession.active 
                             && (
                                 <button 

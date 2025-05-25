@@ -618,6 +618,7 @@ const Products = ({
                                 <div className='product-card-name'>{product.name}</div>
                                 <div className='product-card-others'>{`[${product.i_d}]`}</div>
                                 <div className='product-card-others'>{`Selling Price: ₦${Number(product.salesPrice).toLocaleString()}`}</div>
+                                <div className='product-card-others'>{`Purchase UOM: ${product.purchaseUom}`}</div>
                                 {product.type === 'goods' ? [''].map((args)=>{
                                     var availableQty = 0
                                     wrhs.forEach((wrh)=>{
