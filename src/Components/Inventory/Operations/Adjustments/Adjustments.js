@@ -21,7 +21,7 @@ const Adjustments = ({
     const [curWarehouse, setCurWarehouse] = useState('all')
     const [curCategory, setCurCategory] = useState('all')
     const [headers, setHeaders] = useState([])
-
+    const [adjustmentPostCount, setAdjustmentPostCount] = useState(0)
     const defaultColumns = [ 
         {name: 'Product ID', reference:'i_d', show:true},
         {name: 'Product Name', reference:'name', show:true},
@@ -47,8 +47,11 @@ const Adjustments = ({
     const [adjustmentEntries, setAdjustmentEntries] = useState([])
 
     useEffect(() => {
-        const cmp_val = window.localStorage.getItem('sessn-cmp');
+        const cmp_val = window.localStorage.getItem('sessn-cmp');        
         getProducts(cmp_val)
+    },[])
+    useEffect(() => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp');        
         if (!isNewEntry){            
         
             if (intervalRef.current) {
@@ -128,6 +131,7 @@ const Adjustments = ({
                 setAlert('Posting Adjustments...')
                 setAlertTimeout(100000)
             }
+            setAdjustmentPostCount(0)
             fltAdjustments.forEach((entry)=>{
                 let absVal = Math.abs(Number(entry.difference))
                 let val = Number(entry.difference)/absVal
@@ -140,8 +144,11 @@ const Adjustments = ({
                 delete entry.index 
                 const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
                 entct++
+                setAdjustmentPostCount((adjustmentPostCount)=>{
+                    const newCount = adjustmentPostCount + 1
+                    postAdjustments(adjustedProduct, entry.i_d, fltAdjustments.length, newCount)
+                })
                 // console.log(adjustedProduct)
-                postAdjustments(adjustedProduct, entry.i_d, fltAdjustments.length, entct)
             })
 
         }
@@ -192,10 +199,11 @@ const Adjustments = ({
         if (resps.err){
             console.log(resps.mess)
             setAlertState('info')
-            setAlert(resps.mess)
+            setAlert(resps.mess+`. Could not post for product [${i_d}]`)
             setAlertTimeout(5000)
             setIsSaveValue(false)
             setIsOnView(clickedLabel)
+            return
         }else{
             setIsOnView(clickedLabel)
             setIsNewView(false)
