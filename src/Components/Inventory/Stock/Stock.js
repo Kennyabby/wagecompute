@@ -32,6 +32,7 @@ const Stock = ({
         { name: 'Sales Price', reference: 'salesPrice', show: true },
         { name: 'Quantity', reference: 'available quantity', show: true},
         { name: 'Total Cost', reference: 'totalCost', show: true},
+        { name: 'Total Sales', reference: 'totalSales', show: true},
         { name: 'Quantity to Transfer', reference: 'quantityToTransfer', show: false },
         { name: 'Transfer Cost', reference: 'transferCost', show: false }
     ]
@@ -360,7 +361,10 @@ const Stock = ({
                                         });
                                         if (col.reference === 'totalCost') {
                                             return <div className='colrows' key={index1}>{(Number(product.costPrice) * availableQty).toLocaleString()}</div>;
-                                        }else{
+                                        }else if(col.reference === 'totalSales'){
+                                            return <div className='colrows' key={index1}>{(Number(product.salesPrice) * availableQty).toLocaleString()}</div>;
+                                        }
+                                        else{
                                             return <div className='colrows' key={index1}>{availableQty}</div>;
                                         }
                                     } else if (col.reference === 'quantityToTransfer') {
