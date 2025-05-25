@@ -788,7 +788,7 @@ const Sales = ()=>{
             validEntries[wh.name]=[] 
             var ctent = 0    
             products.forEach((product)=>{
-                product[wh.name].forEach((entry)=>{
+                product[wh.name]?.forEach((entry)=>{
                     if (entry.createdAt === sale.productsRef){
                         ctent++
                         validEntries[wh.name].push(entry)
