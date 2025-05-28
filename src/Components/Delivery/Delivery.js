@@ -162,6 +162,19 @@ const Delivery = () => {
         }
     },[tables, sessions])
     
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(()=>{
+            if (cmp_val){
+                // Fetch tables
+                fetchTables(cmp_val)
+                // Fetch products
+                // getProducts(cmp_val)
+            }
+        },10000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
+    
     useEffect(()=> {
         // Fetch products
         getProducts(company)
