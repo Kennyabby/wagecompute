@@ -1464,7 +1464,7 @@ const PointOfSales = () => {
                 {(currentOrder.status!=='cancelled' && currentOrder.status === 'new') && <button 
                     className="place-order-btn"
                     onClick={() => handlePlaceOrder()}
-                    disabled={!currentOrder.items.length || placingOrder || sessionEnded || !curSession.active}
+                    disabled={!currentOrder.items.length || placingOrder || sessionEnded || !curSession.active || curSession.wrh !== wrh}
                 >
                     Place Order (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
@@ -1527,7 +1527,7 @@ const PointOfSales = () => {
                         }}>
                             {
                                 wrhs.map((wh, id)=>{
-                                    if (!wh.purchase && curSession?.wrh === wh.name){
+                                    if (!wh.purchase && (curSession?.wrh === wh.name || companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions'))){
                                         return (posWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
                                     }
                                 })                        
