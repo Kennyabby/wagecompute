@@ -183,9 +183,6 @@ const Delivery = () => {
 
         // Fetch prpfiles
         fetchProfiles(company)
-
-        // Fetch tables
-        fetchTables(company)
             
         // Feth Sessions
         fetchSessions(company)
