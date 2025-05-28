@@ -1527,7 +1527,7 @@ const PointOfSales = () => {
                         }}>
                             {
                                 wrhs.map((wh, id)=>{
-                                    if (!wh.purchase && curSession.wrh === wh.name){
+                                    if (!wh.purchase && curSession?.wrh === wh.name){
                                         return (posWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
                                     }
                                 })                        
