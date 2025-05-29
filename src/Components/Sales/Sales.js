@@ -627,8 +627,33 @@ const Sales = ()=>{
             const totalSalesAmount = totalCashSales + totalBankSales + totalDebt + totalShortage
             if (totalSalesAmount === totalAmount){
                 Object.keys(validEntries).forEach((entryWrh)=>{
+                    const insufficientProducts = []
+                    for (const entry of validEntries){
+                        const product = products.find(p => p.i_d === entry.i_d);
+                        if (product) {
+                            const warehouseData = product[entryWrh] || [];
+                            let countBaseQuantity = 0;
+                            warehouseData.forEach(item => {
+                                countBaseQuantity += Number(item.baseQuantity);
+                            });
+                            if (countBaseQuantity < Number(entry.quantity)) {
+                                insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`);
+                            }
+                        }
+                    }
+
+                    if (insufficientProducts.length > 0) {
+                        setAlertState('error');
+                        setAlert(`Insufficient quantity in "${entryWrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
+                        setAlertTimeout(8000);
+                        return;
+                    }
+                })
+
+                Object.keys(validEntries).forEach((entryWrh)=>{
                     postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
                 })
+
             }else{
                 setAlertState('error')
                 setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
@@ -639,7 +664,7 @@ const Sales = ()=>{
 
     const postProductsSales = async (entryWrh, validEntries, timestamp, entriesLength) => {
         const createdAt = timestamp;
-    
+                
         validEntries.forEach(async (entry, index) => {
             const productData = products[entry.index][entryWrh];
             const newProduct = {
@@ -1257,6 +1282,7 @@ const Sales = ()=>{
             <div className='sales'>         
                 {showReport && <SalesReport
                     reportSales = {reportSales}
+                    reportDebts = {calculateDebtReport()}
                     multiple={isMultiple}
                     setShowReport={(value)=>{
                         setShowReport(value)
