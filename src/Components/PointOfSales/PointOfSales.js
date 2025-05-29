@@ -655,7 +655,6 @@ const PointOfSales = () => {
     };
     
     const handleTableSelect = async (table) => {
-        fetchSessions(company)
         fetchTables(company)
         getProducts(company)
         loadInitialData()
@@ -2213,7 +2212,8 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                                         if ([null, undefined].includes(employeeSession)){
                                             employeeSession = employeeSessions[employeeSessions.length - 1]
                                         }
-                                        if ((new Date().getTime()) >= getSessionEnd(employeeSession.start) || employeeSession.end){
+                                        // console.log('name:', firstName, 'session:', employeeSession)
+                                        if (((new Date().getTime()) >= getSessionEnd(employeeSession.start)) || employeeSession.end){
                                             sessionLive = false
                                         }else{
                                             sessionLive = true

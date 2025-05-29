@@ -986,13 +986,13 @@ const Delivery = () => {
             }
         }
 
-        // if (insufficientProducts.length > 0) {
-        //     setAlertState('error');
-        //     setAlert(`Insufficient quantity in "${wrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
-        //     setAlertTimeout(8000);
-        //     setPlacingOrder(false)
-        //     return;
-        // }
+        if (insufficientProducts.length > 0) {
+            setAlertState('error');
+            setAlert(`Insufficient quantity in "${wrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
+            setAlertTimeout(8000);
+            setPlacingOrder(false)
+            return;
+        }
         
         const updatedOrderItems = []
         let totalDelivered = 0
@@ -1049,6 +1049,7 @@ const Delivery = () => {
                 )})), 
                 delivery: 'completed'}
             ]
+
             const resp = await fetchServer("POST", {
                 database: company,
                 collection: "Tables",
@@ -1056,6 +1057,7 @@ const Delivery = () => {
                     ...activeTablesUpdate
                 ]}]
             }, "updateOneDoc", server)
+            
             if (resp.err){
                 setAlertState('error');
                 setAlert('Error updating table');
