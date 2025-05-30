@@ -1908,7 +1908,7 @@ const DeliveryDashboard = ({sessions, profiles, employees, companyRecord,
                                     }
                                 })
                                 if((profile.permissions.includes('delivery') && hasPosDeliveryAccess) || profile.permissions.includes('all')){                                
-                                    const {firstName, lastName} = ((profile.status === 'admin')? {
+                                    const {firstName, lastName} = ((profile.status === 'admin' && profile.access === 'admin')? {
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
                                     
@@ -1932,7 +1932,7 @@ const DeliveryDashboard = ({sessions, profiles, employees, companyRecord,
                                     }
                                     return (
                                         <div className='pos-sessions-card' key={profile.emailid}>
-                                            <span className='pos-sessions-card-name'>{`${firstName} ${lastName}`}</span>
+                                            <span className='pos-sessions-card-name'>{`${firstName} ${lastName} ${employeeSession? `(${employeeSession.wrh})` : ''}`}</span>
                                             <span className='pos-sessions-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
                                             <div>
                                                 <h4 className='pos-sessions-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
