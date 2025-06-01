@@ -786,7 +786,9 @@ const Sales = ()=>{
                     }
                 }else{
                     setPostedProducts((products)=>{
-                        return [...products, (entry.productId || entry.i_d)]
+                        const newProducts = [...products, (entry.productId || entry.i_d)]
+                        setPostCount(newProducts.length)
+                        return newProducts
                     })
                 }
             }
