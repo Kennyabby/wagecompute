@@ -610,7 +610,7 @@ const Sales = ()=>{
                 setAlertTimeout(100000)
                 Object.keys(validEntries).forEach((entryWrh)=>{
                     const insufficientProducts = []
-                    for (const entry of validEntries){
+                    for (const entry of validEntries[entryWrh]){
                         const product = products.find(p => p.i_d === entry.i_d);
                         if (product) {
                             const warehouseData = product[entryWrh] || [];
@@ -639,6 +639,7 @@ const Sales = ()=>{
                 setAlertState('error')
                 setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
                 setAlertTimeout(3000)
+                setAddingProducts(false)
             }
         }else{            
             var totalCashSales = 0
@@ -659,7 +660,7 @@ const Sales = ()=>{
                 setAlertTimeout(100000)
                 Object.keys(validEntries).forEach((entryWrh)=>{
                     const insufficientProducts = []
-                    for (const entry of validEntries){
+                    for (const entry of validEntries[entryWrh]){
                         const product = products.find(p => p.i_d === entry.i_d);
                         if (product) {
                             const warehouseData = product[entryWrh] || [];
@@ -690,6 +691,7 @@ const Sales = ()=>{
                 setAlertState('error')
                 setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
                 setAlertTimeout(3000)
+                setAddingProducts(false)
             }
         }
     }
@@ -2465,6 +2467,7 @@ const AddProduct = ({
         html2pdf().set(options).from(element).save();
     };
     useEffect(()=>{
+        setAddingProducts(false)
         if (!isProductView){
             const allEntries = {}
             const wrhEntries = [...products].map((product, index)=>{
@@ -2628,8 +2631,8 @@ const AddProduct = ({
                             <div>{
                                 `
                                     Total Sales Amount
-                                    ${(isProductView && companyRecord.status==='admin') ? 
-                                        (`(${salesEntries[wrh].reduce((sum, entry) => sum + Number(entry.totalSales) * -1, 0).toLocaleString()})`)
+                                    ${(companyRecord.status==='admin') ? 
+                                        (`(${salesEntries[wrh]?.reduce((sum, entry) => sum + Number(entry.totalSales) * -1, 0).toLocaleString()})`)
                                         : ''
                                     }
                                 `
