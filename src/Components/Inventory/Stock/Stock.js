@@ -28,11 +28,11 @@ const Stock = ({
         { name: 'Product ID', reference: 'i_d', show: true },
         { name: 'Product Name', reference: 'name', show: true },
         { name: 'Base UOM', reference: 'salesUom', show: true },
+        { name: 'Quantity', reference: 'available quantity', show: true},
+        { name: 'Total Price', reference: 'totalSales', show: true},
+        { name: 'Total Cost', reference: 'totalCost', show: true},
         { name: 'Unit Cost', reference: 'costPrice', show: true },
         { name: 'Sales Price', reference: 'salesPrice', show: true },
-        { name: 'Quantity', reference: 'available quantity', show: true},
-        { name: 'Total Cost', reference: 'totalCost', show: true},
-        { name: 'Total Sales', reference: 'totalSales', show: true},
         { name: 'Quantity to Transfer', reference: 'quantityToTransfer', show: false },
         { name: 'Transfer Cost', reference: 'transferCost', show: false }
     ]
@@ -168,6 +168,7 @@ const Stock = ({
             // Proceed with the transfer if all validations pass
             setAlertState('info');
             setAlert('Transferring products...');
+            setAlertTimeout(100000)
             let countSuccess = 0;
             for (const entry of validEntries) {
                 const { productId, quantityToTransfer, transferCost } = entry;
@@ -213,6 +214,7 @@ const Stock = ({
                         countSuccess++;
                         setAlertState('success');
                         setAlert(`${countSuccess}/${validEntries.length} product(s) transferred successfully`);
+                        setAlertTimeout(100000);
                     }
                 }
             }
@@ -345,7 +347,7 @@ const Stock = ({
                                     cummulativeUnitCostPrice = totalBaseQuantity !== 0 ? (totalCostValue/totalBaseQuantity) : 0
                                     product.costPrice = cummulativeUnitCostPrice
                                     let availableQty = 0;
-                                    if (['available quantity', 'totalCost'].includes(col.reference)) {
+                                    if (['available quantity', 'totalCost', 'totalSales'].includes(col.reference)) {
                                         wrhs.forEach(wrh => {
                                             if (curWarehouse === 'all') {
                                                 product[wrh.name]?.forEach(entry => {

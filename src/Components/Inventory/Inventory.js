@@ -1,6 +1,8 @@
 import './Inventory.css'
 
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
+import generatePDF, { Resolution, Margin } from 'react-to-pdf';
+import html2pdf from 'html2pdf.js';
 import ContextProvider from "../../Resources/ContextProvider";
 import Products from './Products/Products';
 import Adjustments from './Operations/Adjustments/Adjustments';
@@ -23,6 +25,7 @@ const Inventory = ()=>{
         products, setProducts, getProducts
     } = useContext(ContextProvider)
 
+    const targetRef = useRef(null)
     const [view, setView] = useState('')
     const [popModal, setPopModal] = useState('')
     const [isNewView, setIsNewView] = useState(false)
@@ -228,6 +231,17 @@ const Inventory = ()=>{
         setSettingsDrop(false)
     }
 
+    const printToPDF = () => {
+        const element = targetRef.current;
+        const options = {
+            margin:       0.1,
+            filename:     `INVENTORY RECORD REPORT`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+        };
+        html2pdf().set(options).from(element).save();
+    };
     return (
         <>
             <div className='inventory'>
@@ -332,6 +346,12 @@ const Inventory = ()=>{
                         </div>
                         <div className='search'></div>
                         <div className='filter'>
+                            {companyRecord.status==='admin' && <div
+                                className='slprwh-print'
+                                onClick={()=>{
+                                    printToPDF()
+                                }}
+                            >Print Page Details</div>}
                             {['Products'].includes(clickedLabel) && curProduct &&
                                 <div className='filterIndex'>
                                     {[''].map((args, ind)=>{
@@ -384,7 +404,7 @@ const Inventory = ()=>{
                                         setProductView(name)
                                     }
                                 }}
-                            >
+                            >                                
                                 <div name='card' className={'filterViewIcon' + (productView === 'card' ? ' viewActive' : '')}>
                                     <PiCards name='card'/>
                                 </div>
@@ -395,7 +415,7 @@ const Inventory = ()=>{
                         </div>
                     </div>}
                 </div>
-                <div className='inventoryView'>
+                <div className='inventoryView' ref={targetRef}>
                     {view}
                 </div>
             </div>
