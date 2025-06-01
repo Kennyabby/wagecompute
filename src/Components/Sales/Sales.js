@@ -1393,6 +1393,7 @@ const Sales = ()=>{
                     getDate={getDate}
                     addingProducts={addingProducts}
                     setAddingProducts={setAddingProducts}
+                    setPostedProducts={setPostedProducts}
                 />}
                 <div className='emplist saleslist' ref={scrollRef}>    
                     {companyRecord.status==='admin' && <FaTableCells                         
@@ -2466,7 +2467,7 @@ export default Sales
 const AddProduct = ({
     products, setProductAdd, categories, uoms, wrhs, isProductView, curSale,
     setIsProductView, handleProductSales, salesEntries, setSalesEntries, fields,
-    getDate, companyRecord, addingProducts, setAddingProducts
+    getDate, companyRecord, addingProducts, setAddingProducts, setPostedProducts
 })=>{    
     const [category, setCategory] = useState('all')
     const [wrh, setWrh] = useState(isProductView ? Object.keys(salesEntries)[0] : 'open bar1' )
@@ -2722,6 +2723,7 @@ const AddProduct = ({
                         <div 
                             className='add-products-button-cancel'
                             onClick={()=>{
+                                setPostedProducts([])
                                 setIsProductView(false)
                                 setProductAdd(false)
                                 if(!isProductView){
