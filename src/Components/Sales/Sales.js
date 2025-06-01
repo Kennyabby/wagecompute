@@ -1521,11 +1521,11 @@ const Sales = ()=>{
                             </div>
                         )
                   })}
-                  {(nextSales === null || salesLoadCount) ? <div ref={loadRef} className='scrollLoad'>
+                  {/* {(nextSales === null || salesLoadCount) ? <div ref={loadRef} className='scrollLoad'>
                     Loading...
                   </div> :
                   <div ref={loadRef} className='scrollLoad'>...</div>
-                  }
+                  } */}
                   {nextSales?.length === 0 && <div ref={loadRef} className='scrollLoad'>
                     No More Sales To Load!
                   </div>}
@@ -2416,16 +2416,16 @@ const AddProduct = ({
     const targetRef = useRef(null)
 
     const printToPDF = () => {
-    const element = targetRef.current;
-    const options = {
-        margin:       0.1,
-        filename:     `PRODUCT SALES DETAILS ${getDate(curSale.postingDate)}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+        const element = targetRef.current;
+        const options = {
+            margin:       0.1,
+            filename:     `PRODUCT SALES DETAILS ${getDate(curSale.postingDate)}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+        };
+        html2pdf().set(options).from(element).save();
     };
-    html2pdf().set(options).from(element).save();
-};
     useEffect(()=>{
         if (!isProductView){
             const allEntries = {}
@@ -2587,7 +2587,15 @@ const AddProduct = ({
                             <div>Product ID</div>
                             <div>Sales Quantity</div>
                             <div>Sales UOM</div>
-                            <div>Total Sales Amount</div>
+                            <div>{
+                                `
+                                    Total Sales Amount
+                                    ${(isProductView && companyRecord.status==='admin') ? 
+                                        (`(${salesEntries[wrh].reduce((sum, entry) => sum + Number(entry.totalSales) * -1, 0).toLocaleString()})`)
+                                        : ''
+                                    }
+                                `
+                            }</div>
                         </div>
                         {salesEntries[wrh]?.filter((flent)=>{
                             if (category === 'all'){

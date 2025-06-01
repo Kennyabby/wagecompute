@@ -67,7 +67,7 @@ const SalesReport = ({
                  if (emp.i_d === sale.employeeId){
                      sumBankSales += Number(sale.bankSales)
                      sumCashSales += Number(sale.cashSales)
-                     sumDebt += Number(sale.debt)
+                     sumDebt += Number(sale.debt) 
                      sumShortage += Number(sale.shortage)
                      sumDebtRecovered += Number(sale.debtRecovered ? sale.debtRecovered: 0)
                      allSales += Number(sale.bankSales) + Number(sale.cashSales) + Number(sale.debt) + Number(sale.shortage)
@@ -92,6 +92,12 @@ const SalesReport = ({
                              if (emp.i_d === sale.employeeId){
                                  Object.keys(salesUnits).forEach((unit)=>{
                                      totalpaypoint += Number(sale[unit][payPoint] || 0)
+                                     record.recoverdList?.forEach((recovery)=>{
+                                         if (recovery['recoveryPoint'] === payPoint){
+                                             totalpaypoint += Number(recovery['recoveryAmount'] || 0)
+                                            //  console.log(recovery['recoveryPoint'] === payPoint, totalpaypoint)
+                                        }
+                                     })
                                  })                         
                              }
                          })                                
@@ -109,6 +115,11 @@ const SalesReport = ({
                  newSaleUnits[saleunit][paypoint] = 0
                  reportSales.record.forEach((record)=>{
                      newSaleUnits[saleunit][paypoint] += Number(record[saleunit][paypoint] || 0)
+                     record.recoverdList?.forEach((recovery)=>{
+                        if (recovery['recoveryPoint'] === paypoint){
+                            newSaleUnits[saleunit][paypoint] += Number(recovery['recoveryAmount'] || 0)
+                        }
+                    })
                  })
              })
          })
