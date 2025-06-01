@@ -57,6 +57,7 @@ const Sales = ()=>{
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [isProductView, setIsProductView] = useState(false)
     const [productAdd, setProductAdd] = useState(false)
+    const [addingProducts, setAddingProducts] = useState(false)
     const [postCount, setPostCount] = useState(0)
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
@@ -604,6 +605,33 @@ const Sales = ()=>{
             })
             const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
             if (totalSalesAmount === totalAmount){
+                setAlertState('info')
+                setAlert('Posting Product Sales...')
+                setAlertTimeout(100000)
+                Object.keys(validEntries).forEach((entryWrh)=>{
+                    const insufficientProducts = []
+                    for (const entry of validEntries){
+                        const product = products.find(p => p.i_d === entry.i_d);
+                        if (product) {
+                            const warehouseData = product[entryWrh] || [];
+                            let countBaseQuantity = 0;
+                            warehouseData.forEach(item => {
+                                countBaseQuantity += Number(item.baseQuantity);
+                            });
+                            if (countBaseQuantity < Number(entry.quantity)) {
+                                insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`);
+                            }
+                        }
+                    }
+
+                    if (insufficientProducts.length > 0) {
+                        setAlertState('error');
+                        setAlert(`Insufficient quantity in "${entryWrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
+                        setAlertTimeout(8000);
+                        setAddingProducts(false)
+                        return;
+                    }
+                })
                 Object.keys(validEntries).forEach((entryWrh)=>{
                     postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
                 })
@@ -626,6 +654,9 @@ const Sales = ()=>{
             })
             const totalSalesAmount = totalCashSales + totalBankSales + totalDebt + totalShortage
             if (totalSalesAmount === totalAmount){
+                setAlertState('info')
+                setAlert('Posting Product Sales...')
+                setAlertTimeout(100000)
                 Object.keys(validEntries).forEach((entryWrh)=>{
                     const insufficientProducts = []
                     for (const entry of validEntries){
@@ -646,6 +677,7 @@ const Sales = ()=>{
                         setAlertState('error');
                         setAlert(`Insufficient quantity in "${entryWrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
                         setAlertTimeout(8000);
+                        setAddingProducts(false)
                         return;
                     }
                 })
@@ -664,7 +696,7 @@ const Sales = ()=>{
 
     const postProductsSales = async (entryWrh, validEntries, timestamp, entriesLength) => {
         const createdAt = timestamp;
-                
+        
         validEntries.forEach(async (entry, index) => {
             const productData = products[entry.index][entryWrh];
             const newProduct = {
@@ -690,6 +722,7 @@ const Sales = ()=>{
                 setAlertState('error');
                 setAlert(resps.mess);
                 setAlertTimeout(5000);
+                setAddingProducts(false)
             } else {
                 setPostCount(prevCount => {
                     const newCount = prevCount + 1;
@@ -717,10 +750,13 @@ const Sales = ()=>{
                                     setAlertState('info');
                                     setAlert(resps1.mess);
                                     setAlertTimeout(5000);
+                                    setAddingProducts(false)
                                 } else {
                                     setAlertState('success');
                                     setAlert('Products Linked Successfully!');
                                     setAlertTimeout(3000);
+                                    setAddingProducts(false)
+                                    getProducts(company)
                                     getSales(company);
                                 }
                             }, 1000);
@@ -1334,6 +1370,8 @@ const Sales = ()=>{
                     setSalesEntries={setSalesEntries}
                     fields={fields}
                     getDate={getDate}
+                    addingProducts={addingProducts}
+                    setAddingProducts={setAddingProducts}
                 />}
                 <div className='emplist saleslist' ref={scrollRef}>    
                     {companyRecord.status==='admin' && <FaTableCells                         
@@ -2407,7 +2445,7 @@ export default Sales
 const AddProduct = ({
     products, setProductAdd, categories, uoms, wrhs, isProductView, curSale,
     setIsProductView, handleProductSales, salesEntries, setSalesEntries, fields,
-    getDate, companyRecord
+    getDate, companyRecord, addingProducts, setAddingProducts
 })=>{    
     const [category, setCategory] = useState('all')
     const [wrh, setWrh] = useState(isProductView ? Object.keys(salesEntries)[0] : 'open bar1' )
@@ -2651,7 +2689,13 @@ const AddProduct = ({
                     <div className='add-products-button'>
                         {!isProductView && <div 
                             className='add-products-button-add'
-                            onClick={handleProductSales}
+                            style={{cursor: addingProducts? 'not-allowed':'pointer'}}
+                            onClick={()=>{
+                                if (!addingProducts){
+                                    setAddingProducts(true)
+                                    handleProductSales()
+                                }
+                            }}
                         >{curSale === null ? 'Add and Post' : 'Save'}</div>}
                         <div 
                             className='add-products-button-cancel'
