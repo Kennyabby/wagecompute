@@ -58,6 +58,7 @@ const Sales = ()=>{
     const [isProductView, setIsProductView] = useState(false)
     const [productAdd, setProductAdd] = useState(false)
     const [addingProducts, setAddingProducts] = useState(false)
+    const [postedProducts, setPostedProducts] = useState([])
     const [postCount, setPostCount] = useState(0)
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
@@ -577,9 +578,9 @@ const Sales = ()=>{
         })
     }
 
-    const handleProductSales = async ()=>{
+    const handleProductSales = async ()=>{        
         const timestamp = Date.now()
-        setPostCount(0)
+        setPostCount(postedProducts.length)
         var totalAmount = 0
         var entriesLength = 0
         const validEntries = {}
@@ -684,7 +685,7 @@ const Sales = ()=>{
                 })
 
                 Object.keys(validEntries).forEach((entryWrh)=>{
-                    postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
+                    postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)                    
                 })
 
             }else{
@@ -692,84 +693,102 @@ const Sales = ()=>{
                 setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
                 setAlertTimeout(3000)
                 setAddingProducts(false)
+                return;
             }
         }
     }
 
     const postProductsSales = async (entryWrh, validEntries, timestamp, entriesLength) => {
-        const createdAt = timestamp;
-        
+        const createdAt = timestamp;        
         validEntries.forEach(async (entry, index) => {
-            const productData = products[entry.index][entryWrh];
-            const newProduct = {
-                ...entry,
-                productId: entry.productId || entry.i_d,
-                quantity: Number(entry.quantity) * -1,
-                baseQuantity: Number(entry.baseQuantity) * -1,
-                totalCost: Number(entry.costPrice) * Number(entry.baseQuantity) * -1,
-                totalSales: Number(entry.totalSales) * -1,
-                postingDate: postingDate,
-                createdAt: createdAt,
-            };
-    
-            productData.push(newProduct);
-            const resps = await fetchServer("POST", {
-                database: company,
-                collection: "Products",
-                prop: [{ i_d: newProduct.productId }, { [entryWrh]: productData }]
-            }, "updateOneDoc", server);
-    
-            if (resps.err) {
-                console.log(resps.mess);
-                setAlertState('error');
-                setAlert(resps.mess);
-                setAlertTimeout(5000);
-                setAddingProducts(false)
-            } else {
-                setPostCount(prevCount => {
-                    const newCount = prevCount + 1;
-                    if (newCount === entriesLength) {
-                        setProductAdd(false);
-                        setAlertState('success');
-                        setAlert(`${entriesLength} Inventory Updated Successfully!`);
-                        getProducts(company);
-                        setProductAdd(false);
-    
-                        if (curSale === null) {
-                            setTimeout(() => addSales(createdAt), 500);
-                        } else {
-                            setTimeout(async () => {
-                                setAlertState('info');
-                                setAlert('Linking to Posted Sales...');
-                                const resps1 = await fetchServer("POST", {
-                                    database: company,
-                                    collection: "Sales",
-                                    prop: [{ createdAt: curSale.createdAt }, { productsRef: createdAt }]
-                                }, "updateOneDoc", server);
-    
-                                if (resps1.err) {
-                                    console.log(resps1.mess);
-                                    setAlertState('info');
-                                    setAlert(resps1.mess);
-                                    setAlertTimeout(5000);
-                                    setAddingProducts(false)
-                                } else {
-                                    setAlertState('success');
-                                    setAlert('Products Linked Successfully!');
-                                    setAlertTimeout(3000);
-                                    setAddingProducts(false)
-                                    getProducts(company)
-                                    getSales(company);
-                                }
-                            }, 1000);
-                        }
+            if (!postedProducts.includes(entry.productId) && !postedProducts.includes(entry.i_d)){            
+                const productData = products[entry.index][entryWrh];
+                if (productData[productData.length-1]['postingDate'] !== postingDate &&
+                    productData[productData.length-1]['baseQuantity'] !== entry.baseQuantity
+                ){
+                    const newProduct = {
+                        ...entry,
+                        productId: entry.productId || entry.i_d,
+                        quantity: Number(entry.quantity) * -1,
+                        baseQuantity: Number(entry.baseQuantity) * -1,
+                        totalCost: Number(entry.costPrice) * Number(entry.baseQuantity) * -1,
+                        totalSales: Number(entry.totalSales) * -1,
+                        postingDate: postingDate,
+                        createdAt: createdAt,
+                    };
+            
+                    productData.push(newProduct);
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Products",
+                        prop: [{ i_d: newProduct.productId }, { [entryWrh]: productData }]
+                    }, "updateOneDoc", server);
+            
+                    if (resps.err) {
+                        console.log(resps.mess);
+                        setAlertState('error');
+                        setAlert(resps.mess);
+                        setAlertTimeout(5000);
+                        setAddingProducts(false)
+                        return;
                     } else {
-                        setAlertState('success');
-                        setAlert(`${newCount} / ${entriesLength} Inventory Updated Successfully!`);
+                        setPostCount(prevCount => {
+                            if (!postedProducts.includes(entry.productId) && !postedProducts.includes(entry.i_d)){
+                                setPostedProducts((products)=>{
+                                    return [...products, (entry.productId || entry.i_d)]
+                                })
+                            }
+                            const newCount = prevCount + 1;
+                            if (newCount === entriesLength) {
+                                setProductAdd(false);
+                                setAlertState('success');
+                                setAlert(`${entriesLength} Inventory Updated Successfully!`);
+                                getProducts(company);
+                                setProductAdd(false);
+            
+                                if (curSale === null) {
+                                    setTimeout(() => addSales(createdAt), 500);
+                                } else {
+                                    setTimeout(async () => {
+                                        setAlertState('info');
+                                        setAlert('Linking to Posted Sales...');
+                                        const resps1 = await fetchServer("POST", {
+                                            database: company,
+                                            collection: "Sales",
+                                            prop: [{ createdAt: curSale.createdAt }, { productsRef: createdAt }]
+                                        }, "updateOneDoc", server);
+            
+                                        if (resps1.err) {
+                                            console.log(resps1.mess);
+                                            setAlertState('info');
+                                            setAlert(resps1.mess);
+                                            setAlertTimeout(5000);
+                                            setAddingProducts(false)
+                                            return
+                                        } else {
+                                            setAlertState('success');
+                                            setAlert('Products Linked Successfully!');
+                                            setAlertTimeout(3000);
+                                            setAddingProducts(false)
+                                            setPostedProducts([])
+                                            getProducts(company)
+                                            getSales(company);
+                                        }
+                                    }, 1000);
+                                }
+                            } else {                        
+                                setAlertState('success');
+                                setAlert(`${newCount} / ${entriesLength} Inventory Updated Successfully!`);
+                            }
+            
+                            return newCount;
+                        });
                     }
-    
-                    return newCount;
-                });
+                }else{
+                    setPostedProducts((products)=>{
+                        return [...products, (entry.productId || entry.i_d)]
+                    })
+                }
             }
         });
     };
