@@ -419,6 +419,7 @@ const PointOfSales = () => {
                 setAlert('Session Ended!');
             }
             setAlertTimeout(3000)
+            fetchSessions(company)
             setEndSession(false)
             setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
             setCountedSales({})
