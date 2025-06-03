@@ -13,9 +13,9 @@ const Stock = ({
     setIsTransferValue 
 }) => {
     const {
-        server, fetchServer, getProducts,
+        server, fetchServer, getProducts, getProductsWithStock,
         setAlert, setAlertState, setAlertTimeout,
-        products, settings, company
+        products, settings, company, companyRecord, postingDate
     } = useContext(ContextProvider);
     const intervalRef = useRef(null);
     const [wrhs, setWrhs] = useState([]);
@@ -41,14 +41,14 @@ const Stock = ({
 
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');
-        getProducts(cmp_val)
+        getProductsWithStock(cmp_val, products)
         if (!isTransferClicked){
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
             if (cmp_val) {
                 intervalRef.current = setInterval(() => {
-                    getProducts(cmp_val);
+                    getProductsWithStock(cmp_val, products)
                 }, 45000);
             }
             return () => {
@@ -144,12 +144,10 @@ const Stock = ({
             for (const entry of validEntries){
                 const { productId, quantityToTransfer } = entry;
                 const product = products.find(p => p.i_d === productId);
-                if (product ) {
-                    const fromWarehouseData = product[fromWarehouse] || [];
+                if (product) {
                     let countBaseQuantity = 0;
-                    fromWarehouseData.forEach(item => {
-                        countBaseQuantity += Number(item.baseQuantity);
-                    });
+                    const {cost, quantity} = product.locationStock?.[fromWarehouse] || {cost: 0, quantity: 0}
+                    countBaseQuantity = Number(quantity || 0);                    
                     if (countBaseQuantity < Number(quantityToTransfer)) {
                         insufficientProducts.push(productId);
                     }
@@ -173,33 +171,44 @@ const Stock = ({
             for (const entry of validEntries) {
                 const { productId, quantityToTransfer, transferCost } = entry;
                 const product = products.find(p => p.i_d === productId);
-                if (product) {
-                    const fromWarehouseData = product[fromWarehouse] || [];
-                    const toWarehouseData = product[toWarehouse] || [];
+                if (product) {                    
                     const createdAt = new Date().getTime();
-                    fromWarehouseData.push({
+                    const fromWarehouseData = {
                         productID: productId,
+                        location: fromWarehouse,
                         entryType: 'Shipment',
                         documentType: 'Transfer Shipment',
                         transferTo: toWarehouse,
                         baseQuantity: quantityToTransfer * -1,
                         totalCost: transferCost * -1,
-                        createdAt: createdAt
-                    });
-                    toWarehouseData.push({
+                        createdAt: createdAt,
+                        handlerId: companyRecord?.emailid,
+                        postingDate: postingDate
+                    }
+
+                    const toWarehouseData = {
                         productID: productId,
+                        location: toWarehouse,
                         entryType: 'Receipt',
                         documentType: 'Transfer Receipt',
                         tranferFrom: fromWarehouse,
                         baseQuantity: quantityToTransfer,
                         totalCost: transferCost,
-                        createdAt: createdAt
-                    });
+                        createdAt: createdAt,
+                        handlerId: companyRecord?.emailid,
+                        postingDate: postingDate
+                    }
+
+                    const resps1 = await fetchServer("POST", {
+                        database: company,
+                        collection: "InventoryTransactions",
+                        update: fromWarehouseData
+                    }, "createDoc", server);
                     const resps = await fetchServer("POST", {
                         database: company,
-                        collection: "Products",
-                        prop: [{ i_d: productId }, { [fromWarehouse]: fromWarehouseData, [toWarehouse]: toWarehouseData }]
-                    }, "updateOneDoc", server);
+                        collection: "InventoryTransactions",
+                        update: toWarehouseData
+                    }, "createDoc", server);
                     if (resps.error) {
                         setAlertState('info');
                         setAlert(resps.message);
@@ -227,7 +236,7 @@ const Stock = ({
                 setIsTransferValue(false);                        
                 setFromWarehouse('');
                 setToWarehouse('');
-                getProducts(company);
+                getProductsWithStock(company, products)
                 resetCount();
             }
         } else {
@@ -333,31 +342,25 @@ const Stock = ({
                                         }
                                     }
                                 }).map((product, index1) => {
-                                    let cummulativeUnitCostPrice = 0
-                                    let totalCostValue = 0
-                                    let totalBaseQuantity = 0
-                                    wrhs.forEach((wrh)=>{
-                                        if (wrh.purchase){
-                                            product[wrh.name].forEach((entry)=>{
-                                                totalBaseQuantity += entry.baseQuantity ? Number(entry.baseQuantity) : 0
-                                                totalCostValue += entry.totalCost ? Number(entry.totalCost) : 0
-                                            })
-                                        }
+                                    const purchaseWrh = wrhs.find((warehouse)=>{
+                                        return warehouse.purchase
                                     })
-                                    cummulativeUnitCostPrice = totalBaseQuantity !== 0 ? (totalCostValue/totalBaseQuantity) : 0
+                                    const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+                                    let cummulativeUnitCostPrice = 0            
+                                    cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+                                    
                                     product.costPrice = cummulativeUnitCostPrice
                                     let availableQty = 0;
                                     if (['available quantity', 'totalCost', 'totalSales'].includes(col.reference)) {
                                         wrhs.forEach(wrh => {
                                             if (curWarehouse === 'all') {
-                                                product[wrh.name]?.forEach(entry => {
-                                                    availableQty += Number(entry.baseQuantity);
-                                                });
+                                                availableQty = Number(product.totalStock || 0)
+                                               
                                             } else {
                                                 if (wrh.name === curWarehouse) {
-                                                    product[wrh.name]?.forEach(entry => {
-                                                        availableQty += Number(entry.baseQuantity);
-                                                    });
+                                                    const {cost, quantity} = product.locationStock?.[wrh?.name] || {cost: 0, quantity: 0}
+                                                    availableQty = Number(quantity || 0);
+                                                    
                                                 }
                                             }
                                         });
@@ -392,7 +395,6 @@ const Stock = ({
                     ))}
                 </div>
             </div>
-            
         </div>
     );
 };
