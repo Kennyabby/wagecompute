@@ -231,5 +231,18 @@
 .salesinpcov{
     margin: 0px;
 }
+.load-products{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-around;
+    text-align: center;
+    margin: 100px auto;
+    overflow: auto;
+    color: purple;
+}
 
 

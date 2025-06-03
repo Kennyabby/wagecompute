@@ -78,7 +78,7 @@ const Sales = ()=>{
     const [curSaleDate, setCurSaleDate] = useState(null)
     const scrollRef = useRef(null)
     const loadRef = useRef(null)
-
+    const getEntriesController = useRef(null)
     const defaultFields = {
         employeeId: '',
         totalSales: '',
@@ -889,13 +889,22 @@ const Sales = ()=>{
     }
 
     const getSalesProducts = async (company, sale) => {
+        if (getEntriesController.current) {
+            getEntriesController.current.abort(); // Abort any ongoing fetch
+            setSalesEntries({}); // Reset sales entries
+        }
+
+        const controller = new AbortController();
+        getEntriesController.current = controller;
+        
+        const { signal } = controller;
         const response = await fetchServer("POST", {
             database: company,
             collection: "InventoryTransactions",
             prop: {
                 createdAt: sale.productsRef
             }
-        }, "getDocsDetails", server); // plural version that returns an array
+        }, "getDocsDetails", server, signal); // plural version that returns an array
 
         return (Array.isArray(response.record) && response.record.length > 0) ? response.record : [];
     };
@@ -2523,48 +2532,53 @@ const AddProduct = ({
         };
         html2pdf().set(options).from(element).save();
     };
+
+    const resetSalesEntries = ()=>{
+        const allEntries = {}
+        const wrhEntries = [...products].map((product, index)=>{
+            const uom1 = uoms.filter((uom)=>{
+                return uom.code === product.purchaseUom
+            })      
+
+            const purchaseWrh = wrhs.find((warehouse)=>{
+                return warehouse.purchase
+            })
+            const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+            let cummulativeUnitCostPrice = 0            
+            cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+
+            return {                
+                productId : product.i_d,
+                index: index,
+                name: product.name,
+                category: product.category,
+                quantity: '',
+                baseQuantity: 0,
+                salesUom: product.salesUom,
+                baseUom: uom1[0]?.base,
+                costPrice: cummulativeUnitCostPrice,
+                salesPrice: product.salesPrice,
+                vipPrice: product.vipPrice,
+                totalSales: '',
+                entryType: 'Sales',
+                documentType: 'Shipment'
+            }
+        })
+        wrhs.forEach((wrh)=>{
+            if (!wrh.purchase){
+                allEntries[wrh.name] = [...wrhEntries]
+            }
+        })
+        setSalesEntries(allEntries)
+    }
+
     useEffect(()=>{
         setAddingProducts(false)
         if (!isProductView){
             if (curSale!==null && localStorage.getItem(`sales-${curSale?.createdAt}`)){
                 setSalesEntries(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`)))
             }else if (!localStorage.getItem(`sales-${curSale?.createdAt}`)){
-                const allEntries = {}
-                const wrhEntries = [...products].map((product, index)=>{
-                    const uom1 = uoms.filter((uom)=>{
-                        return uom.code === product.purchaseUom
-                    })      
-    
-                    const purchaseWrh = wrhs.find((warehouse)=>{
-                        return warehouse.purchase
-                    })
-                    const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
-                    let cummulativeUnitCostPrice = 0            
-                    cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
-    
-                    return {                
-                        productId : product.i_d,
-                        index: index,
-                        name: product.name,
-                        category: product.category,
-                        quantity: '',
-                        baseQuantity: 0,
-                        salesUom: product.salesUom,
-                        baseUom: uom1[0]?.base,
-                        costPrice: cummulativeUnitCostPrice,
-                        salesPrice: product.salesPrice,
-                        vipPrice: product.vipPrice,
-                        totalSales: '',
-                        entryType: 'Sales',
-                        documentType: 'Shipment'
-                    }
-                })
-                wrhs.forEach((wrh)=>{
-                    if (!wrh.purchase){
-                        allEntries[wrh.name] = [...wrhEntries]
-                    }
-                })
-                setSalesEntries(allEntries)
+                resetSalesEntries()
             }
         }
     },[])
@@ -2605,7 +2619,7 @@ const AddProduct = ({
             const totalSalesAmount = totalCashSales + totalBankSales + totalDebt + totalShortage
             setTotalSalesAmount(totalSalesAmount)
         }
-
+        setWrh(isProductView ? Object.keys(salesEntries)[0] : 'open bar1')
     },[salesEntries])
 
     const handleSalesUdpate = (e, index)=>{
@@ -2657,6 +2671,12 @@ const AddProduct = ({
                             })                        
                         }
                         <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
+                        {!isProductView && <div
+                            className='slprwh-print'
+                            onClick={()=>{
+                                resetSalesEntries()
+                            }}
+                        >Reset</div>}
                         {companyRecord.status==='admin' && isProductView && <div
                             className='slprwh-print'
                             onClick={()=>{
@@ -2695,6 +2715,7 @@ const AddProduct = ({
                                 `
                             }</div>
                         </div>
+                        {Object.keys(salesEntries).length === 0 && isProductView && <div className='load-products'><span>Loading Sales Products...</span></div>}
                         {salesEntries[wrh]?.filter((flent)=>{
                             if (category === 'all'){
                                 return flent
@@ -2768,7 +2789,7 @@ const AddProduct = ({
                                         localStorage.setItem(`sales-${curSale.createdAt}`, JSON.stringify(salesEntries));
                                     }
                                 }
-                                setSalesEntries([])
+                                setSalesEntries({})
                             }}
                         >{isProductView?'Close':'Cancel'}</div>
                     </div>
