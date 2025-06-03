@@ -573,7 +573,7 @@ const Settings = () => {
                                         </label>
                                     </div>
                                     <div style={{display:'flex'}}>
-                                        {selectedEmployee.status!=='admin' && <div className='savebtn' onClick={saveLoginDetails}>Save</div>}
+                                        {selectedEmployee.access!=='admin' && <div className='savebtn' onClick={saveLoginDetails}>Save</div>}
                                         {selectedEmployee.status!=='admin' && <div className='deletebtn' onClick={deleteProfile}>Delete</div>}
                                     </div>
                                 </div>

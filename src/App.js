@@ -673,19 +673,119 @@ function App() {
     }
   }
 
-  const getProducts = async (company) =>{
+  // const getProducts = async (company) =>{
+  //   const resp = await fetchServer("POST", {
+  //     database: company,
+  //     collection: "Products", 
+  //     prop: {} 
+  //   }, "getDocsDetails", SERVER)
+
+  //   if (resp.record){
+  //     if (resp.record?.length){
+  //       setProducts(resp.record)
+  //     }
+  //   }
+  // }
+
+  const getProducts = async (company) => {
+    const knownFields = [
+      "_id", "i_d", "name", "salesPrice", "costPrice", "category",
+      "purchaseVat", "salesVat", "salesUom", "purchaseUom",
+      "buyTo", "createdAt", "type", "vipPrice"
+    ];
+
+    // Build a projection object like { _id: 1, i_d: 1, name: 1, ... }
+    const projection = Object.fromEntries(knownFields.map(key => [key, 1]));
+
     const resp = await fetchServer("POST", {
       database: company,
-      collection: "Products", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
+      collection: "Products",
+      prop: {},
+      project: projection
+    }, "getDocsDetails", SERVER);
 
-    if (resp.record){
-      if (resp.record?.length){
-        setProducts(resp.record)
-      }
+    if (resp.record && resp.record.length) {
+      setProducts(resp.record);
+      getProductsWithStock(company, resp.record)
     }
-  }
+  };
+
+  const getProductsWithStock = async (company, products) => {
+    // 1. Fetch aggregated stock and cost from InventoryTransactions
+    const stockResp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "InventoryTransactions",
+        prop: [
+          {
+            $group: {
+              _id: {
+                productId: "$productId",
+                location: "$location"
+              },
+              totalStock: {
+                $sum: {
+                  $cond: [
+                    { $isNumber: "$baseQuantity" },
+                    "$baseQuantity",
+                    { $toDouble: "$baseQuantity" }
+                  ]
+                }
+              },
+              totalCost: {
+                $sum: {
+                  $cond: [
+                    { $isNumber: "$totalCost" },
+                    "$totalCost",
+                    { $toDouble: "$totalCost" }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "aggregateDocs",
+      SERVER
+    );
+    if (stockResp.record && stockResp.record.length) {
+      const stockData = stockResp.record || [];
+      // 2. Organize stock by productId and location
+      const stockMap = {}; // { productId: { locationA: { qty, cost }, ... } }
+      
+      stockData.forEach(item => {
+        const { productId, location } = item._id;
+        if (!stockMap[productId]) stockMap[productId] = {};
+        stockMap[productId][location] = {
+          quantity: item.totalStock,
+          cost: item.totalCost
+        };
+      });
+      
+      
+      // 3. Enrich products with location-wise stock and cost
+      const enrichedProducts = products.map(product => {
+        const stockInfo = stockMap[product.i_d] || {};
+
+        // Sum up total stock and total cost across all locations
+        const totalStock = Object.values(stockInfo).reduce((sum, loc) => sum + Number(loc.quantity), 0);
+        const totalCost = Object.values(stockInfo).reduce((sum, loc) => sum + Number(loc.cost), 0);
+
+        return {
+          ...product,
+          locationStock: stockInfo, // now includes both quantity and cost
+          totalStock,
+          totalCost
+        };
+      });
+
+      // 4. Set enriched products
+      setProducts(enrichedProducts);
+    }       
+  };
+
+
 
   const getAccommodations = async (company) =>{
     const resp = await fetchServer("POST", {
@@ -845,7 +945,7 @@ function App() {
           salesLoadCount, setSalesLoadCount, 
           sales, setSales, getSales,
           nextSales, setNextSales, 
-          products, setProducts, getProducts,
+          products, setProducts, getProducts, getProductsWithStock,
           accommodations, setAccommodations, getAccommodations,
           purchase, setPurchase, getPurchase,
           expenses, setExpenses, getExpenses,

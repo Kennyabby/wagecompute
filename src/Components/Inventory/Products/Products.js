@@ -15,6 +15,7 @@ const Products = ({
         server, fetchServer, generateSeries,
         setAlert, setAlertState, setAlertTimeout,
         products, company, setProducts, getProducts,
+        getProductsWithStock,
         settings, exportFile, importFile, companyRecord
     } = useContext(ContextProvider)
     const loadRef = useRef(null)
@@ -78,7 +79,7 @@ const Products = ({
             var cmp_val = window.localStorage.getItem('sessn-cmp')
             intervalRef.current = setInterval(()=>{
               if (cmp_val){
-                getProducts(cmp_val)
+                getProductsWithStock(cmp_val, products)
               }
             },45000)
             return () => clearInterval(intervalRef.current);
@@ -109,21 +110,16 @@ const Products = ({
     
     useEffect(()=>{
         if (curProduct){
-            let cummulativeUnitCostPrice = 0
-            let totalCostValue = 0
-            let totalBaseQuantity = 0
-            wrhs.forEach((wrh)=>{
-                if (wrh.purchase){
-                    curProduct[wrh.name].forEach((entry)=>{
-                        totalBaseQuantity += Number(entry.baseQuantity)
-                        totalCostValue += Number(entry.totalCost)
-                    })
-                }
+            const purchaseWrh = wrhs.find((warehouse)=>{
+                return warehouse.purchase
             })
-            cummulativeUnitCostPrice = totalBaseQuantity? Number(totalCostValue/totalBaseQuantity) : 0
+            const {cost, quantity} = curProduct.locationStock[purchaseWrh?.name] || {cost: 0, quantity: 0}
+            let cummulativeUnitCostPrice = 0            
+            cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
             setProductFields({...curProduct, costPrice: cummulativeUnitCostPrice})
         }
     },[curProduct])
+
     useEffect(()=>{
         if (settings.length){
             const uomSetFilt = settings.filter((setting)=>{
@@ -620,13 +616,13 @@ const Products = ({
                                 <div className='product-card-others'>{`Selling Price: ₦${Number(product.salesPrice).toLocaleString()}`}</div>
                                 <div className='product-card-others'>{`Purchase UOM: ${product.purchaseUom}`}</div>
                                 {product.type === 'goods' ? [''].map((args)=>{
-                                    var availableQty = 0
-                                    wrhs.forEach((wrh)=>{
-                                        product[wrh.name]?.forEach((entry)=>{
-                                            availableQty += Number(entry.baseQuantity)
-                                        })
-                                    })
-                                    return <div className='product-card-others'>{`On Hand: ${availableQty.toLocaleString()} ${product.salesUom}`}</div>
+                                    // var availableQty = 0
+                                    // wrhs.forEach((wrh)=>{
+                                    //     product[wrh.name]?.forEach((entry)=>{
+                                    //         availableQty += Number(entry.baseQuantity)
+                                    //     })
+                                    // })
+                                    return <div className='product-card-others'>{`On Hand: ${Number(product.totalStock || 0).toLocaleString()} ${product.salesUom}`}</div>
                                 }):
                                     <div className='product-card-others'>{product.type.toUpperCase()}</div>
                                 }    
@@ -683,13 +679,13 @@ const Products = ({
                                 <div className='product-list-name'>{product.name}</div>
                                 <div className='product-list-others'>{`₦${Number(product.salesPrice).toLocaleString()}`}</div>
                                 {product.type === 'goods' ? [''].map((args)=>{
-                                    var availableQty = 0
-                                    wrhs.forEach((wrh)=>{
-                                        product[wrh.name]?.forEach((entry)=>{
-                                            availableQty += Number(entry.baseQuantity)
-                                        })
-                                    })
-                                    return <div className='product-list-others'>{`On Hand: ${availableQty.toLocaleString()} ${product.salesUom}`}</div>
+                                    // var availableQty = 0
+                                    // wrhs.forEach((wrh)=>{
+                                    //     product[wrh.name]?.forEach((entry)=>{
+                                    //         availableQty += Number(entry.baseQuantity)
+                                    //     })
+                                    // })
+                                    return <div className='product-list-others'>{`On Hand: ${Number(product.totalStock || 0).toLocaleString()} ${product.salesUom}`}</div>
                                 }):
                                     <div className='product-list-others'>{product.type.toUpperCase()}</div>
                                 }    

@@ -11,9 +11,9 @@ const Adjustments = ({
 })=>{
     const {
         server, fetchServer, generateSeries,
-        setAlert, setAlertState, setAlertTimeout,
+        setAlert, setAlertState, setAlertTimeout, getProductsWithStock,
         products, company, companyRecord, setProducts, getProducts,
-        settings, exportFile, importFile
+        settings, exportFile, importFile, postingDate
     } = useContext(ContextProvider)
     const intervalRef = useRef(null);
     const [wrhs, setWrhs] = useState([])
@@ -48,7 +48,7 @@ const Adjustments = ({
 
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');        
-        getProducts(cmp_val)
+        getProductsWithStock(cmp_val, products)
     },[])
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');        
@@ -60,8 +60,8 @@ const Adjustments = ({
         
             if (cmp_val) {
                 intervalRef.current = setInterval(() => {
-                    getProducts(cmp_val);
-                }, 120000);
+                    getProductsWithStock(cmp_val, products)
+                }, 45000);
             }
         
             return () => {
@@ -132,6 +132,7 @@ const Adjustments = ({
                 setAlertTimeout(100000)
             }
             setAdjustmentPostCount(0)
+            const createdAt = new Date().getTime()
             fltAdjustments.forEach((entry)=>{
                 let absVal = Math.abs(Number(entry.difference))
                 let val = Number(entry.difference)/absVal
@@ -140,13 +141,15 @@ const Adjustments = ({
                 entry.entryType = (val===-1? 'Nagative Entry' : 'Positive Entry')
                 entry.documentType = (val===-1? 'Negative Adjustment' : 'Positive Adjustment')
                 entry.totalCost = Number(entry.difference) * Number(entry.costPrice)
-                entry.createdAt = new Date().getTime()
+                entry.createdAt = createdAt
+                entry.handlerId = companyRecord?.emailid
+                entry.postingDate = postingDate
                 delete entry.index 
-                const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
+                // const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
                 entct++
                 setAdjustmentPostCount((adjustmentPostCount)=>{
                     var newCount = adjustmentPostCount + 1 
-                    postAdjustments(adjustedProduct, entry.i_d, fltAdjustments.length, newCount+1)
+                    postAdjustments(entry, entry.i_d, fltAdjustments.length, newCount+1)
                     return newCount
                 })
                 // console.log(adjustedProduct)
@@ -195,9 +198,9 @@ const Adjustments = ({
         setAlertTimeout(100000)
         const resps = await fetchServer("POST", {
             database: company,
-            collection: "Products", 
-            prop: [{i_d: i_d}, {[curWarehouse]: [...adjustedProduct]}]
-        }, "updateOneDoc", server)
+            collection: "InventoryTransactions", 
+            update: adjustedProduct
+        }, "createDoc", server)
         if (resps.err){
             console.log(resps.mess)
             setAlertState('info')
@@ -209,7 +212,7 @@ const Adjustments = ({
         }else{
             setIsOnView(clickedLabel)
             setIsNewView(false)
-            getProducts(company)
+            getProductsWithStock(company, products)
             if (count === length){
                 setAlertState('success')
                 setAlert(`Adjustments Posted Successfully!`)
@@ -284,31 +287,23 @@ const Adjustments = ({
                                     }
                                 }
                             }).map((product, index1)=>{
-                                let cummulativeUnitCostPrice = 0
-                                let totalCostValue = 0
-                                let totalBaseQuantity = 0
-                                wrhs.forEach((wrh)=>{
-                                    if (wrh.purchase){
-                                        product[wrh.name].forEach((entry)=>{
-                                            totalBaseQuantity += entry.baseQuantity ? Number(entry.baseQuantity) : 0
-                                            totalCostValue += entry.totalCost ? Number(entry.totalCost) : 0
-                                        })
-                                    }
+                                const purchaseWrh = wrhs.find((warehouse)=>{
+                                    return warehouse.purchase
                                 })
-                                cummulativeUnitCostPrice = totalBaseQuantity !== 0 ? (totalCostValue/totalBaseQuantity) : 0
+                                const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+                                let cummulativeUnitCostPrice = 0            
+                                cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+                                
                                 product.costPrice = cummulativeUnitCostPrice
-                                let availableQty = 0
+                                let availableQty = 0;
                                 if (['available quantity', 'difference', 'differenceCost', 'counted quantity'].includes(col.reference)){
                                     wrhs.forEach((wrh)=>{ 
                                         if (curWarehouse === 'all'){
-                                            product[wrh.name]?.forEach((entry)=>{
-                                                availableQty += Number(entry.baseQuantity)
-                                            })
+                                            availableQty = Number(product.totalStock || 0)
                                         }else{
                                             if (wrh.name === curWarehouse){
-                                                product[wrh.name]?.forEach((entry)=>{
-                                                    availableQty += Number(entry.baseQuantity)
-                                                })
+                                                const {cost, quantity} = product.locationStock?.[wrh?.name] || {cost: 0, quantity: 0}
+                                                availableQty = Number(quantity || 0);
                                             }                                       
                                         }
                                     })

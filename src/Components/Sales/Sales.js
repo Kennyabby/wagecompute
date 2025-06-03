@@ -25,7 +25,7 @@ const Sales = ()=>{
         allSessions, getAllSessions, getSessionEnd,
         accommodations, getAccommodations,
         rentals, setRentals, getRentals, 
-        products, setProducts, getProducts,
+        products, setProducts, getProducts, getProductsWithStock,
         getDate, removeComma, settings,
         saleFrom, saleTo,
         setSaleFrom, setSaleTo,
@@ -614,12 +614,10 @@ const Sales = ()=>{
                     for (const entry of validEntries[entryWrh]){
                         const product = products.find(p => p.i_d === entry.i_d);
                         if (product) {
-                            const warehouseData = product[entryWrh] || [];
                             let countBaseQuantity = 0;
-                            warehouseData.forEach(item => {
-                                countBaseQuantity += Number(item.baseQuantity);
-                            });
-                            if (countBaseQuantity < Number(entry.quantity)) {
+                            const {cost, quantity} = product.locationStock?.[entryWrh] || {cost: 0, quantity: 0}
+                            countBaseQuantity = Number(quantity || 0);                            
+                            if (countBaseQuantity < Number(entry.baseQuantity)) {
                                 insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`);
                             }
                         }
@@ -664,12 +662,10 @@ const Sales = ()=>{
                     for (const entry of validEntries[entryWrh]){
                         const product = products.find(p => p.i_d === entry.i_d);
                         if (product) {
-                            const warehouseData = product[entryWrh] || [];
                             let countBaseQuantity = 0;
-                            warehouseData.forEach(item => {
-                                countBaseQuantity += Number(item.baseQuantity);
-                            });
-                            if (countBaseQuantity < Number(entry.quantity)) {
+                            const {cost, quantity} = product.locationStock?.[entryWrh] || {cost: 0, quantity: 0}
+                            countBaseQuantity = Number(quantity || 0);                            
+                            if (countBaseQuantity < Number(entry.baseQuantity)) {
                                 insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`);
                             }
                         }
@@ -698,15 +694,39 @@ const Sales = ()=>{
         }
     }
 
+    const checkDuplicateTransaction = async (company, transaction) => {
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "InventoryTransactions",
+            prop: {
+                productId: (transaction.productId || transaction.i_d), // Use productId or i_d
+                location: transaction.location,
+                postingDate: transaction.postingDate,
+                createdAt: transaction.createdAt,
+                entryType: transaction.entryType,
+                documentType: transaction.documentType,
+                quantity: Number(transaction.quantity) * -1,
+                baseQuantity: Number(transaction.baseQuantity) * -1,
+                totalSales: Number(transaction.totalSales) * -1,
+                totalCost: Number(transaction.costPrice) * Number(transaction.baseQuantity) * -1
+            }
+        }, "getDocsDetails", server); // plural version that returns an array
+
+        return Array.isArray(response.record) && response.record.length > 0;
+    };
     const postProductsSales = async (entryWrh, validEntries, timestamp, entriesLength) => {
         const createdAt = timestamp;        
         validEntries.forEach(async (entry, index) => {
             if (!postedProducts.includes(entry.productId) && !postedProducts.includes(entry.i_d)){            
-                const productData = products[entry.index][entryWrh];
-                if (productData[productData.length-1]['postingDate'] !== postingDate &&
-                    productData[productData.length-1]['baseQuantity'] !== entry.baseQuantity
-                ){
-                    const newProduct = {
+                setAlertState('info')
+                setAlert('Checking for duplicates...')
+                setAlertTimeout(100000)
+                const isDuplicate = await checkDuplicateTransaction(company, entry);            
+                if (!isDuplicate){
+                    setAlertState('info')
+                    setAlert('Posting Transaction...')
+                    setAlertTimeout(100000)
+                    const newTransaction = {
                         ...entry,
                         productId: entry.productId || entry.i_d,
                         quantity: Number(entry.quantity) * -1,
@@ -717,12 +737,11 @@ const Sales = ()=>{
                         createdAt: createdAt,
                     };
             
-                    productData.push(newProduct);
                     const resps = await fetchServer("POST", {
                         database: company,
-                        collection: "Products",
-                        prop: [{ i_d: newProduct.productId }, { [entryWrh]: productData }]
-                    }, "updateOneDoc", server);
+                        collection: "InventoryTransactions", 
+                        update: newTransaction
+                    }, "createDoc", server);
             
                     if (resps.err) {
                         console.log(resps.mess);
@@ -743,9 +762,8 @@ const Sales = ()=>{
                                 setProductAdd(false);
                                 setAlertState('success');
                                 setAlert(`${entriesLength} Inventory Updated Successfully!`);
-                                getProducts(company);
+                                getProductsWithStock(company, products);
                                 setProductAdd(false);
-            
                                 if (curSale === null) {
                                     setTimeout(() => addSales(createdAt), 500);
                                 } else {
@@ -757,7 +775,7 @@ const Sales = ()=>{
                                             collection: "Sales",
                                             prop: [{ createdAt: curSale.createdAt }, { productsRef: createdAt }]
                                         }, "updateOneDoc", server);
-            
+                                        
                                         if (resps1.err) {
                                             console.log(resps1.mess);
                                             setAlertState('info');
@@ -766,12 +784,13 @@ const Sales = ()=>{
                                             setAddingProducts(false)
                                             return
                                         } else {
+                                            localStorage.removeItem(`sales-${curSale?.createdAt}`)
                                             setAlertState('success');
                                             setAlert('Products Linked Successfully!');
                                             setAlertTimeout(3000);
                                             setAddingProducts(false)
                                             setPostedProducts([])
-                                            getProducts(company)
+                                            getProductsWithStock(company, products);
                                             getSales(company);
                                         }
                                     }, 1000);
@@ -837,27 +856,30 @@ const Sales = ()=>{
             }else{
                 setSales(newSales)
                 setCurSale(newSale)
-                const validEntries = {}
-                wrhs.forEach((wh)=>{   
-                    validEntries[wh.name]=[] 
-                    var ctent = 0    
-                    products.forEach((product)=>{
-                        product[wh.name].forEach((entry)=>{
-                            if (entry.createdAt === newSale.productsRef){
-                                ctent++
-                                validEntries[wh.name].push(entry)
-                            }
-                        })
-                    })        
-                    if (!ctent){
-                        delete validEntries[wh.name]
-                    }
-                })   
-                setSalesEntries({...validEntries})
                 setCurSaleDate(newSale.postingDate)
                 setIsView(true)
                 setFields([...(newSale.record)])
                 getSales(company)
+                const transactions = await getSalesProducts(company, newSale); 
+                if (transactions.length){
+                    const validEntries = {}
+                    wrhs.forEach(async(wh)=>{   
+                        var ctent = 0
+                        validEntries[wh.name]=[] 
+                        transactions.forEach((transaction)=>{
+                            if (transaction.location === wh.name){
+                                ctent++
+                                validEntries[wh.name].push(transaction)
+                            }
+                        })        
+                        if (!ctent){
+                            delete validEntries[wh.name]
+                        }
+                    })   
+                
+                    setSalesEntries({...validEntries})
+                }
+                
                 setAlertState('success')
                 setAlert('Sales Posted Successfully!')
                 setAlertTimeout(5000)
@@ -866,31 +888,44 @@ const Sales = ()=>{
         }
     }
 
-    const handleViewClick = (sale) =>{
-        const validEntries = {}
-        wrhs.forEach((wh)=>{   
-            validEntries[wh.name]=[] 
-            var ctent = 0    
-            products.forEach((product)=>{
-                product[wh.name]?.forEach((entry)=>{
-                    if (entry.createdAt === sale.productsRef){
-                        ctent++
-                        validEntries[wh.name].push(entry)
-                    }
-                })
-            })        
-            if (!ctent){
-                delete validEntries[wh.name]
+    const getSalesProducts = async (company, sale) => {
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "InventoryTransactions",
+            prop: {
+                createdAt: sale.productsRef
             }
-        })   
-       
-        setSalesEntries({...validEntries})
+        }, "getDocsDetails", server); // plural version that returns an array
+
+        return (Array.isArray(response.record) && response.record.length > 0) ? response.record : [];
+    };
+    const handleViewClick = async (sale) =>{
         setCurSale(sale)
         setCurSaleDate(sale.postingDate)
         setSalesOpts('sales')
         setIsView(true)
         setFields([...(sale.record)])
         setIsView(true)
+        const transactions = await getSalesProducts(company, sale); 
+        if (transactions.length){
+            const validEntries = {}
+            wrhs.forEach(async(wh)=>{   
+                var ctent = 0
+                validEntries[wh.name]=[] 
+                transactions.forEach((transaction)=>{
+                    if (transaction.location === wh.name){
+                        ctent++
+                        validEntries[wh.name].push(transaction)
+                    }
+                })        
+                if (!ctent){
+                    delete validEntries[wh.name]
+                }
+            })   
+           
+            setSalesEntries({...validEntries})
+        }
+        
     }
     
     const handleRentalViewClick = (rent) =>{
@@ -2491,46 +2526,46 @@ const AddProduct = ({
     useEffect(()=>{
         setAddingProducts(false)
         if (!isProductView){
-            const allEntries = {}
-            const wrhEntries = [...products].map((product, index)=>{
-                const uom1 = uoms.filter((uom)=>{
-                    return uom.code === product.purchaseUom
-                })                
-                let cummulativeUnitCostPrice = 0
-                let totalCostValue = 0
-                let totalBaseQuantity = 0
-                wrhs.forEach((wrh)=>{
-                    if(wrh.purchase){
-                        product[wrh.name].forEach((entry)=>{
-                            totalBaseQuantity += Number(entry.baseQuantity)
-                            totalCostValue += Number(entry.totalCost)
-                        })
+            if (curSale!==null && localStorage.getItem(`sales-${curSale?.createdAt}`)){
+                setSalesEntries(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`)))
+            }else if (!localStorage.getItem(`sales-${curSale?.createdAt}`)){
+                const allEntries = {}
+                const wrhEntries = [...products].map((product, index)=>{
+                    const uom1 = uoms.filter((uom)=>{
+                        return uom.code === product.purchaseUom
+                    })      
+    
+                    const purchaseWrh = wrhs.find((warehouse)=>{
+                        return warehouse.purchase
+                    })
+                    const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+                    let cummulativeUnitCostPrice = 0            
+                    cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+    
+                    return {                
+                        productId : product.i_d,
+                        index: index,
+                        name: product.name,
+                        category: product.category,
+                        quantity: '',
+                        baseQuantity: 0,
+                        salesUom: product.salesUom,
+                        baseUom: uom1[0]?.base,
+                        costPrice: cummulativeUnitCostPrice,
+                        salesPrice: product.salesPrice,
+                        vipPrice: product.vipPrice,
+                        totalSales: '',
+                        entryType: 'Sales',
+                        documentType: 'Shipment'
                     }
                 })
-                cummulativeUnitCostPrice = totalBaseQuantity? Number(totalCostValue/totalBaseQuantity) : 0
-                return {                
-                    productId : product.i_d,
-                    index: index,
-                    name: product.name,
-                    category: product.category,
-                    quantity: '',
-                    baseQuantity: 0,
-                    salesUom: product.salesUom,
-                    baseUom: uom1[0]?.base,
-                    costPrice: cummulativeUnitCostPrice,
-                    salesPrice: product.salesPrice,
-                    vipPrice: product.vipPrice,
-                    totalSales: '',
-                    entryType: 'Sales',
-                    documentType: 'Shipment'
-                }
-            })
-            wrhs.forEach((wrh)=>{
-                if (!wrh.purchase){
-                    allEntries[wrh.name] = [...wrhEntries]
-                }
-            })
-            setSalesEntries(allEntries)
+                wrhs.forEach((wrh)=>{
+                    if (!wrh.purchase){
+                        allEntries[wrh.name] = [...wrhEntries]
+                    }
+                })
+                setSalesEntries(allEntries)
+            }
         }
     },[])
     
@@ -2729,8 +2764,11 @@ const AddProduct = ({
                                 setIsProductView(false)
                                 setProductAdd(false)
                                 if(!isProductView){
-                                    setSalesEntries([])
+                                    if(curSale!==null){
+                                        localStorage.setItem(`sales-${curSale.createdAt}`, JSON.stringify(salesEntries));
+                                    }
                                 }
+                                setSalesEntries([])
                             }}
                         >{isProductView?'Close':'Cancel'}</div>
                     </div>

@@ -26,6 +26,7 @@ const Inventory = ()=>{
     } = useContext(ContextProvider)
 
     const targetRef = useRef(null)
+    const [postingDate, setPostingDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [view, setView] = useState('')
     const [popModal, setPopModal] = useState('')
     const [isNewView, setIsNewView] = useState(false)
@@ -103,6 +104,8 @@ const Inventory = ()=>{
             setIsImportValue={setIsImportValue}
             productView={productView}
             curProduct={curProduct}
+            postingDate={postingDate}
+            setPostingDate={setPostingDate}
             setCurProduct={setCurProduct}
         />,
         'Adjustments': <Adjustments
@@ -115,7 +118,9 @@ const Inventory = ()=>{
             isDeleteClicked={isDeleteValue === 'Adjustments'}
             setIsDeleteValue={setIsDeleteValue}
             isImportClicked={isImportValue === 'Adjustments'}
-            setIsImportValue={setIsImportValue}  
+            setIsImportValue={setIsImportValue} 
+            postingDate={postingDate}
+            setPostingDate={setPostingDate} 
         />,
         'Stock': <Stock
             isNewEntry={isNewView === clickedLabel}
@@ -126,9 +131,13 @@ const Inventory = ()=>{
             clickedLabel={clickedLabel}
             isTransferClicked={isTransferValue === 'Stock'}
             setIsTransferValue={setIsTransferValue}
+            postingDate={postingDate}
+            setPostingDate={setPostingDate}
         />,
         'Unit of Measures': <Measures
             setPopModal={setPopModal}
+            postingDate={postingDate}
+            setPostingDate={setPostingDate}
         />
     }
 
@@ -159,6 +168,7 @@ const Inventory = ()=>{
                 setIsSaveValue(false)
                 setIsImportValue(false)
                 setIsDeleteValue(false)
+                setIsTransferValue(false)
                 setCurProduct(null)
             }
             if (name!==dropLabel){
@@ -174,6 +184,7 @@ const Inventory = ()=>{
                     setIsSaveValue(false)
                     setIsImportValue(false)
                     setIsDeleteValue(false)
+                    setIsTransferValue(false)
                     setCurProduct(null)
                 }
                 if (Object.keys(dropMenu).includes(innerHTML)){
@@ -198,6 +209,7 @@ const Inventory = ()=>{
         setIsNewView(false)
         setIsOnView(false)   
         setIsImportValue(false)
+        setIsTransferValue(false)
         setIsTransferValue(false)
         setCurProduct(null)
     }
@@ -341,8 +353,21 @@ const Inventory = ()=>{
                                             className='pr-icon'
                                         />
                                     }
+                                    
                                 </div>                       
                             </label>
+                            {(isNewView || isTransferValue) &&<div className='inpcov invdate'>
+                                <input 
+                                    className='forminp'
+                                    name='postingDate'
+                                    type='date'
+                                    placeholder='Posting Date'
+                                    value={postingDate}
+                                    onChange={(e)=>{
+                                        setPostingDate(e.target.value)
+                                    }}
+                                />
+                            </div>}
                         </div>
                         <div className='search'></div>
                         <div className='filter'>
