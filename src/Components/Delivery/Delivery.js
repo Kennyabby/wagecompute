@@ -14,7 +14,7 @@ const Delivery = () => {
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, deliveryWrhAccess, employees, 
-        profiles, fetchProfiles, 
+        profiles, fetchProfiles, getProductsWithStock,
         products, setProducts, getProducts,
     } = useContext(ContextProvider);
 
@@ -163,7 +163,8 @@ const Delivery = () => {
     },[tables, sessions])
     
     useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        var cmp_val = window.localStorage.getItem('sessn-cmp')        
+        getProducts(cmp_val)
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 // Fetch tables
@@ -177,8 +178,10 @@ const Delivery = () => {
     
     useEffect(()=> {
         // Fetch products
-        getProducts(company)
-            
+        if (products.length){
+            getProductsWithStock(company, products) 
+        }
+
         loadInitialData()
 
         // Fetch prpfiles
@@ -635,7 +638,9 @@ const Delivery = () => {
     const handleTableSelect = async (table) => {
         fetchSessions(company)
         fetchTables(company)
-        getProducts(company)
+        if (products.length){
+            getProductsWithStock(company, products)
+        }
         if (!loadSession && !startSession && !endSession){
             if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_deliveries'))) {
                 setAlertState('error');
@@ -831,21 +836,15 @@ const Delivery = () => {
             const product = products.find((prd)=> {return prd.i_d === item.i_d})
             // const itemWrh = wrhCategories[currentOrder.wrh].includes(item.category) ? currentOrder.wrh : 'kitchen'
             const itemWrh = wrh
-            const productData = product[itemWrh];
-            let cummulativeUnitCostPrice = 0
-            let totalCostValue = 0
-            let totalBaseQuantity = 0
-            wrhs.forEach((wrh)=>{
-                if(wrh.purchase){
-                    product[wrh.name].forEach((entry)=>{
-                        totalBaseQuantity += Number(entry.baseQuantity)
-                        totalCostValue += Number(entry.totalCost)
-                    })
-                }
+            const purchaseWrh = wrhs.find((warehouse)=>{
+                return warehouse.purchase
             })
-            cummulativeUnitCostPrice = totalBaseQuantity? Number(totalCostValue/totalBaseQuantity) : 0
+            const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+            let cummulativeUnitCostPrice = 0            
+            cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
             const depletedItem = {
                 productId: item.i_d,
+                location: itemWrh,
                 name: item.name,
                 category: item.category,
                 quantity: quantityUpdate,
@@ -868,12 +867,11 @@ const Delivery = () => {
                 createdAt: createdAt
             }
 
-            productData.push(depletedItem)
             const resps = await fetchServer("POST", {
                 database: company,
-                collection: "Products",
-                prop: [{ i_d: depletedItem.productId }, { [itemWrh]: productData }]
-            }, "updateOneDoc", server);
+                collection: "InventoryTransactions",
+                update: depletedItem
+            }, "createDoc", server);
     
             if (resps.err) {
                 console.log(resps.mess);
@@ -886,7 +884,9 @@ const Delivery = () => {
                     if (newCount === items.length) {
                         fetchSessions(company)
                         fetchTables(company)
-                        getProducts(company)
+                        if (products.length){
+                            getProductsWithStock(company, products)
+                        }
                         loadInitialData()
                         if (action === 'deplete'){
                             setPlacingOrder(false)
@@ -903,7 +903,9 @@ const Delivery = () => {
                             setAlertTimeout(2000);
                             setCurrentOrder((currentOrder)=>{ return {...currentOrder, ...deliveryDataUpdate} })           
                         }
-                        getProducts(company);                        
+                        if (products.length){
+                            getProductsWithStock(company, products)
+                        }                       
                     } else {
                         setAlertState('success');
                         setAlert(`${newCount} / ${items.length} Inventory Updated Successfully!`);
@@ -918,7 +920,9 @@ const Delivery = () => {
     const handleOrderDelivery = async () => {
         fetchSessions(company)
         fetchTables(company)
-        getProducts(company)
+         if (products.length){
+            getProductsWithStock(company, products)
+        }
         setAlertState('info');
         setAlert('Processing Delivery...');
         setAlertTimeout(1000000)
@@ -975,11 +979,9 @@ const Delivery = () => {
         for (const entry of itemsToDeplete){
             const product = products.find(p => p.i_d === entry.i_d);
             if (product) {
-                const warehouseData = product[wrh] || [];
                 let countBaseQuantity = 0;
-                warehouseData.forEach(item => {
-                    countBaseQuantity += Number(item.baseQuantity);
-                });
+                const {cost, quantity} = product.locationStock?.[wrh] || {cost: 0, quantity: 0}
+                countBaseQuantity = Number(quantity || 0);                    
                 if (countBaseQuantity < Number(entry.depletedQuantity)) {
                     insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`);
                 }
@@ -1641,7 +1643,9 @@ const Delivery = () => {
                                 onClick={() => {
                                     fetchSessions(company)
                                     fetchTables(company)
-                                    getProducts(company)
+                                    if (products.length){
+                                        getProductsWithStock(company, products)
+                                    }
                                     setTableOrders([])
                                     setActiveScreen('home')
                                     setCurrentTable(null)
