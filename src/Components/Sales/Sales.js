@@ -728,6 +728,7 @@ const Sales = ()=>{
                     setAlertTimeout(100000)
                     const newTransaction = {
                         ...entry,
+                        location: entryWrh,
                         productId: entry.productId || entry.i_d,
                         quantity: Number(entry.quantity) * -1,
                         baseQuantity: Number(entry.baseQuantity) * -1,
