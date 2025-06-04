@@ -12,7 +12,7 @@ const Purchase = ()=>{
         server, 
         fetchServer,
         companyRecord, allowBacklogs,
-        company, getDate, products, getProducts, setProducts,
+        company, getDate, products, getProducts, setProducts, getProductsWithStock,
         employees, getEmployees,months, getPurchase, setPurchase, purchase,
         settings, setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
@@ -53,11 +53,15 @@ const Purchase = ()=>{
     },[storePath])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getProducts(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
+            if (products){
+                getProductsWithStock(cmp_val, products)
+            }
             getEmployees(cmp_val)
             getPurchase(cmp_val)
-            getProducts(cmp_val)
+            
           }
         },10000)
         return () => clearInterval(intervalId);
@@ -116,6 +120,27 @@ const Purchase = ()=>{
         setIsView(true)
     }
 
+    const checkDuplicateTransaction = async (company, transaction) => {
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "InventoryTransactions",
+            prop: {
+                productId: (transaction.productId || transaction.i_d), // Use productId or i_d
+                location: transaction.location,
+                postingDate: transaction.postingDate,
+                createdAt: transaction.createdAt,
+                entryType: transaction.entryType,
+                documentType: transaction.documentType,
+                quantity: Number(transaction.quantity) * -1,
+                baseQuantity: Number(transaction.baseQuantity) * -1,
+                totalSales: Number(transaction.totalSales) * -1,
+                totalCost: Number(transaction.costPrice) * Number(transaction.baseQuantity) * -1
+            }
+        }, "getDocsDetails", server); // plural version that returns an array
+
+        return Array.isArray(response.record) && response.record.length > 0;
+    };
+
     const handleProductPurchase = ()=>{
         const updateInventory = async ()=>{
             if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
@@ -131,7 +156,7 @@ const Purchase = ()=>{
                     }
                 })
                 const createdAt = Date.now()
-                validEntries.forEach((entry)=>{
+                validEntries.forEach(async (entry)=>{
                     const purchaseWrh = products[entry.index].buyTo
                     let purchaseData = []
                     products.forEach((prod)=>{
@@ -139,18 +164,18 @@ const Purchase = ()=>{
                             purchaseData = prod[purchaseWrh]
                         }
                     })
-                    const newProduct = {
+                    const newTransaction = {
                         ...entry,
+                        location: purchaseWrh,
                         postingDate: new Date(Date.now()).toISOString().slice(0,10),
                         createdAt: createdAt,
                         handlerId: fields.purchaseHandler,
                     }
-                    purchaseData.push(newProduct)
-                    const resps = fetchServer("POST", {
+                    const resps = await fetchServer("POST", {
                         database: company,
-                        collection: "Products",
-                        prop: [{i_d: (newProduct.productId || newProduct.i_d)}, {[purchaseWrh]: purchaseData}]
-                    }, "updateOneDoc", server)
+                        collection: "InventoryTransactions",
+                        update: newTransaction
+                    }, "createDoc", server)
                     if (resps.err){
                         console.log(resps.mess)
                         setAlertState('error')
@@ -163,7 +188,7 @@ const Purchase = ()=>{
                                 setProductAdd(false)
                                 setAlertState('success')
                                 setAlert(`${validEntries.length} Inventory Updated Successfully!`)                        
-                                getProducts(company)
+                                getProductsWithStock(company, products)
                                 if (curPurchase === null){
                                     setTimeout(()=>{                            
                                         addPurchase(createdAt)
