@@ -98,6 +98,7 @@
 }
 .add-products-title{
     width: fit-content;
+    display: flex;
     margin: 20px auto;
     font-weight: 700;
 }

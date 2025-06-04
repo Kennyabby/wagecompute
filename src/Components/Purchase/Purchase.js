@@ -1,6 +1,8 @@
 import './Purchase.css'
-import { useEffect, useContext, useState } from 'react'
+import { useEffect, useContext, useState, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import generatePDF, { Resolution, Margin } from 'react-to-pdf';
+import html2pdf from 'html2pdf.js';
 import { useScroll } from 'framer-motion'
 import { MdAdd } from 'react-icons/md'
 import { FaTableCells } from 'react-icons/fa6'
@@ -16,6 +18,7 @@ const Purchase = ()=>{
         employees, getEmployees,months, getPurchase, setPurchase, purchase,
         settings, setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
+    const getEntriesController = useRef(null)
     const [purchaseStatus, setPurchaseStatus] = useState('Post Purchase')
     const [purchaseDate, setPurchaseDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curPurchase, setCurPurchase] = useState(null)
@@ -28,6 +31,7 @@ const Purchase = ()=>{
     const [postCount, setPostCount] = useState(0)
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
+    const [wrhs, setWrhs] = useState([])
     const [productPurchased, setProductPurchased] = useState([])
     // const [purchaseWrh, setPurchaseWrh] = useState('')
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -77,6 +81,13 @@ const Purchase = ()=>{
             const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
             delete catSetFilt[0]?._id;
             setCategories(catSetFilt[0].name ? [...catSetFilt[0].categories] : []);
+
+            const wrhSetFilt = settings.filter((setting)=>{
+                return setting.name === 'warehouses'
+            })
+
+            delete wrhSetFilt[0]?._id
+            setWrhs(wrhSetFilt[0].name ? [...wrhSetFilt[0].warehouses] : [])
         }  
     },[settings])
 
@@ -102,22 +113,43 @@ const Purchase = ()=>{
             }
         }
     }
-    const handleViewClick = (pur) =>{
-        if (pur.productsRef){
-            const entries = []
-            products.forEach((product)=>{
-                product[product.buyTo].forEach((entry)=>{
-                    if (entry.createdAt === pur.productsRef){
-                        // console.log('entry',entry,'product', product)
-                        entries.push(entry)
-                    }
-                })
-            })
-            setPurchaseEntries([...entries])
+
+    const getPurchaseProducts = async (company, purchase) => {
+        if (getEntriesController.current) {
+            getEntriesController.current.abort(); // Abort any ongoing fetch
+            setPurchaseEntries([]); // Reset purchase entries
         }
+
+        const controller = new AbortController();
+        getEntriesController.current = controller;
+        
+        const { signal } = controller;
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "InventoryTransactions",
+            prop: {
+                createdAt: purchase.productsRef
+            }
+        }, "getDocsDetails", server, signal); // plural version that returns an array
+
+        return (Array.isArray(response.record) && response.record.length > 0) ? response.record : [];
+    };
+
+    const handleViewClick = async (pur) =>{
         setCurPurchase(pur)
         setFields({...pur})
         setIsView(true)
+        const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
+        const transactions = await getPurchaseProducts(company, pur)
+        if (transactions.length){
+            const entries = []
+            transactions.forEach((transaction)=>{
+                if (transaction.location === purchaseWrh.name){                    
+                    entries.push(transaction)
+                }
+            })            
+            setPurchaseEntries([...entries])
+        }              
     }
 
     const checkDuplicateTransaction = async (company, transaction) => {
@@ -157,13 +189,7 @@ const Purchase = ()=>{
                 })
                 const createdAt = Date.now()
                 validEntries.forEach(async (entry)=>{
-                    const purchaseWrh = products[entry.index].buyTo
-                    let purchaseData = []
-                    products.forEach((prod)=>{
-                        if (prod.i_d === (entry.i_d || entry.productId)){
-                            purchaseData = prod[purchaseWrh]
-                        }
-                    })
+                    const purchaseWrh = products[entry.index].buyTo                    
                     const newTransaction = {
                         ...entry,
                         location: purchaseWrh,
@@ -216,19 +242,21 @@ const Purchase = ()=>{
                                             setAlertState('success');
                                             setAlert('Products Linked Successfully!');
                                             setAlertTimeout(3000);
-                                            const entries = []
-                                            products.forEach((product)=>{
-                                                product[product.buyTo].forEach((entry)=>{
-                                                    if (entry.createdAt === createdAt){
-                                                        entries.push(entry)
-                                                    }
-                                                })
-                                            })
-                                            setPurchaseEntries([...entries])
                                             setFields((fields)=>{
                                                 return {...fields, productsRef: createdAt}
                                             })
                                             getPurchase(company);
+                                            const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
+                                            const transactions = await getPurchaseProducts(company, {productsRef: createdAt})
+                                            if (transactions.length){
+                                                const entries = []
+                                                transactions.forEach((transaction)=>{
+                                                    if (transaction.location === purchaseWrh.name){                    
+                                                        entries.push(transaction)
+                                                    }
+                                                })            
+                                                setPurchaseEntries([...entries])
+                                            }                                                                                                                                        
                                         }
                                         return
                                     }, 1000);
@@ -280,8 +308,6 @@ const Purchase = ()=>{
         }else{
             updateInventory()
         }
-
-        
     }
 
     const addPurchase = async (productsRef)=>{
@@ -316,17 +342,19 @@ const Purchase = ()=>{
                 setFields({...newPurchase})
                 setAlertState('success')
                 setAlert('Purchase Record Posted Successfully!')
-                const entries = []
-                products.forEach((product)=>{
-                    product[product.buyTo].forEach((entry)=>{
-                        if (entry.createdAt === newPurchase.productsRef){
-                            entries.push(entry)
-                        }
-                    })
-                })
-                setPurchaseEntries([...entries])
                 setAlertTimeout(5000)
                 getPurchase(company)
+                const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
+                const transactions = await getPurchaseProducts(company, newPurchase)
+                if (transactions.length){
+                    const entries = []
+                    transactions.forEach((transaction)=>{
+                        if (transaction.location === purchaseWrh.name){                    
+                            entries.push(transaction)
+                        }
+                    })            
+                    setPurchaseEntries([...entries])
+                }                 
             }
         
     }
@@ -389,6 +417,7 @@ const Purchase = ()=>{
                     setPurchaseEntries={setPurchaseEntries}
                     isProductView={isProductView}
                     setIsProductView={setIsProductView}
+                    companyRecord={companyRecord}
                 />}
                 {showReport && <PurchaseReport
                     reportPurchases = {reportPurchase}
@@ -667,8 +696,21 @@ export default Purchase
 
 const AddProduct = ({
     products, category, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
-    handleProductPurchase, purchaseEntries, setPurchaseEntries 
+    handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord
 })=>{    
+    const targetRef = useRef(null)
+    const { getDate } = useContext(ContextProvider)
+    const printToPDF = () => {
+        const element = targetRef.current;
+        const options = {
+            margin:       0.1,
+            filename:     `PRODUCT PURCHASE DETAILS ${getDate(curPurchase.purchaseDate || curPurchase.postingDate)}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+        };
+        html2pdf().set(options).from(element).save();
+    };
     useEffect(()=>{
         if (!isProductView){
             const fltProducts = products.filter((product)=>{
@@ -722,8 +764,16 @@ const AddProduct = ({
         <>
             <div className='addproduct'>
                 <div className='add-products'>
-                    <div className='add-products-title'>Purchased Details</div>
-                    <div className='add-products-content'>
+                    <div className='add-products-title'>
+                        <label>Purchased Details</label>
+                        {companyRecord?.status==='admin' && isProductView && <div
+                            className='slprwh-print'
+                            onClick={()=>{
+                                printToPDF()
+                            }}
+                        >Print Product</div>}
+                    </div>
+                    <div className='add-products-content' ref={targetRef}>
                         <div className='add-products-content-title'>
                             <div>Product Name</div>
                             <div>Product ID</div>
@@ -731,6 +781,7 @@ const AddProduct = ({
                             <div>Purchase UOM</div>
                             <div>Purchase Amount</div>
                         </div>
+                        {purchaseEntries.length === 0 && isProductView && <div className='load-products'><span>Loading Purchase Products...</span></div>}
                         {purchaseEntries.sort((a,b) => {
                             const numA = parseInt(a.productId.replace("PD", ""), 10);
                             const numB = parseInt(b.productId.replace("PD", ""), 10);
