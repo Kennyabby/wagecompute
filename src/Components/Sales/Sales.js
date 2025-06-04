@@ -876,8 +876,7 @@ const Sales = ()=>{
                         if (!ctent){
                             delete validEntries[wh.name]
                         }
-                    })   
-                
+                    })               
                     setSalesEntries({...validEntries})
                 }
                 
@@ -909,6 +908,7 @@ const Sales = ()=>{
 
         return (Array.isArray(response.record) && response.record.length > 0) ? response.record : [];
     };
+
     const handleViewClick = async (sale) =>{
         setCurSale(sale)
         setCurSaleDate(sale.postingDate)
@@ -931,11 +931,9 @@ const Sales = ()=>{
                 if (!ctent){
                     delete validEntries[wh.name]
                 }
-            })   
-           
+            })              
             setSalesEntries({...validEntries})
-        }
-        
+        }        
     }
     
     const handleRentalViewClick = (rent) =>{
@@ -2678,7 +2676,7 @@ const AddProduct = ({
                                 resetSalesEntries()
                             }}
                         >Reset</div>}
-                        {companyRecord.status==='admin' && isProductView && <div
+                        {companyRecord?.status==='admin' && isProductView && <div
                             className='slprwh-print'
                             onClick={()=>{
                                 printToPDF()
