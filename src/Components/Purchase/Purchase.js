@@ -96,6 +96,16 @@ const Purchase = ()=>{
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])
+
+    useEffect(()=>{
+        if (curPurchase){
+            setPurchaseDate(curPurchase.purchaseDate)
+            setIsView(true)
+        }else{
+            setPurchaseDate(new Date(Date.now()).toISOString().slice(0, 10))
+        }
+    },[curPurchase])
+
     const handlePurchaseEntry = (e)=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value
@@ -193,7 +203,7 @@ const Purchase = ()=>{
                     const newTransaction = {
                         ...entry,
                         location: purchaseWrh,
-                        postingDate: new Date(Date.now()).toISOString().slice(0,10),
+                        postingDate: purchaseDate,
                         createdAt: createdAt,
                         handlerId: fields.purchaseHandler,
                     }
