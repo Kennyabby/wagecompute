@@ -404,14 +404,27 @@ const Expenses = ()=>{
                             >
                                 <option value=''>Select Expenses Handler</option>
                                 {employees.map((employee)=>{
-                                    return (
-                                        <option 
-                                            key={employee.i_d}
-                                            value={employee.i_d}
-                                        >
-                                            {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
-                                        </option>
-                                    )
+                                    if (!isView){
+                                        if (!employee.dismissalDate){
+                                            return (
+                                                <option 
+                                                    key={employee.i_d}
+                                                    value={employee.i_d}
+                                                >
+                                                    {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                                </option>
+                                            )
+                                        }
+                                    }else{
+                                        return (
+                                            <option 
+                                                key={employee.i_d}
+                                                value={employee.i_d}
+                                            >
+                                                {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                            </option>
+                                        )
+                                    }
                                 })}
                             </select>
                         </div>
