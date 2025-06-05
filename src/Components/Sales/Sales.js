@@ -1943,14 +1943,16 @@ const Sales = ()=>{
                                                 >
                                                     <option value=''>Select Transfer ID</option>
                                                     {employees.map((employee)=>{
-                                                        return (
-                                                            <option 
-                                                                key={employee.i_d}
-                                                                value={employee.i_d}
-                                                            >
-                                                                {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
-                                                            </option>
-                                                        )
+                                                        if (!employee.dismissalDate){
+                                                            return (
+                                                                <option 
+                                                                    key={employee.i_d}
+                                                                    value={employee.i_d}
+                                                                >
+                                                                    {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                                                </option>
+                                                            )
+                                                        }
                                                     })}
                                                 </select>
                                             </div>

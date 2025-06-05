@@ -14,7 +14,8 @@ const SalesReport = ({
     const [InvoiceNumber, setInvoiceNumber] = useState('')
     const payPoints = {
         'moniepoint1':'', 'moniepoint2':'', 
-        'moniepoint3':'', 'moniepoint4':'', 'cash':''
+        'moniepoint3':'', 'moniepoint4':'', 
+        'cash':'', 'Employee':''
     }
     const salesUnits = {
         'open bar1':{...payPoints}, 'open bar2':{...payPoints}, 
@@ -86,22 +87,31 @@ const SalesReport = ({
              reportSales.record.forEach((record)=>{                                                        
                  employees.forEach((emp)=>{
                      if (record.employeeId === emp.i_d){
-                         newPayPoints[payPoint][emp.i_d] = 0
-                         var totalpaypoint = 0
-                         reportSales.record.forEach((sale)=>{
-                             if (emp.i_d === sale.employeeId){
-                                 Object.keys(salesUnits).forEach((unit)=>{
-                                     totalpaypoint += Number(sale[unit][payPoint] || 0)
-                                     record.recoverdList?.forEach((recovery)=>{
-                                         if (recovery['recoveryPoint'] === payPoint){
-                                             totalpaypoint += Number(recovery['recoveryAmount'] || 0)
-                                            //  console.log(recovery['recoveryPoint'] === payPoint, totalpaypoint)
-                                        }
-                                     })
-                                 })                         
-                             }
-                         })                                
-                         newPayPoints[payPoint][emp.i_d] = totalpaypoint                                                           
+                        if (payPoint !== 'Employee'){
+                            newPayPoints[payPoint][emp.i_d] = 0
+                        }else{
+                            if (!newPayPoints[payPoint][emp.i_d]){
+                                newPayPoints[payPoint][emp.i_d] = 0
+                            }
+                        }
+                        
+                        reportSales.record.forEach((sale)=>{
+                            if (emp.i_d === sale.employeeId){
+                                Object.keys(salesUnits).forEach((unit)=>{
+                                    newPayPoints[payPoint][emp.i_d] += Number(sale[unit][payPoint] || 0)                                    
+                                })               
+                            }
+                        })     
+
+                        Object.keys(salesUnits).forEach((unit)=>{                            
+                            record.recoverdList?.forEach((recovery)=>{
+                                if(record.salesPoint === unit){
+                                    if (recovery['recoveryPoint'] === payPoint && recovery['recoveryEmployeeId'] === emp.i_d){                                        
+                                        newPayPoints[payPoint][emp.i_d] += Number(recovery['recoveryAmount'] || 0)
+                                    }
+                                }
+                            })                           
+                        })                        
                      }
                  })                    
              })     
@@ -116,7 +126,7 @@ const SalesReport = ({
                  reportSales.record.forEach((record)=>{
                      newSaleUnits[saleunit][paypoint] += Number(record[saleunit][paypoint] || 0)
                      record.recoverdList?.forEach((recovery)=>{
-                        if (recovery['recoveryPoint'] === paypoint){
+                        if (recovery['recoveryPoint'] === paypoint && record.salesPoint === saleunit){
                             newSaleUnits[saleunit][paypoint] += Number(recovery['recoveryAmount'] || 0)
                         }
                     })
@@ -130,7 +140,7 @@ const SalesReport = ({
             newDebtUnits[saleunit] = 0
              reportSales.record.forEach((record)=>{
                  if (record.salesPoint === saleunit){
-                     newDebtUnits[saleunit] += Number(record.debt) + Number(record.shortage)
+                     newDebtUnits[saleunit] += Number(record.debt) + Number(record.shortage) - Number(record.debtRecovered)
                  }
              })               
          })
@@ -283,7 +293,7 @@ const SalesReport = ({
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                <td className='prr-ttrow'>PAYMENT POINT</td>                                                        
+                                                    <td className='prr-ttrow'>PAYMENT POINT</td>                                                        
                                                     {reportEmployees.map((emp)=>{
                                                         return(
                                                             <th><h8 className='prr-ttrow'>{'₦'}</h8></th>                                                        
@@ -311,11 +321,11 @@ const SalesReport = ({
                                                     <td className='prr-ttrow'>TOTAL</td>  
                                                     {reportEmployees.map((emp)=>{
                                                         return(
-                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allSales'] - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                            <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allSales'] + Number(reportAllSales[emp.i_d]['allDebtRecovered'] || 0) - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
                                                         )                                                                
                                                     })}                                                      
                                                     
-                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)+Number(reportSales.totalDebtRecovered)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
                                         </table>
@@ -384,8 +394,8 @@ const SalesReport = ({
                                                             <td className='prr-ttrow'>{(totalPaypointAmount).toLocaleString()}</td>
                                                         )                                                                                                                
                                                     })}
-                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
-                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)+Number(reportSales.totalDebtRecovered)).toLocaleString()}</td>}
+                                                    {<td className='prr-ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)-Number(reportSales.totalDebtRecovered)).toLocaleString()}</td>}
                                                     {<td className='prr-ttrow'>{(Number(reportSales.totalDebt)+Number(reportSales.totalShortage)+Number(reportSales.totalCashSales)+Number(reportSales.totalBankSales)).toLocaleString()}</td>}
                                                 </tr>                                                                                                
                                             </tbody>
