@@ -916,24 +916,26 @@ const Sales = ()=>{
         setIsView(true)
         setFields([...(sale.record)])
         setIsView(true)
-        const transactions = await getSalesProducts(company, sale); 
-        if (transactions.length){
-            const validEntries = {}
-            wrhs.forEach(async(wh)=>{   
-                var ctent = 0
-                validEntries[wh.name]=[] 
-                transactions.forEach((transaction)=>{
-                    if (transaction.location === wh.name){
-                        ctent++
-                        validEntries[wh.name].push(transaction)
+        if (sale.productsRef){
+            const transactions = await getSalesProducts(company, sale); 
+            if (transactions.length){
+                const validEntries = {}
+                wrhs.forEach(async(wh)=>{   
+                    var ctent = 0
+                    validEntries[wh.name]=[] 
+                    transactions.forEach((transaction)=>{
+                        if (transaction.location === wh.name){
+                            ctent++
+                            validEntries[wh.name].push(transaction)
+                        }
+                    })        
+                    if (!ctent){
+                        delete validEntries[wh.name]
                     }
-                })        
-                if (!ctent){
-                    delete validEntries[wh.name]
-                }
-            })              
-            setSalesEntries({...validEntries})
-        }        
+                })              
+                setSalesEntries({...validEntries})
+            }        
+        }
     }
     
     const handleRentalViewClick = (rent) =>{
@@ -2620,7 +2622,9 @@ const AddProduct = ({
             const totalSalesAmount = totalCashSales + totalBankSales + totalDebt + totalShortage
             setTotalSalesAmount(totalSalesAmount)
         }
-        setWrh(isProductView ? Object.keys(salesEntries)[0] : 'open bar1')
+        if (isProductView){
+            setWrh(Object.keys(salesEntries)[0])
+        }
     },[salesEntries])
 
     const handleSalesUdpate = (e, index)=>{
