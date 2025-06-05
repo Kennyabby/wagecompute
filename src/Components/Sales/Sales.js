@@ -711,7 +711,9 @@ const Sales = ()=>{
                 totalCost: Number(transaction.costPrice) * Number(transaction.baseQuantity) * -1
             }
         }, "getDocsDetails", server); // plural version that returns an array
-
+        if (response.err){
+            return false
+        }
         return Array.isArray(response.record) && response.record.length > 0;
     };
     const postProductsSales = async (entryWrh, validEntries, timestamp, entriesLength) => {
