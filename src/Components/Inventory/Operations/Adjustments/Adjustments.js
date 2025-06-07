@@ -144,6 +144,7 @@ const Adjustments = ({
                 entry.createdAt = createdAt
                 entry.handlerId = companyRecord?.emailid
                 entry.postingDate = postingDate
+                entry.location = curWarehouse
                 delete entry.index 
                 // const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
                 entct++
@@ -184,7 +185,6 @@ const Adjustments = ({
                 entry.baseQuantity = ''
                 entry.counted = ''
                 entry.userId = companyRecord.emailid
-                entry.location = curWarehouse
                 setAdjustmentEntries((adjustmentEntries)=>{
                     return [...adjustmentEntries, entry]
                 })
