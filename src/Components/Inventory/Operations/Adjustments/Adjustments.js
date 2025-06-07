@@ -184,6 +184,7 @@ const Adjustments = ({
                 entry.baseQuantity = ''
                 entry.counted = ''
                 entry.userId = companyRecord.emailid
+                entry.location = curWarehouse
                 setAdjustmentEntries((adjustmentEntries)=>{
                     return [...adjustmentEntries, entry]
                 })
