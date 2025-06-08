@@ -185,6 +185,7 @@ const Adjustments = ({
                 entry.difference = ''
                 entry.baseQuantity = ''
                 entry.counted = ''
+                entry.postingDate = postingDate
                 entry.userId = companyRecord.emailid
                 setAdjustmentEntries((adjustmentEntries)=>{
                     return [...adjustmentEntries, entry]
