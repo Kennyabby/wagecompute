@@ -179,6 +179,7 @@ const Adjustments = ({
             if (product.type === 'goods'){
                 const entry = {}
                 entry.i_d = product.i_d
+                entry.productId = product.i_d
                 entry.costPrice = product.costPrice
                 entry.index = index
                 entry.difference = ''
@@ -303,7 +304,7 @@ const Adjustments = ({
                                             availableQty = Number(product.totalStock || 0)
                                         }else{
                                             if (wrh.name === curWarehouse){
-                                                const {cost, quantity} = product.locationStock?.[wrh?.name] || {cost: 0, quantity: 0}
+                                                const {cost, quantity} = product.locationStock?.[curWarehouse] || {cost: 0, quantity: 0}
                                                 availableQty = Number(quantity || 0);
                                             }                                       
                                         }
