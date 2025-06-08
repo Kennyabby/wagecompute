@@ -174,7 +174,7 @@ const Stock = ({
                 if (product) {                    
                     const createdAt = new Date().getTime();
                     const fromWarehouseData = {
-                        productID: productId,
+                        productId: productId,
                         location: fromWarehouse,
                         entryType: 'Shipment',
                         documentType: 'Transfer Shipment',
@@ -187,7 +187,7 @@ const Stock = ({
                     }
 
                     const toWarehouseData = {
-                        productID: productId,
+                        productId: productId,
                         location: toWarehouse,
                         entryType: 'Receipt',
                         documentType: 'Transfer Receipt',
@@ -358,7 +358,7 @@ const Stock = ({
                                                
                                             } else {
                                                 if (wrh.name === curWarehouse) {
-                                                    const {cost, quantity} = product.locationStock?.[wrh?.name] || {cost: 0, quantity: 0}
+                                                    const {cost, quantity} = product.locationStock?.[curWarehouse] || {cost: 0, quantity: 0}
                                                     availableQty = Number(quantity || 0);
                                                     
                                                 }
