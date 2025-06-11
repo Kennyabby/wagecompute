@@ -16,18 +16,18 @@ const Delivery = () => {
         settings, getDate, deliveryWrhAccess, employees, 
         profiles, fetchProfiles, getProductsWithStock,
         products, setProducts, getProducts,
+        fetchTables, tables, setTables,
+        fetchSessions, sessions, setSessions,
+        getSessionEnd, allSessions, setAllSessions,
+        isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
+        deliverySessions, setDeliverySessions,
     } = useContext(ContextProvider);
 
     // Core States
-    const [isLive, setIsLive] = useState(false)
-    const [liveErrorMessages, setLiveErrorMessages] = useState('Loading...')
     const [loading, setLoading] = useState(false);
     const [activeScreen, setActiveScreen] = useState('home');
-    const [tables, setTables] = useState([]);
     const [orderTables, setOrderTables] = useState([]);
     const [currentTable, setCurrentTable] = useState(null)
-    const [allSessions, setAllSessions] = useState([])
-    const [sessions, setSessions] = useState(null);
     const [categories, setCategories] = useState([]);
     const [openingCash, setOpeningCash] = useState(0);
     const [countedSales, setCountedSales] = useState({})
@@ -147,7 +147,12 @@ const Delivery = () => {
             })) 
         }
     },[allSessionOrders, curSession])
-
+    
+    useEffect(()=>{
+        if (deliverySessions.length){
+            setSessions(deliverySessions)
+        }
+    },[deliverySessions])
     useEffect(()=>{
         if (tables?.length && sessions !== null){
             if (sessions.length){
@@ -188,7 +193,7 @@ const Delivery = () => {
         fetchProfiles(company)
             
         // Feth Sessions
-        fetchSessions(company)
+        fetchSessions(company, 'delivery')
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -394,21 +399,6 @@ const Delivery = () => {
         }
     }
 
-    const getSessionEnd = (sessionStart) => {
-        const closingHour = 8
-        const sessionStartDate = new Date(sessionStart);
-        const sessionEndDate = new Date(sessionStartDate);
-
-        // Set the session end time to 8am of the same day
-        sessionEndDate.setHours(closingHour, 0, 0, 0);
-
-        // If the session started after 8am, set the end time to 8am of the next day
-        if (sessionStartDate.getTime() >= sessionEndDate.getTime()) {
-            sessionEndDate.setDate(sessionStartDate.getDate() + 1);
-        }
-
-        return sessionEndDate.getTime();
-    };
 
     const UpdateSessionState = (sessions, loadSession)=>{
         if (!loadSession && sessions?.length){            
@@ -466,41 +456,6 @@ const Delivery = () => {
         setOrderTables(orderTables)
     }
 
-    const fetchTables = async (company) => {
-        const tablesResponse = await fetchServer("POST", {
-            database: company,
-            collection: "Tables"
-        }, "getDocsDetails", server);
-        if (!tablesResponse.err){
-            setTables(tablesResponse.record)  
-        }else{
-            if (tablesResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-    }
-
-    const fetchSessions = async (company) => {
-        const sessionsResponse = await fetchServer("POST", {
-            database: company,
-            collection: "POSSessions",
-            prop: {type:'delivery'}
-        }, "getDocsDetails", server);
- 
-        if(!sessionsResponse.err){
-            const thisSessions = sessionsResponse.record.filter((session)=>{
-                return session.employee_id === companyRecord.emailid
-            })
-            setSessions(thisSessions)
-            setAllSessions(sessionsResponse.record)
-        }else{
-            if (sessionsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-    }
      const loadInitialData = async () => {
         //abort previous request if it exists
         if (orderControllerRef.current) {
@@ -636,7 +591,7 @@ const Delivery = () => {
     };
     
     const handleTableSelect = async (table) => {
-        fetchSessions(company)
+        fetchSessions(company, "delivery")
         fetchTables(company)
         if (products.length){
             getProductsWithStock(company, products)
@@ -882,7 +837,7 @@ const Delivery = () => {
                 setPostCount(prevCount => {
                     const newCount = prevCount + 1;
                     if (newCount === items.length) {
-                        fetchSessions(company)
+                        fetchSessions(company, "delivery")
                         fetchTables(company)
                         if (products.length){
                             getProductsWithStock(company, products)
@@ -918,7 +873,7 @@ const Delivery = () => {
     }
 
     const handleOrderDelivery = async () => {
-        fetchSessions(company)
+        fetchSessions(company, "delivery")
         fetchTables(company)
          if (products.length){
             getProductsWithStock(company, products)
@@ -1641,7 +1596,7 @@ const Delivery = () => {
                                 className="action-btn"
                                 disabled={placingOrder || makingPayment}
                                 onClick={() => {
-                                    fetchSessions(company)
+                                    fetchSessions(company, "delivery")
                                     fetchTables(company)
                                     if (products.length){
                                         getProductsWithStock(company, products)

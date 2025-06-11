@@ -13,20 +13,20 @@ const PointOfSales = () => {
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, posWrhAccess, employees, 
         profiles, fetchProfiles, getSessionEnd,
-        products, getProducts, setProducts,
+        products, getProducts, setProducts,  
+        fetchSessions, sessions, setSessions,
+        isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
+        allSessions, setAllSessions, tables, setTables, fetchTables,
+        salesSessions, setSalesSessions,
     } = useContext(ContextProvider);
 
     // Core States
-    const [isLive, setIsLive] = useState(false)
-    const [liveErrorMessages, setLiveErrorMessages] = useState('Loading...')
+    
     const [loading, setLoading] = useState(false);
     const [activeScreen, setActiveScreen] = useState('home');
-    const [tables, setTables] = useState([]);
     const [orderTables, setOrderTables] = useState([]);
     const [currentTable, setCurrentTable] = useState(null)
-    const [allSessions, setAllSessions] = useState([])
     const [deliverySessions, setDeliverySessions] = useState([])
-    const [sessions, setSessions] = useState(null);
     const [categories, setCategories] = useState([]);
     const [openingCash, setOpeningCash] = useState(0);
     const [countedSales, setCountedSales] = useState({})
@@ -135,6 +135,12 @@ const PointOfSales = () => {
     },[wrhs])
     
     useEffect(()=>{
+        if (salesSessions.length){
+            setSessions(salesSessions)
+        }
+    },[salesSessions])
+    
+    useEffect(()=>{
         if (tables?.length && sessions !== null){
             if (sessions.length){
                 setIsLive(true)
@@ -171,7 +177,7 @@ const PointOfSales = () => {
         fetchProfiles(company)
          
         // Feth Sessions
-        fetchSessions(company)
+        fetchSessions(company, "sales")
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -419,7 +425,7 @@ const PointOfSales = () => {
                 setAlert('Session Ended!');
             }
             setAlertTimeout(3000)
-            fetchSessions(company)
+            fetchSessions(company, "sales")
             setEndSession(false)
             setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
             setCountedSales({})
@@ -484,48 +490,6 @@ const PointOfSales = () => {
         setOrderTables(orderTables)
     }
 
-    const fetchTables = async (company) => {
-        const tablesResponse = await fetchServer("POST", {
-            database: company,
-            collection: "Tables"
-        }, "getDocsDetails", server);
-        if (!tablesResponse.err){
-            if (!tablesResponse.mess){
-                setTables(tablesResponse.record)  
-            }
-        }else{
-            if (tablesResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-    }
-
-    const fetchSessions = async (company) => {
-        const sessionsResponse = await fetchServer("POST", {
-            database: company,
-            collection: "POSSessions",
-            prop: {type:'sales'}
-        }, "getDocsDetails", server);
- 
-        if(!sessionsResponse.err){
-            if (sessionsResponse.mess){
-                setIsLive(false)
-                // setLiveErrorMessages(sessionsResponse.mess)
-            }else{
-                const thisSessions = sessionsResponse.record.filter((session)=>{
-                    return session.employee_id === companyRecord.emailid
-                })
-                setSessions(thisSessions)
-                setAllSessions(sessionsResponse.record)
-            }
-        }else{
-            if (sessionsResponse.mess !== 'Request aborted'){
-                setIsLive(false)
-                setLiveErrorMessages('Slow Network. Check Connection')
-            }
-        }
-    }
      const loadInitialData = async () => {
         //abort previous request if it exists
         if (orderControllerRef.current) {
@@ -716,7 +680,7 @@ const PointOfSales = () => {
                     setAlertState('info');
                     setAlert('Loaded table orders...');
                     setAlertTimeout(10)
-                    fetchSessions(company)
+                    fetchSessions(company, "sales")
                     fetchTables(company)
                     getProducts(company)
                     loadInitialData()
@@ -763,7 +727,7 @@ const PointOfSales = () => {
     // 5. Order Management
     // =========================================
     const handlePlaceOrder = async () => {
-        fetchSessions(company)
+        fetchSessions(company, "sales")
         fetchTables(company)
         getProducts(company)
         loadInitialData()
@@ -820,7 +784,7 @@ const PointOfSales = () => {
             setTableOrders(prev => ([
                 ...prev, placedOrder
             ]));
-            fetchSessions(company)
+            fetchSessions(company, "sales")
             fetchTables(company)
             getProducts(company)
             loadInitialData()
@@ -910,7 +874,7 @@ const PointOfSales = () => {
     // 6. Payment Processing
     // =========================================
     const handlePayment = async () => {
-        fetchSessions(company)
+        fetchSessions(company, "sales")
         fetchTables(company)
         getProducts(company)
         loadInitialData()
@@ -1017,7 +981,7 @@ const PointOfSales = () => {
             setMakingPayment(false)
             return
         } else {
-            fetchSessions(company)
+            fetchSessions(company, "sales")
             fetchTables(company)
             getProducts(company)
             loadInitialData()
