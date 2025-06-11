@@ -27,6 +27,13 @@ function App() {
   const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
   const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
 
+  const [isLive, setIsLive] = useState(false)
+  const [liveErrorMessages, setLiveErrorMessages] = useState('Loading...')
+  const [sessions, setSessions] = useState(null);
+  const [tables, setTables] = useState([]);
+  const [deliverySessions, setDeliverySessions] = useState([])
+  const [salesSessions, setSalesSessions] = useState([])
+
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
   const [alertTimeout, setAlertTimeout] = useState(100000)
@@ -186,9 +193,21 @@ function App() {
             getProducts(company)
             Navigate('/inventory')
           }
+          if (companyRecord?.permissions.includes('delivery')){
+            fetchSessions(company , "delivery")
+            fetchTables(company)
+            Navigate('/delivery')
+          }
+          if (companyRecord?.permissions.includes('pos')){
+            fetchSessions(company , "sales")
+            fetchTables(company)
+            Navigate('/pos')
+          }          
           if (companyRecord?.permissions.includes('sales')){
             getAccommodations(company)
             getSales(company)
+            fetchSessions(company , "sales")
+            fetchSessions(company , "delivery")
             // getSales(company, 'first', saleFrom, saleTo, 10)
             getRentals(company)
             Navigate('/sales')
@@ -243,6 +262,7 @@ function App() {
 
       return sessionEndDate.getTime();
   };
+
   const shuffleList = (array) => {
     var currentIndex = array.length,
       randomIndex,
@@ -382,6 +402,55 @@ function App() {
     window.localStorage.setItem('curr-path',path)
   }
 
+  const fetchSessions = async (company, type) => {
+      const sessionsResponse = await fetchServer("POST", {
+          database: company,
+          collection: "POSSessions",
+          prop: {type:type}
+      }, "getDocsDetails", SERVER);
+
+      if(!sessionsResponse.err){
+          if (sessionsResponse.mess){
+              setIsLive(false)
+              // setLiveErrorMessages(sessionsResponse.mess)
+          }else{
+              const thisSessions = sessionsResponse.record.filter((session)=>{
+                  return session.employee_id === companyRecord.emailid
+              })
+              setSessions(thisSessions)
+              if (type === 'sales'){
+                  setSalesSessions(thisSessions)
+              }
+              if (type === 'delivery'){
+                  setDeliverySessions(thisSessions)
+              }
+              setAllSessions(sessionsResponse.record)
+          }
+      }else{
+          if (sessionsResponse.mess !== 'Request aborted'){
+              setIsLive(false)
+              setLiveErrorMessages('Slow Network. Check Connection')
+          }
+      }
+  }
+
+  const fetchTables = async (company) => {
+      const tablesResponse = await fetchServer("POST", {
+          database: company,
+          collection: "Tables"
+      }, "getDocsDetails", SERVER);
+      if (!tablesResponse.err){
+          if (!tablesResponse.mess){
+              setTables(tablesResponse.record)  
+          }
+      }else{
+          if (tablesResponse.mess !== 'Request aborted'){
+              setIsLive(false)
+              setLiveErrorMessages('Slow Network. Check Connection')
+          }
+      }
+  }
+
   const removeSessions = (path)=>{
     window.localStorage.removeItem('sess-recg-id')
     window.localStorage.removeItem('idt-curr-usr')
@@ -445,6 +514,8 @@ function App() {
         getAccommodations(cmp_val)
         // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
         getSales(cmp_val)
+        fetchSessions(cmp_val , "sales")
+        fetchSessions(cmp_val , "delivery")
         getProducts(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)
@@ -856,6 +927,7 @@ function App() {
       return resp.url
     }
   }
+
   function excelDateToTimestamp(excelDateValue) {
     if (String(excelDateValue).split('').includes('/') ||
     String(excelDateValue).split('').includes('-')){
@@ -876,6 +948,7 @@ function App() {
         return timestamp;
     }
   }
+
   const getDate = (dateval) =>{
     const current = dateval? new Date(dateval): new Date();
     const date = `${current.getDate()}/${current.getMonth() + 1}/${current.getFullYear()}`;
@@ -938,6 +1011,11 @@ function App() {
           customers, setCustomers, getCustomers,
           attendance, setAttendance, getAttendance,
           allSessions, setAllSessions, getAllSessions,
+          sessions, setSessions, fetchSessions,
+          salesSessions, setSalesSessions,
+          deliverySessions, setDeliverySessions,
+          isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
+          tables, setTables, fetchTables,
 
           saleFrom, setSaleFrom,
           saleTo, setSaleTo,
