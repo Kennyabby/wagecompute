@@ -578,6 +578,29 @@ const Sales = ()=>{
         })
     }
 
+    const isProductAvailable = (validEntries)=>{
+        var noAvailableProducts =  0
+        const insufficientProducts = []
+        Object.keys(validEntries).forEach((entryWrh)=>{
+            for (const entry of validEntries[entryWrh]){
+                const product = products.find(p => p.i_d === entry.i_d);
+                if (product) {
+                    let countBaseQuantity = 0;
+                    const {cost, quantity} = product.locationStock?.[entryWrh] || {cost: 0, quantity: 0}
+                    countBaseQuantity = Number(quantity || 0);                            
+                    if (countBaseQuantity < Number(entry.baseQuantity)) {
+                        insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()}) in ${entryWrh}`);
+                    }
+                }
+            }
+
+            if (insufficientProducts.length > 0) {
+                noAvailableProducts += 1                        
+            }
+        })        
+        return {value: noAvailableProducts === 0,  message: insufficientProducts}
+    }
+
     const handleProductSales = async ()=>{        
         const timestamp = Date.now()
         setPostCount(postedProducts.length)
@@ -594,7 +617,7 @@ const Sales = ()=>{
                 }
             })
         })   
-        if (curSale !== null){            
+        if (curSale !== null){         
             const {createdAt, postingDate, totalCashSales, totalDebt, record, 
                 totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
             } = curSale
@@ -609,28 +632,16 @@ const Sales = ()=>{
                 setAlertState('info')
                 setAlert('Posting Product Sales...')
                 setAlertTimeout(100000)
-                Object.keys(validEntries).forEach((entryWrh)=>{
-                    const insufficientProducts = []
-                    for (const entry of validEntries[entryWrh]){
-                        const product = products.find(p => p.i_d === entry.i_d);
-                        if (product) {
-                            let countBaseQuantity = 0;
-                            const {cost, quantity} = product.locationStock?.[entryWrh] || {cost: 0, quantity: 0}
-                            countBaseQuantity = Number(quantity || 0);                            
-                            if (countBaseQuantity < Number(entry.baseQuantity)) {
-                                insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`);
-                            }
-                        }
-                    }
+                
+                const allProductsAvailable = isProductAvailable(validEntries)
+                if (!allProductsAvailable(validEntries).value){
+                    setAlertState('error');
+                    setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
+                    setAlertTimeout(8000);
+                    setAddingProducts(false)
+                    setPostCount(0)            
+                }
 
-                    if (insufficientProducts.length > 0) {
-                        setAlertState('error');
-                        setAlert(`Insufficient quantity in "${entryWrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
-                        setAlertTimeout(8000);
-                        setAddingProducts(false)
-                        return;
-                    }
-                })
                 Object.keys(validEntries).forEach((entryWrh)=>{
                     postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
                 })
@@ -657,28 +668,15 @@ const Sales = ()=>{
                 setAlertState('info')
                 setAlert('Posting Product Sales...')
                 setAlertTimeout(100000)
-                Object.keys(validEntries).forEach((entryWrh)=>{
-                    const insufficientProducts = []
-                    for (const entry of validEntries[entryWrh]){
-                        const product = products.find(p => p.i_d === entry.i_d);
-                        if (product) {
-                            let countBaseQuantity = 0;
-                            const {cost, quantity} = product.locationStock?.[entryWrh] || {cost: 0, quantity: 0}
-                            countBaseQuantity = Number(quantity || 0);                            
-                            if (countBaseQuantity < Number(entry.baseQuantity)) {
-                                insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`);
-                            }
-                        }
-                    }
-
-                    if (insufficientProducts.length > 0) {
-                        setAlertState('error');
-                        setAlert(`Insufficient quantity in "${entryWrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
-                        setAlertTimeout(8000);
-                        setAddingProducts(false)
-                        return;
-                    }
-                })
+                
+                const allProductsAvailable = isProductAvailable(validEntries)
+                if (!allProductsAvailable(validEntries).value){
+                    setAlertState('error');
+                    setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
+                    setAlertTimeout(8000);
+                    setAddingProducts(false)
+                    setPostCount(0)            
+                }
 
                 Object.keys(validEntries).forEach((entryWrh)=>{
                     postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)                    
@@ -716,18 +714,24 @@ const Sales = ()=>{
         }
         return Array.isArray(response.record) && response.record.length > 0;
     };
+
     const postProductsSales = async (entryWrh, validEntries, timestamp, entriesLength) => {
-        const createdAt = timestamp;        
+        const createdAt = timestamp;  
+
         validEntries.forEach(async (entry, index) => {
-            if (!postedProducts.includes(entry.productId) && !postedProducts.includes(entry.i_d)){            
+
+            if (!postedProducts.includes(entry.productId)){            
                 setAlertState('info')
                 setAlert('Checking for duplicates...')
                 setAlertTimeout(100000)
+                
                 const isDuplicate = await checkDuplicateTransaction(company, entry);            
+                
                 if (!isDuplicate){
                     setAlertState('info')
                     setAlert('Posting Transaction...')
                     setAlertTimeout(100000)
+                    
                     const newTransaction = {
                         ...entry,
                         location: entryWrh,
@@ -739,13 +743,13 @@ const Sales = ()=>{
                         postingDate: postingDate,
                         createdAt: createdAt,
                     };
-            
+                    
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "InventoryTransactions", 
                         update: newTransaction
                     }, "createDoc", server);
-            
+                    
                     if (resps.err) {
                         console.log(resps.mess);
                         setAlertState('error');
@@ -755,9 +759,9 @@ const Sales = ()=>{
                         return;
                     } else {
                         setPostCount(prevCount => {
-                            if (!postedProducts.includes(entry.productId) && !postedProducts.includes(entry.i_d)){
+                            if (!postedProducts.includes(entry.productId)){
                                 setPostedProducts((products)=>{
-                                    return [...products, (entry.productId || entry.i_d)]
+                                    return [...products, entry.productId]
                                 })
                             }
                             const newCount = prevCount + 1;
@@ -808,14 +812,19 @@ const Sales = ()=>{
                     }
                 }else{
                     setPostedProducts((products)=>{
-                        const newProducts = [...products, (entry.productId || entry.i_d)]
-                        setPostCount(newProducts.length)
+                        const newProducts = [...products, entry.productId]
+                        setPostCount((prevCount)=>{
+                            return (prevCount + 1)
+                        })
                         return newProducts
                     })
                 }
             }
+
         });
+
     };
+
     const addSales = async (reference)=> { 
         if (postingDate){
             setPostStatus('Posting Sales...')
