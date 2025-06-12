@@ -206,8 +206,8 @@ function App() {
           if (companyRecord?.permissions.includes('sales')){
             getAccommodations(company)
             getSales(company)
-            fetchSessions(company , "sales")
-            fetchSessions(company , "delivery")
+            fetchSessions(company , "sales", companyRecord)
+            fetchSessions(company , "delivery", companyRecord)
             // getSales(company, 'first', saleFrom, saleTo, 10)
             getRentals(company)
             Navigate('/sales')
@@ -402,7 +402,7 @@ function App() {
     window.localStorage.setItem('curr-path',path)
   }
 
-  const fetchSessions = async (company, type) => {
+  const fetchSessions = async (company, type, companyRecord) => {
       const sessionsResponse = await fetchServer("POST", {
           database: company,
           collection: "POSSessions",
@@ -417,7 +417,7 @@ function App() {
               const thisSessions = sessionsResponse.record.filter((session)=>{
                   return session.employee_id === companyRecord.emailid
               })
-              setSessions(thisSessions)
+              // setSessions(thisSessions)
               if (type === 'sales'){
                   setSalesSessions(thisSessions)
               }
@@ -514,8 +514,9 @@ function App() {
         getAccommodations(cmp_val)
         // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
         getSales(cmp_val)
-        fetchSessions(cmp_val , "sales")
-        fetchSessions(cmp_val , "delivery")
+        fetchTables(cmp_val)
+        fetchSessions(cmp_val , "sales", resp.record)
+        fetchSessions(cmp_val , "delivery", resp.record)
         getProducts(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)

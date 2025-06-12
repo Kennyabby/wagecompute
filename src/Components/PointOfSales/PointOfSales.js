@@ -135,7 +135,7 @@ const PointOfSales = () => {
     },[wrhs])
     
     useEffect(()=>{
-        if (salesSessions.length){
+        if (salesSessions?.length){
             setSessions(salesSessions)
         }
     },[salesSessions])
@@ -177,7 +177,7 @@ const PointOfSales = () => {
         fetchProfiles(company)
          
         // Feth Sessions
-        fetchSessions(company, "sales")
+        fetchSessions(company, "sales", companyRecord)
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -425,7 +425,7 @@ const PointOfSales = () => {
                 setAlert('Session Ended!');
             }
             setAlertTimeout(3000)
-            fetchSessions(company, "sales")
+            fetchSessions(company, "sales", companyRecord)
             setEndSession(false)
             setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
             setCountedSales({})
@@ -680,7 +680,7 @@ const PointOfSales = () => {
                     setAlertState('info');
                     setAlert('Loaded table orders...');
                     setAlertTimeout(10)
-                    fetchSessions(company, "sales")
+                    fetchSessions(company, "sales", companyRecord)
                     fetchTables(company)
                     getProducts(company)
                     loadInitialData()
@@ -727,7 +727,7 @@ const PointOfSales = () => {
     // 5. Order Management
     // =========================================
     const handlePlaceOrder = async () => {
-        fetchSessions(company, "sales")
+        fetchSessions(company, "sales", companyRecord)
         fetchTables(company)
         getProducts(company)
         loadInitialData()
@@ -784,7 +784,7 @@ const PointOfSales = () => {
             setTableOrders(prev => ([
                 ...prev, placedOrder
             ]));
-            fetchSessions(company, "sales")
+            fetchSessions(company, "sales", companyRecord)
             fetchTables(company)
             getProducts(company)
             loadInitialData()
@@ -874,7 +874,7 @@ const PointOfSales = () => {
     // 6. Payment Processing
     // =========================================
     const handlePayment = async () => {
-        fetchSessions(company, "sales")
+        fetchSessions(company, "sales", companyRecord)
         fetchTables(company)
         getProducts(company)
         loadInitialData()
@@ -981,7 +981,7 @@ const PointOfSales = () => {
             setMakingPayment(false)
             return
         } else {
-            fetchSessions(company, "sales")
+            fetchSessions(company, "sales", companyRecord)
             fetchTables(company)
             getProducts(company)
             loadInitialData()

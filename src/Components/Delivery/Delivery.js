@@ -149,10 +149,11 @@ const Delivery = () => {
     },[allSessionOrders, curSession])
     
     useEffect(()=>{
-        if (deliverySessions.length){
+        if (deliverySessions?.length){
             setSessions(deliverySessions)
         }
     },[deliverySessions])
+
     useEffect(()=>{
         if (tables?.length && sessions !== null){
             if (sessions.length){
@@ -193,7 +194,7 @@ const Delivery = () => {
         fetchProfiles(company)
             
         // Feth Sessions
-        fetchSessions(company, 'delivery')
+        fetchSessions(company, "delivery", companyRecord)
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -591,7 +592,7 @@ const Delivery = () => {
     };
     
     const handleTableSelect = async (table) => {
-        fetchSessions(company, "delivery")
+        fetchSessions(company, "delivery", companyRecord)
         fetchTables(company)
         if (products.length){
             getProductsWithStock(company, products)
@@ -837,7 +838,7 @@ const Delivery = () => {
                 setPostCount(prevCount => {
                     const newCount = prevCount + 1;
                     if (newCount === items.length) {
-                        fetchSessions(company, "delivery")
+                        fetchSessions(company, "delivery", companyRecord)
                         fetchTables(company)
                         if (products.length){
                             getProductsWithStock(company, products)
@@ -873,7 +874,7 @@ const Delivery = () => {
     }
 
     const handleOrderDelivery = async () => {
-        fetchSessions(company, "delivery")
+        fetchSessions(company, "delivery", companyRecord)
         fetchTables(company)
          if (products.length){
             getProductsWithStock(company, products)
@@ -1596,7 +1597,7 @@ const Delivery = () => {
                                 className="action-btn"
                                 disabled={placingOrder || makingPayment}
                                 onClick={() => {
-                                    fetchSessions(company, "delivery")
+                                    fetchSessions(company, "delivery", companyRecord)
                                     fetchTables(company)
                                     if (products.length){
                                         getProductsWithStock(company, products)
