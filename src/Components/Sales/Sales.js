@@ -2724,7 +2724,7 @@ const AddProduct = ({
                             <div>{
                                 `
                                     Total Sales Amount
-                                    ${(companyRecord.status==='admin') ? 
+                                    ${(companyRecord.status==='admin') || true ? 
                                         (`(${salesEntries[wrh]?.reduce((sum, entry) => sum + Number(entry.totalSales) * -1, 0).toLocaleString()})`)
                                         : ''
                                     }
