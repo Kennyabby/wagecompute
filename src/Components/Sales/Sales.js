@@ -613,6 +613,9 @@ const Sales = ()=>{
                 if (entry.totalSales){
                     entriesLength += 1
                     totalAmount += Number(entry.totalSales)
+                    entry.location = wh
+                    entry.createdAt = timestamp
+                    entry.postingDate = postingDate
                     validEntries[wh].push(entry)
                 }
             })
@@ -634,12 +637,13 @@ const Sales = ()=>{
                 setAlertTimeout(100000)
                 
                 const allProductsAvailable = isProductAvailable(validEntries)
-                if (!allProductsAvailable(validEntries).value){
+                if (!allProductsAvailable.value){
                     setAlertState('error');
                     setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
                     setAlertTimeout(8000);
                     setAddingProducts(false)
-                    setPostCount(0)            
+                    setPostCount(0)         
+                    return;   
                 }
 
                 Object.keys(validEntries).forEach((entryWrh)=>{
@@ -675,7 +679,8 @@ const Sales = ()=>{
                     setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
                     setAlertTimeout(8000);
                     setAddingProducts(false)
-                    setPostCount(0)            
+                    setPostCount(0)   
+                    return;         
                 }
 
                 Object.keys(validEntries).forEach((entryWrh)=>{
@@ -697,10 +702,10 @@ const Sales = ()=>{
             database: company,
             collection: "InventoryTransactions",
             prop: {
-                productId: (transaction.productId || transaction.i_d), // Use productId or i_d
+                productId: transaction.productId, // Use productId or i_d
                 location: transaction.location,
                 postingDate: transaction.postingDate,
-                createdAt: transaction.createdAt,
+                // createdAt: transaction.createdAt,
                 entryType: transaction.entryType,
                 documentType: transaction.documentType,
                 quantity: Number(transaction.quantity) * -1,
@@ -718,9 +723,11 @@ const Sales = ()=>{
     const postProductsSales = async (entryWrh, validEntries, timestamp, entriesLength) => {
         const createdAt = timestamp;  
 
+        // console.log(entryWrh, 'validEntries: ', validEntries.length)
+        var ctentries = 0
         validEntries.forEach(async (entry, index) => {
 
-            if (!postedProducts.includes(entry.productId)){            
+            if (!postedProducts.includes(`${entry.productId} ${entryWrh}`)){            
                 setAlertState('info')
                 setAlert('Checking for duplicates...')
                 setAlertTimeout(100000)
@@ -729,7 +736,7 @@ const Sales = ()=>{
                 
                 if (!isDuplicate){
                     setAlertState('info')
-                    setAlert('Posting Transaction...')
+                    setAlert(`Posting Transaction... ${entry.productId} ${entryWrh}`)
                     setAlertTimeout(100000)
                     
                     const newTransaction = {
@@ -744,6 +751,33 @@ const Sales = ()=>{
                         createdAt: createdAt,
                     };
                     
+                    // ctentries++
+                    
+                    // setPostCount(prevCount => {
+                    //     if (!postedProducts.includes(`${entry.productId} ${entryWrh}`)){
+                    //         setPostedProducts((products)=>{
+                    //             return [...products, `${entry.productId} ${entryWrh}`]
+                    //         })
+                    //     }
+                    //     const newCount = prevCount + 1;
+                    //     if (newCount === entriesLength) {
+                    //         console.log(entryWrh, 'newTransaction: ', ctentries)
+                    //         setAddingProducts(false)
+                    //         setPostCount(0)
+                    //         setAlertState('success');
+                    //         setAlert(`${entriesLength} Inventory Updated Successfully!`);
+                    //         setAlertTimeout(5000)
+                    //     }else{
+                    //         if (ctentries === validEntries.length){
+                    //             console.log(entryWrh, 'newTransaction: ', ctentries)
+                    //         }else {                        
+                    //             setAlertState('success');
+                    //             setAlert(`${newCount} / ${entriesLength} Inventory Updated to ${entryWrh} Successfully!`);
+                    //         }
+                    //         return newCount
+                    //     }
+                    // })
+
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "InventoryTransactions", 
@@ -756,12 +790,12 @@ const Sales = ()=>{
                         setAlert(resps.mess);
                         setAlertTimeout(5000);
                         setAddingProducts(false)
-                        return;
+                        // return;
                     } else {
                         setPostCount(prevCount => {
-                            if (!postedProducts.includes(entry.productId)){
+                            if (!postedProducts.includes(`${entry.productId} ${entryWrh}`)){
                                 setPostedProducts((products)=>{
-                                    return [...products, entry.productId]
+                                    return [...products, `${entry.productId} ${entryWrh}`]
                                 })
                             }
                             const newCount = prevCount + 1;
@@ -804,7 +838,7 @@ const Sales = ()=>{
                                 }
                             } else {                        
                                 setAlertState('success');
-                                setAlert(`${newCount} / ${entriesLength} Inventory Updated Successfully!`);
+                                setAlert(`${newCount} / ${entriesLength} Inventory Updated to ${entryWrh} Successfully!`);
                             }
             
                             return newCount;
@@ -812,16 +846,17 @@ const Sales = ()=>{
                     }
                 }else{
                     setPostedProducts((products)=>{
-                        const newProducts = [...products, entry.productId]
+                        const newProducts = [...products, `${entry.productId} ${entryWrh}`]
                         setPostCount((prevCount)=>{
                             return (prevCount + 1)
                         })
                         return newProducts
                     })
+                    console.log( `Duplicates found: ${entry.productId} ${entryWrh}`)
                 }
             }
 
-        });
+        });        
 
     };
 
@@ -2652,7 +2687,11 @@ const AddProduct = ({
                 updatedWrh[index].baseQuantity = Number(value) * Number(uom2[0]?.multiple)                
                 if (wrh === 'vip'){
                     updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * (Number(updatedWrh[index].vipPrice) || Number(updatedWrh[index].salesPrice))
-                }else{
+                }else if (wrh === 'kitchen'){
+                    updatedWrh[index].totalVipSales = updatedWrh[index].baseQuantity * (Number(updatedWrh[index].vipPrice) || Number(updatedWrh[index].salesPrice))
+                    updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
+                }
+                else{
                     updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
                 }
                 setSalesEntries({...(originalEntries.salesEntries), [wrh]: updatedWrh})
@@ -2710,7 +2749,7 @@ const AddProduct = ({
                         >
                             <option value={'all'}>Filter Products</option>
                             {categories.map((cat, id)=>{
-                                return <option key={id} value={cat.code}>{cat.name}</option>
+                                return (wrhs.find((wh)=>{return wh.name === wrh})?.productCategories?.includes(cat.code) && <option key={id} value={cat.code}>{cat.name}</option>)
                             })}
                         </select>
                     </div>
@@ -2725,16 +2764,18 @@ const AddProduct = ({
                                 `
                                     Total Sales Amount
                                     ${(companyRecord.status==='admin') || true ? 
-                                        (`(${salesEntries[wrh]?.reduce((sum, entry) => sum + Number(entry.totalSales) * -1, 0).toLocaleString()})`)
+                                        (`(${salesEntries[wrh]?.reduce((sum, entry) => sum + Math.abs(Number(entry.totalSales)), 0).toLocaleString()})`)
                                         : ''
                                     }
-                                `
+                                ` 
                             }</div>
                         </div>
                         {Object.keys(salesEntries).length === 0 && isProductView && <div className='load-products'><span>Loading Sales Products...</span></div>}
                         {salesEntries[wrh]?.filter((flent)=>{
                             if (category === 'all'){
-                                return flent
+                                if (wrhs.find((wh)=>{return wh.name === wrh})?.productCategories?.includes(flent.category)){
+                                    return flent
+                                }
                             }else{
                                 return flent.category === category
                             }
@@ -2771,13 +2812,16 @@ const AddProduct = ({
                                         </select>
                                     </div>
                                     <div>
-                                        <input 
+                                        <select 
                                             name='totalSales'
                                             type='number'
                                             value={isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}
-                                            disabled={true}
+                                            disabled = {wrh!=='kitchen' || !entry.quantity || isProductView}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
-                                        />
+                                        >
+                                            <option value = {isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}>{isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}</option>
+                                            <option value = {isProductView? Math.abs(Number(entry.totalVipSales)) : entry.totalVipSales}>{isProductView? Math.abs(Number(entry.totalVipSales)) : entry.totalVipSales}</option>
+                                        </select>
                                     </div>
                                 </div>
                             )

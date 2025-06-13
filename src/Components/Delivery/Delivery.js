@@ -109,6 +109,7 @@ const Delivery = () => {
     useEffect(() => {
         handleSettingsUpdate();
     }, [settings]);
+    
     useEffect(()=>{
         if (wrhs.length){
             setWrhCategories((wrhCategories)=>{
