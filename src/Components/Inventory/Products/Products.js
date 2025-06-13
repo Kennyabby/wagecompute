@@ -113,7 +113,7 @@ const Products = ({
             const purchaseWrh = wrhs.find((warehouse)=>{
                 return warehouse.purchase
             })
-            const {cost, quantity} = curProduct.locationStock[purchaseWrh?.name] || {cost: 0, quantity: 0}
+            const {cost, quantity} = curProduct.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
             let cummulativeUnitCostPrice = 0            
             cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
             setProductFields({...curProduct, costPrice: cummulativeUnitCostPrice})
@@ -260,7 +260,8 @@ const Products = ({
         if (productFields.name){
             if (!productData.length){
                 setAlertState('info')
-                setAlert('Saving...')        
+                setAlert('Saving...')  
+                setAlertTimeout(100000)      
             }
 
             const newProduct = {
@@ -325,7 +326,11 @@ const Products = ({
             }else{
                 // console.log('product added successfully')
                 if(!productData.length){
-                    getProducts(company)
+                    if (!productView){
+                        getProductsWithStock(company, products)
+                    }else{                        
+                        getProducts(company)
+                    }
                     // console.log('product added: ', newProduct)
                     setCurProduct(newProduct)
                     if (isProductView){
@@ -338,7 +343,7 @@ const Products = ({
                     setIsOnView(clickedLabel)
                     setProductFields({...newProduct})
                     setAlertState('success')
-                    setAlert('Updated!')
+                    setAlert(`Updated [${productFields.i_d}] Successfully!`)
                     setAlertTimeout(5000)
                     setIsSaveValue(false)
                     // getProducts(company)
