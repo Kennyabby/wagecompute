@@ -2772,12 +2772,14 @@ const AddProduct = ({
                         </div>
                         {Object.keys(salesEntries).length === 0 && isProductView && <div className='load-products'><span>Loading Sales Products...</span></div>}
                         {salesEntries[wrh]?.filter((flent)=>{
-                            if (category === 'all'){
-                                if (wrhs.find((wh)=>{return wh.name === wrh})?.productCategories?.includes(flent.category)){
-                                    return flent
+                            if (flent.salesPrice || flent.vipPrice){
+                                if (category === 'all'){
+                                    if (wrhs.find((wh)=>{return wh.name === wrh})?.productCategories?.includes(flent.category)){
+                                        return flent
+                                    }
+                                }else{
+                                    return flent.category === category
                                 }
-                            }else{
-                                return flent.category === category
                             }
                         }).sort((a,b) => {
                             const numA = parseInt(a.productId.replace("PD", ""), 10);
