@@ -34,6 +34,10 @@ function App() {
   const [deliverySessions, setDeliverySessions] = useState([])
   const [salesSessions, setSalesSessions] = useState([])
 
+  const [approvals, setApprovals] = useState([])
+  const [approvalStatus, setApprovalStatus] = useState(false)
+  const [approvalMessage, setApprovalMessage] = useState('')
+
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
   const [alertTimeout, setAlertTimeout] = useState(100000)
@@ -181,11 +185,6 @@ function App() {
             getExpenses(company)
             Navigate('/expenses')
           }
-          if (companyRecord?.permissions.includes('accommodations')){
-            getCustomers(company)
-            getAccommodations(company)
-            Navigate('/accommodations')
-          }
           if (companyRecord?.permissions.includes('inventory') ||
             companyRecord?.permissions.includes('pos') ||
             companyRecord?.permissions.includes('delivery')
@@ -202,7 +201,12 @@ function App() {
             fetchSessions(company , "sales")
             fetchTables(company)
             Navigate('/pos')
-          }          
+          }  
+          if (companyRecord?.permissions.includes('accommodations')){
+            getCustomers(company)
+            getAccommodations(company)
+            Navigate('/accommodations')
+          }        
           if (companyRecord?.permissions.includes('sales')){
             getAccommodations(company)
             getSales(company)
@@ -313,6 +317,66 @@ function App() {
 
   }
 
+  const requestApproval = async (company, module, section, data)=>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Approvals", 
+      update: {
+        ...data,
+        module: module,
+        section: section
+      } 
+    }, "createDoc", SERVER)
+    if (!resp.err){
+      return {completed: resp.isDelivered, mess: resp.mess}
+    }else{
+      return {completed: false, mess: resp.mess}
+    }
+  }
+
+  const getApprovals = async (company)=>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Approvals", 
+      prop: {} 
+    }, "getDocsDetails", SERVER)
+    if (Array.isArray(resp.record)){
+      setApprovals(resp.record)
+    }
+  }
+
+  const updateApproval = async (company, module, section, update)=>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Approvals", 
+      prop: [{module: module, section: section, createdAt: update.createdAt}, {...update}] 
+    }, "updateOneDoc", SERVER)
+    if (!resp.err){
+      return {completed: resp.updated, mess: resp.mess}
+    }else{
+      return {completed: false, mess: resp.mess}
+    }
+  }
+
+  const removeApproval = async (company, module, section, update)=>{
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Approvals", 
+      update: {        
+        module: module,
+        section: section,
+        createdAt: update.createdAt,
+        postingDate: update.postingDate
+      } 
+    }, "removeDoc", SERVER)
+    if (!resp.err){
+      getApprovals(company)
+      return {completed: resp.isRemoved, mess: resp.mess}
+    }else{
+      return {completed: false, mess: resp.mess}
+    }
+  }
+
   const exportFile = useCallback((data, fileName) => {
       const ws = utils.json_to_sheet(data);
       const wb = utils.book_new();
@@ -415,7 +479,7 @@ function App() {
               // setLiveErrorMessages(sessionsResponse.mess)
           }else{
               const thisSessions = sessionsResponse.record.filter((session)=>{
-                  return session.employee_id === companyRecord.emailid
+                  return session.employee_id === companyRecord?.emailid
               })
               // setSessions(thisSessions)
               if (type === 'sales'){
@@ -504,7 +568,8 @@ function App() {
         }
       })
       getChartOfAccounts(cmp_val)
-      if (resp.record.status==='admin'){
+      getApprovals(cmp_val)
+      if (resp.record.status==='admin'){        
         getSettings(cmp_val)
         fetchProfiles(cmp_val)
         getEmployees(cmp_val)
@@ -1017,6 +1082,11 @@ function App() {
           deliverySessions, setDeliverySessions,
           isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
           tables, setTables, fetchTables,
+
+          approvals, setApprovals, getApprovals,
+          requestApproval, updateApproval, removeApproval,
+          approvalStatus, setApprovalStatus,
+          approvalMessage, setApprovalMessage,
 
           saleFrom, setSaleFrom,
           saleTo, setSaleTo,
