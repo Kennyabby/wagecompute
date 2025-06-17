@@ -1,6 +1,7 @@
 import './Sales.css'
 import { useState, useEffect, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
@@ -32,7 +33,9 @@ const Sales = ()=>{
         nextSales, setNextSales,
         setSalesLoadCount, salesLoadCount,
         alert,alertState,alertTimeout,actionMessage, 
-        setAlert, setAlertState, setAlertTimeout, setActionMessage 
+        setAlert, setAlertState, setAlertTimeout, setActionMessage,
+        approvals, getApprovals, requestApproval, updateApproval, removeApproval,
+        approvalStatus, approvalMessage, setApprovalStatus, setApprovalMessage,               
     } = useContext(ContextProvider)
 
     const payPoints = {
@@ -75,6 +78,14 @@ const Sales = ()=>{
     const [postingDate, setPostingDate] = useState('')
     const [curSale, setCurSale] = useState(null)
     const [curRent, setCurRent] = useState(null)
+    
+    const [curApproval, setCurApproval] = useState(null)
+    const [showApprovalBox, setShowApprovalBox] = useState(false)
+    const [isApprover, setIsApprover] = useState(false)
+    const [isProductApprover, setIsProductApprover] = useState(false)
+    const [ftrApprovals, setFtrApprovals] = useState([])
+    const [productsApprovals, setProductsApprovals] = useState([])
+
     const [curSaleDate, setCurSaleDate] = useState(null)
     const scrollRef = useRef(null)
     const loadRef = useRef(null)
@@ -163,16 +174,20 @@ const Sales = ()=>{
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getAllSessions(cmp_val)
+        getSales(cmp_val)
         getEmployees(cmp_val)
         getRentals(cmp_val)
         getAccommodations(cmp_val)
         getAllSessions(cmp_val)
+        getApprovals(cmp_val)
         const intervalId = setInterval(()=>{
             if (cmp_val){
+                getSales(cmp_val)
                 getEmployees(cmp_val)
                 getRentals(cmp_val)
                 getAccommodations(cmp_val)
                 getAllSessions(cmp_val)
+                getApprovals(cmp_val)
             }
         },60000)
         return () => clearInterval(intervalId);
@@ -374,6 +389,7 @@ const Sales = ()=>{
     },[fields])
 
     useEffect(()=>{
+        setCurApproval(null)
         if (salesOpts!=='sales'){
             setIsView(false)
             setFields([])
@@ -385,6 +401,13 @@ const Sales = ()=>{
             setRentalFields({...defaultRentalFields})
         }
     },[salesOpts])
+
+    useEffect(()=>{
+        if (Array.isArray(approvals)){
+            setFtrApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === `post${salesOpts}`.toUpperCase()}))
+            setProductsApprovals(approvals.filter((appr)=>{return appr.section === 'addSalesProduct'}))
+        }
+    },[approvals, salesOpts])
 
     useEffect(()=>{
         if (curSale){
@@ -421,9 +444,14 @@ const Sales = ()=>{
         if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
+        if(companyRecord?.permissions.includes('postSales') || companyRecord?.status==='admin'){
+            setIsApprover(true)
+        }
     },[companyRecord])
 
+
     useEffect(()=>{
+        setCurApproval(null)
         if (saleEmployee){
             calculateReportSales()
         }else{
@@ -440,6 +468,123 @@ const Sales = ()=>{
             handleViewClick(reportSales)
         }
     },[reportSales])
+
+    const postApprovalUpdate = async (company, module, section, curApproval)=>{
+        setAlertState('info')
+        setAlert('Updating Approval...')
+        setAlertTimeout(100000)
+        const resp = await updateApproval(company, module, section, {                                                                
+            approved: approvalStatus,
+            message: approvalMessage,
+            createdAt: curApproval.createdAt,
+            lastUpdatedBy: companyRecord?.emailid
+        })
+        if (resp.completed){
+            getApprovals(company)
+            setAlertState('success')
+            setAlert('Approval Updated!')
+            setAlertTimeout(5000)
+            setApprovalStatus(false)
+            setApprovalMessage('')
+            setShowApprovalBox(false)
+            setCurApproval({...curApproval, 
+                approved: approvalStatus,
+                message: approvalMessage,
+                createdAt: curApproval.createdAt,
+                lastUpdatedBy: companyRecord?.emailid
+            })
+            setAddingProducts(false)
+        }else{
+            setAlertState('error')
+            setAlert(resp.mess)
+            setAlertTimeout(5000)
+            setAddingProducts(false)
+        }
+    }
+
+    const runApprovalWorkFlow = async(curApproval, module, section, data, runApproval, link)=>{
+        
+        const executePostAction = ()=>{
+            runApproval()
+            // if (module ==='sales'){
+            //     if (section = 'postSales'){
+            //         addSales()                                                 
+            //     }
+            //     if (section = 'addSalesProduct'){
+            //         handleProductSales()
+            //     }
+            // }
+            if (curApproval?.createdAt){
+                removeApproval(company, module, section, {                        
+                    createdAt: curApproval.createdAt,
+                    postingDate: curApproval.postingDate                                                 
+                })
+            }
+        }
+
+        const executeApprovalAction = async (previous)=>{
+            if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
+                executePostAction()
+            }else{
+                setAlertState('info')
+                setAlert('Sending Approval Request...')
+                setAlertTimeout(100000)
+                const approvalData = {
+                    data: data,
+                    createdAt: previous?.createdAt ? previous.createdAt: new Date().getTime(),
+                    postingDate: postingDate,   
+                    isApproval: true,  
+                    handlerId: companyRecord?.emailid,  
+                    messages: previous?.createdAt ? [
+                        ...previous.messages, 
+                        {message: previous.message, createdAt: new Date().getTime()}
+                    ] : []                        
+                }
+                if (link){
+                    approvalData.link = link
+                }
+                const resp = await requestApproval(company, module, section, approvalData)
+                if (resp.completed){
+                    if(previous?.createdAt){
+                        removeApproval(company, module, section, {                        
+                            createdAt: previous.createdAt,
+                            postingDate: previous.postingDate                                                 
+                        })
+                    }
+                    setAlertState('success')
+                    setAlert('Approval Request Sent Successfully!')
+                    setAlertTimeout(5000)
+                    getApprovals(company)
+                    setCurApproval(approvalData)
+                    setAddingProducts(false)
+                }else{
+                    setAlertState('error')
+                    setAlert(resp.mess)
+                    setAlertTimeout(5000)
+                    setAddingProducts(false)
+                }
+            }
+        }
+        if (![null, undefined].includes(curApproval)){
+            if (curApproval.approved){
+                executePostAction()
+            }else{
+                if (!curApproval.message){
+                    if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
+                       setShowApprovalBox(true)
+                    }else{
+                        setAlertState('info')
+                        setAlert('Already sent for approval. Please wait for response!')
+                        setAlertTimeout(5000)
+                    }
+                }else{
+                    executeApprovalAction(curApproval)
+                }
+            }
+        }else{
+            executeApprovalAction()
+        }
+    }
 
     const handleFieldChange = (prop)=>{
         const {e} = prop
@@ -601,6 +746,29 @@ const Sales = ()=>{
         return {value: noAvailableProducts === 0,  message: insufficientProducts}
     }
 
+    const executeProductsPost = (validEntries, entriesLength, timestamp)=>{        
+        const makePost = ()=>{            
+            setAlertState('info')
+            setAlert('Posting Product Sales...')
+            setAlertTimeout(100000)
+            
+            const allProductsAvailable = isProductAvailable(validEntries)
+            if (!allProductsAvailable.value){
+                setAlertState('error');
+                setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
+                setAlertTimeout(8000);
+                setAddingProducts(false)
+                setPostCount(0)   
+                return;         
+            }
+            Object.keys(validEntries).forEach((entryWrh)=>{
+                postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
+            })
+        }
+
+        runApprovalWorkFlow(curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
+    }
+
     const handleProductSales = async ()=>{        
         const timestamp = Date.now()
         setPostCount(postedProducts.length)
@@ -631,24 +799,8 @@ const Sales = ()=>{
                 }
             })
             const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
-            if (totalSalesAmount === totalAmount){
-                setAlertState('info')
-                setAlert('Posting Product Sales...')
-                setAlertTimeout(100000)
-                
-                const allProductsAvailable = isProductAvailable(validEntries)
-                if (!allProductsAvailable.value){
-                    setAlertState('error');
-                    setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
-                    setAlertTimeout(8000);
-                    setAddingProducts(false)
-                    setPostCount(0)         
-                    return;   
-                }
-
-                Object.keys(validEntries).forEach((entryWrh)=>{
-                    postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
-                })
+            if (totalSalesAmount === totalAmount){                
+                executeProductsPost(validEntries, entriesLength, timestamp)
             }else{
                 setAlertState('error')
                 setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
@@ -668,25 +820,8 @@ const Sales = ()=>{
                 totalBankSales += Number(field.bankSales)
             })
             const totalSalesAmount = totalCashSales + totalBankSales + totalDebt + totalShortage
-            if (totalSalesAmount === totalAmount){
-                setAlertState('info')
-                setAlert('Posting Product Sales...')
-                setAlertTimeout(100000)
-                
-                const allProductsAvailable = isProductAvailable(validEntries)
-                if (!allProductsAvailable(validEntries).value){
-                    setAlertState('error');
-                    setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
-                    setAlertTimeout(8000);
-                    setAddingProducts(false)
-                    setPostCount(0)   
-                    return;         
-                }
-
-                Object.keys(validEntries).forEach((entryWrh)=>{
-                    postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)                    
-                })
-
+            if (totalSalesAmount === totalAmount){                
+                executeProductsPost(validEntries, entriesLength, timestamp)
             }else{
                 setAlertState('error')
                 setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
@@ -902,6 +1037,8 @@ const Sales = ()=>{
                 setPostStatus('Post Sales')
             }else{
                 setSales(newSales)
+                setCurApproval(null)
+                getApprovals(company)
                 setCurSale(newSale)
                 setCurSaleDate(newSale.postingDate)
                 setIsView(true)
@@ -955,13 +1092,31 @@ const Sales = ()=>{
         return (Array.isArray(response.record) && response.record.length > 0) ? response.record : [];
     };
 
+    const handleApprovalViewClick = (approval)=>{
+        if(companyRecord?.permissions.includes('postSales') || companyRecord?.status==='admin'){
+            setIsApprover(true)
+        }
+        setCurSale(null)
+        setCurApproval(approval)
+        setPostingDate(approval.postingDate)
+        setFields([...approval.data])
+        if (approval.message){
+            setIsView(false)
+        }else{
+            setIsView(true)
+        }
+    }
+
     const handleViewClick = async (sale) =>{
         setCurSale(sale)
+        setCurApproval(null)
         setCurSaleDate(sale.postingDate)
         setSalesOpts('sales')
         setIsView(true)
         setFields([...(sale.record)])
         setIsView(true)
+        setIsProductApprover(false)
+        const productsApprovals = approvals.filter((appr)=>{return appr.section === 'addSalesProduct'})
         if (sale.productsRef){
             const transactions = await getSalesProducts(company, sale); 
             if (transactions.length){
@@ -981,6 +1136,19 @@ const Sales = ()=>{
                 })              
                 setSalesEntries({...validEntries})
             }        
+        }else{
+            const productApproval = productsApprovals.find((prappr)=>{
+                return prappr.link === sale.createdAt
+            })
+
+            if (productApproval){
+                if(companyRecord?.permissions.includes('addSalesProduct') || companyRecord?.status==='admin'){
+                    setIsProductApprover(true)
+                }
+                // setSalesEntries({...(productApproval.data)})
+                sale.approval = productApproval
+                setCurSale(sale)
+            }
         }
     }
     
@@ -1009,6 +1177,7 @@ const Sales = ()=>{
             }else{
                 setIsView(false)
                 setCurSale(null)
+                setCurApproval(null)
                 setCurSaleDate(null)
                 setFields([])
                 setAddEmployeeId('')
@@ -1429,7 +1598,23 @@ const Sales = ()=>{
     }
     return (
         <>
-            <div className='sales'>         
+            <div className='sales'>    
+                {showApprovalBox && <ApprovalBox
+                    onClose={()=>{
+                        setShowApprovalBox(false)
+                        setApprovalStatus(false)
+                        setApprovalMessage('')
+                    }}
+                    module={salesOpts}
+                    section={productAdd ? 'addSalesProduct' : `post${salesOpts}`}
+                    postApprovalUpdate={()=>{
+                        if (productAdd){
+                            postApprovalUpdate(company, salesOpts, `addSalesProduct`, curSale.approval)
+                        }else{
+                            postApprovalUpdate(company, salesOpts, `post${salesOpts}`, curApproval)
+                        }
+                    }}
+                />}     
                 {showReport && <SalesReport
                     reportSales = {reportSales}
                     reportDebts = {calculateDebtReport()}
@@ -1472,6 +1657,7 @@ const Sales = ()=>{
                 {productAdd && <AddProduct
                     companyRecord={companyRecord}
                     products={products}
+                    productAdd={productAdd}
                     setProductAdd={setProductAdd}
                     uoms={uoms}
                     categories={categories}
@@ -1487,6 +1673,8 @@ const Sales = ()=>{
                     addingProducts={addingProducts}
                     setAddingProducts={setAddingProducts}
                     setPostedProducts={setPostedProducts}
+                    runApprovalWorkFlow={runApprovalWorkFlow}
+                    isProductApprover={isProductApprover}
                 />}
                 <div className='emplist saleslist' ref={scrollRef}>    
                     {companyRecord.status==='admin' && <FaTableCells                         
@@ -1567,7 +1755,7 @@ const Sales = ()=>{
                             })}
                         </select>
                     </div>}
-                    {salesOpts1 === 'sales' && (reportSales? [reportSales] : sales).filter((ftrsale)=>{
+                    {salesOpts1 === 'sales' && (reportSales? [reportSales] : [...ftrApprovals, ...sales]).filter((ftrsale)=>{
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
                         const toDate = new Date(saleTo).getTime()
@@ -1577,59 +1765,120 @@ const Sales = ()=>{
                             return ftrsale
                         }
                     }).map((sale, index)=>{
-                        const {createdAt, postingDate, totalCashSales, totalDebt, record, 
-                            totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
-                        } = sale 
-                        return(
-                            <div className={'dept sldept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
-                                onClick={(e)=>{
-                                    handleViewClick(sale)
-                                }}
-                            >
-                                {productsRef ? 
-                                    <div
-                                        className='slprd'
-                                        onClick={()=>{
-                                            setIsProductView(true)
-                                            setProductAdd(true)
-                                        }}
-                                    > 
-                                        View Products 
-                                    </div> 
-                                    : <span
-                                        className='slprd'
-                                        onClick={()=>{
-                                            setProductAdd(true)
-                                            setIsProductView(false)
-                                        }}
-                                    >
-                                        Add Products
-                                    </span>}
-                                <div className='dets sldets'>
-                                    <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                    <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
-                                    <div>Bank: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
-                                    <div>Cash: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
-                                    <div>Debts: <b>{'₦'+(Number(totalDebt)+Number(totalShortage)-Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
-                                    <div>Recovered: <b>{'₦'+(Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
-                                    <div className='deptdesc'>{`Number of Sales Made:`} <b>{`${record.length}`}</b></div>
-                                </div>
-                                {(companyRecord.status==='admin' && !saleEmployee) && <div 
-                                    className='edit'
-                                    name='delete'         
-                                    style={{color:'red'}}                           
-                                    onClick={()=>{                                        
-                                        setAlertState('info')
-                                        setAlert('You are about to delete the selected Sales Record. Please Delete again if you are sure!')
-                                        setAlertTimeout(5000)
-                                                                                    
-                                        deleteSales(sale)
+                        if (sale.isApproval){
+                            const {createdAt, postingDate, message, handlerId, approved} = sale
+                            var textColor = 'red'
+                            if (approved){
+                                textColor ='green'
+                            }
+                            return (
+                                <div className={'dept sldept' + (curApproval?.createdAt===createdAt?' curview':'')} key={index} 
+                                    onClick={(e)=>{
+                                        handleApprovalViewClick(sale)
                                     }}
                                 >
-                                    Delete
-                                </div>}
-                            </div>
-                        )
+                                    <div className='dets sldets'>
+                                        <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                        <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
+                                        {message && <div>Message: <b>{message}</b></div>}
+                                        <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                    </div>
+                                    {(companyRecord.status==='admin' && !saleEmployee) && <div 
+                                        className='edit'
+                                        name='delete'         
+                                        style={{color:'red'}}                           
+                                        onClick={async ()=>{                                        
+                                            setAlertState('info')
+                                            setAlert('Deleting Approval Data...')
+                                            setAlertTimeout(100000)
+
+                                            const resp = await removeApproval(company, 'sales', 'addSalesProduct', {                        
+                                                createdAt: createdAt,
+                                                postingDate: postingDate                                                 
+                                            })     
+                                            
+                                            if(resp.completed){
+                                                setAlertState('success')
+                                                setAlert('Deleted Approval Data Successfully!')
+                                                setAlertTimeout(3000)
+                                            }
+
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                        }else{                            
+                            const productApproval = productsApprovals.find((prappr)=>{
+                                return prappr.link === sale.createdAt
+                            })
+                
+                            if (productApproval){                               
+                                sale.approval = productApproval
+                            }
+                            const {createdAt, postingDate, totalCashSales, totalDebt, record, 
+                                totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef,
+                                approval
+                            } = sale 
+                            var textColor = 'red'
+                            if (approval?.approved){
+                                textColor = 'green'
+                            }
+                            return(
+                                <div className={'dept sldept' + (curSale?.createdAt===createdAt?' curview':'')} key={index} 
+                                    onClick={(e)=>{
+                                        handleViewClick(sale)
+                                    }}
+                                >
+                                    {productsRef ? 
+                                        <div
+                                            className='slprd'
+                                            onClick={()=>{
+                                                setIsProductView(true)
+                                                setProductAdd(true)
+                                            }}
+                                        > 
+                                            View Products 
+                                        </div> 
+                                        : <span
+                                            className='slprd'
+                                            style  ={{
+                                                border: approval? `solid ${textColor} 3px` : 'solid black 0px'
+                                            }}
+                                            onClick={()=>{
+                                                setProductAdd(true)
+                                                setIsProductView(false)
+                                            }}
+                                        >
+                                            Add Products
+                                        </span>}
+                                    <div className='dets sldets'>
+                                        <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                        <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
+                                        <div>Bank: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
+                                        <div>Cash: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
+                                        <div>Debts: <b>{'₦'+(Number(totalDebt)+Number(totalShortage)-Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
+                                        <div>Recovered: <b>{'₦'+(Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
+                                        <div className='deptdesc'>{`Number of Sales Made:`} <b>{`${record.length}`}</b></div>
+                                    </div>
+                                    {(companyRecord.status==='admin' && !saleEmployee) && <div 
+                                        className='edit'
+                                        name='delete'         
+                                        style={{color:'red'}}                           
+                                        onClick={()=>{                                        
+                                            setAlertState('info')
+                                            setAlert('You are about to delete the selected Sales Record. Please Delete again if you are sure!')
+                                            setAlertTimeout(5000)
+                                                                                        
+                                            deleteSales(sale)
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                        }
                     })}
                     {salesOpts1 === 'rentals' && rentals.filter((ftrrent)=>{
                         const slCreatedAt = new Date(ftrrent.paymentDate).getTime()
@@ -1720,16 +1969,19 @@ const Sales = ()=>{
                                 setFields([])
                                 setAddEmployeeId('')
                                 setCurSale(null)
+                                setCurApproval(null)
                             }}
                         /> : 
                         <MdAdd 
                             className='add slsadd'
                             onClick={()=>{
+                                setCurApproval(null)
                                 if (salesOpts==='sales'){
                                     setIsView(false)
                                     setFields([])
                                     setAddEmployeeId('')
                                     setCurSale(null)
+                                    setIsApprover(false)
                                 }else if (salesOpts==='rentals'){
                                     setIsView(false)
                                     setRentalFields({...defaultRentalFields})
@@ -2370,7 +2622,7 @@ const Sales = ()=>{
                         })}
                         
                     </div>
-                    {(!isView || salesOpts === 'recovery') && <div className='confirm'>     
+                    {(!isView || salesOpts === 'recovery' || curApproval!==null) && <div className='confirm'>     
                         {salesOpts === 'sales' && <div className='inpcov salesinpcov'>
                             <input 
                                 className='forminp'
@@ -2418,8 +2670,9 @@ const Sales = ()=>{
                                             rt++
                                             if (rt===fields.length){
                                                 // setIsProductView(false)
-                                                // setProductAdd(true)   
-                                                addSales()                             
+                                                // setProductAdd(true)      
+                                                const data = [...accommodationRecords, ...sessionSalesRecords, ...fields]
+                                                runApprovalWorkFlow(curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
                                             }
                                         }else{
                                             if (enteredSales < Number(field.totalSales)){
@@ -2442,7 +2695,7 @@ const Sales = ()=>{
                                     }
                                 }
                             }}
-                        >{postStatus}</div>} 
+                        >{curApproval ? (curApproval.approved? postStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>} 
                         {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:recoveryFields.length?'pointer':'not-allowed'
@@ -2560,9 +2813,10 @@ export default Sales
 
 
 const AddProduct = ({
-    products, setProductAdd, categories, uoms, wrhs, isProductView, curSale,
+    products, productAdd, setProductAdd, categories, uoms, wrhs, isProductView, curSale,
     setIsProductView, handleProductSales, salesEntries, setSalesEntries, fields,
-    getDate, companyRecord, addingProducts, setAddingProducts, setPostedProducts
+    getDate, companyRecord, addingProducts, setAddingProducts, setPostedProducts,
+    runApprovalWorkFlow, isProductApprover
 })=>{    
     const [category, setCategory] = useState('all')
     const [wrh, setWrh] = useState(isProductView ? Object.keys(salesEntries)[0] : 'open bar1' )
@@ -2613,6 +2867,8 @@ const AddProduct = ({
                 documentType: 'Shipment'
             }
         })
+
+        
         wrhs.forEach((wrh)=>{
             if (!wrh.purchase){
                 allEntries[wrh.name] = [...wrhEntries]
@@ -2621,11 +2877,58 @@ const AddProduct = ({
         setSalesEntries(allEntries)
     }
 
+    const setApprovalEntries = (approval)=>{
+        const allEntries = {}
+        const wrhEntries = [...products].map((product, index)=>{
+            const uom1 = uoms.filter((uom)=>{
+                return uom.code === product.purchaseUom
+            })      
+
+            const purchaseWrh = wrhs.find((warehouse)=>{
+                return warehouse.purchase
+            })
+            const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+            let cummulativeUnitCostPrice = 0            
+            cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+
+            return {                
+                productId : product.i_d,
+                index: index,
+                name: product.name,
+                category: product.category,
+                quantity: '',
+                baseQuantity: 0,
+                salesUom: product.salesUom,
+                baseUom: uom1[0]?.base,
+                costPrice: cummulativeUnitCostPrice,
+                salesPrice: product.salesPrice,
+                vipPrice: product.vipPrice,
+                totalSales: '',
+                entryType: 'Sales',
+                documentType: 'Shipment'
+            }
+        })
+        wrhs.forEach((wrh)=>{
+            if (!wrh.purchase){
+                if (approval.data[wrh.name]){
+                    allEntries[wrh.name] = approval.data[wrh.name]
+                }else{
+                    allEntries[wrh.name] = [...wrhEntries]
+                }
+            }
+        })
+        setSalesEntries(allEntries)
+    }
     useEffect(()=>{
         setAddingProducts(false)
         if (!isProductView){
             if (curSale!==null && localStorage.getItem(`sales-${curSale?.createdAt}`)){
-                setSalesEntries(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`)))
+                if (!curSale.approval){
+                    setSalesEntries(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`)))
+                }else{
+                    setApprovalEntries(curSale.approval)
+                }
+
             }else if (!localStorage.getItem(`sales-${curSale?.createdAt}`)){
                 resetSalesEntries()
             }
@@ -2763,7 +3066,7 @@ const AddProduct = ({
                             <div>{
                                 `
                                     Total Sales Amount
-                                    ${(companyRecord.status==='admin') || true ? 
+                                    ${(companyRecord.status==='admin') ? 
                                         (`(${salesEntries[wrh]?.reduce((sum, entry) => sum + Math.abs(Number(entry.totalSales)), 0).toLocaleString()})`)
                                         : ''
                                     }
@@ -2796,7 +3099,7 @@ const AddProduct = ({
                                             name='quantity'
                                             value={isProductView? Math.abs(Number(entry.quantity)) : entry.quantity}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
-                                            disabled={isProductView}
+                                            disabled={isProductView || !curSale.approval?.message}
                                         />
                                     </div>
                                     <div>
@@ -2804,7 +3107,7 @@ const AddProduct = ({
                                             name='salesUom'
                                             value={entry.salesUom}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
-                                            disabled={isProductView}
+                                            disabled={isProductView || !curSale.approval?.message}
                                         >
                                             {uoms.map((uom, idx)=>{
                                                 return (
@@ -2818,7 +3121,7 @@ const AddProduct = ({
                                             name='totalSales'
                                             type='number'
                                             value={isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}
-                                            disabled = {wrh!=='kitchen' || !entry.quantity || isProductView}
+                                            disabled = {wrh!=='kitchen' || !entry.quantity || isProductView || !curSale.approval?.message}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
                                         >
                                             <option value = {isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}>{isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}</option>
@@ -2835,11 +3138,14 @@ const AddProduct = ({
                             style={{cursor: addingProducts? 'not-allowed':'pointer'}}
                             onClick={()=>{
                                 if (!addingProducts){
-                                    setAddingProducts(true)
-                                    handleProductSales()
+                                    setAddingProducts(true)                                    
+                                    handleProductSales()                                    
                                 }
                             }}
-                        >{curSale === null ? 'Add and Post' : 'Save'}</div>}
+                        >{curSale === null ? 
+                            (curSale.approval?.approved ? 'Add and Post' : (isProductApprover? 'Approve Request' : 'Request Approval')) 
+                            : (curSale.approval?.approved ? 'Save' : (isProductApprover? 'Approve Request' : 'Request Approval')) 
+                        }</div>}
                         <div 
                             className='add-products-button-cancel'
                             onClick={()=>{
@@ -2847,7 +3153,7 @@ const AddProduct = ({
                                 setIsProductView(false)
                                 setProductAdd(false)
                                 if(!isProductView){
-                                    if(curSale!==null){
+                                    if(curSale!==null && curSale.approval===undefined){
                                         localStorage.setItem(`sales-${curSale.createdAt}`, JSON.stringify(salesEntries));
                                     }
                                 }
