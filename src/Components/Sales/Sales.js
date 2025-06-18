@@ -480,7 +480,7 @@ const Sales = ()=>{
             lastUpdatedBy: companyRecord?.emailid
         }
         if (approvalStatus){
-            approvalStatus.approvedBy = companyRecord?.emailid
+            approvalState.approvedBy = companyRecord?.emailid
         }
         const resp = await updateApproval(company, module, section, {                                                                
             ...approvalState
@@ -2909,6 +2909,7 @@ const AddProduct = ({
                 documentType: 'Shipment'
             }
         })
+
         wrhs.forEach((wrh)=>{
             if (!wrh.purchase){
                 if (approval.data[wrh.name]){
@@ -2918,6 +2919,7 @@ const AddProduct = ({
                 }
             }
         })
+
         setSalesEntries(allEntries)
     }
     useEffect(()=>{
@@ -2927,11 +2929,16 @@ const AddProduct = ({
                 if (!curSale.approval){
                     setSalesEntries(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`)))
                 }else{
+                    console.log(curSale.approval)
                     setApprovalEntries(curSale.approval)
                 }
 
             }else if (!localStorage.getItem(`sales-${curSale?.createdAt}`)){
-                resetSalesEntries()
+                if (!curSale.approval){
+                    resetSalesEntries()
+                }else{
+                    setApprovalEntries(curSale.approval)
+                }
             }
         }
     },[])
