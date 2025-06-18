@@ -473,11 +473,17 @@ const Sales = ()=>{
         setAlertState('info')
         setAlert('Updating Approval...')
         setAlertTimeout(100000)
-        const resp = await updateApproval(company, module, section, {                                                                
+        const approvalState = {
             approved: approvalStatus,
             message: approvalMessage,
             createdAt: curApproval.createdAt,
             lastUpdatedBy: companyRecord?.emailid
+        }
+        if (approvalStatus){
+            approvalStatus.approvedBy = companyRecord?.emailid
+        }
+        const resp = await updateApproval(company, module, section, {                                                                
+            ...approvalState
         })
         if (resp.completed){
             getApprovals(company)
@@ -505,15 +511,7 @@ const Sales = ()=>{
     const runApprovalWorkFlow = async(curApproval, module, section, data, runApproval, link)=>{
         
         const executePostAction = ()=>{
-            runApproval()
-            // if (module ==='sales'){
-            //     if (section = 'postSales'){
-            //         addSales()                                                 
-            //     }
-            //     if (section = 'addSalesProduct'){
-            //         handleProductSales()
-            //     }
-            // }
+            runApproval()            
             if (curApproval?.createdAt){
                 removeApproval(company, module, section, {                        
                     createdAt: curApproval.createdAt,
@@ -565,6 +563,7 @@ const Sales = ()=>{
                 }
             }
         }
+
         if (![null, undefined].includes(curApproval)){
             if (curApproval.approved){
                 executePostAction()
@@ -1016,6 +1015,7 @@ const Sales = ()=>{
                 totalBankSales,
                 totalDebt,
                 totalShortage,
+                approvedBy: curApproval?.approvedBy,
                 // productsRef: createdAt,
                 record: [...fields1]
             }
@@ -1544,7 +1544,8 @@ const Sales = ()=>{
         const resps = await fetchServer("POST", {
             database: company,
             collection: "Rentals", 
-            update: newRental
+            update: newRental,
+            approvedBy: curApproval?.approvedBy
         }, "createDoc", server)
         
         if (resps.err){
@@ -2723,7 +2724,7 @@ const Sales = ()=>{
                                         }
                                     })
                                     if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo){
-                                        postRecovery()
+                                        runApprovalWorkFlow(curApproval, 'sales', 'postRecovery', recoveryFields, postRecovery)
                                     }else{
                                         setActionMessage('')
                                         setAlertState('error')
@@ -2744,10 +2745,10 @@ const Sales = ()=>{
                             }}
                             onClick={()=>{
                                 if (rentalFields.paymentAmount && rentalFields.expectedPayment){
-                                    postRentals()
+                                    runApprovalWorkFlow(curApproval, 'sales', 'postRentals', rentalFields, postRentals)                                    
                                 }
                             }}
-                        >{rentalsStatus}</div>}                        
+                        >{curApproval ? (curApproval.approved? rentalsStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>}                        
                     </div>}
                 </div>
             </div>
@@ -3099,7 +3100,7 @@ const AddProduct = ({
                                             name='quantity'
                                             value={isProductView? Math.abs(Number(entry.quantity)) : entry.quantity}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
-                                            disabled={isProductView || !curSale.approval?.message}
+                                            disabled={isProductView || (!curSale.approval?.message && curSale.approval !== undefined)}
                                         />
                                     </div>
                                     <div>
@@ -3107,7 +3108,7 @@ const AddProduct = ({
                                             name='salesUom'
                                             value={entry.salesUom}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
-                                            disabled={isProductView || !curSale.approval?.message}
+                                            disabled={isProductView || (!curSale.approval?.message && curSale.approval !== undefined)}
                                         >
                                             {uoms.map((uom, idx)=>{
                                                 return (
@@ -3121,7 +3122,7 @@ const AddProduct = ({
                                             name='totalSales'
                                             type='number'
                                             value={isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}
-                                            disabled = {wrh!=='kitchen' || !entry.quantity || isProductView || !curSale.approval?.message}
+                                            disabled = {wrh!=='kitchen' || !entry.quantity || isProductView || (!curSale.approval?.message && curSale.approval !== undefined)}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
                                         >
                                             <option value = {isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}>{isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}</option>
