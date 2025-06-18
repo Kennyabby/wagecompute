@@ -480,7 +480,7 @@ const Sales = ()=>{
             lastUpdatedBy: companyRecord?.emailid
         }
         if (approvalStatus){
-            approvalState.approvedBy = companyRecord?.emailid
+            approvalState.approvedBy = companyRecord?.emailid || companyRecord?.emailid
         }
         const resp = await updateApproval(company, module, section, {                                                                
             ...approvalState
@@ -1015,7 +1015,7 @@ const Sales = ()=>{
                 totalBankSales,
                 totalDebt,
                 totalShortage,
-                approvedBy: curApproval?.approvedBy,
+                approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
                 // productsRef: createdAt,
                 record: [...fields1]
             }
@@ -1248,6 +1248,7 @@ const Sales = ()=>{
                         })
                         employee.employeeDebtRecoverd = totalDebtRecovered
                         employee.recoveryList = employeeRecoveredList
+                        employee.approvedBy = curApproval?.approvedBy || companyRecord?.emailid
                         updtEmployee={...employee}
                     }
                 })
@@ -1309,7 +1310,8 @@ const Sales = ()=>{
                             }
                         })                                                          
                         sale.totalDebtRecovered = totalDebtRecovered
-                        sale.recoveryList = saleRecoveredList                        
+                        sale.recoveryList = saleRecoveredList 
+                        sale.approvedBy = curApproval.approvedBy || companyRecord?.emailid                     
                         updtSale={...sale}
                     }
                 })
@@ -1545,7 +1547,7 @@ const Sales = ()=>{
             database: company,
             collection: "Rentals", 
             update: newRental,
-            approvedBy: curApproval?.approvedBy
+            approvedBy: curApproval?.approvedBy || companyRecord?.emailid
         }, "createDoc", server)
         
         if (resps.err){
@@ -2738,7 +2740,7 @@ const Sales = ()=>{
                                     }
                                 }
                             }}
-                        >{recoveryStatus}</div>}
+                        >{recoveryStatus ? (curApproval?.approved? rentalsStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>}
                         {salesOpts === 'rentals' && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:(rentalFields.paymentAmount && rentalFields.expectedPayment)?'pointer':'not-allowed'
@@ -2915,7 +2917,11 @@ const AddProduct = ({
                 if (approval.data[wrh.name]){
                     allEntries[wrh.name] = approval.data[wrh.name]
                 }else{
-                    allEntries[wrh.name] = [...wrhEntries]
+                    if (approval.data[wrh.name]?.length && approval.message){
+                        allEntries[wrh.name] = approval.data[wrh.name]                        
+                    }else{
+                        allEntries[wrh.name] = [...wrhEntries]
+                    }
                 }
             }
         })
@@ -2929,7 +2935,7 @@ const AddProduct = ({
                 if (!curSale.approval){
                     setSalesEntries(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`)))
                 }else{
-                    console.log(curSale.approval)
+                    // console.log(curSale.approval)
                     setApprovalEntries(curSale.approval)
                 }
 
