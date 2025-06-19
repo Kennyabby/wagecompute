@@ -3020,6 +3020,7 @@ const AddProduct = ({
             }
         }
     }
+
     return (
         <>
             <div className='addproduct'>
@@ -3043,7 +3044,7 @@ const AddProduct = ({
                             })                        
                         }
                         <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
-                        {(isProductView || (!curSale.approval?.message && curSale.approval !== undefined)) && <div
+                        {(isProductView && (!curSale.approval?.message && curSale.approval !== undefined)) && <div
                             className='slprwh-print'
                             onClick={()=>{
                                 resetSalesEntries()
