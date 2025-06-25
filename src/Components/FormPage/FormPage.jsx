@@ -41,15 +41,12 @@ const FormPage = ()=>{
         { "value": "2025-04-21", "desc": "Easter Monday" },
         { "value": "2025-05-01", "desc": "Workers' Day" },
         { "value": "2025-06-12", "desc": "Democracy Day" },
-        { "value": "2025-06-16", "desc": "Father's Day" },
         { "value": "2025-10-01", "desc": "Independence Day" },
         { "value": "2025-12-25", "desc": "Christmas Day" },
         { "value": "2025-12-26", "desc": "Boxing Day" },
         { "value": "2025-03-29", "desc": "Eid al-Fitr (Tentative Date)" },
         { "value": "2025-03-30", "desc": "Eid al-Fitr (Tentative Date)" },
         { "value": "2025-03-31", "desc": "Eid al-Fitr (Tentative Date)" },
-        { "value": "2025-07-04", "desc": "Eid al-Adha (Tentative Date)" },
-        { "value": "2025-07-04", "desc": "Eid al-Adha (Public Holiday)" },
     ])
     const [excludeEmployees, setExcludeEmployees] = useState([])
     const [dateexcludeEmployees, setDateExcludeEmployees] = useState([])
@@ -95,7 +92,7 @@ const FormPage = ()=>{
     const formatDate = (date) => {
         const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    
+        date = new Date(date)
         const day = days[date.getDay()];
         const month = months[date.getMonth()];
         const dayOfMonth = date.getDate();
@@ -109,9 +106,14 @@ const FormPage = ()=>{
 
     const computeMonthlyHours = (totalTimeObject)=>{
         const holidayDates = holidays.map((holiday)=>{return getDate(holiday.value)})
+        console.log('holidays:',holidayDates)
         const expectedPunchedDays = punchedDays.filter((punchday)=>{
+            if (holidayDates.includes(punchday)){
+                console.log('matched: ', punchday)
+            }
             return !holidayDates.includes(punchday)
         })
+        console.log('expected:',expectedPunchedDays)
        
         var employeeDet = employeeDetails
         var toexport = []
@@ -191,26 +193,26 @@ const FormPage = ()=>{
                             return sundayWorkedDays
                         })
 
-                        if(expectedPunchedDays.includes(timeObject['Date'])){
-                            asumTime -= timeObject['Total Hours'] 
-                            act--
+                        // if(expectedPunchedDays.includes(timeObject['Date'])){
+                        //     asumTime -= timeObject['Total Hours'] 
+                        //     act--
                             
-                            setEmployeeWorkedDays((employeeWorkedDays)=>{
-                                employeeWorkedDays[employeeID].pop()
-                                return employeeWorkedDays
-                            })
-                        }
+                        //     setEmployeeWorkedDays((employeeWorkedDays)=>{
+                        //         employeeWorkedDays[employeeID].pop()
+                        //         return employeeWorkedDays
+                        //     })
+                        // }
                     }
                     if (timeObject['Shift']==='Morning'){
                         msh++
-                        if(newworkdate.getDay()===0){
-                            msh--
-                        }
+                        // if(newworkdate.getDay()===0){
+                        //     msh--
+                        // }
                     }else if (timeObject['Shift']==='Night'){
                         nsh++
-                        if(newworkdate.getDay()===0){
-                            nsh--
-                        }
+                        // if(newworkdate.getDay()===0){
+                        //     nsh--
+                        // }
                     }
                 }
 
@@ -218,7 +220,7 @@ const FormPage = ()=>{
             const expectedWorkDays = expectedPunchedDays.length - excludedWorkDates
             const expectedWorkHours = expectedWorkDays * 9
             const salaryPerHour = (employeeSalary/expectedWorkDays)/9
-            const auctualWorkHours = parseFloat(asumTime.toFixed(2))
+            const auctualWorkHours = parseFloat((asumTime).toFixed(2))
             const expectedWorkSalary = parseFloat((expectedWorkHours*salaryPerHour).toFixed(2))
             const employeeWorkSalary = parseFloat((auctualWorkHours*salaryPerHour).toFixed(2)) 
             const sundaysWorkHours = parseFloat(ssumTime.toFixed(2))
@@ -232,9 +234,9 @@ const FormPage = ()=>{
                 expectedWorkSalary : 
                 (expectedWorkSalary+overtimeSalary-deductableSalary+holidayWorkSalary)).toFixed(2))
             employee['Worked Days (Expected)'] = expectedWorkDays
-            employee['Worked Days (Actual)'] = <label>{act}
-                {act < expectedWorkDays && <span className='red'>{` abs(${
-                    expectedWorkDays - act
+            employee['Worked Days (Actual)'] = <label>{act+hct}
+                {(act+hct) < expectedWorkDays && <span className='red'>{` abs(${
+                    expectedWorkDays - (act+hct)
                 })`} </span>}
                 <span className='viewtag' onClick={()=>{
                     setInfoHeader('Worked Days (Actual)')
@@ -363,8 +365,12 @@ const FormPage = ()=>{
         // console.log('date punched: ',datesPunched)
         setPunchedDays(datesPunched.filter((date)=>{
             const validDate = new Date(date)
+            // console.log(date, getDate(date))
             if (validDate.getDay()!==0){
                 return date
+            }else{
+                return date
+                // console.log('invalid Date:',date)
             }
         }))
     }
