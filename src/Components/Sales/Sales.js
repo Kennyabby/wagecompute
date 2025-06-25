@@ -1217,6 +1217,9 @@ const Sales = ()=>{
 
     const postRecovery = async()=>{
         setRecoveryStatus('Posting Recovery ....')
+        setAlertState('info')
+        setAlert('Posting Recovery ....')
+        setAlertTimeout(100000)
         recoveryFields.forEach( async(field)=>{
             if(recoveryEmployeeId === (field.recoverySales).slice(0,field.recoverySales.indexOf('-'))){
                 var updtEmployee = {}
@@ -1311,7 +1314,7 @@ const Sales = ()=>{
                         })                                                          
                         sale.totalDebtRecovered = totalDebtRecovered
                         sale.recoveryList = saleRecoveredList 
-                        sale.approvedBy = curApproval.approvedBy || companyRecord?.emailid                     
+                        sale.approvedBy = curApproval?.approvedBy || companyRecord?.emailid                     
                         updtSale={...sale}
                     }
                 })
