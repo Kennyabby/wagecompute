@@ -559,9 +559,9 @@ const PointOfSales = () => {
                                 }))
                             }else{
                                 const myTableOrders = ordersUpdate.filter(order => 
-                                    order.tableId === currentOrder.tableId
+                                    order.tableId === currentTable.i_d
                                     && order.wrh === wrh &&
-                                    order.sessionId === curSession.i_d &&
+                                    getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.i_d) &&
                                     order.handlerId === companyRecord.emailid
                                 )
                                 setTableOrders(myTableOrders)
@@ -650,19 +650,19 @@ const PointOfSales = () => {
                     setCurrentTable(table)
                     // Store all table orders in state
                     var ordersUpdate = response.record
+                    var filteredOrders = response .record
                     if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-                        setTableOrders(ordersUpdate.filter((order)=>{
+                        filteredOrders = ordersUpdate.filter((order)=>{
                             var orderDate = '01/01/1970'
                             if (order.createdAt){
                                 orderDate = order.createdAt
                             }
                             return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
-                        }))
-                    }else{
-                        setTableOrders(response.record);
+                        })
                     }
+                    setTableOrders(filteredOrders)
                     // Set the most recent pending order as active, or create new one if none pending
-                    const pendingOrders = response.record.filter(order => order.status === 'pending');
+                    const pendingOrders = filteredOrders.filter(order => order.status === 'pending');
                     const ordersNumber = pendingOrders.length
                     if (ordersNumber) {
                         setCurrentOrder(pendingOrders[0]);
@@ -727,9 +727,9 @@ const PointOfSales = () => {
     // 5. Order Management
     // =========================================
     const handlePlaceOrder = async () => {
-        fetchSessions(company, "sales", companyRecord)
-        fetchTables(company)
-        getProducts(company)
+        // fetchSessions(company, "sales", companyRecord)
+        // fetchTables(company)
+        // getProducts(company)
         loadInitialData()
         setAlertState('info')
         setAlert('Placing Order...')
@@ -747,10 +747,11 @@ const PointOfSales = () => {
             createdAt: new Date().getTime()
         }
         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        console.log({activeTables: [...(prevTable?.activeTables || []), {...activeOrder, tableId: currentOrder.tableId}]})
         const resp = await fetchServer("POST", {
             database: company,
             collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables) || [], activeOrder]}]
+            prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables || []), {...activeOrder, tableId: currentOrder.tableId}]}]
         }, "updateOneDoc", server)
         if (resp.err){
             setAlertState('error');
@@ -762,6 +763,7 @@ const PointOfSales = () => {
         
         const placedOrder = {
             ...currentOrder, 
+            tableId: currentOrder.tableId,
             status: 'pending', 
             placedAt: new Date().getTime(),
             delivery: 'pending'

@@ -523,7 +523,7 @@ const Delivery = () => {
                                         orderDate = order.createdAt
                                     }
                                     if (
-                                        order.tableId === currentOrder.tableId
+                                        order.tableId === currentTable.i_d
                                         && (order.wrh === wrh || wrh === 'kitchen') 
                                     ){
                                         // Check if the order is from the current session
@@ -531,12 +531,11 @@ const Delivery = () => {
                                     }
                                 }))
                             }else{
-                                const myTableOrders = ordersUpdate.filter(order => 
-                                    order.tableId === currentOrder.tableId
-                                    && order.wrh === wrh &&
-                                    order.sessionId === curSession.i_d &&
-                                    order.handlerId === companyRecord.emailid
-                                )
+                                const myTableOrders = ordersUpdate.filter((order) =>{                                    
+                                    return order.tableId === currentTable.i_d
+                                    && order.wrh === wrh
+                                    && getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.i_d)                                    
+                                })
                                 setTableOrders(myTableOrders)
                             }
                         }
