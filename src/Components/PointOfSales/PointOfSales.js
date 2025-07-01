@@ -650,7 +650,7 @@ const PointOfSales = () => {
                     setCurrentTable(table)
                     // Store all table orders in state
                     var ordersUpdate = response.record
-                    var filteredOrders = response .record
+                    var filteredOrders = response.record
                     if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
                         filteredOrders = ordersUpdate.filter((order)=>{
                             var orderDate = '01/01/1970'
@@ -747,11 +747,10 @@ const PointOfSales = () => {
             createdAt: new Date().getTime()
         }
         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        console.log({activeTables: [...(prevTable?.activeTables || []), {...activeOrder, tableId: currentOrder.tableId}]})
         const resp = await fetchServer("POST", {
             database: company,
             collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables || []), {...activeOrder, tableId: currentOrder.tableId}]}]
+            prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables || []), {...activeOrder}]}]
         }, "updateOneDoc", server)
         if (resp.err){
             setAlertState('error');
@@ -763,7 +762,6 @@ const PointOfSales = () => {
         
         const placedOrder = {
             ...currentOrder, 
-            tableId: currentOrder.tableId,
             status: 'pending', 
             placedAt: new Date().getTime(),
             delivery: 'pending'
@@ -837,12 +835,13 @@ const PointOfSales = () => {
                 tableId: currentOrder.tableId,
             }];
         }
-    
-        setCurrentOrder({
+        
+        const updatedOrder = {
             ...currentOrder,
             items: updatedItems,
             totalSales: calculateTotal(updatedItems)
-        });
+        }
+        setCurrentOrder(updatedOrder);
     };
 
     const handleRemoveItem = (itemId) => {
@@ -992,7 +991,7 @@ const PointOfSales = () => {
             setAlert('Payment processed successfully');
             setAlertTimeout(2000)
             setShowPaymentModal(false);
-            createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
+            createNewOrder(currentTable);
             setPaymentDetails({...payPoints})
             printReceipt(newOrder);
             return
@@ -1656,7 +1655,7 @@ const PointOfSales = () => {
                             <button 
                                 className="action-btn"
                                 disabled={placingOrder || makingPayment || currentTable.status === 'unavailable'}
-                                onClick={() => createNewOrder({ _id: currentOrder.tableId, name: currentOrder.tableName })}
+                                onClick={() => createNewOrder(currentTable)}
                             >
                                 New Order
                             </button>
