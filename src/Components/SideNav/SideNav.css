@@ -42,6 +42,7 @@
     /* background: yellow; */
 }
 .navdiv{
+    position: relative;
     width: 110px;
     padding: 8px 0px;
     background: rgb(124, 197, 15);
@@ -94,4 +95,17 @@
     width: 110px;
     font-size: 12px;
     gap: 5px;
+}
+.navdivcount{
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    background: red;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }

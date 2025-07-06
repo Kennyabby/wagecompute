@@ -22,17 +22,19 @@ import { MdLogout } from "react-icons/md";
 const SideNav = ()=>{
     const {
         server, fetchServer, company, companyRecord,
-        setAlertState, setAlert, setAlertTimeout,
+        setAlertState, setAlert, setAlertTimeout, approvals
     } = useContext(ContextProvider)
     const [companyName, setCompanyName] = useState('....') 
     const [curPath, setCurPath] = useState('')
     const [logStatus, setLogStatus] = useState('Log Out')
     const location = useLocation()
     const Navigate = useNavigate()
+
     useEffect(()=>{
         const curloc = location.pathname.slice(1,)
         setCurPath(curloc)
     },[location])
+   
     useEffect(()=>{
         if (companyRecord){
             setCompanyName(companyRecord.name)
@@ -125,6 +127,7 @@ const SideNav = ()=>{
                         <div name="sales" className={'navdiv ' + (curPath==='sales'?'selected':'')}>
                             <GiPayMoney className='navdivicon' name="sales"/>
                             <div name="sales">Sales</div>
+                            {companyRecord?.status==='admin' && approvals.length > 0 && <div className='navdivcount'>{approvals.length}</div>}
                         </div>
                     }
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos')) && 

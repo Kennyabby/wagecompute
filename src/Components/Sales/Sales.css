@@ -113,10 +113,28 @@
     width: 100%;
     justify-content: space-around;
     cursor: pointer;
+    div {
+        display: flex;
+        align-items: center;
+    }
 }
 .slopts{
+    display: flex;
+    align-items: center;
     font-weight: bold;
     border-bottom: solid greenyellow 2px;
+}
+.navdivicon1{
+    font-size: .7em;
+    background: red;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    margin-left: 5px;
+    justify-content: center;
+    align-items: center;
 }
 .salesunit{
     width: 95%;
