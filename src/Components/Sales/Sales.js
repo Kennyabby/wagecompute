@@ -85,7 +85,9 @@ const Sales = ()=>{
     const [isProductApprover, setIsProductApprover] = useState(false)
     const [ftrApprovals, setFtrApprovals] = useState([])
     const [productsApprovals, setProductsApprovals] = useState([])
-
+    const [salesApprovals, setSalesApprovals] = useState([])
+    const [rentalsApprovals, setRentalsApprovals] = useState([])
+    const [recoveryApprovals, setRecoveryApprovals] = useState([])
     const [curSaleDate, setCurSaleDate] = useState(null)
     const scrollRef = useRef(null)
     const loadRef = useRef(null)
@@ -408,7 +410,11 @@ const Sales = ()=>{
             setProductsApprovals(approvals.filter((appr)=>{return appr.section === 'addSalesProduct'}))
         }
     },[approvals, salesOpts])
-
+    useEffect(()=>{
+        setSalesApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === `postSales`.toUpperCase() || appr.section.toUpperCase() === `productSales`.toUpperCase()}))
+        setRentalsApprovals(approvals.filter((appr)=>{return appr.section === 'postRentals'}))
+        setRecoveryApprovals(approvals.filter((appr)=>{return appr.section === 'postRecovery'}))
+    },[approvals])
     useEffect(()=>{
         if (curSale){
             setPostingDate(curSale.postingDate)
@@ -2071,9 +2077,18 @@ const Sales = ()=>{
                     
                     <div className='salesfm'>
                         {<div className='salesopts' onClick={handleSalesOpts}>
-                            <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>Sales</div>
-                            <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>Rentals</div>                            
-                            {<div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>Debt Recovery</div>}
+                            <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>
+                                <div name='sales'>Sales</div>
+                                {companyRecord?.status==='admin' && salesApprovals.length > 0 && <div className='navdivicon1' name="sales">{salesApprovals.length}</div>}
+                            </div>
+                            <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>
+                                <div name='rentals'>Rentals</div>
+                                {companyRecord?.status==='admin' && rentalsApprovals.length > 0 && <div className='navdivicon1' name="rentals">{rentalsApprovals.length}</div>}
+                            </div>                            
+                            {<div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>
+                                <div name='recovery'>Debt Recovery</div>
+                                {companyRecord?.status==='admin' && recoveryApprovals.length > 0 && <div className='navdivicon1' name="recovery">{recoveryApprovals.length}</div>}
+                            </div>}
                         </div>}
                         {salesOpts==='sales' && (!isView && <div className='addnewsales'>
                             <div className='inpcov'>
