@@ -5,7 +5,7 @@ import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
-import html2pdf from 'html2pdf.js';
+import html2pdf, { f } from 'html2pdf.js';
 import SalesReport from './SalesReport/SalesReport';
 import RentalReceipt from './RentalReceipt/RentalReceipt';
 import DebtReport from './DebtReport/DebtReport';
@@ -1093,17 +1093,32 @@ const Sales = ()=>{
     };
 
     const handleApprovalViewClick = (approval)=>{
-        if(companyRecord?.permissions.includes('postSales') || companyRecord?.status==='admin'){
-            setIsApprover(true)
-        }
-        setCurSale(null)
-        setCurApproval(approval)
-        setPostingDate(approval.postingDate)
-        setFields([...approval.data])
-        if (approval.message){
-            setIsView(false)
+        if (salesOpts === 'sales'){        
+            if(companyRecord?.permissions.includes('postSales') || companyRecord?.status==='admin'){
+                setIsApprover(true)
+            }
+            setCurSale(null)
+            setCurApproval(approval)
+            setPostingDate(approval.postingDate)
+            setFields([...approval.data])
+            if (approval.message){
+                setIsView(false)
+            }else{
+                setIsView(true)
+            }
         }else{
-            setIsView(true)
+            if(companyRecord?.permissions.includes('postRentals') || companyRecord?.status==='admin'){
+                setIsApprover(true)
+            }
+            setCurRent(null)
+            setCurApproval(approval)
+            setPostingDate(approval.postingDate)
+            setRentalFields({...approval.data})
+            if (approval.message){
+                setIsView(false)
+            }else{
+                setIsView(true)
+            }
         }
     }
 
@@ -1154,6 +1169,7 @@ const Sales = ()=>{
     
     const handleRentalViewClick = (rent) =>{
         setCurRent(rent)
+        setCurApproval(null)
         setSalesOpts('rentals')
         setIsView(true)
         setRentalFields({...rent})
@@ -1784,6 +1800,7 @@ const Sales = ()=>{
                                     }}
                                 >
                                     <div className='dets sldets'>
+                                        <div>Approval Type: <b>{'SALES'}</b></div>
                                         <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                         <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
                                         {message && <div>Message: <b>{message}</b></div>}
@@ -1798,7 +1815,7 @@ const Sales = ()=>{
                                             setAlert('Deleting Approval Data...')
                                             setAlertTimeout(100000)
 
-                                            const resp = await removeApproval(company, 'sales', 'addSalesProduct', {                        
+                                            const resp = await removeApproval(company, 'sales', 'postSales', {                        
                                                 createdAt: createdAt,
                                                 postingDate: postingDate                                                 
                                             })     
@@ -1807,6 +1824,7 @@ const Sales = ()=>{
                                                 setAlertState('success')
                                                 setAlert('Deleted Approval Data Successfully!')
                                                 setAlertTimeout(3000)
+                                                setCurSale(null)
                                             }
 
                                         }}
@@ -1886,8 +1904,8 @@ const Sales = ()=>{
                             )
                         }
                     })}
-                    {salesOpts1 === 'rentals' && rentals.filter((ftrrent)=>{
-                        const slCreatedAt = new Date(ftrrent.paymentDate).getTime()
+                    {salesOpts1 === 'rentals' && [...ftrApprovals, ...rentals].filter((ftrrent)=>{
+                        const slCreatedAt = new Date(ftrrent.paymentDate || ftrrent.postingDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
                         const toDate = new Date(saleTo).getTime()
                         if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
@@ -1895,39 +1913,88 @@ const Sales = ()=>{
                             return ftrrent
                         }
                     }).map((rent, index)=>{
-                        const {createdAt, paymentDate, paymentMonth, paymentAmount, balanceRemaining, expectedPayment, 
-                            rentalSpace, receivedFrom 
-                        } = rent
-                        return(
-                            <div className={'dept' + (curRent?.createdAt===createdAt?' curview':'')} key={index} 
-                                onClick={(e)=>{
-                                    handleRentalViewClick(rent)
-                                }}
-                            >
-                                <div className='dets sldets'>
-                                    <div>Payment Date: <b>{getDate(paymentDate)}</b></div>
-                                    <div>Rental Space: <b>{rentalSpace.toUpperCase()}</b></div>
-                                    <div>For The Month: <b>{paymentMonth}</b></div>
-                                    <div>Expected Payment: <b>{'₦'+(Number(expectedPayment)).toLocaleString()}</b></div>
-                                    <div>Payment Amount: <b>{'₦'+(Number(paymentAmount)).toLocaleString()}</b></div>
-                                    <div>Balance Remaining: <b>{'₦'+(Number(balanceRemaining)).toLocaleString()}</b></div>                                    
-                                    <div className='deptdesc'>{`Payment Received From:`} <b>{`${receivedFrom}`}</b></div>
-                                </div>
-                                {(companyRecord.status==='admin' && !saleEmployee) && <div 
-                                    className='edit'
-                                    name='delete'         
-                                    style={{color:'red'}}                           
-                                    onClick={()=>{                                        
-                                        setAlertState('info')
-                                        setAlert('You are about to delete the selected Rental Record. Please Delete again if you are sure!')
-                                        setAlertTimeout(5000)                                                                                    
-                                        deleteRental(rent)
+                        if (rent.isApproval){
+                            const {createdAt, postingDate, message, handlerId, approved} = rent
+                            var textColor = 'red'
+                            if (approved){
+                                textColor ='green'
+                            }
+                            return (
+                                <div className={'dept sldept' + (curApproval?.createdAt===createdAt?' curview':'')} key={index} 
+                                    onClick={(e)=>{
+                                        handleApprovalViewClick(rent)
                                     }}
                                 >
-                                    Delete
-                                </div>}
-                            </div>
-                        )
+                                    <div className='dets sldets'>
+                                        <div>Approval Type: <b>{'RENTALS'}</b></div>
+                                        <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                        <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
+                                        {message && <div>Message: <b>{message}</b></div>}
+                                        <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                    </div>
+                                    {(companyRecord.status==='admin' && !saleEmployee) && <div 
+                                        className='edit'
+                                        name='delete'         
+                                        style={{color:'red'}}                           
+                                        onClick={async ()=>{                                        
+                                            setAlertState('info')
+                                            setAlert('Deleting Approval Data...')
+                                            setAlertTimeout(100000)
+
+                                            const resp = await removeApproval(company, 'sales', 'postRentals', {                        
+                                                createdAt: createdAt,
+                                                postingDate: postingDate                                                 
+                                            })     
+                                            
+                                            if(resp.completed){
+                                                setAlertState('success')
+                                                setAlert('Deleted Approval Data Successfully!')
+                                                setAlertTimeout(3000)
+                                                setCurRent(null)
+                                            }
+
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                            
+                        }else{
+                            const {createdAt, paymentDate, paymentMonth, paymentAmount, balanceRemaining, expectedPayment, 
+                                rentalSpace, receivedFrom 
+                            } = rent
+                            return(
+                                <div className={'dept' + (curRent?.createdAt===createdAt?' curview':'')} key={index} 
+                                    onClick={(e)=>{
+                                        handleRentalViewClick(rent)
+                                    }}
+                                >
+                                    <div className='dets sldets'>
+                                        <div>Payment Date: <b>{getDate(paymentDate)}</b></div>
+                                        <div>Rental Space: <b>{rentalSpace.toUpperCase()}</b></div>
+                                        <div>For The Month: <b>{paymentMonth}</b></div>
+                                        <div>Expected Payment: <b>{'₦'+(Number(expectedPayment)).toLocaleString()}</b></div>
+                                        <div>Payment Amount: <b>{'₦'+(Number(paymentAmount)).toLocaleString()}</b></div>
+                                        <div>Balance Remaining: <b>{'₦'+(Number(balanceRemaining)).toLocaleString()}</b></div>                                    
+                                        <div className='deptdesc'>{`Payment Received From:`} <b>{`${receivedFrom}`}</b></div>
+                                    </div>
+                                    {(companyRecord.status==='admin' && !saleEmployee) && <div 
+                                        className='edit'
+                                        name='delete'         
+                                        style={{color:'red'}}                           
+                                        onClick={()=>{                                        
+                                            setAlertState('info')
+                                            setAlert('You are about to delete the selected Rental Record. Please Delete again if you are sure!')
+                                            setAlertTimeout(5000)                                                                                    
+                                            deleteRental(rent)
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                        }
                   })}
                   {/* {(nextSales === null || salesLoadCount) ? <div ref={loadRef} className='scrollLoad'>
                     Loading...
