@@ -411,7 +411,7 @@ const Sales = ()=>{
         }
     },[approvals, salesOpts])
     useEffect(()=>{
-        setSalesApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === `postSales`.toUpperCase() || appr.section.toUpperCase() === `productSales`.toUpperCase()}))
+        setSalesApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === `postSales`.toUpperCase() || appr.section.toUpperCase() === `addSalesProduct`.toUpperCase()}))
         setRentalsApprovals(approvals.filter((appr)=>{return appr.section === 'postRentals'}))
         setRecoveryApprovals(approvals.filter((appr)=>{return appr.section === 'postRecovery'}))
     },[approvals])
