@@ -1298,7 +1298,6 @@ const Sales = ()=>{
                 }else{                
                     setEmployees(updatedEmployees)
                     getEmployees(company)
-                    getApprovals(company)
                     setRecoveryFields([])
                     setAlertState('success')
                     setAlert('Debt Recovered Successfully!')
@@ -1588,6 +1587,7 @@ const Sales = ()=>{
             setIsView(true)
             setRentalFields({...newRental})
             getRentals(company)
+            getApprovals(company)
             setAlertState('success')
             setAlert('Rentals Posted Successfully!')
             setAlertTimeout(5000)
