@@ -1298,6 +1298,7 @@ const Sales = ()=>{
                 }else{                
                     setEmployees(updatedEmployees)
                     getEmployees(company)
+                    getApprovals(company)
                     setRecoveryFields([])
                     setAlertState('success')
                     setAlert('Debt Recovered Successfully!')
@@ -1633,13 +1634,13 @@ const Sales = ()=>{
                         setApprovalStatus(false)
                         setApprovalMessage('')
                     }}
-                    module={salesOpts}
+                    module={'sales'}
                     section={productAdd ? 'addSalesProduct' : `post${salesOpts}`}
                     postApprovalUpdate={()=>{
                         if (productAdd){
-                            postApprovalUpdate(company, salesOpts, `addSalesProduct`, curSale.approval)
+                            postApprovalUpdate(company, 'sales', `addSalesProduct`, curSale.approval)
                         }else{
-                            postApprovalUpdate(company, salesOpts, `post${salesOpts}`, curApproval)
+                            postApprovalUpdate(company, 'sales', `post${salesOpts}`, curApproval)
                         }
                     }}
                 />}     
