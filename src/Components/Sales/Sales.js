@@ -805,7 +805,7 @@ const Sales = ()=>{
             })
             const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
             // console.log(totalSalesAmount, totalAmount)                
-            if (totalSalesAmount === totalAmount){
+            if (Math.round(totalSalesAmount) === totalAmount){
                 executeProductsPost(validEntries, entriesLength, timestamp)
             }else{
                 setAlertState('error')
