@@ -804,7 +804,8 @@ const Sales = ()=>{
                 }
             })
             const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
-            if (totalSalesAmount === totalAmount){                
+            // console.log(totalSalesAmount, totalAmount)                
+            if (totalSalesAmount === totalAmount){
                 executeProductsPost(validEntries, entriesLength, timestamp)
             }else{
                 setAlertState('error')
@@ -3130,7 +3131,7 @@ const AddProduct = ({
                             })                        
                         }
                         <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
-                        {(isProductView && (!curSale.approval?.message && curSale.approval !== undefined)) && <div
+                        {(!isProductView || (curSale.approval?.message && curSale.approval !== undefined)) && <div
                             className='slprwh-print'
                             onClick={()=>{
                                 resetSalesEntries()
@@ -3167,7 +3168,7 @@ const AddProduct = ({
                             <div>{
                                 `
                                     Total Sales Amount
-                                    ${(companyRecord.status==='admin') ? 
+                                    ${(companyRecord.status==='admin' || true) ? 
                                         (`(${salesEntries[wrh]?.reduce((sum, entry) => sum + Math.abs(Number(entry.totalSales)), 0).toLocaleString()})`)
                                         : ''
                                     }
