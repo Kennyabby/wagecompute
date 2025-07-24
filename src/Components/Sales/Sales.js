@@ -807,10 +807,11 @@ const Sales = ()=>{
                 setAddingProducts(false)
                 setPostCount(0)   
                 return;         
+            }else{
+                Object.keys(validEntries).forEach((entryWrh)=>{
+                    postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
+                })
             }
-            Object.keys(validEntries).forEach((entryWrh)=>{
-                postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
-            })
         }
 
         runApprovalWorkFlow(curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
@@ -840,18 +841,22 @@ const Sales = ()=>{
                 totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
             } = curSale
             var accommodationAmount = 0
+            var sessionSalesAmount = 0
             record.forEach((saleRecord)=>{
                 if (saleRecord.salesPoint === 'accomodation'){
                     accommodationAmount += Number(saleRecord.totalSales)
                 }
+                if (saleRecord.isSession){
+                    sessionSalesAmount += Number(saleRecord.totalSales)
+                }
             })
-            const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
+            const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
             // console.log(totalSalesAmount, totalAmount)                
             if (Math.round(totalSalesAmount) === totalAmount){
                 executeProductsPost(validEntries, entriesLength, timestamp)
             }else{
                 setAlertState('error')
-                setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation)!')
+                setAlert('Total Product Sales Must Be Equal to Total Sales On This Card (Excluding Accommodation and POS Sales)!')
                 setAlertTimeout(3000)
                 setAddingProducts(false)
             }
@@ -3101,12 +3106,16 @@ const AddProduct = ({
                 totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef 
             } = (curSale || {})
             var accommodationAmount = 0
+            let sessionSalesAmount = 0
             record.forEach((saleRecord)=>{
                 if (saleRecord.salesPoint === 'accomodation'){
                     accommodationAmount += Number(saleRecord.totalSales)
                 }
+                if (saleRecord.isSession){
+                    sessionSalesAmount += Number(saleRecord.totalSales)
+                }
             })
-            const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount
+            const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
             setTotalSalesAmount(totalSalesAmount)
         }else{
             var totalCashSales = 0
