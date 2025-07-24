@@ -339,7 +339,7 @@ const Sales = ()=>{
                             totalWrhTransactions[wh].totalSales += Number(sessionOrder.totalPayment)                        
                             Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                 if (sessionOrder[payPoint]){
-                                    totalWrhTransactions[wh].allPayPoints[payPoint]  += Number(sessionOrder[payPoint])
+                                    totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + Number(sessionOrder[payPoint])
                                     totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? Number(sessionOrder['cash']) : 0)
                                     totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? Number(sessionOrder[payPoint]) : 0)
                                 }                            
@@ -349,7 +349,7 @@ const Sales = ()=>{
                                 totalWrhTransactions[wh].totalSales += Number(sessionOrder.totalPayment)                        
                                 Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                     if (sessionOrder[payPoint]){
-                                        totalWrhTransactions[wh].allPayPoints[payPoint]  += Number(sessionOrder[payPoint])
+                                        totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + Number(sessionOrder[payPoint])
                                         totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? Number(sessionOrder['cash']) : 0)
                                         totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? Number(sessionOrder[payPoint]) : 0)
                                     }                            
@@ -2892,7 +2892,7 @@ const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isV
                 <div>
                     {salesUnit.toUpperCase()}
                 </div>
-                <div><b>Sales: </b>{`${salesAmount.toLocaleString()}`}</div>
+                <div><b>Sales: </b>{`${Number(salesAmount).toLocaleString()}`}</div>
                 {open ?
                     <FaChevronUp 
                         className='viewsales'
