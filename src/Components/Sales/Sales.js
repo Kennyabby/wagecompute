@@ -1064,8 +1064,16 @@ const Sales = ()=>{
                 totalShortage += Number(field.shortage)
                 totalBankSales += Number(field.bankSales)
                 if (field.isSession){
-                    deliverySessions.push(field.deliverySessions)
-                    salesSessions.push(field.salesSessions)
+                    field.deliverySessions?.forEach((deliverySession)=>{
+                        if (!deliverySessions.includes(deliverySession)){
+                            deliverySessions.push(deliverySession)
+                        }
+                    })
+                    field.salesSessions?.forEach((salesSession)=>{
+                        if (!salesSessions.includes(salesSession)){
+                            salesSessions.push(salesSession)
+                        }
+                    })
                 }
             })
             const newSale = {
@@ -1142,13 +1150,24 @@ const Sales = ()=>{
         const controller = new AbortController();
         getEntriesController.current = controller;
         
-        const { signal } = controller;
+        let propFilter = {
+            createdAt: sale.productsRef
+        }
+        if (sale.deliverySessions?.length){
+            propFilter = {
+                $or:[
+                    {
+                        createdAt: sale.productsRef,
+                        sessionId: {$in: sale.deliverySessions}
+                    }
+                ]
+            }
+        }
+        const { signal } = controller;        
         const response = await fetchServer("POST", {
             database: company,
             collection: "InventoryTransactions",
-            prop: {
-                createdAt: sale.productsRef
-            }
+            prop: propFilter
         }, "getDocsDetails", server, signal); // plural version that returns an array
 
         return (Array.isArray(response.record) && response.record.length > 0) ? response.record : [];
