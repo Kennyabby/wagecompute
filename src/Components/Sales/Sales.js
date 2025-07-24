@@ -289,6 +289,12 @@ const Sales = ()=>{
                 if (!sessionEmployees.includes(employeeId)){
                     sessionEmployees = sessionEmployees.concat(employeeId)
                 }
+                session?.orders?.forEach((sessionOrders)=>{
+                    const employeeId = sessionOrders.lastDeliveredBy
+                    if (employeeId && !sessionEmployees.includes(employeeId)){
+                        sessionEmployees = sessionEmployees.concat(employeeId)
+                    }
+                })
             })
             sessionEmployees.forEach((employeeId)=>{                
                 let totalWrhTransactions = {}
@@ -308,35 +314,59 @@ const Sales = ()=>{
                 wrhPoints.forEach((wh)=>{
                     const saleRecord = {}
                     saleRecord.isSession = true
-                    const wrhSessions = allSessions.filter((session)=>{
-                        
+                    let wrhSessionOrders = []
+                    allSessions.forEach((session)=>{
                         const salesEndDate = new Date(postingDate1)
                         salesEndDate.setDate(salesEndDate.getDate() + 1);
 
-                        if (session.wrh === wh && session.end && 
-                            session.type==='sales' && session.employee_id === employeeId                           
-                            && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
-                        ){
-                            return session
-                        }
-                    })
-                    
-                    wrhSessions.forEach((session)=>{
-                        const {totalSalesAmount, debtDue, unAccountedSales} = session
-                        totalWrhTransactions[wh].totalSales += Number(totalSalesAmount)
-                        totalWrhTransactions[wh].debt += Number(debtDue)
-                        totalWrhTransactions[wh].unAccountedSales = Number(unAccountedSales)
-                        Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
-                            if (session[payPoint]){
-                                totalWrhTransactions[wh].allPayPoints[payPoint]  += Number(session[payPoint])
-                                totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? Number(session['cash']) : 0)
-                                totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? Number(session[payPoint]) : 0)
-                            }                            
+                        const sessionOrders = session?.orders || []
+                        sessionOrders.forEach((sessionOrder)=>{
+                        if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
+                            && session.type === 'sales' && session.end && sessionOrder.status === 'completed'
+                                && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
+                            ){
+                                const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                                if (sessionOrder?.salesPosts[salesPostsPay[0]] ===  wh){
+                                    wrhSessionOrders.push({session, sessionOrder})
+                                }
+                            }
                         })
 
                     })
                     
-                    if (wrhSessions.length){
+                    wrhSessionOrders.forEach(({session, sessionOrder}, index)=>{
+                        if (session.employee_id !== employeeId && wh === 'kitchen'){
+                            totalWrhTransactions[wh].totalSales += Number(sessionOrder.totalPayment)                        
+                            Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
+                                if (sessionOrder[payPoint]){
+                                    totalWrhTransactions[wh].allPayPoints[payPoint]  += Number(sessionOrder[payPoint])
+                                    totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? Number(sessionOrder['cash']) : 0)
+                                    totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? Number(sessionOrder[payPoint]) : 0)
+                                }                            
+                            })
+                        }else{
+                            if (session.wrh === wh){
+                                totalWrhTransactions[wh].totalSales += Number(sessionOrder.totalPayment)                        
+                                Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
+                                    if (sessionOrder[payPoint]){
+                                        totalWrhTransactions[wh].allPayPoints[payPoint]  += Number(sessionOrder[payPoint])
+                                        totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? Number(sessionOrder['cash']) : 0)
+                                        totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? Number(sessionOrder[payPoint]) : 0)
+                                    }                            
+                                })
+                                if (index === wrhSessionOrders.length-1){
+                                    const {totalSalesAmount, debtDue, unAccountedSales} = session
+                                    totalWrhTransactions[wh].debt += Number(debtDue)
+                                    totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
+                                    totalWrhTransactions[wh].totalSales += Number(debtDue) + Number(unAccountedSales)                        
+                                }
+                            }
+
+                        }
+
+                    })
+                    
+                    if (wrhSessionOrders.length && totalWrhTransactions[wh].totalSales){
                         const salesUnits1 = {...salesUnits}
                         salesUnits1[wh] = {...(totalWrhTransactions[wh].allPayPoints)}
                         saleRecord.employeeId = employeeId
@@ -505,6 +535,7 @@ const Sales = ()=>{
                 createdAt: curApproval.createdAt,
                 lastUpdatedBy: companyRecord?.emailid
             })
+            setPostingDate(curApproval.postingDate)
             setAddingProducts(false)
         }else{
             setAlertState('error')
@@ -1823,7 +1854,7 @@ const Sales = ()=>{
                                             setAlert('Deleting Approval Data...')
                                             setAlertTimeout(100000)
 
-                                            const resp = await removeApproval(company, 'sales', 'postSales', {                        
+                                            const resp = await removeApproval(company, 'sales', 'postsales', {                        
                                                 createdAt: createdAt,
                                                 postingDate: postingDate                                                 
                                             })     
