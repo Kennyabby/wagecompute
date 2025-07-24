@@ -315,10 +315,11 @@ const Sales = ()=>{
                     const saleRecord = {}
                     saleRecord.isSession = true
                     let wrhSessionOrders = []
+                    let deliverySessions = []
+                    let salesSessions = []
                     allSessions.forEach((session)=>{
                         const salesEndDate = new Date(postingDate1)
-                        salesEndDate.setDate(salesEndDate.getDate() + 1);
-
+                        salesEndDate.setDate(salesEndDate.getDate() + 1);                        
                         const sessionOrders = session?.orders || []
                         sessionOrders.forEach((sessionOrder)=>{
                         if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
@@ -328,6 +329,14 @@ const Sales = ()=>{
                                 const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
                                 if (sessionOrder?.salesPosts[salesPostsPay[0]] ===  wh){
                                     wrhSessionOrders.push({session, sessionOrder})
+                                    sessionOrder?.deliverySessions?.forEach((deliverySession)=>{
+                                        if (!deliverySessions.includes(deliverySession)){
+                                            deliverySessions.push(deliverySession)
+                                        }
+                                    })
+                                    if (!salesSessions.includes(sessionOrder.sessionId)){
+                                        salesSessions.push(sessionOrder.sessionId)
+                                    }
                                 }
                             }
                         })
@@ -378,6 +387,8 @@ const Sales = ()=>{
                         saleRecord.shortage = ''
                         saleRecord.debtRecovered = ''
                         saleRecord.salesPoint = wh
+                        saleRecord.salesSessions = salesSessions
+                        saleRecord.deliverySessions = deliverySessions
                         Object.keys(salesUnits1).forEach((saleUnit)=>{
                             saleRecord[saleUnit] = salesUnits1[saleUnit]
                         })
@@ -1039,12 +1050,18 @@ const Sales = ()=>{
             var totalDebt = 0      
             var totalShortage = 0 
             var totalBankSales = 0 
+            let deliverySessions = []
+            let salesSessions = []
             const fields1 = [...accommodationRecords, ...sessionSalesRecords, ...fields]
             fields1.forEach((field)=>{
                 totalCashSales += Number(field.cashSales)
                 totalDebt += Number(field.debt)
                 totalShortage += Number(field.shortage)
                 totalBankSales += Number(field.bankSales)
+                if (field.isSession){
+                    deliverySessions.push(field.deliverySessions)
+                    salesSessions.push(field.salesSessions)
+                }
             })
             const newSale = {
                 postingDate: postingDate,
@@ -1053,6 +1070,8 @@ const Sales = ()=>{
                 totalBankSales,
                 totalDebt,
                 totalShortage,
+                deliverySessions,
+                salesSessions,
                 approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
                 // productsRef: createdAt,
                 record: [...fields1]
