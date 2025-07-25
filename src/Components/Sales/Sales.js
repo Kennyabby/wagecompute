@@ -1154,8 +1154,6 @@ const Sales = ()=>{
             createdAt: sale.productsRef
         }
         if (sale.salesSessions?.length){
-            // console.log(sale.deliverySessions)
-            console.log(sale.salesSessions)
             propFilter = {
                 $or:[
                     {sessionId: {$in: sale.salesSessions}},
@@ -3135,7 +3133,10 @@ const AddProduct = ({
                     sessionSalesAmount += Number(saleRecord.totalSales)
                 }
             })
-            const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
+            let totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
+            if (curSale.salesSessions){
+                totalSalesAmount += Number(sessionSalesAmount)
+            }
             setTotalSalesAmount(totalSalesAmount)
         }else{
             var totalCashSales = 0
