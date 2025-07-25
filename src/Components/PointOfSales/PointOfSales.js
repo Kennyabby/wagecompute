@@ -2176,7 +2176,7 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                                         // console.log(employeeSessions)
                                         employeeSession = employeeSessions.find((session)=>{return !session.end})
                                         if ([null, undefined].includes(employeeSession)){
-                                            employeeSession = employeeSessions[employeeSessions.length - 1]
+                                            employeeSession = employeeSessions[0]
                                         }
                                         // console.log('name:', firstName, 'session:', employeeSession)
                                         if (((new Date().getTime()) >= getSessionEnd(employeeSession.start)) || employeeSession.end){
