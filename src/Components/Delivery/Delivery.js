@@ -1363,7 +1363,7 @@ const Delivery = () => {
             <div className="order-entry">
                 <div className="selected-items">
                     {currentOrder.items.map(item => (
-                        item.delivery !== 'completed' && wrhCategories[wrh].includes(item.category) && 
+                        (item.delivery !== 'completed') && wrhCategories[wrh].includes(item.category) &&
                         <div 
                             key={item.id} 
                             className="selected-item" 
@@ -1755,7 +1755,10 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                             key={order.i_d}
                             className={`order-card ${order.delivery} ${order.orderNumber ===  currentOrder.orderNumber ? 'selected-delivery' : ''}`}
                         >
-                            <div onClick={() => handleOrderSelect(order)}>
+                            <div onClick={() => {
+                                // console.log(order)
+                                handleOrderSelect(order)
+                            }}>
                                 <div>Order: #{order.orderNumber}</div>
                                 <div>{`Placed Delivery (${deliveredQuantity}/${totalItems}): `} {`${order.delivery}`}</div>
                                 <div>Payment: {order.status}</div>
