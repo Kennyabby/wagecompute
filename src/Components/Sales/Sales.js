@@ -1153,13 +1153,13 @@ const Sales = ()=>{
         let propFilter = {
             createdAt: sale.productsRef
         }
-        if (sale.deliverySessions?.length){
+        if (sale.salesSessions?.length){
+            // console.log(sale.deliverySessions)
+            console.log(sale.salesSessions)
             propFilter = {
                 $or:[
-                    {
-                        createdAt: sale.productsRef,
-                        sessionId: {$in: sale.deliverySessions}
-                    }
+                    {sessionId: {$in: sale.salesSessions}},
+                    {createdAt: sale.productsRef}
                 ]
             }
         }
@@ -1203,7 +1203,7 @@ const Sales = ()=>{
         }
     }
 
-    const handleViewClick = async (sale) =>{
+    const handleViewClick = async (sale) => {
         setCurSale(sale)
         setCurApproval(null)
         setCurSaleDate(sale.postingDate)
@@ -1216,6 +1216,7 @@ const Sales = ()=>{
         if (sale.productsRef){
             const transactions = await getSalesProducts(company, sale); 
             if (transactions.length){
+                console.log(transactions)
                 const validEntries = {}
                 wrhs.forEach(async(wh)=>{   
                     var ctent = 0
