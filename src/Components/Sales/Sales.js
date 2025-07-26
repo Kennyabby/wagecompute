@@ -691,12 +691,26 @@ const Sales = ()=>{
             }
             else{
                 if (name === 'salesPoint'){
-                    if (value!=='accomodation' || companyRecord?.status === 'admin'){
+                    if (!['accomodation', 'vip'].includes(value) || companyRecord?.status === 'admin'){
                         fields[index] = {...fields[index], [name] : value}
                     }else{
-                        setAlertState('error')
-                        setAlert('You are not allowed to enter Accommodation Sales!')
-                        setAlertTimeout(5000)
+                        if (value === 'accomodation'){
+                            if (companyRecord?.permissions.includes('overrideaccomodation')){
+                                fields[index] = {...fields[index], [name] : value}
+                            }else{
+                                setAlertState('error')
+                                setAlert('You are not allowed to enter Accommodation Sales!')
+                                setAlertTimeout(5000)
+                            }
+                        }else if (value === 'vip'){
+                            if (companyRecord?.permissions.includes('overridevip')){
+                                fields[index] = {...fields[index], [name] : value}
+                            }else{
+                                setAlertState('error')
+                                setAlert('You are not allowed to enter VIP Sales!')
+                                setAlertTimeout(5000)
+                            }
+                        }
                     }
                 }else{
                     fields[index] = {...fields[index], [name] : value}
@@ -3134,7 +3148,7 @@ const AddProduct = ({
                 }
             })
             let totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
-            if (curSale.salesSessions){
+            if (curSale.salesSessions && isProductView){
                 totalSalesAmount += Number(sessionSalesAmount)
             }
             setTotalSalesAmount(totalSalesAmount)
