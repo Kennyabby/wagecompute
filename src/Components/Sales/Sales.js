@@ -287,19 +287,23 @@ const Sales = ()=>{
         if (!isView && !saleEmployee && !ct){
             var sessionEmployees = []
             var activeSessions = []
+            const salesEndDate = new Date(postingDate1)
+            salesEndDate.setDate(salesEndDate.getDate() + 1)
             allSessions.forEach((session)=>{
-                const employeeId = session.employee_id
-                if (!sessionEmployees.includes(employeeId)){
-                    sessionEmployees = sessionEmployees.concat(employeeId)
-                }
-                session?.orders?.forEach((sessionOrders)=>{
-                    const employeeId = sessionOrders.lastDeliveredBy
-                    if (employeeId && !sessionEmployees.includes(employeeId)){
+                if (getSessionEnd(session.start) === getSessionEnd(salesEndDate)){
+                    const employeeId = session.employee_id
+                    if (!sessionEmployees.includes(employeeId)){
                         sessionEmployees = sessionEmployees.concat(employeeId)
                     }
-                })
-                if (session.end){
-                    activeSessions.push(session.i_d)
+                    session?.orders?.forEach((sessionOrders)=>{
+                        const employeeId = sessionOrders.lastDeliveredBy
+                        if (employeeId && !sessionEmployees.includes(employeeId)){
+                            sessionEmployees = sessionEmployees.concat(employeeId)
+                        }
+                    })
+                    if (!session.end){
+                        activeSessions.push(session.i_d)
+                    }
                 }
             })
             setActiveSessions(activeSessions)
@@ -1266,7 +1270,6 @@ const Sales = ()=>{
         if (sale.productsRef){
             const transactions = await getSalesProducts(company, sale); 
             if (transactions.length){
-                console.log(transactions)
                 const validEntries = {}
                 wrhs.forEach(async(wh)=>{   
                     var ctent = 0
@@ -2891,7 +2894,7 @@ const Sales = ()=>{
                                                     runApprovalWorkFlow(curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
                                                 }else{
                                                     setAlertState('error')
-                                                    setAlert('You have active POS/Delivery sessions. Please end them before posting!')
+                                                    setAlert('You still have active POS/Delivery sessions for this posting date. Please end them before posting!')
                                                     setAlertTimeout(5000)
                                                 }
                                             }

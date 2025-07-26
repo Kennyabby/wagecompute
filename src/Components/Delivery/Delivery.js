@@ -422,7 +422,8 @@ const Delivery = () => {
             } else {
                 let oldSession = null
                 if (sessions.length){
-                    oldSession = sessions[sessions.length - 1]
+                    let oldSessions = sessions.sort((a, b) => a.start - b.start)
+                    oldSession = oldSessions[sessions.length - 1]
                     setCurrSession(oldSession)
                     setSessionEnded(true)
                     setOpeningCash((Number(oldSession.openingCash || 0) + Number(oldSession.cash || 0) - Number(oldSession.totalCashChange || 0)))
@@ -1879,10 +1880,10 @@ const DeliveryDashboard = ({sessions, profiles, employees, companyRecord,
                                         return (
                                             session.employee_id === profile.emailid                                        
                                         )
-                                    })
+                                    }).sort((a, b) => a.start - b.start)
                                     var employeeSession = null
                                     var sessionLive = false
-                                    if (employeeSessions.length > 0){
+                                    if (employeeSessions.length > 0){                                        
                                         employeeSession = employeeSessions.find((session)=>{return !session.end})
                                         if ([null, undefined].includes(employeeSession)){
                                             employeeSession = employeeSessions[employeeSessions.length-1]
