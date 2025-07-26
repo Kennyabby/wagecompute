@@ -455,7 +455,8 @@ const PointOfSales = () => {
             } else {
                 let oldSession = null
                 if (sessions.length){
-                    oldSession = sessions[sessions.length - 1]
+                    let oldSessions = sessions.sort((a, b) => a.start - b.start)
+                    oldSession = oldSessions[sessions.length - 1]
                     setCurrSession(oldSession)
                     setSessionEnded(true)
                     setOpeningCash((Number(oldSession.openingCash || 0) + Number(oldSession.cash || 0) - Number(oldSession.totalCashChange || 0)))
@@ -2169,16 +2170,14 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                                         return (
                                             session.employee_id === profile.emailid                                        
                                         )
-                                    })
+                                    }).sort((a, b) => a.start - b.start)
                                     var employeeSession = null
                                     var sessionLive = false
-                                    if (employeeSessions.length > 0){
-                                        // console.log(employeeSessions)
+                                    if (employeeSessions.length > 0){                                       
                                         employeeSession = employeeSessions.find((session)=>{return !session.end})
                                         if ([null, undefined].includes(employeeSession)){
-                                            employeeSession = employeeSessions[0]
+                                            employeeSession = employeeSessions[employeeSessions.length -1]
                                         }
-                                        // console.log('name:', firstName, 'session:', employeeSession)
                                         if (((new Date().getTime()) >= getSessionEnd(employeeSession.start)) || employeeSession.end){
                                             sessionLive = false
                                         }else{
