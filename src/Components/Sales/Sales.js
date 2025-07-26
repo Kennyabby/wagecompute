@@ -88,7 +88,9 @@ const Sales = ()=>{
     const [salesApprovals, setSalesApprovals] = useState([])
     const [rentalsApprovals, setRentalsApprovals] = useState([])
     const [recoveryApprovals, setRecoveryApprovals] = useState([])
+    
     const [curSaleDate, setCurSaleDate] = useState(null)
+    const [activeSessions, setActiveSessions] = useState([])
     const scrollRef = useRef(null)
     const loadRef = useRef(null)
     const getEntriesController = useRef(null)
@@ -284,6 +286,7 @@ const Sales = ()=>{
 
         if (!isView && !saleEmployee && !ct){
             var sessionEmployees = []
+            var activeSessions = []
             allSessions.forEach((session)=>{
                 const employeeId = session.employee_id
                 if (!sessionEmployees.includes(employeeId)){
@@ -295,7 +298,11 @@ const Sales = ()=>{
                         sessionEmployees = sessionEmployees.concat(employeeId)
                     }
                 })
+                if (session.end){
+                    activeSessions.push(session.i_d)
+                }
             })
+            setActiveSessions(activeSessions)
             sessionEmployees.forEach((employeeId)=>{                
                 let totalWrhTransactions = {}
                 wrhPoints.forEach((wh)=>{
@@ -2877,10 +2884,16 @@ const Sales = ()=>{
                                         if (enteredSales === Number(field.totalSales)){
                                             rt++
                                             if (rt===fields.length){
-                                                // setIsProductView(false)
-                                                // setProductAdd(true)      
-                                                const data = [...accommodationRecords, ...sessionSalesRecords, ...fields]
-                                                runApprovalWorkFlow(curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
+                                                if (!activeSessions.length){                                                    
+                                                    // setIsProductView(false)
+                                                    // setProductAdd(true)      
+                                                    const data = [...accommodationRecords, ...sessionSalesRecords, ...fields]
+                                                    runApprovalWorkFlow(curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
+                                                }else{
+                                                    setAlertState('error')
+                                                    setAlert('You have active POS/Delivery sessions. Please end them before posting!')
+                                                    setAlertTimeout(5000)
+                                                }
                                             }
                                         }else{
                                             if (enteredSales < Number(field.totalSales)){
