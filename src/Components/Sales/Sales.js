@@ -691,26 +691,57 @@ const Sales = ()=>{
             }
             else{
                 if (name === 'salesPoint'){
-                    if (!['accomodation', 'vip'].includes(value) || companyRecord?.status === 'admin'){
+                    if (!['accomodation', 'vip', 'open bar1', 'open bar2', 'kitchen'].includes(value) || companyRecord?.status === 'admin'){
                         fields[index] = {...fields[index], [name] : value}
                     }else{
-                        if (value === 'accomodation'){
-                            if (companyRecord?.permissions.includes('overrideaccomodation')){
-                                fields[index] = {...fields[index], [name] : value}
-                            }else{
-                                setAlertState('error')
-                                setAlert('You are not allowed to enter Accommodation Sales!')
-                                setAlertTimeout(5000)
-                            }
-                        }else if (value === 'vip'){
-                            if (companyRecord?.permissions.includes('overridevip')){
-                                fields[index] = {...fields[index], [name] : value}
-                            }else{
-                                setAlertState('error')
-                                setAlert('You are not allowed to enter VIP Sales!')
-                                setAlertTimeout(5000)
-                            }
+                        switch (value){
+                            case 'accomodation':
+                                if (companyRecord?.permissions.includes('override_accomodation')){
+                                    fields[index] = {...fields[index], [name] : value}
+                                }else{
+                                    setAlertState('error')
+                                    setAlert('You are not allowed to enter ACCOMMODATION Sales!')
+                                    setAlertTimeout(5000)
+                                }
+                                break
+                            case 'vip':
+                                if (companyRecord?.permissions.includes('override_vip')){
+                                    fields[index] = {...fields[index], [name] : value}
+                                }else{
+                                    setAlertState('error')  
+                                    setAlert('You are not allowed to enter VIP Sales!')
+                                    setAlertTimeout(5000)
+                                }
+                                break
+                            case 'open bar1':
+                                if (companyRecord?.permissions.includes('override_open bar1')){
+                                    fields[index] = {...fields[index], [name] : value}
+                                }else{
+                                    setAlertState('error')
+                                    setAlert('You are not allowed to enter OPEN BAR1 Sales!')
+                                    setAlertTimeout(5000)
+                                }
+                                break
+                            case 'open bar2':
+                                if (companyRecord?.permissions.includes('override_open bar2')){
+                                    fields[index] = {...fields[index], [name] : value}
+                                }else{
+                                    setAlertState('error')
+                                    setAlert('You are not allowed to enter OPEN BAR2 Sales!')
+                                    setAlertTimeout(5000)
+                                }
+                                break
+                            case 'kitchen':
+                                if (companyRecord?.permissions.includes('override_kitchen')){
+                                    fields[index] = {...fields[index], [name] : value}
+                                }else{
+                                    setAlertState('error')
+                                    setAlert('You are not allowed to enter KITCHEN Sales!')
+                                    setAlertTimeout(5000)
+                                }
+                                break
                         }
+
                     }
                 }else{
                     fields[index] = {...fields[index], [name] : value}
