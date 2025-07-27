@@ -1265,9 +1265,10 @@ const Sales = ()=>{
             }
             setCurApproval(approval)
             setPostingDate(approval.postingDate)
-            setRecoveryFields([...approval.data.recoveryFields])
+            console.log(approval.data.recoveryFields)
             setRecoveryEmployeeId(approval.data.recoveryEmployeeId)
             setRecoveryMonth(approval.data.recoveryMonth)
+            setRecoveryFields([...approval.data.recoveryFields])
             if (approval.message){
                 setIsView(false)
             }else{
@@ -2097,7 +2098,7 @@ const Sales = ()=>{
                                             setAlert('Deleting Approval Data...')
                                             setAlertTimeout(100000)
 
-                                            const resp = await removeApproval(company, 'sales', 'postRentals', {                        
+                                            const resp = await removeApproval(company, 'sales', 'postrentals', {                        
                                                 createdAt: createdAt,
                                                 postingDate: postingDate                                                 
                                             })     
@@ -2189,7 +2190,7 @@ const Sales = ()=>{
                                             setAlert('Deleting Recovery Approval Data...')
                                             setAlertTimeout(100000)
 
-                                            const resp = await removeApproval(company, 'sales', 'postRecovery', {                        
+                                            const resp = await removeApproval(company, 'sales', 'postrecovery', {                        
                                                 createdAt: createdAt,
                                                 postingDate: postingDate                                                 
                                             })     
@@ -3030,7 +3031,7 @@ const Sales = ()=>{
                                             recoveryEmployeeId,
                                             recoveryMonth
                                         }
-                                        runApprovalWorkFlow(curApproval, 'sales', 'postRecovery', recoveryData, postRecovery)
+                                        runApprovalWorkFlow(curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
                                     }else{
                                         setActionMessage('')
                                         setAlertState('error')
@@ -3051,7 +3052,7 @@ const Sales = ()=>{
                             }}
                             onClick={()=>{
                                 if (rentalFields.paymentAmount && rentalFields.expectedPayment){
-                                    runApprovalWorkFlow(curApproval, 'sales', 'postRentals', rentalFields, postRentals)                                    
+                                    runApprovalWorkFlow(curApproval, 'sales', 'postrentals', rentalFields, postRentals)                                    
                                 }
                             }}
                         >{curApproval ? (curApproval.approved? rentalsStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>}                        
