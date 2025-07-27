@@ -464,8 +464,8 @@ const Sales = ()=>{
     },[approvals, salesOpts])
     useEffect(()=>{
         setSalesApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === `postSales`.toUpperCase() || appr.section.toUpperCase() === `addSalesProduct`.toUpperCase()}))
-        setRentalsApprovals(approvals.filter((appr)=>{return appr.section === 'postRentals'}))
-        setRecoveryApprovals(approvals.filter((appr)=>{return appr.section === 'postRecovery'}))
+        setRentalsApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === 'postRentals'.toUpperCase()}))
+        setRecoveryApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === 'postRecovery'.toUpperCase()}))
     },[approvals])
     useEffect(()=>{
         if (curSale){
@@ -1246,7 +1246,7 @@ const Sales = ()=>{
             }else{
                 setIsView(true)
             }
-        }else{
+        }else if(salesOpts === 'rentals'){
             if(companyRecord?.permissions.includes('postRentals') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
@@ -1254,6 +1254,20 @@ const Sales = ()=>{
             setCurApproval(approval)
             setPostingDate(approval.postingDate)
             setRentalFields({...approval.data})
+            if (approval.message){
+                setIsView(false)
+            }else{
+                setIsView(true)
+            }
+        }else if (salesOpts === 'recovery'){
+            if(companyRecord?.permissions.includes('postRecovery') || companyRecord?.status==='admin'){
+                setIsApprover(true)
+            }
+            setCurApproval(approval)
+            setPostingDate(approval.postingDate)
+            setRecoveryFields([...approval.data.recoveryFields])
+            setRecoveryEmployeeId(approval.data.recoveryEmployeeId)
+            setRecoveryMonth(approval.data.recoveryMonth)
             if (approval.message){
                 setIsView(false)
             }else{
@@ -1356,11 +1370,11 @@ const Sales = ()=>{
         const name = e.target.getAttribute('name')
         if (name){
             setSalesOpts(name)
-            if (name==='recovery'){
-                setSalesOpts1('sales')
-            }else{
-                setSalesOpts1(name)
-            }
+            setSalesOpts1(name)
+            // if (name==='recovery'){
+            //     setSalesOpts1('sales')
+            // }else{
+            // }
         }
     }
     const handleSalesOpts1 = (e)=>{
@@ -1886,6 +1900,7 @@ const Sales = ()=>{
                     >
                         <div name='sales' className={salesOpts1==='sales' ? 'slopts': ''}>Sales</div>
                         <div name='rentals' className={salesOpts1==='rentals' ? 'slopts': ''}>Rentals</div>
+                        <div name='recovery' className={salesOpts1==='recovery' ? 'slopts': ''}>Recovery</div>
                     </div>                                                  
                     {salesOpts1 === 'sales' && companyRecord.status==='admin' && <div className='inpcov fltinpcov'>
                         <select 
@@ -2135,6 +2150,64 @@ const Sales = ()=>{
                                     </div>}
                                 </div>
                             )
+                        }
+                    })}
+                    {salesOpts1 === 'recovery' && [...ftrApprovals].filter((ftrrent)=>{
+                        const slCreatedAt = new Date(ftrrent.recoveryDate || ftrrent.postingDate).getTime()
+                        const fromDate = new Date(saleFrom).getTime()
+                        const toDate = new Date(saleTo).getTime()
+                        if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
+                        ){                            
+                            return ftrrent
+                        }
+                    }).map((recovery, index)=>{
+                        if (recovery.isApproval){
+                            const {createdAt, postingDate, message, handlerId, approved} = recovery
+                            var textColor = 'red'
+                            if (approved){
+                                textColor ='green'
+                            }
+                            return (
+                                <div className={'dept sldept' + (curApproval?.createdAt===createdAt?' curview':'')} key={index} 
+                                    onClick={(e)=>{
+                                        handleApprovalViewClick(recovery)
+                                    }}
+                                >
+                                    <div className='dets sldets'>
+                                        <div>Approval Type: <b>{'RECOVERY'}</b></div>
+                                        <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                        <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
+                                        {message && <div>Message: <b>{message}</b></div>}
+                                        <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                    </div>
+                                    {(companyRecord.status==='admin' && !saleEmployee) && <div 
+                                        className='edit'
+                                        name='delete'         
+                                        style={{color:'red'}}                           
+                                        onClick={async ()=>{                                        
+                                            setAlertState('info')
+                                            setAlert('Deleting Recovery Approval Data...')
+                                            setAlertTimeout(100000)
+
+                                            const resp = await removeApproval(company, 'sales', 'postRecovery', {                        
+                                                createdAt: createdAt,
+                                                postingDate: postingDate                                                 
+                                            })     
+                                            
+                                            if(resp.completed){
+                                                setAlertState('success')
+                                                setAlert('Deleted Recovery Approval Data Successfully!')
+                                                setAlertTimeout(3000)
+                                                setCurRent(null)
+                                            }
+
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                            
                         }
                   })}
                   {/* {(nextSales === null || salesLoadCount) ? <div ref={loadRef} className='scrollLoad'>
@@ -2952,7 +3025,12 @@ const Sales = ()=>{
                                         }
                                     })
                                     if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo){
-                                        runApprovalWorkFlow(curApproval, 'sales', 'postRecovery', recoveryFields, postRecovery)
+                                        const recoveryData = {
+                                            recoveryFields,
+                                            recoveryEmployeeId,
+                                            recoveryMonth
+                                        }
+                                        runApprovalWorkFlow(curApproval, 'sales', 'postRecovery', recoveryData, postRecovery)
                                     }else{
                                         setActionMessage('')
                                         setAlertState('error')
