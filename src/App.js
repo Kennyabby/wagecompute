@@ -177,6 +177,10 @@ function App() {
             getPositions(company)
             Navigate('/employees')
           }
+          if (companyRecord?.permissions.includes('attendance')){
+            getAttendance(company)
+            Navigate('/attendance')
+          }
           if (companyRecord?.permissions.includes('purchase')){
             getPurchase(company)
             Navigate('/purchase')

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import '../PointOfSales/PointOfSales.css'
 import { MdShoppingBasket } from 'react-icons/md';
+import TransactionReports from '../Shared/TransactionReports/TransactionReports';
 
 const Delivery = () => {
     // =========================================
@@ -1008,7 +1009,7 @@ const Delivery = () => {
                 )})), 
                 delivery: 'completed'}
             ]
-
+            
             const resp = await fetchServer("POST", {
                 database: company,
                 collection: "Tables",
@@ -1788,18 +1789,20 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
     );
 };
 
-const DeliveryDashboard = ({sessions, profiles, employees, companyRecord, 
+const DeliveryDashboard = ({
+    sessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, allSessionOrders, getSessionSales, curSession,
-    setAlertState, setAlert, setAlertTimeout
+    setAlertState, setAlert, setAlertTimeout, tables
 })=>{
      const {fetchServer, server, company} = useContext(ContextProvider)
      const [pendingSessions, setPendingSessions] = useState([])
+     const [showReports, setShowReports] = useState(false);
     useEffect(()=>{
         var pendingSessions = allSessions.filter((session)=>{
             return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
-                session.active && (new Date().getTime() === getSessionEnd(session.start))
+                session.active && (getSessionEnd(new Date().getTime()) >= getSessionEnd(session.start))
             )
         })
         // console.log(curSession)
@@ -1851,7 +1854,17 @@ const DeliveryDashboard = ({sessions, profiles, employees, companyRecord,
                         >
                             POS Tables
                         </button>}
-                        <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
+                        <span 
+                            className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>
+                            {isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}
+                        </span>
+                        <button 
+                            className="action-btn"
+                            onClick={() => setShowReports(true)}
+                            style={{ marginLeft: '10px' }}
+                        >
+                            View Reports
+                        </button>
                     </div>
                 </div>
                 <div className='pos-sessions-view'>
@@ -1903,7 +1916,7 @@ const DeliveryDashboard = ({sessions, profiles, employees, companyRecord,
                                                 <div 
                                                     className='pos-sessions-card-action'
                                                     onClick={()=>{   
-                                                        if (profile.status !== 'admin' || companyRecord.status === 'admin'){
+                                                        if (profile.status !== 'admin' || companyRecord?.status === 'admin'){
                                                             var viewModal = true
                                                             const validateUserSession = async ()=>{
                                                                 if (!allSessionOrders.length){
@@ -1990,6 +2003,16 @@ const DeliveryDashboard = ({sessions, profiles, employees, companyRecord,
                         })}
                     </div>
                 </div>
+                {showReports && (
+                    <TransactionReports
+                        type="delivery"
+                        sessions={allSessions}
+                        orders={allSessionOrders}
+                        tables={tables}
+                        employees={employees}
+                        onClose={() => setShowReports(false)}
+                    />
+                )}
             </div>
         </>
     )

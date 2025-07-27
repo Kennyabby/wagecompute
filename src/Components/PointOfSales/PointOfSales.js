@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import './PointOfSales.css';
 import { MdShoppingBasket } from 'react-icons/md';
+import TransactionReports from '../Shared/TransactionReports/TransactionReports';
 
 const PointOfSales = () => {
     // =========================================
@@ -2072,18 +2073,20 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
     );
 };
 
-const POSDashboard = ({sessions, profiles, employees, companyRecord, 
+const POSDashboard = ({
+    sessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
-    setAlertState, setAlert, setAlertTimeout
-})=>{
-     const {fetchServer, server, company} = useContext(ContextProvider)
-     const [pendingSessions, setPendingSessions] = useState([])
+    setAlertState, setAlert, setAlertTimeout, tables
+}) => {
+    const { fetchServer, server, company } = useContext(ContextProvider);
+    const [pendingSessions, setPendingSessions] = useState([]);
+    const [showReports, setShowReports] = useState(false);
     useEffect(()=>{
         var pendingSessions = allSessions.filter((session)=>{
             return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
-                session.active && (new Date().getTime() === getSessionEnd(session.start))
+                session.active && (getSessionEnd(new Date().getTime()) >= getSessionEnd(session.start))
             )
         })
         // console.log(curSession)
@@ -2293,6 +2296,16 @@ const POSDashboard = ({sessions, profiles, employees, companyRecord,
                         })}
                     </div>
                 </div>
+                {showReports && (
+                    <TransactionReports
+                        type="sales"
+                        sessions={allSessions}
+                        orders={allSessionOrders}
+                        tables={tables}
+                        employees={employees}
+                        onClose={() => setShowReports(false)}
+                    />
+                )}
             </div>
         </>
     )
