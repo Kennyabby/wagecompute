@@ -2144,7 +2144,17 @@ const POSDashboard = ({
                         >
                             POS Tables
                         </button>}
-                        <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
+                        <span 
+                            className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>
+                            {isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}
+                        </span>
+                        <button 
+                            className="action-btn"
+                            onClick={() => setShowReports(true)}
+                            style={{ marginLeft: '10px' }}
+                        >
+                            View Reports
+                        </button>
                     </div>
                 </div>
                 <div className='pos-sessions-view'>
