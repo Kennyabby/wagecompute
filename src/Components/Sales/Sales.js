@@ -306,7 +306,6 @@ const Sales = ()=>{
                     }
                 }
             })
-            console.log('active sessions at:', postingDate, 'is:', activeSessions)
             setActiveSessions(activeSessions)
             sessionEmployees.forEach((employeeId)=>{                
                 let totalWrhTransactions = {}
@@ -1242,7 +1241,6 @@ const Sales = ()=>{
             setCurApproval(approval)
             setFields([...approval.data])
             setPostingDate(approval.postingDate)
-            console.log(approval.postingDate)
             if (approval.message){
                 setIsView(false)
             }else{
