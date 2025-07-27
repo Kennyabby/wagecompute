@@ -306,6 +306,7 @@ const Sales = ()=>{
                     }
                 }
             })
+            console.log('active sessions at:', postingDate, 'is:', activeSessions)
             setActiveSessions(activeSessions)
             sessionEmployees.forEach((employeeId)=>{                
                 let totalWrhTransactions = {}
@@ -469,12 +470,17 @@ const Sales = ()=>{
     },[approvals])
     useEffect(()=>{
         if (curSale){
-            setPostingDate(curSale.postingDate)
+            setPostingDate(curSale.postingDate)                        
             setIsView(true)
         }else{
-            setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
+            if (!curApproval){                
+                setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
+            }else{
+                setActiveSessions([])
+                setPostingDate(curApproval.postingDate)
+            }
         }
-    },[curSale])
+    },[curSale, curApproval])
 
     useEffect(()=>{
         if (curRent===null){
@@ -1208,11 +1214,11 @@ const Sales = ()=>{
         
         let propFilter = {
             createdAt: sale.productsRef
-        }
+        }        
         if (sale.salesSessions?.length){
             propFilter = {
                 $or:[
-                    {sessionId: {$in: sale.salesSessions}},
+                    {sessionId: {$in: [...sale.salesSessions, ...(sale?.deliverySessions || [])]}},
                     {createdAt: sale.productsRef}
                 ]
             }
@@ -1234,8 +1240,9 @@ const Sales = ()=>{
             }
             setCurSale(null)
             setCurApproval(approval)
-            setPostingDate(approval.postingDate)
             setFields([...approval.data])
+            setPostingDate(approval.postingDate)
+            console.log(approval.postingDate)
             if (approval.message){
                 setIsView(false)
             }else{
