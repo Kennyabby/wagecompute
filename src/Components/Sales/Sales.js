@@ -1265,7 +1265,6 @@ const Sales = ()=>{
             }
             setCurApproval(approval)
             setPostingDate(approval.postingDate)
-            console.log(approval.data.recoveryFields)
             setRecoveryEmployeeId(approval.data.recoveryEmployeeId)
             setRecoveryMonth(approval.data.recoveryMonth)
             setRecoveryFields([...approval.data.recoveryFields])
