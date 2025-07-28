@@ -1802,7 +1802,7 @@ const DeliveryDashboard = ({
     useEffect(()=>{
         var pendingSessions = allSessions.filter((session)=>{
             return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
-                session.active && (getSessionEnd(new Date().getTime()) >= getSessionEnd(session.start))
+                session.active && (getSessionEnd(new Date().getTime()) > getSessionEnd(session.start))
             )
         })
         // console.log(curSession)
