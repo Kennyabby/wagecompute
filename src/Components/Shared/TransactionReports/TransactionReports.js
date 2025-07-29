@@ -878,7 +878,8 @@ const TransactionReports = ({
                             </button>
                         </div>
                     </div>
-                    
+                    {/* Filter Controls */}
+                {renderFilterControls()}
                     <div className="results-summary-stats">
                         <div className="stat-item">
                             <span className="stat-label">Sessions</span>
@@ -923,10 +924,7 @@ const TransactionReports = ({
                     <button className="close-btn" onClick={onClose}>
                         <FaTimes />
                     </button>
-                </div>
-
-                {/* Filter Controls */}
-                {renderFilterControls()}
+                </div>                
 
                 {/* Export Controls */}
                 {renderExportControls()}
