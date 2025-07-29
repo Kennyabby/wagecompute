@@ -797,7 +797,7 @@ const TransactionReports = ({
     const getEmployeeName = (employeeId) => {
         if (!employeeId) return 'N/A';
         const employee = employees.find(e => e.i_d === employeeId);
-        return employee ? `${employee.firstName || ''} ${employee.lastName || ''}`.trim() : 'Unknown';
+        return employee ? `${employee.firstName || ''} ${employee.lastName || ''}`.trim() : 'Super Admin';
     };
 
     // Get table name by ID
