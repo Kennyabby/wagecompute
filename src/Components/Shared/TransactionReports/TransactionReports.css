@@ -13,7 +13,8 @@
     z-index: 2000;
     overflow-y: auto;
     backdrop-filter: blur(2px);
-    -webkit-overflow-scrolling: touch;
+    /* -webkit-overflow-scrolling: touch; */
+    overflow: auto;
 }
 
 /* Main Container */
@@ -27,7 +28,7 @@
     max-height: none;
     display: flex;
     flex-direction: column;
-    overflow: visible;
+    overflow: auto;
     position: relative;
     animation: fadeIn 0.3s ease-out;
     margin: 20px 0;
@@ -47,7 +48,6 @@
     border-radius: 12px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     margin-bottom: 20px;
-    overflow: hidden;
     border: 1px solid #e2e8f0;
 }
 
@@ -278,8 +278,9 @@
 .filter-controls {
     background-color: #ffffff;
     border-bottom: 1px solid #e2e8f0;
-    position: sticky;
-    top: 0;
+    /* position: sticky; */
+    /* top: 0; */
+    padding: 0 15px 15px;
     z-index: 10;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -491,7 +492,7 @@
 /* Results Container */
 .results-container {
     flex: 1;
-    overflow-y: auto;
+    /* overflow-y: auto; */
     padding: 0;
 }
 
@@ -1324,24 +1325,40 @@
 }
 
 @media (max-width: 768px) {
+    .transaction-reports-overlay {
+        padding: 0;
+        /* align-items: stretch; */
+        overflow: auto;
+    }
+
     .transaction-reports {
         width: 100%;
+        overflow: auto;
         max-height: 100vh;
         border-radius: 0;
+        margin: 0;
+        min-height: 100vh;
     }
     
     .filters-section {
         position: static;
+        padding: 12px;
     }
     
     .filter-group {
         min-width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .filter-group label {
+        font-size: 0.85rem;
     }
     
     .export-actions {
         flex-direction: column;
-        gap: 15px;
-        align-items: flex-start;
+        gap: 12px;
+        align-items: stretch;
+        padding: 0 12px 12px;
     }
     
     .view-options {
@@ -1352,12 +1369,102 @@
     .export-buttons {
         width: 100%;
         display: flex;
-        gap: 10px;
+        flex-direction: column;
+        gap: 8px;
     }
     
     .btn-export {
-        flex: 1;
+        width: 100%;
         justify-content: center;
+        padding: 10px;
+    }
+
+    /* Header adjustments */
+    .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 15px;
+        gap: 12px;
+    }
+
+    .header-top h2 {
+        font-size: 1.25rem;
+    }
+
+    .report-period {
+        display: block;
+        margin-left: 0;
+        margin-top: 4px;
+        font-size: 0.85rem;
+    }
+
+    /* Summary stats */
+    .results-summary-stats {
+        flex-direction: column;
+        gap: 8px;
+        padding: 0 15px 15px;
+    }
+
+    .stat-item {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 10px 15px;
+    }
+
+    /* Order items */
+    .order-item {
+        padding: 12px 15px;
+    }
+
+    .item-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .item-name {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+
+    .item-details {
+        width: 100%;
+        margin-top: 12px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+
+    /* Session cards */
+    .session-card {
+        margin: 10px;
+        border-radius: 8px;
+    }
+
+    .session-header {
+        padding: 14px 16px;
+    }
+
+    /* Close button */
+    .close-btn {
+        top: 10px;
+        right: 10px;
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Sales breakdown */
+    .sales-breakdown {
+        flex-direction: column;
+        gap: 15px;
+        padding: 0 15px 15px;
+    }
+
+    .breakdown-section {
+        width: 100%;
     }
 }
 
@@ -1576,6 +1683,7 @@ tbody tr:hover {
     .transaction-reports {
         width: 98%;
         max-height: 95vh;
+        overflow: auto;
     }
     
     .filters-section {
@@ -1616,7 +1724,7 @@ tbody tr:hover {
         max-height: none;
     }
     
-    .reports-header,
+    /* .reports-header, */
     .filters-section,
     .export-buttons {
         display: none;

@@ -776,7 +776,7 @@ const TransactionReports = ({
                     <FaCompress /> Collapse All
                 </button>
             </div>
-            <div className="export-buttons">
+            {/* <div className="export-buttons">
                 <button 
                     className="btn btn-export" 
                     onClick={() => handleExport('excel')}
@@ -789,7 +789,7 @@ const TransactionReports = ({
                 >
                     <FaFilePdf className='pdf' /> Export to PDF
                 </button>
-            </div>
+            </div> */}
         </div>
     );
 
@@ -879,7 +879,7 @@ const TransactionReports = ({
                         </div>
                     </div>
                     {/* Filter Controls */}
-                {renderFilterControls()}
+                    {renderFilterControls()}
                     <div className="results-summary-stats">
                         <div className="stat-item">
                             <span className="stat-label">Sessions</span>
