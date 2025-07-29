@@ -463,9 +463,25 @@ const Sales = ()=>{
         }
     },[approvals, salesOpts])
     useEffect(()=>{
-        setSalesApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === `postSales`.toUpperCase() || appr.section.toUpperCase() === `addSalesProduct`.toUpperCase()}))
-        setRentalsApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === 'postRentals'.toUpperCase()}))
-        setRecoveryApprovals(approvals.filter((appr)=>{return appr.section.toUpperCase() === 'postRecovery'.toUpperCase()}))
+        setSalesApprovals(approvals.filter((appr)=>{
+            return (
+                (appr.section.toUpperCase() === `postSales`.toUpperCase() 
+                || appr.section.toUpperCase() === `addSalesProduct`.toUpperCase())
+                && (!appr.approved && !appr.message)
+            )
+        }))
+        setRentalsApprovals(approvals.filter((appr)=>{
+            return (
+                appr.section.toUpperCase() === 'postRentals'.toUpperCase()
+                && (!appr.approved && !appr.message)
+            )
+        }))
+        setRecoveryApprovals(approvals.filter((appr)=>{
+            return (
+                appr.section.toUpperCase() === 'postRecovery'.toUpperCase()
+                && (!appr.approved && !appr.message)
+            )
+        }))
     },[approvals])
     useEffect(()=>{
         if (curSale){

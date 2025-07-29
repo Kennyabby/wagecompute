@@ -27,6 +27,7 @@ const SideNav = ()=>{
     const [companyName, setCompanyName] = useState('....') 
     const [curPath, setCurPath] = useState('')
     const [logStatus, setLogStatus] = useState('Log Out')
+    const [salesApprovals, setSalesApprovals] = useState([])
     const location = useLocation()
     const Navigate = useNavigate()
 
@@ -35,6 +36,14 @@ const SideNav = ()=>{
         setCurPath(curloc)
     },[location])
    
+    useEffect(()=>{
+        setSalesApprovals(approvals.filter((appr)=>{
+            return (
+                (appr.module === 'sales' 
+                && (!appr.approved && !appr.message))
+            )
+        }))
+    },[approvals])
     useEffect(()=>{
         if (companyRecord){
             setCompanyName(companyRecord.name)
@@ -127,7 +136,7 @@ const SideNav = ()=>{
                         <div name="sales" className={'navdiv ' + (curPath==='sales'?'selected':'')}>
                             <GiPayMoney className='navdivicon' name="sales"/>
                             <div name="sales">Sales</div>
-                            {companyRecord?.status==='admin' && approvals.length > 0 && <div className='navdivcount'>{approvals.length}</div>}
+                            {companyRecord?.status==='admin' && salesApprovals.length > 0 && <div className='navdivcount'>{salesApprovals.length}</div>}
                         </div>
                     }
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos')) && 

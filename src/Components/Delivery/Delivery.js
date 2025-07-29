@@ -1842,6 +1842,13 @@ const DeliveryDashboard = ({
                     <div className={'live-nav'}>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                             className="action-btn"
+                            onClick={() => setShowReports(true)}
+                            style={{ marginRight: '10px' }}
+                        >
+                            View Reports
+                        </button>}
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
+                            className="action-btn"
                             onClick={() => {    
                                 
                                   
@@ -1857,14 +1864,7 @@ const DeliveryDashboard = ({
                         <span 
                             className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>
                             {isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}
-                        </span>
-                        <button 
-                            className="action-btn"
-                            onClick={() => setShowReports(true)}
-                            style={{ marginLeft: '10px' }}
-                        >
-                            View Reports
-                        </button>
+                        </span>                        
                     </div>
                 </div>
                 <div className='pos-sessions-view'>
