@@ -9,7 +9,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 20px;
+    padding: 10px;
     z-index: 2000;
     overflow-y: auto;
     backdrop-filter: blur(2px);
@@ -22,7 +22,7 @@
     background: #ffffff;
     border-radius: 12px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-    width: 98%;
+    width: 99%;
     max-width: 1800px;
     min-height: 200px;
     max-height: none;
@@ -31,7 +31,7 @@
     overflow: auto;
     position: relative;
     animation: fadeIn 0.3s ease-out;
-    margin: 20px 0;
+    margin: 5px 0;
 }
 
 @keyframes fadeIn {
@@ -85,11 +85,6 @@
     font-weight: 400;
     opacity: 0.9;
     margin-left: 10px;
-}
-
-.export-actions {
-    display: flex;
-    gap: 12px;
 }
 
 .btn-export {
@@ -434,7 +429,7 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 20px;
-    padding: 10px 0;
+    padding: 10px 25px;
     border-bottom: 1px solid #e2e8f0;
 }
 
@@ -522,7 +517,7 @@
     cursor: pointer;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 20px;
     transition: all 0.2s ease;
     border-bottom: 1px solid #e2e8f0;
@@ -681,7 +676,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.session-header {
+/* .session-header {
     padding: 16px 20px;
     cursor: pointer;
     display: flex;
@@ -693,7 +688,7 @@
 
 .session-header:hover {
     background-color: #f8fafc;
-}
+} */
 
 .session-info h3 {
     margin: 0 0 8px 0;
@@ -1445,9 +1440,23 @@
     }
 
     .session-header {
-        padding: 14px 16px;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 18px 24px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        transition: all 0.2s ease;
+        border-bottom: 1px solid #e2e8f0;
     }
-
+    .session-header {
+        padding: 14px 16px;
+        display: block;
+    }
+    .session-stats{
+        margin-top: 10px;
+    }
     /* Close button */
     .close-btn {
         top: 10px;
