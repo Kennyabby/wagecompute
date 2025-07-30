@@ -1199,7 +1199,7 @@ const Delivery = () => {
         allSessionOrders.forEach((order) =>{
             if (sessionUser!==null && sessionUser?.curSession){
                 if (getSessionEnd(order.createdAt) === getSessionEnd((sessionUser.curSession).start)
-                    && order.delivery !== 'completed'
+                    && order.status !== 'cancelled' && order.delivery !== 'completed'
                 ){                    
                     order.items.forEach((item)=>{
                         posDeliveryAccess.forEach((posWrh)=>{
