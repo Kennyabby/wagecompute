@@ -752,6 +752,8 @@ const TransactionReports = ({
             result.totals.totalOrders += sessionOrders;
             
             const sessionSales = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => {
+                const payPoint = Object.keys(order.salesPosts)[0] || 'Default';
+                result.salesByPayPoint[payPoint] = (result.salesByPayPoint[payPoint] || 0) + Number(order[payPoint] || 0);
                 return sum + (parseFloat(order.totalSales) || 0);
             }, 0) || 0;
             
@@ -768,8 +770,6 @@ const TransactionReports = ({
             result.salesByLocation[location] = (result.salesByLocation[location] || 0) + sessionSales;
 
             // Track sales by pay point (assuming pay_point is a property on the session)
-            const payPoint = session.pay_point || 'Default';
-            result.salesByPayPoint[payPoint] = (result.salesByPayPoint[payPoint] || 0) + sessionSales;
         });
 
         return result;
@@ -918,7 +918,7 @@ const TransactionReports = ({
                             <div className="breakdown-items">
                                 {Object.entries(salesByLocation).map(([location, amount]) => (
                                     <div key={`loc-${location}`} className="breakdown-item">
-                                        <span className="breakdown-label">{location}</span>
+                                        <span className="breakdown-label">{location.toUpperCase()}</span>
                                         <span className="breakdown-value">{formatCurrency(amount)}</span>
                                     </div>
                                 ))}
@@ -930,7 +930,7 @@ const TransactionReports = ({
                             <div className="breakdown-items">
                                 {Object.entries(salesByPayPoint).map(([payPoint, amount]) => (
                                     <div key={`pay-${payPoint}`} className="breakdown-item">
-                                        <span className="breakdown-label">{payPoint}</span>
+                                        <span className="breakdown-label">{payPoint.toUpperCase()}</span>
                                         <span className="breakdown-value">{formatCurrency(amount)}</span>
                                     </div>
                                 ))}
