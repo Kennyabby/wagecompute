@@ -209,6 +209,7 @@
     display: block;
     justify-content: space-between;
     font-size: 0.9rem;
+    margin-top: 8px;
 }
 
 .detail-label {

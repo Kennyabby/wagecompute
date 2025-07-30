@@ -428,8 +428,7 @@ const TransactionReports = ({
                                 >
                                     <option value="">All Statuses</option>
                                     <option value="pending">Pending</option>
-                                    <option value="in_progress">In Progress</option>
-                                    <option value="delivered">Delivered</option>
+                                    <option value="completed">Completed</option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
                             </div>
@@ -502,8 +501,8 @@ const TransactionReports = ({
 
         return processedData.map(session => {
             // Calculate session totals
-            const sessionTotal = session.orders?.reduce((sum, order) => sum + (parseFloat(order.totalSales) || 0), 0) || 0;
-            const totalItems = session.orders?.reduce((sum, order) => sum + ((order.items || []).length || 0), 0) || 0;
+            const sessionTotal = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => sum + (parseFloat(order.totalSales) || 0), 0) || 0;
+            const totalItems = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => sum + ((order.items || []).length || 0), 0) || 0;
             const isExpanded = expandedSessions[session.i_d];
             
             return (
@@ -630,20 +629,37 @@ const TransactionReports = ({
                                                                 </span>
                                                             </div>
                                                             <div className="meta-item">
-                                                                <span className="meta-label">Payment Status:</span>
+                                                                <span className="meta-label">Order Status:</span>
                                                                 <span className={`status-badge ${order.status || 'unpaid'}`}>
                                                                     {order.status || 'Unpaid'}
                                                                 </span>
                                                             </div>
+                                                            <div className="meta-item">
+                                                                <span className="meta-label">Delivery Status:</span>
+                                                                <span className={`status-badge delivery ${order.delivery || 'pending'}`}>
+                                                                    {order.delivery || 'Pending'}
+                                                                </span>
+                                                            </div>
+                                                            {(order.delivery === 'completed' || order.status === 'cancelled') && <div className="meta-item">
+                                                                <span className="meta-label">{order.delivery === 'completed' ? 'Delivered By:' : 'Order Cancelled By:'}</span>
+                                                                <span className={`status-badge delivery ${order.delivery === 'completed' ? 'completed' : 'canceled'}`}>
+                                                                    {order.delivery === 'completed' ? getEmployeeName(order.lastDeliveredBy) : (getEmployeeName(order.cancelledBy || 'N/A'))}
+                                                                </span>
+                                                            </div>}
                                                         </div>
                                                         
                                                         <div className="order-items-container">
-                                                            {order.items?.map((item, index) => (
-                                                                <div key={`${item.i_d}-${index}`} className="order-item">
+                                                            {order.items?.map((item, index) => {
+                                                                let salesPrice = Number(item.salesPrice)
+
+                                                                if (order.wrh === 'vip'){
+                                                                    salesPrice = Number(item.vipPrice || item.salesPrice)
+                                                                }
+                                                                return (<div key={`${item.i_d}-${index}`} className="order-item">
                                                                     <div className="item-header">
                                                                         <div className="item-name">{item.name || item.i_d}</div>
                                                                         <div className="item-price">
-                                                                            {formatCurrency(parseFloat(item.salesPrice * item.deliveredQuantity) || 0)}
+                                                                            {formatCurrency(parseFloat(salesPrice * (item.deliveredQuantity || item.quantity)) || 0)}
                                                                         </div>
                                                                     </div>
                                                                     
@@ -651,18 +667,18 @@ const TransactionReports = ({
                                                                         <div className="detail-row">
                                                                             <span className="detail-label">Quantity:</span>
                                                                             <span className="detail-value">
-                                                                                {item.deliveredQuantity} {item.salesUom || 'unit'}
+                                                                                {item.deliveredQuantity || item.quantity} {item.salesUom || 'unit'}
                                                                             </span>
                                                                         </div>
                                                                         <div className="detail-row">
                                                                             <span className="detail-label">Unit Price:</span>
                                                                             <span className="detail-value">
-                                                                                {formatCurrency(parseFloat(item.salesPrice) || 0)}
+                                                                                {formatCurrency(parseFloat(salesPrice) || 0)}
                                                                             </span>
                                                                         </div>
-                                                                        {type === 'delivery' && (
+                                                                        {(
                                                                             <div className="detail-row">
-                                                                                <span className="detail-label">Status:</span>
+                                                                                <span className="detail-label">Delivery:</span>
                                                                                 <span className={`status-badge ${item.delivery || 'pending'}`}>
                                                                                     {item.delivery || 'Pending'}
                                                                                 </span>
@@ -676,7 +692,7 @@ const TransactionReports = ({
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                            ))}
+                                                            )})}
                                                         </div>
                                                         
                                                         <div className="order-totals">
@@ -735,13 +751,13 @@ const TransactionReports = ({
             const sessionOrders = session.orders?.length || 0;
             result.totals.totalOrders += sessionOrders;
             
-            const sessionSales = session.orders?.reduce((sum, order) => {
+            const sessionSales = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => {
                 return sum + (parseFloat(order.totalSales) || 0);
             }, 0) || 0;
             
             result.totals.totalSales += sessionSales;
             
-            result.totals.totalItems += session.orders?.reduce((sum, order) => {
+            result.totals.totalItems += session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => {
                 return sum + ((order.items || []).reduce((itemSum, item) => {
                     return itemSum + (parseFloat(item.quantity) || 0);
                 }, 0) || 0);
