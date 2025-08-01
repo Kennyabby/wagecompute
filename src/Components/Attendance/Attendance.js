@@ -11,7 +11,7 @@ const Attendance = () =>{
         months, monthDays,years,
         company, companyRecord, getDate,
         attendance, setAttendance, getAttendance, getEmployees,
-        employees, settings, runApprovalWorkflow, approvals, getApprovals, removeApproval,
+        employees, settings, runApprovalWorkFlow, approvals, getApprovals, removeApproval,
         curApproval, setCurApproval, postApprovalUpdate, showApprovalBox, setShowApprovalBox, 
         setApprovalStatus, setApprovalMessage, setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
@@ -73,10 +73,20 @@ const Attendance = () =>{
 
     useEffect(()=>{
         if(companyRecord?.permissions.includes('postAttendance') || companyRecord?.status==='admin'){
-            setIsApprover(true)
+            if (upload){
+                setIsApprover(true)
+            }else{
+                setIsApprover(false)
+            }
         }
-    },[companyRecord])
+    },[companyRecord, upload])
 
+    useEffect(()=>{
+        if (curApproval){
+            setUpload(true)
+            setViewNo(curApproval.data.no)
+        }
+    },[curApproval])
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
         const reader = new FileReader();
@@ -150,7 +160,7 @@ const Attendance = () =>{
             createdAt: new Date(Date.now()).toISOString().slice(0, 10),
             lastUpdatedBy: companyRecord?.emailid
           }          
-          runApprovalWorkflow(new Date(Date.now()).toISOString().slice(0, 10), curApproval, 'attendance', 'postattendance', 
+          runApprovalWorkFlow(new Date(Date.now()).toISOString().slice(0, 10), curApproval, 'attendance', 'postattendance', 
             approvalData, ()=>{postAttendance(approvalData, curNo)}
           )                   
     }
@@ -170,7 +180,8 @@ const Attendance = () =>{
             setAlert(resps.mess)
             setAlertTimeout(3000)
             console.log(resps.mess)
-        }else{
+        }else{            
+            getApprovals(company)
             setAlertState('success')
             setAlert('Attendance Loaded Successfully!')
             setAlertTimeout(3000)
