@@ -83,8 +83,8 @@ const Attendance = () =>{
 
     useEffect(()=>{
         if (curApproval){
-            setUpload(true)
             setViewNo(curApproval.data.no)
+            setAdd(false)
         }
     },[curApproval])
     const handleFileUpload = (event) => {
@@ -167,7 +167,7 @@ const Attendance = () =>{
 
     const postAttendance = async (approvalData, curNo)=>{
         setAlertState('info')
-        setAlert('Loading Attendance...')
+        setAlert('Posting Attendance...')
         setAlertTimeout(100000)
         const resps = await fetchServer("POST", {
           database: company,
@@ -181,19 +181,24 @@ const Attendance = () =>{
             setAlertTimeout(3000)
             console.log(resps.mess)
         }else{            
+            removeApproval(company, 'attendance', 'postattendance', {                        
+                createdAt: approvalData.createdAt,
+                postingDate: approvalData.postingDate                                                 
+            })
+            getAttendance(company)
             getApprovals(company)
+            setCurApproval(null)
             setAlertState('success')
             setAlert('Attendance Loaded Successfully!')
             setAlertTimeout(3000)
             setAdd(false)
-            setUpload(true)
+            setUpload(false)
             setViewNo(curNo)
             setICols([])
             setMonth('')
             setYear('')
             setCalId('')
             setCalDur('')
-            getAttendance(company)
         }
     }
 
@@ -236,63 +241,68 @@ const Attendance = () =>{
         return String(preHour).trim()
     }
     const loadData = async () =>{
-        var newRawData = []
-        var ids = []
-        rawData.forEach((data)=>{
-            const convertedId = converToId(data[fields[calId]])
-            if (!ids.includes(convertedId)){
-                ids = ids.concat(convertedId)
-            }
-            var newRow = {}
-            columns.forEach((col)=>{
-                newRow[col] = data[fields[col]]
-            })
-            newRawData = newRawData.concat(newRow)
-        })
-        var analyzedData = []
-        ids.forEach((id)=>{
-            var newRow = {}
-            newRow[calId] = id
-            var totalHours = 0
-            var totalDays = 0
-            var totalPay = 0
-            var payPerDay = 0
-            var expectedWorkDays = ''
-            employees.forEach((emp)=>{
-                if (String(emp.i_d) === String(id)){
-                    if (emp.expectedWorkDays){
-                        expectedWorkDays = Number(emp.expectedWorkDays)
-                        payPerDay = Number(emp.salary)/expectedWorkDays
-                    }else{
-                        payPerDay = Number(emp.salary)/monthDays[month]
-                    }
+        if (curApproval === null){
+            var newRawData = []
+            var ids = []
+            rawData.forEach((data)=>{
+                const convertedId = converToId(data[fields[calId]])
+                if (!ids.includes(convertedId)){
+                    ids = ids.concat(convertedId)
                 }
+                var newRow = {}
+                columns.forEach((col)=>{
+                    newRow[col] = data[fields[col]]
+                })
+                newRawData = newRawData.concat(newRow)
             })
-            newRawData.forEach((data)=>{
-                if (data[calId]===id){
-                    var curHour;
-                    if (durationFormat==='fmt1'){
-                        const [hour,minute] = data[calDur].split(':')
-                        curHour = parseFloat(Number(hour) + Number(minute)/60)
-                    }else if (durationFormat==='fmt2'){
-                        curHour = Number(converToHour(data[calDur]))
+            var analyzedData = []
+            ids.forEach((id)=>{
+                var newRow = {}
+                newRow[calId] = id
+                var totalHours = 0
+                var totalDays = 0
+                var totalPay = 0
+                var payPerDay = 0
+                var expectedWorkDays = ''
+                employees.forEach((emp)=>{
+                    if (String(emp.i_d) === String(id)){
+                        if (emp.expectedWorkDays){
+                            expectedWorkDays = Number(emp.expectedWorkDays)
+                            payPerDay = Number(emp.salary)/expectedWorkDays
+                        }else{
+                            payPerDay = Number(emp.salary)/monthDays[month]
+                        }
                     }
-                    totalHours += curHour
-                    if(curHour>=5){
-                        totalDays += 1
-                    }else if (curHour>=1 && curHour<5){
-                        totalDays += 0.5
+                })
+                newRawData.forEach((data)=>{
+                    if (data[calId]===id){
+                        var curHour;
+                        if (durationFormat==='fmt1'){
+                            const [hour,minute] = data[calDur].split(':')
+                            curHour = parseFloat(Number(hour) + Number(minute)/60)
+                        }else if (durationFormat==='fmt2'){
+                            curHour = Number(converToHour(data[calDur]))
+                        }
+                        totalHours += curHour
+                        if(curHour>=5){
+                            totalDays += 1
+                        }else if (curHour>=1 && curHour<5){
+                            totalDays += 0.5
+                        }
                     }
-                }
+                })
+                totalPay = parseFloat(Number(payPerDay * totalDays)).toFixed(2)
+                newRow['Expected Work Days'] = expectedWorkDays ? expectedWorkDays : monthDays[month]
+                newRow['Total Hours'] = totalHours
+                newRow['Total Days'] = totalDays
+                newRow['Total Pay'] = totalPay
+                analyzedData = analyzedData.concat(newRow)
             })
-            totalPay = parseFloat(Number(payPerDay * totalDays)).toFixed(2)
-            newRow['Expected Work Days'] = expectedWorkDays ? expectedWorkDays : monthDays[month]
-            newRow['Total Hours'] = totalHours
-            newRow['Total Days'] = totalDays
-            newRow['Total Pay'] = totalPay
-            analyzedData = analyzedData.concat(newRow)
-        })
-        addAttendace(year, month, analyzedData)
+            addAttendace(year, month, analyzedData)
+        }else{
+            const {year, month, payees} = curApproval.data
+            addAttendace(year, month, payees)
+        }
     }
     const handleButtonClick = () => {
         fileInputRef.current.click();
@@ -360,6 +370,7 @@ const Attendance = () =>{
                             >
                                 <div className='dets sldets'>
                                     <div>Approval Type: <b>{'ATTENDANCE'}</b></div>
+                                    <div>For: <b>{`${month}, ${year}`}</b></div>
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
                                     {message && <div>Message: <b>{message}</b></div>}
@@ -390,6 +401,38 @@ const Attendance = () =>{
                                 >
                                     Delete
                                 </div>}
+                                {companyRecord.status==='admin' && (!curApproval?.approved || !curApproval?.message) && <div 
+                                    className='edit'
+                                    name='approve'         
+                                    style={{
+                                        color:'green', 
+                                        border: 'solid green 1.2px', 
+                                        borderRadius: '8px',
+                                        padding: '5px',
+                                        fontSize: '.8em'
+                                    }}
+                                    onClick={async ()=>{
+                                        loadData()
+                                    }}
+                                >
+                                    Approve Request
+                                </div>}
+                                {(curApproval?.approved) && <div 
+                                    className='edit'
+                                    name='approve'         
+                                    style={{
+                                        color:'green', 
+                                        border: 'solid green 1.2px', 
+                                        borderRadius: '8px',
+                                        padding: '5px',
+                                        fontSize: '.8em'
+                                    }}
+                                    onClick={async ()=>{
+                                        loadData()
+                                    }}
+                                >
+                                    Post Attendance
+                                </div>}
                             </div>
                         )
                     }else{
@@ -399,6 +442,7 @@ const Attendance = () =>{
                                 onClick={()=>{
                                     setViewNo(no)
                                     setAdd(false)
+                                    setCurApproval(null)
                                 }}
                             >
                                 <div className='dets'>
