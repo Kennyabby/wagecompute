@@ -115,7 +115,7 @@ const Reports = ()=>{
                 
                 saledata = saledata.concat(reportSale)
             }
-        })
+        })       
         const monthlySalesData = getMonthWiseReport(saledata)
 
         var rentalData = []

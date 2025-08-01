@@ -37,12 +37,15 @@ function App() {
   const [approvals, setApprovals] = useState([])
   const [approvalStatus, setApprovalStatus] = useState(false)
   const [approvalMessage, setApprovalMessage] = useState('')
-
+  const [curApproval, setCurApproval] = useState(null)
+  const [showApprovalBox, setShowApprovalBox] = useState(false)
+  
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
   const [alertTimeout, setAlertTimeout] = useState(100000)
   const [actionMessage, setActionMessage] = useState('')
   const [action, setAction] = useState('')
+  
   const [sessId, setSessID] = useState(null)
   const [companyRecord, setCompanyRecord] = useState(null)
   const [loginMessage, setLoginMessage] = useState('')
@@ -319,6 +322,120 @@ function App() {
 
     return newNumber;
 
+  }
+
+  const postApprovalUpdate = async (company, module, section, curApproval)=>{
+    setAlertState('info')
+    setAlert('Updating Approval...')
+    setAlertTimeout(100000)
+    const approvalState = {
+        approved: approvalStatus,
+        message: approvalMessage,
+        createdAt: curApproval.createdAt,
+        lastUpdatedBy: companyRecord?.emailid
+    }
+    if (approvalStatus){
+        approvalState.approvedBy = companyRecord?.emailid || companyRecord?.emailid
+    }
+    const resp = await updateApproval(company, module, section, {                                                                
+        ...approvalState
+    })
+    if (resp.completed){
+        getApprovals(company)
+        setAlertState('success')
+        setAlert('Approval Updated!')
+        setAlertTimeout(5000)
+        setApprovalStatus(false)
+        setApprovalMessage('')
+        setShowApprovalBox(false)
+        setCurApproval({...curApproval, 
+            approved: approvalStatus,
+            message: approvalMessage,
+            createdAt: curApproval.createdAt,
+            lastUpdatedBy: companyRecord?.emailid
+        })
+    }else{
+        setAlertState('error')
+        setAlert(resp.mess)
+        setAlertTimeout(5000)
+        setApprovalStatus(false)
+        setApprovalMessage('')
+    }
+  }
+
+  const runApprovalWorkFlow = async(postingDate, curApproval, module, section, data, runApproval, link)=>{
+      
+    const executePostAction = ()=>{
+        runApproval()            
+        if (curApproval?.createdAt){
+            removeApproval(company, module, section, {                        
+                createdAt: curApproval.createdAt,
+                postingDate: curApproval.postingDate                                                 
+            })
+        }
+    }
+
+    const executeApprovalAction = async (previous)=>{
+        if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
+            executePostAction()
+        }else{
+            setAlertState('info')
+            setAlert('Sending Approval Request...')
+            setAlertTimeout(100000)
+            const approvalData = {
+                data: data,
+                createdAt: previous?.createdAt ? previous.createdAt: new Date().getTime(),
+                postingDate: postingDate,   
+                isApproval: true,  
+                handlerId: companyRecord?.emailid,  
+                messages: previous?.createdAt ? [
+                    ...previous.messages, 
+                    {message: previous.message, createdAt: new Date().getTime()}
+                ] : []                        
+            }
+            if (link){
+                approvalData.link = link
+            }
+            const resp = await requestApproval(company, module, section, approvalData)
+            if (resp.completed){
+                if(previous?.createdAt){
+                    removeApproval(company, module, section, {                        
+                        createdAt: previous.createdAt,
+                        postingDate: previous.postingDate                                                 
+                    })
+                }
+                setAlertState('success')
+                setAlert('Approval Request Sent Successfully!')
+                setAlertTimeout(5000)
+                getApprovals(company)
+                setCurApproval(approvalData)
+            }else{
+                setAlertState('error')
+                setAlert(resp.mess)
+                setAlertTimeout(5000)
+            }
+        }
+    }
+
+    if (![null, undefined].includes(curApproval)){
+        if (curApproval.approved){
+            executePostAction()
+        }else{
+            if (!curApproval.message){
+                if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
+                   setShowApprovalBox(true)
+                }else{
+                    setAlertState('info')
+                    setAlert('Already sent for approval. Please wait for response!')
+                    setAlertTimeout(5000)
+                }
+            }else{
+                executeApprovalAction(curApproval)
+            }
+        }
+    }else{
+        executeApprovalAction()
+    }
   }
 
   const requestApproval = async (company, module, section, data)=>{
@@ -1088,9 +1205,12 @@ function App() {
           tables, setTables, fetchTables,
 
           approvals, setApprovals, getApprovals,
-          requestApproval, updateApproval, removeApproval,
+          runApprovalWorkFlow, requestApproval, postApprovalUpdate, 
+          updateApproval, removeApproval,
           approvalStatus, setApprovalStatus,
           approvalMessage, setApprovalMessage,
+          curApproval, setCurApproval,
+          showApprovalBox, setShowApprovalBox,
 
           saleFrom, setSaleFrom,
           saleTo, setSaleTo,

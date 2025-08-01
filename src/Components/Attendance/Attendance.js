@@ -2,15 +2,17 @@ import './Attendance.css'
 
 import {useEffect, useState, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import * as XLSX from 'xlsx';
 
 const Attendance = () =>{
     const {storePath,
         server, fetchServer,
         months, monthDays,years,
-        company,
+        company, companyRecord,
         attendance, setAttendance, getAttendance, getEmployees,
-        employees, settings
+        employees, settings, runApprovalWorkflow, curApproval, postApprovalUpdate,
+        showApprovalBox, setShowApprovalBox, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
     const fileInputRef = useRef(null);
     const [iCols, setICols] = useState([])
@@ -114,15 +116,29 @@ const Attendance = () =>{
 
     const addAttendace = async (year, month, newAttendace)=>{
           const curNo = attendance.length+1
-          const resps = await fetchServer("POST", {
-            database: company,
+          const approvalData = {
+            no:curNo,
+            month,
+            year,
+            payees:newAttendace,
+            createdAt: new Date(Date.now()).toISOString().slice(0, 10),
+            lastUpdatedBy: companyRecord?.emailid
+          }          
+          runApprovalWorkflow(new Date(Date.now()).toISOString().slice(0, 10), curApproval, 'attendance', 'postAttendance', 
+            approvalData, ()=>{postAttendance(approvalData, curNo)}
+          )                   
+    }
+
+    const postAttendance = async (approvalData, curNo)=>{
+        const resps = await fetchServer("POST", {
+          database: company,
             collection: "Attendance", 
-            update: {no:curNo, month, year, payees:newAttendace}
-          }, "createDoc", server)
-          
-          if (resps.err){
+            update: approvalData
+        }, "createDoc", server)
+        
+        if (resps.err){
             console.log(resps.mess)
-          }else{
+        }else{
             setAdd(false)
             setUpload(true)
             setViewNo(curNo)
@@ -132,7 +148,7 @@ const Attendance = () =>{
             setCalId('')
             setCalDur('')
             getAttendance(company)
-          }
+        }
     }
 
     const deleteAttendance = async (att)=>{
@@ -257,6 +273,18 @@ const Attendance = () =>{
     return(
         <>
         <div className='attendance'>
+            {showApprovalBox && <ApprovalBox
+                onClose={()=>{
+                    setShowApprovalBox(false)
+                    setApprovalStatus(false)
+                    setApprovalMessage('')
+                }}
+                module={'attendance'}
+                section= {'postAttendance'}
+                postApprovalUpdate={()=>{
+                    postApprovalUpdate(company, 'attendance', 'postAttendance', curApproval)                        
+                }}
+            />}
             <div className='emplist attlist'>
                 <div className='add'
                     onClick={()=>{

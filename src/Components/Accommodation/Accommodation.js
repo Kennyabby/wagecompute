@@ -15,7 +15,7 @@ const Accommodation = ()=>{
         fetchServer, 
         server, 
         companyRecord, 
-        company, recoveryVal, 
+        company, recoveryVal, allowBacklogs,
         employees, getEmployees,
         accommodations, setAccommodations, getAccommodations, months, 
         customers, setCustomers, getCustomers,
@@ -127,7 +127,7 @@ const Accommodation = ()=>{
         }
     },[customers, isView])
     useEffect(()=>{
-        if (companyRecord.status!=='admin'){
+        if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])
@@ -601,7 +601,7 @@ const Accommodation = ()=>{
                                 type='date'
                                 placeholder='From'
                                 value={saleFrom}
-                                disabled={companyRecord.status!=='admin'}
+                                disabled={!allowBacklogs}
                                 onChange={(e)=>{
                                     setSaleFrom(e.target.value)
                                     setAccommodationCustomer('')
@@ -616,7 +616,7 @@ const Accommodation = ()=>{
                                 type='date'
                                 placeholder='To'
                                 value={saleTo}
-                                disabled={companyRecord.status!=='admin'}
+                                disabled={!allowBacklogs}
                                 onChange={(e)=>{
                                     setSaleTo(e.target.value)
                                     setAccommodationCustomer('')
