@@ -9,10 +9,11 @@ const Attendance = () =>{
     const {storePath,
         server, fetchServer,
         months, monthDays,years,
-        company, companyRecord,
+        company, companyRecord, getDate,
         attendance, setAttendance, getAttendance, getEmployees,
-        employees, settings, runApprovalWorkflow, curApproval, postApprovalUpdate,
-        showApprovalBox, setShowApprovalBox, setApprovalStatus, setApprovalMessage,
+        employees, settings, runApprovalWorkflow, approvals, getApprovals, removeApproval,
+        curApproval, setCurApproval, postApprovalUpdate, showApprovalBox, setShowApprovalBox, 
+        setApprovalStatus, setApprovalMessage, setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
     const fileInputRef = useRef(null);
     const [iCols, setICols] = useState([])
@@ -27,19 +28,26 @@ const Attendance = () =>{
     const [durationFormat, setDurationFormat] = useState('fmt2')
     const [viewNo, setViewNo] = useState(null)
     
+    const [attendanceApprovals, setAttendanceApprovals] = useState([])
+    const [isApprover, setIsApprover] = useState(false)
     useEffect(()=>{
         storePath('attendance')  
     },[storePath])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getApprovals(cmp_val)
+        getEmployees(cmp_val)
+        getAttendance(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
+            getApprovals(cmp_val)
             getEmployees(cmp_val)
             getAttendance(cmp_val)
           }
-        },10000)
+        },45000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+
     const [columns, setColumns] = useState([])
     const [selectedCols, setSelectedCols] = useState([])
     useEffect(()=>{
@@ -51,6 +59,24 @@ const Attendance = () =>{
             setColumns(colSetFilt[0]?colSetFilt[0].import_columns:[])
         }
     },[settings])
+
+    useEffect(()=>{
+        setAttendanceApprovals(approvals.filter((appr)=>{
+            return (
+                appr.module === 'attendance'
+                && appr.section.toUpperCase() === 'postAttendance'.toUpperCase()
+                && (!appr.approved && !appr.message)
+            )
+        }))
+        
+    }, [approvals])
+
+    useEffect(()=>{
+        if(companyRecord?.permissions.includes('postAttendance') || companyRecord?.status==='admin'){
+            setIsApprover(true)
+        }
+    },[companyRecord])
+
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
         const reader = new FileReader();
@@ -124,12 +150,15 @@ const Attendance = () =>{
             createdAt: new Date(Date.now()).toISOString().slice(0, 10),
             lastUpdatedBy: companyRecord?.emailid
           }          
-          runApprovalWorkflow(new Date(Date.now()).toISOString().slice(0, 10), curApproval, 'attendance', 'postAttendance', 
+          runApprovalWorkflow(new Date(Date.now()).toISOString().slice(0, 10), curApproval, 'attendance', 'postattendance', 
             approvalData, ()=>{postAttendance(approvalData, curNo)}
           )                   
     }
 
     const postAttendance = async (approvalData, curNo)=>{
+        setAlertState('info')
+        setAlert('Loading Attendance...')
+        setAlertTimeout(100000)
         const resps = await fetchServer("POST", {
           database: company,
             collection: "Attendance", 
@@ -137,8 +166,14 @@ const Attendance = () =>{
         }, "createDoc", server)
         
         if (resps.err){
+            setAlertState('error')
+            setAlert(resps.mess)
+            setAlertTimeout(3000)
             console.log(resps.mess)
         }else{
+            setAlertState('success')
+            setAlert('Attendance Loaded Successfully!')
+            setAlertTimeout(3000)
             setAdd(false)
             setUpload(true)
             setViewNo(curNo)
@@ -290,34 +325,89 @@ const Attendance = () =>{
                     onClick={()=>{
                         setAdd(true)
                         setViewNo(null)
+                        setIsApprover(false)
                     }}
                 >{'+'}</div>
-                {attendance.map((att, id)=>{
-                    const {no, month, year, payees} = att
-                    return(
-                        <div className={'dept' + (viewNo===no?' curview':'')} key={id} name={no}
-                            onClick={()=>{
-                                setViewNo(no)
-                                setAdd(false)
-                            }}
-                        >
-                            <div className='dets'>
-                                <div><b>No: </b>{no}</div>
-                                <div className='deptdesc'>{'Year: '+year}</div>
-                                <div className='deptdesc'>{'Month: '+month}</div>
-                                <div> <b>{payees.length}</b>{' Computed Pays'}</div>
+                {[...attendanceApprovals, ...attendance].map((att, id)=>{
+                    if (att.isApproval){
+                        const {createdAt, postingDate, message, handlerId, approved, data} = att
+                        const {no, month, year, payees} = data
+                        var textColor = 'red'
+                        if (approved){
+                            textColor ='green'
+                        }
+                        return (
+                            <div className={'dept sldept' + (curApproval?.createdAt===createdAt?' curview':'')} key={id} 
+                                onClick={(e)=>{
+                                    setViewNo(no)
+                                    setAdd(false)
+                                    if(companyRecord?.permissions.includes('postAttendance') || companyRecord?.status==='admin'){
+                                        setIsApprover(true)
+                                    }
+                                    setCurApproval(att)
+                                }}
+                            >
+                                <div className='dets sldets'>
+                                    <div>Approval Type: <b>{'ATTENDANCE'}</b></div>
+                                    <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                    <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
+                                    {message && <div>Message: <b>{message}</b></div>}
+                                    <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                </div>
+                                {companyRecord.status==='admin' && <div 
+                                    className='edit'
+                                    name='delete'         
+                                    style={{color:'red'}}                           
+                                    onClick={async ()=>{                                        
+                                        setAlertState('info')
+                                        setAlert('Deleting Approval Data...')
+                                        setAlertTimeout(100000)
+
+                                        const resp = await removeApproval(company, 'attendance', 'postattendance', {                        
+                                            createdAt: createdAt,
+                                            postingDate: postingDate                                                 
+                                        })     
+                                        
+                                        if(resp.completed){
+                                            setAlertState('success')
+                                            setAlert('Deleted Approval Data Successfully!')
+                                            setAlertTimeout(3000)
+                                            setCurApproval(null)
+                                        }
+
+                                    }}
+                                >
+                                    Delete
+                                </div>}
                             </div>
-                            {((months[(new Date()).getMonth()]===month && 
-                                String((new Date()).getFullYear()===year)) || 
-                                (months[(new Date()).getMonth()-1]===month &&
-                                [1,2,3,4,5,6,8,9,10].includes((new Date).getDate()))) && 
-                            <div 
-                            className='edit'
-                            onClick={()=>{
-                                deleteAttendance(att)
-                            }}>Delete</div>}
-                        </div>
-                    )
+                        )
+                    }else{
+                        const {no, month, year, payees} = att
+                        return(
+                            <div className={'dept' + (viewNo===no?' curview':'')} key={id} name={no}
+                                onClick={()=>{
+                                    setViewNo(no)
+                                    setAdd(false)
+                                }}
+                            >
+                                <div className='dets'>
+                                    <div><b>No: </b>{no}</div>
+                                    <div className='deptdesc'>{'Year: '+year}</div>
+                                    <div className='deptdesc'>{'Month: '+month}</div>
+                                    <div> <b>{payees.length}</b>{' Computed Pays'}</div>
+                                </div>
+                                {((months[(new Date()).getMonth()]===month && 
+                                    String((new Date()).getFullYear()===year)) || 
+                                    (months[(new Date()).getMonth()-1]===month &&
+                                    [1,2,3,4,5,6,8,9,10].includes((new Date).getDate()))) && 
+                                <div 
+                                className='edit'
+                                onClick={()=>{
+                                    deleteAttendance(att)
+                                }}>Delete</div>}
+                            </div>
+                        )
+                    }
                   })}
             </div>
             <div className='empview attview'>
@@ -435,7 +525,7 @@ const Attendance = () =>{
                             <div className='aftupl'>
                                 <div
                                     onClick={loadData}
-                                >Load</div>
+                                >{curApproval ? (curApproval.approved? 'Load': (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>
                                 <div
                                     onClick={()=>{
                                         setICols([])
@@ -457,7 +547,7 @@ const Attendance = () =>{
                 </div>:
                 <div>
                     {
-                        attendance.map((att, id)=>{
+                        (curApproval? [...attendance, {...curApproval.data}] : attendance).map((att, id)=>{
                             if (String(att.no) === String(viewNo)){
                                 const {payees} = att
                                 return <div key={id}>

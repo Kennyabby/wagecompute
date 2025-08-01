@@ -22,12 +22,15 @@ import { MdLogout } from "react-icons/md";
 const SideNav = ()=>{
     const {
         server, fetchServer, company, companyRecord,
-        setAlertState, setAlert, setAlertTimeout, approvals
+        setAlertState, setAlert, setAlertTimeout, approvals, setCurApproval
     } = useContext(ContextProvider)
     const [companyName, setCompanyName] = useState('....') 
     const [curPath, setCurPath] = useState('')
     const [logStatus, setLogStatus] = useState('Log Out')
     const [salesApprovals, setSalesApprovals] = useState([])
+    const [purchaseApprovals, setPurchaseApprovals] = useState([])
+    const [attendanceApprovals, setAttendanceApprovals] = useState([])
+    const [accommodationApprovals, setAccommodationApprovals] = useState([])
     const location = useLocation()
     const Navigate = useNavigate()
 
@@ -43,6 +46,21 @@ const SideNav = ()=>{
                 && (!appr.approved && !appr.message))
             )
         }))
+        setPurchaseApprovals(approvals.filter((appr)=>{
+            return (
+                (appr.module === 'purchase' && (!appr.approved && !appr.message))
+            )
+        }))
+        setAccommodationApprovals(approvals.filter((appr)=>{
+            return (
+                (appr.module === 'accommodation' && (!appr.approved && !appr.message))
+            )
+        }))
+        setAttendanceApprovals(approvals.filter((appr)=>{
+            return (
+                (appr.module === 'attendance' && (!appr.approved && !appr.message))
+            )
+        }))
     },[approvals])
     useEffect(()=>{
         if (companyRecord){
@@ -53,6 +71,7 @@ const SideNav = ()=>{
     const handleNav = (e)=>{
         const name = e.target.getAttribute('name')
         if(name){
+          setCurApproval(null)
           setAlertState('success')
           setAlert('.')
           setAlertTimeout(1)
@@ -77,6 +96,7 @@ const SideNav = ()=>{
             window.location.reload()
         }
     }
+    
     return(
         <>
         <div className='sidenav'>
@@ -118,6 +138,7 @@ const SideNav = ()=>{
                         <div name="attendance" className={'navdiv ' + (curPath==='attendance'?'selected':'')}>
                             <GiPlayerTime className='navdivicon' name="attendance"/>
                             <div name="attendance">Attendance</div>
+                            {companyRecord?.status==='admin' && attendanceApprovals.length > 0 && <div className='navdivcount'>{attendanceApprovals.length}</div>}
                         </div>
                     }
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && 
@@ -155,18 +176,20 @@ const SideNav = ()=>{
                         <div name="accommodations" className={'navdiv ' + (curPath==='accommodations'?'selected':'')}>
                             <FaHotel className='navdivicon' name="accommodations"/>
                             <div name="accommodations">Accommodation</div>
+                            {companyRecord?.status==='admin' && accommodationApprovals.length > 0 && <div className='navdivcount'>{accommodationApprovals.length}</div>}
                         </div>
                     }
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && 
                         <div name="purchase" className={'navdiv ' + (curPath==='purchase'?'selected':'')}>
                             <GiBuyCard className='navdivicon' name="purchase"/>
                             <div name="purchase">Direct Purchase</div>
+                            {companyRecord?.status==='admin' && purchaseApprovals.length > 0 && <div className='navdivcount'>{purchaseApprovals.length}</div>}
                         </div>
                     }
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && 
                         <div name="expenses" className={'navdiv ' + (curPath==='expenses'?'selected':'')}>
                             <GiExpense className='navdivicon' name="expenses"/>
-                            <div name="expenses">Admin Expenses</div>
+                            <div name="expenses">Admin Expenses</div>                            
                         </div>
                     }
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings')) && 
