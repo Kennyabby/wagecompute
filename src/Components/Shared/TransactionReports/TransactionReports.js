@@ -927,7 +927,7 @@ const TransactionReports = ({
                         
                         <div className="breakdown-section">
                             <h4>Sales by Pay Point</h4>
-                            <div className="breakdown-items">
+                            <div className="breakdown-items"> 
                                 {Object.entries(salesByPayPoint).map(([payPoint, amount]) => (
                                     <div key={`pay-${payPoint}`} className="breakdown-item">
                                         <span className="breakdown-label">{payPoint.toUpperCase()}</span>

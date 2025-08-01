@@ -34,8 +34,9 @@ const Sales = ()=>{
         setSalesLoadCount, salesLoadCount,
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
-        approvals, getApprovals, requestApproval, updateApproval, removeApproval,
-        approvalStatus, approvalMessage, setApprovalStatus, setApprovalMessage,               
+        curApproval, setCurApproval, showApprovalBox, setShowApprovalBox,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval,
+        setApprovalStatus, setApprovalMessage,               
     } = useContext(ContextProvider)
 
     const payPoints = {
@@ -78,9 +79,7 @@ const Sales = ()=>{
     const [postingDate, setPostingDate] = useState('')
     const [curSale, setCurSale] = useState(null)
     const [curRent, setCurRent] = useState(null)
-    
-    const [curApproval, setCurApproval] = useState(null)
-    const [showApprovalBox, setShowApprovalBox] = useState(false)
+        
     const [isApprover, setIsApprover] = useState(false)
     const [isProductApprover, setIsProductApprover] = useState(false)
     const [ftrApprovals, setFtrApprovals] = useState([])
@@ -494,6 +493,7 @@ const Sales = ()=>{
                 setActiveSessions([])
                 setPostingDate(curApproval.postingDate)
             }
+            setAddingProducts(false)
         }
     },[curSale, curApproval])
 
@@ -528,7 +528,6 @@ const Sales = ()=>{
         }
     },[companyRecord])
 
-
     useEffect(()=>{
         setCurApproval(null)
         if (saleEmployee){
@@ -546,124 +545,7 @@ const Sales = ()=>{
         if (reportSales){
             handleViewClick(reportSales)
         }
-    },[reportSales])
-
-    const postApprovalUpdate = async (company, module, section, curApproval)=>{
-        setAlertState('info')
-        setAlert('Updating Approval...')
-        setAlertTimeout(100000)
-        const approvalState = {
-            approved: approvalStatus,
-            message: approvalMessage,
-            createdAt: curApproval.createdAt,
-            lastUpdatedBy: companyRecord?.emailid
-        }
-        if (approvalStatus){
-            approvalState.approvedBy = companyRecord?.emailid || companyRecord?.emailid
-        }
-        const resp = await updateApproval(company, module, section, {                                                                
-            ...approvalState
-        })
-        if (resp.completed){
-            getApprovals(company)
-            setAlertState('success')
-            setAlert('Approval Updated!')
-            setAlertTimeout(5000)
-            setApprovalStatus(false)
-            setApprovalMessage('')
-            setShowApprovalBox(false)
-            setCurApproval({...curApproval, 
-                approved: approvalStatus,
-                message: approvalMessage,
-                createdAt: curApproval.createdAt,
-                lastUpdatedBy: companyRecord?.emailid
-            })
-            setPostingDate(curApproval.postingDate)
-            setAddingProducts(false)
-        }else{
-            setAlertState('error')
-            setAlert(resp.mess)
-            setAlertTimeout(5000)
-            setAddingProducts(false)
-        }
-    }
-
-    const runApprovalWorkFlow = async(curApproval, module, section, data, runApproval, link)=>{
-        
-        const executePostAction = ()=>{
-            runApproval()            
-            if (curApproval?.createdAt){
-                removeApproval(company, module, section, {                        
-                    createdAt: curApproval.createdAt,
-                    postingDate: curApproval.postingDate                                                 
-                })
-            }
-        }
-
-        const executeApprovalAction = async (previous)=>{
-            if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
-                executePostAction()
-            }else{
-                setAlertState('info')
-                setAlert('Sending Approval Request...')
-                setAlertTimeout(100000)
-                const approvalData = {
-                    data: data,
-                    createdAt: previous?.createdAt ? previous.createdAt: new Date().getTime(),
-                    postingDate: postingDate,   
-                    isApproval: true,  
-                    handlerId: companyRecord?.emailid,  
-                    messages: previous?.createdAt ? [
-                        ...previous.messages, 
-                        {message: previous.message, createdAt: new Date().getTime()}
-                    ] : []                        
-                }
-                if (link){
-                    approvalData.link = link
-                }
-                const resp = await requestApproval(company, module, section, approvalData)
-                if (resp.completed){
-                    if(previous?.createdAt){
-                        removeApproval(company, module, section, {                        
-                            createdAt: previous.createdAt,
-                            postingDate: previous.postingDate                                                 
-                        })
-                    }
-                    setAlertState('success')
-                    setAlert('Approval Request Sent Successfully!')
-                    setAlertTimeout(5000)
-                    getApprovals(company)
-                    setCurApproval(approvalData)
-                    setAddingProducts(false)
-                }else{
-                    setAlertState('error')
-                    setAlert(resp.mess)
-                    setAlertTimeout(5000)
-                    setAddingProducts(false)
-                }
-            }
-        }
-
-        if (![null, undefined].includes(curApproval)){
-            if (curApproval.approved){
-                executePostAction()
-            }else{
-                if (!curApproval.message){
-                    if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
-                       setShowApprovalBox(true)
-                    }else{
-                        setAlertState('info')
-                        setAlert('Already sent for approval. Please wait for response!')
-                        setAlertTimeout(5000)
-                    }
-                }else{
-                    executeApprovalAction(curApproval)
-                }
-            }
-        }else{
-            executeApprovalAction()
-        }
-    }
+    },[reportSales])    
 
     const handleFieldChange = (prop)=>{
         const {e} = prop
@@ -891,7 +773,7 @@ const Sales = ()=>{
             }
         }
 
-        runApprovalWorkFlow(curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
+        runApprovalWorkFlow(postingDate, curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
     }
 
     const handleProductSales = async ()=>{        
@@ -1014,34 +896,7 @@ const Sales = ()=>{
                         totalSales: Number(entry.totalSales) * -1,
                         postingDate: postingDate,
                         createdAt: createdAt,
-                    };
-                    
-                    // ctentries++
-                    
-                    // setPostCount(prevCount => {
-                    //     if (!postedProducts.includes(`${entry.productId} ${entryWrh}`)){
-                    //         setPostedProducts((products)=>{
-                    //             return [...products, `${entry.productId} ${entryWrh}`]
-                    //         })
-                    //     }
-                    //     const newCount = prevCount + 1;
-                    //     if (newCount === entriesLength) {
-                    //         console.log(entryWrh, 'newTransaction: ', ctentries)
-                    //         setAddingProducts(false)
-                    //         setPostCount(0)
-                    //         setAlertState('success');
-                    //         setAlert(`${entriesLength} Inventory Updated Successfully!`);
-                    //         setAlertTimeout(5000)
-                    //     }else{
-                    //         if (ctentries === validEntries.length){
-                    //             console.log(entryWrh, 'newTransaction: ', ctentries)
-                    //         }else {                        
-                    //             setAlertState('success');
-                    //             setAlert(`${newCount} / ${entriesLength} Inventory Updated to ${entryWrh} Successfully!`);
-                    //         }
-                    //         return newCount
-                    //     }
-                    // })
+                    };                                       
 
                     const resps = await fetchServer("POST", {
                         database: company,
@@ -2985,7 +2840,7 @@ const Sales = ()=>{
                                                     // setIsProductView(false)
                                                     // setProductAdd(true)      
                                                     const data = [...accommodationRecords, ...sessionSalesRecords, ...fields]
-                                                    runApprovalWorkFlow(curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
+                                                    runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
                                                 }else{
                                                     setAlertState('error')
                                                     setAlert('You still have active POS/Delivery sessions for this posting date. Please end them before posting!')
@@ -3046,7 +2901,7 @@ const Sales = ()=>{
                                             recoveryEmployeeId,
                                             recoveryMonth
                                         }
-                                        runApprovalWorkFlow(curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
+                                        runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
                                     }else{
                                         setActionMessage('')
                                         setAlertState('error')
@@ -3067,7 +2922,7 @@ const Sales = ()=>{
                             }}
                             onClick={()=>{
                                 if (rentalFields.paymentAmount && rentalFields.expectedPayment){
-                                    runApprovalWorkFlow(curApproval, 'sales', 'postrentals', rentalFields, postRentals)                                    
+                                    runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrentals', rentalFields, postRentals)                                    
                                 }
                             }}
                         >{curApproval ? (curApproval.approved? rentalsStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>}                        
