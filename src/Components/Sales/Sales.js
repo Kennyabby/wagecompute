@@ -2382,7 +2382,7 @@ const Sales = ()=>{
                                                 className='forminp'
                                                 name='recoveryPoint'
                                                 type='text'
-                                                value={field.recoveryPont}
+                                                value={field.recoveryPoint}
                                                 onChange={(e)=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
