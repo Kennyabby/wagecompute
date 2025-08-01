@@ -1583,6 +1583,7 @@ const Sales = ()=>{
         setRentalsStatus('Posting to Rentals...')        
         const newRental = {
             ...rentalFields,
+            approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
             createdAt: new Date().getTime(),            
         }
 
@@ -1590,8 +1591,7 @@ const Sales = ()=>{
         const resps = await fetchServer("POST", {
             database: company,
             collection: "Rentals", 
-            update: newRental,
-            approvedBy: curApproval?.approvedBy || companyRecord?.emailid
+            update: newRental,            
         }, "createDoc", server)
         
         if (resps.err){

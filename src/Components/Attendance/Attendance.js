@@ -157,7 +157,8 @@ const Attendance = () =>{
             year,
             payees:newAttendace,
             createdAt: new Date(Date.now()).toISOString().slice(0, 10),
-            lastUpdatedBy: companyRecord?.emailid
+            lastUpdatedBy: companyRecord?.emailid,
+            approvedBy: curApproval?.approvedBy || companyRecord?.emailid
           }          
           runApprovalWorkFlow(new Date(Date.now()).toISOString().slice(0, 10), curApproval, 'attendance', 'postattendance', 
             approvalData, ()=>{postAttendance(approvalData, curNo)}

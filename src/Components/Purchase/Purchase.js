@@ -38,12 +38,16 @@ const Purchase = ()=>{
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
     const [wrhs, setWrhs] = useState([])
-    const [postAction, setPostAction] = useState(null)
+    const [postAction, setPostAction] = useState('postpurchase')
     const [productPurchased, setProductPurchased] = useState([])
     // const [purchaseWrh, setPurchaseWrh] = useState('')
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
     const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [reportPurchase, setReportPurchase] = useState(null)
+    
+    const [purchaseApprovals, setPurchaseApprovals] = useState([])
+    const [isApprover, setIsApprover] = useState(false)
+    
     const defaultFields = {
         purchaseDepartment:'',
         purchaseHandler:'',
@@ -65,16 +69,18 @@ const Purchase = ()=>{
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getProducts(cmp_val)
+        getApprovals(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
             if (products){
                 getProductsWithStock(cmp_val, products)
             }
+            getApprovals(cmp_val)
             getEmployees(cmp_val)
             getPurchase(cmp_val)
             
           }
-        },10000)
+        },45000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
@@ -109,9 +115,39 @@ const Purchase = ()=>{
             setPurchaseDate(curPurchase.purchaseDate)
             setIsView(true)
         }else{
-            setPurchaseDate(new Date(Date.now()).toISOString().slice(0, 10))
+            if (curApproval){
+                setPurchaseDate(curApproval.postingDate)
+            }else{
+                setPurchaseDate(new Date(Date.now()).toISOString().slice(0, 10))
+            }
         }
-    },[curPurchase])
+    },[curPurchase, curApproval])
+
+    useEffect(()=>{
+        setPurchaseApprovals(approvals.filter((appr)=>{
+            return (
+                appr.module === 'purchase'
+                && appr.section.toUpperCase() === 'postPurchase'.toUpperCase()
+            )
+        }))
+        
+    }, [approvals])
+
+    useEffect(()=>{
+        if(companyRecord?.permissions.includes('postPurchase') || companyRecord?.status==='admin'){
+            setIsApprover(true)
+        }
+    },[companyRecord])
+
+    useEffect(()=>{
+        if (curApproval){
+            setCurPurchase(null)
+            setFields({...curApproval.data.purchaseFields})
+            setIsView(true)
+            setPurchaseDate(curApproval.postingDate)
+            setPurchaseEntries([...curApproval.data.validEntries])
+        }
+    },[curApproval])
 
     const handlePurchaseEntry = (e)=>{
         const name = e.target.getAttribute('name')
@@ -153,6 +189,7 @@ const Purchase = ()=>{
     };
 
     const handleViewClick = async (pur) =>{
+        setCurApproval(null)
         setCurPurchase(pur)
         setFields({...pur})
         setIsView(true)
@@ -345,6 +382,7 @@ const Purchase = ()=>{
         const newPurchase = {
             ...fields,
             postingDate:purchaseDate,
+            approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
             productsRef,
             createdAt: Date.now()
         }
@@ -363,6 +401,10 @@ const Purchase = ()=>{
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
             }else{
+                removeApproval(company, 'purchase', postAction, {                        
+                    createdAt: curApproval.createdAt,
+                    postingDate: curApproval.postingDate                                                 
+                })
                 setPurchaseStatus('Post Purchase')
                 setPurchase(newPurchases)
                 setCurPurchase(newPurchase)
@@ -484,6 +526,8 @@ const Purchase = ()=>{
                             setIsView(false)
                             setFields({...defaultFields})
                             setCurPurchase(null)
+                            setCurApproval(null)
+                            setIsApprover(false)
                         }}
                     />}
                     <div className='payeeinpcov'>
@@ -516,51 +560,100 @@ const Purchase = ()=>{
                             />
                         </div>
                     </div>
-                    {purchase.filter((purfltr)=>{
+                    {[...purchaseApprovals, ...purchase].filter((purfltr)=>{
                         if (purfltr.postingDate >= saleFrom && purfltr.postingDate <= saleTo){
                             return purfltr
                         }
                     }).map((pur, index)=>{
-                        const {
-                            createdAt,postingDate, 
-                            purchaseAmount, purchaseQuantity,
-                            purchaseUOM, purchaseDepartment,
-                            itemCategory,purchaseHandler 
-                        } = pur
-                        var handlerName = ''
-                        employees.forEach((emp)=>{
-                            if (emp.i_d === purchaseHandler){
-                                handlerName = `${emp.firstName} ${emp.lastName}`
+                        if (pur.isApproval){
+                            const {createdAt, postingDate, message, handlerId, approved} = pur
+                            var textColor = 'red'
+                            if (approved){
+                                textColor ='green'
                             }
-                        })
-                        return(
-                            <div className={'dept' + (curPurchase?.createdAt===createdAt?' curview':'')} key={index} 
-                                onClick={(e)=>{
-                                    handleViewClick(pur)
-                                }}
-                            >
-                                <div className='dets sldets'>
-                                    <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                    <div>Purchase Department: <b>{purchaseDepartment}</b></div>                                    
-                                    <div>Purchase Amount: <b>{'₦'+(Number(purchaseAmount)).toLocaleString()}</b></div>                                    
-                                    <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM.toUpperCase()} of ${itemCategory}`}</b></div>                                    
-                                    <div className='deptdesc'>{`Purchase Handled By:`} <b>{`${handlerName}`}</b></div>
-                                </div>
-                                {(companyRecord.status==='admin') && <div 
-                                    className='edit'
-                                    name='delete'         
-                                    style={{color:'red'}}                           
-                                    onClick={()=>{                                        
-                                        setAlertState('info')
-                                        setAlert('You are about to delete the selected Purchase Record. Please Delete again if you are sure!')
-                                        setAlertTimeout(5000)                                                                                    
-                                        deletePurchase(pur)
+                            return (
+                                <div className={'dept sldept' + (curApproval?.createdAt===createdAt?' curview':'')} key={index} 
+                                    onClick={(e)=>{
+                                        setCurApproval(pur)
                                     }}
                                 >
-                                    Delete
-                                </div>}
-                            </div>
-                        )
+                                    <div className='dets sldets'>
+                                        <div>Approval Type: <b>{'PURCHASE'}</b></div>
+                                        <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                        <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
+                                        {message && <div>Message: <b>{message}</b></div>}
+                                        <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                    </div>
+                                    {(companyRecord.status==='admin') && <div 
+                                        className='edit'
+                                        name='delete'         
+                                        style={{color:'red'}}                           
+                                        onClick={async ()=>{                                        
+                                            setAlertState('info')
+                                            setAlert('Deleting Approval Data...')
+                                            setAlertTimeout(100000)
+
+                                            const resp = await removeApproval(company, 'purchase', postAction, {                        
+                                                createdAt: createdAt,
+                                                postingDate: postingDate                                                 
+                                            })     
+                                            
+                                            if(resp.completed){
+                                                setAlertState('success')
+                                                setAlert('Deleted Approval Data Successfully!')
+                                                setAlertTimeout(3000)
+                                                setCurPurchase(null)
+                                                setCurApproval(null)
+                                            }
+
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                        }else{
+                            const {
+                                createdAt,postingDate, 
+                                purchaseAmount, purchaseQuantity,
+                                purchaseUOM, purchaseDepartment,
+                                itemCategory,purchaseHandler 
+                            } = pur
+                            var handlerName = ''
+                            employees.forEach((emp)=>{
+                                if (emp.i_d === purchaseHandler){
+                                    handlerName = `${emp.firstName} ${emp.lastName}`
+                                }
+                            })
+                            return(
+                                <div className={'dept' + (curPurchase?.createdAt===createdAt?' curview':'')} key={index} 
+                                    onClick={(e)=>{
+                                        handleViewClick(pur)
+                                    }}
+                                >
+                                    <div className='dets sldets'>
+                                        <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                        <div>Purchase Department: <b>{purchaseDepartment}</b></div>                                    
+                                        <div>Purchase Amount: <b>{'₦'+(Number(purchaseAmount)).toLocaleString()}</b></div>                                    
+                                        <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM.toUpperCase()} of ${itemCategory}`}</b></div>                                    
+                                        <div className='deptdesc'>{`Purchase Handled By:`} <b>{`${handlerName}`}</b></div>
+                                    </div>
+                                    {(companyRecord.status==='admin') && <div 
+                                        className='edit'
+                                        name='delete'         
+                                        style={{color:'red'}}                           
+                                        onClick={()=>{                                        
+                                            setAlertState('info')
+                                            setAlert('You are about to delete the selected Purchase Record. Please Delete again if you are sure!')
+                                            setAlertTimeout(5000)                                                                                    
+                                            deletePurchase(pur)
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                        }
                     })}
                 </div>
                 <div className='purinfo'>
@@ -716,7 +809,7 @@ const Purchase = ()=>{
                             Link Products
                         </div>)}
                     </div>
-                    {!isView && <div className='purchasebuttom'>
+                    {!isView || curApproval && <div className='purchasebuttom'>
                         <div className='inpcov'>
                             <input 
                                 className='forminp'
@@ -724,6 +817,7 @@ const Purchase = ()=>{
                                 type='date'
                                 placeholder='Purchase Date'
                                 value={purchaseDate}
+                                disabled={isView}
                                 onChange={(e)=>{
                                     setPurchaseDate(e.target.value)
                                 }}
@@ -737,7 +831,7 @@ const Purchase = ()=>{
                                     handleProductPurchase()
                                 }
                             }}                    
-                        >{purchaseStatus}</div>
+                        >{curApproval ? (curApproval.approved? purchaseStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>
                     </div>}
                 </div>
             </div>
