@@ -65,7 +65,6 @@ const Attendance = () =>{
             return (
                 appr.module === 'attendance'
                 && appr.section.toUpperCase() === 'postAttendance'.toUpperCase()
-                && (!appr.approved && !appr.message)
             )
         }))
         
@@ -203,14 +202,23 @@ const Attendance = () =>{
     }
 
     const deleteAttendance = async (att)=>{
+        setAlertState('info')
+        setAlert('Deleting Attendance Data...')
+        setAlertTimeout(100000)
         const resps = await fetchServer("POST", {
             database: company,
             collection: "Attendance", 
             update: {no: att.no}
         }, "removeDoc", server)
         if (resps.err){
+            setAlertState('error')
+            setAlert(resps.mess)
+            setAlertTimeout(3000)
             console.log(resps.mess)
         }else{
+            setAlertState('success')
+            setAlert('Deleted Attendance Data Successfully!')
+            setAlertTimeout(3000)
             setAdd(true)
             setUpload(true)
             getAttendance(company)
@@ -336,9 +344,9 @@ const Attendance = () =>{
                     setApprovalMessage('')
                 }}
                 module={'attendance'}
-                section= {'postAttendance'}
+                section= {'postattendance'}
                 postApprovalUpdate={()=>{
-                    postApprovalUpdate(company, 'attendance', 'postAttendance', curApproval)                        
+                    postApprovalUpdate(company, 'attendance', 'postattendance', curApproval)                        
                 }}
             />}
             <div className='emplist attlist'>
@@ -401,7 +409,7 @@ const Attendance = () =>{
                                 >
                                     Delete
                                 </div>}
-                                {companyRecord.status==='admin' && (!curApproval?.approved || !curApproval?.message) && <div 
+                                {companyRecord.status==='admin' && (curApproval!==null && !curApproval?.approved && !curApproval?.message) && <div 
                                     className='edit'
                                     name='approve'         
                                     style={{
@@ -417,7 +425,7 @@ const Attendance = () =>{
                                 >
                                     Approve Request
                                 </div>}
-                                {(curApproval?.approved) && <div 
+                                {(curApproval!==null && curApproval?.approved) && <div 
                                     className='edit'
                                     name='approve'         
                                     style={{
