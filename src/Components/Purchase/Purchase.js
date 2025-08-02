@@ -809,7 +809,7 @@ const Purchase = ()=>{
                             Link Products
                         </div>)}
                     </div>
-                    {!isView || curApproval && <div className='purchasebuttom'>
+                    {(!isView || curApproval) && <div className='purchasebuttom'>
                         <div className='inpcov'>
                             <input 
                                 className='forminp'
