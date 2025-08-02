@@ -4,6 +4,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import AccommodationReceipt from './AccommodationReport/AccommodationReceipt';
 import AccommodationReport from './AccommodationReport/AccommodationReport';
+import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import { FaTableCells } from "react-icons/fa6";
 import Notify from '../../Resources/Notify/Notify';
 import { MdAdd } from "react-icons/md";
@@ -19,9 +20,11 @@ const Accommodation = ()=>{
         employees, getEmployees,
         accommodations, setAccommodations, getAccommodations, months, 
         customers, setCustomers, getCustomers,
-        getDate, removeComma, 
+        getDate, removeComma, showApprovalBox, setShowApprovalBox,
         alert,alertState,alertTimeout,actionMessage, 
-        setAlert, setAlertState, setAlertTimeout, setActionMessage 
+        setAlert, setAlertState, setAlertTimeout, setActionMessage,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow,
+        removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
 
     const [showReport, setShowReport] = useState(false)
@@ -34,6 +37,10 @@ const Accommodation = ()=>{
     const [deleteCount, setDeleteCount] = useState(0)
     const [salesOpts, setSalesOpts] = useState('accommodation')
     const [salesOpts1, setSalesOpts1] = useState('accommodation')
+
+    const [accommodationApprovals, setAccommodationApprovals] = useState([])
+    const [isApprover, setIsApprover] = useState(false)
+
     const [accommodationStatus, setAccommodationStatus] = useState('Post Accommodation')
     const [fillmode, setFillMode] = useState('')
     const [customerStatus, setCustomerStatus] = useState('Add Customer')
@@ -100,25 +107,50 @@ const Accommodation = ()=>{
     useEffect(()=>{
         storePath('accommodations')  
     },[storePath])
+
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getApprovals(cmp_val)
+        getEmployees(cmp_val)
+        getCustomers(cmp_val)
+        getAccommodations(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
+            getApprovals(cmp_val)
             getEmployees(cmp_val)
             getCustomers(cmp_val)
             getAccommodations(cmp_val)
           }
-        },10000)
+        },45000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+    
+    useEffect(()=>{
+        setAccommodationApprovals(approvals.filter((appr)=>{
+            return (
+                appr.module === 'accommodation'
+                && appr.section.toUpperCase() === 'postAccommodation'.toUpperCase()
+            )
+        }))
+        
+    }, [approvals])
+
     useEffect(()=>{
         if (curAccommodation){
             setPostingDate(curAccommodation.postingDate)
+            setAccommodationFields({...curAccommodation})
             setIsView(true)
-        }else{
+        }
+        else{
             setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
         }
-    },[curAccommodation])
+        if (curApproval){
+            setPostingDate(curAccommodation.postingDate)
+            setAccommodationFields({...curAccommodation, ...curApproval.data})
+            setIsView(true)
+        }
+    },[curAccommodation, curApproval])
+
     useEffect(()=>{
         if (!isView){
             setCustomerFields((customerFields)=>{
@@ -129,6 +161,9 @@ const Accommodation = ()=>{
     useEffect(()=>{
         if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+        }
+        if(companyRecord?.permissions.includes('postAccommodation') || companyRecord?.status==='admin'){
+            setIsApprover(true)
         }
     },[companyRecord])
     useEffect(()=>{
@@ -144,9 +179,17 @@ const Accommodation = ()=>{
             handleAccommodationViewClick(reportSales)
         }
     },[reportSales])
+
+    useEffect(()=>{
+        if (curApproval){
+            
+        }
+    },[curApproval])
+    
     useEffect(()=>{
         if (salesOpts){
             setIsView(false)
+            setCurApproval(null)
             setCurAccomodation(null)
             setAccommodationFields({...defaultAccommodationFields})
             setCurCustomer(null)
@@ -295,15 +338,19 @@ const Accommodation = ()=>{
             )
             setAlertTimeout(5000)
           }else{
-              getAccommodations(company)
-              setCurAccomodation({...curAccommodation, ...updatedPayment})
-              setAccommodationFields({...accommodationFields, ...updatedPayment})
-              setIsView(true)
-              setAlertState('success')
-              setAlert(
+            removeApproval(company, 'accommodation', 'postaccommodation', {                        
+                createdAt: accommodationFields.createdAt,
+                postingDate: accommodationFields.postingDate                                                  
+            })
+            getAccommodations(company)
+            setCurAccomodation({...curAccommodation, ...updatedPayment})
+            setAccommodationFields({...accommodationFields, ...updatedPayment})
+            setIsView(true)
+            setAlertState('success')
+            setAlert(
                 'Payment Updated Successfully!'
             )
-              setAlertTimeout(5000)
+            setAlertTimeout(5000)
           }
     }
     const handleCustomerViewClick = (customer) =>{
@@ -319,9 +366,7 @@ const Accommodation = ()=>{
         setSalesOpts('accommodation')
         if (fillmode){
             setFillMode('')
-        }
-        setIsView(true)
-        setAccommodationFields({...accommodation})
+        }        
         setIsView(true)
     }
 
@@ -340,7 +385,14 @@ const Accommodation = ()=>{
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
             }else{
+                if (curApproval){
+                    removeApproval(company, 'accommodation', 'postaccommodation', {                        
+                        createdAt: accommodation.createdAt,
+                        postingDate: accommodation.postingDate                                                  
+                    })
+                }
                 setIsView(false)
+                setCurApproval(null)
                 setCurAccomodation(null)
                 setAccommodationFields({...defaultAccommodationFields})
                 setAlertState('success')
@@ -551,7 +603,19 @@ const Accommodation = ()=>{
     }
     return (
         <>
-            <div className='sales'>         
+            <div className='sales'> 
+                {showApprovalBox && <ApprovalBox
+                    onClose={()=>{
+                        setShowApprovalBox(false)
+                        setApprovalStatus(false)
+                        setApprovalMessage('')
+                    }}
+                    module={'accommodation'}
+                    section= {'postaccommodation'}
+                    postApprovalUpdate={()=>{
+                        postApprovalUpdate(company, 'accommodation', 'postaccommodation', curApproval)                        
+                    }}
+                />}         
                 {showReport && <AccommodationReport
                     rooms={rooms}
                     reportSales = {reportSales}
@@ -675,22 +739,42 @@ const Accommodation = ()=>{
                             }
                         }
                     }).map((accommodation, index)=>{
+                        const accommodationApproval = accommodationApprovals.find((accappr)=>{
+                            return accappr.link === accommodation.createdAt
+                        })
+            
+                        if (accommodationApproval){                               
+                            accommodation.approval = accommodationApproval
+                        }
                         const {createdAt, postingDate, employeeId, customerId, roomNo, accommodationAmount,
-                            arrivalDate, departureDate, arrivalTime, departureTime, paymentStatus, paymentAmount
+                            arrivalDate, departureDate, arrivalTime, departureTime, paymentStatus, paymentAmount,
+                            approval
                         } = accommodation 
+                        var textColor = 'red'
+                        if (approval?.approved){
+                            textColor = 'green'
+                        }
                         return(
                             <div className={'dept relative' + (curAccommodation?.createdAt===createdAt?' curview':'')} key={index} 
                                 onClick={(e)=>{
                                     handleAccommodationViewClick(accommodation)
                                 }}
                             >
-                                <div className={'stsvw'+(paymentStatus==='Fully Paid'?' stspd':' stsupd')}
-                                        onClick={()=>{
+                                <div 
+                                    className={'stsvw'+(paymentStatus==='Fully Paid'?' stspd':' stsupd')}
+                                    style  ={{
+                                        border: approval? `solid ${textColor} 3px` : 'solid black 0px'
+                                    }}
+                                    onClick={()=>{
 
-                                            setFillMode('payment')
-                                        }}
-                                    >
-                                        <div>{paymentStatus}</div>
+                                        setFillMode('payment')
+                                        if (approval){
+                                            setCurApproval(approval)
+                                            setAccommodationFields({...accommodationFields, ...approval.data})
+                                        }
+                                    }}
+                                >
+                                        <div>{approval ? (approval.approved? paymentStatus: (isApprover?'Approve Payment':paymentStatus)) : (paymentStatus)}</div>
                                     </div>
                                 <div className={'dets sldets'}>
                                     
@@ -783,6 +867,8 @@ const Accommodation = ()=>{
                                     setCustomerFields({...defaultCustomerFields})
                                     setCurCustomer(null)
                                 }
+                                setCurApproval(null)
+                                setIsApprover(false)
                             }}
                         />
                     }
@@ -1124,7 +1210,12 @@ const Accommodation = ()=>{
                                         if (accommodationFields.paymentAmount>0 && accommodationFields.payPoint &&
                                             accommodationFields.paymentReceipt
                                         ){
-                                            postPayment()
+                                            const paymentFields = {
+                                                paymentAmount: accommodationFields.paymentAmount,
+                                                payPoint: accommodationFields.payPoint,
+                                                paymentReceipt: accommodationFields.paymentReceipt
+                                            }
+                                            runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, postPayment, curAccommodation.createdAt)
                                         }else{
                                             setActionMessage('')
                                             setAlertState('error')
@@ -1157,7 +1248,10 @@ const Accommodation = ()=>{
                                     }
                                 }
                             }}
-                        >{(fillmode==='payment')? 'Make Payment' : accommodationStatus}</div>}
+                        >{(fillmode==='payment')? 
+                            (curApproval ? (curApproval.approved? 'Make Payment': (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')) : 
+                            accommodationStatus
+                        }</div>}
                         {salesOpts === 'customers' && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:(customerFields.fullName && customerFields.phoneNo && !customerFields.posted)?'pointer':'not-allowed'
