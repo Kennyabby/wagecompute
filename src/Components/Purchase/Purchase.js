@@ -249,13 +249,16 @@ const Purchase = ()=>{
                 }
                 const postUpdate = async ()=>{
                     setAlertState('info')
-                    setAlert('Updating Inventory...')                    
+                    setAlert('Updating Inventory...') 
+                    if (curApproval!==null){
+                        validEntries = curApproval.data.validEntries
+                    }                   
                     const createdAt = Date.now()
                     validEntries.forEach(async (entry)=>{
-                        const purchaseWrh = products[entry.index].buyTo                    
+                        const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
                         const newTransaction = {
                             ...entry,
-                            location: purchaseWrh,
+                            location: purchaseWrh.name,
                             postingDate: purchaseDate,
                             createdAt: createdAt,
                             handlerId: fields.purchaseHandler,
@@ -266,7 +269,6 @@ const Purchase = ()=>{
                             update: newTransaction
                         }, "createDoc", server)
                         if (resps.err){
-                            console.log(resps.mess)
                             setAlertState('error')
                             setAlert(resps.mess)
                             setAlertTimeout(5000)
@@ -401,10 +403,12 @@ const Purchase = ()=>{
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
             }else{
-                removeApproval(company, 'purchase', postAction, {                        
-                    createdAt: curApproval.createdAt,
-                    postingDate: curApproval.postingDate                                                 
-                })
+                if (curApproval){
+                    removeApproval(company, 'purchase', postAction, {                        
+                        createdAt: curApproval.createdAt,
+                        postingDate: curApproval.postingDate                                                 
+                    })
+                }
                 setPurchaseStatus('Post Purchase')
                 setPurchase(newPurchases)
                 setCurPurchase(newPurchase)
