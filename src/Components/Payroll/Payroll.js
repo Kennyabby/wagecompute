@@ -5,6 +5,7 @@ import Payee from './Payees/Payees';
 import ContextProvider from '../../Resources/ContextProvider'
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import Barcode from 'react-barcode';
+
 const Payroll = () =>{
     const {storePath,
         server, fetchServer,
@@ -14,6 +15,7 @@ const Payroll = () =>{
         employees, getEmployees, sales,
         attendance, getAttendance
     } = useContext(ContextProvider)
+
     const [selectedMonth, setSelectedMonth] = useState('')
     const [selectedYear, setSelectedYear] = useState('')
     const targetRef = useRef(null)
@@ -31,9 +33,11 @@ const Payroll = () =>{
     const [curAtt, setCurAtt] = useState(null)
     const [InvoiceNumber, setInvoiceNumber] = useState('')
     const [date, setDate] = useState('')
+
     useEffect(()=>{
         storePath('payroll')  
     },[storePath])
+
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         const intervalId = setInterval(()=>{
@@ -44,16 +48,20 @@ const Payroll = () =>{
         },10000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+
     useEffect(()=>{
         setInvoiceNumber(getInvoiceNumber())
     },[company])
+
     useEffect(()=>{
         setDate(getDate())
     },[getDate])
+
     const getInvoiceNumber = () =>{
         const invdate = Date.now()
         return "INV_"+company+invdate
     }
+
     const options = {
         // default is `save`
         // method: 'open',
@@ -92,7 +100,7 @@ const Payroll = () =>{
            }
         },
         filename: curEmployee? (`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} - PaySlip (${curAtt?.month},${curAtt?.year})`+'.pdf'): 'Payslip.pdf'
-     };
+    };
 
     const handleViewClick = (e,index,employee)=>{
         setCurEmployee(employee)
@@ -132,7 +140,8 @@ const Payroll = () =>{
                 setViewSlip(true)
             }
         }
-     }
+    }
+
     return(
         <>
             <div className='payroll'>
@@ -421,12 +430,14 @@ const Payroll = () =>{
                         </select>
                     </div>
                 </div>
+
                 <div 
                     className='viewpayeebtn'
                     onClick={()=>{
                         setViewPayee(true)
                     }}
                 >VIEW STAFF PAYROLL</div>
+                
                 {employees.filter((ftremp)=>{
                     if (!ftremp.dismissalDate){
                         return ftremp
@@ -448,10 +459,7 @@ const Payroll = () =>{
                                 <div className='deptdesc'>{`${department} Department`}</div>
                                 <div className='deptdesc'><b>Position:</b>{` ${position}`}</div>
                             </div>
-                            <div 
-                            className='edit'
-                            name='edit'
-                            >Edit</div>
+                            <div className='edit' name='edit'>Edit</div>
                         </div>
                     )
                   })}
