@@ -67,6 +67,7 @@ const Expenses = ()=>{
             setExpensesCategory(expensesCategory)
         }
     },[chartOfAccounts])
+
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getEmployees(cmp_val)
@@ -79,11 +80,13 @@ const Expenses = ()=>{
         },60000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+
     useEffect(()=>{
         if (companyRecord.status!=='admin'){
             setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])
+
     const handleExpensesEntry = (e)=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value
@@ -94,6 +97,7 @@ const Expenses = ()=>{
             })
         }
     }
+
     const handleViewClick = (exp) =>{
         if (curExpense === null || exp.createdAt !== curExpense?.createdAt){
             setCurExpense(exp)
@@ -101,6 +105,7 @@ const Expenses = ()=>{
             setIsView(true)            
         }
     }
+
     const addExpenses = async ()=>{
         if (fields.expensesAmount && fields.expenseCategory && 
             fields.expensesDepartment && fields.expensesHandler &&
@@ -177,6 +182,7 @@ const Expenses = ()=>{
             },12000)
         }
     }
+
     const calculateReportExpense = ()=>{
         var filteredReportExpenses = expenses.sort((a,b) => {
             return b.postingDate - a.postingDate
@@ -213,6 +219,7 @@ const Expenses = ()=>{
             return
         }
     }
+
     const printToPDF = (e) => {        
         const element = e.target.parentElement.parentElement
         const options = {

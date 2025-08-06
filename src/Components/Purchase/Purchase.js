@@ -243,10 +243,12 @@ const Purchase = ()=>{
                 if (curApproval!==null){
                     validEntries = curApproval.data.validEntries
                 }
+                
                 const data = {
                     purchaseFields: fields,
                     validEntries: validEntries,                    
                 }
+
                 const postUpdate = async ()=>{
                     setAlertState('info')
                     setAlert('Updating Inventory...') 
