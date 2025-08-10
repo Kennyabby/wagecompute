@@ -1,6 +1,9 @@
 import { useContext } from "react"
 import ContextProvider from "../../Resources/ContextProvider"
-const fetchServer = async (method, body, endpoint, server, signal)=>{
+const fetchServer = async (method, body, endpoint, server, signal) => {
+    // Skip auth checks for login and token endpoints
+    const isAuthEndpoint = ['login', 'token', 'authenticateUser'].includes(endpoint);
+    
     const data = {
         method,
         credentials: 'include',
@@ -10,16 +13,18 @@ const fetchServer = async (method, body, endpoint, server, signal)=>{
         body: JSON.stringify({
             ...body
         }),
-    }
-    if (signal){
-        data.signal = signal
-    }else{
-        delete data.signal
+    };
+    
+    if (signal) {
+        data.signal = signal;
+    } else {
+        delete data.signal;
     }
     try {
-        let resp = await fetch(server + '/' + endpoint, data)
-        // const resp = await fetch('/'+endpoint, data)        
-        if (resp.status === 403 || resp.status === 401) {
+        let resp = await fetch(server + '/' + endpoint, data);
+        
+        // Skip token refresh for auth-related endpoints
+        if ((resp.status === 403 || resp.status === 401) && !isAuthEndpoint) {
             // Token expired, try refreshing
             try {
                 const tokenData = {
@@ -27,9 +32,9 @@ const fetchServer = async (method, body, endpoint, server, signal)=>{
                     credentials: 'include'
                 };
 
-                const tokenResponse = await fetch(server + '/token', tokenData);
+                resp = await fetch(server + '/token', tokenData);
                 
-                if (!tokenResponse.ok) {
+                if (!resp.ok) {
                     throw new Error('Token refresh failed');
                 }
 
@@ -46,15 +51,22 @@ const fetchServer = async (method, body, endpoint, server, signal)=>{
                 
             } catch (error) {
                 console.error('Session expired or refresh failed:', error);
-                // Clear any sensitive data from localStorage/sessionStorage
-                const redirectUrl = window.location.pathname + window.location.search;
-                window.localStorage.setItem('lgt-mess', 'Your session has expired. Please log in again.');
-                window.localStorage.setItem('redirectAfterLogin', redirectUrl);
+                // Clear any sensitive data
+                window.localStorage.removeItem('sessn-cmp');
+                window.localStorage.removeItem('sess-recg-id');
+                window.localStorage.removeItem('idt-curr-usr');
+                window.localStorage.removeItem('sessn-id');
                 
-                // Short delay to ensure message is stored before reload
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 500);
+                // Only redirect if not already on login page to prevent loops
+                if (!window.location.pathname.includes('/login')) {
+                    const redirectUrl = window.location.pathname + window.location.search;
+                    window.localStorage.setItem('lgt-mess', 'Your session has expired. Please log in again.');
+                    window.localStorage.setItem('redirectAfterLogin', redirectUrl);
+                    
+                    // Use replaceState to prevent adding to browser history
+                    window.history.replaceState(null, null, '/login');
+                    window.dispatchEvent(new Event('popstate'));
+                }
                 
                 return { err: true, message: 'Session expired. Please log in again.' };
             }
