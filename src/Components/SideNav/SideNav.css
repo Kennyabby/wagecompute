@@ -1,11 +1,80 @@
-.sidenav{
-    display: block;
-    width: 30%;
+/* Base styles - Mobile First */
+.sidenav {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 280px;
     height: 100vh;
-    overflow: auto;
+    overflow-y: auto;
     background: rgb(57, 54, 54);
     color: white;
+    z-index: 1000;
+    transition: left 0.3s ease-in-out;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
 }
+
+/* Mobile menu button */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 5px;
+    left: 5px;
+    z-index: 1001;
+    background: rgb(78, 125, 8);
+    border: none;
+    color: white;
+    font-size: 20px;
+    width: 35px;
+    height: 35px;
+    border-radius: 5px;
+    cursor: pointer;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    position: relative;
+}
+
+.mobile-menu-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 10px;
+    font-weight: bold;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* When menu is open */
+.sidenav.open {
+    left: 0;
+}
+
+/* Overlay for mobile */
+.menu-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: -1;
+}
+
+.menu-overlay.open {
+    display: block;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
 .navheader{
     width: 90%;
     margin: 20px auto;
@@ -13,89 +82,210 @@
     font-size: 1.4rem;
     text-align: center;
 }
-/* .navheader::after{
-    display: block;
-    content: '';
-    width: 40%;
-    margin-right: 10px;
-    border: solid greenyellow 2px;
-    background-color: greenyellow;
-} */
 
-.navbox{
-    display: flex;
-    width: 90%;
-    margin: auto;
-}
 .icons{
     width: 10%;
     background: rgb(36, 35, 35);
 }
-.navbarr{
+
+.navbarr {
     display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    justify-content: center;
-    align-items: center;
-    width:fit-content;
-    padding: 0px;
-    /* background: yellow; */
-}
-.navdiv{
-    position: relative;
-    width: 110px;
-    padding: 8px 0px;
-    background: rgb(124, 197, 15);
-    display: inline-flex;
     flex-direction: column;
-    text-align: center;
-    justify-content: center;
+    gap: 15px;
+    width: 100%;
+    padding: 20px 15px;
+    box-sizing: border-box;
+}
+
+.navdiv {
+    position: relative;
+    width: 100%;
+    padding: 12px 15px;
+    background: rgb(124, 197, 15);
+    display: flex;
+    flex-direction: row;
     align-items: center;
+    gap: 15px;
     cursor: pointer;
     border-radius: 7px;
-    margin: auto;
     color: white;
+    transition: all 0.2s ease;
     div{
         font-size: 11px;
         color: white;
         cursor: pointer;
     };
 }
+
 .navdiv:hover{
     font-weight: bold;
     color: white;
     border: solid rgb(255, 255, 255) 2px
 }
-.navdivicon{
-    font-size: 40px;
+
+.navdivicon {
+    font-size: 24px;
+    min-width: 30px;
+    text-align: center;
     cursor: pointer;
 }
+
 .selected{
     background: rgb(78, 125, 8);
     font-weight: bold;
     color: white;
     border: solid rgb(255, 255, 255) 2px
 }
+
 .navlogouticon{
     font-size: 20px;
     
 }
-.navlogout{
-    display: inline-flex;
-    justify-content: center;
+
+.navlogout {
+    display: flex;
+    justify-content: flex-start;
     align-items: center;
-    text-align: center;
-    padding: 8px 0px;
+    padding: 12px 15px;
     background: rgb(119, 194, 7);
     font-weight: bolder;
     color: white;
     cursor: pointer;
-    margin: auto;
     border-radius: 5px;
-    width: 110px;
-    font-size: 12px;
-    gap: 5px;
+    width: 100%;
+    font-size: 14px;
+    gap: 15px;
+    margin-top: 20px;
+    box-sizing: border-box;
 }
+
+/* Desktop styles */
+@media (min-width: 1025px) {
+    .sidenav {
+        position: relative;
+        left: 0;
+        width: 30%;
+        box-shadow: none;
+    }
+    
+    .mobile-menu-btn {
+        display: none;
+    }
+    
+    .menu-overlay {
+        display: none !important;
+    }
+    
+    .navbarr {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 10px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .navdiv {
+        width: auto;
+        min-height: 80px;
+        flex-direction: column;
+        padding: 10px 5px;
+        margin: 0;
+        justify-content: center;
+    }
+    
+    .navdivicon {
+        font-size: 24px;
+        margin-bottom: 5px;
+    }
+    
+    .navdiv div {
+        font-size: 12px;
+    }
+    
+    .navlogout {
+        grid-column: 1 / -1;
+        margin: 5px 0 0;
+        justify-content: center;
+        padding: 10px 0;
+        width: auto;
+    }
+}
+
+/* Tablet styles */
+@media (min-width: 577px) and (max-width: 1024px) {
+    .sidenav {
+        width: 280px;
+        left: -280px;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+    }
+    
+    .sidenav.open {
+        left: 0;
+    }
+    
+    .mobile-menu-btn {
+        display: flex;
+    }
+    
+    .menu-overlay.open {
+        display: block;
+        z-index: 999;
+    }
+    
+    .navbarr {
+        padding: 15px 10px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .navdiv {
+        padding: 12px 5px;
+        min-height: 75px;
+        flex-direction: column;
+        text-align: center;
+        justify-content: center;
+    }
+    
+    .navdivicon {
+        font-size: 22px;
+        margin-bottom: 4px;
+    }
+    
+    .navdiv div {
+        font-size: 11px;
+        line-height: 1.2;
+    }
+    
+    .navlogout {
+        grid-column: 1 / -1;
+        padding: 12px 0;
+        margin-top: 5px;
+        justify-content: center;
+    }
+    
+    .navheader {
+        font-size: 1.2rem;
+        margin: 15px auto;
+    }
+}
+
+/* Small mobile styles */
+@media (max-width: 576px) {
+    .mobile-menu-btn {
+        display: flex;
+    }
+    
+    .sidenav {
+        width: 280px;
+    }
+    
+    .navbarr {
+        padding: 20px 15px;
+    }
+}
+
 .navdivcount{
     position: absolute;
     top: 0px;

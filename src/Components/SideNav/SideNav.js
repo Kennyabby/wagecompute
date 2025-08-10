@@ -3,21 +3,15 @@ import './SideNav.css'
 import { useState, useEffect, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { BiSolidDashboard } from "react-icons/bi";
-import { BsTable } from "react-icons/bs";
-import { FaUsers } from "react-icons/fa";
-import { MdSubject } from "react-icons/md";
-import { CgArrangeBack } from "react-icons/cg";
-import { GiPlayerTime } from "react-icons/gi";
+import { BiSolidDashboard, BiMenu } from "react-icons/bi";
+import { BsTable, BsBoxArrowInRight } from "react-icons/bs";
+import { FaUsers, FaUserCog, FaUserTie, FaMoneyBillWave, FaWarehouse, FaUserCheck, FaFileInvoiceDollar, FaHotel } from "react-icons/fa";
 import { SiPayloadcms } from "react-icons/si";
-import { MdInventory } from "react-icons/md";
-import { GiPayMoney } from "react-icons/gi";
-import { MdDeliveryDining } from "react-icons/md";
-import { FaHotel } from "react-icons/fa6";
-import { GiBuyCard } from "react-icons/gi";
-import { GiExpense } from "react-icons/gi";
-import { RiSettings2Fill } from "react-icons/ri";
-import { MdLogout } from "react-icons/md";
+import { MdInventory, MdClose, MdSubject, MdDeliveryDining, MdLogout } from "react-icons/md";
+import { GiPayMoney, GiReceiveMoney, GiTakeMyMoney, GiMoneyStack, GiPlayerTime, GiBuyCard, GiExpense } from "react-icons/gi";
+import { RiLogoutBoxLine, RiSettings2Fill } from "react-icons/ri";
+import { TbReportMoney } from "react-icons/tb";
+import { CgArrangeBack } from "react-icons/cg";
 
 const SideNav = ()=>{
     const {
@@ -31,6 +25,7 @@ const SideNav = ()=>{
     const [purchaseApprovals, setPurchaseApprovals] = useState([])
     const [attendanceApprovals, setAttendanceApprovals] = useState([])
     const [accommodationApprovals, setAccommodationApprovals] = useState([])
+    const [allApprovals, setAllApprovals] = useState([])
     const location = useLocation()
     const Navigate = useNavigate()
 
@@ -40,6 +35,11 @@ const SideNav = ()=>{
     },[location])
    
     useEffect(()=>{
+        setAllApprovals(approvals.filter((appr)=>{
+            return(
+                !appr.approved && !appr.message
+            )
+        }))
         setSalesApprovals(approvals.filter((appr)=>{
             return (
                 (appr.module === 'sales' 
@@ -69,6 +69,7 @@ const SideNav = ()=>{
     },[companyRecord])
 
     const handleNav = (e)=>{
+        setIsMenuOpen(false)
         const name = e.target.getAttribute('name')
         if(name){
           setCurApproval(null)
@@ -97,114 +98,156 @@ const SideNav = ()=>{
         }
     }
     
+    // Toggle mobile menu
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    
+    const toggleMenu = () => {
+        setIsMenuOpen(!isMenuOpen);
+    };
+    
+    // Close menu when a nav item is clicked (for mobile)
+    const handleNavClick = (e) => {
+        handleNav(e);
+        if (window.innerWidth <= 768) {
+            setIsMenuOpen(false);
+        }
+    };
+    
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (isMenuOpen && !e.target.closest('.sidenav') && !e.target.closest('.mobile-menu-btn')) {
+                setIsMenuOpen(false);
+            }
+        };
+        
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isMenuOpen]);
+    
     return(
         <>
-        <div className='sidenav'>
-            <div className='navheader'>{companyName.toUpperCase()}</div>
-            {/* <div className='navheader'>{'ENTERPRISE COMPUTE'}</div> */}
-            <nav className='navbox' onClick={handleNav}>
-                <ul className='navbarr'>
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard')) && 
-                        <div name="dashboard" className={'navdiv ' + (curPath==='dashboard'?'selected':'')}>
-                            <BiSolidDashboard className='navdivicon' name="dashboard"/>
-                            <div name="dashboard">Dashboard</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports')) && 
-                        <div name="reports" className={'navdiv ' + (curPath==='reports'?'selected':'')}>
-                            <BsTable className='navdivicon' name="reports"/>
-                            <div name="reports">Reports</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees')) && 
-                        <div name="employees" className={'navdiv ' + (curPath==='employees'?'selected':'')}>
-                            <FaUsers className='navdivicon' name="employees"/>
-                            <div name="employees">Employees</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments')) && 
-                        <div name="departments" className={'navdiv ' + (curPath==='departments'?'selected':'')}>
-                            <MdSubject className='navdivicon' name="departments"/>
-                            <div name="departments">Departments</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions')) && 
-                        <div name="positions" className={'navdiv ' + (curPath==='positions'?'selected':'')}>
-                            <CgArrangeBack className='navdivicon' name="positions"/>
-                            <div name="positions">Positions</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance')) && 
-                        <div name="attendance" className={'navdiv ' + (curPath==='attendance'?'selected':'')}>
-                            <GiPlayerTime className='navdivicon' name="attendance"/>
-                            <div name="attendance">Attendance</div>
-                            {companyRecord?.status==='admin' && attendanceApprovals.length > 0 && <div className='navdivcount'>{attendanceApprovals.length}</div>}
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && 
-                        <div name="payroll" className={'navdiv ' + (curPath==='payroll'?'selected':'')}>
-                            <SiPayloadcms className='navdivicon' name="payroll"/>
-                            <div name="payroll">Payroll</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('inventory')) && 
-                        <div name="inventory" className={'navdiv ' + (curPath==='inventory'?'selected':'')}>
-                            <MdInventory className='navdivicon' name="inventory"/>
-                            <div name="inventory">Inventory</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales')) && 
-                        <div name="sales" className={'navdiv ' + (curPath==='sales'?'selected':'')}>
-                            <GiPayMoney className='navdivicon' name="sales"/>
-                            <div name="sales">Sales</div>
-                            {companyRecord?.status==='admin' && salesApprovals.length > 0 && <div className='navdivcount'>{salesApprovals.length}</div>}
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos')) && 
-                        <div name="pos" className={'navdiv ' + (curPath==='pos'?'selected':'')}>
-                            <GiPayMoney className='navdivicon' name="pos"/>
-                            <div name="pos">POS</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('delivery')) && 
-                        <div name="delivery" className={'navdiv ' + (curPath==='delivery'?'selected':'')}>
-                            <MdDeliveryDining className='navdivicon' name="delivery"/>
-                            <div name="delivery">Order Delivery</div>
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && 
-                        <div name="accommodations" className={'navdiv ' + (curPath==='accommodations'?'selected':'')}>
-                            <FaHotel className='navdivicon' name="accommodations"/>
-                            <div name="accommodations">Accommodation</div>
-                            {companyRecord?.status==='admin' && accommodationApprovals.length > 0 && <div className='navdivcount'>{accommodationApprovals.length}</div>}
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && 
-                        <div name="purchase" className={'navdiv ' + (curPath==='purchase'?'selected':'')}>
-                            <GiBuyCard className='navdivicon' name="purchase"/>
-                            <div name="purchase">Direct Purchase</div>
-                            {companyRecord?.status==='admin' && purchaseApprovals.length > 0 && <div className='navdivcount'>{purchaseApprovals.length}</div>}
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && 
-                        <div name="expenses" className={'navdiv ' + (curPath==='expenses'?'selected':'')}>
-                            <GiExpense className='navdivicon' name="expenses"/>
-                            <div name="expenses">Admin Expenses</div>                            
-                        </div>
-                    }
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings')) && 
-                        <div name="settings" className={'navdiv ' + (curPath==='settings'?'selected':'')}>
-                            <RiSettings2Fill className='navdivicon' name="settings"/>
-                            <div name="settings">Settings</div>
-                        </div>
-                    }
-                    <div
-                        className ='navlogout'
-                        onClick={logout}
-                    ><MdLogout className='navlogouticon'/> {logStatus}</div>
-                </ul>
-            </nav>
-        </div>
+            <button 
+                className="mobile-menu-btn" 
+                onClick={toggleMenu} 
+                aria-label="Toggle menu"
+            >
+                {isMenuOpen ? <MdClose /> : <BiMenu />}
+                {allApprovals?.length > 0 && (
+                    <span className="mobile-menu-badge">
+                        {allApprovals.length}
+                    </span>
+                )}
+            </button>
+            
+            <div className={`menu-overlay ${isMenuOpen ? 'open' : ''}`} onClick={toggleMenu}></div>
+            <div className={`sidenav ${isMenuOpen ? 'open' : ''}`}>
+                <div className='navheader'>{companyName.toUpperCase()}</div>
+                <nav className='navbox' onClick={handleNavClick}>
+                    <ul className='navbarr'>
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard')) && 
+                            <div name="dashboard" className={'navdiv ' + (curPath==='dashboard'?'selected':'')}>
+                                <BiSolidDashboard className='navdivicon' name="dashboard"/>
+                                <div name="dashboard">Dashboard</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports')) && 
+                            <div name="reports" className={'navdiv ' + (curPath==='reports'?'selected':'')}>
+                                <BsTable className='navdivicon' name="reports"/>
+                                <div name="reports">Reports</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees')) && 
+                            <div name="employees" className={'navdiv ' + (curPath==='employees'?'selected':'')}>
+                                <FaUsers className='navdivicon' name="employees"/>
+                                <div name="employees">Employees</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments')) && 
+                            <div name="departments" className={'navdiv ' + (curPath==='departments'?'selected':'')}>
+                                <MdSubject className='navdivicon' name="departments"/>
+                                <div name="departments">Departments</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions')) && 
+                            <div name="positions" className={'navdiv ' + (curPath==='positions'?'selected':'')}>
+                                <CgArrangeBack className='navdivicon' name="positions"/>
+                                <div name="positions">Positions</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance')) && 
+                            <div name="attendance" className={'navdiv ' + (curPath==='attendance'?'selected':'')}>
+                                <GiPlayerTime className='navdivicon' name="attendance"/>
+                                <div name="attendance">Attendance</div>
+                                {companyRecord?.status==='admin' && attendanceApprovals.length > 0 && <div className='navdivcount'>{attendanceApprovals.length}</div>}
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && 
+                            <div name="payroll" className={'navdiv ' + (curPath==='payroll'?'selected':'')}>
+                                <SiPayloadcms className='navdivicon' name="payroll"/>
+                                <div name="payroll">Payroll</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('inventory')) && 
+                            <div name="inventory" className={'navdiv ' + (curPath==='inventory'?'selected':'')}>
+                                <MdInventory className='navdivicon' name="inventory"/>
+                                <div name="inventory">Inventory</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales')) && 
+                            <div name="sales" className={'navdiv ' + (curPath==='sales'?'selected':'')}>
+                                <GiPayMoney className='navdivicon' name="sales"/>
+                                <div name="sales">Sales</div>
+                                {companyRecord?.status==='admin' && salesApprovals.length > 0 && <div className='navdivcount'>{salesApprovals.length}</div>}
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos')) && 
+                            <div name="pos" className={'navdiv ' + (curPath==='pos'?'selected':'')}>
+                                <GiPayMoney className='navdivicon' name="pos"/>
+                                <div name="pos">POS</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('delivery')) && 
+                            <div name="delivery" className={'navdiv ' + (curPath==='delivery'?'selected':'')}>
+                                <MdDeliveryDining className='navdivicon' name="delivery"/>
+                                <div name="delivery">Order Delivery</div>
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && 
+                            <div name="accommodations" className={'navdiv ' + (curPath==='accommodations'?'selected':'')}>
+                                <FaHotel className='navdivicon' name="accommodations"/>
+                                <div name="accommodations">Accommodation</div>
+                                {companyRecord?.status==='admin' && accommodationApprovals.length > 0 && <div className='navdivcount'>{accommodationApprovals.length}</div>}
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && 
+                            <div name="purchase" className={'navdiv ' + (curPath==='purchase'?'selected':'')}>
+                                <GiBuyCard className='navdivicon' name="purchase"/>
+                                <div name="purchase">Direct Purchase</div>
+                                {companyRecord?.status==='admin' && purchaseApprovals.length > 0 && <div className='navdivcount'>{purchaseApprovals.length}</div>}
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && 
+                            <div name="expenses" className={'navdiv ' + (curPath==='expenses'?'selected':'')}>
+                                <GiExpense className='navdivicon' name="expenses"/>
+                                <div name="expenses">Admin Expenses</div>                            
+                            </div>
+                        }
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings')) && 
+                            <div name="settings" className={'navdiv ' + (curPath==='settings'?'selected':'')}>
+                                <RiSettings2Fill className='navdivicon' name="settings"/>
+                                <div name="settings">Settings</div>
+                            </div>
+                        }
+                        <div
+                            className ='navlogout'
+                            onClick={logout}
+                        ><MdLogout className='navlogouticon'/> {logStatus}</div>
+                    </ul>
+                </nav>
+            </div>
         </>
     )
 }
