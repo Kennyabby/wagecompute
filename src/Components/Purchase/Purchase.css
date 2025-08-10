@@ -82,7 +82,7 @@
     height: 100vh;
     left: 0;
     top: 0;
-    z-index: 2;
+    z-index: 4000;
     background: rgba(0,0,0,0.8);
 }
 .add-products{
