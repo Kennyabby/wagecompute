@@ -377,7 +377,30 @@ const Login = () => {
 
   // Render user view if viewType is 'user'
   if (viewType === 'user') {
-    return renderUserView();
+    return (
+      <>
+        {renderUserView()}
+        {loginMessage && <AnimatePresence>
+            <motion.div 
+              initial={{opacity:0}}
+              animate={{opacity:1}}
+              transition={{
+                opacity: {
+                  duration: 0.5,
+                  ease: 'easeIn'
+                },
+              }}
+              exit={{opacity: 0, transition:{opacity:{
+                duration: 0.5,
+                ease: 'easeOut',
+              }}}}
+              className="errmsgs"
+            >
+              {loginMessage}
+            </motion.div>
+        </AnimatePresence>}
+      </>
+    )
   }
 
   // Render standard login view
