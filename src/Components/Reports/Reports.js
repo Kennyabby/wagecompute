@@ -175,7 +175,7 @@ const Reports = ()=>{
     
                     reportSalary.postingDate = postingDate
                     reportSalary.docType = 'salary'
-                    reportSalary.salaryAmount = salaryAmount
+                    reportSalary.salaryAmount = Number(salaryAmount || 0)
                     expenseData = expenseData.concat(reportSalary)
                 }
             })
@@ -197,12 +197,12 @@ const Reports = ()=>{
             var sumPurchaseAmount = 0
             var sumExpenseAmount = 0
             data.forEach((record)=>{
-                const {postingDate, salesAmount, rentalAmount, purchaseAmount, expenseAmount} = record
+                const {postingDate, salesAmount, rentalAmount, purchaseAmount, expenseAmount, salaryAmount} = record
                 if (postingDate.split('-')[1] === month){
                     sumSalesAmount += salesAmount ? salesAmount : 0
                     sumRentalAmount += rentalAmount ? rentalAmount : 0
                     sumPurchaseAmount += purchaseAmount ? purchaseAmount : 0
-                    sumExpenseAmount += expenseAmount ? expenseAmount : 0
+                    sumExpenseAmount += (expenseAmount || salaryAmount || 0)
                 }
             })
             newRecord.month = months[Number(month)-1]
@@ -224,12 +224,12 @@ const Reports = ()=>{
             var sumPurchaseAmount = 0
             var sumExpenseAmount = 0
             monthlyReports.forEach((report)=>{
-                const {salesAmount, rentalAmount, purchaseAmount, expenseAmount} = report
+                const {salesAmount, rentalAmount, purchaseAmount, expenseAmount, salaryAmount} = report
                 if (report.month === month){
                     sumSalesAmount += salesAmount
                     sumRentalAmount += rentalAmount
                     sumPurchaseAmount += purchaseAmount 
-                    sumExpenseAmount += expenseAmount
+                    sumExpenseAmount += (expenseAmount || salaryAmount || 0)
                 }
             })                        
             monthlyRecord.month = month
