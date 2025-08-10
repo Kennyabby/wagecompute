@@ -250,12 +250,12 @@ const Reports = ()=>{
         var sumPurchaseAmount = 0
         var sumExpenseAmount = 0
         data.forEach((record)=>{
-            const {salesAmount, rentalAmount, purchaseAmount, expenseAmount} = record
+            const {salesAmount, rentalAmount, purchaseAmount, expenseAmount, salaryAmount} = record
             if (months.indexOf(record.month)<=months.indexOf(month)){
                 sumSalesAmount += salesAmount
                 sumRentalAmount += rentalAmount
                 sumPurchaseAmount += purchaseAmount 
-                sumExpenseAmount += expenseAmount
+                sumExpenseAmount += (expenseAmount || salaryAmount || 0)
             }
         })
         balance = sumSalesAmount + sumRentalAmount - sumPurchaseAmount - sumExpenseAmount
