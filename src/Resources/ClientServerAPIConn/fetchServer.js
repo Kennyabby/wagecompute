@@ -31,6 +31,7 @@ const fetchServer = async (method, body, endpoint, server, signal)=>{
             resp = await fetch(server + '/' + endpoint, data)
             const resp1 = await resp.json()
             if (resp1.err){
+                console.log("Could not retrieve data:",resp1)
                 window.localStorage.setItem('lgt-mess', 'Your Session Expired. Login Again!')
                 setTimeout(()=>{
                     window.location.reload()
