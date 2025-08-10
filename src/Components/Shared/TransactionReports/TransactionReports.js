@@ -78,11 +78,14 @@ const TransactionReports = ({
         
         // Get unique employees from sessions and orders
         const employeeIds = new Set([
-            ...sessions.map(s => s.employee_id),
+            ...sessions.map(s => s.employee_id)
+        ].filter(Boolean));
+        
+        const sessionOperators = new Set([
             ...sessions.map(s => s.startedBy),
             ...sessions.map(s => s.endedby),
         ].filter(Boolean));
-        
+
         return {
             locations: locations.filter(Boolean).sort(),
             categories,
@@ -90,7 +93,8 @@ const TransactionReports = ({
             tableNames,
             statuses: statuses.length ? statuses : ['pending', 'completed', 'cancelled'],
             deliveryStatuses: deliveryStatuses.length ? deliveryStatuses : ['pending', 'compeleted', 'cancelled'],
-            employeeIds: Array.from(employeeIds)
+            employeeIds: Array.from(employeeIds),
+            sessionOperators: Array.from(sessionOperators)
         };
     }, [sessions, orders]);
 
@@ -382,29 +386,53 @@ const TransactionReports = ({
                             </div>
                         )}
 
+                        {/* Session Operator Filter */}
+                        {filterOptions.sessionOperators.length > 0 && (
+                            <div className="filter-group">
+                                <label>Session Operator</label>
+                                <select 
+                                    value={filters.sessionOperator}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, sessionOperator: e.target.value }))}
+                                    className="filter-select"
+                                >
+                                    <option value="">All Operators</option>
+                                    {filterOptions.sessionOperators.map(operatorId => {
+                                        const operator = employees.find(e => e.i_d === operatorId);
+                                        return operator ? (
+                                            <option key={operator.i_d} value={operator.i_d}>
+                                                {`${operator.firstName || ''} ${operator.lastName || ''}`.trim() || `Employee ${operator.i_d}`}
+                                            </option>
+                                        ) : null;
+                                    })}
+                                </select>
+                            </div>
+                        )}
+
                         {/* Employee Filter */}
-                        <div className="filter-group">
-                            <label>Employee</label>
-                            <select 
-                                value={filters.employee_id}
-                                onChange={(e) => setFilters(prev => ({ ...prev, employee_id: e.target.value }))}
-                                className="filter-select"
-                            >
-                                <option value="">All Employees</option>
-                                {filterOptions.employeeIds.map(empId => {
-                                    const emp = employees.find(e => e.i_d === empId);
-                                    return emp ? (
-                                        <option key={emp.i_d} value={emp.i_d}>
-                                            {`${emp.firstName || ''} ${emp.lastName || ''}`.trim() || `Employee ${emp.i_d}`}
-                                        </option>
-                                    ) : null;
-                                })}
-                            </select>
-                        </div>
+                        {filterOptions.employeeIds.length > 0 && (
+                            <div className="filter-group">
+                                <label>Sales Person</label>
+                                <select 
+                                    value={filters.employee_id}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, employee_id: e.target.value }))}
+                                    className="filter-select"
+                                >
+                                    <option value="">All Employees</option>
+                                    {filterOptions.employeeIds.map(empId => {
+                                        const emp = employees.find(e => e.i_d === empId);
+                                        return emp ? (
+                                            <option key={emp.i_d} value={emp.i_d}>
+                                                {`${emp.firstName || ''} ${emp.lastName || ''}`.trim() || `Employee ${emp.i_d}`}
+                                            </option>
+                                        ) : null;
+                                    })}
+                                </select>
+                            </div>
+                        )}
 
                         {/* Status Filter */}
                         <div className="filter-group">
-                            <label>Status</label>
+                            <label>Sales Status</label>
                             <select 
                                 value={filters.status}
                                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
@@ -418,7 +446,7 @@ const TransactionReports = ({
                         </div>
 
                         {/* Delivery Status Filter (for delivery type) */}
-                        {type === 'delivery' && (
+                        {(
                             <div className="filter-group">
                                 <label>Delivery Status</label>
                                 <select 
@@ -452,7 +480,7 @@ const TransactionReports = ({
                         </div>
 
                         {/* Delivered By Filter (for delivery type) */}
-                        {type === 'delivery' && (
+                        {(
                             <div className="filter-group">
                                 <label>Delivered By</label>
                                 <select 
@@ -460,8 +488,8 @@ const TransactionReports = ({
                                     onChange={(e) => setFilters(prev => ({ ...prev, lastDeliveredBy: e.target.value }))}
                                     className="filter-select"
                                 >
-                                    <option value="">All Handlers</option>
-                                    {filterOptions.employeeIds.map(empId => {
+                                    <option value="">All Employees</option>
+                                    {filterOptions.deliveryPersons.map(empId => {
                                         const emp = employees.find(e => e.i_d === empId);
                                         return emp ? (
                                             <option key={emp.i_d} value={emp.i_d}>
@@ -754,6 +782,8 @@ const TransactionReports = ({
             const sessionSales = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => {
                 const payPoint = Object.keys(order.salesPosts)[0] || 'Default';
                 result.salesByPayPoint[payPoint] = (result.salesByPayPoint[payPoint] || 0) + Number(order[payPoint] || 0);
+                const location = order.salesPosts[payPoint]
+                result.salesByLocation[location] = (result.salesByLocation[location] || 0) + Number(order[payPoint] || 0);
                 return sum + (parseFloat(order.totalSales) || 0);
             }, 0) || 0;
             
@@ -766,8 +796,8 @@ const TransactionReports = ({
             }, 0) || 0;
 
             // Track sales by location
-            const location = session.wrh || 'Unknown';
-            result.salesByLocation[location] = (result.salesByLocation[location] || 0) + sessionSales;
+            // const location = session.wrh || 'Unknown';
+            // result.salesByLocation[location] = (result.salesByLocation[location] || 0) + sessionSales;
 
             // Track sales by pay point (assuming pay_point is a property on the session)
         });
