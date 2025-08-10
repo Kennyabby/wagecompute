@@ -1423,6 +1423,24 @@ const Delivery = () => {
         </div>
     );
 
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const formatTime = (date) => {
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+    };
+
     const renderScreen = () => {
         switch (activeScreen) {
             case 'home':
@@ -1453,6 +1471,10 @@ const Delivery = () => {
                                     <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
                                 </div>
                             }
+                        </div>
+                        <div className="pos-time-display">
+                            <div>{currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div className="time">{formatTime(currentTime)}</div>
                         </div>
                         <div className="pos-tables-layout">
                             {/* <div 
@@ -1840,13 +1862,13 @@ const DeliveryDashboard = ({
             <div className='pos-sessions'>
                 <div className='pos-sessions-nav'>
                     <div className={'live-nav'}>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
+                        {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                             className="action-btn"
                             onClick={() => setShowReports(true)}
                             style={{ marginRight: '10px' }}
                         >
                             View Reports
-                        </button>}
+                        </button>} */}
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                             className="action-btn"
                             onClick={() => {    
