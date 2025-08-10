@@ -1480,11 +1480,30 @@ const PointOfSales = () => {
         </div>
     );
 
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const formatTime = (date) => {
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+    };
+
     const renderScreen = () => {
         switch (activeScreen) {
             case 'home':
                 return (
                     <>
+                        
                         <div className='pos-wh-cover' onClick={(e)=>{
                             const name = e.target.getAttribute('name')
                             if (name){
@@ -1510,6 +1529,10 @@ const PointOfSales = () => {
                                     <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
                                 </div>
                             }
+                        </div>
+                        <div className="pos-time-display">
+                            <div>{currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div className="time">{formatTime(currentTime)}</div>
                         </div>
                         <div className="pos-tables-layout">
                             <div 
