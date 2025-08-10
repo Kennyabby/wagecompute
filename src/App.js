@@ -178,18 +178,22 @@ function App() {
             getEmployees(company)
             getDepartments(company)
             getPositions(company)
+            window.localStorage.removeItem('lgt-vw')
             Navigate('/employees')
           }
           if (companyRecord?.permissions.includes('attendance')){
             getAttendance(company)
+            window.localStorage.removeItem('lgt-vw')
             Navigate('/attendance')
           }
           if (companyRecord?.permissions.includes('purchase')){
             getPurchase(company)
+            window.localStorage.removeItem('lgt-vw')
             Navigate('/purchase')
           }
           if (companyRecord?.permissions.includes('expenses')){
             getExpenses(company)
+            window.localStorage.removeItem('lgt-vw')
             Navigate('/expenses')
           }
           if (companyRecord?.permissions.includes('inventory') ||
@@ -221,6 +225,7 @@ function App() {
             fetchSessions(company , "delivery", companyRecord)
             // getSales(company, 'first', saleFrom, saleTo, 10)
             getRentals(company)
+            window.localStorage.removeItem('lgt-vw')
             Navigate('/sales')
           }
         }
@@ -248,6 +253,9 @@ function App() {
     }, "closeSession", SERVER)          
     if (resps.err){
       console.log(resps.mess)
+      setAlertState('error')
+      setAlert(resps.mess)
+      setAlertTimeout(3000)
     }else{
       window.localStorage.removeItem('ps-vw')
       window.localStorage.removeItem('acc-vw')
@@ -668,6 +676,7 @@ function App() {
     if ([null, undefined].includes(resp.record)){ 
       removeSessions()
     }else{
+      window.localStorage.setItem('lgt-vw', 'user')
       setCompanyRecord(resp.record)
       setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
           resp.record.permissions.includes('all')
@@ -691,6 +700,7 @@ function App() {
       getChartOfAccounts(cmp_val)
       getApprovals(cmp_val)
       if (resp.record.status==='admin'){        
+        window.localStorage.removeItem('lgt-vw')
         getSettings(cmp_val)
         fetchProfiles(cmp_val)
         getEmployees(cmp_val)

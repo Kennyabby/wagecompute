@@ -1,4 +1,5 @@
-
+import { useContext } from "react"
+import ContextProvider from "../../Resources/ContextProvider"
 const fetchServer = async (method, body, endpoint, server, signal)=>{
     const data = {
         method,
@@ -28,6 +29,13 @@ const fetchServer = async (method, body, endpoint, server, signal)=>{
 
             // Retry the original request
             resp = await fetch(server + '/' + endpoint, data)
+            const resp1 = await resp.json()
+            if (resp1.err){
+                window.localStorage.setItem('lgt-mess', 'Your Session Expired. Login Again!')
+                setTimeout(()=>{
+                    window.location.reload()
+                },500)
+            }
         }
 
         const response = await resp.json()
