@@ -21,21 +21,42 @@ const fetchServer = async (method, body, endpoint, server, signal)=>{
         // const resp = await fetch('/'+endpoint, data)        
         if (resp.status === 403 || resp.status === 401) {
             // Token expired, try refreshing
-            const tokenData = {
-                method: 'POST',
-                credentials: 'include',
-            }
-            await fetch(server + '/token', tokenData);
+            try {
+                const tokenData = {
+                    method: 'POST',
+                    credentials: 'include'
+                };
 
-            // Retry the original request
-            resp = await fetch(server + '/' + endpoint, data)
-            const resp1 = await resp.json()
-            if (resp1.err){
-                console.log("Could not retrieve data:",resp1)
-                window.localStorage.setItem('lgt-mess', 'Your Session Expired. Login Again!')
-                setTimeout(()=>{
-                    window.location.reload()
-                },500)
+                const tokenResponse = await fetch(server + '/token', tokenData);
+                
+                if (!tokenResponse.ok) {
+                    throw new Error('Token refresh failed');
+                }
+
+                // Retry the original request with new token
+                resp = await fetch(server + '/' + endpoint, data);
+                
+                // If we get another 401 after refresh, session is truly expired
+                if (resp.status === 401) {
+                    throw new Error('Session expired after token refresh');
+                }
+                
+                const responseData = await resp.json();
+                return { err: false, ...responseData };
+                
+            } catch (error) {
+                console.error('Session expired or refresh failed:', error);
+                // Clear any sensitive data from localStorage/sessionStorage
+                const redirectUrl = window.location.pathname + window.location.search;
+                window.localStorage.setItem('lgt-mess', 'Your session has expired. Please log in again.');
+                window.localStorage.setItem('redirectAfterLogin', redirectUrl);
+                
+                // Short delay to ensure message is stored before reload
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 500);
+                
+                return { err: true, message: 'Session expired. Please log in again.' };
             }
         }
 
