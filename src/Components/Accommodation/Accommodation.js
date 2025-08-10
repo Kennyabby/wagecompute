@@ -1043,7 +1043,7 @@ const Accommodation = ()=>{
                                     type='number'
                                     placeholder='Payment Amount'
                                     value={accommodationFields.paymentAmount}
-                                    disabled={isView && ['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus)}
+                                    disabled={isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)}
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)
                                     }}
@@ -1057,7 +1057,7 @@ const Accommodation = ()=>{
                                     type='text'
                                     placeholder='Payment Point'
                                     value={accommodationFields.payPoint}
-                                    disabled={isView && ['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus)}
+                                    disabled={isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)}
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)
                                     }}
@@ -1075,7 +1075,7 @@ const Accommodation = ()=>{
                                     name='paymentReceipt'
                                     type='text'
                                     placeholder='Enter Receipt Number'
-                                    disabled={(isView && ['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus)) || accommodationFields.payPoint === 'cash'}
+                                    disabled={(isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)) || accommodationFields.payPoint === 'cash'}
                                     value={accommodationFields.paymentReceipt}
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)
