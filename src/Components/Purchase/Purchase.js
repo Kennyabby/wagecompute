@@ -437,7 +437,7 @@ const Purchase = ()=>{
 
     const deletePurchase = async (purchase)=>{
         const today = new Date()
-        const postingDate = new Date(purchase.purchaseDate)
+        const postingDate = new Date(purchase.postingDate)
         if (postingDate < today.setDate(today.getDate()) || postingDate > today){
             setAlertState('error')
             setAlert('Cannot delete purchase after more than 1 day')
