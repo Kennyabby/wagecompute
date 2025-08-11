@@ -371,6 +371,14 @@ const Accommodation = ()=>{
     }
 
     const deleteAccommodation = async (accommodation)=>{
+        const today = new Date()
+        const postingDate = new Date(accommodation.postingDate)
+        if (postingDate < today.setDate(today.getDate()-1) || postingDate > today){
+            setAlertState('error')
+            setAlert('Cannot delete accommodation after more than 1 day')
+            setAlertTimeout(3000)
+            return
+        }
         if (deleteCount === accommodation.createdAt) {
             setAlertState('info')
             setAlert('Deleting...')
@@ -387,8 +395,8 @@ const Accommodation = ()=>{
             }else{
                 if (curApproval){
                     removeApproval(company, 'accommodation', 'postaccommodation', {                        
-                        createdAt: accommodation.createdAt,
-                        postingDate: accommodation.postingDate                                                  
+                        createdAt: curApproval.createdAt,
+                        postingDate: curApproval.postingDate                                                  
                     })
                 }
                 setIsView(false)
@@ -464,37 +472,62 @@ const Accommodation = ()=>{
                 }
             }else if (name==='departureDate'){
                 if (accommodationFields.arrivalDate){
-                    const roomNo = accommodationFields.roomNo
-                    const arrivalDate = new Date(accommodationFields.arrivalDate).getTime()
-                    const departureDate = new Date(value).getTime()
-                    var defaultDays = 1
-                    const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
-                    defaultDays = multiple > 0 ? multiple : defaultDays
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value, accommodationAmount : roomNo ? (defaultDays * rooms[roomNo]['price']): ''}
-                    })
-
+                    const date = new Date(value)
+                    const arrDate = new Date(accommodationFields.arrivalDate)
+                    if (date >= arrDate){
+                        const roomNo = accommodationFields.roomNo
+                        const arrivalDate = new Date(accommodationFields.arrivalDate).getTime()
+                        const departureDate = new Date(value).getTime()
+                        var defaultDays = 1
+                        const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
+                        defaultDays = multiple > 0 ? multiple : defaultDays
+                        setAccommodationFields((accommodationFields)=>{
+                            return {...accommodationFields, [name]:value, accommodationAmount : roomNo ? (defaultDays * rooms[roomNo]['price']): ''}
+                        })
+                    }else{
+                        setAlertState('error')
+                        setAlert('Departure Date cannot be less than arrival date')
+                        setAlertTimeout(5000)
+                    }
                 }else{
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value}
-                    })
+                    setAlertState('error')
+                    setAlert('Arrival Date is required')
+                    setAlertTimeout(5000)
+                    // setAccommodationFields((accommodationFields)=>{
+                    //     return {...accommodationFields, [name]:value}
+                    // })
                 }
             }else if (name==='arrivalDate'){
                 if (accommodationFields.arrivalDate){
-                    const roomNo = accommodationFields.roomNo
-                    const arrivalDate = new Date(value).getTime()
-                    const departureDate = new Date(accommodationFields.departureDate).getTime()
-                    var defaultDays = 1
-                    const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
-                    defaultDays = multiple > 0 ? multiple : defaultDays
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value, accommodationAmount : roomNo ? (defaultDays * rooms[roomNo]['price']): ''}
-                    })
-
+                    const date = new Date(value)
+                    const today = new Date()
+                    if (date <= today){
+                        const roomNo = accommodationFields.roomNo
+                        const arrivalDate = new Date(value).getTime()
+                        const departureDate = new Date(accommodationFields.departureDate).getTime()
+                        var defaultDays = 1
+                        const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
+                        defaultDays = multiple > 0 ? multiple : defaultDays
+                        setAccommodationFields((accommodationFields)=>{
+                            return {...accommodationFields, [name]:value, accommodationAmount : roomNo ? (defaultDays * rooms[roomNo]['price']): ''}
+                        })
+                    }else{
+                        setAlertState('error')
+                        setAlert('You cannot set the arrival date in the future!')
+                        setAlertTimeout(5000)
+                    }
                 }else{
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value}
-                    })
+                    const date = new Date(value)
+                    const today = new Date()
+                    if (date <= today){
+                        setAccommodationFields((accommodationFields)=>{
+                            return {...accommodationFields, [name]:value}
+                        })
+                    }else{
+                        setAlertState('error')
+                        setAlert('You cannot set the arrival date in the future!')
+                        setAlertTimeout(5000)
+                    }
                 }
             }else if (name==='payPoint'){
                 if (value==='cash'){
@@ -1195,7 +1228,15 @@ const Accommodation = ()=>{
                                 value={postingDate}
                                 disabled={!companyRecord.status==='admin'}
                                 onChange={(e)=>{
-                                    setPostingDate(e.target.value)
+                                    const date = new Date(e.target.value)
+                                    const today = new Date()
+                                    if (date <= today){
+                                        setPostingDate(e.target.value)
+                                    }else{
+                                        setAlertState('error')
+                                        setAlert('You cannot set the posting date in the future!')
+                                        setAlertTimeout(5000)
+                                    }
                                 }}
                             />
                         </div>}  

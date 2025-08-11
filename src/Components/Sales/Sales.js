@@ -1202,6 +1202,15 @@ const Sales = ()=>{
     }
 
     const deleteSales = async (sale)=>{
+        const today = new Date()
+        const postingDate = new Date(sale.postingDate)
+        if (postingDate < today.setDate(today.getDate()-1) || postingDate > today){
+            setAlertState('error')
+            setAlert('Cannot delete sales after more than 1 day')
+            setAlertTimeout(3000)
+            return
+        }
+
         if (deleteCount === sale.createdAt) {
             setAlertState('info')
             setAlert('Deleting...')
@@ -2452,7 +2461,15 @@ const Sales = ()=>{
                                     value={rentalFields.paymentDate}
                                     disabled={isView}
                                     onChange={(e)=>{
-                                        handleRentalFieldChange(e)
+                                        const date = new Date(e.target.value)
+                                        const today = new Date()
+                                        if (date <= today){
+                                            handleRentalFieldChange(e)
+                                        }else{
+                                            setAlertState('error')
+                                            setAlert('You cannot set the payment date in the future!')
+                                            setAlertTimeout(5000)
+                                        }
                                     }}
                                 />
                             </div>
@@ -2799,7 +2816,15 @@ const Sales = ()=>{
                                 value={postingDate}
                                 disabled={isView}
                                 onChange={(e)=>{
-                                    setPostingDate(e.target.value)
+                                    const date = new Date(e.target.value)
+                                    const today = new Date()
+                                    if (date <= today){
+                                        setPostingDate(e.target.value)
+                                    }else{
+                                        setAlertState('error')
+                                        setAlert('You cannot set the posting date in the future!')
+                                        setAlertTimeout(5000)
+                                    }
                                 }}
                             />
                         </div>}  
@@ -2809,8 +2834,22 @@ const Sales = ()=>{
                                 name='recoveryMonth'
                                 type='text'
                                 value={recoveryMonth}
+                                // disabled={isView}
                                 onChange={(e)=>{
-                                    setRecoveryMonth(e.target.value)
+                                    const month = e.target.value
+                                    const today = new Date()
+                                    if (months.indexOf(month) <= today.getMonth()){
+                                        setRecoveryMonth(month)
+                                        if (months.indexOf(month) < today.getMonth()){
+                                            setAlertState('info')
+                                            setAlert('Are you sure? You have selected a previous month!')
+                                            setAlertTimeout(3000)
+                                        }
+                                    }else{
+                                        setAlertState('error')
+                                        setAlert('You cannot set the recovery month in the future!')
+                                        setAlertTimeout(5000)
+                                    }
                                 }}
                             >
                                 <option value=''>Select Recovery Month</option>
