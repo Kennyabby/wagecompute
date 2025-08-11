@@ -436,6 +436,14 @@ const Purchase = ()=>{
     }
 
     const deletePurchase = async (purchase)=>{
+        const today = new Date()
+        const postingDate = new Date(purchase.purchaseDate)
+        if (postingDate < today.setDate(today.getDate()) || postingDate > today){
+            setAlertState('error')
+            setAlert('Cannot delete purchase after more than 1 day')
+            setAlertTimeout(3000)
+            return
+        }
         if(deleteCount === purchase.createdAt){
             setAlertState('info')
             setAlert('Deleting Purchase...')
@@ -825,7 +833,15 @@ const Purchase = ()=>{
                                 value={purchaseDate}
                                 disabled={isView}
                                 onChange={(e)=>{
-                                    setPurchaseDate(e.target.value)
+                                    const date = new Date(e.target.value)
+                                    const today = new Date()
+                                    if (date <= today){
+                                        setPurchaseDate(e.target.value)
+                                    }else{
+                                        setAlertState('error')
+                                        setAlert('You cannot set the purchase date in the future!')
+                                        setAlertTimeout(5000)
+                                    }
                                 }}
                             />
                         </div>
