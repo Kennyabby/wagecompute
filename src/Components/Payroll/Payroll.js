@@ -439,7 +439,11 @@ const Payroll = () =>{
                 >VIEW STAFF PAYROLL</div>
                 
                 {employees.filter((ftremp)=>{
+                    
                     if (!ftremp.dismissalDate){
+                        return ftremp
+                    }
+                    if (new Date(ftremp.dismissalDate) >= new Date(`${selectedYear}-${months.indexOf(selectedMonth)}-01`)){
                         return ftremp
                     }
                 }).map((employee, index)=>{

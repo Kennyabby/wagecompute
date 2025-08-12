@@ -170,8 +170,9 @@ const Reports = ()=>{
                     const penalties = Number(payee['penalties']) ? Number(payee['penalties']) : 0
                     const shortages = Number(payee['shortages'])? Number(payee['shortages']) : 0
                     const debtDue = Number(payee['debtDue'])? Number(payee['debtDue']) : 0
+                    const prevDebt = Number(payee['prevDebt'])? Number(payee['prevDebt']) : 0
                     const salaryAmount = totalPay + adjustment + bonus
-                    + penalties - shortages - debtDue
+                    - penalties - shortages - debtDue - prevDebt
     
                     reportSalary.postingDate = postingDate
                     reportSalary.docType = 'salary'

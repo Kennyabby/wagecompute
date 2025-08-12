@@ -15,10 +15,10 @@ const Expenses = ()=>{
         server, 
         fetchServer,
         companyRecord,
-        company, getDate,
+        company, getDate, months, monthDays,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
-        employees, getEmployees, months, getExpenses, setExpenses, expenses,
-        alert,alertState,alertTimeout,actionMessage, 
+        employees, getEmployees, getExpenses, setExpenses, expenses, 
+        attendance, getAttendance, alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
     const [expensesStatus, setExpensesStatus] = useState('Post Expenses')
@@ -33,6 +33,8 @@ const Expenses = ()=>{
     const [expenseCode, setExpenseCode] = useState(null)
     const [allExpenseAccounts, setAllExpenseAccounts] = useState([])
     const [showExpenseModal, setShowExpenseModal] = useState(false)
+    const [salaryDetails, setSalaryDetails] = useState(null)
+    
     const defaultFields = {
         expensesDepartment:'',
         expensesHandler:'',
@@ -72,10 +74,12 @@ const Expenses = ()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getEmployees(cmp_val)
         getExpenses(cmp_val)
+        getAttendance(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
             getEmployees(cmp_val)
             getExpenses(cmp_val)
+            getAttendance(cmp_val)
           }
         },60000)
         return () => clearInterval(intervalId);
@@ -86,6 +90,66 @@ const Expenses = ()=>{
             setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
     },[companyRecord])
+
+    useEffect(()=>{
+        const selectedMonthFrom = expenseFrom.split('-')[1]
+        const selectedYearFrom = expenseFrom.split('-')[0]
+        const selectedMonthTo = expenseTo.split('-')[1]
+        const selectedYearTo = expenseTo.split('-')[0]
+        
+        const monthsList = []
+        for (let year = Number(selectedYearFrom); year <= Number(selectedYearTo); year++){
+            const startMonth = year === Number(selectedYearFrom) ? Number(selectedMonthFrom) : 1
+            const endMonth = year === Number(selectedYearTo) ? Number(selectedMonthTo) : 12
+            for (let month = startMonth; month <= endMonth; month++){
+                monthsList.push({year, month:months[month-1]})
+            }
+        }
+        
+        const details = []
+        monthsList.forEach((monthDetail)=>{
+            let monthlySalary = 0
+            const {year, month} = monthDetail
+            const salaryPostingDate = new Date(Number(year), months.indexOf(month), monthDays[month]+1).toISOString().slice(0,10)
+            
+            attendance.forEach((att)=>{
+                const {year, month, payees} = att
+                payees.forEach((payee)=>{   
+                    const postingDate = new Date(Number(year), months.indexOf(month), monthDays[month]+1).toISOString().slice(0,10)
+                    if (monthDetail.month === month && monthDetail.year === Number(year)){                
+                        var reportSalary = {}
+                        const totalPay = Number(payee['Total Pay']?payee['Total Pay']:0)
+                        const adjustment = Number(payee.adjustment) ? Number(payee.adjustment) : 0
+                        const bonus = Number(payee['bonus']) ? Number(payee['bonus']): 0 
+                        const penalties = Number(payee['penalties']) ? Number(payee['penalties']) : 0
+                        const shortages = Number(payee['shortages'])? Number(payee['shortages']) : 0
+                        const debtDue = Number(payee['debtDue'])? Number(payee['debtDue']) : 0
+                        const prevDebt = Number(payee['prevDebt'])? Number(payee['prevDebt']) : 0
+                        const salaryAmount = totalPay + adjustment + bonus
+                        - penalties - shortages - debtDue - prevDebt
+        
+                        reportSalary.postingDate = postingDate
+                        reportSalary.docType = 'salary'
+                        reportSalary.salaryAmount = Number(salaryAmount || 0)
+                        monthlySalary += Number(salaryAmount || 0)
+                    }
+                })
+            })
+            const detail = {
+                "expensesDepartment": "Admin",
+                "expensesHandler": "1",
+                "expenseCategory": "Salary and Wages",
+                "expensesBank": "moniepoint1",
+                "expensesAmount": monthlySalary,
+                "expensesVendor": "EMPLOYEES / STAFFS",
+                "expensesDescription": `Salary and Wages for ${month} ${year}`,
+                "postingDate": salaryPostingDate,
+                "createdAt": Date.now()
+            }
+            details.push(detail)
+        })
+        setSalaryDetails(details)
+    },[attendance, expenseFrom, expenseTo])
 
     const handleExpensesEntry = (e)=>{
         const name = e.target.getAttribute('name')
@@ -99,10 +163,11 @@ const Expenses = ()=>{
     }
 
     const handleViewClick = (exp) =>{
+        setIsView(true)            
         if (curExpense === null || exp.createdAt !== curExpense?.createdAt){
             setCurExpense(exp)
             setFields({...exp})
-            setIsView(true)            
+            setIsView(true)             
         }
     }
 
@@ -184,8 +249,10 @@ const Expenses = ()=>{
     }
 
     const calculateReportExpense = ()=>{
-        var filteredReportExpenses = expenses.sort((a,b) => {
-            return b.postingDate - a.postingDate
+        var filteredReportExpenses = [...(salaryDetails || []),...expenses].sort((a,b) => {
+            const first = new Date(a.postingDate)
+            const second = new Date(b.postingDate)
+            return second - first
         }).filter((ftrexpense)=>{
             const expPostingDate = new Date(ftrexpense.postingDate).getTime()
             const fromDate = new Date(expenseFrom).getTime()
@@ -294,10 +361,14 @@ const Expenses = ()=>{
                             />
                         </div>
                     </div>
-                    {expenses.filter((expfltr)=>{
+                    {[...(salaryDetails || []),...expenses].filter((expfltr)=>{
                         if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo){
                             return expfltr
                         }
+                    }).sort((a,b)=>{
+                        const first = new Date(a.postingDate)
+                        const second = new Date(b.postingDate)
+                        return second - first
                     }).map((exp,index)=>{                        
                         const {
                             createdAt,postingDate, 
@@ -486,7 +557,7 @@ const Expenses = ()=>{
                                 name='expensesBank'
                                 type='text'
                                 value={fields.expensesBank}
-                                diabled={isView}
+                                disabled={isView}
                             >
                                 <option value={''}>Select Expenses Bank</option>
                                 {payPoints.map((payPoint,id)=>{

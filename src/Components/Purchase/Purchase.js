@@ -484,6 +484,10 @@ const Purchase = ()=>{
             ){
                 return ftrpurchase
             }
+        }).sort((a, b)=>{
+            const first = new Date(a.postingDate)
+            const second = new Date(b.postingDate)
+            return second - first
         })
         setReportPurchase(filteredReportPurchases)
     }
@@ -578,6 +582,10 @@ const Purchase = ()=>{
                         if (purfltr.postingDate >= saleFrom && purfltr.postingDate <= saleTo){
                             return purfltr
                         }
+                    }).sort((a,b)=>{
+                        const first = new Date(a.postingDate)
+                        const second = new Date(b.postingDate)
+                        return second - first
                     }).map((pur, index)=>{
                         if (pur.isApproval){
                             const {createdAt, postingDate, message, handlerId, approved} = pur
