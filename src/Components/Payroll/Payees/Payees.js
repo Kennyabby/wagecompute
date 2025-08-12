@@ -16,9 +16,10 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
     const {storePath,
         getDate,
         company, companyRecord,
+        months,
         monthDays,
         employees,
-        attendance
+        attendance, 
     } = useContext(ContextProvider)
 
     const getInvoiceNumber = () =>{
@@ -375,7 +376,9 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
                                                                     var payees = []
                                                                     if (attd.length){
                                                                         payees = attd[0].payees.filter((payee)=>{
-                                                                            if (payee['Person ID'] === employee.i_d && !employee.dismissalDate){
+                                                                            if (payee['Person ID'] === employee.i_d 
+                                                                                && (!employee.dismissalDate || new Date(employee.dismissalDate) >= new Date(`${selectedYear}-${months.indexOf(selectedMonth)}-01`))
+                                                                            ){
                                                                                 return payee
                                                                             }
                                                                         })
