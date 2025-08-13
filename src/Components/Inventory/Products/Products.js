@@ -72,7 +72,67 @@ const Products = ({
     })
 
     const [productFields, setProductFields] = useState({...defaultProductFields})
+    // Monthly stats state
+    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0,7))
+    const [monthStats, setMonthStats] = useState({
+        salesQty: 0,
+        salesAmount: 0,
+        purchaseQty: 0,
+        purchaseCost: 0
+    })
+    const [monthLoading, setMonthLoading] = useState(false)
+
+    const getMonthRange = (ym) => {
+        if (!ym) return {from: null, to: null}
+        const [yyStr, mmStr] = ym.split('-')
+        const yy = Number(yyStr)
+        const mm = Number(mmStr || '1')
+        const lastDay = new Date(yy, mm, 0).getDate()
+        const pad = (n)=> String(n).padStart(2,'0')
+        const from = `${yyStr}-${pad(mm)}-01`
+        const to = `${yyStr}-${pad(mm)}-${pad(lastDay)}`
+        return {from, to}
+    }
     
+    const loadMonthlyTotals = async () => {
+        try{
+            setMonthLoading(true)
+            const pid = (productFields?.i_d)
+            if (!company || !pid) return
+            const {from, to} = getMonthRange(selectedMonth)
+            if (!from || !to) return
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "InventoryTransactions",
+                prop: {
+                    productId: pid,
+                    postingDate: { $gte: from, $lte: to }
+                }
+            }, "getDocsDetails", server)
+            let salesQty = 0, salesAmount = 0, purchaseQty = 0, purchaseCost = 0
+            if (resp?.record && Array.isArray(resp.record)){
+                resp.record.forEach((t)=>{
+                    const entryType = t.entryType
+                    const bq = Number(t.baseQuantity)||0
+                    const tSales = Number(t.totalSales)||0
+                    const tCost = Number(t.totalCost)||0
+                    if (entryType === 'Sales'){
+                        salesQty += Math.abs(bq)
+                        salesAmount += Math.abs(tSales)
+                    }else if (entryType === 'Purchase'){
+                        purchaseQty += Math.abs(bq)
+                        purchaseCost += Math.abs(tCost)
+                    }
+                })
+            }
+            setMonthStats({salesQty, salesAmount, purchaseQty, purchaseCost})
+        }catch(err){
+            // swallow
+        }finally{
+            setMonthLoading(false)
+        }
+    }
+
     useEffect(()=>{
         getProducts(cmp_val)
         if (!curProduct){
@@ -119,6 +179,11 @@ const Products = ({
             setProductFields({...curProduct, costPrice: cummulativeUnitCostPrice})
         }
     },[curProduct])
+
+    // Refresh monthly totals when product or month changes
+    useEffect(()=>{
+        loadMonthlyTotals()
+    }, [productFields?.i_d, selectedMonth, company])
 
     useEffect(()=>{
         if (settings.length){
@@ -473,7 +538,71 @@ const Products = ({
                                 </div>
                             </div>
                         </div>
-                        <div className='pr-details'></div>
+                        <div className='pr-details'>
+                            <div className='stock-cov'>
+                                <h3>Stock</h3>
+                                <div className='stock-table'>
+                                    <div className='stock-table-head'>
+                                        <div>Location</div>
+                                        <div>Quantity</div>
+                                    </div>
+                                    {Object.keys(productFields.locationStock || {}).map((location, index)=>(
+                                        <div className='stock-table-body' key={index}>
+                                            <div>{location}</div>
+                                            <div>{productFields.locationStock[location].quantity}</div>
+                                        </div>
+                                    ))}
+                                    <div className='stock-table-body'>
+                                        <div>All Locations</div>
+                                        <div>{Object.values(productFields.locationStock || {}).reduce((sum, item)=>sum + item.quantity, 0)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className='stock-cov' style={{marginTop: 12}}>
+                                <h3>Monthly Overview</h3>
+                                <div style={{display: 'flex', gap: 12, alignItems: 'center', margin: '6px 0'}}>
+                                    <label>Select Month:</label>
+                                    <input 
+                                        type='month' 
+                                        value={selectedMonth}
+                                        onChange={(e)=> setSelectedMonth(e.target.value)}
+                                        style={{padding: '6px'}}
+                                    />
+                                </div>
+                                <div className='stock-table'>
+                                    <div className='stock-table-head'>
+                                        <div>Metric</div>
+                                        <div>Value</div>
+                                    </div>
+                                    {monthLoading ? (
+                                        <div className='stock-table-body'>
+                                            <div>Loading...</div>
+                                            <div>—</div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className='stock-table-body'>
+                                                <div>Sales Quantity</div>
+                                                <div>{Number(monthStats.salesQty).toLocaleString()}</div>
+                                            </div>
+                                            <div className='stock-table-body'>
+                                                <div>Sales Amount (₦)</div>
+                                                <div>{Number(monthStats.salesAmount).toLocaleString()}</div>
+                                            </div>
+                                            <div className='stock-table-body'>
+                                                <div>Purchase Quantity</div>
+                                                <div>{Number(monthStats.purchaseQty).toLocaleString()}</div>
+                                            </div>
+                                            <div className='stock-table-body'>
+                                                <div>Purchase Cost (₦)</div>
+                                                <div>{Number(monthStats.purchaseCost).toLocaleString()}</div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
                     <div className='pr-right'>
                         <div className='otherInpCov'>
