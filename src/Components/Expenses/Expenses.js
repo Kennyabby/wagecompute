@@ -138,7 +138,7 @@ const Expenses = ()=>{
             const detail = {
                 "expensesDepartment": "Admin",
                 "expensesHandler": "1",
-                "expenseCategory": "Salary and Wages",
+                "expenseCategory": "Salary & Wages",
                 "expensesBank": "moniepoint1",
                 "expensesAmount": monthlySalary,
                 "expensesVendor": "EMPLOYEES / STAFFS",
