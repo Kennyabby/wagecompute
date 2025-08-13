@@ -7,16 +7,24 @@
     align-items: center;
     background: whitesmoke;
 }
+
 .pr-product{
     display: flex;
     width: 95%;
     margin: auto;
     padding: 20px 0px;
+    height: 100%;
+    flex-direction: column; 
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
 }
+
 .pr-left{
     width: 70%;
     /* height: 100%; */
 }
+
 .nameInpCov{
     display: flex;
     font-size: 1.2em;
@@ -24,6 +32,7 @@
     height: fit-content;
     margin: 20px 0px;
 }
+
 .nameInp{
     border: 0px;
     border-bottom: solid black 1px;
@@ -33,9 +42,11 @@
     outline: none;
     background: rgba(0,0,0,0);
 }
+
 .pr-type{
     display: flex;
 }
+
 .pr-type-sub{
     display: flex;
     font-size: .9em;
@@ -47,15 +58,17 @@
 }
 .pr-details{
     width: 90%;
-    height: 50%;
+    /* height: 50%; */
+    padding: 10px;
+    max-height: 60vh;
+    overflow-y: auto;
     background: white;
     box-shadow: 1px 1px 9px rgba(0,0,0,.2);
     border-radius: 10px; 
-    margin: 30px 0px;
-    margin-right: auto;
+    margin: 10px 0px;
 }
 .pr-right{
-    margin: 20px;
+    margin: 5px;
     height: fit-content;
 }
 .otherInpCov{
@@ -235,4 +248,38 @@
     color: rgba(124, 126, 124,.4);
     font-weight: 700;
     margin: auto;
+}
+
+/* Monthly Overview + Stock table styles */
+.stock-cov{
+    display: block;
+}
+.stock-table{
+    width: 100%;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.stock-table-head{
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgb(245, 245, 245);
+    font-weight: 700;
+    font-size: .9em;
+}
+.stock-table-body{
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    font-size: .9em;
+}
+.pr-details input[type="month"]{
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 6px;
+    background: #fff;
 }
