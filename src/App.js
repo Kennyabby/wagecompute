@@ -7,6 +7,7 @@ import LoadingPage from './Components/LoadingPage/LoadingPage';
 import Login from './Components/Login/Login';
 import Profile from './Components/Profile/Profile';
 import Dashboard from './Components/Dashboard/Dashboard';
+import DashView from './Components/DashView/DashView';
 import FormPage from './Components/FormPage/FormPage';
 import Notify from './Resources/Notify/Notify';
 import { read, utils, writeFileXLSX } from 'xlsx';
@@ -1271,6 +1272,7 @@ function App() {
             <Route path='/login' element={<Login/>}></Route>
             <Route path='/profile' element={<Profile/>}></Route>
             <Route path='/test' element={<FormPage/>}></Route>
+            <Route path='/dash' element={<DashView/>}></Route>
             <Route path='/:id' element={<Dashboard/>}></Route>
           </Routes> :
           <PauseView/>
