@@ -56,7 +56,7 @@ const DashView = () =>{
     },[storePath])
 
     // Helper: filter arbitrary records by date range using common date fields
-    const filterByDate = (list, from, to, dateKeys=['postingDate','expensesDate','expenseDate','createdAt','date'])=>{
+    const filterByDate = (list, from, to, dateKeys=['postingDate','expensesDate','expenseDate','createdAt','date','salesDate','sessionDate'])=>{
         if (!Array.isArray(list)) return []
         const fromT = new Date(from).getTime()
         const toT = new Date(to).getTime()
@@ -68,6 +68,18 @@ const DashView = () =>{
             if (!dVal) return false
             const t = (typeof dVal === 'string') ? new Date(dVal).getTime() : Number(dVal||0)
             if (!t) return false
+            // Season filter (Q1-Q4) if set
+            if (seasonFilter){
+                const m = new Date(t).getMonth() // 0-11
+                const inQuarter = (q)=>{
+                    if (q==='Q1') return m>=0 && m<=2
+                    if (q==='Q2') return m>=3 && m<=5
+                    if (q==='Q3') return m>=6 && m<=8
+                    if (q==='Q4') return m>=9 && m<=11
+                    return true
+                }
+                if (!inQuarter(seasonFilter)) return false
+            }
             return t >= fromT && t <= toT
         })
     }
@@ -130,6 +142,12 @@ const DashView = () =>{
                     const loc = t.location || 'Unknown'
                     const pid = t.productId || t.i_d || 'Unknown'
                     const d = (t.postingDate && typeof t.postingDate === 'string') ? t.postingDate : new Date(Number(t.createdAt||0)).toISOString().slice(0,10)
+                    // Apply season filter if set (Q1-Q4)
+                    if (seasonFilter){
+                        const m = new Date(d).getMonth()
+                        const inQ = (q)=> q==='Q1'? (m>=0&&m<=2) : q==='Q2'? (m>=3&&m<=5) : q==='Q3'? (m>=6&&m<=8) : q==='Q4'? (m>=9&&m<=11) : true
+                        if (!inQ(seasonFilter)) return
+                    }
 
                     if (type === 'sale' || type === 'sales'){
                         salesQty += qty
@@ -249,19 +267,26 @@ const DashView = () =>{
             // Top Employees split: Sales vs Services (Accommodation + Rentals)
             const empSalesMap = new Map()
             filterByDate(sales, fromDate, toDate).forEach(s=>{
-                const id = s.employeeId || s.employee || s.handlerId
-                const amt = Number(s.totalSalesAmount || s.totalAmount || s.amount || 0)
-                if (!id) return
+                const rawId = s.employeeId || s.employee || s.handlerId || s.sessionEmployee || s.employee_id
+                const id = employeeIdResolver(rawId)
+                // Honor location filter if sales record contains a location
+                if (locationFilter && s.location && s.location !== locationFilter) return
+                const amt = Number(s.totalSalesAmount || s.totalSales || s.totalAmount || s.grandTotal || s.amount || 0)
+                if (!id || !amt) return
                 empSalesMap.set(id, (empSalesMap.get(id)||0) + amt)
             })
             const empServiceMap = new Map()
             filterByDate(accommodations, fromDate, toDate).forEach(a=>{
-                const id = a.employeeId || a.handlerId
+                const rawId = a.employeeId || a.handlerId
+                const id = employeeIdResolver(rawId)
+                if (locationFilter && a.location && a.location !== locationFilter) return
                 if (!id) return
                 empServiceMap.set(id, (empServiceMap.get(id)||0) + Number(a.accommodationAmount||0))
             })
             filterByDate(rentals, fromDate, toDate).forEach(r=>{
-                const id = r.employeeId || r.handlerId
+                const rawId = r.employeeId || r.handlerId
+                const id = employeeIdResolver(rawId)
+                if (locationFilter && r.location && r.location !== locationFilter) return
                 if (!id) return
                 empServiceMap.set(id, (empServiceMap.get(id)||0) + Number(r.rentalAmount||0))
             })
@@ -354,14 +379,35 @@ const DashView = () =>{
     },[products])
 
     const employeeName = useMemo(()=>{
-        const map = new Map()
+        const byId = new Map()
+        const byEmail = new Map()
         ;(employees||[]).forEach(e=>{
             const parts = [e.firstName, e.otherName, e.lastName].filter(Boolean)
             const fallback = e.fullName || e.name
             const nm = (parts.length ? parts.join(' ') : (fallback||'Employee')).trim()
-            if (e.i_d) map.set(String(e.i_d), `${nm} (${e.i_d})`)
+            if (e.i_d) byId.set(String(e.i_d), `${nm} (${e.i_d})`)
+            if (e.emailid) byEmail.set(String(e.emailid).toLowerCase(), `${nm} (${e.i_d||e.emailid})`)
         })
-        return (id)=> map.get(String(id)) || String(id)
+        return (id)=>{
+            if (id === undefined || id === null) return 'N/A'
+            const k = String(id)
+            return byId.get(k) || byEmail.get(k.toLowerCase()) || k
+        }
+    },[employees])
+
+    // Resolve any given employee identifier to canonical employee i_d when possible
+    const employeeIdResolver = useMemo(()=>{
+        const byId = new Map()
+        const byEmail = new Map()
+        ;(employees||[]).forEach(e=>{
+            if (e.i_d) byId.set(String(e.i_d), String(e.i_d))
+            if (e.emailid) byEmail.set(String(e.emailid).toLowerCase(), String(e.i_d||e.emailid))
+        })
+        return (raw)=>{
+            if (raw === undefined || raw === null) return undefined
+            const k = String(raw)
+            return byId.get(k) || byEmail.get(k.toLowerCase()) || k
+        }
     },[employees])
 
     // Best/Worst sales days based on (sales+accommodations+rentals)
@@ -372,6 +418,33 @@ const DashView = () =>{
         const worst = withRev.reduce((a,b)=> b.rev < (a?.rev||Infinity) ? b : a, null)
         return { best, worst }
     },[series])
+
+    // Build filter option lists
+    const locationOptions = useMemo(()=>{
+        const set = new Set()
+        // from products stock map
+        ;(products||[]).forEach(p=>{
+            Object.keys(p.locationStock||{}).forEach(l=>{ if (l) set.add(l) })
+        })
+        // from transactional modules
+        ;(sales||[]).forEach(s=>{ if (s.location) set.add(s.location) })
+        ;(accommodations||[]).forEach(a=>{ if (a.location) set.add(a.location) })
+        ;(rentals||[]).forEach(r=>{ if (r.location) set.add(r.location) })
+        return Array.from(set).sort()
+    },[products, sales, accommodations, rentals])
+
+    const productOptions = useMemo(()=>{
+        return (products||[]).map(p=>({ value: p.i_d || p.productId, label: p.name || p.productName || p.description || 'Product' }))
+    },[products])
+
+    const employeeOptions = useMemo(()=>{
+        return (employees||[]).map(emp=>{
+            const parts = [emp.firstName, emp.otherName, emp.lastName].filter(Boolean)
+            const fallback = emp.fullName || emp.name
+            const label = (parts.length ? parts.join(' ') : (fallback||'Employee')).trim()
+            return { value: String(emp.i_d || ''), label: `${label} (${emp.i_d||emp.emailid||''})` }
+        }).filter(e=> e.value)
+    },[employees])
 
     return(
         <>
@@ -385,55 +458,46 @@ const DashView = () =>{
                         <label>To</label>
                         <input type='date' value={toDate} onChange={e=>setToDate(e.target.value)} />
                     </div>
-                    <div className='filter-group' style={{gap:6}}>
-                        <label style={{visibility:'hidden'}}>Presets</label>
-                        <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
-                            <button className='btn-secondary' onClick={()=>{
-                                const d=new Date(); const s=d.toISOString().slice(0,10); setFromDate(s); setToDate(s)
-                            }}>Today</button>
-                            <button className='btn-secondary' onClick={()=>{
-                                const now=new Date(); const s=new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10); setFromDate(s); setToDate(e)
-                            }}>MTD</button>
-                            <button className='btn-secondary' onClick={()=>{
-                                const now=new Date(); const q=Math.floor(now.getMonth()/3); const s=new Date(now.getFullYear(), q*3, 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), q*3+3, 0).toISOString().slice(0,10); setFromDate(s); setToDate(e)
-                            }}>QTD</button>
-                            <button className='btn-secondary' onClick={()=>{
-                                const now=new Date(); const s=new Date(now.getFullYear(), 0, 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), 11, 31).toISOString().slice(0,10); setFromDate(s); setToDate(e)
-                            }}>YTD</button>
-                            <button className='btn-secondary' onClick={()=>{
-                                setLocationFilter(''); setProductFilter(''); setEmployeeFilter(''); setSeasonFilter('')
-                            }}>Clear Filters</button>
+                    <div className='filter-group'>
+                        <label>Presets</label>
+                        <div className='btn-group' style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                            <button className='btn-secondary' onClick={()=>{ const d=new Date(); const s=d.toISOString().slice(0,10); setFromDate(s); setToDate(s) }}>Today</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>MTD</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const q=Math.floor(now.getMonth()/3); const s=new Date(now.getFullYear(), q*3, 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), q*3+3, 0).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>QTD</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), 0, 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), 11, 31).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>YTD</button>
+                            <button className='btn-secondary' onClick={()=>{ setLocationFilter(''); setProductFilter(''); setEmployeeFilter(''); setSeasonFilter('') }}>Clear</button>
                         </div>
                     </div>
                     <div className='filter-group'>
                         <label>Location</label>
-                        <input list='loc-list' placeholder='All' value={locationFilter} onChange={e=>setLocationFilter(e.target.value)} />
-                        <datalist id='loc-list'>
-                            {Array.from(new Set((products||[]).flatMap(p=>Object.keys(p.locationStock||{})))).map((l,i)=>(<option value={l} key={i} />))}
-                        </datalist>
+                        <select value={locationFilter} onChange={e=>setLocationFilter(e.target.value)}>
+                            <option value=''>All</option>
+                            {locationOptions.map((l,i)=>(<option value={l} key={i}>{l}</option>))}
+                        </select>
                     </div>
                     <div className='filter-group'>
                         <label>Product</label>
-                        <input list='prod-list' placeholder='All' value={productFilter} onChange={e=>setProductFilter(e.target.value)} />
-                        <datalist id='prod-list'>
-                            {(products||[]).map(p=>(<option value={p.i_d} key={p.i_d}>{p.name}</option>))}
-                        </datalist>
+                        <select value={productFilter} onChange={e=>setProductFilter(e.target.value)}>
+                            <option value=''>All</option>
+                            {productOptions.map(p=>(<option value={p.value} key={p.value}>{p.label}</option>))}
+                        </select>
                     </div>
                     <div className='filter-group'>
                         <label>Employee</label>
-                        <input list='emp-list' placeholder='All' value={employeeFilter} onChange={e=>setEmployeeFilter(e.target.value)} />
-                        <datalist id='emp-list'>
-                                    {(employees||[]).map(emp=>{
-                                const parts = [emp.firstName, emp.otherName, emp.lastName].filter(Boolean)
-                                const fallback = emp.fullName || emp.name
-                                const label = (parts.length ? parts.join(' ') : (fallback||'Employee')).trim()
-                                return (<option value={emp.i_d} key={emp.i_d}>{label} ({emp.i_d})</option>)
-                            })}
-                        </datalist>
+                        <select value={employeeFilter} onChange={e=>setEmployeeFilter(e.target.value)}>
+                            <option value=''>All</option>
+                            {employeeOptions.map(eo=>(<option value={eo.value} key={eo.value}>{eo.label}</option>))}
+                        </select>
                     </div>
                     <div className='filter-group'>
                         <label>Season</label>
-                        <input placeholder='All' value={seasonFilter} onChange={e=>setSeasonFilter(e.target.value)} />
+                        <select value={seasonFilter} onChange={e=>setSeasonFilter(e.target.value)}>
+                            <option value=''>All</option>
+                            <option value='Q1'>Q1 (Jan-Mar)</option>
+                            <option value='Q2'>Q2 (Apr-Jun)</option>
+                            <option value='Q3'>Q3 (Jul-Sep)</option>
+                            <option value='Q4'>Q4 (Oct-Dec)</option>
+                        </select>
                     </div>
                     <button className='btn-primary' onClick={loadDashData} disabled={loading}>{loading?'Loading...':'Refresh'}</button>
                 </div>
