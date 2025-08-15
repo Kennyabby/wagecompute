@@ -53,6 +53,7 @@ const DashView = () =>{
     const [topProductsBySales, setTopProductsBySales] = useState([])
     const [topPurchaseItems, setTopPurchaseItems] = useState([])
     const [productLocationBreakdown, setProductLocationBreakdown] = useState([]) // [{pid, name, locations:[{location, qty}]}]
+    const [productLocationSalesBreakdown, setProductLocationSalesBreakdown] = useState([]) // [{pid, name, locations:[{location, amount}]}]
     const [monthlySeries, setMonthlySeries] = useState([]) // [{month:'Jan', sales, purchases, expenses, accommodations, rentals}]
     const [revenueMix, setRevenueMix] = useState([]) // [{name:'Sales', value:...}, ...]
 
@@ -189,13 +190,29 @@ const DashView = () =>{
 
             // Track sales by product (for amount breakdown)
             const salesByProduct = new Map()
+            const productSalesMap = new Map() // For tracking sales amounts by product and location
             const salesRecords = resp.record || []
             
             const saleTransactions = salesRecords.filter(t => {
                 const type = String(t.entryType || '').toLowerCase()
-                return type === 'sale' || type === 'sales'
+                return type === 'sale' || type === 'sales' || type === 'pos'
             })
             
+            // Process sales transactions to track amounts by product and location
+            saleTransactions.forEach(t => {
+                const pid = t.productId || t.i_d || 'Unknown'
+                const location = t.location || 'Unknown'
+                const amount = Math.abs(Number(t.totalSales || t.amount || 0))
+                
+                if (amount > 0) {
+                    // Update product sales map (for location-based sales amount breakdown)
+                    if (!productSalesMap.has(pid)) {
+                        productSalesMap.set(pid, new Map())
+                    }
+                    const locationMap = productSalesMap.get(pid)
+                    locationMap.set(location, (locationMap.get(location) || 0) + amount)
+                }
+            })
             saleTransactions.forEach(t => {
                 const pid = t.productId || t.i_d || 'Unknown'
                 const amount = Math.abs(Number(t.totalSales || t.totalCost || 0))
@@ -424,7 +441,7 @@ const DashView = () =>{
             setTopProducts(topProdArr.slice(0,10))
             setTopLocations(topLocArr.slice(0,10))
             setRestock(restockList)
-            // Build productLocationBreakdown
+            // Build productLocationBreakdown (quantity based)
             const prodLocArr = topProdArr.slice(0,10).map(p=>{
                 const lm = productLocMap.get(p.pid) || new Map()
                 const locations = Array.from(lm.entries()).map(([location, qty])=>({ location, qty }))
@@ -432,6 +449,36 @@ const DashView = () =>{
                 return { pid: p.pid, name: productName(p.pid), locations }
             })
             setProductLocationBreakdown(prodLocArr)
+            
+            // Build productLocationSalesBreakdown (amount based)
+            // First, get all products with their total sales amount
+            const productsWithSales = Array.from(productSalesMap.entries()).map(([pid, locationMap]) => {
+                const totalAmount = Array.from(locationMap.values()).reduce((sum, amt) => sum + amt, 0)
+                return { pid, totalAmount }
+            })
+            
+            // Sort products by total sales amount (descending) and take top 10
+            const topProductsBySales = productsWithSales
+                .sort((a, b) => b.totalAmount - a.totalAmount)
+                .slice(0, 10)
+            
+            // Build the final array with location breakdowns for top products
+            const prodSalesLocArr = topProductsBySales.map(({pid}) => {
+                const sm = productSalesMap.get(pid) || new Map()
+                const locations = Array.from(sm.entries())
+                    .map(([location, amount]) => ({ 
+                        location, 
+                        amount: Number(amount || 0) 
+                    }))
+                    .sort((a, b) => b.amount - a.amount)
+                return { 
+                    pid, 
+                    name: productName(pid), 
+                    locations,
+                    totalAmount: Array.from(sm.values()).reduce((sum, amt) => sum + amt, 0)
+                }
+            })
+            setProductLocationSalesBreakdown(prodSalesLocArr)
             // Top Employees split: Sales vs Services (Accommodation + Rentals)
             const empSalesMap = new Map()
             const empServiceMap = new Map()
@@ -607,13 +654,83 @@ const DashView = () =>{
         }
     },[employees])
 
-    // Best/Worst sales days based on (sales+accommodations+rentals)
-    const bestWorstDays = useMemo(()=>{
-        if (!Array.isArray(series) || !series.length) return { best:null, worst:null }
-        const withRev = series.map(d=>({ date: d.date, rev: Number(d.sales||0)+Number(d.accommodations||0)+Number(d.rentals||0), exp: Number(d.expenses||0) }))
-        const best = withRev.reduce((a,b)=> b.rev > (a?.rev||-Infinity) ? b : a, null)
-        const worst = withRev.reduce((a,b)=> b.rev < (a?.rev||Infinity) ? b : a, null)
-        return { best, worst }
+    // Best/Worst sales days based    // Find best and worst days by revenue with detailed analysis
+    const { best: bestDay, worst: worstDay, bestDaySales, worstDaySales } = useMemo(()=>{
+        if (!Array.isArray(series) || !series.length) return { best:null, worst:null, bestDaySales: null, worstDaySales: null }
+        
+        // Calculate total revenue per day
+        const withRev = series.map(d=>({ 
+            date: d.date, 
+            rev: Number(d.sales||0) + Number(d.accommodations||0) + Number(d.rentals||0), 
+            exp: Number(d.expenses||0),
+            sales: Number(d.sales||0),
+            accommodations: Number(d.accommodations||0),
+            rentals: Number(d.rentals||0),
+            dateObj: d.date ? new Date(d.date) : null
+        })).filter(d => d.dateObj && !isNaN(d.dateObj.getTime())) // Filter out invalid dates
+        
+        if (!withRev.length) return { best:null, worst:null, bestDaySales: null, worstDaySales: null }
+        
+        // Sort by total revenue
+        const sortedByRev = [...withRev].sort((a,b) => b.rev - a.rev)
+        
+        // Sort by sales amount only
+        const sortedBySales = [...withRev].sort((a,b) => b.sales - a.sales)
+        
+        // Format dates for display
+        const formatDate = (dateStr) => {
+            if (!dateStr) return ''
+            const date = new Date(dateStr)
+            return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+            })
+        }
+        
+        // Analyze best day
+        const best = sortedByRev[0]
+        const bestSales = sortedBySales[0]
+        let bestAnalysis = ''
+        if (best) {
+            const dayOfWeek = best.dateObj?.toLocaleDateString('en-US', { weekday: 'long' }) || ''
+            const isWeekend = dayOfWeek === 'Saturday' || dayOfWeek === 'Sunday'
+            const isHoliday = false // Could be enhanced with holiday checking
+            
+            bestAnalysis = `${isWeekend ? 'Weekend' : 'Weekday'} (${dayOfWeek})`
+            if (best.accommodations / best.rev > 0.5) bestAnalysis += ', strong accommodation sales'
+            if (best.rentals / best.rev > 0.3) bestAnalysis += ', high rental volume'
+            if (best.exp > best.rev * 0.5) bestAnalysis += ', high marketing spend'
+            if (isHoliday) bestAnalysis += ', holiday period'
+        }
+        
+        // Analyze worst day
+        const worst = sortedByRev[sortedByRev.length - 1]
+        const worstSales = sortedBySales[sortedBySales.length - 1]
+        let worstAnalysis = ''
+        if (worst) {
+            const dayOfWeek = worst.dateObj?.toLocaleDateString('en-US', { weekday: 'long' }) || ''
+            const isWeekday = !['Saturday', 'Sunday'].includes(dayOfWeek)
+            const isHoliday = false // Could be enhanced with holiday checking
+            
+            worstAnalysis = `${isWeekday ? 'Weekday' : 'Weekend'} (${dayOfWeek})`
+            if (worst.rev === 0) {
+                worstAnalysis += ', no sales recorded'
+            } else {
+                if (worst.exp === 0) worstAnalysis += ', no marketing spend'
+                if (worst.accommodations === 0) worstAnalysis += ', no accommodation sales'
+                if (worst.rentals === 0) worstAnalysis += ', no rentals'
+                if (isHoliday) worstAnalysis += ', holiday period'
+            }
+        }
+        
+        return { 
+            best: best ? { ...best, formattedDate: formatDate(best.date), analysis: bestAnalysis } : null, 
+            worst: worst ? { ...worst, formattedDate: formatDate(worst.date), analysis: worstAnalysis } : null,
+            bestDaySales: bestSales ? { ...bestSales, formattedDate: formatDate(bestSales.date) } : null,
+            worstDaySales: worstSales ? { ...worstSales, formattedDate: formatDate(worstSales.date) } : null
+        }
     },[series])
 
     // Build filter option lists
@@ -974,13 +1091,32 @@ const DashView = () =>{
                                 <div>Qty</div>
                             </div>
                             {productLocationBreakdown.flatMap((pl)=> pl.locations.map((l,idx)=> (
-                                <div className='list-row' key={`${pl.pid}-${l.location}-${idx}`}>
+                                <div className='list-row' key={`qty-${pl.pid}-${l.location}-${idx}`}>
                                     <div>{pl.name}</div>
                                     <div>{l.location}</div>
                                     <div>{fmt(l.qty)}</div>
                                 </div>
                             )))}
                             {!productLocationBreakdown.length && <div className='empty-row'>No data</div>}
+                        </div>
+                    </div>
+
+                    <div className='panel'>
+                        <div className='panel-title'>Top Products by Location (Sales Amount)</div>
+                        <div className='list-table'>
+                            <div className='list-head'>
+                                <div>Product</div>
+                                <div>Location</div>
+                                <div>Amount (₦)</div>
+                            </div>
+                            {productLocationSalesBreakdown.flatMap((pl)=> pl.locations.map((l,idx)=> (
+                                <div className='list-row' key={`amt-${pl.pid}-${l.location}-${idx}`}>
+                                    <div>{pl.name}</div>
+                                    <div>{l.location}</div>
+                                    <div>₦ {fmt(l.amount)}</div>
+                                </div>
+                            )))}
+                            {!productLocationSalesBreakdown.length && <div className='empty-row'>No data</div>}
                         </div>
                     </div>
 
@@ -1011,17 +1147,70 @@ const DashView = () =>{
                         <div className='panel-title'>Insights</div>
                         <ul className='insights'>
                             <li className='insight-item'>{`Revenue (Sales+Accom+Rentals): ₦ ${fmt((kpis.salesAmount||0)+(kpis.accommodationsAmount||0)+(kpis.rentalsAmount||0))}. COGS: ₦ ${fmt(kpis.cogs||0)}. Gross Profit: ₦ ${fmt(kpis.grossProfit||0)}. Expenses: ₦ ${fmt(kpis.expensesAmount||0)}. Net Profit: ₦ ${fmt(kpis.netProfit||0)}.`}</li>
-                            <li className='insight-item'>{topProducts[0]?`Top product: ${productName(topProducts[0].pid)} with ${fmt(topProducts[0].qty)} units.`:'Top product: N/A'}</li>
+                            
+                            {/* Top Product by Sales Amount */}
+                            {productLocationSalesBreakdown[0]?.totalAmount > 0 && (
+                                <li className='insight-item'>
+                                    {`Top product by revenue: ${productLocationSalesBreakdown[0]?.name} (₦ ${fmt(productLocationSalesBreakdown[0]?.totalAmount)})`}
+                                </li>
+                            )}
+                            
+                            {/* Best/Worst Days */}
+                            {bestDay && (
+                                <li className='insight-item'>
+                                    {`Best day: ${bestDay.formattedDate} (₦ ${fmt(bestDay.rev)}) - ${bestDay.analysis}.`}
+                                </li>
+                            )}
+                            {worstDay && worstDay.rev > 0 && (
+                                <li className='insight-item'>
+                                    {`Worst day: ${worstDay.formattedDate} (₦ ${fmt(worstDay.rev)}) - ${worstDay.analysis}.`}
+                                </li>
+                            )}
+                            {bestDaySales && bestDaySales.sales > 0 && (
+                                <li className='insight-item'>
+                                    {`Highest sales day: ${bestDaySales.formattedDate} (₦ ${fmt(bestDaySales.sales)} in sales).`}
+                                </li>
+                            )}
+                            {worstDaySales && worstDaySales.sales === 0 && (
+                                <li className='insight-item'>
+                                    {`No sales recorded on ${worstDaySales.formattedDate}. Consider promotions or events.`}
+                                </li>
+                            )}
+                            
+                            {/* Other Insights */}
                             <li className='insight-item'>{topLocations[0]?`Best location: ${topLocations[0].location} (₦ ${fmt(topLocations[0].amount)}).`:'Best location: N/A'}</li>
                             <li className='insight-item'>{topEmployeesSales[0]?`Top sales employee: ${employeeName(topEmployeesSales[0].employeeId)} (₦ ${fmt(topEmployeesSales[0].amount)}).`:'Top sales employee: N/A'}</li>
-                            <li className='insight-item'>{topEmployeesServices[0]?`Top services employee (Accom+Rentals): ${employeeName(topEmployeesServices[0].employeeId)} (₦ ${fmt(topEmployeesServices[0].amount)}).`:'Top services employee: N/A'}</li>
-                            {(kpis.debtTotal||0)>0 && <li className='insight-item'>{`Debts outstanding: ₦ ${fmt(kpis.debtTotal - (kpis.debtRecovered||0))}. Prioritize recovery.`}</li>}
-                            {(kpis.netProfit||0) < 0 && <li className='insight-item'>Loss detected: tighten expense controls, review pricing/COGS; push high-margin items; reduce low-turnover stock.</li>}
-                            {(kpis.netProfit||0) >= 0 && <li className='insight-item'>Profit achieved: scale best-sellers, keep 14+ days stock, replicate best locations/employees tactics.</li>}
-                            {monthlySeries.some(m=>m.expenses>m.sales) && <li className='insight-item'>Alert: Some months have expenses exceeding sales. Investigate cost drivers.</li>}
-                            {monthlySeries.some(m=>m.sales===0 && (m.purchases>0||m.expenses>0)) && <li className='insight-item'>Low activity: Months with spend but no sales. Review marketing and operations.</li>}
-                            {series.length>2 && (()=>{ const a=series.at(-1).sales, b=series.at(-2).sales; return a> b*2 })() && <li className='insight-item'>Spike detected: Recent day sales more than 2x previous day. Validate for promo/fraud.</li>}
-                            {series.length>2 && (()=>{ const a=series.at(-1).sales, b=series.at(-2).sales; return b> a*2 })() && <li className='insight-item'>Drop detected: Recent day sales less than half of previous day. Check stockouts/staffing.</li>}
+                            <li className='insight-item'>{topEmployeesSales[1]?`Second top sales employee: ${employeeName(topEmployeesSales[1].employeeId)} (₦ ${fmt(topEmployeesSales[1].amount)}).`:'Top sales employee: N/A'}</li>
+                            <li className='insight-item'>{topEmployeesServices[0]?`Top services employee: ${employeeName(topEmployeesServices[0].employeeId)} (₦ ${fmt(topEmployeesServices[0].amount)}).`:'Top services employee: N/A'}</li>
+                            
+                            {/* Financial Alerts */}
+                            {(kpis.debtTotal||0) > 0 && (
+                                <li className='insight-item'>{`Debts outstanding: ₦ ${fmt(kpis.debtTotal - (kpis.debtRecovered||0))}. Prioritize recovery.`}</li>
+                            )}
+                            {(kpis.netProfit||0) < 0 && (
+                                <li className='insight-item'>Loss detected: Tighten expense controls, review pricing/COGS; push high-margin items; reduce low-turnover stock.</li>
+                            )}
+                            {(kpis.netProfit||0) >= 0 && (
+                                <li className='insight-item'>Profit achieved: Scale best-sellers, keep 14+ days stock, replicate best locations/employees tactics.</li>
+                            )}
+                            {monthlySeries.some(m => m.expenses > m.sales) && (
+                                <li className='insight-item'>Alert: Some months have expenses exceeding sales. Investigate cost drivers.</li>
+                            )}
+                            {monthlySeries.some(m => m.sales === 0 && (m.purchases > 0 || m.expenses > 0)) && (
+                                <li className='insight-item'>Low activity: Months with spend but no sales. Review marketing and operations.</li>
+                            )}
+                            {series.length > 2 && (()=>{ 
+                                const a=series.at(-1).sales, b=series.at(-2).sales; 
+                                return a > b * 2 
+                            })() && (
+                                <li className='insight-item'>Spike detected: Recent day sales more than 2x previous day. Validate for promo/fraud.</li>
+                            )}
+                            {series.length > 2 && (()=>{ 
+                                const a=series.at(-1).sales, b=series.at(-2).sales; 
+                                return b > a * 2 
+                            })() && (
+                                <li className='insight-item'>Drop detected: Recent day sales less than half of previous day. Check stockouts/staffing.</li>
+                            )}
                         </ul>
                     </div>
                 </div>
