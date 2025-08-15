@@ -21,13 +21,62 @@ const DashView = () =>{
         employees, getEmployees,
     } = useContext(ContextProvider)
 
+    // Default date range (current month)
+    const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10)
+    const defaultToDate = new Date().toISOString().slice(0,10)
+    
+    const [fromDate, setFromDate] = useState(saleFrom || defaultFromDate)
+    const [toDate, setToDate] = useState(saleTo || defaultToDate)
+    
     // Filters
-    const [fromDate, setFromDate] = useState(saleFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10))
-    const [toDate, setToDate] = useState(saleTo || new Date().toISOString().slice(0,10))
     const [locationFilter, setLocationFilter] = useState('')
     const [productFilter, setProductFilter] = useState('')
     const [employeeFilter, setEmployeeFilter] = useState('')
     const [seasonFilter, setSeasonFilter] = useState('')
+    
+    // Handle season filter change
+    const handleSeasonChange = (season) => {
+        setSeasonFilter(season)
+        const now = new Date()
+        let startDate, endDate
+        
+        switch(season) {
+            case 'Q1':
+                startDate = new Date(now.getFullYear(), 0, 2) // Jan 1
+                endDate = new Date(now.getFullYear(), 2, 31)  // Mar 31
+                break
+            case 'Q2':
+                startDate = new Date(now.getFullYear(), 3, 2)  // Apr 1
+                endDate = new Date(now.getFullYear(), 5, 30)   // Jun 30
+                break
+            case 'Q3':
+                startDate = new Date(now.getFullYear(), 6, 2)  // Jul 1
+                endDate = new Date(now.getFullYear(), 8, 30)   // Sep 30
+                break
+            case 'Q4':
+                startDate = new Date(now.getFullYear(), 9, 2)  // Oct 1
+                endDate = new Date(now.getFullYear(), 11, 31)  // Dec 31
+                break
+            default:
+                // If 'All' or invalid, use default date range
+                setFromDate(defaultFromDate)
+                setToDate(defaultToDate)
+                return
+        }
+        
+        setFromDate(startDate.toISOString().slice(0,10))
+        setToDate(endDate.toISOString().slice(0,10))
+    }
+    
+    // Handle clear all filters
+    const handleClearFilters = () => {
+        setFromDate(defaultFromDate)
+        setToDate(defaultToDate)
+        setLocationFilter('')
+        setProductFilter('')
+        setEmployeeFilter('')
+        setSeasonFilter('')
+    }
 
     // Loading
     const [loading, setLoading] = useState(false)
@@ -42,6 +91,7 @@ const DashView = () =>{
         expensesAmount: 0,
         inventoryQty: 0,
         inventoryValue: 0,
+        inventorySales: 0,
     })
     const [topProducts, setTopProducts] = useState([])
     const [topLocations, setTopLocations] = useState([])
@@ -180,11 +230,12 @@ const DashView = () =>{
             }
 
             // Inventory aggregates from products
-            let inventoryQty = 0, inventoryValue = 0
+            let inventoryQty = 0, inventoryValue = 0, inventorySales = 0
             if (products && Array.isArray(products)){
                 products.forEach(p=>{
                     inventoryQty += Number(p.totalStock||0)
                     inventoryValue += Number(p.totalCost||0)
+                    inventorySales += Math.abs(Number(p.totalSales||0))
                 })
             }
 
@@ -318,6 +369,7 @@ const DashView = () =>{
                 ...Array.from(byDate.keys()),
                 ...Array.from(salesByDateFromSalesDocs.keys())
             ])
+            
             let reconciledSalesTotal = 0
             const seriesData = Array.from(allDates).sort().map(date=>{
                 const inv = byDate.get(date) || {sales:0, purchases:0}
@@ -337,7 +389,7 @@ const DashView = () =>{
                 salesAmount: reconciledSalesTotal, salesQty, 
                 purchasesAmount, purchasesQty, 
                 expensesAmount: expensesTotal, 
-                inventoryQty, inventoryValue,
+                inventoryQty, inventoryValue, inventorySales,
                 accommodationsAmount: accomTotal,
                 rentalsAmount: rentalTotal,
                 debtTotal, debtRecovered,
@@ -777,10 +829,10 @@ const DashView = () =>{
                         <label>Presets</label>
                         <div className='btn-group' style={{display:'flex', gap:8, flexWrap:'wrap'}}>
                             <button className='btn-secondary' onClick={()=>{ const d=new Date(); const s=d.toISOString().slice(0,10); setFromDate(s); setToDate(s) }}>Today</button>
-                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>MTD</button>
-                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const q=Math.floor(now.getMonth()/3); const s=new Date(now.getFullYear(), q*3, 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), q*3+3, 0).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>QTD</button>
-                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), 0, 1).toISOString().slice(0,10); const e=new Date(now.getFullYear(), 11, 31).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>YTD</button>
-                            <button className='btn-secondary' onClick={()=>{ setLocationFilter(''); setProductFilter(''); setEmployeeFilter(''); setSeasonFilter('') }}>Clear</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), now.getMonth(), 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>MTD</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const q=Math.floor(now.getMonth()/3); const s=new Date(now.getFullYear(), q*3, 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), q*3+3, 1).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>QTD</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), 0, 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), 11, 32).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>YTD</button>
+                            <button className='btn-secondary' onClick={handleClearFilters}>Clear All Filters</button>
                         </div>
                     </div>
                     <div className='filter-group'>
@@ -806,7 +858,7 @@ const DashView = () =>{
                     </div>
                     <div className='filter-group'>
                         <label>Season</label>
-                        <select value={seasonFilter} onChange={e=>setSeasonFilter(e.target.value)}>
+                        <select value={seasonFilter} onChange={e => handleSeasonChange(e.target.value)}>
                             <option value=''>All</option>
                             <option value='Q1'>Q1 (Jan-Mar)</option>
                             <option value='Q2'>Q2 (Apr-Jun)</option>
@@ -899,7 +951,8 @@ const DashView = () =>{
                     <div className='kpi-card'>
                         <div className='kpi-label'>Inventory</div>
                         <div className='kpi-value'>{fmt(kpis.inventoryQty)} units</div>
-                        <div className='kpi-sub'>₦ {fmt(kpis.inventoryValue)}</div>
+                        <div className='kpi-sub'>₦ {fmt(kpis.inventoryValue)} (Cost value)</div>
+                        <div className='kpi-sub'>₦ {fmt(kpis.inventorySales)} (Sales value)</div>
                     </div>
                     <div className='kpi-card'>
                         <div className='kpi-label'>Accommodations</div>
