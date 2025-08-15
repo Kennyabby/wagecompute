@@ -982,7 +982,7 @@ const AddProduct = ({
                                             name='purchaseUom'
                                             value={entry.purchaseUom}
                                             onChange={(e)=>{handlePurchaseUdpate(e, index)}}
-                                            disabled={isProductView}
+                                            disabled={isProductView || true}
                                         >
                                             {uoms.map((uom, idx)=>{
                                                 return (

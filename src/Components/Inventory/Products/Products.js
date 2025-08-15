@@ -170,12 +170,10 @@ const Products = ({
     
     useEffect(()=>{
         if (curProduct){
-            const purchaseWrh = wrhs.find((warehouse)=>{
-                return warehouse.purchase
-            })
-            const {cost, quantity} = curProduct.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+            const {totalStock, totalCost} = curProduct || {totalStock: 0, totalCost: 0}
             let cummulativeUnitCostPrice = 0            
-            cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+
+            cummulativeUnitCostPrice = totalStock? parseFloat(Math.abs(Number(totalCost/totalStock))).toFixed(2) : 0
             setProductFields({...curProduct, costPrice: cummulativeUnitCostPrice})
         }
     },[curProduct])

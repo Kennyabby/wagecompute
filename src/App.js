@@ -1010,6 +1010,15 @@ function App() {
                     { $toDouble: "$totalCost" }
                   ]
                 }
+              },
+              totalSales: {
+                $sum: {
+                  $cond: [
+                    { $isNumber: "$totalSales" },
+                    "$totalSales",
+                    { $toDouble: "$totalSales" }
+                  ]
+                }
               }
             }
           }
@@ -1028,7 +1037,8 @@ function App() {
         if (!stockMap[productId]) stockMap[productId] = {};
         stockMap[productId][location] = {
           quantity: item.totalStock,
-          cost: item.totalCost
+          cost: item.totalCost,
+          sales: item.totalSales
         };
       });
       
@@ -1040,12 +1050,14 @@ function App() {
         // Sum up total stock and total cost across all locations
         const totalStock = Object.values(stockInfo).reduce((sum, loc) => sum + Number(loc.quantity), 0);
         const totalCost = Object.values(stockInfo).reduce((sum, loc) => sum + Number(loc.cost), 0);
+        const totalSales = Object.values(stockInfo).reduce((sum, loc) => sum + Number(loc.sales), 0);
 
         return {
           ...product,
           locationStock: stockInfo, // now includes both quantity and cost
           totalStock,
-          totalCost
+          totalCost,
+          totalSales
         };
       });
 
