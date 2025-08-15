@@ -4,7 +4,7 @@ import {useEffect, useMemo, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
 // Charts (install: npm i recharts)
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, PieChart, Pie, Cell, LabelList } from 'recharts'
 
 const fmt = (n)=> Number(n||0).toLocaleString()
 
@@ -1017,6 +1017,47 @@ const DashView = () =>{
                                     <YAxis width={90} allowDecimals={false} />
                                     <Tooltip />
                                     <Bar dataKey="qty" fill="#24a148" name="Qty" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className='panel'>
+                        <div className='panel-title'>Top Selling Products (Sales Amount)</div>
+                        <div style={{width:'100%', height:300}}>
+                            <ResponsiveContainer>
+                                <BarChart 
+                                    data={productLocationSalesBreakdown
+                                        .sort((a, b) => b.totalAmount - a.totalAmount)
+                                        .slice(0, 10)
+                                        .map(p => ({
+                                            name: p.name,
+                                            amount: p.totalAmount,
+                                            formattedAmount: `₦${fmt(p.totalAmount)}`
+                                        }))}
+                                    margin={{ top: 10, right: 40, left: 10, bottom: 40 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis 
+                                        dataKey="name" 
+                                        interval={0} 
+                                        angle={-20} 
+                                        textAnchor="end" 
+                                        height={60} 
+                                    />
+                                    <YAxis 
+                                        width={90} 
+                                        tickFormatter={(value) => `₦${fmt(value)}`}
+                                    />
+                                    <Tooltip 
+                                        formatter={(value) => [`₦${fmt(value)}`, 'Sales Amount']}
+                                        labelFormatter={(name) => `Product: ${name}`}
+                                    />
+                                    <Bar 
+                                        dataKey="amount" 
+                                        fill="#0f62fe" 
+                                        name="Sales Amount"
+                                    />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
