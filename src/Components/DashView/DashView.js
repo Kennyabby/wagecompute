@@ -4,7 +4,7 @@ import {useEffect, useMemo, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
 // Charts (install: npm i recharts)
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar } from 'recharts'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
 const fmt = (n)=> Number(n||0).toLocaleString()
 
@@ -47,9 +47,14 @@ const DashView = () =>{
     const [topLocations, setTopLocations] = useState([])
     const [topEmployeesSales, setTopEmployeesSales] = useState([])
     const [topEmployeesServices, setTopEmployeesServices] = useState([])
-    const [restock, setRestock] = useState([])
     const [series, setSeries] = useState([]) // [{date, sales, expenses, purchases, accommodations, rentals}]
+    const [restock, setRestock] = useState([])
+    const [topExpenseCategories, setTopExpenseCategories] = useState([])
+    const [topProductsBySales, setTopProductsBySales] = useState([])
+    const [topPurchaseItems, setTopPurchaseItems] = useState([])
     const [productLocationBreakdown, setProductLocationBreakdown] = useState([]) // [{pid, name, locations:[{location, qty}]}]
+    const [monthlySeries, setMonthlySeries] = useState([]) // [{month:'Jan', sales, purchases, expenses, accommodations, rentals}]
+    const [revenueMix, setRevenueMix] = useState([]) // [{name:'Sales', value:...}, ...]
 
     useEffect(()=>{
         storePath('dashboard')  
@@ -182,7 +187,47 @@ const DashView = () =>{
                 })
             }
 
-            // Top Products (by qty sold in range)
+            // Track sales by product (for amount breakdown)
+            const salesByProduct = new Map()
+            resp.record.filter(t => (t.entryType || '').toLowerCase() === 'sale').forEach(t => {
+                const pid = t.productId || t.i_d || 'Unknown'
+                const amount = Math.abs(Number(t.totalSales || t.totalCost || 0))
+                if (amount > 0) {
+                    salesByProduct.set(pid, (salesByProduct.get(pid) || 0) + amount)
+                }
+            })
+
+            // Top Products (by sales amount)
+            const topSalesProducts = Array.from(salesByProduct.entries())
+                .map(([pid, amount]) => ({
+                    pid,
+                    name: products?.find(p => (p.i_d || p.productId) === pid)?.name || `Product ${pid}`,
+                    amount
+                }))
+                .sort((a, b) => b.amount - a.amount)
+                .slice(0, 3) // Top 3 products by sales amount
+
+            // Track purchases by product
+            const purchasesByProduct = new Map()
+            resp.record.filter(t => (t.entryType || '').toLowerCase() === 'purchase').forEach(t => {
+                const pid = t.productId || t.i_d || 'Unknown'
+                const amount = Math.abs(Number(t.totalCost || t.amount || 0))
+                if (amount > 0) {
+                    purchasesByProduct.set(pid, (purchasesByProduct.get(pid) || 0) + amount)
+                }
+            })
+
+            // Top Purchase Items
+            const topPurchaseItemsList = Array.from(purchasesByProduct.entries())
+                .map(([pid, amount]) => ({
+                    pid,
+                    name: products?.find(p => (p.i_d || p.productId) === pid)?.name || `Item ${pid}`,
+                    amount
+                }))
+                .sort((a, b) => b.amount - a.amount)
+                .slice(0, 3) // Top 3 purchase items by amount
+
+            // Top Products (by qty sold in range) - keep existing for restock logic
             const topProdArr = Array.from(byProduct.entries())
                 .map(([pid, qty])=>({ pid, qty }))
                 .sort((a,b)=> b.qty - a.qty)
@@ -211,7 +256,11 @@ const DashView = () =>{
                 .sort((a,b)=> (a.stock - b.stock))
                 .slice(0, 10)
 
-            const expensesTotal = sumExpenses(expenses, fromDate, toDate)
+            const { total: expensesTotal, topExpenses } = sumExpenses(expenses, fromDate, toDate)
+            // Store top data for KPI displays
+            setTopExpenseCategories(topExpenses)
+            setTopProductsBySales(topSalesProducts)
+            setTopPurchaseItems(topPurchaseItemsList)
             // Build daily expenses map
             const expByDate = buildExpensesByDate(expenses, fromDate, toDate)
 
@@ -222,19 +271,35 @@ const DashView = () =>{
             // Debts (from sales): look for totalDebt and totalDebtRecovered fields if present
             const { debtTotal, debtRecovered } = sumDebts(sales, fromDate, toDate)
 
-            // Merge byDate + expenses into series array sorted by date
-            const keys = new Set([
+            // Build sales-by-date from sales documents (exclude accommodation rows)
+            const salesByDateFromSalesDocs = new Map()
+            filterByDate(sales, fromDate, toDate).forEach(doc=>{
+                const dStr = (doc.postingDate && typeof doc.postingDate==='string') ? doc.postingDate : (doc.createdAt ? new Date(Number(doc.createdAt)).toISOString().slice(0,10) : '')
+                const rows = Array.isArray(doc.record) ? doc.record : []
+                const sum = rows.reduce((acc, r)=>{
+                    if (!r || r.isAccommodation) return acc
+                    return acc + Number(r.totalSales||0)
+                }, 0)
+                if (dStr && sum>0) salesByDateFromSalesDocs.set(dStr, (salesByDateFromSalesDocs.get(dStr)||0) + sum)
+            })
+
+            // Reconcile sales per date: prefer sales.record totals when present, else use InventoryTransactions sales
+            const allDates = new Set([
                 ...Object.keys(expByDate),
                 ...Object.keys(accomByDate),
                 ...Object.keys(rentalByDate),
-                ...Array.from(byDate.keys())
+                ...Array.from(byDate.keys()),
+                ...Array.from(salesByDateFromSalesDocs.keys())
             ])
-            const seriesData = Array.from(keys).sort().map(date=>{
-                const d = byDate.get(date) || {sales:0, purchases:0}
-                return { 
-                    date, 
-                    sales: d.sales||0, 
-                    purchases: d.purchases||0, 
+            let reconciledSalesTotal = 0
+            const seriesData = Array.from(allDates).sort().map(date=>{
+                const inv = byDate.get(date) || {sales:0, purchases:0}
+                const salesVal = salesByDateFromSalesDocs.has(date) ? (salesByDateFromSalesDocs.get(date)||0) : (inv.sales||0)
+                reconciledSalesTotal += Number(salesVal||0)
+                return {
+                    date,
+                    sales: salesVal,
+                    purchases: inv.purchases||0,
                     expenses: expByDate[date]||0,
                     accommodations: accomByDate[date]||0,
                     rentals: rentalByDate[date]||0
@@ -242,7 +307,7 @@ const DashView = () =>{
             })
 
             setKpis({ 
-                salesAmount, salesQty, 
+                salesAmount: reconciledSalesTotal, salesQty, 
                 purchasesAmount, purchasesQty, 
                 expensesAmount: expensesTotal, 
                 inventoryQty, inventoryValue,
@@ -250,9 +315,35 @@ const DashView = () =>{
                 rentalsAmount: rentalTotal,
                 debtTotal, debtRecovered,
                 cogs,
-                grossProfit: (salesAmount + accomTotal + rentalTotal) - cogs,
-                netProfit: ((salesAmount + accomTotal + rentalTotal) - cogs) - expensesTotal
+                grossProfit: (reconciledSalesTotal + accomTotal + rentalTotal) - cogs,
+                netProfit: ((reconciledSalesTotal + accomTotal + rentalTotal) - cogs) - expensesTotal
             })
+            // Revenue mix for pie
+            setRevenueMix([
+                { name: 'Sales', value: Number(reconciledSalesTotal||0) },
+                { name: 'Accommodation', value: Number(accomTotal||0) },
+                { name: 'Rentals', value: Number(rentalTotal||0) }
+            ])
+            // Monthly YTD aggregation from seriesData (already filtered)
+            const thisYear = new Date().getFullYear()
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+            const monthAgg = new Map()
+            seriesData.forEach(d=>{
+                const dt = new Date(d.date)
+                if (!d.date || isNaN(dt) || dt.getFullYear()!==thisYear) return
+                const m = dt.getMonth() // 0-11
+                const key = months[m]
+                const prev = monthAgg.get(key) || { month: key, sales:0, purchases:0, expenses:0, accommodations:0, rentals:0 }
+                monthAgg.set(key, {
+                    month: key,
+                    sales: prev.sales + Number(d.sales||0),
+                    purchases: prev.purchases + Number(d.purchases||0),
+                    expenses: prev.expenses + Number(d.expenses||0),
+                    accommodations: prev.accommodations + Number(d.accommodations||0),
+                    rentals: prev.rentals + Number(d.rentals||0),
+                })
+            })
+            setMonthlySeries(months.map(m=> monthAgg.get(m) || {month:m, sales:0, purchases:0, expenses:0, accommodations:0, rentals:0}))
             setTopProducts(topProdArr.slice(0,10))
             setTopLocations(topLocArr.slice(0,10))
             setRestock(restockList)
@@ -266,21 +357,32 @@ const DashView = () =>{
             setProductLocationBreakdown(prodLocArr)
             // Top Employees split: Sales vs Services (Accommodation + Rentals)
             const empSalesMap = new Map()
-            filterByDate(sales, fromDate, toDate).forEach(s=>{
-                const rawId = s.employeeId || s.employee || s.handlerId || s.sessionEmployee || s.employee_id
-                const id = employeeIdResolver(rawId)
-                // Honor location filter if sales record contains a location
-                if (locationFilter && s.location && s.location !== locationFilter) return
-                const amt = Number(s.totalSalesAmount || s.totalSales || s.totalAmount || s.grandTotal || s.amount || 0)
-                if (!id || !amt) return
-                empSalesMap.set(id, (empSalesMap.get(id)||0) + amt)
-            })
             const empServiceMap = new Map()
+            const accomDatesInSales = new Set()
+            // Sales documents contain a `record` array with per-employee rows
+            filterByDate(sales, fromDate, toDate).forEach(doc=>{
+                const rows = Array.isArray(doc.record) ? doc.record : []
+                rows.forEach(r=>{
+                    const id = employeeIdResolver(r.employeeId)
+                    const amt = Number(r.totalSales||0)
+                    if (!id || !amt) return
+                    // Accommodation rows contribute to Services; others to Sales
+                    if (r.isAccommodation) {
+                        if (doc.postingDate) accomDatesInSales.add(doc.postingDate)
+                        empServiceMap.set(id, (empServiceMap.get(id)||0) + amt)
+                    } else {
+                        empSalesMap.set(id, (empSalesMap.get(id)||0) + amt)
+                    }
+                })
+            })
+            // Include separate accommodations module only for dates that do NOT appear in sales' accommodation rows
             filterByDate(accommodations, fromDate, toDate).forEach(a=>{
                 const rawId = a.employeeId || a.handlerId
                 const id = employeeIdResolver(rawId)
                 if (locationFilter && a.location && a.location !== locationFilter) return
                 if (!id) return
+                const ad = (a.postingDate && typeof a.postingDate==='string') ? a.postingDate : (a.date ? String(a.date).slice(0,10) : (a.createdAt ? new Date(Number(a.createdAt)).toISOString().slice(0,10) : ''))
+                if (ad && accomDatesInSales.has(ad)) return
                 empServiceMap.set(id, (empServiceMap.get(id)||0) + Number(a.accommodationAmount||0))
             })
             filterByDate(rentals, fromDate, toDate).forEach(r=>{
@@ -308,15 +410,33 @@ const DashView = () =>{
     }
 
     const sumExpenses = (list, from, to)=>{
-        if (!Array.isArray(list)) return 0
+        if (!Array.isArray(list)) return { total: 0, topExpenses: [] }
         const fromT = new Date(from).getTime()
         const toT = new Date(to).getTime()
-        return list.reduce((acc, e)=>{
+        const expenseMap = new Map() // To track expenses by category
+        
+        const total = list.reduce((acc, e)=>{
             const d = e.postingDate || e.expensesDate || e.expenseDate || e.createdAt
             const t = (typeof d === 'string') ? new Date(d).getTime() : Number(d||0)
             if (!t || t < fromT || t > toT) return acc
-            return acc + Number(e.expensesAmount || e.purchaseAmount || e.amount || e.totalAmount || 0)
+            
+            const amount = Number(e.expensesAmount || e.purchaseAmount || e.amount || e.totalAmount || 0)
+            if (amount <= 0) return acc
+            
+            // Track by category if available
+            const category = e.expenseCategory || e.category || 'Uncategorized'
+            expenseMap.set(category, (expenseMap.get(category) || 0) + amount)
+            
+            return acc + amount
         }, 0)
+        
+        // Get top 3 expense categories
+        const topExpenses = Array.from(expenseMap.entries())
+            .map(([name, amount]) => ({ name, amount }))
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 3)
+        
+        return { total, topExpenses }
     }
 
     const buildExpensesByDate = (list, from, to)=>{
@@ -449,6 +569,7 @@ const DashView = () =>{
     return(
         <>
             <div className='dashview'>
+                {/* Filters */}
                 <div className='dash-filters'>
                     <div className='filter-group'>
                         <label>From</label>
@@ -504,20 +625,82 @@ const DashView = () =>{
 
                 {dashErr && <div className='dash-error'>{dashErr}</div>}
 
+                {/* Financial Summary */}
+                <div className='financial-summary'>
+                    <div className='financial-card'>
+                        <h3>Total Revenue</h3>
+                        <div className='amount'>₦ {fmt((kpis.salesAmount || 0) + (kpis.accommodationsAmount || 0) + (kpis.rentalsAmount || 0))}</div>
+                    </div>
+                    {/* <div className='financial-card'>
+                        <h3>Sales</h3>
+                        <div className='amount'>₦ {fmt(kpis.salesAmount || 0)}</div>
+                    </div> */}
+                    <div className='financial-card'>
+                        <h3>COGS</h3>
+                        <div className='amount'>₦ {fmt(kpis.cogs || 0)}</div>
+                    </div>
+                    <div className='financial-card'>
+                        <h3>Gross Profit</h3>
+                        <div className={`amount ${(kpis.grossProfit || 0) >= 0 ? 'profit' : 'loss'}`}>
+                            ₦ {fmt(kpis.grossProfit || 0)}
+                        </div>
+                    </div>
+                    <div className='financial-card'>
+                        <h3>Total Expenses</h3>
+                        <div className='amount'>₦ {fmt(kpis.expensesAmount || 0)}</div>
+                    </div> 
+                    <div className='financial-card'>
+                        <h3>Net Profit</h3>
+                        <div className={`amount ${(kpis.netProfit || 0) >= 0 ? 'profit' : 'loss'}`}
+                            style={{color: (kpis.netProfit||0) < 0 ? '#da1e28' : '#24a148'}}    
+                        >
+                            ₦ {fmt(kpis.netProfit || 0)}
+                        </div>
+                    </div>
+                </div>
+
+                {/* KPIs */}
                 <div className='kpi-grid'>
                     <div className='kpi-card'>
-                        <div className='kpi-label'>Sales Amount</div>
+                        <div className='kpi-label'>Product Sales Amount</div>
                         <div className='kpi-value'>₦ {fmt(kpis.salesAmount)}</div>
                         <div className='kpi-sub'>{fmt(kpis.salesQty)} units</div>
+                        {topProductsBySales.length > 0 && (
+                            <div className='kpi-sub' style={{fontSize: '0.8em'}}>
+                                {topProductsBySales.map((prod, i) => (
+                                    <div key={i} style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                                        {prod.name}: ₦{fmt(prod.amount)}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className='kpi-card'>
                         <div className='kpi-label'>Expenses</div>
                         <div className='kpi-value'>₦ {fmt(kpis.expensesAmount)}</div>
+                        {topExpenseCategories.length > 0 && (
+                            <div className='kpi-sub' style={{fontSize: '0.8em', marginTop: '4px'}}>
+                                {topExpenseCategories.map((exp, i) => (
+                                    <div key={i} style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                                        {exp.name}: ₦{fmt(exp.amount)}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className='kpi-card'>
                         <div className='kpi-label'>Direct Purchases</div>
                         <div className='kpi-value'>₦ {fmt(kpis.purchasesAmount)}</div>
                         <div className='kpi-sub'>{fmt(kpis.purchasesQty)} units</div>
+                        {topPurchaseItems.length > 0 && (
+                            <div className='kpi-sub' style={{fontSize: '0.8em'}}>
+                                {topPurchaseItems.map((item, i) => (
+                                    <div key={i} style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                                        {item.name}: ₦{fmt(item.amount)}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className='kpi-card'>
                         <div className='kpi-label'>Inventory</div>
@@ -547,36 +730,7 @@ const DashView = () =>{
                     </div>
                 </div>
 
-                <div className='panel'>
-                    <div className='panel-title'>Profit & Loss Summary</div>
-                    <div className='list-table'>
-                        <div className='list-head'>
-                            <div>Metric</div>
-                            <div>Amount</div>
-                        </div>
-                        <div className='list-row'>
-                            <div>Revenue (Sales + Accom + Rentals)</div>
-                            <div>₦ {fmt((kpis.salesAmount||0)+(kpis.accommodationsAmount||0)+(kpis.rentalsAmount||0))}</div>
-                        </div>
-                        <div className='list-row'>
-                            <div>COGS</div>
-                            <div>₦ {fmt(kpis.cogs||0)}</div>
-                        </div>
-                        <div className='list-row'>
-                            <div>Gross Profit</div>
-                            <div>₦ {fmt(kpis.grossProfit||0)}</div>
-                        </div>
-                        <div className='list-row'>
-                            <div>Operating Expenses</div>
-                            <div>₦ {fmt(kpis.expensesAmount||0)}</div>
-                        </div>
-                        <div className='list-row'>
-                            <div>Net Profit</div>
-                            <div style={{color: (kpis.netProfit||0) < 0 ? '#da1e28' : '#24a148'}}>₦ {fmt(kpis.netProfit||0)}</div>
-                        </div>
-                    </div>
-                </div>
-
+                {/* Panels */}
                 <div className='panel-grid'>
                     <div className='panel'>
                         <div className='panel-title'>Sales vs Expenses vs Purchases (incl. Accommodation & Rentals)</div>
@@ -619,13 +773,14 @@ const DashView = () =>{
                             </ResponsiveContainer>
                         </div>
                     </div>
+
                     <div className='panel'>
                         <div className='panel-title'>Top Selling Products (Qty)</div>
                         <div style={{width:'100%', height:300}}>
                             <ResponsiveContainer>
                                 <BarChart data={topProducts.map(p=>({ name: productName(p.pid), qty: p.qty }))} margin={{ top: 10, right: 40, left: 10, bottom: 40 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" hide={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                                    <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
                                     <YAxis width={90} allowDecimals={false} />
                                     <Tooltip />
                                     <Bar dataKey="qty" fill="#24a148" name="Qty" />
@@ -633,6 +788,7 @@ const DashView = () =>{
                             </ResponsiveContainer>
                         </div>
                     </div>
+
                     <div className='panel'>
                         <div className='panel-title'>Top Locations (Sales Amount)</div>
                         <div style={{width:'100%', height:280}}>
@@ -647,13 +803,14 @@ const DashView = () =>{
                             </ResponsiveContainer>
                         </div>
                     </div>
+
                     <div className='panel'>
                         <div className='panel-title'>Top Employees - Sales</div>
                         <div style={{width:'100%', height:300}}>
                             <ResponsiveContainer>
                                 <BarChart data={topEmployeesSales.map(e=>({ name: employeeName(e.employeeId), amount: e.amount }))} margin={{ top: 10, right: 40, left: 10, bottom: 40 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" hide={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                                    <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
                                     <YAxis width={90} tickFormatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} domain={[0, 'auto']} allowDecimals={false} />
                                     <Tooltip formatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} />
                                     <Bar dataKey="amount" fill="#8a3ffc" name="Amount" />
@@ -661,13 +818,14 @@ const DashView = () =>{
                             </ResponsiveContainer>
                         </div>
                     </div>
+
                     <div className='panel'>
                         <div className='panel-title'>Top Employees - Accommodation + Rentals</div>
                         <div style={{width:'100%', height:300}}>
                             <ResponsiveContainer>
                                 <BarChart data={topEmployeesServices.map(e=>({ name: employeeName(e.employeeId), amount: e.amount }))} margin={{ top: 10, right: 40, left: 10, bottom: 40 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" hide={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                                    <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
                                     <YAxis width={90} tickFormatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} domain={[0, 'auto']} allowDecimals={false} />
                                     <Tooltip formatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} />
                                     <Bar dataKey="amount" fill="#a56eff" name="Amount" />
@@ -675,6 +833,42 @@ const DashView = () =>{
                             </ResponsiveContainer>
                         </div>
                     </div>
+
+                    <div className='panel'>
+                        <div className='panel-title'>Revenue Mix</div>
+                        <div style={{width:'100%', height:260}}>
+                            <ResponsiveContainer>
+                                <PieChart>
+                                    <Tooltip formatter={(v)=>`₦ ${fmt(v)}`} />
+                                    <Legend />
+                                    <Pie dataKey="value" data={revenueMix} nameKey="name" outerRadius={80} label>
+                                        {revenueMix.map((e,i)=> <Cell key={`c-${i}`} fill={["#0088FE","#00C49F","#FFBB28"][i%3]} />)}
+                                    </Pie>
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className='panel'>
+                        <div className='panel-title'>Monthly Performance (YTD)</div>
+                        <div style={{width:'100%', height:320}}>
+                            <ResponsiveContainer>
+                                <BarChart data={monthlySeries} margin={{top:20,right:20,left:10,bottom:40}}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="month" />
+                                    <YAxis tickFormatter={(v)=>`₦ ${fmt(v)}`} />
+                                    <Tooltip formatter={(v)=>`₦ ${fmt(v)}`} />
+                                    <Legend />
+                                    <Bar dataKey="sales" stackId="rev" fill="#8884d8" name="Sales" />
+                                    <Bar dataKey="accommodations" stackId="rev" fill="#82ca9d" name="Accommodation" />
+                                    <Bar dataKey="rentals" stackId="rev" fill="#ffc658" name="Rentals" />
+                                    <Bar dataKey="purchases" stackId="cost" fill="#FF8042" name="Purchases" />
+                                    <Bar dataKey="expenses" stackId="cost" fill="#A4A4A4" name="Expenses" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
                     <div className='panel'>
                         <div className='panel-title'>Top Products by Location (Qty)</div>
                         <div className='list-table'>
@@ -693,6 +887,7 @@ const DashView = () =>{
                             {!productLocationBreakdown.length && <div className='empty-row'>No data</div>}
                         </div>
                     </div>
+
                     <div className='panel'>
                         <div className='panel-title'>Products To Restock</div>
                         <div className='list-table'>
@@ -715,6 +910,7 @@ const DashView = () =>{
                             {!restock.length && <div className='empty-row'>No low-stock items</div>}
                         </div>
                     </div>
+
                     <div className='panel'>
                         <div className='panel-title'>Insights</div>
                         <ul className='insights'>
@@ -723,14 +919,13 @@ const DashView = () =>{
                             <li className='insight-item'>{topLocations[0]?`Best location: ${topLocations[0].location} (₦ ${fmt(topLocations[0].amount)}).`:'Best location: N/A'}</li>
                             <li className='insight-item'>{topEmployeesSales[0]?`Top sales employee: ${employeeName(topEmployeesSales[0].employeeId)} (₦ ${fmt(topEmployeesSales[0].amount)}).`:'Top sales employee: N/A'}</li>
                             <li className='insight-item'>{topEmployeesServices[0]?`Top services employee (Accom+Rentals): ${employeeName(topEmployeesServices[0].employeeId)} (₦ ${fmt(topEmployeesServices[0].amount)}).`:'Top services employee: N/A'}</li>
-                            <li className='insight-item'>{(kpis.debtTotal||0)>0?`Debts outstanding: ₦ ${fmt(kpis.debtTotal - (kpis.debtRecovered||0))}. Focus on recovery via reminders and incentives.`:'No outstanding debt recorded in range.'}</li>
-                            <li className='insight-item'>{(kpis.netProfit||0) < 0 ? 'Loss detected: tighten expense controls, review pricing and COGS; push high-margin products and reduce low-turnover inventory.' : 'Profit achieved: scale best-sellers, maintain stock above 14-day coverage, and replicate best locations/employees tactics.'}</li>
-                            <li className='insight-item'>Low stock warnings are based on 7-day average sales coverage. Replenish items below threshold to avoid stockouts.</li>
-                            <li className='insight-item'>Use Top Products by Location to allocate stock to high-demand branches; plan transfers before peak days.</li>
-                            <li className='insight-item'>Ensure debt recovery workflows and late-fee policies are consistently applied to improve cash flow.</li>
-                            <li className='insight-item'>{bestWorstDays.best?`Best sales day: ${bestWorstDays.best.date} (₦ ${fmt(bestWorstDays.best.rev)}). Replicate promos/stocking.`:'Best sales day: N/A'}</li>
-                            <li className='insight-item'>{bestWorstDays.worst?`Lowest sales day: ${bestWorstDays.worst.date} (₦ ${fmt(bestWorstDays.worst.rev)}). Investigate staffing, inventory levels, and pricing.`:'Lowest sales day: N/A'}</li>
-                            <li className='insight-item'>Consider bundling top products and offering location-specific promotions during off-peak days.</li>
+                            {(kpis.debtTotal||0)>0 && <li className='insight-item'>{`Debts outstanding: ₦ ${fmt(kpis.debtTotal - (kpis.debtRecovered||0))}. Prioritize recovery.`}</li>}
+                            {(kpis.netProfit||0) < 0 && <li className='insight-item'>Loss detected: tighten expense controls, review pricing/COGS; push high-margin items; reduce low-turnover stock.</li>}
+                            {(kpis.netProfit||0) >= 0 && <li className='insight-item'>Profit achieved: scale best-sellers, keep 14+ days stock, replicate best locations/employees tactics.</li>}
+                            {monthlySeries.some(m=>m.expenses>m.sales) && <li className='insight-item'>Alert: Some months have expenses exceeding sales. Investigate cost drivers.</li>}
+                            {monthlySeries.some(m=>m.sales===0 && (m.purchases>0||m.expenses>0)) && <li className='insight-item'>Low activity: Months with spend but no sales. Review marketing and operations.</li>}
+                            {series.length>2 && (()=>{ const a=series.at(-1).sales, b=series.at(-2).sales; return a> b*2 })() && <li className='insight-item'>Spike detected: Recent day sales more than 2x previous day. Validate for promo/fraud.</li>}
+                            {series.length>2 && (()=>{ const a=series.at(-1).sales, b=series.at(-2).sales; return b> a*2 })() && <li className='insight-item'>Drop detected: Recent day sales less than half of previous day. Check stockouts/staffing.</li>}
                         </ul>
                     </div>
                 </div>
@@ -740,3 +935,4 @@ const DashView = () =>{
 }
 
 export default DashView
+
