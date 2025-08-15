@@ -189,11 +189,19 @@ const DashView = () =>{
 
             // Track sales by product (for amount breakdown)
             const salesByProduct = new Map()
-            resp.record.filter(t => (t.entryType || '').toLowerCase() === 'sale').forEach(t => {
+            const salesRecords = resp.record || []
+            
+            const saleTransactions = salesRecords.filter(t => {
+                const type = String(t.entryType || '').toLowerCase()
+                return type === 'sale' || type === 'sales'
+            })
+            
+            saleTransactions.forEach(t => {
                 const pid = t.productId || t.i_d || 'Unknown'
                 const amount = Math.abs(Number(t.totalSales || t.totalCost || 0))
                 if (amount > 0) {
-                    salesByProduct.set(pid, (salesByProduct.get(pid) || 0) + amount)
+                    const current = salesByProduct.get(pid) || 0
+                    salesByProduct.set(pid, current + amount)
                 }
             })
 
@@ -261,6 +269,8 @@ const DashView = () =>{
             setTopExpenseCategories(topExpenses)
             setTopProductsBySales(topSalesProducts)
             setTopPurchaseItems(topPurchaseItemsList)
+            
+            // Debug log to verify top sales products data
             // Build daily expenses map
             const expByDate = buildExpensesByDate(expenses, fromDate, toDate)
 
@@ -324,26 +334,93 @@ const DashView = () =>{
                 { name: 'Accommodation', value: Number(accomTotal||0) },
                 { name: 'Rentals', value: Number(rentalTotal||0) }
             ])
-            // Monthly YTD aggregation from seriesData (already filtered)
-            const thisYear = new Date().getFullYear()
+            // Get the year from the selected date range
+            const selectedYear = new Date(fromDate).getFullYear()
+            const yearStart = new Date(selectedYear, 0, 1) // Jan 1 of selected year
+            const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59) // Last millisecond of Dec 31
+            
             const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
             const monthAgg = new Map()
-            seriesData.forEach(d=>{
-                const dt = new Date(d.date)
-                if (!d.date || isNaN(dt) || dt.getFullYear()!==thisYear) return
-                const m = dt.getMonth() // 0-11
-                const key = months[m]
-                const prev = monthAgg.get(key) || { month: key, sales:0, purchases:0, expenses:0, accommodations:0, rentals:0 }
-                monthAgg.set(key, {
-                    month: key,
-                    sales: prev.sales + Number(d.sales||0),
-                    purchases: prev.purchases + Number(d.purchases||0),
-                    expenses: prev.expenses + Number(d.expenses||0),
-                    accommodations: prev.accommodations + Number(d.accommodations||0),
-                    rentals: prev.rentals + Number(d.rentals||0),
+            
+            // Initialize all months with zeros
+            months.forEach(month => {
+                monthAgg.set(month, { 
+                    month, 
+                    sales: 0, 
+                    purchases: 0, 
+                    expenses: 0, 
+                    accommodations: 0, 
+                    rentals: 0 
                 })
             })
-            setMonthlySeries(months.map(m=> monthAgg.get(m) || {month:m, sales:0, purchases:0, expenses:0, accommodations:0, rentals:0}))
+            
+            // Process raw data for the selected year (not filtered by date range)
+            const processData = (data, type) => {
+                if (!Array.isArray(data)) {
+                    return
+                }
+                
+                let processedCount = 0
+                data.forEach(item => {
+                    if (!item.postingDate && !item.paymentDate) return
+                    const dt = new Date(item.postingDate || item.paymentDate)                    
+                    if (dt.getFullYear() !== selectedYear) return
+                    const monthKey = months[dt.getMonth()]
+                    const current = monthAgg.get(monthKey)
+                    if (!current) return
+                    let amount = 0
+                    switch(type) {
+                        case 'sale':
+                            amount = Math.abs(Number((
+                                item.totalBankSales + item.totalCashSales + item.totalDebt + item.totalShortage
+                            ) || item.amount || 0))
+                            current.sales += amount
+                            break
+                        case 'purchase':
+                            amount = Math.abs(Number(item.purchaseAmount || item.amount || 0))
+                            current.purchases += amount
+                            break
+                        case 'expense':
+                            amount = Math.abs(Number(item.expensesAmount || item.amount || 0))
+                            current.expenses += amount
+                            break
+                        case 'accommodation':
+                            amount = Math.abs(Number(item.accommodationAmount || item.amount || 0))
+                            current.accommodations += amount
+                            current.sales -= amount
+                            break
+                        case 'rental':
+                            amount = Math.abs(Number(item.rentalAmount || item.amount || 0))
+                            current.rentals += amount
+                            break
+                    }
+                    if (amount > 0) processedCount++
+                })
+            }
+            
+            // Process each data type
+            
+            processData(sales, 'sale')
+            processData(purchase, 'purchase')
+            processData(expenses, 'expense')
+            processData(accommodations, 'accommodation')
+            processData(rentals, 'rental')
+            
+            // Convert to array in month order, ensuring all months are included
+            const monthlyData = months.map(month => {
+                const data = monthAgg.get(month)
+                // Ensure all required fields are numbers
+                return {
+                    month: data.month,
+                    sales: Number(data.sales || 0),
+                    purchases: Number(data.purchases || 0),
+                    expenses: Number(data.expenses || 0),
+                    accommodations: Number(data.accommodations || 0),
+                    rentals: Number(data.rentals || 0)
+                }
+            })
+            
+            setMonthlySeries(monthlyData)
             setTopProducts(topProdArr.slice(0,10))
             setTopLocations(topLocArr.slice(0,10))
             setRestock(restockList)
@@ -775,6 +852,45 @@ const DashView = () =>{
                     </div>
 
                     <div className='panel'>
+                        <div className='panel-title'>Monthly Performance ({new Date(fromDate).getFullYear()})</div>
+                        <div style={{width:'100%', height:350}}>
+                            <ResponsiveContainer>
+                                <BarChart 
+                                    data={monthlySeries} 
+                                    margin={{top:20, right:20, left:10, bottom:40}}
+                                    barGap={0}
+                                    barCategoryGap="10%"
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis 
+                                        dataKey="month" 
+                                        interval={0}
+                                        angle={-45}
+                                        textAnchor="end"
+                                        height={60}
+                                    />
+                                    <YAxis 
+                                        width={90} 
+                                        tickFormatter={(v)=>`₦${Number(v).toLocaleString()}`} 
+                                        domain={[0, 'auto']}
+                                        allowDecimals={false}
+                                    />
+                                    <Tooltip 
+                                        formatter={(value, name) => [`₦${Number(value).toLocaleString()}`, name]}
+                                        labelFormatter={(label) => `${label} ${new Date(fromDate).getFullYear()}`}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="sales" stackId="rev" fill="#0f62fe" name="Sales" />
+                                    <Bar dataKey="accommodations" stackId="rev" fill="#8a3ffc" name="Accommodation" />
+                                    <Bar dataKey="rentals" stackId="rev" fill="#007d79" name="Rentals" />
+                                    <Bar dataKey="purchases" stackId="cost" fill="#24a148" name="Purchases" />
+                                    <Bar dataKey="expenses" stackId="cost" fill="#da1e28" name="Expenses" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className='panel'>
                         <div className='panel-title'>Top Selling Products (Qty)</div>
                         <div style={{width:'100%', height:300}}>
                             <ResponsiveContainer>
@@ -847,27 +963,7 @@ const DashView = () =>{
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-                    </div>
-
-                    <div className='panel'>
-                        <div className='panel-title'>Monthly Performance (YTD)</div>
-                        <div style={{width:'100%', height:320}}>
-                            <ResponsiveContainer>
-                                <BarChart data={monthlySeries} margin={{top:20,right:20,left:10,bottom:40}}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="month" />
-                                    <YAxis tickFormatter={(v)=>`₦ ${fmt(v)}`} />
-                                    <Tooltip formatter={(v)=>`₦ ${fmt(v)}`} />
-                                    <Legend />
-                                    <Bar dataKey="sales" stackId="rev" fill="#8884d8" name="Sales" />
-                                    <Bar dataKey="accommodations" stackId="rev" fill="#82ca9d" name="Accommodation" />
-                                    <Bar dataKey="rentals" stackId="rev" fill="#ffc658" name="Rentals" />
-                                    <Bar dataKey="purchases" stackId="cost" fill="#FF8042" name="Purchases" />
-                                    <Bar dataKey="expenses" stackId="cost" fill="#A4A4A4" name="Expenses" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
+                    </div>                    
 
                     <div className='panel'>
                         <div className='panel-title'>Top Products by Location (Qty)</div>
