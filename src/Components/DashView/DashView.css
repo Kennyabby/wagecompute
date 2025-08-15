@@ -37,23 +37,80 @@
     background: #f6f7fb;
 }
 
-.dash-filters{
+.dash-filters {
     display: grid;
-    grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
     background: #fff;
-    padding: 12px;
+    padding: 16px;
     border-radius: 10px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     margin-bottom: 16px;
+    align-items: end;
+    box-sizing: border-box;
+    width: 100%;
 }
-.filter-group{ display: flex; flex-direction: column; gap: 6px; }
+
+.dash-filters > * {
+    min-width: 0; /* Prevents flex items from overflowing */
+}
+
+/* Financial Summary Section */
+.financial-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.financial-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    text-align: center;
+}
+
+.financial-card h3 {
+    font-size: 0.9em;
+    color: #555;
+    margin: 0 0 8px 0;
+    font-weight: 600;
+}
+
+.financial-card .amount {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: #1a365d;
+}
+
+.financial-card.profit .amount { color: #2e7d32; }
+.financial-card.loss .amount { color: #d32f2f; }
+.filter-group{ 
+    display: flex; 
+    flex-direction: column; 
+    gap: 6px;
+    min-width: 0; /* Prevents flex items from overflowing */
+}
 .filter-group label{ font-size: .8em; font-weight: 700; color: #666; }
-.filter-group input{
-    padding: 8px 10px;
+.filter-group input,
+.filter-group select {
+    padding: 10px 12px;
     border: 1px solid rgba(0,0,0,0.15);
     border-radius: 8px;
     background: #fff;
+    font-size: 0.9em;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.filter-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007bff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 12px auto;
+    padding-right: 30px;
 }
 .btn-primary{
     align-self: end;
@@ -64,6 +121,8 @@
     color: #fff;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
+    height: 40px;
 }
 .btn-primary:disabled{ opacity: .6; cursor: not-allowed; }
 
@@ -125,11 +184,58 @@
 .insight-item{ margin: 6px 0; color: #444; }
 
 /* Responsive */
-@media (max-width: 1200px){
-    .dash-filters{ grid-template-columns: repeat(3, 1fr) repeat(3, 1fr) auto; }
-    .kpi-grid{ grid-template-columns: repeat(2, 1fr); }
-    .panel-grid{ grid-template-columns: 1fr; }
+@media (max-width: 1400px) {
+    .dash-filters { grid-template-columns: repeat(4, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
 }
-@media (max-width: 768px){
-    .dash-filters{ grid-template-columns: repeat(2, 1fr) auto; }
+
+@media (max-width: 1200px) {
+    .dash-filters { grid-template-columns: repeat(3, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .panel-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 992px) {
+    .financial-summary { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .dash-filters { 
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    .kpi-grid { 
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .financial-summary { 
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .btn-primary {
+        grid-column: 1 / -1;
+    }
+    .filter-group {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .dash-filters { 
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .btn-primary { 
+        width: 100%;
+        margin-top: 4px;
+    }
+    .filter-group {
+        width: 100%;
+    }
+    .financial-card {
+        padding: 14px 12px;
+    }
+    .financial-card .amount {
+        font-size: 1.3em;
+    }
 }
