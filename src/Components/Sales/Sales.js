@@ -1661,6 +1661,7 @@ const Sales = ()=>{
                         setShowApprovalBox(false)
                         setApprovalStatus(false)
                         setApprovalMessage('')
+                        setAddingProducts(false)
                     }}
                     module={'sales'}
                     section={productAdd ? 'addSalesProduct' : `post${salesOpts}`}

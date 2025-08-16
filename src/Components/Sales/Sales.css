@@ -63,6 +63,7 @@
     left: 20px;
     top: 60px;
     font-size: .8em;
+    width: fit-content;
 }
 .slprwh-cover{
     position: absolute;
