@@ -779,7 +779,7 @@ const TransactionReports = ({
             const sessionOrders = session.orders?.length || 0;
             result.totals.totalOrders += sessionOrders;
             
-            const sessionSales = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => {
+            const sessionSales = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {
                 const payPoint = Object.keys(order.salesPosts)[0] || 'Default';
                 result.salesByPayPoint[payPoint] = (result.salesByPayPoint[payPoint] || 0) + Number(order[payPoint] || 0);
                 const location = order.salesPosts[payPoint]
@@ -789,7 +789,7 @@ const TransactionReports = ({
             
             result.totals.totalSales += sessionSales;
             
-            result.totals.totalItems += session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => {
+            result.totals.totalItems += session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {
                 return sum + ((order.items || []).reduce((itemSum, item) => {
                     return itemSum + (parseFloat(item.quantity) || 0);
                 }, 0) || 0);
