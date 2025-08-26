@@ -2078,7 +2078,7 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                             {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && */}
                             {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('cancel_pos_order')) &&
                             !['cancelled','completed'].includes(order.status) 
-                            && curSession.active &&  (
+                            &&  (
                                 <button 
                                     disabled={cancelling}
                                     className="cancel-order-btn"

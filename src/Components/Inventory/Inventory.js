@@ -7,12 +7,13 @@ import ContextProvider from "../../Resources/ContextProvider";
 import Products from './Products/Products';
 import Adjustments from './Operations/Adjustments/Adjustments';
 import Measures from './Settings/Measures/Measures';
+import TransactionHistory from './TransactionHistory/TransactionHistory';
 import { MdArrowBackIosNew, MdArrowForwardIos } from "react-icons/md";
 import { PiCards } from "react-icons/pi";
 import { FaThList } from "react-icons/fa";
 import Stock from './Stock/Stock';
 import { FaCloudArrowUp } from "react-icons/fa6";
-import { IoIosSettings } from "react-icons/io";
+import { IoIosSettings, IoMdTime } from "react-icons/io";
 
 const Inventory = ()=>{
     
@@ -45,7 +46,7 @@ const Inventory = ()=>{
         Overview:[],
         Operations:['Adjustments','Receipts','Deliveries','Internal'],
         Products:[],
-        Reporting:['Stock','Locations','Moves History'],
+        Reporting:['Stock','Transaction History','Locations','Moves History'],
         Settings:['Warehouses','Locations','Unit of Measures']
     }
     
@@ -82,7 +83,7 @@ const Inventory = ()=>{
     if (!companyRecord?.permissions.includes('imports') && 
         companyRecord?.status !== 'admin'){
         delete settingsMenu['Products']
-        delete settingsMenu['Ajustments']
+        delete settingsMenu['Adjustments']
     }
     if (!companyRecord?.permissions.includes('internal_transfer') && 
         companyRecord?.status !== 'admin'){
@@ -134,6 +135,7 @@ const Inventory = ()=>{
             postingDate={postingDate}
             setPostingDate={setPostingDate}
         />,
+        'Transaction History': <TransactionHistory />,
         'Unit of Measures': <Measures
             setPopModal={setPopModal}
             postingDate={postingDate}
