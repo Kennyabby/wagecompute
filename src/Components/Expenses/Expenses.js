@@ -135,6 +135,7 @@ const Expenses = ()=>{
                     }
                 })
             })
+
             const detail = {
                 "expensesDepartment": "Admin",
                 "expensesHandler": "1",
@@ -146,7 +147,7 @@ const Expenses = ()=>{
                 "postingDate": salaryPostingDate,
                 "createdAt": Date.now()
             }
-            details.push(detail)
+            details.push(detail)            
         })
         setSalaryDetails(details)
     },[attendance, expenseFrom, expenseTo])
