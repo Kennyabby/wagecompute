@@ -114,14 +114,21 @@ const TransactionHistory = () => {
   // Get opening balance for the selected period
   const getOpeningBalance = useCallback(async (startDate, location, productId) => {
     try {
-      const formattedStartDate = formatDateForDB(startDate);
+      // Format the date to match the database format (ISO string)
+      const formattedStartDate = new Date(startDate).toISOString();
+      
       const query = {
         database: company,
         collection: 'InventoryTransactions',
         prop: [
           { 
             $match: {
-              postingDate: { $lte: formattedStartDate },
+              $expr: {
+                $lt: [
+                  { $toString: "$postingStamp" },
+                  formattedStartDate
+                ]
+              },
               ...(location !== 'all' && { location }),
               ...(productId && { productId })
             }
@@ -144,7 +151,6 @@ const TransactionHistory = () => {
       const result = await fetchServer('POST', query, 'aggregateDocs', server);
       return result.record?.[0]?.total || 0;
     } catch (error) {
-      console.error('Error getting opening balance:', error);
       return 0;
     }
   }, [company, fetchServer]);
@@ -152,14 +158,20 @@ const TransactionHistory = () => {
   // Helper function to fetch transactions data
   const fetchTransactionsData = useCallback(async (startDate, endDate, filters) => {
     try {
+      // Format dates to match the database format (ISO strings)
+      const formattedStartDate = new Date(startDate).toISOString();
+      const formattedEndDate = new Date(endDate).toISOString();
+
       // Build the transactions query
       const transactionsQuery = {
         database: company,
         collection: 'InventoryTransactions',
         prop: {
-          postingDate: { 
-            $gte: startDate,
-            $lte: endDate
+          $expr: {
+            $and: [
+              { $gte: [{ $toString: "$postingStamp" }, formattedStartDate] },
+              { $lte: [{ $toString: "$postingStamp" }, formattedEndDate] }
+            ]
           },
           ...(filters.location !== 'all' && { location: filters.location }),
           ...(filters.productId && { productId: filters.productId }),
@@ -172,6 +184,7 @@ const TransactionHistory = () => {
         },
         project: {
           postingDate: 1,
+          postingStamp: 1,
           entryType: 1,
           documentType: 1,
           productId: 1,
@@ -186,7 +199,7 @@ const TransactionHistory = () => {
           orderNumber: 1,
           createdAt: 1
         },
-        sort: { postingDate: 1 },
+        sort: { postingStamp: 1 },
         skip: (filters.page - 1) * filters.limit,
         limit: filters.limit
       };
@@ -200,7 +213,12 @@ const TransactionHistory = () => {
           prop: [
             {
               $match: {
-                postingDate: { $gt: startDate, $lte: endDate },
+                $expr: {
+                  $and: [
+                    { $gte: [{ $toString: "$postingStamp" }, formattedStartDate] },
+                    { $lte: [{ $toString: "$postingStamp" }, formattedEndDate] }
+                  ]
+                },
                 ...(filters.location !== 'all' && { location: filters.location }),
                 ...(filters.productId && { productId: filters.productId }),
                 ...(filters.transactionType !== 'all' && { 
@@ -318,7 +336,6 @@ const TransactionHistory = () => {
         }, 'aggregateDocs', server)
       ]);
 
-      console.log(transactionsResp, summaryResp)
 
       // Process transactions
       const transactions = transactionsResp?.record || [];
@@ -339,13 +356,11 @@ const TransactionHistory = () => {
         summaryData.totalInCost = Math.abs(Number(item.totalInCost) || 0);
         summaryData.totalOutCost = Math.abs(Number(item.totalOutCost) || 0);
       }
-      console.log(summaryData)
       return {
         transactions,
         summaryData
       };
     } catch (error) {
-      console.error('Error in fetchTransactionsData:', error);
       // Return empty data structure on error
       return {
         transactions: [],
@@ -411,7 +426,6 @@ const TransactionHistory = () => {
         totalOutCost: summaryData.totalOutCost,
       });
     } catch (error) {
-      console.error('Error fetching transaction history:', error);
       setAlertState('error');
       setAlert('Failed to load transaction history');
       setAlertTimeout(5000);
@@ -464,7 +478,6 @@ const TransactionHistory = () => {
       setAlert('Export to Excel completed successfully');
       setAlertTimeout(3000);
     } catch (error) {
-      console.error('Error exporting to Excel:', error);
       setAlertState('error');
       setAlert('Failed to export to Excel');
       setAlertTimeout(5000);

@@ -262,6 +262,7 @@ const Purchase = ()=>{
                             ...entry,
                             location: purchaseWrh.name,
                             postingDate: purchaseDate,
+                            postingStamp: new Date(purchaseDate),
                             createdAt: createdAt,
                             handlerId: fields.purchaseHandler,
                         }

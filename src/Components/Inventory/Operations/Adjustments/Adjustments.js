@@ -5,7 +5,7 @@ import ContextProvider from '../../../../Resources/ContextProvider';
 
 const Adjustments = ({
     setIsOnView, isNewEntry, setIsNewView,
-    clickedLabel, isSaveClicked, setIsSaveValue,
+    clickedLabel, isSaveClicked, setIsSaveValue, postingDate,
     isDeleteClicked, setIsDeleteValue,
     isImportClicked, setIsImportValue,
 })=>{
@@ -13,7 +13,7 @@ const Adjustments = ({
         server, fetchServer, generateSeries,
         setAlert, setAlertState, setAlertTimeout, getProductsWithStock,
         products, company, companyRecord, setProducts, getProducts,
-        settings, exportFile, importFile, postingDate
+        settings, exportFile, importFile, 
     } = useContext(ContextProvider)
     const intervalRef = useRef(null);
     const [wrhs, setWrhs] = useState([])
@@ -144,6 +144,7 @@ const Adjustments = ({
                 entry.createdAt = createdAt
                 entry.handlerId = companyRecord?.emailid
                 entry.postingDate = postingDate
+                entry.postingStamp = new Date(postingDate)
                 entry.location = curWarehouse
                 delete entry.index 
                 // const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
