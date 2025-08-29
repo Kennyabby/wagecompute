@@ -1042,7 +1042,6 @@ function App() {
         };
       });
       
-      
       // 3. Enrich products with location-wise stock and cost
       const enrichedProducts = products.map(product => {
         const stockInfo = stockMap[product.i_d] || {};
@@ -1063,8 +1062,444 @@ function App() {
 
       // 4. Set enriched products
       setProducts(enrichedProducts);
+      return enrichedProducts;
     }       
+    return products;
   };
+
+  /**
+   * Get a comprehensive stock report with detailed movement information
+   * @param {string} company - Company database name
+   * @param {Array} products - Array of product objects
+   * @param {Object} dateRange - Object containing startDate and endDate
+   * @returns {Promise<Array>} - Array of products with detailed stock information
+   */
+  const getProductsStockReport = async (company, products, dateRange = {}) => {
+    try {
+      // Set default date range if not provided (current month to date)
+      const startDate = dateRange.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const endDate = dateRange.endDate || new Date();
+      
+      // Format dates for MongoDB query
+      const formattedStartDate = startDate.toISOString();
+      const formattedEndDate = endDate.toISOString();
+      
+      // 1. Get opening stock (stock before start date)
+      const openingStockResp = await fetchServer(
+        "POST",
+        {
+          database: company,
+          collection: "InventoryTransactions",
+          prop: [
+            {
+              $match: {
+                $expr: {
+                  $lt: [
+                    { $toString: "$postingStamp" },
+                    formattedStartDate
+                  ]
+                }
+              }
+            },
+            {
+              $group: {
+                _id: {
+                  productId: "$productId",
+                  location: "$location"
+                },
+                openingQuantity: {
+                  $sum: {
+                    $cond: [
+                      { $isNumber: "$baseQuantity" },
+                      "$baseQuantity",
+                      { $toDouble: "$baseQuantity" }
+                    ]
+                  }
+                },
+                openingCost: {
+                  $sum: {
+                    $cond: [
+                      { $isNumber: "$totalCost" },
+                      "$totalCost",
+                      { $toDouble: "$totalCost" }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "aggregateDocs",
+        SERVER
+      );
+
+      // 2. Get transactions within date range
+      const transactionsResp = await fetchServer(
+        "POST",
+        {
+          database: company,
+          collection: "InventoryTransactions",
+          prop: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $gte: [{ $toString: "$postingStamp" }, formattedStartDate] },
+                    { $lte: [{ $toString: "$postingStamp" }, formattedEndDate] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                productId: 1,
+                location: 1,
+                baseQuantity: 1,
+                totalCost: 1,
+                totalSales: 1,
+                documentType: 1,
+                entryType: 1,
+                postingDate: 1,
+                postingStamp: 1
+              }
+            },
+            {
+              $group: {
+                _id: {
+                  productId: "$productId",
+                  location: "$location"
+                },
+                // Purchases
+                purchasedQty: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$entryType", "Purchase"] },
+                        { $gt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
+                purchaseCost: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$entryType", "Purchase"] },
+                        { $gt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
+                // Sales
+                soldQty: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Sales"] },
+                      { $abs: { $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]}},
+                      0
+                    ]
+                  }
+                },
+                salesValue: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Sales"] },
+                      { $abs: { $cond: [
+                        { $isNumber: "$totalSales" },
+                        "$totalSales",
+                        { $toDouble: "$totalSales" }
+                      ]}},
+                      0
+                    ]
+                  }
+                },
+                costOfGoodsSold: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Sales"] },
+                      { $abs: { $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
+                      ]}},
+                      0
+                    ]
+                  }
+                },
+                // Transfers
+                transferInQty: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$documentType", "Transfer Receipt"] },
+                        { $gt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
+                transferOutQty: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$documentType", "Transfer Shipment"] },
+                        { $lt: ["$baseQuantity", 0] }
+                      ]},
+                      { $abs: { $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]}},
+                      0
+                    ]
+                  }
+                },
+                // Positive Adjustments
+                positiveAdjustmentQty: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$documentType", "Positive Adjustment"] },
+                        { $gt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
+                positiveAdjustmentCost: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$documentType", "Positive Adjustment"] },
+                        { $gt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
+                // Negative Adjustments
+                negativeAdjustmentQty: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$documentType", "Negative Adjustment"] },
+                        { $lt: ["$baseQuantity", 0] }
+                      ]},
+                      { $abs: { $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]}},
+                      0
+                    ]
+                  }
+                },
+                negativeAdjustmentCost: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$documentType", "Negative Adjustment"] },
+                        { $lt: ["$baseQuantity", 0] }
+                      ]},
+                      { $abs: { $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
+                      ]}},
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "aggregateDocs",
+        SERVER
+      );
+
+      // 3. Process and merge the data
+      const stockMap = {};
+      
+      // Process opening stock
+      if (openingStockResp.record) {
+        openingStockResp.record.forEach(item => {
+          const { productId, location } = item._id;
+          if (!stockMap[productId]) stockMap[productId] = {};
+          if (!stockMap[productId][location]) {
+            stockMap[productId][location] = createEmptyStockData();
+          }
+          stockMap[productId][location].openingQuantity = item.openingQuantity || 0;
+          stockMap[productId][location].openingCost = item.openingCost || 0;
+        });
+      }
+
+      // Process transactions within date range
+      if (transactionsResp.record) {
+        transactionsResp.record.forEach(item => {
+          const { productId, location } = item._id;
+          if (!stockMap[productId]) stockMap[productId] = {};
+          if (!stockMap[productId][location]) {
+            stockMap[productId][location] = createEmptyStockData();
+          }
+          
+          // Update with transaction data
+          const locationData = stockMap[productId][location];
+          locationData.purchasedQty = item.purchasedQty || 0;
+          locationData.purchaseCost = item.purchaseCost || 0;
+          locationData.soldQty = item.soldQty || 0;
+          locationData.salesValue = item.salesValue || 0;
+          locationData.costOfGoodsSold = item.costOfGoodsSold || 0;
+          locationData.transferInQty = item.transferInQty || 0;
+          locationData.transferOutQty = item.transferOutQty || 0;
+          
+          // Positive adjustments
+          locationData.positiveAdjustmentQty = item.positiveAdjustmentQty || 0;
+          locationData.positiveAdjustmentCost = item.positiveAdjustmentCost || 0;
+          
+          // Negative adjustments
+          locationData.negativeAdjustmentQty = item.negativeAdjustmentQty || 0;
+          locationData.negativeAdjustmentCost = item.negativeAdjustmentCost || 0;
+          
+          // Net adjustments
+          locationData.netAdjustmentQty = (item.positiveAdjustmentQty || 0) - (item.negativeAdjustmentQty || 0);
+          locationData.netAdjustmentCost = (item.positiveAdjustmentCost || 0) - (item.negativeAdjustmentCost || 0);
+          
+          // Calculate closing quantities
+          locationData.closingQty = (locationData.openingQuantity || 0) + 
+                                   (locationData.purchasedQty || 0) + 
+                                   (locationData.transferInQty || 0) - 
+                                   (locationData.transferOutQty || 0) - 
+                                   (locationData.soldQty || 0) + 
+                                   (locationData.netAdjustmentQty || 0);
+          
+          // Calculate closing cost (using average cost method)
+          const totalCost = (locationData.openingCost || 0) + 
+                           (locationData.purchaseCost || 0) + 
+                           (locationData.netAdjustmentCost || 0);
+          const totalQty = (locationData.openingQuantity || 0) + 
+                          (locationData.purchasedQty || 0) + 
+                          (locationData.netAdjustmentQty || 0);
+          
+          locationData.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
+          locationData.closingCost = locationData.closingQty * locationData.averageCost;
+          locationData.closingSalesValue = locationData.closingQty * (products.find(p => p.i_d === productId)?.salesPrice || 0);
+        });
+      }
+
+      // 4. Enrich products with the calculated stock data
+      const enrichedProducts = products.map(product => {
+        const locationData = stockMap[product.i_d] || {};
+        
+        // Calculate totals across all locations
+        const totals = Object.values(locationData).reduce((acc, loc) => ({
+          openingQuantity: (acc.openingQuantity || 0) + (loc.openingQuantity || 0),
+          openingCost: (acc.openingCost || 0) + (loc.openingCost || 0),
+          purchasedQty: (acc.purchasedQty || 0) + (loc.purchasedQty || 0),
+          purchaseCost: (acc.purchaseCost || 0) + (loc.purchaseCost || 0),
+          soldQty: (acc.soldQty || 0) + (loc.soldQty || 0),
+          salesValue: (acc.salesValue || 0) + (loc.salesValue || 0),
+          costOfGoodsSold: (acc.costOfGoodsSold || 0) + (loc.costOfGoodsSold || 0),
+          transferInQty: (acc.transferInQty || 0) + (loc.transferInQty || 0),
+          transferOutQty: (acc.transferOutQty || 0) + (loc.transferOutQty || 0),
+          
+          // Adjustment fields
+          positiveAdjustmentQty: (acc.positiveAdjustmentQty || 0) + (loc.positiveAdjustmentQty || 0),
+          positiveAdjustmentCost: (acc.positiveAdjustmentCost || 0) + (loc.positiveAdjustmentCost || 0),
+          negativeAdjustmentQty: (acc.negativeAdjustmentQty || 0) + (loc.negativeAdjustmentQty || 0),
+          negativeAdjustmentCost: (acc.negativeAdjustmentCost || 0) + (loc.negativeAdjustmentCost || 0),
+          netAdjustmentQty: (acc.netAdjustmentQty || 0) + (loc.netAdjustmentQty || 0),
+          netAdjustmentCost: (acc.netAdjustmentCost || 0) + (loc.netAdjustmentCost || 0),
+          
+          // Closing values
+          closingQty: (acc.closingQty || 0) + (loc.closingQty || 0),
+          closingCost: (acc.closingCost || 0) + (loc.closingCost || 0),
+          closingSalesValue: (acc.closingSalesValue || 0) + (loc.closingSalesValue || 0)
+        }), createEmptyStockData());
+
+        // Calculate net adjustments
+        const netAdjustmentQty = (totals.positiveAdjustmentQty || 0) - (totals.negativeAdjustmentQty || 0);
+        const netAdjustmentCost = (totals.positiveAdjustmentCost || 0) - (totals.negativeAdjustmentCost || 0);
+        
+        // Add net adjustments to totals for backward compatibility
+        totals.netAdjustmentQty = netAdjustmentQty;
+        totals.netAdjustmentCost = netAdjustmentCost;
+        
+        // Calculate average cost
+        const totalQty = (totals.openingQty || 0) + (totals.purchasedQty || 0) + netAdjustmentQty;
+        const totalCost = (totals.openingCost || 0) + (totals.purchaseCost || 0) + netAdjustmentCost;
+        totals.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
+
+        return {
+          ...product,
+          locationStock: locationData,
+          stockSummary: totals
+        };
+      });
+      setProducts(enrichedProducts)
+      return enrichedProducts;
+    } catch (error) {
+      console.error('Error in getProductsStockReport:', error);
+      setAlertState('error');
+      setAlert('Error loading inventory report data');
+      setAlertTimeout(5000);
+      return products; // Return original products in case of error
+    }
+  };
+
+  // Helper function to create an empty stock data object
+  const createEmptyStockData = () => ({
+    openingQty: 0,
+    openingCost: 0,
+    purchasedQty: 0,
+    purchaseCost: 0,
+    soldQty: 0,
+    salesValue: 0,
+    costOfGoodsSold: 0,
+    transferInQty: 0,
+    transferOutQty: 0,
+    positiveAdjustmentQty: 0,
+    positiveAdjustmentCost: 0,
+    negativeAdjustmentQty: 0,
+    negativeAdjustmentCost: 0,
+    netAdjustmentQty: 0,
+    netAdjustmentCost: 0,
+    closingQty: 0,
+    closingCost: 0,
+    closingSalesValue: 0,
+    averageCost: 0
+  });
 
 
 
@@ -1241,7 +1676,8 @@ function App() {
           salesLoadCount, setSalesLoadCount, 
           sales, setSales, getSales,
           nextSales, setNextSales, 
-          products, setProducts, getProducts, getProductsWithStock,
+          products, setProducts, getProducts, 
+          getProductsWithStock, getProductsStockReport,
           accommodations, setAccommodations, getAccommodations,
           purchase, setPurchase, getPurchase,
           expenses, setExpenses, getExpenses,
