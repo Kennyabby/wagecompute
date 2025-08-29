@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
+import { format, startOfMonth, parseISO, endOfDay } from 'date-fns';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import ContextProvider from '../../../Resources/ContextProvider';
 import './Stock.css';
 
@@ -14,13 +17,66 @@ const Stock = ({
     postingDate
 }) => {
     const {
-        server, fetchServer, getProducts, getProductsWithStock,
+        server, fetchServer, getProducts, getProductsWithStock, getProductsStockReport,
         setAlert, setAlertState, setAlertTimeout,
-        products, settings, company, companyRecord,
+        products, setProducts, settings, company, companyRecord,
     } = useContext(ContextProvider);
     const intervalRef = useRef(null);
-    const [wrhs, setWrhs] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
     const [categories, setCategories] = useState([]);
+
+    // Fetch warehouses from the database
+    const getWarehouses = async () => {
+        try {
+            const response = await fetchServer(
+                'POST',
+                {
+                    database: company,
+                    collection: 'Warehouses',
+                    prop: {}
+                },
+                'getDocsDetails',
+                server
+            );
+            if (response.record) {
+                setWarehouses(response.record);
+            }
+        } catch (error) {
+            console.error('Error fetching warehouses:', error);
+            setAlertState('error');
+            setAlert('Failed to load warehouses');
+            setAlertTimeout(5000);
+        }
+    };
+
+    // Fetch categories from the database
+    const getCategories = async () => {
+        try {
+            const response = await fetchServer(
+                'POST',
+                {
+                    database: company,
+                    collection: 'ItemGroups',
+                    prop: {}
+                },
+                'getDocsDetails',
+                server
+            );
+            if (response.record) {
+                const formattedCategories = response.record.map(cat => ({
+                    code: cat.code || cat.name,
+                    name: cat.name
+                }));
+                setCategories(formattedCategories);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+            setAlertState('error');
+            setAlert('Failed to load categories');
+            setAlertTimeout(5000);
+        }
+    };
+    const [wrhs, setWrhs] = useState([]);
     const [fromWarehouse, setFromWarehouse] = useState('');
     const [toWarehouse, setToWarehouse] = useState('');
     const [curWarehouse, setCurWarehouse] = useState('all');
@@ -28,28 +84,67 @@ const Stock = ({
     const defaultColumns = [
         { name: 'Product ID', reference: 'i_d', show: true },
         { name: 'Product Name', reference: 'name', show: true },
-        { name: 'Base UOM', reference: 'salesUom', show: true },
-        { name: 'Quantity', reference: 'available quantity', show: true},
-        { name: 'Total Price', reference: 'totalSales', show: true},
-        { name: 'Total Cost', reference: 'totalCost', show: true},
-        { name: 'Unit Cost', reference: 'costPrice', show: true },
-        { name: 'Sales Price', reference: 'salesPrice', show: true },
+        { name: 'UOM', reference: 'salesUom', show: true },
+        // Opening Stock
+        { name: 'Opening Qty', reference: 'openingQuantity', show: true },
+        { name: 'Opening Value', reference: 'openingCost', show: true },
+        // Purchases
+        { name: 'Purchased Qty', reference: 'purchasedQty', show: true },
+        { name: 'Purchase Cost', reference: 'purchaseCost', show: true },
+        // Transfers
+        { name: 'Transfer In', reference: 'transferInQty', show: true },
+        { name: 'Transfer Out', reference: 'transferOutQty', show: true },
+        // Sales
+        { name: 'Sold Qty', reference: 'soldQty', show: true },
+        { name: 'Sales Value', reference: 'salesValue', show: true },
+        { name: 'COGS', reference: 'costOfGoodsSold', show: true },
+        // Adjustments
+        { name: 'Net Adjustment Qty', reference: 'netAdjustmentQty', show: true },
+        { name: 'Net Adjustment Cost', reference: 'netAdjustmentCost', show: true },
+        // Adjustments
+        { name: 'Negative Adjustment Qty', reference: 'negativeAdjustmentQty', show: false },
+        { name: 'Negative Adjustment Cost', reference: 'negativeAdjustmentCost', show: false },
+        // Adjustments
+        { name: 'Positive Adjustment Qty', reference: 'positiveAdjustmentQty', show: false },
+        { name: 'Positive Adjustment Cost', reference: 'positiveAdjustmentCost', show: false },
+        // Closing Stock
+        { name: 'Closing Qty', reference: 'closingQty', show: true },
+        { name: 'Closing Cost', reference: 'closingCost', show: true },
+        { name: 'Closing Value', reference: 'closingSalesValue', show: true },
+        // Transfer related (hidden by default)
         { name: 'Quantity to Transfer', reference: 'quantityToTransfer', show: false },
         { name: 'Transfer Cost', reference: 'transferCost', show: false }
     ]
     const [columns, setColumns] = useState([...defaultColumns]);
     const [transferEntries, setTransferEntries] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [dateRange, setDateRange] = useState(() => ({
+        startDate: startOfMonth(new Date()),
+        endDate: endOfDay(new Date())
+    }));
+    
+    // Memoize dateRange to prevent unnecessary effect re-runs
+    const stableDateRange = useMemo(() => ({
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate
+    }), [dateRange.startDate.getTime(), dateRange.endDate.getTime()]);
 
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');
-        getProductsWithStock(cmp_val, products)
+        getProductsStockReport(cmp_val, products, {
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate
+        });
         if (!isTransferClicked){
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
             if (cmp_val) {
                 intervalRef.current = setInterval(() => {
-                    getProductsWithStock(cmp_val, products)
+                    getProductsStockReport(cmp_val, products, {
+                        startDate: dateRange.startDate,
+                        endDate: dateRange.endDate
+                    });
                 }, 45000);
             }
             return () => {
@@ -112,6 +207,68 @@ const Stock = ({
             handleTransfer();
         }
     },[isSaveClicked])
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (company) {
+                setIsLoading(true);
+                try {
+                    // First get warehouses and categories
+                    await Promise.all([getWarehouses(), getCategories()]);
+                    
+                    // Then get products with stock data using the stock report
+                    // const products = await getProducts(company);
+                    if (products && products.length) {
+                        // Use getProductsStockReport instead of getProductsWithStock
+                        const productsWithStock = await getProductsStockReport(company, products, {
+                            startDate: dateRange.startDate,
+                            endDate: dateRange.endDate
+                        });
+                        // console.log(productsWithStock)
+                        // Update products with the stock data
+                        if (productsWithStock) {
+                            setProducts(productsWithStock);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    setAlertState('error');
+                    setAlert('Failed to load inventory data');
+                    setAlertTimeout(5000);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        fetchData();
+    }, [company, stableDateRange]);
+
+    useEffect(() => {
+        const updateStockData = async () => {
+            if (company && products.length) {
+                setIsLoading(true);
+                try {
+                    const updatedProducts = await getProductsStockReport(company, products, {
+                        startDate: dateRange.startDate,
+                        endDate: dateRange.endDate
+                    });
+                    if (updatedProducts) {
+                        setProducts(updatedProducts);
+                    }
+                } catch (error) {
+                    console.error('Error updating stock data:', error);
+                    setAlertState('error');
+                    setAlert('Failed to update inventory data');
+                    setAlertTimeout(5000);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        updateStockData();
+    }, [dateRange]);
 
     const handleInputChange = ({ e, productId, costPrice }) => {
         const { name, value } = e.target;
@@ -250,6 +407,15 @@ const Stock = ({
         }
     };
 
+    // Format currency values
+    const formatCurrency = (value) => {
+        if (value === undefined || value === null) return '0.00';
+        return parseFloat(value).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    };
+
     return (
         <div className='adjustments'>
             <div className='adj-left'>
@@ -297,13 +463,39 @@ const Stock = ({
                     }
                 }}>
                     <div className={(curCategory === 'all' ? 'opt-active' : '')} name='all'>All</div>
-                    {categories.map(category => (
-                        category.type === 'goods' && (
-                            <div className={(category.code === curCategory) ? 'opt-active' : ''} name={category.code} key={category.code}>
-                                {category.name}
-                            </div>
-                        )
+                    {categories.map((cat) => (
+                        <div className={(cat.code === curCategory ? 'opt-active' : '')} name={cat.code} key={cat.code}>
+                            {cat.name}
+                        </div>
                     ))}
+                </div>
+                <div className='adj-title'>Date Range</div>
+                <div className='date-range-container'>
+                    <div className='date-range-item'>
+                        <label>Start Date:</label>
+                        <DatePicker
+                            selected={dateRange.startDate}
+                            onChange={(date) => setDateRange({...dateRange, startDate: date})}
+                            selectsStart
+                            startDate={dateRange.startDate}
+                            endDate={dateRange.endDate}
+                            maxDate={new Date()}
+                            className='date-picker'
+                        />
+                    </div>
+                    <div className='date-range-item'>
+                        <label>End Date:</label>
+                        <DatePicker
+                            selected={dateRange.endDate}
+                            onChange={(date) => setDateRange({...dateRange, endDate: endOfDay(date)})}
+                            selectsEnd
+                            startDate={dateRange.startDate}
+                            endDate={dateRange.endDate}
+                            minDate={dateRange.startDate}
+                            maxDate={new Date()}
+                            className='date-picker'
+                        />
+                    </div>
                 </div>
             </div>
             <div className='adj-right-header'>
@@ -332,70 +524,103 @@ const Stock = ({
                     </div>
                 </div>}
                 <div className='adj-right'>
-                    {columns.map((col, index) => (
-                        col.show && (
+                    {columns.map((col, index) => {
+                        // Filter and map products once to avoid duplicate calculations
+                        const filteredProducts = isLoading ? [] : products.filter(prflt => {
+                            if (curCategory !== 'all' && prflt.category !== curCategory) return false;
+                            return prflt.type === 'goods';
+                        });
+
+                        // Calculate totals for numeric columns
+                        let columnTotal = 0;
+                        if (!isLoading && col.reference) {
+                            columnTotal = filteredProducts.reduce((sum, product) => {
+                                let stockData = { ...(product.stockSummary || {}) };
+                                if (curWarehouse !== 'all') {
+                                    const locationData = product.locationStock?.[curWarehouse] || {};
+                                    stockData = { ...stockData, ...locationData };
+                                }
+                                const value = stockData[col.reference] || 0;
+                                return sum + (typeof value === 'number' ? value : 0);
+                            }, 0);
+                        }
+
+                        if (!col.show) return null;
+                        
+                        return (
                             <div className='adj-right-content' key={index}>
                                 <div className='colname stockColname'>{col.name}</div>
-                                {products.filter(prflt => {
-                                    if (curCategory === 'all') {
-                                        return prflt.type === 'goods';
-                                    } else {
-                                        if (prflt.type === 'goods') {
-                                            return prflt.category === curCategory;
-                                        }
-                                    }
-                                }).map((product, index1) => {
-                                    const purchaseWrh = wrhs.find((warehouse)=>{
-                                        return warehouse.purchase
-                                    })
-                                    const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
-                                    let cummulativeUnitCostPrice = 0            
-                                    cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+                                {isLoading ? (
+                                    <div className='colrows'>Loading...</div>
+                                ) : filteredProducts.map((product, index1) => {
+                                    // Get stock summary for the current warehouse or all warehouses
+                                    let stockData = { ...(product.stockSummary || {}) };
                                     
-                                    product.costPrice = cummulativeUnitCostPrice
-                                    let availableQty = 0;
-                                    if (['available quantity', 'totalCost', 'totalSales'].includes(col.reference)) {
-                                        wrhs.forEach(wrh => {
-                                            if (curWarehouse === 'all') {
-                                                availableQty = Number(product.totalStock || 0)
-                                               
-                                            } else {
-                                                if (wrh.name === curWarehouse) {
-                                                    const {cost, quantity} = product.locationStock?.[curWarehouse] || {cost: 0, quantity: 0}
-                                                    availableQty = Number(quantity || 0);
-                                                    
-                                                }
-                                            }
-                                        });
-                                        if (col.reference === 'totalCost') {
-                                            return <div className='colrows' key={index1}>{(Number(product.costPrice) * availableQty).toLocaleString()}</div>;
-                                        }else if(col.reference === 'totalSales'){
-                                            return <div className='colrows' key={index1}>{(Number(product.salesPrice) * availableQty).toLocaleString()}</div>;
-                                        }
-                                        else{
-                                            return <div className='colrows' key={index1}>{availableQty}</div>;
-                                        }
-                                    } else if (col.reference === 'quantityToTransfer') {
-                                        
-                                        return <div>
-                                            <input 
-                                                className='countedInp stockCountedInp' 
-                                                type='number' 
-                                                name='quantityToTransfer' 
-                                                placeholder='enter'
-                                                value={transferEntries.filter(entry => product.i_d === entry.productId)[0]?.quantityToTransfer} 
-                                                onChange={(e) => handleInputChange({ e, productId:product.i_d, costPrice:product.costPrice })} 
-                                            />
-                                        </div>
+                                    // If a specific warehouse is selected, use its data
+                                    if (curWarehouse !== 'all') {
+                                        const locationData = product.locationStock?.[curWarehouse] || {};
+                                        stockData = { ...stockData, ...locationData };
+                                    }
+
+                                   
+
+                                    // Handle different column types
+                                    if (col.reference === 'quantityToTransfer') {
+                                        return (
+                                            <div key={index1}>
+                                                <input 
+                                                    className='countedInp stockCountedInp' 
+                                                    type='number' 
+                                                    name='quantityToTransfer' 
+                                                    placeholder='enter'
+                                                    value={transferEntries.find(entry => product.i_d === entry.productId)?.quantityToTransfer || ''} 
+                                                    onChange={(e) => handleInputChange({ 
+                                                        e, 
+                                                        productId: product.i_d, 
+                                                        costPrice: stockData.averageCost || 0 
+                                                    })} 
+                                                />
+                                            </div>
+                                        );
                                     } else if (col.reference === 'transferCost') {
-                                        return <div className='colrows' key={index1}>{transferEntries.filter(entry => product.i_d === entry.productId)[0]?.transferCost || 0}</div>;
+                                        return (
+                                            <div className='colrows' key={index1}>
+                                                {formatCurrency(transferEntries.find(entry => product.i_d === entry.productId)?.transferCost || 0)}
+                                            </div>
+                                        );
+                                    } else if (col.reference in stockData) {
+                                        // Handle numeric values with formatting
+                                        const value = stockData[col.reference];
+                                        if (typeof value === 'number') {
+                                            if (['openingCost', 'purchaseCost', 'salesValue', 'costOfGoodsSold', 
+                                                 'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.reference)) {
+                                                return <div className='colrows' key={index1}>{formatCurrency(value)}</div>;
+                                            }
+                                            return <div className='colrows' key={index1}>{value.toLocaleString()}</div>;
+                                        }
+                                        return <div className='colrows' key={index1}>{value || '0'}</div>;
+                                    } else if (col.reference in product) {
+                                        // Handle product properties
+                                        return <div className='colrows' key={index1}>{product[col.reference] || ''}</div>;
                                     } else {
-                                        return <div className='colrows' key={index1}>{(['costPrice', 'salesPrice'].includes(col.reference) ? Number(product[col.reference]).toLocaleString() : product[col.reference])}</div>;
+                                        return <div className='colrows' key={index1}>-</div>;
                                     }
                                 })}
+                                {/* Totals Row */}
+                                {!isLoading && filteredProducts.length > 0 && (
+                                    <div className='colrows total-row'>
+                                        {['openingCost', 'purchaseCost', 'salesValue', 'costOfGoodsSold', 
+                                          'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.reference) 
+                                            ? formatCurrency(columnTotal)
+                                            : (typeof columnTotal === 'number' 
+                                                ? columnTotal.toLocaleString() 
+                                                : columnTotal || '0')
+                                        }
+                                    </div>
+                                )}
                             </div>
-                        )
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>
