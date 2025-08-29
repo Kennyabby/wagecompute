@@ -10,12 +10,13 @@ const Stock = ({
     isSaveClicked, 
     setIsSaveValue, 
     isTransferClicked, 
-    setIsTransferValue 
+    setIsTransferValue,
+    postingDate
 }) => {
     const {
         server, fetchServer, getProducts, getProductsWithStock,
         setAlert, setAlertState, setAlertTimeout,
-        products, settings, company, companyRecord, postingDate
+        products, settings, company, companyRecord,
     } = useContext(ContextProvider);
     const intervalRef = useRef(null);
     const [wrhs, setWrhs] = useState([]);
@@ -183,7 +184,8 @@ const Stock = ({
                         totalCost: transferCost * -1,
                         createdAt: createdAt,
                         handlerId: companyRecord?.emailid,
-                        postingDate: postingDate
+                        postingDate: postingDate,
+                        postingStamp: new Date(postingDate)
                     }
 
                     const toWarehouseData = {
@@ -196,7 +198,8 @@ const Stock = ({
                         totalCost: transferCost,
                         createdAt: createdAt,
                         handlerId: companyRecord?.emailid,
-                        postingDate: postingDate
+                        postingDate: postingDate,
+                        postingStamp: new Date(postingDate)
                     }
 
                     const resps1 = await fetchServer("POST", {

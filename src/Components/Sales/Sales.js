@@ -895,6 +895,7 @@ const Sales = ()=>{
                         totalCost: Number(entry.costPrice) * Number(entry.baseQuantity) * -1,
                         totalSales: Number(entry.totalSales) * -1,
                         postingDate: postingDate,
+                        postingStamp: new Date(postingDate),
                         createdAt: createdAt,
                     };                                       
 
