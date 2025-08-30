@@ -734,13 +734,13 @@ const Sales = ()=>{
         const insufficientProducts = []
         Object.keys(validEntries).forEach((entryWrh)=>{
             for (const entry of validEntries[entryWrh]){
-                const product = products.find(p => p.i_d === entry.i_d);
+                const product = products.find(p => p.i_d === entry.productId);
                 if (product) {
                     let countBaseQuantity = 0;
                     const {cost, quantity} = product.locationStock?.[entryWrh] || {cost: 0, quantity: 0}
-                    countBaseQuantity = Number(quantity || 0);                            
+                    countBaseQuantity = Number(quantity || 0);  
                     if (countBaseQuantity < Math.abs(Number(entry.baseQuantity))) {
-                        insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()}) in ${entryWrh}`);
+                        insufficientProducts.push(`[${entry.productId}] ${entry.name} (${countBaseQuantity.toLocaleString()}) in ${entryWrh}`);
                     }
                 }
             }
