@@ -86,7 +86,7 @@ const Stock = ({
         { name: 'Product Name', reference: 'name', show: true },
         { name: 'UOM', reference: 'salesUom', show: true },
         // Opening Stock
-        { name: 'Opening Qty', reference: 'openingQuantity', show: true },
+        { name: 'Opening Stock', reference: 'openingQuantity', show: true },
         { name: 'Opening Value', reference: 'openingCost', show: true },
         // Purchases
         { name: 'Purchased Qty', reference: 'purchasedQty', show: true },
@@ -108,7 +108,8 @@ const Stock = ({
         { name: 'Positive Adjustment Qty', reference: 'positiveAdjustmentQty', show: false },
         { name: 'Positive Adjustment Cost', reference: 'positiveAdjustmentCost', show: false },
         // Closing Stock
-        { name: 'Closing Qty', reference: 'closingQty', show: true },
+        { name: 'Closing Stock', reference: 'closingQty', show: true },
+        { name: 'Average Cost', reference: 'averageCost', show: true },
         { name: 'Closing Cost', reference: 'closingCost', show: true },
         { name: 'Closing Value', reference: 'closingSalesValue', show: true },
         // Transfer related (hidden by default)
@@ -304,8 +305,8 @@ const Stock = ({
                 const product = products.find(p => p.i_d === productId);
                 if (product) {
                     let countBaseQuantity = 0;
-                    const {cost, quantity} = product.locationStock?.[fromWarehouse] || {cost: 0, quantity: 0}
-                    countBaseQuantity = Number(quantity || 0);                    
+                    const {closingCost, closingQty} = product.locationStockDetails?.[fromWarehouse] || {closingCost: 0, closingQty: 0}
+                    countBaseQuantity = Number(closingQty || 0);                    
                     if (countBaseQuantity < Number(quantityToTransfer)) {
                         insufficientProducts.push(productId);
                     }
@@ -537,7 +538,7 @@ const Stock = ({
                             columnTotal = filteredProducts.reduce((sum, product) => {
                                 let stockData = { ...(product.stockSummary || {}) };
                                 if (curWarehouse !== 'all') {
-                                    const locationData = product.locationStock?.[curWarehouse] || {};
+                                    const locationData = product.locationStockDetails?.[curWarehouse] || {};
                                     stockData = { ...stockData, ...locationData };
                                 }
                                 const value = stockData[col.reference] || 0;
@@ -558,7 +559,7 @@ const Stock = ({
                                     
                                     // If a specific warehouse is selected, use its data
                                     if (curWarehouse !== 'all') {
-                                        const locationData = product.locationStock?.[curWarehouse] || {};
+                                        const locationData = product.locationStockDetails?.[curWarehouse] || {};
                                         stockData = { ...stockData, ...locationData };
                                     }
 

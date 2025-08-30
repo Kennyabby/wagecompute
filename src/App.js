@@ -1116,6 +1116,39 @@ function App() {
                     ]
                   }
                 },
+                // Purchases
+                purchasedQty: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$entryType", "Purchase"] },
+                        { $gt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
+                purchaseCost: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$entryType", "Purchase"] },
+                        { $gt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
                 openingCost: {
                   $sum: {
                     $cond: [
@@ -1361,7 +1394,7 @@ function App() {
             stockMap[productId][location] = createEmptyStockData();
           }
           stockMap[productId][location].openingQuantity = item.openingQuantity || 0;
-          stockMap[productId][location].openingCost = item.openingCost || 0;
+          stockMap[productId][location].openingCost = (products.find(p => p.i_d === productId)?.salesPrice && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
         });
       }
 
@@ -1405,15 +1438,11 @@ function App() {
                                    (locationData.netAdjustmentQty || 0);
           
           // Calculate closing cost (using average cost method)
-          const totalCost = (locationData.openingCost || 0) + 
-                           (locationData.purchaseCost || 0) + 
-                           (locationData.netAdjustmentCost || 0);
-          const totalQty = (locationData.openingQuantity || 0) + 
-                          (locationData.purchasedQty || 0) + 
-                          (locationData.netAdjustmentQty || 0);
+          const totalCost =(locationData.purchaseCost || 0)
+          const totalQty = (locationData.purchasedQty || 0)
           
           locationData.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
-          locationData.closingCost = locationData.closingQty * locationData.averageCost;
+          locationData.closingCost = (products.find(p => p.i_d === productId)?.salesPrice) ? (locationData.closingQty * locationData.averageCost) : 0;
           locationData.closingSalesValue = locationData.closingQty * (products.find(p => p.i_d === productId)?.salesPrice || 0);
         });
       }
@@ -1444,6 +1473,7 @@ function App() {
           
           // Closing values
           closingQty: (acc.closingQty || 0) + (loc.closingQty || 0),
+          averageCost: (acc.averageCost || 0) + (loc.averageCost || 0),
           closingCost: (acc.closingCost || 0) + (loc.closingCost || 0),
           closingSalesValue: (acc.closingSalesValue || 0) + (loc.closingSalesValue || 0)
         }), createEmptyStockData());
@@ -1457,13 +1487,13 @@ function App() {
         totals.netAdjustmentCost = netAdjustmentCost;
         
         // Calculate average cost
-        const totalQty = (totals.openingQty || 0) + (totals.purchasedQty || 0) + netAdjustmentQty;
-        const totalCost = (totals.openingCost || 0) + (totals.purchaseCost || 0) + netAdjustmentCost;
+        const totalQty = (totals.purchasedQty || 0);
+        const totalCost = (totals.purchaseCost || 0);
         totals.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
 
         return {
           ...product,
-          locationStock: locationData,
+          locationStockDetails: locationData,
           stockSummary: totals
         };
       });

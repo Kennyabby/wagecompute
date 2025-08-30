@@ -739,7 +739,7 @@ const Sales = ()=>{
                     let countBaseQuantity = 0;
                     const {cost, quantity} = product.locationStock?.[entryWrh] || {cost: 0, quantity: 0}
                     countBaseQuantity = Number(quantity || 0);                            
-                    if (countBaseQuantity < Number(entry.baseQuantity)) {
+                    if (countBaseQuantity < Math.abs(Number(entry.baseQuantity))) {
                         insufficientProducts.push(`[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()}) in ${entryWrh}`);
                     }
                 }
