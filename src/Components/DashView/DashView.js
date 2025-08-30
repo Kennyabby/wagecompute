@@ -234,8 +234,8 @@ const DashView = () =>{
             if (products && Array.isArray(products)){
                 products.forEach(p=>{
                     inventoryQty += Number(p.totalStock||0)
-                    inventoryValue += Number(p.totalCost||0)
-                    inventorySales += Math.abs(Number(p.totalSales||0))
+                    inventoryValue += (p.salesPrice && purchasesQty) ? (purchasesAmount/purchasesQty)*Number(p.totalStock||0) : 0
+                    inventorySales += (Number(p.salesPrice||0) * Number(p.totalStock||0))
                 })
             }
 
