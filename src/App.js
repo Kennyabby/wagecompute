@@ -1094,7 +1094,7 @@ function App() {
             {
               $match: {
                 $expr: {
-                  $lt: [
+                  $lte: [
                     { $toString: "$postingStamp" },
                     formattedStartDate
                   ]
@@ -1138,7 +1138,7 @@ function App() {
                     $cond: [
                       { $and: [
                         { $eq: ["$entryType", "Purchase"] },
-                        { $gt: ["$baseQuantity", 0] }
+                        { $gte: ["$baseQuantity", 0] }
                       ]},
                       { $cond: [
                         { $isNumber: "$totalCost" },
@@ -1384,15 +1384,21 @@ function App() {
 
       // 3. Process and merge the data
       const stockMap = {};
+      const purchaseInfo = {}
       
       // Process opening stock
       if (openingStockResp.record) {
         openingStockResp.record.forEach(item => {
           const { productId, location } = item._id;
           if (!stockMap[productId]) stockMap[productId] = {};
+          if (!purchaseInfo[productId]) purchaseInfo[productId] = {};
           if (!stockMap[productId][location]) {
             stockMap[productId][location] = createEmptyStockData();
           }
+          if (!purchaseInfo[productId].purchasedQty) purchaseInfo[productId].purchasedQty = 0;
+          if (!purchaseInfo[productId].purchaseCost) purchaseInfo[productId].purchaseCost = 0;
+          purchaseInfo[productId].purchasedQty += item.purchasedQty || 0;
+          purchaseInfo[productId].purchaseCost += item.purchaseCost || 0;
           stockMap[productId][location].openingQuantity = item.openingQuantity || 0;
           stockMap[productId][location].openingCost = (products.find(p => p.i_d === productId)?.salesPrice && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
         });
@@ -1406,7 +1412,11 @@ function App() {
           if (!stockMap[productId][location]) {
             stockMap[productId][location] = createEmptyStockData();
           }
-          
+          if (!purchaseInfo[productId]) purchaseInfo[productId] = {};
+          if (!purchaseInfo[productId].purchasedQty) purchaseInfo[productId].purchasedQty = 0;
+          if (!purchaseInfo[productId].purchaseCost) purchaseInfo[productId].purchaseCost = 0;
+          purchaseInfo[productId].purchasedQty += item.purchasedQty || 0;
+          purchaseInfo[productId].purchaseCost += item.purchaseCost || 0;
           // Update with transaction data
           const locationData = stockMap[productId][location];
           locationData.purchasedQty = item.purchasedQty || 0;
@@ -1438,8 +1448,8 @@ function App() {
                                    (locationData.netAdjustmentQty || 0);
           
           // Calculate closing cost (using average cost method)
-          const totalCost =(locationData.purchaseCost || 0)
-          const totalQty = (locationData.purchasedQty || 0)
+          const totalCost = purchaseInfo[productId].purchaseCost
+          const totalQty = purchaseInfo[productId].purchasedQty
           
           locationData.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
           locationData.closingCost = (products.find(p => p.i_d === productId)?.salesPrice) ? (locationData.closingQty * locationData.averageCost) : 0;

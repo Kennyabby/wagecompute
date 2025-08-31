@@ -2,20 +2,150 @@
 .sidenav {
     position: fixed;
     top: 0;
-    left: -100%;
+    left: 0;
     width: 280px;
     height: 100vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     background: rgb(57, 54, 54);
     color: white;
     z-index: 3000;
-    transition: left 0.3s ease-in-out;
+    transition: all 0.3s ease-in-out;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.navbox {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 20px;
+}
+
+/* Collapsed state */
+.sidenav.collapsed {
+    width: max-content;
+    box-sizing: border-box;
+}
+
+/* Show approval indicators in collapsed state */
+.sidenav.collapsed .navdivcount {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    transform: scale(0.8);
+    transform-origin: top right;
+    z-index: 1;
+}
+
+/* Make sure scrollbar doesn't affect layout */
+.sidenav.collapsed::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidenav.collapsed::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.sidenav.collapsed::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Ensure nav items are still clickable when collapsed */
+.sidenav.collapsed .navdiv {
+    position: relative;
+    overflow: visible;
+}
+
+/* Show tooltip on hover when collapsed */
+.sidenav.collapsed .navdiv::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 9999;
+    margin-left: 10px;
+}
+
+.sidenav.collapsed .navdiv:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.sidenav.collapsed .navheader {
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.sidenav.collapsed .navdiv {
+    justify-content: center;
+    padding: 12px 0;
+}
+
+.sidenav.collapsed .navdiv > div:not(.notification-badge) {
+    display: none;
+}
+
+.sidenav.collapsed .navdiv .navdivicon {
+    margin-right: 0;
+    font-size: 1.5rem;
+}
+
+/* Collapse button */
+.navheader {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.collapse-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.collapse-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Adjust main content when sidebar is collapsed */
+.main-content {
+    margin-left: 280px;
+    transition: margin 0.3s ease-in-out;
+}
+
+.sidenav.collapsed + .main-content {
+    margin-left: 60px;
 }
 
 /* Mobile menu button */
 .mobile-menu-btn {
-    display: none;
+    display: flex;
     position: fixed;
     top: 5px;
     left: 5px;
@@ -31,7 +161,47 @@
     justify-content: center;
     align-items: center;
     padding: 0;
-    position: relative;
+}
+
+/* Hide menu button on desktop by default */
+@media (min-width: 769px) {
+    .mobile-menu-btn {
+        display: none;
+    }
+}
+
+/* Ensure single column layout when collapsed */
+.sidenav.collapsed .navbarr {
+    grid-template-columns: 1fr !important;
+    gap: 5px !important;
+    width: 100%;
+    padding-right: 0;
+}
+
+.sidenav.collapsed .navdiv {
+    width: calc(100% - 8px) !important; /* Account for scrollbar */
+    margin: 2px 4px !important;
+    justify-content: center !important;
+    padding: 12px 0 !important;
+    min-width: auto !important;
+    box-sizing: border-box;
+}
+
+.sidenav.collapsed .navdivicon {
+    margin: 0 !important;
+}
+
+.sidenav.collapsed .navdiv > div:not(.notification-badge):not(.navdivcount) {
+    display: none;
+}
+
+/* Ensure approval indicators are visible when collapsed */
+.sidenav.collapsed .navdivcount {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    transform: scale(0.8);
+    transform-origin: top right;
 }
 
 .mobile-menu-badge {
@@ -75,19 +245,6 @@
     z-index: 999;
 }
 
-.navheader{
-    width: 90%;
-    margin: 20px auto;
-    font-weight: bold;
-    font-size: 1.4rem;
-    text-align: center;
-}
-
-.icons{
-    width: 10%;
-    background: rgb(36, 35, 35);
-}
-
 .navbarr {
     display: flex;
     flex-direction: column;
@@ -98,14 +255,22 @@
 }
 
 .navdiv {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    margin: 4px 10px;
     position: relative;
+    white-space: nowrap;
     width: 100%;
     padding: 12px 15px;
     background: rgb(124, 197, 15);
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 15px;
     cursor: pointer;
     border-radius: 7px;
     color: white;
@@ -212,20 +377,45 @@
     }
 }
 
-/* Tablet styles */
-@media (min-width: 577px) and (max-width: 1024px) {
+/* Mobile styles */
+@media (max-width: 768px) {
     .sidenav {
+        left: -100%;
+        transition: left 0.3s ease-in-out;
         width: 280px;
-        left: -280px;
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
     }
     
     .sidenav.open {
         left: 0;
     }
     
+    .sidenav.collapsed {
+        width: 60px;
+    }
+    
+    .sidenav.collapsed.open {
+        left: 0;
+    }
+    
+    /* Show menu button on mobile */
     .mobile-menu-btn {
         display: flex;
+    }
+    
+    /* Overlay for mobile menu */
+    .menu-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2999;
+    }
+    
+    .menu-overlay.open {
+        display: block;
     }
     
     .menu-overlay.open {
