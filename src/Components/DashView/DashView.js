@@ -173,7 +173,30 @@ const DashView = () =>{
         setLoading(true)
         setDashErr('')
         try{
-            const filter = { postingDate: { $gte: fromDate, $lte: toDate } }
+            // Format dates for MongoDB query
+            const formattedStartDate = new Date(fromDate).toISOString();
+            const formattedEndDate = new Date(toDate).toISOString();
+            
+            const filter = {
+                $expr: {
+                  $and: [
+                    {
+                      $lte: [
+                        { $toString: "$postingStamp" },
+                        formattedEndDate
+                      ]
+                    },
+                    {
+                      $gte: [
+                        { $toString: "$postingStamp" },
+                        formattedStartDate
+                      ]
+                    }
+                  ]
+                }
+            }
+            
+            // const filter = { postingStamp: { $gte: formattedStartDate, $lte: formattedEndDate } }
             if (locationFilter) filter.location = locationFilter
             if (productFilter) filter.productId = productFilter
             // Query InventoryTransactions once for range

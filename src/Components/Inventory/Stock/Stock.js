@@ -419,86 +419,99 @@ const Stock = ({
 
     return (
         <div className='adjustments'>
-            <div className='adj-left'>
-                <div className='adj-title'>Warehouses</div>
-                <div className='adj-list' onClick={(e) => {
-                    const name = e.target.getAttribute('name');
-                    if (name) {
-                        if (name === 'all') {
-                            setColumns(columns => {
-                                columns.forEach(column => {
-                                    if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)) {
-                                        column.show = false;
-                                    }
-                                });
-                                return [...columns];
-                            });
-                        }
-                        setCurWarehouse(name);
-                    }
-                }}>
-                    <div className={(curWarehouse === 'all' ? 'opt-active' : '')} name='all'>All</div>
-                    {wrhs.map((wrh) => {
-                        if (isTransferClicked) {
-                            if (fromWarehouse === wrh.name || toWarehouse === wrh.name) {
-                                return (                            
-                                    <div className={(wrh.name === curWarehouse) ? 'opt-active' : ''} name={wrh.name} key={wrh.name}>
-                                        {wrh.name.toUpperCase()}
-                                    </div>
-                                )
-                            }
-                        }else{
-                            return (                            
-                                <div className={(wrh.name === curWarehouse) ? 'opt-active' : ''} name={wrh.name} key={wrh.name}>
-                                    {wrh.name.toUpperCase()}
-                                </div>
-                            )
-                        }
-                    })}
+            <div className='filter-section'>
+                <div className='filter-header'>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    Filters
                 </div>
-                <div className='adj-title'>Categories</div>
-                <div className='adj-list' onClick={(e) => {
-                    const name = e.target.getAttribute('name');
-                    if (name) {
-                        setCurCategory(name);
-                    }
-                }}>
-                    <div className={(curCategory === 'all' ? 'opt-active' : '')} name='all'>All</div>
-                    {categories.map((cat) => (
-                        <div className={(cat.code === curCategory ? 'opt-active' : '')} name={cat.code} key={cat.code}>
-                            {cat.name}
+                
+                <div className='filter-row'>
+                    <div className='filter-group'>
+                        <label>Date Range</label>
+                        <div className='date-range-container'>
+                            <div className='date-range-item'>
+                                <label>Start Date</label>
+                                <DatePicker
+                                    selected={dateRange.startDate}
+                                    onChange={(date) => setDateRange({...dateRange, startDate: date})}
+                                    selectsStart
+                                    startDate={dateRange.startDate}
+                                    endDate={dateRange.endDate}
+                                    maxDate={new Date()}
+                                    className='filter-input date-picker'
+                                />
+                            </div>
+                            <div className='date-range-item'>
+                                <label>End Date</label>
+                                <DatePicker
+                                    selected={dateRange.endDate}
+                                    onChange={(date) => setDateRange({...dateRange, endDate: endOfDay(date)})}
+                                    selectsEnd
+                                    startDate={dateRange.startDate}
+                                    endDate={dateRange.endDate}
+                                    minDate={dateRange.startDate}
+                                    maxDate={new Date()}
+                                    className='filter-input date-picker'
+                                />
+                            </div>
                         </div>
-                    ))}
-                </div>
-                <div className='adj-title'>Date Range</div>
-                <div className='date-range-container'>
-                    <div className='date-range-item'>
-                        <label>Start Date:</label>
-                        <DatePicker
-                            selected={dateRange.startDate}
-                            onChange={(date) => setDateRange({...dateRange, startDate: date})}
-                            selectsStart
-                            startDate={dateRange.startDate}
-                            endDate={dateRange.endDate}
-                            maxDate={new Date()}
-                            className='date-picker'
-                        />
                     </div>
-                    <div className='date-range-item'>
-                        <label>End Date:</label>
-                        <DatePicker
-                            selected={dateRange.endDate}
-                            onChange={(date) => setDateRange({...dateRange, endDate: endOfDay(date)})}
-                            selectsEnd
-                            startDate={dateRange.startDate}
-                            endDate={dateRange.endDate}
-                            minDate={dateRange.startDate}
-                            maxDate={new Date()}
-                            className='date-picker'
-                        />
+                    
+                    <div className='filter-group'>
+                        <label>Warehouse</label>
+                        <div className='filter-select-container'>
+                            <select 
+                                className='filter-select' 
+                                value={curWarehouse}
+                                onChange={(e) => {
+                                    const name = e.target.value;
+                                    if (name === 'all') {
+                                        setColumns(columns => {
+                                            columns.forEach(column => {
+                                                if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)) {
+                                                    column.show = false;
+                                                }
+                                            });
+                                            return [...columns];
+                                        });
+                                    }
+                                    setCurWarehouse(name);
+                                }}
+                            >
+                                <option value='all'>All Warehouses</option>
+                                {wrhs.map((wrh) => (
+                                    !isTransferClicked || fromWarehouse === wrh.name || toWarehouse === wrh.name ? (
+                                        <option key={wrh.name} value={wrh.name}>
+                                            {wrh.name.toUpperCase()}
+                                        </option>
+                                    ) : null
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div className='filter-group'>
+                        <label>Category</label>
+                        <div className='filter-select-container'>
+                            <select 
+                                className='filter-select' 
+                                value={curCategory}
+                                onChange={(e) => setCurCategory(e.target.value)}
+                            >
+                                <option value='all'>All Categories</option>
+                                {categories.map((cat) => (
+                                    <option key={cat.code} value={cat.code}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
+            
             <div className='adj-right-header'>
                 {isTransferClicked && <div className='transfer-section'>
                     <h4><b>Internal Transfer</b></h4>

@@ -254,7 +254,7 @@ const TransactionHistory = () => {
                       ]},
                       { $cond: [
                         { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
+                        "$baseQuantity",  
                         { $toDouble: "$baseQuantity" }
                       ] },
                       0

@@ -5,7 +5,7 @@
     display: flex;
 }
 .adj-left{
-    width: 20%;
+    width: 25%;
     height: 100%;
     padding: 10px;
     background: whitesmoke;
@@ -16,7 +16,7 @@
 }
 .adj-right{
     display: flex;
-    width: 80%;
+    width: 75%;
     height: 100%;    
     /* background: yellow; */
 }

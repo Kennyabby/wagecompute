@@ -111,7 +111,7 @@ const Reports = ()=>{
                 reportSale.postingDate = postingDate
                 reportSale.docType = 'sales'
                 reportSale.salesAmount = Number(totalCashSales) + Number(totalBankSales) 
-                + Number(totalDebt) + Number(totalShortage) + Number(totalDebtRecovered?totalDebtRecovered:0)
+                + Number(totalDebt) + Number(totalShortage)
                 
                 saledata = saledata.concat(reportSale)
             }

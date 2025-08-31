@@ -26,6 +26,7 @@ const SideNav = ()=>{
     const [attendanceApprovals, setAttendanceApprovals] = useState([])
     const [accommodationApprovals, setAccommodationApprovals] = useState([])
     const [allApprovals, setAllApprovals] = useState([])
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const location = useLocation()
     const Navigate = useNavigate()
 
@@ -127,6 +128,20 @@ const SideNav = ()=>{
         };
     }, [isMenuOpen]);
     
+    const toggleCollapse = () => {
+        setIsCollapsed(!isCollapsed);
+        // Save state to localStorage
+        localStorage.setItem('sidenavCollapsed', !isCollapsed);
+    };
+
+    // Load collapsed state from localStorage on component mount
+    useEffect(() => {
+        const savedState = localStorage.getItem('sidenavCollapsed');
+        if (savedState !== null) {
+            setIsCollapsed(savedState === 'true');
+        }
+    }, []);
+
     return(
         <>
             <button 
@@ -143,30 +158,55 @@ const SideNav = ()=>{
             </button>
             
             <div className={`menu-overlay ${isMenuOpen ? 'open' : ''}`} onClick={toggleMenu}></div>
-            <div className={`sidenav ${isMenuOpen ? 'open' : ''}`}>
-                <div className='navheader'>{companyName.toUpperCase()}</div>
+            <div className={`sidenav ${isMenuOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
+                <div className='navheader'>
+                    {!isCollapsed && <span>{companyName.toUpperCase()}</span>}
+                    <button 
+                        className="collapse-btn" 
+                        onClick={toggleCollapse}
+                        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    >
+                        {isCollapsed ? '→' : '←'}
+                    </button>
+                </div>
                 <nav className='navbox' onClick={handleNavClick}>
                     <ul className='navbarr'>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard')) && 
-                            <div name="dashboard" className={'navdiv ' + (curPath==='dashboard'?'selected':'')}>
+                            <div 
+                                name="dashboard" 
+                                className={'navdiv ' + (curPath==='dashboard'?'selected':'')}
+                                data-tooltip="Dashboard"
+                            >
                                 <BiSolidDashboard className='navdivicon' name="dashboard"/>
                                 <div name="dashboard">Dashboard</div>
                             </div>
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports')) && 
-                            <div name="reports" className={'navdiv ' + (curPath==='reports'?'selected':'')}>
+                            <div 
+                                name="reports" 
+                                className={'navdiv ' + (curPath==='reports'?'selected':'')}
+                                data-tooltip="Reports"
+                            >
                                 <BsTable className='navdivicon' name="reports"/>
                                 <div name="reports">Reports</div>
                             </div>
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees')) && 
-                            <div name="employees" className={'navdiv ' + (curPath==='employees'?'selected':'')}>
+                            <div 
+                                name="employees" 
+                                className={'navdiv ' + (curPath==='employees'?'selected':'')}
+                                data-tooltip="Employees"
+                            >
                                 <FaUsers className='navdivicon' name="employees"/>
                                 <div name="employees">Employees</div>
                             </div>
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments')) && 
-                            <div name="departments" className={'navdiv ' + (curPath==='departments'?'selected':'')}>
+                            <div 
+                                name="departments" 
+                                className={'navdiv ' + (curPath==='departments'?'selected':'')}
+                                data-tooltip="Departments"
+                            >
                                 <MdSubject className='navdivicon' name="departments"/>
                                 <div name="departments">Departments</div>
                             </div>
