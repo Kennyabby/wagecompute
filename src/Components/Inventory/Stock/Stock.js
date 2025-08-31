@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
-import { format, startOfMonth, parseISO, endOfDay } from 'date-fns';
+import { format, startOfMonth, parseISO, endOfDay, isEqual } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import ContextProvider from '../../../Resources/ContextProvider';
@@ -119,10 +119,165 @@ const Stock = ({
     const [columns, setColumns] = useState([...defaultColumns]);
     const [transferEntries, setTransferEntries] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [dateRange, setDateRange] = useState(() => ({
-        startDate: startOfMonth(new Date()),
-        endDate: endOfDay(new Date())
-    }));
+    const [showColumnManager, setShowColumnManager] = useState(false);
+    const [availableColumns, setAvailableColumns] = useState([
+        // Basic Info (always visible)
+        { id: 'i_d', name: 'Product ID', category: 'basic', visible: true, required: true },
+        { id: 'name', name: 'Product Name', category: 'basic', visible: true, required: true },
+        { id: 'salesUom', name: 'UOM', category: 'basic', visible: true, required: true },
+        
+        // Opening Stock
+        { id: 'openingQuantity', name: 'Opening Stock', category: 'stock', visible: true, required: true },
+        { id: 'openingCost', name: 'Opening Value', category: 'stock', visible: true, required: true },
+        
+        // Purchases
+        { id: 'purchasedQty', name: 'Purchased Qty', category: 'purchases', visible: true, required: true },
+        { id: 'purchaseCost', name: 'Purchase Cost', category: 'purchases', visible: true, required: true },
+        
+        // Transfers
+        { id: 'transferInQty', name: 'Transfer In', category: 'transfers', visible: true, required: true },
+        { id: 'transferOutQty', name: 'Transfer Out', category: 'transfers', visible: true, required: true },
+        
+        // Sales
+        { id: 'soldQty', name: 'Sold Qty', category: 'sales', visible: true, required: true },
+        { id: 'salesValue', name: 'Sales Value', category: 'sales', visible: true, required: true },
+        { id: 'costOfGoodsSold', name: 'COGS', category: 'sales', visible: true, required: false },
+        
+        // Adjustments
+        { id: 'netAdjustmentQty', name: 'Net Adjustment Qty', category: 'adjustments', visible: false, required: true },
+        { id: 'netAdjustmentCost', name: 'Net Adjustment Cost', category: 'adjustments', visible: false, required: true },
+        { id: 'positiveAdjustmentQty', name: 'Positive Adjustment Qty', category: 'adjustments', visible: false, required: false },
+        { id: 'positiveAdjustmentCost', name: 'Positive Adjustment Cost', category: 'adjustments', visible: false, required: false },
+        { id: 'negativeAdjustmentQty', name: 'Negative Adjustment Qty', category: 'adjustments', visible: false, required: false },
+        { id: 'negativeAdjustmentCost', name: 'Negative Adjustment Cost', category: 'adjustments', visible: false, required: false },
+        
+        // Closing Stock
+        { id: 'closingQty', name: 'Closing Stock', category: 'closing', visible: true, required: true },
+        { id: 'averageCost', name: 'Average Cost', category: 'closing', visible: true, required: false },
+        { id: 'closingCost', name: 'Closing Cost', category: 'closing', visible: true, required: false},
+        { id: 'closingSalesValue', name: 'Closing Value', category: 'closing', visible: true, required: true },
+        
+        // Transfer related (hidden by default)
+        { id: 'quantityToTransfer', name: 'Quantity to Transfer', category: 'transfer', visible: false, required: false },
+        { id: 'transferCost', name: 'Transfer Cost', category: 'transfer', visible: false, required: false }
+    ]);
+    
+    // Load saved column preferences on component mount
+    useEffect(() => {
+        const savedColumns = localStorage.getItem('inventoryStockColumns');
+        if (savedColumns) {
+            setAvailableColumns(JSON.parse(savedColumns));
+        }
+    }, []);
+    
+    // Save column preferences when they change
+    const saveColumnPreferences = (columns) => {
+        setAvailableColumns(columns);
+        localStorage.setItem('inventoryStockColumns', JSON.stringify(columns));
+    };
+    
+    // Toggle column visibility
+    const toggleColumnVisibility = (columnId) => {
+        const updatedColumns = availableColumns.map(col => 
+            col.id === columnId ? { ...col, visible: !col.visible } : col
+        );
+        saveColumnPreferences(updatedColumns);
+    };
+    
+    // Reset to default columns
+    const resetToDefaultColumns = () => {
+        const defaultColumns = availableColumns.map(col => ({
+            ...col,
+            visible: col.required || col.visibleByDefault
+        }));
+        saveColumnPreferences(defaultColumns);
+    };
+    
+    // Get visible columns for the table
+    const visibleColumns = availableColumns.filter(col => col.visible);
+    
+    // Group columns by category for the column manager
+    const columnsByCategory = availableColumns.reduce((acc, column) => {
+        if (!acc[column.category]) {
+            acc[column.category] = [];
+        }
+        acc[column.category].push(column);
+        return acc;
+    }, {});
+    
+    // Column Manager Component
+    const ColumnManagerModal = () => (
+        showColumnManager && (
+            <div className="column-manager-overlay" onClick={() => setShowColumnManager(false)}>
+                <div className="column-manager" onClick={e => e.stopPropagation()}>
+                    <div className="column-manager-header">
+                        <h3 className="column-manager-title">Manage Columns</h3>
+                        <button 
+                            className="column-manager-close" 
+                            onClick={() => setShowColumnManager(false)}
+                        >
+                            &times;
+                        </button>
+                    </div>
+                    <div className="column-manager-body">
+                        {Object.entries(columnsByCategory).map(([category, columns]) => (
+                            <div key={category} className="column-category">
+                                <h4 className="column-category-title">
+                                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                                </h4>
+                                <div className="column-list">
+                                    {columns.map(column => (
+                                        <div key={column.id} className="column-item">
+                                            <input
+                                                type="checkbox"
+                                                id={`col-${column.id}`}
+                                                checked={column.visible}
+                                                onChange={() => toggleColumnVisibility(column.id)}
+                                                disabled={column.required}
+                                                className="column-checkbox"
+                                            />
+                                            <label 
+                                                htmlFor={`col-${column.id}`} 
+                                                className="column-label"
+                                            >
+                                                {column.name}
+                                                {column.required && (
+                                                    <span className="column-required">(required)</span>
+                                                )}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="column-manager-footer">
+                        <button 
+                            className="column-manager-button"
+                            onClick={resetToDefaultColumns}
+                        >
+                            Reset to Default
+                        </button>
+                        <button 
+                            className="column-manager-button primary"
+                            onClick={() => setShowColumnManager(false)}
+                        >
+                            Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    );
+    
+    // Initialize date range with first day of current month as start date and current date as end date
+    const [dateRange, setDateRange] = useState(() => {
+        const today = new Date();
+        return {
+            startDate: startOfMonth(today),
+            endDate: endOfDay(today)
+        };
+    });
     
     // Memoize dateRange to prevent unnecessary effect re-runs
     const stableDateRange = useMemo(() => ({
@@ -190,17 +345,15 @@ const Stock = ({
         // console.log(transferEntries)
     },[transferEntries])
     useEffect(() => {
-        setColumns([...defaultColumns]);
+        // setColumns([...]);
         if (isTransferClicked){
             resetCount();
-            setColumns((columns)=>{
-                columns.forEach((column)=>{                                        
-                    if (['quantityToTransfer', 'transferCost'].includes(column.reference)){
-                        column.show = true
-                    }
-                })
-                return [...columns]
-            })
+            setAvailableColumns(prevColumns => 
+                prevColumns.map(column => ({
+                    ...column,
+                    visible: column.visible || ['quantityToTransfer', 'transferCost'].includes(column.id)
+                }))
+            )
         }
     },[isTransferClicked]);
     useEffect(()=>{        
@@ -419,7 +572,21 @@ const Stock = ({
 
     return (
         <div className='adjustments'>
-            <div className='filter-section'>
+            <div className='filter-section' style={{ position: 'relative' }}>
+                <button 
+                    className="column-manager-toggle"
+                    onClick={() => setShowColumnManager(true)}
+                    style={{ position: 'absolute', right: '20px', top: '20px' }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                        <line x1="9" y1="9" x2="21" y2="9"></line>
+                        <line x1="9" y1="15" x2="21" y2="15"></line>
+                    </svg>
+                    Manage Columns
+                </button>
+                <ColumnManagerModal />
                 <div className='filter-header'>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
@@ -538,7 +705,10 @@ const Stock = ({
                     </div>
                 </div>}
                 <div className='adj-right'>
-                    {columns.map((col, index) => {
+                    {visibleColumns.map((col) => {
+                        // Skip if column is not visible
+                        if (!col.visible) return null;
+                        
                         // Filter and map products once to avoid duplicate calculations
                         const filteredProducts = isLoading ? [] : products.filter(prflt => {
                             if (curCategory !== 'all' && prflt.category !== curCategory) return false;
@@ -547,26 +717,28 @@ const Stock = ({
 
                         // Calculate totals for numeric columns
                         let columnTotal = 0;
-                        if (!isLoading && col.reference) {
+                        if (!isLoading && col.id) {
                             columnTotal = filteredProducts.reduce((sum, product) => {
                                 let stockData = { ...(product.stockSummary || {}) };
                                 if (curWarehouse !== 'all') {
                                     const locationData = product.locationStockDetails?.[curWarehouse] || {};
                                     stockData = { ...stockData, ...locationData };
                                 }
-                                const value = stockData[col.reference] || 0;
+                                const value = stockData[col.id] || 0;
                                 return sum + (typeof value === 'number' ? value : 0);
                             }, 0);
                         }
 
-                        if (!col.show) return null;
-                        
                         return (
-                            <div className='adj-right-content' key={index}>
+                            <div className='adj-right-content' key={col.id}>
                                 <div className='colname stockColname'>{col.name}</div>
                                 {isLoading ? (
                                     <div className='colrows'>Loading...</div>
                                 ) : filteredProducts.map((product, index1) => {
+                                    // Debug: Log first product to check structure
+                                    if (index1 === 0 && col.id === 'i_d') {
+                                        console.log('Product data:', product);
+                                    }
                                     // Get stock summary for the current warehouse or all warehouses
                                     let stockData = { ...(product.stockSummary || {}) };
                                     
@@ -579,7 +751,7 @@ const Stock = ({
                                    
 
                                     // Handle different column types
-                                    if (col.reference === 'quantityToTransfer') {
+                                    if (col.id === 'quantityToTransfer') {
                                         return (
                                             <div key={index1}>
                                                 <input 
@@ -596,26 +768,26 @@ const Stock = ({
                                                 />
                                             </div>
                                         );
-                                    } else if (col.reference === 'transferCost') {
+                                    } else if (col.id === 'transferCost') {
                                         return (
                                             <div className='colrows' key={index1}>
                                                 {formatCurrency(transferEntries.find(entry => product.i_d === entry.productId)?.transferCost || 0)}
                                             </div>
                                         );
-                                    } else if (col.reference in stockData) {
+                                    } else if (col.id in stockData) {
                                         // Handle numeric values with formatting
-                                        const value = stockData[col.reference];
+                                        const value = stockData[col.id];
                                         if (typeof value === 'number') {
                                             if (['openingCost', 'purchaseCost', 'salesValue', 'costOfGoodsSold', 
-                                                 'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.reference)) {
+                                                 'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.id)) {
                                                 return <div className='colrows' key={index1}>{formatCurrency(value)}</div>;
                                             }
                                             return <div className='colrows' key={index1}>{value.toLocaleString()}</div>;
                                         }
                                         return <div className='colrows' key={index1}>{value || '0'}</div>;
-                                    } else if (col.reference in product) {
+                                    } else if (col.id in product) {
                                         // Handle product properties
-                                        return <div className='colrows' key={index1}>{product[col.reference] || ''}</div>;
+                                        return <div className='colrows' key={index1}>{product[col.id] || ''}</div>;
                                     } else {
                                         return <div className='colrows' key={index1}>-</div>;
                                     }
