@@ -1075,6 +1075,11 @@
   resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.28.2.tgz#2ae5a9d51cc583bd1f5673b3bb70d6d819682473"
   integrity sha512-KHp2IflsnGywDjBWDkR9iEqiWSpc8GIi0lgTT3mOElT0PP1tG26P4tmFI2YvAdzgq9RGyoHZQEIEdZy6Ec5xCA==
 
+"@babel/runtime@^7.26.9":
+  version "7.28.3"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.28.3.tgz#75c5034b55ba868121668be5d5bb31cc64e6e61a"
+  integrity sha512-9uIQ10o0WGdpP6GDhXcdOJPJuDgFtIDtN/9+ArJQ2NAfAmiuhTQdzkaTGR33v43GYS2UrSA0eX2pPPHoFVvpxA==
+
 "@babel/template@^7.27.1", "@babel/template@^7.27.2", "@babel/template@^7.3.3":
   version "7.27.2"
   resolved "https://registry.yarnpkg.com/@babel/template/-/template-7.27.2.tgz#fa78ceed3c4e7b63ebf6cb39e5852fca45f6809d"
@@ -2218,6 +2223,11 @@
   integrity sha512-ut5FthK5moxFKH2T1CUOC6ctR67rQRvvHdFLCD2Ql6KXmMuCrjsSsRI9UsLCm9M18BMwClv4pn327UvB7eeO1w==
   dependencies:
     undici-types "~7.8.0"
+
+"@types/pako@^2.0.3":
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/@types/pako/-/pako-2.0.4.tgz#c3575ef8125e176c345fa0e7b301c1db41170c15"
+  integrity sha512-VWDCbrLeVXJM9fihYodcLiIv0ku+AlOa/TQ1SvYOaBuyrSKgEcro95LJyIsJ4vSo6BXIxOKxiJAat04CmST9Fw==
 
 "@types/parse-json@^4.0.0":
   version "4.0.2"
@@ -4981,6 +4991,15 @@ fast-levenshtein@^2.0.6, fast-levenshtein@~2.0.6:
   resolved "https://registry.yarnpkg.com/fast-levenshtein/-/fast-levenshtein-2.0.6.tgz#3d8a5c66883a16a30ca8643e851f19baa7797917"
   integrity sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==
 
+fast-png@^6.2.0:
+  version "6.4.0"
+  resolved "https://registry.yarnpkg.com/fast-png/-/fast-png-6.4.0.tgz#807fc353ccab060d09151b7d082786e02d8e92d6"
+  integrity sha512-kAqZq1TlgBjZcLr5mcN6NP5Rv4V2f22z00c3g8vRrwkcqjerx7BEhPbOnWCPqaHUl2XWQBJQvOT/FQhdMT7X/Q==
+  dependencies:
+    "@types/pako" "^2.0.3"
+    iobuffer "^5.3.2"
+    pako "^2.1.0"
+
 fast-uri@^3.0.1:
   version "3.0.6"
   resolved "https://registry.yarnpkg.com/fast-uri/-/fast-uri-3.0.6.tgz#88f130b77cfaea2378d56bf970dea21257a68748"
@@ -5775,6 +5794,11 @@ internal-slot@^1.1.0:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/internmap/-/internmap-2.0.3.tgz#6685f23755e43c524e251d29cbc97248e3061009"
   integrity sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg==
+
+iobuffer@^5.3.2:
+  version "5.4.0"
+  resolved "https://registry.yarnpkg.com/iobuffer/-/iobuffer-5.4.0.tgz#f85dff957fd0579257472f0a4cfe5ed3430e63e1"
+  integrity sha512-DRebOWuqDvxunfkNJAlc3IzWIPD5xVxwUNbHr7xKB8E6aLJxIPfNX3CoMJghcFjpv6RWQsrcJbghtEwSPoJqMA==
 
 ipaddr.js@1.9.1:
   version "1.9.1"
@@ -6844,7 +6868,7 @@ jspdf@^2.5.1:
     dompurify "^2.5.4"
     html2canvas "^1.0.0-rc.5"
 
-jspdf@^3.0.0, jspdf@^3.0.1:
+jspdf@^3.0.0:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/jspdf/-/jspdf-3.0.1.tgz#d81e1964f354f60412516eb2449ea2cccd4d2a3b"
   integrity sha512-qaGIxqxetdoNnFQQXxTKUD9/Z7AloLaw94fFsOiJMxbfYdBbrBuhWmbzI8TVjrw7s3jBY1PFHofBKMV/wZPapg==
@@ -6852,6 +6876,20 @@ jspdf@^3.0.0, jspdf@^3.0.1:
     "@babel/runtime" "^7.26.7"
     atob "^2.1.2"
     btoa "^1.2.1"
+    fflate "^0.8.1"
+  optionalDependencies:
+    canvg "^3.0.11"
+    core-js "^3.6.0"
+    dompurify "^3.2.4"
+    html2canvas "^1.0.0-rc.5"
+
+jspdf@^3.0.1:
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/jspdf/-/jspdf-3.0.2.tgz#f1e0e7f0954327bea4b8b02008613ad51e6024f6"
+  integrity sha512-G0fQDJ5fAm6UW78HG6lNXyq09l0PrA1rpNY5i+ly17Zb1fMMFSmS+3lw4cnrAPGyouv2Y0ylujbY2Ieq3DSlKA==
+  dependencies:
+    "@babel/runtime" "^7.26.9"
+    fast-png "^6.2.0"
     fflate "^0.8.1"
   optionalDependencies:
     canvg "^3.0.11"
@@ -7575,6 +7613,11 @@ package-json-from-dist@^1.0.0:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/package-json-from-dist/-/package-json-from-dist-1.0.1.tgz#4f1471a010827a86f94cfd9b0727e36d267de505"
   integrity sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==
+
+pako@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/pako/-/pako-2.1.0.tgz#266cc37f98c7d883545d11335c00fbd4062c9a86"
+  integrity sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==
 
 param-case@^3.0.4:
   version "3.0.4"
