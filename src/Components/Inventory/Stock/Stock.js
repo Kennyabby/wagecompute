@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
-import { format, startOfMonth, parseISO, endOfDay, isEqual } from 'date-fns';
+import { format, startOfMonth, parseISO, endOfDay, isEqual, format as formatDate } from 'date-fns';
+import { generatePDF, generateExcel } from '../../../utils/exportUtils';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import ContextProvider from '../../../Resources/ContextProvider';
@@ -81,45 +82,10 @@ const Stock = ({
     const [toWarehouse, setToWarehouse] = useState('');
     const [curWarehouse, setCurWarehouse] = useState('all');
     const [curCategory, setCurCategory] = useState('all');
-    const defaultColumns = [
-        { name: 'Product ID', reference: 'i_d', show: true },
-        { name: 'Product Name', reference: 'name', show: true },
-        { name: 'UOM', reference: 'salesUom', show: true },
-        // Opening Stock
-        { name: 'Opening Stock', reference: 'openingQuantity', show: true },
-        { name: 'Opening Value', reference: 'openingCost', show: true },
-        // Purchases
-        { name: 'Purchased Qty', reference: 'purchasedQty', show: true },
-        { name: 'Purchase Cost', reference: 'purchaseCost', show: true },
-        // Transfers
-        { name: 'Transfer In', reference: 'transferInQty', show: true },
-        { name: 'Transfer Out', reference: 'transferOutQty', show: true },
-        // Sales
-        { name: 'Sold Qty', reference: 'soldQty', show: true },
-        { name: 'Sales Value', reference: 'salesValue', show: true },
-        { name: 'COGS', reference: 'costOfGoodsSold', show: true },
-        // Adjustments
-        { name: 'Net Adjustment Qty', reference: 'netAdjustmentQty', show: true },
-        { name: 'Net Adjustment Cost', reference: 'netAdjustmentCost', show: true },
-        // Adjustments
-        { name: 'Negative Adjustment Qty', reference: 'negativeAdjustmentQty', show: false },
-        { name: 'Negative Adjustment Cost', reference: 'negativeAdjustmentCost', show: false },
-        // Adjustments
-        { name: 'Positive Adjustment Qty', reference: 'positiveAdjustmentQty', show: false },
-        { name: 'Positive Adjustment Cost', reference: 'positiveAdjustmentCost', show: false },
-        // Closing Stock
-        { name: 'Closing Stock', reference: 'closingQty', show: true },
-        { name: 'Average Cost', reference: 'averageCost', show: true },
-        { name: 'Closing Cost', reference: 'closingCost', show: true },
-        { name: 'Closing Value', reference: 'closingSalesValue', show: true },
-        // Transfer related (hidden by default)
-        { name: 'Quantity to Transfer', reference: 'quantityToTransfer', show: false },
-        { name: 'Transfer Cost', reference: 'transferCost', show: false }
-    ]
-    const [columns, setColumns] = useState([...defaultColumns]);
     const [transferEntries, setTransferEntries] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [showColumnManager, setShowColumnManager] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const [availableColumns, setAvailableColumns] = useState([
         // Basic Info (always visible)
         { id: 'i_d', name: 'Product ID', category: 'basic', visible: true, required: true },
@@ -345,7 +311,6 @@ const Stock = ({
         // console.log(transferEntries)
     },[transferEntries])
     useEffect(() => {
-        // setColumns([...]);
         if (isTransferClicked){
             resetCount();
             setAvailableColumns(prevColumns => 
@@ -570,23 +535,280 @@ const Stock = ({
         });
     };
 
+    const getCompanyInfo = () => {
+        // Use companyRecord if available, otherwise fall back to company or default values
+        const companyData = companyRecord || company || {};
+        return {
+            name: companyData.name || settings?.companyName || 'Company Name',
+            address: companyData.address || settings?.companyAddress || 'Company Address',
+            phone: companyData.phone || settings?.companyPhone || 'Phone Number',
+            email: companyData.email || settings?.companyEmail || 'email@example.com'
+        };
+    };
+
+    const prepareExportData = () => {
+        return products
+            .filter(prflt => {
+                if (curCategory !== 'all' && prflt.category !== curCategory) return false;
+                return prflt.type === 'goods';
+            })
+            .map(item => {
+                // Get warehouse-specific data if a specific warehouse is selected
+                const warehouseData = curWarehouse !== 'all' ? item.locationStockDetails?.[curWarehouse] : item.stockSummary;
+                
+                // Map all required fields and ensure consistent naming
+                const mappedItem = {
+                    // Basic Info
+                    i_d: item.i_d || '',
+                    name: item.name || item.itemName || '',
+                    code: item.code || item.itemCode || '',
+                    category: item.category || item.itemGroup || '',
+                    salesUom: item.salesUom || 'Nos',
+                    description: item.description || '',
+                    
+                    // Opening Stock
+                    openingQuantity: warehouseData?.openingQuantity || 0,
+                    openingCost: warehouseData?.openingCost || 0,
+                    
+                    // Purchases
+                    purchasedQty: warehouseData?.purchasedQty || 0,
+                    purchaseCost: warehouseData?.purchaseCost || 0,
+                    
+                    // Transfers
+                    transferInQty: warehouseData?.transferInQty || 0,
+                    transferOutQty: warehouseData?.transferOutQty || 0,
+                    
+                    // Sales
+                    soldQty: warehouseData?.soldQty || 0,
+                    salesValue: warehouseData?.salesValue || 0,
+                    costOfGoodsSold: warehouseData?.costOfGoodsSold || 0,
+                    
+                    // Adjustments
+                    netAdjustmentQty: warehouseData?.netAdjustmentQty || 0,
+                    netAdjustmentCost: warehouseData?.netAdjustmentCost || 0,
+                    positiveAdjustmentQty: warehouseData?.positiveAdjustmentQty || 0,
+                    positiveAdjustmentCost: warehouseData?.positiveAdjustmentCost || 0,
+                    negativeAdjustmentQty: warehouseData?.negativeAdjustmentQty || 0,
+                    negativeAdjustmentCost: warehouseData?.negativeAdjustmentCost || 0,
+                    
+                    // Closing Stock
+                    closingQty: warehouseData?.closingQty || 0,
+                    averageCost: warehouseData?.averageCost || 0,
+                    closingCost: warehouseData?.closingCost || 0,
+                    closingSalesValue: warehouseData?.closingSalesValue || 0,
+                    
+                    // Transfer related
+                    quantityToTransfer: 0,
+                    transferCost: 0,
+                    
+                    // Additional fields for backward compatibility
+                    quantity: parseFloat(warehouseData?.closingQty || 0),
+                    cost: parseFloat(warehouseData?.averageCost || 0),
+                    value: parseFloat(warehouseData?.closingCost || 0)
+                };
+
+                // Add warehouse specific quantities if available
+                // if (item.warehouseData) {
+                //     Object.entries(item.warehouseData).forEach(([warehouseId, whData]) => {
+                //         mappedItem[`wh_${warehouseId}_qty`] = parseFloat(whData.quantity || 0);
+                //         mappedItem[`wh_${warehouseId}_value`] = parseFloat(whData.value || 0);
+                //     });
+                // }
+
+                return mappedItem;
+            });
+    };
+
+    const handleExportPDF = () => {
+        setIsExporting(true);
+        try {
+            const visibleData = prepareExportData();
+            const exportDateRange = {
+                startDate: formatDate(dateRange.startDate, 'yyyy-MM-dd'),
+                endDate: formatDate(dateRange.endDate, 'yyyy-MM-dd')
+            };
+
+            // Get columns with proper formatting
+            const exportColumns = availableColumns
+                .filter(col => col.visible || col.required)
+                .map(col => {
+                    // Map column IDs to their corresponding data properties
+                    const columnMap = {
+                        'i_d': 'i_d',
+                        'name': 'name',
+                        'code': 'code',
+                        'category': 'category',
+                        'openingQuantity': 'openingQuantity',
+                        'openingCost': 'openingCost',
+                        'purchasedQty': 'purchasedQty',
+                        'purchaseCost': 'purchaseCost',
+                        'transferInQty': 'transferInQty',
+                        'transferOutQty': 'transferOutQty',
+                        'soldQty': 'soldQty',
+                        'salesValue': 'salesValue',
+                        'costOfGoodsSold': 'costOfGoodsSold',
+                        'netAdjustmentQty': 'netAdjustmentQty',
+                        'netAdjustmentCost': 'netAdjustmentCost',
+                        'closingQty': 'closingQty',
+                        'averageCost': 'averageCost',
+                        'closingCost': 'closingCost',
+                        'closingSalesValue': 'closingSalesValue'
+                    };
+
+                    return {
+                        ...col,
+                        // Use the mapped reference or fall back to the column ID
+                        reference: columnMap[col.id] || col.id,
+                        // Mark numeric columns for proper formatting
+                        numeric: ['quantity', 'cost', 'value', 'qty', 'amount', 'price'].some(term => 
+                            (col.id || col.reference || '').toLowerCase().includes(term)
+                        )
+                    };
+                });
+
+            // Prepare filter information
+            const filters = {
+                category: curCategory !== 'all' ? categories.find(c => c.code === curCategory)?.name || curCategory : null,
+                warehouse: curWarehouse !== 'all' ? warehouses.find(w => w.code === curWarehouse)?.name || curWarehouse : null
+            };
+
+            generatePDF(
+                visibleData,
+                exportColumns,
+                getCompanyInfo(),
+                exportDateRange,
+                'Stock Report',
+                filters
+            );
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            setAlertState('error');
+            setAlert('Failed to generate PDF. Please try again.');
+            setAlertTimeout(5000);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleExportExcel = async () => {
+        setIsExporting(true);
+        try {
+            const visibleData = prepareExportData();
+            const exportDateRange = {
+                startDate: formatDate(dateRange.startDate, 'yyyy-MM-dd'),
+                endDate: formatDate(dateRange.endDate, 'yyyy-MM-dd')
+            };
+
+            // Get columns with proper formatting
+            const exportColumns = availableColumns
+                .filter(col => col.visible || col.required)
+                .map(col => {
+                    // Map column IDs to their corresponding data properties
+                    const columnMap = {
+                        'i_d': 'i_d',
+                        'name': 'name',
+                        'code': 'code',
+                        'category': 'category',
+                        'openingQuantity': 'openingQuantity',
+                        'openingCost': 'openingCost',
+                        'purchasedQty': 'purchasedQty',
+                        'purchaseCost': 'purchaseCost',
+                        'transferInQty': 'transferInQty',
+                        'transferOutQty': 'transferOutQty',
+                        'soldQty': 'soldQty',
+                        'salesValue': 'salesValue',
+                        'costOfGoodsSold': 'costOfGoodsSold',
+                        'netAdjustmentQty': 'netAdjustmentQty',
+                        'netAdjustmentCost': 'netAdjustmentCost',
+                        'closingQty': 'closingQty',
+                        'averageCost': 'averageCost',
+                        'closingCost': 'closingCost',
+                        'closingSalesValue': 'closingSalesValue'
+                    };
+
+                    return {
+                        ...col,
+                        // Use the mapped reference or fall back to the column ID
+                        reference: columnMap[col.id] || col.id,
+                        // Mark numeric columns for proper formatting
+                        numeric: ['quantity', 'cost', 'value', 'qty', 'amount', 'price'].some(term => 
+                            (col.id || col.reference || '').toLowerCase().includes(term)
+                        )
+                    };
+                });
+
+            // Prepare filter information
+            const filters = {
+                category: curCategory !== 'all' ? categories.find(c => c.code === curCategory)?.name || curCategory : null,
+                warehouse: curWarehouse !== 'all' ? warehouses.find(w => w.code === curWarehouse)?.name || curWarehouse : null
+            };
+
+            generateExcel(
+                visibleData,
+                exportColumns,
+                getCompanyInfo(),
+                exportDateRange,
+                'Stock Report',
+                filters
+            );
+        } catch (error) {
+            console.error('Error generating Excel:', error);
+            setAlertState('error');
+            setAlert('Failed to generate Excel. Please try again.');
+            setAlertTimeout(5000);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className='adjustments'>
-            <div className='filter-section' style={{ position: 'relative' }}>
-                <button 
-                    className="column-manager-toggle"
-                    onClick={() => setShowColumnManager(true)}
-                    style={{ position: 'absolute', right: '20px', top: '20px' }}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="9" y1="3" x2="9" y2="21"></line>
-                        <line x1="9" y1="9" x2="21" y2="9"></line>
-                        <line x1="9" y1="15" x2="21" y2="15"></line>
-                    </svg>
-                    Manage Columns
-                </button>
-                <ColumnManagerModal />
+            {/* <div className='filter-section'>
+            </div> */}
+            <ColumnManagerModal />
+            <div className='filter-section'>
+                <div className="export-controls">
+                    <button 
+                        className="export-button"
+                        onClick={handleExportPDF}
+                        disabled={isExporting}
+                        title="Export to PDF"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        PDF
+                    </button>
+                    <button 
+                        className="export-button"
+                        onClick={handleExportExcel}
+                        disabled={isExporting}
+                        title="Export to Excel"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        Excel
+                    </button>
+                    <button 
+                        className="column-manager-toggle"
+                        onClick={() => setShowColumnManager(true)}
+                        title="Manage Columns"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                            <line x1="9" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="15" x2="21" y2="15"></line>
+                        </svg>
+                        Manage Columns
+                    </button>
+                </div>
                 <div className='filter-header'>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
@@ -634,16 +856,6 @@ const Stock = ({
                                 value={curWarehouse}
                                 onChange={(e) => {
                                     const name = e.target.value;
-                                    if (name === 'all') {
-                                        setColumns(columns => {
-                                            columns.forEach(column => {
-                                                if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)) {
-                                                    column.show = false;
-                                                }
-                                            });
-                                            return [...columns];
-                                        });
-                                    }
                                     setCurWarehouse(name);
                                 }}
                             >
@@ -735,19 +947,15 @@ const Stock = ({
                                 {isLoading ? (
                                     <div className='colrows'>Loading...</div>
                                 ) : filteredProducts.map((product, index1) => {
-                                    // Debug: Log first product to check structure
-                                    if (index1 === 0 && col.id === 'i_d') {
-                                        console.log('Product data:', product);
-                                    }
+                                    
                                     // Get stock summary for the current warehouse or all warehouses
                                     let stockData = { ...(product.stockSummary || {}) };
                                     
                                     // If a specific warehouse is selected, use its data
                                     if (curWarehouse !== 'all') {
                                         const locationData = product.locationStockDetails?.[curWarehouse] || {};
-                                        stockData = { ...stockData, ...locationData };
+                                        stockData = { ...locationData };
                                     }
-
                                    
 
                                     // Handle different column types
