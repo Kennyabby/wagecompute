@@ -167,12 +167,27 @@ export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle
         // Add filter information if any
         if (filters && Object.keys(filters).length > 0) {
             wsData.push(['Filters Applied:']);
+            
+            // Add warehouse filter if present
+            if (filters.warehouse) {
+                wsData.push([`Warehouse: ${filters.warehouse}`]);
+            }
+            
+            // Add category filter if present
+            if (filters.category) {
+                wsData.push([`Category: ${filters.category}`]);
+            }
+            
+            // Add any additional filters
             Object.entries(filters).forEach(([key, value]) => {
-                if (value !== undefined && value !== null && value !== '') {
-                    wsData.push([`${key}: ${value}`]);
+                if (value !== undefined && value !== null && value !== '' && 
+                    key !== 'warehouse' && key !== 'category') {
+                    const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    wsData.push([`${label}: ${value}`]);
                 }
             });
-            wsData.push([]); // Empty row
+            
+            wsData.push([]); // Empty row after filters
         }
         
         // Add headers
@@ -216,18 +231,55 @@ export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle
         // Create worksheet
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         
-        // Add worksheet to workbook
-        XLSX.utils.book_append_sheet(wb, ws, reportTitle.substring(0, 31)); // Sheet name max 31 chars
+        // Calculate header row index (after company info, title, date range, and filters)
+        const headerRowIndex = wsData.findIndex(row => row.length > 0 && row[0] && headers.includes(row[0]));
+        
+        // Auto-size columns
+        const columnWidths = [];
+        wsData.forEach(row => {
+            row.forEach((cell, colIndex) => {
+                const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+                const cellWidth = cellValue.length * 1.2; // Adjust multiplier as needed
+                columnWidths[colIndex] = Math.max(columnWidths[colIndex] || 0, Math.min(cellWidth, 50)); // Cap at 50
+            });
+        });
+        
+        ws['!cols'] = columnWidths.map(width => ({ width: width + 2 })); // Add some padding
         
         // Style the header row
-        const headerRow = 0; // Header is the first row after company info and filters
-        if (!ws['!rows']) ws['!rows'] = [];
-        if (!ws['!rows'][headerRow]) ws['!rows'][headerRow] = {};
-        ws['!rows'][headerRow].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: '2980b9' } },
-            fontColor: { rgb: 'FFFFFF' }
-        };
+        if (headerRowIndex >= 0) {
+            if (!ws['!rows']) ws['!rows'] = [];
+            
+            // Set header row style
+            if (!ws['!rows'][headerRowIndex]) ws['!rows'][headerRowIndex] = {};
+            ws['!rows'][headerRowIndex].s = {
+                font: { bold: true, color: { rgb: 'FFFFFF' } },
+                fill: { fgColor: { rgb: '2980b9' } },
+                alignment: { wrapText: true, vertical: 'center' }
+            };
+            
+            // Set cell styles for header row
+            for (let i = 0; i < headers.length; i++) {
+                const cellRef = XLSX.utils.encode_cell({ r: headerRowIndex, c: i });
+                if (!ws[cellRef]) continue;
+                ws[cellRef].s = {
+                    font: { bold: true, color: { rgb: 'FFFFFF' } },
+                    fill: { fgColor: { rgb: '2980b9' } },
+                    alignment: { wrapText: true, vertical: 'center' }
+                };
+            }
+            
+            // Add filters to the header row
+            ws['!autofilter'] = {
+                ref: XLSX.utils.encode_range({
+                    s: { r: headerRowIndex, c: 0 },
+                    e: { r: headerRowIndex, c: headers.length - 1 }
+                })
+            };
+        }
+        
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, reportTitle.substring(0, 31)); // Sheet name max 31 chars
         
         // Save the Excel file
         XLSX.writeFile(wb, `${reportTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
