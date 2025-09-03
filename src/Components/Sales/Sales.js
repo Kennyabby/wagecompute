@@ -758,22 +758,23 @@ const Sales = ()=>{
             setAlert('Posting Product Sales...')
             setAlertTimeout(100000)
             
-            const allProductsAvailable = isProductAvailable(validEntries)
-            if (!allProductsAvailable.value){
-                setAlertState('error');
-                setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
-                setAlertTimeout(8000);
-                setAddingProducts(false)
-                setPostCount(0)   
-                return;         
-            }else{
-                Object.keys(validEntries).forEach((entryWrh)=>{
-                    postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
-                })
-            }
+            Object.keys(validEntries).forEach((entryWrh)=>{
+                postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
+            })
         }
+        const allProductsAvailable = isProductAvailable(validEntries)
+        if (!allProductsAvailable.value){
+            setAlertState('error');
+            setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
+            setAlertTimeout(8000);
+            setAddingProducts(false)
+            setPostCount(0)   
+            return;         
+        }else{
+            runApprovalWorkFlow(postingDate, curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
+        }
+        
 
-        runApprovalWorkFlow(postingDate, curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
     }
 
     const handleProductSales = async ()=>{        
