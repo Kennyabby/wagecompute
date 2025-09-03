@@ -14,6 +14,7 @@ const TransactionHistory = () => {
     setAlert,
     setAlertState,
     setAlertTimeout,
+    products,
     companyRecord,
   } = useContext(ContextProvider);
 
@@ -31,7 +32,6 @@ const TransactionHistory = () => {
   });
 
   const [locations, setLocations] = useState([]);
-  const [products, setProducts] = useState([]);
   const isInitialMount = useRef(true);
   const [summary, setSummary] = useState({
     // Quantities
@@ -75,6 +75,32 @@ const TransactionHistory = () => {
       }
     }
   }, [settings]);
+
+  // Fetch products
+  // useEffect(() => {
+  //   const fetchProducts = async () => {
+  //     try {
+  //       const query = {
+  //         database: company,
+  //         collection: 'Item',
+  //         query: {},
+  //         fields: { itemCode: 1, itemName: 1, _id: 0 },
+  //         sort: { itemName: 1 }
+  //       };
+        
+  //       const response = await fetchServer('POST', query, 'findDocs', server);
+  //       if (response?.record) {
+  //         setProducts(response.record);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching products:', error);
+  //     }
+  //   };
+
+  //   if (company) {
+  //     fetchProducts();
+  //   }
+  // }, [company, fetchServer, server]);
 
 
 
@@ -141,6 +167,11 @@ const TransactionHistory = () => {
       // Format the date to match the database format (ISO string)
       const formattedStartDate = new Date(startDate).toISOString();
       
+      // Get all products that have a salesPrice or vipPrice
+      const productIds = products
+        .filter(product => product.salesPrice ||product.vipPrice )
+        .map(product => product.i_d);
+
       const query = {
         database: company,
         collection: 'InventoryTransactions',
@@ -169,19 +200,37 @@ const TransactionHistory = () => {
               }},
               openingStockCost: { $sum: {
                 $cond: [
-                  { $isNumber: "$totalCost" },
-                  "$totalCost",
-                  { $toDouble: "$totalCost" }
+                  { $in: ["$productId", productIds] },
+                  { $cond: [
+                    { $isNumber: "$totalCost" },
+                    "$totalCost",
+                    { $toDouble: "$totalCost" }
+                  ]},
+                  0
                 ]
               }},
-              // Purchases
+              // Only include purchases for products that have a salesPrice or vipPrice
               openingPurchasedQty: {
                 $sum: {
                   $cond: [
                     { $and: [
                       { $eq: ["$entryType", "Purchase"] },
-                      { $gt: ["$baseQuantity", 0] }
+                      { $gt: ["$baseQuantity", 0] },
+                      { $in: ["$productId", productIds] }
                     ]},
+                    { $cond: [
+                      { $isNumber: "$baseQuantity" },
+                      "$baseQuantity",
+                      { $toDouble: "$baseQuantity" }
+                    ]},
+                    0
+                  ]
+                }
+              },
+              openingStockForSales: {
+                $sum: {
+                  $cond: [
+                    { $in: ["$productId", productIds] },
                     { $cond: [
                       { $isNumber: "$baseQuantity" },
                       "$baseQuantity",
@@ -196,7 +245,8 @@ const TransactionHistory = () => {
                   $cond: [
                     { $and: [
                       { $eq: ["$entryType", "Purchase"] },
-                      { $gte: ["$totalCost", 0] }
+                      { $gte: ["$totalCost", 0] },
+                      { $in: ["$productId", productIds] }
                     ]},
                     { $cond: [
                       { $isNumber: "$totalCost" },
@@ -206,16 +256,16 @@ const TransactionHistory = () => {
                     0
                   ]
                 }
-              }
+              },
             }
           }
         ]
       };
 
       const result = await fetchServer('POST', query, 'aggregateDocs', server);
-      return result.record?.[0] || {openingStock: 0, openingStockCost: 0};
+      return result.record?.[0] || {openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0};
     } catch (error) {
-      return {openingStock: 0, openingStockCost: 0};
+      return {openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0};
     }
   }, [company, fetchServer]);
 
@@ -798,7 +848,7 @@ const TransactionHistory = () => {
 
       // Process the data
       const { transactions: fetchedTransactions, totalCount, summaryData } = transactionsData;
-      const {openingStock, openingPurchaseCost, openingPurchasedQty} = openingBalance;
+      const {openingStock, openingPurchaseCost, openingPurchasedQty, openingStockForSales} = openingBalance;
       
       // Calculate running balance
       let runningBalance = openingStock;
@@ -821,7 +871,7 @@ const TransactionHistory = () => {
       });
 
       // Calculate opening stock cost
-      const openingStockCost = openingPurchasedQty ? ((openingPurchaseCost/openingPurchasedQty) * openingStock) : 0;
+      const openingStockCost = (openingPurchasedQty) ? Number(((openingPurchaseCost/openingPurchasedQty) * openingStockForSales).toFixed(2)) : 0;
       // Calculate derived cost values
       const netTransferCost = (summaryData.transfersInCost || 0) - (summaryData.transfersOutCost || 0);
       const netAdjustmentCost = (summaryData.positiveAdjustmentsCost || 0) - (summaryData.negativeAdjustmentsCost || 0);
@@ -1051,12 +1101,29 @@ const TransactionHistory = () => {
             className="select-input"
           >
             <option value="all">All Types</option>
-            <option value="Purchase">Purchases</option>
+            <option value="Purchase">Purchase</option>
             <option value="Sales">Sales</option>
-            <option value="Shipment">Transfers Out</option>
-            <option value="Receipt">Transfers In</option>
-            <option value="Positive Entry">Positive Adjustments</option>
-            <option value="Nagative Entry">Negative Adjustments</option>
+            <option value="Transfer Shipment">Transfer Out</option>
+            <option value="Transfer Receipt">Transfer In</option>
+            <option value="Positive Entry">Positive Adjustment</option>
+            <option value="Negative Entry">Negative Adjustment</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Product</label>
+          <select
+            name="productId"
+            value={filters.productId}
+            onChange={handleFilterChange}
+            className="select-input"
+          >
+            <option value="">All Products</option>
+            {products.map(product => (
+              <option key={product.i_d} value={product.i_d}>
+                {product.name} ({product.i_d})
+              </option>
+            ))}
           </select>
         </div>
 
@@ -1221,7 +1288,7 @@ const TransactionHistory = () => {
                     <td>{formatDate(tx.postingDate)}</td>
                     <td>{getTransactionType(tx)}</td>
                     <td>{tx.referenceNo || tx.orderNumber || 'N/A'}</td>
-                    <td>{tx.name || `Product ${tx.productId}`}</td>
+                    <td>{tx.name || (products.find(product => product.i_d === tx.productId))?.name || `Product ${tx.productId}`}</td>
                     <td>{tx.location || 'N/A'}</td>
                     <td className={tx.baseQuantity > 0 ? 'positive' : 'negative'}>
                       {tx.baseQuantity > 0 ? '+' : ''}{tx.baseQuantity}
