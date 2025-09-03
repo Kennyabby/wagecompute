@@ -206,6 +206,9 @@ const DashView = () =>{
                 prop: filter
             }, 'getDocsDetails', server)
 
+            const productIds = products
+                .filter(product => product.salesPrice ||product.vipPrice )
+                .map(product => product.i_d);
             let salesAmount=0, salesQty=0, purchasesAmount=0, purchasesQty=0
             let cogs=0 // cost of goods sold for sales
             const byProduct = new Map()
@@ -217,7 +220,7 @@ const DashView = () =>{
                     const type = String(t.entryType||'').toLowerCase()
                     const qty = Math.abs(Number(t.baseQuantity||t.quantity||0))
                     const totSales = Math.abs(Number(t.totalSales||0))
-                    const totCost = Math.abs(Number(t.totalCost||0))
+                    const totCost = productIds.includes(t.productId) ? Math.abs(Number(t.totalCost||0)) : 0
                     const loc = t.location || 'Unknown'
                     const pid = t.productId || t.i_d || 'Unknown'
                     const d = (t.postingDate && typeof t.postingDate === 'string') ? t.postingDate : new Date(Number(t.createdAt||0)).toISOString().slice(0,10)
