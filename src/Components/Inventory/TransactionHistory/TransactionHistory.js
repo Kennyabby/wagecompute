@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import ContextProvider from '../../../Resources/ContextProvider';
-import { FaFilter, FaFileExport, FaSearch, FaSync, FaDownload } from 'react-icons/fa';
+import { FaFilter, FaFileExport, FaSearch, FaSync, FaDownload, FaFilePdf } from 'react-icons/fa';
 import { CSVLink } from 'react-csv';
 import { utils, writeFile } from 'xlsx';
+// Import jsPDF with autoTable
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import './TransactionHistory.css';
 
 const TransactionHistory = () => {
@@ -21,6 +24,16 @@ const TransactionHistory = () => {
   const [transactions, setTransactions] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [showColumnManager, setShowColumnManager] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
+  const [modalData, setModalData] = useState({
+    show: false,
+    title: '',
+    type: '', // 'openingStock', 'purchases', 'sales', 'transfers', 'adjustments', 'closingStock'
+    data: [],
+    summary: {}
+  });
   const [filters, setFilters] = useState({
     startDate: new Date(new Date().setDate(1)).toISOString().slice(0, 10), // 1st of current month
     endDate: new Date().toISOString().slice(0, 10), // Today
@@ -76,34 +89,6 @@ const TransactionHistory = () => {
     }
   }, [settings]);
 
-  // Fetch products
-  // useEffect(() => {
-  //   const fetchProducts = async () => {
-  //     try {
-  //       const query = {
-  //         database: company,
-  //         collection: 'Item',
-  //         query: {},
-  //         fields: { itemCode: 1, itemName: 1, _id: 0 },
-  //         sort: { itemName: 1 }
-  //       };
-        
-  //       const response = await fetchServer('POST', query, 'findDocs', server);
-  //       if (response?.record) {
-  //         setProducts(response.record);
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching products:', error);
-  //     }
-  //   };
-
-  //   if (company) {
-  //     fetchProducts();
-  //   }
-  // }, [company, fetchServer, server]);
-
-
-
   // ========== Helper Functions ==========
   
   // Format date from timestamp
@@ -153,6 +138,304 @@ const TransactionHistory = () => {
     if (tx.entryType === 'Positive Entry') return 'Adjustment (+)'; 
     if (tx.entryType === 'Nagative Entry') return 'Adjustment (-)';
     return tx.entryType || tx.documentType || 'Other';
+  };
+
+  // Helper function to fetch stock data
+  const fetchStockData = async (type, startDate, endDate) => {
+    try {
+      // For opening stock, get all transactions before startDate
+      // For closing stock, get all transactions up to endDate
+      const query = {
+        database: company,
+        collection: 'InventoryTransactions',
+        prop: {
+          $expr: {
+            $and: [
+              { [type === 'openingStock' ? '$lt' : '$lte']: [{ $toString: "$postingStamp" }, type === 'openingStock' ? startDate : endDate] }
+            ]
+          }
+        }
+      };
+
+      // Add location filter if specified
+      if (filters.location && filters.location !== 'all') {
+        query.prop.$expr.$and.push({ $eq: ["$location", filters.location] });
+      }
+
+      // Add product filter if specified
+      if (filters.productId) {
+        query.prop.$expr.$and.push({ $eq: ["$productId", filters.productId] });
+      }
+
+      // Execute the query
+      const result = await fetchServer('POST', query, 'getDocsDetails', server);
+      return result.record || [];
+    } catch (error) {
+      console.error(`Error fetching ${type} data:`, error);
+      return [];
+    }
+  };
+
+  // Handle summary card click
+  const handleSummaryCardClick = async (type) => {
+    try {
+      setLoading(true);
+      
+      let transactionsToProcess = [];
+      const startDate = new Date(filters.startDate).toISOString();
+      const endDate = new Date(filters.endDate).toISOString();
+
+      // For opening/closing stock, use direct queries for better accuracy
+      if (type === 'openingStock' || type === 'closingStock') {
+        transactionsToProcess = await fetchStockData(type, startDate, endDate);
+      } else {
+        // For other types, use the existing transactions with filters
+        transactionsToProcess = transactions.filter(tx => {
+          const txDate = new Date(tx.postingStamp || tx.postingDate);
+          const startDate = new Date(filters.startDate);
+          const endDate = new Date(filters.endDate);
+          
+          if (!(txDate >= startDate && txDate <= endDate)) {
+            return false;
+          }
+          
+          // Apply type-specific filters
+          switch (type) {
+            case 'purchases':
+              return tx.entryType === 'Purchase' && (Number(tx.baseQuantity) || 0) > 0;
+            case 'sales':
+              return tx.entryType === 'Sales' && (Number(tx.baseQuantity) || 0) < 0;
+            case 'transfers':
+              return ['Transfer Shipment', 'Transfer Receipt'].includes(tx.documentType);
+            case 'adjustments':
+              return ['Positive Entry', 'Negative Entry'].includes(tx.entryType);
+            default:
+              return true;
+          }
+        });
+      }
+
+      // Process the transactions and group by product
+      const processedData = {};
+      let totalQuantity = 0;
+      let totalCost = 0;
+
+      transactionsToProcess.forEach(tx => {
+        const productId = tx.productId;
+        const productName = tx.name || products.find(p => p.i_d === productId)?.name || `Product ${productId}`;
+        
+        if (!processedData[productId]) {
+          processedData[productId] = {
+            productId,
+            productName,
+            uom: tx.uom || 'pcs',
+            quantity: 0,
+            cost: 0,
+            locations: {}
+          };
+        }
+
+        // For opening/closing stock, we need to consider the running balance
+        // const quantity = type === 'openingStock' || type === 'closingStock' ? 
+        //   (tx.entryType === 'Sales' || tx.documentType === 'Transfer Shipment' ? 
+        //     -Math.abs(Number(tx.baseQuantity) || 0) : 
+        //     Math.abs(Number(tx.baseQuantity) || 0)) : 
+        //   Number(tx.baseQuantity || 0);
+        const quantity = Number(tx.baseQuantity || 0)
+        // const cost = type === 'openingStock' || type === 'closingStock' ?
+        //   (tx.entryType === 'Sales' || tx.documentType === 'Transfer Shipment' ?
+        //     -Math.abs(Number(tx.totalCost) || 0) :
+        //     Math.abs(Number(tx.totalCost) || 0)) :
+        //   Number(tx.totalCost || 0);
+        const cost = Number(tx.totalCost || 0)
+        const location = tx.location || 'Unknown Location';
+        
+        // Initialize location data if it doesn't exist
+        if (!processedData[productId].locations[location]) {
+          processedData[productId].locations[location] = {
+            quantity: 0,
+            cost: 0
+          };
+        }
+
+        // Update product totals
+        processedData[productId].quantity += quantity;
+        processedData[productId].cost += cost;
+        
+        // Update location-specific totals
+        processedData[productId].locations[location].quantity += quantity;
+        processedData[productId].locations[location].cost += cost;
+
+        // Update grand totals
+        totalQuantity += quantity;
+        totalCost += cost;
+      });
+
+      // Convert to array and calculate percentages
+      const productList = Object.values(processedData).map(product => ({
+        ...product,
+        percentage: totalQuantity > 0 ? (product.quantity / totalQuantity) * 100 : 0,
+        unitCost: product.quantity > 0 ? product.cost / product.quantity : 0,
+        locations: Object.entries(product.locations).map(([location, data]) => ({
+          name: location,
+          quantity: data.quantity,
+          cost: data.cost,
+          percentage: data.quantity / product.quantity * 100
+        }))
+      }));
+
+      // Sort by quantity (highest first)
+      productList.sort((a, b) => b.quantity - a.quantity);
+
+      // Determine the title based on the card type
+      const getTitle = () => {
+        switch (type) {
+          case 'openingStock': return 'Opening Stock Details';
+          case 'purchases': return 'Purchases Details';
+          case 'sales': return 'Sales Details';
+          case 'transfers': return 'Transfers Details';
+          case 'adjustments': return 'Adjustments Details';
+          case 'closingStock': return 'Closing Stock Details';
+          default: return 'Transaction Details';
+        }
+      };
+
+      // Set the modal data and show the modal
+      setModalData({
+        show: true,
+        title: getTitle(),
+        type,
+        data: productList,
+        summary: {
+          totalQuantity,
+          totalCost,
+          averageUnitCost: totalQuantity > 0 ? totalCost / totalQuantity : 0
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching transaction details:', error);
+      setAlert('Failed to load details. Please try again.');
+      setAlertState('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Export data to PDF
+  const exportToPDF = (title, data, summary) => {
+    // Initialize jsPDF
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Add title
+    doc.setFontSize(18);
+    doc.text(title, 14, 20);
+    
+    // Add date
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+    
+    // Prepare table data
+    const headers = [
+      { header: 'Product', dataKey: 'product' },
+      { header: 'Quantity', dataKey: 'quantity' },
+      { header: 'Unit Cost', dataKey: 'unitCost' },
+      { header: 'Total Cost', dataKey: 'totalCost' }
+    ];
+
+    const tableData = [];
+    
+    // Process each product
+    data.forEach(product => {
+      // Add main product row
+      tableData.push({
+        product: product.productName,
+        quantity: formatNumber(product.quantity),
+        unitCost: formatCurrency(product.unitCost),
+        totalCost: formatCurrency(product.cost),
+        isBold: false
+      });
+
+      // Add location details
+      if (product.locations && Object.keys(product.locations).length > 0) {
+        Object.entries(product.locations).forEach(([location, locData]) => {
+          tableData.push({
+            product: `  • ${location}`,
+            quantity: formatNumber(locData.quantity),
+            unitCost: '',
+            totalCost: formatCurrency(locData.cost),
+            isBold: false
+          });
+        });
+      }
+      
+      // Add empty row
+      tableData.push({
+        product: '',
+        quantity: '',
+        unitCost: '',
+        totalCost: '',
+        isBold: false
+      });
+    });
+
+    // Add summary row
+    tableData.push({
+      product: 'TOTAL',
+      quantity: formatNumber(summary.totalQuantity),
+      unitCost: formatCurrency(summary.averageUnitCost),
+      totalCost: formatCurrency(summary.totalCost),
+      isBold: true
+    });
+
+    // Add table to PDF
+    doc.autoTable({
+      head: [headers.map(header => header.header)],
+      body: tableData.map(row => [
+        row.product,
+        row.quantity,
+        row.unitCost,
+        row.totalCost
+      ]),
+      startY: 35,
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 9
+      },
+      bodyStyles: {
+        fontSize: 9,
+        cellPadding: 2,
+        valign: 'middle'
+      },
+      styles: {
+        cellPadding: 2,
+        fontSize: 9,
+        cellWidth: 'wrap',
+        overflow: 'linebreak',
+        lineWidth: 0.1
+      },
+      columnStyles: {
+        0: { cellWidth: 80, fontStyle: 'normal' },
+        1: { cellWidth: 30, halign: 'right' },
+        2: { cellWidth: 30, halign: 'right' },
+        3: { cellWidth: 30, halign: 'right' }
+      },
+      willDrawCell: (data) => {
+        // Apply bold style to summary row
+        if (tableData[data.row.index].isBold) {
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+    
+    // Save the PDF with a proper filename
+    doc.save(`${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Format number with thousands separators
@@ -276,6 +559,7 @@ const TransactionHistory = () => {
       const formattedStartDate = new Date(startDate).toISOString();
       const formattedEndDate = new Date(endDate).toISOString();
 
+      
       // Build the transactions query
       const transactionsQuery = {
         database: company,
@@ -1051,8 +1335,102 @@ const TransactionHistory = () => {
     }).format(num);
   };
 
+  // Modal component
+  const DetailModal = ({ show, onClose, data, title, summary }) => {
+    if (!show || !data) return null;
+    
+    const { totalQuantity, totalCost, averageUnitCost } = summary || {};
+    
+    const handleExportPDF = () => {
+      exportToPDF(title, data, summary);
+    };
+
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>{title}</h3>
+            <div className="modal-actions">
+              <button 
+                className="export-pdf-button"
+                onClick={handleExportPDF}
+                title="Export to PDF"
+              >
+                <FaFilePdf /> Export PDF
+              </button>
+              <button className="close-button" onClick={onClose}>&times;</button>
+            </div>
+          </div>
+          
+          <div className="modal-body">
+            <table className="table table-striped table-hover table-sm">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th className="text-end">Quantity</th>
+                  <th className="text-end">% of Total</th>
+                  <th className="text-end">Unit Cost</th>
+                  <th className="text-end">Total Cost</th>
+                  <th className="text-end">% of Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data?.map((product) => (
+                  <tr key={product.productId}>
+                    <td>
+                      <div className="fw-bold">{product.productName}</div>
+                      <div className="text-muted small">
+                        {product.locations?.map((loc, idx) => (
+                          <div key={idx}>
+                            {loc.name}: {formatNumber(loc.quantity)} ({loc.percentage?.toFixed(1)}%)
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="text-end">{formatNumber(product.quantity)}</td>
+                    <td className="text-end">{product.percentage?.toFixed(1)}%</td>
+                    <td className="text-end">{formatCurrency(product.unitCost)}</td>
+                    <td className="text-end">{formatCurrency(product.cost)}</td>
+                    <td className="text-end">
+                      {data.totalCost > 0 ? ((product.cost / data.totalCost) * 100).toFixed(1) : 0}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="table-group-divider">
+                <tr className="table-active">
+                  <th>Total</th>
+                  <th className="text-end">{formatNumber(totalQuantity || 0)}</th>
+                  <th className="text-end">100%</th>
+                  <th className="text-end">{formatCurrency(averageUnitCost || 0)}</th>
+                  <th className="text-end">{formatCurrency(totalCost || 0)}</th>
+                  <th className="text-end">100%</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Remove the duplicate handleSummaryCardClick function
+
   return (
     <div className="transaction-history">
+      <DetailModal 
+        show={modalData.show}
+        onClose={() => setModalData(prev => ({ ...prev, show: false }))}
+        data={modalData.data}
+        title={modalData.title}
+        summary={modalData.summary}
+      />
+      
       <div className="filters-container">
         <div className="filter-group">
           <label>Date Range</label>
@@ -1155,7 +1533,7 @@ const TransactionHistory = () => {
 
       <div className="summary-cards">
         {/* Opening Stock */}
-        <div className="summary-card">
+        <div className="summary-card clickable" onClick={() => handleSummaryCardClick('openingStock')}>
           <div className="summary-label">Opening Stock</div>
           <div className="summary-value">{formatNumber(summary.openingStock)}</div>
           <div className="summary-subtext">
@@ -1164,7 +1542,7 @@ const TransactionHistory = () => {
         </div>
 
         {/* Purchases */}
-        <div className="summary-card in">
+        <div className="summary-card in clickable" onClick={() => handleSummaryCardClick('purchases')}>
           <div className="summary-label">Purchases</div>
           <div className="summary-value">+{formatNumber(summary.purchases)}</div>
           <div className="summary-subtext">
@@ -1173,7 +1551,7 @@ const TransactionHistory = () => {
         </div>
 
         {/* Sales */}
-        <div className="summary-card out">
+        <div className="summary-card out clickable" onClick={() => handleSummaryCardClick('sales')}>
           <div className="summary-label">Sales</div>
           <div className="summary-value">-{formatNumber(summary.sales)}</div>
           <div className="summary-subtext">
@@ -1183,7 +1561,7 @@ const TransactionHistory = () => {
         </div>
 
         {/* Transfers */}
-        <div className="summary-card">
+        <div className="summary-card clickable" onClick={() => handleSummaryCardClick('transfers')}>
           <div className="summary-label">Transfers</div>
           <div className="summary-value">
             <div className="transfer-row">
@@ -1200,7 +1578,7 @@ const TransactionHistory = () => {
         </div>
 
         {/* Adjustments */}
-        <div className="summary-card">
+        <div className="summary-card clickable" onClick={() => handleSummaryCardClick('adjustments')}>
           <div className="summary-label">Adjustments</div>
           <div className="summary-value">
             <div className="adjustment-row">
@@ -1217,7 +1595,7 @@ const TransactionHistory = () => {
         </div>
 
         {/* Closing Stock */}
-        <div className="summary-card total">
+        <div className="summary-card total clickable" onClick={() => handleSummaryCardClick('closingStock')}>
           <div className="summary-label">Closing Stock</div>
           <div className="summary-value">
             {formatNumber(summary.closingStock)}
