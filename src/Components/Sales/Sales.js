@@ -773,8 +773,6 @@ const Sales = ()=>{
         }else{
             runApprovalWorkFlow(postingDate, curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
         }
-        
-
     }
 
     const handleProductSales = async ()=>{        
