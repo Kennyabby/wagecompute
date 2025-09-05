@@ -779,7 +779,7 @@ const Delivery = () => {
         const isDeplete = (action === 'deplete')
         const createdAt = new Date().getTime()
         items.forEach( async (item)=>{
-            const quantityUpdate = isDeplete ? (-1 * Number(item.depletedQuantity)) : Number(item.deliveredQuantity)
+            const quantityUpdate = isDeplete ? (-1 * Math.abs(Number(item.depletedQuantity))) : Math.abs(Number(item.deliveredQuantity))
             const uom1 = uoms.filter((uom)=>{
                 return uom.code === item.purchaseUom
             })
