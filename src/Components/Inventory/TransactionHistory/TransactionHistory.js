@@ -257,7 +257,8 @@ const TransactionHistory = () => {
         if (!processedData[productId].locations[location]) {
           processedData[productId].locations[location] = {
             quantity: 0,
-            cost: 0
+            cost: 0,
+            value: 0
           };
         }
 
@@ -352,7 +353,7 @@ const TransactionHistory = () => {
   };
 
   // Export data to PDF without using autoTable
-  const exportToPDF = (title, data, summary, startDate, endDate) => {
+  const exportToPDF = (title, type, data, summary, startDate, endDate) => {
     // Initialize jsPDF
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -386,7 +387,14 @@ const TransactionHistory = () => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
     const tableWidth = pageWidth - 2 * margin;
-    const colWidths = [90, 30, 30, 30]; // Widths for each column
+    // Adjusted column widths to fit all columns properly
+    const colWidths = [
+      50,   // Product
+      25,   // Qty
+      35,   // Value
+      35,   // Unit Cost
+      35    // Total Cost
+    ];
     const rowHeight = 7;
     let currentY = startY;
     
@@ -400,7 +408,7 @@ const TransactionHistory = () => {
     
     // Draw header cells
     let xPos = margin;
-    ['Product', 'Qty', 'Unit Cost', 'Total'].forEach((header, i) => {
+    ['Product', 'Qty', 'Sales Value', 'Unit Cost', 'Total Cost'].forEach((header, i) => {
       // Reset text color after drawing headers
       doc.setFillColor(41, 128, 185)
       doc.setTextColor(255, 255, 255);
@@ -436,15 +444,23 @@ const TransactionHistory = () => {
       // Quantity
       doc.text(
         formatNumber(product.quantity),
-        margin + colWidths[0] + colWidths[1] / 2,
+        margin + colWidths[0] + colWidths[1]/2,
         currentY + 5,
         { align: 'right' }
       );
       
+      // Total Value
+      doc.text(
+        formatCurrency(product.value),
+        margin + colWidths[0] + colWidths[1] + colWidths[2]/2,
+        currentY + 5,
+        { align: 'right' }
+      );
+
       // Unit Cost
       doc.text(
         formatCurrency(Number(product.cost)/Number(product.quantity)),
-        margin + colWidths[0] + colWidths[1] + colWidths[2] / 2,
+        margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
         currentY + 5,
         { align: 'right' }
       );
@@ -452,7 +468,7 @@ const TransactionHistory = () => {
       // Total Cost
       doc.text(
         formatCurrency(product.cost),
-        pageWidth - margin - 2,
+        margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4]/2,
         currentY + 5,
         { align: 'right' }
       );
@@ -473,17 +489,34 @@ const TransactionHistory = () => {
             margin + 5,
             currentY + 5
           );
-          
+          // Location quantity
           doc.text(
             formatNumber(locData.quantity),
-            margin + colWidths[0] + colWidths[1] / 2,
+            margin + colWidths[0] + colWidths[1]/2,
             currentY + 5,
             { align: 'right' }
           );
-          
+         
+          // Location value
+          doc.text(
+            formatCurrency(locData.value),
+            margin + colWidths[0] + colWidths[1] + colWidths[2]/2,
+            currentY + 5,
+            { align: 'right' }
+          );
+         
+          // Location unit cost
+          doc.text(
+            locData.quantity ? formatCurrency(locData.cost / locData.quantity) : '0.00',
+            margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
+            currentY + 5,
+            { align: 'right' }
+          );
+         
+          // Location total cost
           doc.text(
             formatCurrency(locData.cost),
-            pageWidth - margin - 2,
+            margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4]/2,
             currentY + 5,
             { align: 'right' }
           );
@@ -501,27 +534,49 @@ const TransactionHistory = () => {
     });
     
     // Add summary row
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('TOTAL', margin + 2, currentY + 6);
+    currentY += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, currentY, pageWidth - margin, currentY);
+    currentY += 2;
     
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    
+    // Total label
+    doc.text(
+      'Total',
+      margin + 2,
+      currentY + 6
+    );
+    
+    // Total Quantity
     doc.text(
       formatNumber(summary.totalQuantity),
-      margin + colWidths[0] + colWidths[1] / 2,
+      margin + colWidths[0] + colWidths[1]/2,
       currentY + 6,
       { align: 'right' }
     );
     
+    // Total Value
     doc.text(
-      formatCurrency(summary.averageUnitCost),
-      margin + colWidths[0] + colWidths[1] + colWidths[2] / 2,
+      formatCurrency(summary.totalValue || 0),
+      margin + colWidths[0] + colWidths[1] + colWidths[2]/2,
       currentY + 6,
       { align: 'right' }
     );
     
+    // Average Unit Cost
     doc.text(
-      formatCurrency(summary.totalCost),
-      pageWidth - margin - 2,
+      formatCurrency(summary.averageUnitCost || 0),
+      margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
+      currentY + 6,
+      { align: 'right' }
+    );
+    
+    // Total Cost
+    doc.text(
+      formatCurrency(summary.totalCost || 0),
+      margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4]/2,
       currentY + 6,
       { align: 'right' }
     );
@@ -688,6 +743,7 @@ const TransactionHistory = () => {
           baseQuantity: 1,
           costPrice: 1,
           totalCost: 1,
+          totalSales: 1,
           productRef: 1,
           quantity: 1,
           referenceNo: 1,
@@ -1439,7 +1495,7 @@ const TransactionHistory = () => {
     const { totalQuantity, totalValue, totalCost, averageUnitCost } = summary || {};
     
     const handleExportPDF = () => {
-      exportToPDF(title, data, summary, startDate, endDate);
+      exportToPDF(title, type, data, summary, startDate, endDate);
     };
 
     return (
