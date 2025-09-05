@@ -169,6 +169,7 @@ const TransactionHistory = () => {
 
       // Execute the query
       const result = await fetchServer('POST', query, 'getDocsDetails', server);
+      console.log(result)
       return result.record || [];
     } catch (error) {
       console.error(`Error fetching ${type} data:`, error);
@@ -219,7 +220,7 @@ const TransactionHistory = () => {
       const processedData = {};
       let totalQuantity = 0;
       let totalCost = 0;
-
+      let totalValue = 0;
       transactionsToProcess.forEach(tx => {
         const productId = tx.productId;
         const productName = tx.name || products.find(p => p.i_d === productId)?.name || `Product ${productId}`;
@@ -231,6 +232,7 @@ const TransactionHistory = () => {
             uom: tx.uom || 'pcs',
             quantity: 0,
             cost: 0,
+            value: 0,
             locations: {}
           };
         }
@@ -248,6 +250,7 @@ const TransactionHistory = () => {
         //     Math.abs(Number(tx.totalCost) || 0)) :
         //   Number(tx.totalCost || 0);
         const cost = Number(tx.totalCost || 0)
+        const salesValue = Number(tx.totalSales || 0)
         const location = tx.location || 'Unknown Location';
         
         // Initialize location data if it doesn't exist
@@ -261,25 +264,31 @@ const TransactionHistory = () => {
         // Update product totals
         processedData[productId].quantity += quantity;
         processedData[productId].cost += cost;
+        processedData[productId].value += salesValue;
         
         // Update location-specific totals
         processedData[productId].locations[location].quantity += quantity;
         processedData[productId].locations[location].cost += cost;
+        processedData[productId].locations[location].value += salesValue;
 
         // Update grand totals
         totalQuantity += quantity;
         totalCost += cost;
+        totalValue += salesValue;
       });
 
       // Convert to array and calculate percentages
       const productList = Object.values(processedData).map(product => ({
         ...product,
-        percentage: totalQuantity > 0 ? (product.quantity / totalQuantity) * 100 : 0,
-        unitCost: product.quantity > 0 ? product.cost / product.quantity : 0,
+        percentage: totalQuantity !== 0 ? (product.quantity / totalQuantity) * 100 : 0,
+        unitCost: product.quantity !== 0 ? product.cost / product.quantity : 0,
+        costPercentage: totalCost !==0 ? (product.cost / totalCost) * 100 : 0,
+        valuePercentage: totalValue !==0 ? (product.value / totalValue) * 100 : 0,
         locations: Object.entries(product.locations).map(([location, data]) => ({
           name: location,
           quantity: data.quantity,
           cost: data.cost,
+          value: data.value,
           percentage: data.quantity / product.quantity * 100
         }))
       }));
@@ -309,6 +318,7 @@ const TransactionHistory = () => {
         summary: {
           totalQuantity,
           totalCost,
+          totalValue,
           averageUnitCost: totalQuantity > 0 ? totalCost / totalQuantity : 0
         }
       });
@@ -321,8 +331,28 @@ const TransactionHistory = () => {
     }
   };
 
-  // Export data to PDF
-  const exportToPDF = (title, data, summary) => {
+  // Helper function to split text into multiple lines if needed
+  const splitText = (text, maxWidth, doc) => {
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = words[0] || '';
+
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i];
+      const width = doc.getTextWidth(currentLine + ' ' + word);
+      if (width < maxWidth) {
+        currentLine += ' ' + word;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    lines.push(currentLine);
+    return lines;
+  };
+
+  // Export data to PDF without using autoTable
+  const exportToPDF = (title, data, summary, startDate, endDate) => {
     // Initialize jsPDF
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -330,109 +360,176 @@ const TransactionHistory = () => {
       format: 'a4'
     });
 
+    // Set font
+    doc.setFont('helvetica');
+    
     // Add title
     doc.setFontSize(18);
-    doc.text(title, 14, 20);
+    doc.text(title, 15, 20);
     
-    // Add date
+    // Add date and date range
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 15, 28);
     
-    // Prepare table data
-    const headers = [
-      { header: 'Product', dataKey: 'product' },
-      { header: 'Quantity', dataKey: 'quantity' },
-      { header: 'Unit Cost', dataKey: 'unitCost' },
-      { header: 'Total Cost', dataKey: 'totalCost' }
-    ];
-
-    const tableData = [];
+    let startY = 35; // Default start position
+    
+    // Add date range if available
+    if (startDate && endDate) {
+      const formattedStart = new Date(startDate).toLocaleDateString();
+      const formattedEnd = new Date(endDate).toLocaleDateString();
+      doc.text(`Date Range: ${formattedStart} to ${formattedEnd}`, 15, 34);
+      startY = 42; // Adjust startY if date range is shown
+    }
+    
+    // Table settings
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const tableWidth = pageWidth - 2 * margin;
+    const colWidths = [90, 30, 30, 30]; // Widths for each column
+    const rowHeight = 7;
+    let currentY = startY;
+    
+    // Draw table header
+    doc.setFillColor(41, 128, 185);
+    // doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    
+    // Set text color to white for all headers
+    // doc.setTextColor(255, 255, 255);
+    
+    // Draw header cells
+    let xPos = margin;
+    ['Product', 'Qty', 'Unit Cost', 'Total'].forEach((header, i) => {
+      // Reset text color after drawing headers
+      doc.setFillColor(41, 128, 185)
+      doc.setTextColor(255, 255, 255);
+      doc.rect(xPos, currentY, colWidths[i], rowHeight, 'F');
+      doc.text(header, xPos + 2, currentY + 5);
+      xPos += colWidths[i];
+    });
+    
+    
+    
+    currentY += rowHeight;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, currentY, pageWidth - margin, currentY);
+    
+    // Reset text color and font
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
     
     // Process each product
-    data.forEach(product => {
-      // Add main product row
-      tableData.push({
-        product: product.productName,
-        quantity: formatNumber(product.quantity),
-        unitCost: formatCurrency(product.unitCost),
-        totalCost: formatCurrency(product.cost),
-        isBold: false
-      });
-
+    data.forEach((product, index) => {
+      // Check for page break
+      if (currentY > 270) { // Near bottom of page
+        doc.addPage();
+        currentY = 20;
+      }
+      
+      // Product name (main row)
+      doc.setFont('helvetica', 'bold');
+      doc.text(product.productName, margin + 2, currentY + 5);
+      doc.setFont('helvetica', 'normal');
+      
+      // Quantity
+      doc.text(
+        formatNumber(product.quantity),
+        margin + colWidths[0] + colWidths[1] / 2,
+        currentY + 5,
+        { align: 'right' }
+      );
+      
+      // Unit Cost
+      doc.text(
+        formatCurrency(Number(product.cost)/Number(product.quantity)),
+        margin + colWidths[0] + colWidths[1] + colWidths[2] / 2,
+        currentY + 5,
+        { align: 'right' }
+      );
+      
+      // Total Cost
+      doc.text(
+        formatCurrency(product.cost),
+        pageWidth - margin - 2,
+        currentY + 5,
+        { align: 'right' }
+      );
+      
+      currentY += rowHeight;
+      
       // Add location details
       if (product.locations && Object.keys(product.locations).length > 0) {
         Object.entries(product.locations).forEach(([location, locData]) => {
-          tableData.push({
-            product: `  • ${location}`,
-            quantity: formatNumber(locData.quantity),
-            unitCost: '',
-            totalCost: formatCurrency(locData.cost),
-            isBold: false
-          });
+          if (currentY > 270) {
+            doc.addPage();
+            currentY = 20;
+          }
+          
+          doc.setFontSize(9);
+          doc.text(
+            `• ${locData.name}`,
+            margin + 5,
+            currentY + 5
+          );
+          
+          doc.text(
+            formatNumber(locData.quantity),
+            margin + colWidths[0] + colWidths[1] / 2,
+            currentY + 5,
+            { align: 'right' }
+          );
+          
+          doc.text(
+            formatCurrency(locData.cost),
+            pageWidth - margin - 2,
+            currentY + 5,
+            { align: 'right' }
+          );
+          
+          currentY += rowHeight;
         });
+        doc.setFontSize(10);
       }
       
-      // Add empty row
-      tableData.push({
-        product: '',
-        quantity: '',
-        unitCost: '',
-        totalCost: '',
-        isBold: false
-      });
+      // Add some space after each product
+      currentY += 2;
+      doc.setDrawColor(240, 240, 240);
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+      currentY += 3;
     });
-
+    
     // Add summary row
-    tableData.push({
-      product: 'TOTAL',
-      quantity: formatNumber(summary.totalQuantity),
-      unitCost: formatCurrency(summary.averageUnitCost),
-      totalCost: formatCurrency(summary.totalCost),
-      isBold: true
-    });
-
-    // Add table to PDF
-    doc.autoTable({
-      head: [headers.map(header => header.header)],
-      body: tableData.map(row => [
-        row.product,
-        row.quantity,
-        row.unitCost,
-        row.totalCost
-      ]),
-      startY: 35,
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: 'bold',
-        fontSize: 9
-      },
-      bodyStyles: {
-        fontSize: 9,
-        cellPadding: 2,
-        valign: 'middle'
-      },
-      styles: {
-        cellPadding: 2,
-        fontSize: 9,
-        cellWidth: 'wrap',
-        overflow: 'linebreak',
-        lineWidth: 0.1
-      },
-      columnStyles: {
-        0: { cellWidth: 80, fontStyle: 'normal' },
-        1: { cellWidth: 30, halign: 'right' },
-        2: { cellWidth: 30, halign: 'right' },
-        3: { cellWidth: 30, halign: 'right' }
-      },
-      willDrawCell: (data) => {
-        // Apply bold style to summary row
-        if (tableData[data.row.index].isBold) {
-          data.cell.styles.fontStyle = 'bold';
-        }
-      }
-    });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('TOTAL', margin + 2, currentY + 6);
+    
+    doc.text(
+      formatNumber(summary.totalQuantity),
+      margin + colWidths[0] + colWidths[1] / 2,
+      currentY + 6,
+      { align: 'right' }
+    );
+    
+    doc.text(
+      formatCurrency(summary.averageUnitCost),
+      margin + colWidths[0] + colWidths[1] + colWidths[2] / 2,
+      currentY + 6,
+      { align: 'right' }
+    );
+    
+    doc.text(
+      formatCurrency(summary.totalCost),
+      pageWidth - margin - 2,
+      currentY + 6,
+      { align: 'right' }
+    );
+    
+    // Draw bottom border
+    currentY += 5;
+    doc.setDrawColor(0, 0, 0);
+    doc.line(margin, currentY, pageWidth - margin, currentY);
     
     // Save the PDF with a proper filename
     doc.save(`${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -1336,13 +1433,13 @@ const TransactionHistory = () => {
   };
 
   // Modal component
-  const DetailModal = ({ show, onClose, data, title, summary }) => {
+  const DetailModal = ({ show, onClose, data, title, type, summary, startDate, endDate }) => {
     if (!show || !data) return null;
     
-    const { totalQuantity, totalCost, averageUnitCost } = summary || {};
+    const { totalQuantity, totalValue, totalCost, averageUnitCost } = summary || {};
     
     const handleExportPDF = () => {
-      exportToPDF(title, data, summary);
+      exportToPDF(title, data, summary, startDate, endDate);
     };
 
     return (
@@ -1369,6 +1466,8 @@ const TransactionHistory = () => {
                   <th>Product</th>
                   <th className="text-end">Quantity</th>
                   <th className="text-end">% of Total</th>
+                  {type === 'sales' && <th className="text-end">Total Value</th>}
+                  {type === 'sales' && <th className="text-end">% of Value</th>}
                   <th className="text-end">Unit Cost</th>
                   <th className="text-end">Total Cost</th>
                   <th className="text-end">% of Cost</th>
@@ -1385,14 +1484,16 @@ const TransactionHistory = () => {
                             {loc.name}: {formatNumber(loc.quantity)} ({loc.percentage?.toFixed(1)}%)
                           </div>
                         ))}
-                      </div>
+                      </div> 
                     </td>
                     <td className="text-end">{formatNumber(product.quantity)}</td>
                     <td className="text-end">{product.percentage?.toFixed(1)}%</td>
+                    {type === 'sales' && <td className="text-end">{formatCurrency(product.value)}</td>}
+                    {type === 'sales' && <td className="text-end">{product.valuePercentage?.toFixed(1)}%</td>}
                     <td className="text-end">{formatCurrency(product.unitCost)}</td>
                     <td className="text-end">{formatCurrency(product.cost)}</td>
                     <td className="text-end">
-                      {data.totalCost > 0 ? ((product.cost / data.totalCost) * 100).toFixed(1) : 0}%
+                      {product.costPercentage?.toFixed(1)}%
                     </td>
                   </tr>
                 ))}
@@ -1402,6 +1503,8 @@ const TransactionHistory = () => {
                   <th>Total</th>
                   <th className="text-end">{formatNumber(totalQuantity || 0)}</th>
                   <th className="text-end">100%</th>
+                  {type === 'sales' && <td className="text-end">{formatCurrency(totalValue || 0)}</td>}
+                  {type === 'sales' && <td className="text-end">100%</td>}
                   <th className="text-end">{formatCurrency(averageUnitCost || 0)}</th>
                   <th className="text-end">{formatCurrency(totalCost || 0)}</th>
                   <th className="text-end">100%</th>
@@ -1428,7 +1531,10 @@ const TransactionHistory = () => {
         onClose={() => setModalData(prev => ({ ...prev, show: false }))}
         data={modalData.data}
         title={modalData.title}
+        type={modalData.type}
         summary={modalData.summary}
+        startDate={filters.startDate}
+        endDate={filters.endDate}
       />
       
       <div className="filters-container">
