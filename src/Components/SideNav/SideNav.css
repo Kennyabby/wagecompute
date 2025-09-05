@@ -29,9 +29,12 @@
 
 /* Show approval indicators in collapsed state */
 .sidenav.collapsed .navdivcount {
+    display: flex;
     position: absolute;
     top: 2px;
     right: 2px;
+    justify-content: center;
+    align-items: center;
     transform: scale(0.8);
     transform-origin: top right;
     z-index: 1;
@@ -93,7 +96,7 @@
     padding: 12px 0;
 }
 
-.sidenav.collapsed .navdiv > div:not(.notification-badge) {
+.sidenav.collapsed .navdiv > div:not(.navdivcount) {
     display: none;
 }
 
@@ -165,9 +168,12 @@
 
 /* Hide menu button on desktop by default */
 @media (min-width: 769px) {
-    .mobile-menu-btn {
+    /* .mobile-menu-btn {
         display: none;
-    }
+    } */
+     .sidenav{
+        left:-100%;
+     }
 }
 
 /* Ensure single column layout when collapsed */
@@ -390,7 +396,7 @@
     }
     
     .sidenav.collapsed {
-        width: 60px;
+        width: max-content;
     }
     
     .sidenav.collapsed.open {
