@@ -143,8 +143,6 @@ const TransactionHistory = () => {
   // Helper function to fetch stock data
   const fetchStockData = async (type, startDate, endDate) => {
     try {
-      // For opening stock, get all transactions before startDate
-      // For closing stock, get all transactions up to endDate
       const query = {
         database: company,
         collection: 'InventoryTransactions',
@@ -154,22 +152,45 @@ const TransactionHistory = () => {
               { [type === 'openingStock' ? '$lt' : '$lte']: [{ $toString: "$postingStamp" }, type === 'openingStock' ? startDate : endDate] }
             ]
           }
-        }
+        },
+        // Add projection to only fetch necessary fields
+        project: {
+          productId: 1,
+          entryType: 1,
+          documentType: 1,
+          name: 1,
+          quantity: 1,
+          baseQuantity: 1,
+          costPrice: 1,
+          totalCost: 1,
+          totalSales: 1,
+          location: 1,
+          uom: 1,
+          postingStamp: 1,
+          postingDate: 1,
+        },
+        // Add limit to prevent fetching too much data
+        // limit: 10000,
+        // Add sort to use index efficiently
+        sort: { postingStamp: 1 }
       };
-
-      // Add location filter if specified
+  
+      // Add filters only if needed
       if (filters.location && filters.location !== 'all') {
-        query.prop.$expr.$and.push({ $eq: ["$location", filters.location] });
+        query.prop.location = filters.location;
       }
-
-      // Add product filter if specified
+  
       if (filters.productId) {
-        query.prop.$expr.$and.push({ $eq: ["$productId", filters.productId] });
+        query.prop.productId = filters.productId;
       }
-
-      // Execute the query
+  
+      if (filters.transactionType) {
+        query.prop.$or = [
+          { entryType: filters.transactionType },
+          { documentType: filters.transactionType }
+        ].filter(Boolean)
+      }
       const result = await fetchServer('POST', query, 'getDocsDetails', server);
-      console.log(result)
       return result.record || [];
     } catch (error) {
       console.error(`Error fetching ${type} data:`, error);
