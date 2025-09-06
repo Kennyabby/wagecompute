@@ -27,12 +27,9 @@ const Stock = ({
     const [categories, setCategories] = useState([]);
 
     // Initialize date range with first day of current month as start date and current date as end date
-    const [dateRange, setDateRange] = useState(() => {
-        const today = new Date();
-        return {
-            startDate: startOfMonth(today),
-            endDate: endOfDay(today)
-        };
+    const [dateRange, setDateRange] = useState({
+        startDate: new Date(new Date().setDate(0)).toISOString().split('T')[0], // First day of current month
+        endDate: new Date().toISOString().split('T')[0] // Today
     });
     
     // Fetch warehouses from the database
@@ -527,6 +524,14 @@ const Stock = ({
         }
     };
 
+    const handleDateChange = (e) => {
+        const { name, value } = e.target;
+        setDateRange(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
     // Format currency values
     const formatCurrency = (value) => {
         if (value === undefined || value === null) return '0.00';
@@ -816,36 +821,26 @@ const Stock = ({
                     </svg>
                     Filters
                 </div>
-                
                 <div className='filter-row'>
-                    <div className='filter-group'>
+                    <div className="filter-group">
                         <label>Date Range</label>
-                        <div className='date-range-container'>
-                            <div className='date-range-item'>
-                                <label>Start Date</label>
-                                <DatePicker
-                                    selected={dateRange.startDate}
-                                    onChange={(date) => setDateRange({...dateRange, startDate: date})}
-                                    selectsStart
-                                    startDate={dateRange.startDate}
-                                    endDate={dateRange.endDate}
-                                    maxDate={new Date()}
-                                    className='filter-input date-picker'
-                                />
-                            </div>
-                            <div className='date-range-item'>
-                                <label>End Date</label>
-                                <DatePicker
-                                    selected={dateRange.endDate}
-                                    onChange={(date) => setDateRange({...dateRange, endDate: endOfDay(date)})}
-                                    selectsEnd
-                                    startDate={dateRange.startDate}
-                                    endDate={dateRange.endDate}
-                                    minDate={dateRange.startDate}
-                                    maxDate={new Date()}
-                                    className='filter-input date-picker'
-                                />
-                            </div>
+                        <div className="date-range">
+                            <input
+                                type="date"
+                                name="startDate"
+                                value={dateRange.startDate}
+                                onChange={handleDateChange}
+                                className="date-input"
+                            />
+                            <span>to</span>
+                            <input
+                                type="date"
+                                name="endDate"
+                                value={dateRange.endDate}
+                                onChange={handleDateChange}
+                                className="date-input"
+                                min={dateRange.startDate}
+                            />
                         </div>
                     </div>
                     
