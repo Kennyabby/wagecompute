@@ -146,11 +146,10 @@ const TransactionHistory = () => {
       const query = {
         database: company,
         collection: 'InventoryTransactions',
+        
         prop: {
-          $expr: {
-            $and: [
-              { [type === 'openingStock' ? '$lt' : '$lte']: [{ $toString: "$postingStamp" }, type === 'openingStock' ? startDate : endDate] }
-            ]
+          postingDate: {
+            [type === 'openingStock' ? '$lt' : '$lte']: type === 'openingStock' ? startDate : endDate
           }
         },
         // Add projection to only fetch necessary fields
@@ -172,7 +171,7 @@ const TransactionHistory = () => {
         // Add limit to prevent fetching too much data
         // limit: 10000,
         // Add sort to use index efficiently
-        sort: { postingStamp: 1 }
+        sort: { postingDate: 1 }
       };
   
       // Add filters only if needed
@@ -184,12 +183,12 @@ const TransactionHistory = () => {
         query.prop.productId = filters.productId;
       }
   
-      if (filters.transactionType) {
-        query.prop.$or = [
-          { entryType: filters.transactionType },
-          { documentType: filters.transactionType }
-        ].filter(Boolean)
-      }
+      // if (filters.transactionType) {
+      //   query.prop.$or = [
+      //     { entryType: filters.transactionType },
+      //     { documentType: filters.transactionType }
+      //   ].filter(Boolean)
+      // }
       const result = await fetchServer('POST', query, 'getDocsDetails', server);
       return result.record || [];
     } catch (error) {
@@ -204,8 +203,8 @@ const TransactionHistory = () => {
       setLoading(true);
       
       let transactionsToProcess = [];
-      const startDate = new Date(filters.startDate).toISOString();
-      const endDate = new Date(filters.endDate).toISOString();
+      const startDate = new Date(filters.startDate).toISOString().split('T')[0];
+      const endDate = new Date(filters.endDate).toISOString().split('T')[0];
 
       // For opening/closing stock, use direct queries for better accuracy
       if (type === 'openingStock' || type === 'closingStock') {
@@ -334,7 +333,7 @@ const TransactionHistory = () => {
       // Set the modal data and show the modal
       setModalData({
         show: true,
-        title: getTitle(),
+        title: `${companyRecord.name} - ${getTitle()}`,
         type,
         data: productList,
         summary: {
@@ -618,30 +617,31 @@ const TransactionHistory = () => {
   };
 
   // Get opening balance for the selected period
-  const getOpeningBalance = useCallback(async (startDate, location, productId) => {
+  const getOpeningBalance = useCallback(async (startDate, location, productId, transactionType) => {
     try {
       // Format the date to match the database format (ISO string)
-      const formattedStartDate = new Date(startDate).toISOString();
+      const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
       
       // Get all products that have a salesPrice or vipPrice
       const productIds = products
-        .filter(product => product.salesPrice ||product.vipPrice )
+        .filter(product => product.salesPrice || product.vipPrice )
         .map(product => product.i_d);
 
       const query = {
         database: company,
         collection: 'InventoryTransactions',
         prop: [
-          { 
+          {
             $match: {
-              $expr: {
-                $lt: [
-                  { $toString: "$postingStamp" },
-                  formattedStartDate
-                ]
-              },
+              postingDate: { $lt: formattedStartDate },
               ...(location !== 'all' && { location }),
-              ...(productId && { productId })
+              ...(productId && { productId }),
+              ...(transactionType !== 'all' && { 
+                $or: [
+                  { entryType: transactionType },
+                  { documentType: transactionType }
+                ].filter(Boolean)
+              })
             }
           },
           { 
@@ -729,8 +729,8 @@ const TransactionHistory = () => {
   const fetchTransactionsData = useCallback(async (startDate, endDate, filters) => {
     try {
       // Format dates to match the database format (ISO strings)
-      const formattedStartDate = new Date(startDate).toISOString();
-      const formattedEndDate = new Date(endDate).toISOString();
+      const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
+      const formattedEndDate = new Date(endDate).toISOString().split('T')[0];
 
       
       // Build the transactions query
@@ -740,9 +740,9 @@ const TransactionHistory = () => {
         prop: {
           $expr: {
             $and: [
-              { $gte: [{ $toString: "$postingStamp" }, formattedStartDate] },
-              { $lte: [{ $toString: "$postingStamp" }, formattedEndDate] }
-            ]
+              { $gte: ["$postingDate", formattedStartDate] },
+              { $lte: ["$postingDate", formattedEndDate] }
+            ],
           },
           ...(filters.location !== 'all' && { location: filters.location }),
           ...(filters.productId && { productId: filters.productId }),
@@ -771,9 +771,9 @@ const TransactionHistory = () => {
           orderNumber: 1,
           createdAt: 1
         },
-        sort: { postingStamp: 1 },
-        skip: (filters.page - 1) * filters.limit,
-        limit: filters.limit
+        sort: { postingDate: 1 },
+        // skip: (filters.page - 1) * filters.limit,
+        // limit: filters.limit
       };
 
       // Create aggregation pipeline for summary data
@@ -782,8 +782,8 @@ const TransactionHistory = () => {
           $match: {
             $expr: {
               $and: [
-                { $gte: [{ $toString: "$postingStamp" }, formattedStartDate] },
-                { $lte: [{ $toString: "$postingStamp" }, formattedEndDate] }
+                { $gte: [{ $toString: "$postingDate" }, formattedStartDate] },
+                { $lte: [{ $toString: "$postingDate" }, formattedEndDate] }
               ]
             },
             ...(filters.location !== 'all' && { location: filters.location }),
@@ -1353,7 +1353,12 @@ const TransactionHistory = () => {
         transfersOut: summaryData.transfersOut,
         positiveAdjustments: summaryData.positiveAdjustments,
         negativeAdjustments: summaryData.negativeAdjustments,
-        closingStock: openingStock + summaryData.totalIn - summaryData.totalOut,
+        closingStock: openingStock + summaryData.purchases 
+        - summaryData.sales 
+        + summaryData.transfersIn 
+        - summaryData.transfersOut 
+        + summaryData.positiveAdjustments 
+        - summaryData.negativeAdjustments,
         
         // Cost Values
         openingStockCost,

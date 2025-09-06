@@ -3,6 +3,7 @@ import './DashView.css'
 import {useEffect, useMemo, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
 // Charts (install: npm i recharts)
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, PieChart, Pie, Cell, LabelList } from 'recharts'
 
@@ -20,7 +21,6 @@ const DashView = () =>{
         rentals, getRentals,
         employees, getEmployees,
     } = useContext(ContextProvider)
-
     // Default date range (current month)
     const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10)
     const defaultToDate = new Date().toISOString().slice(0,10)
@@ -33,6 +33,8 @@ const DashView = () =>{
     const [productFilter, setProductFilter] = useState('')
     const [employeeFilter, setEmployeeFilter] = useState('')
     const [seasonFilter, setSeasonFilter] = useState('')
+    
+    const navigate = useNavigate()
     
     // Handle season filter change
     const handleSeasonChange = (season) => {
@@ -176,7 +178,18 @@ const DashView = () =>{
             // Format dates for MongoDB query
             const formattedStartDate = new Date(fromDate).toISOString();
             const formattedEndDate = new Date(toDate).toISOString();
-            
+            const openingFilter = {
+                $expr: {
+                    $and: [
+                        {
+                            $lt: [
+                            { $toString: "$postingStamp" },
+                            formattedStartDate
+                            ]
+                        }
+                    ]
+                }
+            }
             const filter = {
                 $expr: {
                   $and: [
@@ -197,14 +210,38 @@ const DashView = () =>{
             }
             
             // const filter = { postingStamp: { $gte: formattedStartDate, $lte: formattedEndDate } }
-            if (locationFilter) filter.location = locationFilter
-            if (productFilter) filter.productId = productFilter
+            if (locationFilter) {
+                filter.location = locationFilter
+                openingFilter.location = locationFilter
+            }
+            if (productFilter) {
+                filter.productId = productFilter
+                openingFilter.productId = locationFilter
+            }
             // Query InventoryTransactions once for range
+            
             const resp = await fetchServer('POST', {
                 database: company,
                 collection: 'InventoryTransactions',
                 prop: filter
             }, 'getDocsDetails', server)
+            const openingResp = await fetchServer('POST', {
+                database: company,
+                collection: 'InventoryTransactions',
+                prop: openingFilter
+            }, 'getDocsDetails', server)
+            // const [resp, openingResp] = await Promise.all([
+            //     fetchServer('POST', {
+            //         database: company,
+            //         collection: 'InventoryTransactions',
+            //         prop: filter
+            //     }, 'getDocsDetails', server),
+            //     fetchServer('POST', {
+            //         database: company,
+            //         collection: 'InventoryTransactions',
+            //         prop: openingFilter
+            //     }, 'getDocsDetails', server)
+            // ]);
 
             const productIds = products
                 .filter(product => product.salesPrice ||product.vipPrice )
@@ -215,12 +252,13 @@ const DashView = () =>{
             const byLocation = new Map()
             const byDate = new Map() // date -> {sales, purchases}
             const productLocMap = new Map() // pid -> Map(location -> qty)
-            if (resp?.record && Array.isArray(resp.record)){
+            if ((resp?.record || openingResp?.record) && (Array.isArray(resp.record) || Array.isArray(openingResp.record))){
                 resp.record.forEach(t=>{
                     const type = String(t.entryType||'').toLowerCase()
                     const qty = Math.abs(Number(t.baseQuantity||t.quantity||0))
                     const totSales = Math.abs(Number(t.totalSales||0))
                     const totCost = productIds.includes(t.productId) ? Math.abs(Number(t.totalCost||0)) : 0
+                    // const totCost = Math.abs(Number(t.totalCost||0))
                     const loc = t.location || 'Unknown'
                     const pid = t.productId || t.i_d || 'Unknown'
                     const d = (t.postingDate && typeof t.postingDate === 'string') ? t.postingDate : new Date(Number(t.createdAt||0)).toISOString().slice(0,10)
@@ -247,20 +285,29 @@ const DashView = () =>{
                     }
                     if (type === 'purchase'){
                         purchasesQty += qty
-                        purchasesAmount += (totCost)
+                        purchasesAmount += (totCost)                        
                         const cur = byDate.get(d) || { sales:0, purchases:0 }
                         cur.purchases += totCost
                         byDate.set(d, cur)
                     }
                 })
+                openingResp.record.forEach((trs)=>{
+                    const type = String(trs.entryType||'').toLowerCase()
+                    if (type === 'purchase'){
+                        purchasesQty += Number(trs.baseQuantity||0)
+                        if (productIds.includes(trs.productId)){
+                            purchasesAmount += Number(trs.totalCost||0)
+                        }
+                    }
+                })
             }
-
             // Inventory aggregates from products
             let inventoryQty = 0, inventoryValue = 0, inventorySales = 0
             if (products && Array.isArray(products)){
                 products.forEach(p=>{
                     inventoryQty += Number(p.totalStock||0)
-                    inventoryValue += (p.salesPrice && purchasesQty) ? (purchasesAmount/purchasesQty)*Number(p.totalStock||0) : 0
+                    inventoryValue += (purchasesQty) ? (purchasesAmount/purchasesQty)*Number(p.totalStock||0) : 0
+                    // inventoryValue += (purchasesAmount/purchasesQty)*Number(p.totalStock||0)
                     inventorySales += (Number(p.salesPrice||0) * Number(p.totalStock||0))
                 })
             }
@@ -974,7 +1021,9 @@ const DashView = () =>{
                             </div>
                         )}
                     </div>
-                    <div className='kpi-card'>
+                    <div className='kpi-card' onClick={()=>{
+                        navigate('/inventory')
+                    }}>
                         <div className='kpi-label'>Inventory</div>
                         <div className='kpi-value'>{fmt(kpis.inventoryQty)} units</div>
                         <div className='kpi-sub'>₦ {fmt(kpis.inventoryValue)} (Cost value)</div>
