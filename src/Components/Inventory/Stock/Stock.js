@@ -26,6 +26,15 @@ const Stock = ({
     const [warehouses, setWarehouses] = useState([]);
     const [categories, setCategories] = useState([]);
 
+    // Initialize date range with first day of current month as start date and current date as end date
+    const [dateRange, setDateRange] = useState(() => {
+        const today = new Date();
+        return {
+            startDate: startOfMonth(today),
+            endDate: endOfDay(today)
+        };
+    });
+    
     // Fetch warehouses from the database
     const getWarehouses = async () => {
         try {
@@ -236,27 +245,16 @@ const Stock = ({
         )
     );
     
-    // Initialize date range with first day of current month as start date and current date as end date
-    const [dateRange, setDateRange] = useState(() => {
-        const today = new Date();
-        return {
-            startDate: startOfMonth(today),
-            endDate: endOfDay(today)
-        };
-    });
+    
     
     // Memoize dateRange to prevent unnecessary effect re-runs
-    const stableDateRange = useMemo(() => ({
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate
-    }), [dateRange.startDate.getTime(), dateRange.endDate.getTime()]);
+    // const stableDateRange = useMemo(() => ({
+    //     startDate: dateRange.startDate,
+    //     endDate: dateRange.endDate
+    // }), [dateRange.startDate.getTime(), dateRange.endDate.getTime()]);
 
     useEffect(() => {
-        const cmp_val = window.localStorage.getItem('sessn-cmp');
-        getProductsStockReport(cmp_val, products, {
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate
-        });
+        const cmp_val = window.localStorage.getItem('sessn-cmp');        
         if (!isTransferClicked){
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
@@ -279,7 +277,7 @@ const Stock = ({
                 clearInterval(intervalRef.current);
             }
         }
-    }, [window.localStorage.getItem('sessn-cmp'), isTransferClicked]);
+    }, [window.localStorage.getItem('sessn-cmp'), isTransferClicked, dateRange]);
 
     useEffect(() => {
         if (settings.length) {
@@ -307,9 +305,7 @@ const Stock = ({
         })
         setTransferEntries(defaultEntries);        
     };
-    useEffect(()=>{
-        // console.log(transferEntries)
-    },[transferEntries])
+    
     useEffect(() => {
         if (isTransferClicked){
             resetCount();
@@ -321,9 +317,10 @@ const Stock = ({
             )
         }
     },[isTransferClicked]);
+    
     useEffect(()=>{        
         if (isSaveClicked) {
-            handleTransfer();
+            handleTransfer();            
         }
     },[isSaveClicked])
 
@@ -331,6 +328,7 @@ const Stock = ({
         const fetchData = async () => {
             if (company) {
                 setIsLoading(true);
+                
                 try {
                     // First get warehouses and categories
                     await Promise.all([getWarehouses(), getCategories()]);
@@ -339,15 +337,15 @@ const Stock = ({
                     // const products = await getProducts(company);
                     if (products && products.length) {
                         // Use getProductsStockReport instead of getProductsWithStock
-                        const productsWithStock = await getProductsStockReport(company, products, {
+                        getProductsStockReport(company, products, {
                             startDate: dateRange.startDate,
                             endDate: dateRange.endDate
                         });
                         // console.log(productsWithStock)
                         // Update products with the stock data
-                        if (productsWithStock) {
-                            setProducts(productsWithStock);
-                        }
+                        // if (productsWithStock) {
+                        //     setProducts(productsWithStock);
+                        // }
                     }
                 } catch (error) {
                     console.error('Error fetching data:', error);
@@ -361,20 +359,20 @@ const Stock = ({
         };
 
         fetchData();
-    }, [company, stableDateRange]);
+    }, [company]);
 
     useEffect(() => {
         const updateStockData = async () => {
             if (company && products.length) {
                 setIsLoading(true);
                 try {
-                    const updatedProducts = await getProductsStockReport(company, products, {
+                    getProductsStockReport(company, products, {
                         startDate: dateRange.startDate,
                         endDate: dateRange.endDate
                     });
-                    if (updatedProducts) {
-                        setProducts(updatedProducts);
-                    }
+                    // if (updatedProducts) {
+                    //     setProducts(updatedProducts);
+                    // }
                 } catch (error) {
                     console.error('Error updating stock data:', error);
                     setAlertState('error');
@@ -515,7 +513,10 @@ const Stock = ({
                 setIsTransferValue(false);                        
                 setFromWarehouse('');
                 setToWarehouse('');
-                getProductsWithStock(company, products)
+                getProductsWithStock(company, products, {
+                    startDate: dateRange.startDate,
+                    endDate: dateRange.endDate
+                })
                 resetCount();
             }
         } else {
@@ -924,6 +925,7 @@ const Stock = ({
                         // Filter and map products once to avoid duplicate calculations
                         const filteredProducts = isLoading ? [] : products.filter(prflt => {
                             if (curCategory !== 'all' && prflt.category !== curCategory) return false;
+                            if (curWarehouse !== 'all' && prflt.locationStockDetails?.[curWarehouse] === undefined) return false;
                             return prflt.type === 'goods';
                         });
 

@@ -1079,10 +1079,10 @@ function App() {
       // Set default date range if not provided (current month to date)
       const startDate = dateRange.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
       const endDate = dateRange.endDate || new Date();
-      
+      // console.log(startDate, endDate)
       // Format dates for MongoDB query
-      const formattedStartDate = startDate.toISOString();
-      const formattedEndDate = endDate.toISOString();
+      const formattedStartDate = startDate.toISOString().split('T')[0];
+      const formattedEndDate = endDate.toISOString().split('T')[0];
       
       // 1. Get opening stock (stock before start date)
       const openingStockResp = await fetchServer(
@@ -1093,12 +1093,7 @@ function App() {
           prop: [
             {
               $match: {
-                $expr: {
-                  $lt: [
-                    { $toString: "$postingStamp" },
-                    formattedStartDate
-                  ]
-                }
+                postingDate: { $lt: formattedStartDate },
               }
             },
             {
@@ -1177,10 +1172,10 @@ function App() {
               $match: {
                 $expr: {
                   $and: [
-                    { $gte: [{ $toString: "$postingStamp" }, formattedStartDate] },
-                    { $lte: [{ $toString: "$postingStamp" }, formattedEndDate] }
-                  ]
-                }
+                    { $gte: ["$postingDate", formattedStartDate] },
+                    { $lte: ["$postingDate", formattedEndDate] }
+                  ],
+                },
               }
             },
             {
@@ -1553,8 +1548,6 @@ function App() {
     closingSalesValue: 0,
     averageCost: 0
   });
-
-
 
   const getAccommodations = async (company) =>{
     const resp = await fetchServer("POST", {
