@@ -1077,8 +1077,8 @@ function App() {
   const getProductsStockReport = async (company, products, dateRange = {}) => {
     try {
       // Set default date range if not provided (current month to date)
-      const startDate = dateRange.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const endDate = dateRange.endDate || new Date();
+      const startDate = new Date(dateRange.startDate) || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const endDate = new Date(dateRange.endDate) || new Date();
       // console.log(startDate, endDate)
       // Format dates for MongoDB query
       const formattedStartDate = startDate.toISOString().split('T')[0];
@@ -1235,11 +1235,11 @@ function App() {
                   $sum: {
                     $cond: [
                       { $eq: ["$entryType", "Sales"] },
-                      { $abs: { $cond: [
+                      { $cond: [
                         { $isNumber: "$baseQuantity" },
                         "$baseQuantity",
                         { $toDouble: "$baseQuantity" }
-                      ]}},
+                      ]},
                       0
                     ]
                   }
@@ -1248,11 +1248,11 @@ function App() {
                   $sum: {
                     $cond: [
                       { $eq: ["$entryType", "Sales"] },
-                      { $abs: { $cond: [
+                      { $cond: [
                         { $isNumber: "$totalSales" },
                         "$totalSales",
                         { $toDouble: "$totalSales" }
-                      ]}},
+                      ]},
                       0
                     ]
                   }
@@ -1261,11 +1261,11 @@ function App() {
                   $sum: {
                     $cond: [
                       { $eq: ["$entryType", "Sales"] },
-                      { $abs: { $cond: [
+                      { $cond: [
                         { $isNumber: "$totalCost" },
                         "$totalCost",
                         { $toDouble: "$totalCost" }
-                      ]}},
+                      ]},
                       0
                     ]
                   }
@@ -1294,11 +1294,11 @@ function App() {
                         { $eq: ["$documentType", "Transfer Shipment"] },
                         { $lt: ["$baseQuantity", 0] }
                       ]},
-                      { $abs: { $cond: [
+                      { $cond: [
                         { $isNumber: "$baseQuantity" },
                         "$baseQuantity",
                         { $toDouble: "$baseQuantity" }
-                      ]}},
+                      ]},
                       0
                     ]
                   }
@@ -1344,11 +1344,11 @@ function App() {
                         { $eq: ["$documentType", "Negative Adjustment"] },
                         { $lt: ["$baseQuantity", 0] }
                       ]},
-                      { $abs: { $cond: [
+                      { $cond: [
                         { $isNumber: "$baseQuantity" },
                         "$baseQuantity",
                         { $toDouble: "$baseQuantity" }
-                      ]}},
+                      ]},
                       0
                     ]
                   }
@@ -1360,11 +1360,11 @@ function App() {
                         { $eq: ["$documentType", "Negative Adjustment"] },
                         { $lt: ["$baseQuantity", 0] }
                       ]},
-                      { $abs: { $cond: [
+                      { $cond: [
                         { $isNumber: "$totalCost" },
                         "$totalCost",
                         { $toDouble: "$totalCost" }
-                      ]}},
+                      ]},
                       0
                     ]
                   }
@@ -1444,14 +1444,14 @@ function App() {
           locationData.negativeAdjustmentCost = item.negativeAdjustmentCost || 0;
           
           // Net adjustments
-          locationData.netAdjustmentQty = (item.positiveAdjustmentQty || 0) - (item.negativeAdjustmentQty || 0);
-          locationData.netAdjustmentCost = (item.positiveAdjustmentCost || 0) - (item.negativeAdjustmentCost || 0);
+          locationData.netAdjustmentQty = (item.positiveAdjustmentQty || 0) + (item.negativeAdjustmentQty || 0);
+          locationData.netAdjustmentCost = (item.positiveAdjustmentCost || 0) + (item.negativeAdjustmentCost || 0);
           
           // Calculate closing quantities
           locationData.closingQty = (locationData.openingQuantity || 0) + 
                                    (locationData.purchasedQty || 0) + 
-                                   (locationData.transferInQty || 0) - 
-                                   (locationData.transferOutQty || 0) - 
+                                   (locationData.transferInQty || 0) + 
+                                   (locationData.transferOutQty || 0) + 
                                    (locationData.soldQty || 0) + 
                                    (locationData.netAdjustmentQty || 0);
           
@@ -1497,8 +1497,8 @@ function App() {
         }), createEmptyStockData());
 
         // Calculate net adjustments
-        const netAdjustmentQty = (totals.positiveAdjustmentQty || 0) - (totals.negativeAdjustmentQty || 0);
-        const netAdjustmentCost = (totals.positiveAdjustmentCost || 0) - (totals.negativeAdjustmentCost || 0);
+        const netAdjustmentQty = (totals.positiveAdjustmentQty || 0) + (totals.negativeAdjustmentQty || 0);
+        const netAdjustmentCost = (totals.positiveAdjustmentCost || 0) + (totals.negativeAdjustmentCost || 0);
         
         // Add net adjustments to totals for backward compatibility
         totals.netAdjustmentQty = netAdjustmentQty;

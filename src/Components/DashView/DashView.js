@@ -176,37 +176,21 @@ const DashView = () =>{
         setDashErr('')
         try{
             // Format dates for MongoDB query
-            const formattedStartDate = new Date(fromDate).toISOString();
-            const formattedEndDate = new Date(toDate).toISOString();
+            const formattedStartDate = new Date(fromDate).toISOString().split('T')[0];
+            const formattedEndDate = new Date(toDate).toISOString().split('T')[0];
             const openingFilter = {
                 $expr: {
-                    $and: [
-                        {
-                            $lt: [
-                            { $toString: "$postingStamp" },
-                            formattedStartDate
-                            ]
-                        }
-                    ]
+                    postingDate: { $lt: formattedStartDate },
                 }
             }
+
             const filter = {
                 $expr: {
-                  $and: [
-                    {
-                      $lte: [
-                        { $toString: "$postingStamp" },
-                        formattedEndDate
-                      ]
-                    },
-                    {
-                      $gte: [
-                        { $toString: "$postingStamp" },
-                        formattedStartDate
-                      ]
-                    }
-                  ]
-                }
+                    $and: [
+                        { $gte: ["$postingDate", formattedStartDate] },
+                        { $lte: ["$postingDate", formattedEndDate] }
+                    ],
+                },
             }
             
             // const filter = { postingStamp: { $gte: formattedStartDate, $lte: formattedEndDate } }
@@ -225,11 +209,11 @@ const DashView = () =>{
                 collection: 'InventoryTransactions',
                 prop: filter
             }, 'getDocsDetails', server)
-            const openingResp = await fetchServer('POST', {
-                database: company,
-                collection: 'InventoryTransactions',
-                prop: openingFilter
-            }, 'getDocsDetails', server)
+            // const openingResp = await fetchServer('POST', {
+            //     database: company,
+            //     collection: 'InventoryTransactions',
+            //     prop: openingFilter
+            // }, 'getDocsDetails', server)
             // const [resp, openingResp] = await Promise.all([
             //     fetchServer('POST', {
             //         database: company,
@@ -244,7 +228,7 @@ const DashView = () =>{
             // ]);
 
             const productIds = products
-                .filter(product => product.salesPrice ||product.vipPrice )
+                .filter(product => product.salesPrice || product.vipPrice )
                 .map(product => product.i_d);
             let salesAmount=0, salesQty=0, purchasesAmount=0, purchasesQty=0
             let cogs=0 // cost of goods sold for sales
@@ -252,7 +236,7 @@ const DashView = () =>{
             const byLocation = new Map()
             const byDate = new Map() // date -> {sales, purchases}
             const productLocMap = new Map() // pid -> Map(location -> qty)
-            if ((resp?.record || openingResp?.record) && (Array.isArray(resp.record) || Array.isArray(openingResp.record))){
+            if ((resp?.record) && (Array.isArray(resp.record))){
                 resp.record.forEach(t=>{
                     const type = String(t.entryType||'').toLowerCase()
                     const qty = Math.abs(Number(t.baseQuantity||t.quantity||0))
@@ -291,15 +275,15 @@ const DashView = () =>{
                         byDate.set(d, cur)
                     }
                 })
-                openingResp.record.forEach((trs)=>{
-                    const type = String(trs.entryType||'').toLowerCase()
-                    if (type === 'purchase'){
-                        purchasesQty += Number(trs.baseQuantity||0)
-                        if (productIds.includes(trs.productId)){
-                            purchasesAmount += Number(trs.totalCost||0)
-                        }
-                    }
-                })
+                // openingResp.record.forEach((trs)=>{
+                //     const type = String(trs.entryType||'').toLowerCase()
+                //     if (type === 'purchase'){
+                //         purchasesQty += Number(trs.baseQuantity||0)
+                //         if (productIds.includes(trs.productId)){
+                //             purchasesAmount += Number(trs.totalCost||0)
+                //         }
+                //     }
+                // })
             }
             // Inventory aggregates from products
             let inventoryQty = 0, inventoryValue = 0, inventorySales = 0
