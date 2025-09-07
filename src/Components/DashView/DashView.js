@@ -149,7 +149,7 @@ const DashView = () =>{
             if (!products?.length){
                 getProducts(company)
             }
-            if (products && !products[0]?.stockSummary){
+            if (products.length && !products[0]?.stockSummary){
                 getProductsStockReport(cmp_val, products, {
                     startDate: fromDate,
                     endDate: toDate
