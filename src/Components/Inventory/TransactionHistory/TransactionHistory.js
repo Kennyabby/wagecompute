@@ -216,9 +216,9 @@ const TransactionHistory = () => {
           const startDate = new Date(filters.startDate);
           const endDate = new Date(filters.endDate);
           
-          if (!(txDate >= startDate && txDate <= endDate)) {
-            return false;
-          }
+          // if (!(txDate >= startDate && txDate <= endDate)) {
+          //   return false;
+          // }
           
           // Apply type-specific filters
           switch (type) {
@@ -270,7 +270,7 @@ const TransactionHistory = () => {
         //     Math.abs(Number(tx.totalCost) || 0)) :
         //   Number(tx.totalCost || 0);
         const cost = Number(tx.totalCost || 0)
-        const salesValue = Number(tx.totalSales || 0)
+        const salesValue = -1 * Math.abs(Number(tx.totalSales || 0))
         const location = tx.location || 'Unknown Location';
         
         // Initialize location data if it doesn't exist
@@ -1301,7 +1301,7 @@ const TransactionHistory = () => {
       // Get opening balance and transactions in parallel
       const [openingBalance, transactionsData] = await Promise.all([
         getOpeningBalance(filters.startDate, filters.location, filters.productId),
-        fetchTransactionsData(startDate, endDate, filters)
+        fetchTransactionsData(filters.startDate, filters.endDate, filters)
       ]);
 
       // Process the data
