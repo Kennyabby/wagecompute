@@ -13,7 +13,7 @@ const DashView = () =>{
     const {
         storePath,
         fetchServer, server, company,
-        products, getProductsWithStock, getProductsStockReport,
+        products, getProducts, getProductsStockReport,
         sales, getSales, saleFrom, saleTo,
         purchase, getPurchase,
         expenses, getExpenses,
@@ -147,13 +147,9 @@ const DashView = () =>{
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (cmp_val && company){
             if (!products?.length){
-                getProductsWithStock(cmp_val, products)
-                getProductsStockReport(cmp_val, products, {
-                    startDate: fromDate,
-                    endDate: toDate
-                })
+                getProducts(company)
             }
-            if (!products[0]?.stockSummary){
+            if (products && !products[0]?.stockSummary){
                 getProductsStockReport(cmp_val, products, {
                     startDate: fromDate,
                     endDate: toDate
@@ -178,7 +174,7 @@ const DashView = () =>{
                 getEmployees(cmp_val)
             }
         }
-    },[company])
+    },[company, products])
 
     const loadDashData = async()=>{
         if (!company) return
