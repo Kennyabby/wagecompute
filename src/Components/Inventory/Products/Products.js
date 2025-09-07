@@ -175,8 +175,11 @@ const Products = ({
             })
             const {cost, quantity} = curProduct.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
             let cummulativeUnitCostPrice = 0            
-            cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
-            setProductFields({...curProduct, costPrice: cummulativeUnitCostPrice})
+            cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0            
+            setProductFields({
+                ...curProduct, 
+                // costPrice: cummulativeUnitCostPrice
+            })
         }
     },[curProduct])
 

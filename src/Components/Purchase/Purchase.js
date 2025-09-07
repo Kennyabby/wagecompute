@@ -256,6 +256,7 @@ const Purchase = ()=>{
                         validEntries = curApproval.data.validEntries
                     }                   
                     const createdAt = Date.now()
+                    const entryIds = validEntries.map(entry => {return entry.productId})
                     validEntries.forEach(async (entry)=>{
                         const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
                         const newTransaction = {
@@ -324,7 +325,13 @@ const Purchase = ()=>{
                                                         }
                                                     })            
                                                     setPurchaseEntries([...entries])
-                                                }                                                                                                                                        
+                                                }   
+                                                fetchServer("POST", {
+                                                    database: company,
+                                                    collection: "InventoryTransactions",
+                                                    prop: entryIds
+                                                }, "updateProductPrice", server)
+                                                
                                             }
                                             return
                                         }, 1000);

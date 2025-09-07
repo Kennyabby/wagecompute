@@ -29,7 +29,7 @@ const Stock = ({
     // Initialize date range with first day of current month as start date and current date as end date
     const [dateRange, setDateRange] = useState({
         startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10), // First day of current month
-        endDate: new Date().toISOString().slice(0, 10) // Today
+        endDate: new Date().toISOString().slice(0,10) // Today
     });
     
     // Fetch warehouses from the database
