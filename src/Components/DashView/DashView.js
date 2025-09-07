@@ -13,7 +13,7 @@ const DashView = () =>{
     const {
         storePath,
         fetchServer, server, company,
-        products, getProductsWithStock,
+        products, getProductsWithStock, getProductsStockReport,
         sales, getSales, saleFrom, saleTo,
         purchase, getPurchase,
         expenses, getExpenses,
@@ -148,6 +148,16 @@ const DashView = () =>{
         if (cmp_val && company){
             if (!products?.length){
                 getProductsWithStock(cmp_val, products)
+                getProductsStockReport(cmp_val, products, {
+                    startDate: fromDate,
+                    endDate: toDate
+                })
+            }
+            if (!products[0]?.stockSummary){
+                getProductsStockReport(cmp_val, products, {
+                    startDate: fromDate,
+                    endDate: toDate
+                })
             }
             if (!purchase?.length){
                 getPurchase(cmp_val)
@@ -289,10 +299,11 @@ const DashView = () =>{
             let inventoryQty = 0, inventoryValue = 0, inventorySales = 0
             if (products && Array.isArray(products)){
                 products.forEach(p=>{
-                    inventoryQty += Number(p.totalStock||0)
-                    inventoryValue += (purchasesQty) ? (purchasesAmount/purchasesQty)*Number(p.totalStock||0) : 0
+                    let totalInventory = Number(p?.stockSummary?.closingQty) || Number(p.totalStock||0)
+                    inventoryQty += totalInventory
+                    inventoryValue += Number(p?.stockSummary?.closingCost || 0)
                     // inventoryValue += (purchasesAmount/purchasesQty)*Number(p.totalStock||0)
-                    inventorySales += (Number(p.salesPrice||0) * Number(p.totalStock||0))
+                    inventorySales += Number(p?.stockSummary?.closingSalesValue || 0)
                 })
             }
 
