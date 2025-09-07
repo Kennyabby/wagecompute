@@ -330,7 +330,7 @@ const Purchase = ()=>{
                                                     database: company,
                                                     collection: "InventoryTransactions",
                                                     prop: entryIds
-                                                }, "updateProductPrice", server)
+                                                }, "updateProductCost", server)
                                                 
                                             }
                                             return
