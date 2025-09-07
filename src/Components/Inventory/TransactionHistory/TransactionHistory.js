@@ -35,7 +35,7 @@ const TransactionHistory = () => {
     summary: {}
   });
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().setDate(1)).toISOString().slice(0, 10), // 1st of current month
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10), // 1st of current month
     endDate: new Date().toISOString().slice(0, 10), // Today
     location: 'all',
     productId: '',
@@ -1618,7 +1618,6 @@ const TransactionHistory = () => {
         startDate={filters.startDate}
         endDate={filters.endDate}
       />
-      
       <div className="filters-container">
         <div className="filter-group">
           <label>Date Range</label>
