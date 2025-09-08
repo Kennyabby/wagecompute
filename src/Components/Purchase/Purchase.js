@@ -284,9 +284,10 @@ const Purchase = ()=>{
                                     setAlertState('success')
                                     setAlert(`${validEntries.length} Inventory Updated Successfully!`)                        
                                     getProductsWithStock(company, products)
+                                    const entryIds = validEntries.map(entry => {return entry.productId})
                                     if (curPurchase === null){
                                         setTimeout(()=>{                            
-                                            addPurchase(createdAt)
+                                            addPurchase(createdAt, entryIds)                                            
                                         },500)
                                     }else{
                                         setTimeout(async () => {
@@ -308,6 +309,7 @@ const Purchase = ()=>{
                                                 setAlert(resps1.mess);
                                                 setAlertTimeout(5000);
                                             } else {
+                                                
                                                 setAlertState('success');
                                                 setAlert('Products Linked Successfully!');
                                                 setAlertTimeout(3000);
@@ -326,11 +328,15 @@ const Purchase = ()=>{
                                                     })            
                                                     setPurchaseEntries([...entries])
                                                 }   
-                                                fetchServer("POST", {
+                                                const rep = await fetchServer("POST", {
                                                     database: company,
-                                                    collection: "InventoryTransactions",
+                                                    collection: "ProductCostLogs",
                                                     prop: entryIds
-                                                }, "updateProductCost", server)
+                                                }, "updateProductCost", server) 
+                                
+                                                if (!rep.err){
+                                                    getProducts(company)
+                                                }
                                                 
                                             }
                                             return
@@ -387,7 +393,7 @@ const Purchase = ()=>{
         }
     }
 
-    const addPurchase = async (productsRef)=>{
+    const addPurchase = async (productsRef, entryIds)=>{
         setAlertState('info')
         setAlert('Posting Purchase...')
         setPurchaseStatus('Posting Purchase...')
@@ -438,7 +444,17 @@ const Purchase = ()=>{
                         }
                     })            
                     setPurchaseEntries([...entries])
-                }                 
+                }        
+                const rep = await fetchServer("POST", {
+                    database: company,
+                    collection: "ProductCostLogs",
+                    prop: entryIds
+                }, "updateProductCost", server) 
+
+                if (!rep.err){
+                    getProducts(company)
+                }
+
             }
         
     }
