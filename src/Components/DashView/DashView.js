@@ -247,7 +247,7 @@ const DashView = () =>{
                     const type = String(t.entryType||'').toLowerCase()
                     const qty = Math.abs(Number(t.baseQuantity||t.quantity||0))
                     const totSales = Math.abs(Number(t.totalSales||0))
-                    const totCost = productIds.includes(t.productId) ? Math.abs(Number(t.totalCost||0)) : 0
+                    const totCost = Math.abs(Number(t.totalCost||0))
                     // const totCost = Math.abs(Number(t.totalCost||0))
                     const loc = t.location || 'Unknown'
                     const pid = t.productId || t.i_d || 'Unknown'
@@ -262,7 +262,7 @@ const DashView = () =>{
                     if (type === 'sale' || type === 'sales'){
                         salesQty += qty
                         salesAmount += (totSales || (totCost))
-                        cogs += totCost
+                        cogs += productIds.includes(t.productId) ? totCost : 0
                         byProduct.set(pid, (byProduct.get(pid)||0) + qty)
                         byLocation.set(loc, (byLocation.get(loc)||0) + (totSales || totCost))
                         const cur = byDate.get(d) || { sales:0, purchases:0 }
