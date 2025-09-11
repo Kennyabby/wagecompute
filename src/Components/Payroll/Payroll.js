@@ -440,12 +440,14 @@ const Payroll = () =>{
                 
                 {employees.filter((ftremp)=>{
                     
-                    if (!ftremp.dismissalDate){
+                    if (selectedMonth && selectedYear){
+                        if (new Date(ftremp.hiredDate).getTime() <= new Date(`${selectedYear}-${months.indexOf(selectedMonth)+1}-01`).getTime()){
+                            return ftremp
+                        }
+                    }else if (!ftremp.dismissalDate){
                         return ftremp
                     }
-                    else if (selectedMonth && selectedYear && (new Date(ftremp.dismissalDate).getTime() >= new Date(`${selectedYear}-${months.indexOf(selectedMonth)}-01`).getTime())){
-                        return ftremp
-                    }
+                    
                 }).map((employee, index)=>{
                     const {i_d, 
                         firstName, lastName,
