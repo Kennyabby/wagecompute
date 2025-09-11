@@ -32,7 +32,7 @@ const Inventory = ()=>{
     const [popModal, setPopModal] = useState('')
     const [isNewView, setIsNewView] = useState(false)
     const [isOnView, setIsOnView] = useState(false)
-    const [clickedLabel, setClickedLabel] = useState('Products')
+    const [clickedLabel, setClickedLabel] = useState('Overview')
     const [isSaveValue, setIsSaveValue] = useState(false)
     const [curProductIndex, setCurProductIndex] = useState(0)
     const [isDeleteValue, setIsDeleteValue] = useState(false)
@@ -136,6 +136,7 @@ const Inventory = ()=>{
             setPostingDate={setPostingDate}
         />,
         'Transaction History': <TransactionHistory />,
+        'Overview': <TransactionHistory />,
         'Unit of Measures': <Measures
             setPopModal={setPopModal}
             postingDate={postingDate}
