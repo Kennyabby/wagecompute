@@ -443,7 +443,7 @@ const Payroll = () =>{
                     if (!ftremp.dismissalDate){
                         return ftremp
                     }
-                    if (new Date(ftremp.dismissalDate) >= new Date(`${selectedYear}-${months.indexOf(selectedMonth)}-01`)){
+                    else if (selectedMonth && selectedYear && (new Date(ftremp.dismissalDate).getTime() >= new Date(`${selectedYear}-${months.indexOf(selectedMonth)}-01`).getTime())){
                         return ftremp
                     }
                 }).map((employee, index)=>{

@@ -55,6 +55,106 @@
     min-width: 0; /* Prevents flex items from overflowing */
 }
 
+/* Alert Section */
+.alert-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.alert-panel {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    border-left: 4px solid #0f62fe;
+}
+
+.alert-panel h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: #161616;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-panel h3 .icon {
+    color: #0f62fe;
+}
+
+.alert-content {
+    font-size: 0.875rem;
+}
+
+.alert-category {
+    margin-bottom: 1rem;
+}
+
+.alert-category h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    color: #525252;
+}
+
+.alert-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.alert-item {
+    padding: 0.5rem;
+    background: #f4f4f4;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.alert-item.warning {
+    border-left: 3px solid #ff832b;
+    background: #fff8f1;
+}
+
+.alert-item.success {
+    border-left: 3px solid #24a148;
+    background: #f3fcf5;
+}
+
+.alert-item-name {
+    font-weight: 500;
+    color: #161616;
+}
+
+.alert-item-detail {
+    color: #525252;
+    text-align: right;
+}
+
+.alert-item-time {
+    display: block;
+    font-size: 0.75rem;
+    color: #8d8d8d;
+    margin-top: 0.25rem;
+}
+
+.alert-more {
+    font-size: 0.75rem;
+    color: #0f62fe;
+    text-align: center;
+    margin-top: 0.25rem;
+    cursor: pointer;
+}
+
+.no-alerts {
+    color: #8d8d8d;
+    font-style: italic;
+    padding: 0.5rem 0;
+}
+
 /* Financial Summary Section */
 .financial-summary {
     display: grid;
