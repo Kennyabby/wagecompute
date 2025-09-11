@@ -34,7 +34,8 @@ const Expenses = ()=>{
     const [allExpenseAccounts, setAllExpenseAccounts] = useState([])
     const [showExpenseModal, setShowExpenseModal] = useState(false)
     const [salaryDetails, setSalaryDetails] = useState(null)
-    
+    const [expenseFilter, setExpenseFilter] = useState('')
+
     const defaultFields = {
         expensesDepartment:'',
         expensesHandler:'',
@@ -260,7 +261,13 @@ const Expenses = ()=>{
             const toDate = new Date(expenseTo).getTime()
             if ( expPostingDate>= fromDate && expPostingDate<=toDate
             ){
-                return ftrexpense
+                if (expenseFilter){
+                    if (ftrexpense.expenseCategory === expenseFilter){
+                        return ftrexpense
+                    }
+                }else{
+                    return ftrexpense
+                }
             }
         })
         setReportExpense(filteredReportExpenses)
@@ -362,6 +369,24 @@ const Expenses = ()=>{
                             />
                         </div>
                     </div>
+                    {companyRecord.status==='admin' && <div className='inpcov fltinpcov'>
+                        <select 
+                            className='forminp'
+                            name='employeeId'
+                            type='text'
+                            value={expenseFilter}
+                            onChange={(e)=>{
+                                setExpenseFilter(e.target.value)                                
+                            }}
+                        >
+                            <option value=''>Select Expense Filter</option>
+                            {expensesCategory.sort((a,b) => a - b).map((category, index)=>{
+                                return (
+                                    <option key={index} value={category.name}>{`${category.name} ${category['g/l code']}`}</option>
+                                )
+                            })}
+                        </select>
+                    </div>}
                     {[...(salaryDetails || []),...expenses].filter((expfltr)=>{
                         if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo){
                             return expfltr
