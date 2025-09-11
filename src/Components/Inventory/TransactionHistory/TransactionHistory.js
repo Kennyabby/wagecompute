@@ -193,162 +193,168 @@ const TransactionHistory = () => {
       return result.record || [];
     } catch (error) {
       console.error(`Error fetching ${type} data:`, error);
+      setAlertState('error');
+      setAlert(`Error fetching ${type} data. Please try again.`);
+      setAlertTimeout(5000)
       return [];
     }
   };
 
   // Handle summary card click
   const handleSummaryCardClick = async (type) => {
-    try {
-      setLoading(true);
-      
-      let transactionsToProcess = [];
-      const startDate = new Date(filters.startDate).toISOString().split('T')[0];
-      const endDate = new Date(filters.endDate).toISOString().split('T')[0];
-
-      // For opening/closing stock, use direct queries for better accuracy
-      if (type === 'openingStock' || type === 'closingStock') {
-        transactionsToProcess = await fetchStockData(type, startDate, endDate);
-      } else {
-        // For other types, use the existing transactions with filters
-        transactionsToProcess = transactions.filter(tx => {
-          const txDate = new Date(tx.postingStamp || tx.postingDate);
-          const startDate = new Date(filters.startDate);
-          const endDate = new Date(filters.endDate);
+    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_inventory_report')){
+      try {
+        setLoading(true);
+        
+        let transactionsToProcess = [];
+        const startDate = new Date(filters.startDate).toISOString().split('T')[0];
+        const endDate = new Date(filters.endDate).toISOString().split('T')[0];
+  
+        // For opening/closing stock, use direct queries for better accuracy
+        if (type === 'openingStock' || type === 'closingStock') {
+          transactionsToProcess = await fetchStockData(type, startDate, endDate);
+        } else {
+          // For other types, use the existing transactions with filters
+          transactionsToProcess = transactions.filter(tx => {
+            const txDate = new Date(tx.postingStamp || tx.postingDate);
+            const startDate = new Date(filters.startDate);
+            const endDate = new Date(filters.endDate);
+            
+            // if (!(txDate >= startDate && txDate <= endDate)) {
+            //   return false;
+            // }
+            
+            // Apply type-specific filters
+            switch (type) {
+              case 'purchases':
+                return tx.entryType === 'Purchase' && (Number(tx.baseQuantity) || 0) > 0;
+              case 'sales':
+                return tx.entryType === 'Sales' && (Number(tx.baseQuantity) || 0) < 0;
+              case 'transfers':
+                return ['Transfer Shipment', 'Transfer Receipt'].includes(tx.documentType);
+              case 'adjustments':
+                return ['Positive Entry', 'Negative Entry'].includes(tx.entryType);
+              default:
+                return true;
+            }
+          });
+        }
+  
+        // Process the transactions and group by product
+        const processedData = {};
+        let totalQuantity = 0;
+        let totalCost = 0;
+        let totalValue = 0;
+        transactionsToProcess.forEach(tx => {
+          const productId = tx.productId;
+          const productName = tx.name || products.find(p => p.i_d === productId)?.name || `Product ${productId}`;
           
-          // if (!(txDate >= startDate && txDate <= endDate)) {
-          //   return false;
-          // }
+          if (!processedData[productId]) {
+            processedData[productId] = {
+              productId,
+              productName,
+              uom: tx.uom || 'pcs',
+              quantity: 0,
+              cost: 0,
+              value: 0,
+              locations: {}
+            };
+          }
+  
+          // For opening/closing stock, we need to consider the running balance
+          // const quantity = type === 'openingStock' || type === 'closingStock' ? 
+          //   (tx.entryType === 'Sales' || tx.documentType === 'Transfer Shipment' ? 
+          //     -Math.abs(Number(tx.baseQuantity) || 0) : 
+          //     Math.abs(Number(tx.baseQuantity) || 0)) : 
+          //   Number(tx.baseQuantity || 0);
+          const quantity = Number(tx.baseQuantity || 0)
+          // const cost = type === 'openingStock' || type === 'closingStock' ?
+          //   (tx.entryType === 'Sales' || tx.documentType === 'Transfer Shipment' ?
+          //     -Math.abs(Number(tx.totalCost) || 0) :
+          //     Math.abs(Number(tx.totalCost) || 0)) :
+          //   Number(tx.totalCost || 0);
+          const cost = Number(tx.totalCost || 0)
+          const salesValue = -1 * Math.abs(Number(tx.totalSales || 0))
+          const location = tx.location || 'Unknown Location';
           
-          // Apply type-specific filters
+          // Initialize location data if it doesn't exist
+          if (!processedData[productId].locations[location]) {
+            processedData[productId].locations[location] = {
+              quantity: 0,
+              cost: 0,
+              value: 0
+            };
+          }
+  
+          // Update product totals
+          processedData[productId].quantity += quantity;
+          processedData[productId].cost += cost;
+          processedData[productId].value += salesValue;
+          
+          // Update location-specific totals
+          processedData[productId].locations[location].quantity += quantity;
+          processedData[productId].locations[location].cost += cost;
+          processedData[productId].locations[location].value += salesValue;
+  
+          // Update grand totals
+          totalQuantity += quantity;
+          totalCost += cost;
+          totalValue += salesValue;
+        });
+  
+        // Convert to array and calculate percentages
+        const productList = Object.values(processedData).map(product => ({
+          ...product,
+          percentage: totalQuantity !== 0 ? (product.quantity / totalQuantity) * 100 : 0,
+          unitCost: product.quantity !== 0 ? product.cost / product.quantity : 0,
+          costPercentage: totalCost !==0 ? (product.cost / totalCost) * 100 : 0,
+          valuePercentage: totalValue !==0 ? (product.value / totalValue) * 100 : 0,
+          locations: Object.entries(product.locations).map(([location, data]) => ({
+            name: location,
+            quantity: data.quantity,
+            cost: data.cost,
+            value: data.value,
+            percentage: data.quantity / product.quantity * 100
+          }))
+        }));
+  
+        // Sort by quantity (highest first)
+        productList.sort((a, b) => b.quantity - a.quantity);
+  
+        // Determine the title based on the card type
+        const getTitle = () => {
           switch (type) {
-            case 'purchases':
-              return tx.entryType === 'Purchase' && (Number(tx.baseQuantity) || 0) > 0;
-            case 'sales':
-              return tx.entryType === 'Sales' && (Number(tx.baseQuantity) || 0) < 0;
-            case 'transfers':
-              return ['Transfer Shipment', 'Transfer Receipt'].includes(tx.documentType);
-            case 'adjustments':
-              return ['Positive Entry', 'Negative Entry'].includes(tx.entryType);
-            default:
-              return true;
+            case 'openingStock': return 'Opening Stock Details';
+            case 'purchases': return 'Purchases Details';
+            case 'sales': return 'Sales Details';
+            case 'transfers': return 'Transfers Details';
+            case 'adjustments': return 'Adjustments Details';
+            case 'closingStock': return 'Closing Stock Details';
+            default: return 'Transaction Details';
+          }
+        };
+  
+        // Set the modal data and show the modal
+        setModalData({
+          show: true,
+          title: `${companyRecord.name} - ${getTitle()}`,
+          type,
+          data: productList,
+          summary: {
+            totalQuantity,
+            totalCost,
+            totalValue,
+            averageUnitCost: totalQuantity > 0 ? totalCost / totalQuantity : 0
           }
         });
+      } catch (error) {
+        console.error('Error fetching transaction details:', error);
+        setAlertState('error');
+        setAlert('Failed to load details. Please try again.');
+        setAlertTimeout(5000)
+      } finally {
+        setLoading(false);
       }
-
-      // Process the transactions and group by product
-      const processedData = {};
-      let totalQuantity = 0;
-      let totalCost = 0;
-      let totalValue = 0;
-      transactionsToProcess.forEach(tx => {
-        const productId = tx.productId;
-        const productName = tx.name || products.find(p => p.i_d === productId)?.name || `Product ${productId}`;
-        
-        if (!processedData[productId]) {
-          processedData[productId] = {
-            productId,
-            productName,
-            uom: tx.uom || 'pcs',
-            quantity: 0,
-            cost: 0,
-            value: 0,
-            locations: {}
-          };
-        }
-
-        // For opening/closing stock, we need to consider the running balance
-        // const quantity = type === 'openingStock' || type === 'closingStock' ? 
-        //   (tx.entryType === 'Sales' || tx.documentType === 'Transfer Shipment' ? 
-        //     -Math.abs(Number(tx.baseQuantity) || 0) : 
-        //     Math.abs(Number(tx.baseQuantity) || 0)) : 
-        //   Number(tx.baseQuantity || 0);
-        const quantity = Number(tx.baseQuantity || 0)
-        // const cost = type === 'openingStock' || type === 'closingStock' ?
-        //   (tx.entryType === 'Sales' || tx.documentType === 'Transfer Shipment' ?
-        //     -Math.abs(Number(tx.totalCost) || 0) :
-        //     Math.abs(Number(tx.totalCost) || 0)) :
-        //   Number(tx.totalCost || 0);
-        const cost = Number(tx.totalCost || 0)
-        const salesValue = -1 * Math.abs(Number(tx.totalSales || 0))
-        const location = tx.location || 'Unknown Location';
-        
-        // Initialize location data if it doesn't exist
-        if (!processedData[productId].locations[location]) {
-          processedData[productId].locations[location] = {
-            quantity: 0,
-            cost: 0,
-            value: 0
-          };
-        }
-
-        // Update product totals
-        processedData[productId].quantity += quantity;
-        processedData[productId].cost += cost;
-        processedData[productId].value += salesValue;
-        
-        // Update location-specific totals
-        processedData[productId].locations[location].quantity += quantity;
-        processedData[productId].locations[location].cost += cost;
-        processedData[productId].locations[location].value += salesValue;
-
-        // Update grand totals
-        totalQuantity += quantity;
-        totalCost += cost;
-        totalValue += salesValue;
-      });
-
-      // Convert to array and calculate percentages
-      const productList = Object.values(processedData).map(product => ({
-        ...product,
-        percentage: totalQuantity !== 0 ? (product.quantity / totalQuantity) * 100 : 0,
-        unitCost: product.quantity !== 0 ? product.cost / product.quantity : 0,
-        costPercentage: totalCost !==0 ? (product.cost / totalCost) * 100 : 0,
-        valuePercentage: totalValue !==0 ? (product.value / totalValue) * 100 : 0,
-        locations: Object.entries(product.locations).map(([location, data]) => ({
-          name: location,
-          quantity: data.quantity,
-          cost: data.cost,
-          value: data.value,
-          percentage: data.quantity / product.quantity * 100
-        }))
-      }));
-
-      // Sort by quantity (highest first)
-      productList.sort((a, b) => b.quantity - a.quantity);
-
-      // Determine the title based on the card type
-      const getTitle = () => {
-        switch (type) {
-          case 'openingStock': return 'Opening Stock Details';
-          case 'purchases': return 'Purchases Details';
-          case 'sales': return 'Sales Details';
-          case 'transfers': return 'Transfers Details';
-          case 'adjustments': return 'Adjustments Details';
-          case 'closingStock': return 'Closing Stock Details';
-          default: return 'Transaction Details';
-        }
-      };
-
-      // Set the modal data and show the modal
-      setModalData({
-        show: true,
-        title: `${companyRecord.name} - ${getTitle()}`,
-        type,
-        data: productList,
-        summary: {
-          totalQuantity,
-          totalCost,
-          totalValue,
-          averageUnitCost: totalQuantity > 0 ? totalCost / totalQuantity : 0
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching transaction details:', error);
-      setAlert('Failed to load details. Please try again.');
-      setAlertState('error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -691,7 +697,7 @@ const TransactionHistory = () => {
                       { $isNumber: "$baseQuantity" },
                       "$baseQuantity",
                       { $toDouble: "$baseQuantity" }
-                    ]},
+                    ]},  
                     0
                   ]
                 }
@@ -721,6 +727,9 @@ const TransactionHistory = () => {
       const result = await fetchServer('POST', query, 'aggregateDocs', server);
       return result.record?.[0] || {openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0};
     } catch (error) {
+      setAlertState('error');
+      setAlert(`Error fetching opening stock data. Please try again.`);
+      setAlertTimeout(5000)
       return {openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0};
     }
   }, [company, fetchServer]);
@@ -1275,6 +1284,9 @@ const TransactionHistory = () => {
       };
     } catch (error) {
       // Return empty data structure on error
+      setAlertState('error');
+      setAlert('Failed to load transactions. Please try again.');
+      setAlertTimeout(5000)
       return {
         transactions: [],
         totalCount: 0,
@@ -1797,7 +1809,7 @@ const TransactionHistory = () => {
       <div className="transactions-table-container">
         <div className="table-header">
           <h3>Transaction History</h3>
-          <div className="table-actions">
+          {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_inventory_report')) &&<div className="table-actions">
             <button 
               onClick={exportToExcel}
               className="btn btn-icon" 
@@ -1815,7 +1827,7 @@ const TransactionHistory = () => {
             >
               <FaDownload />
             </CSVLink>
-          </div>
+          </div>}
         </div>
 
         <div className="table-responsive">
