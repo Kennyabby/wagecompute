@@ -389,7 +389,13 @@ const Expenses = ()=>{
                     </div>}
                     {[...(salaryDetails || []),...expenses].filter((expfltr)=>{
                         if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo){
-                            return expfltr
+                            if (expenseFilter){
+                                if (expfltr.expenseCategory === expenseFilter){
+                                    return expfltr
+                                }
+                            }else{
+                                return expfltr
+                            }
                         }
                     }).sort((a,b)=>{
                         const first = new Date(a.postingDate)
