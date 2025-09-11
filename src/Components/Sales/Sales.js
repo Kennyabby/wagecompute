@@ -90,6 +90,7 @@ const Sales = ()=>{
     
     const [curSaleDate, setCurSaleDate] = useState(null)
     const [activeSessions, setActiveSessions] = useState([])
+    const [pendingSales, setPendingSales] = useState([])
     const scrollRef = useRef(null)
     const loadRef = useRef(null)
     const getEntriesController = useRef(null)
@@ -195,6 +196,13 @@ const Sales = ()=>{
         },60000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+
+
+    useEffect(()=>{
+        const ftrsales = sales.sort((a,b) =>{return new Date(b.postingDate).getTime() > new Date(a.postingDate)})
+        const pendings = ftrsales.slice(1,5).filter((sl)=>{return !sl.productsRef})
+        setPendingSales(pendings)
+    },[sales])
 
     useEffect(()=>{
         var accommodationRecord = []
@@ -763,6 +771,14 @@ const Sales = ()=>{
             })
         }
         const allProductsAvailable = isProductAvailable(validEntries)
+        if (pendingSales.length) {
+            setAlertState('error');
+            setAlert(`You have ${pendingSales.length} pending sales reconciliation, please link products for the following days: ${pendingSales.map(p => p.postingDate).join(', ')}`);
+            setAlertTimeout(8000);
+            setAddingProducts(false)
+            setPostCount(0)   
+            return;         
+        }
         if (!allProductsAvailable.value){
             setAlertState('error');
             setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
@@ -892,7 +908,7 @@ const Sales = ()=>{
                         quantity: Math.abs(Number(entry.quantity)) * -1,
                         baseQuantity: Math.abs(Number(entry.baseQuantity)) * -1,
                         totalCost: Math.abs(Number(entry.costPrice)) * Math.abs(Number(entry.baseQuantity)) * -1,
-                        totalSales: Math.abs(Number(entry.totalSales)) * -1,
+                         totalSales: Math.abs(Number(entry.totalSales)) * -1,
                         postingDate: postingDate,
                         postingStamp: new Date(postingDate),
                         createdAt: createdAt,
