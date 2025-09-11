@@ -4,7 +4,17 @@ import {useEffect, useMemo, useState, useCallback } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FaExclamationTriangle, FaInfoCircle, FaStore, FaTruck } from 'react-icons/fa';
+import { 
+    FaExclamationTriangle, 
+    FaInfoCircle, 
+    FaStore, 
+    FaTruck, 
+    FaBell, 
+    FaChartLine, 
+    FaShoppingCart, 
+    FaBoxes, 
+    FaHistory 
+} from 'react-icons/fa';
 // Charts (install: npm i recharts)
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, PieChart, Pie, Cell, LabelList } from 'recharts'
 
@@ -997,8 +1007,12 @@ const DashView = () =>{
 
                 {dashErr && <div className='dash-error'>{dashErr}</div>}
 
-                {/* Alert Section */}
-                <div className='alert-section'>
+                {/* Alerts & Notifications Section */}
+                <div className='section-header'>
+                    <h2><FaBell className='icon' /> Alerts & Notifications</h2>
+                </div>
+                
+                <div className='alert-section'> 
                     {/* Low Stock Alerts */}
                     <div className='alert-panel'>
                         <h3><FaExclamationTriangle className='icon' /> Stock Alerts</h3>
@@ -1118,7 +1132,11 @@ const DashView = () =>{
                     </div>
                 </div>
 
-                {/* Financial Summary */}
+                {/* Financial Overview */}
+                <div className='section-header'>
+                    <h2><FaChartLine className='icon' /> Financial Overview</h2>
+                </div>
+                    
                 <div className='financial-summary'>
                     <div className='financial-card'>
                         <h3>Total Revenue</h3>
