@@ -1,9 +1,10 @@
 import './DashView.css'
 
-import {useEffect, useMemo, useState } from 'react'
+import {useEffect, useMemo, useState, useCallback } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { FaExclamationTriangle, FaInfoCircle, FaStore, FaTruck } from 'react-icons/fa';
 // Charts (install: npm i recharts)
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, PieChart, Pie, Cell, LabelList } from 'recharts'
 
@@ -19,7 +20,7 @@ const DashView = () =>{
         expenses, getExpenses,
         accommodations, getAccommodations,
         rentals, getRentals,
-        employees, getEmployees,
+        employees, getEmployees
     } = useContext(ContextProvider)
     // Default date range (current month)
     const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10)
@@ -108,6 +109,11 @@ const DashView = () =>{
     const [productLocationSalesBreakdown, setProductLocationSalesBreakdown] = useState([]) // [{pid, name, locations:[{location, amount}]}]
     const [monthlySeries, setMonthlySeries] = useState([]) // [{month:'Jan', sales, purchases, expenses, accommodations, rentals}]
     const [revenueMix, setRevenueMix] = useState([]) // [{name:'Sales', value:...}, ...]
+    const [posSessions, setPosSessions] = useState({
+        activeSessions: [],
+        lastActiveSessions: [],
+        lastDeliverySessions: []
+    })
 
     useEffect(()=>{
         storePath('dashboard')  
@@ -724,10 +730,66 @@ const DashView = () =>{
 
     
 
-    useEffect(()=>{
-        loadDashData()
+    // Fetch POS and delivery sessions
+    const fetchSessions = async () => {
+        if (!company) return;
+        try {            
+            const sessionsResponse = await fetchServer("POST", {
+                database: company,
+                collection: "POSSessions",
+                prop: {}
+            }, "getDocsDetails", server);
+
+            if (!sessionsResponse.err){
+                // Sort all sessions by start time (newest first)
+                const allSessions = sessionsResponse.record.sort((a, b) => new Date(b.start) - new Date(a.start));
+                
+                // Get and sort sales sessions (newest first)
+                const salesSessions = allSessions
+                    .filter(s => s.type === 'sales')
+                    .sort((a, b) => new Date(b.start) - new Date(a.start));
+                
+                // Get and sort delivery sessions (newest first)
+                const deliverySessions = allSessions
+                    .filter(s => s.type === 'delivery')
+                    .sort((a, b) => new Date(b.start) - new Date(a.start));
+                
+                // Get active sales sessions
+                const activeSessions = salesSessions.filter(s => s.active);
+                
+                // Get last active sessions by location (most recent per location)
+                const lastActiveByLocation = [];
+                const locationMap = new Map();
+                
+                salesSessions.forEach(session => {
+                    if (session.wrh && !locationMap.has(session.wrh)) {
+                        locationMap.set(session.wrh, session);
+                        lastActiveByLocation.push(session);
+                    }
+                });
+    
+                // Get 5 most recent delivery sessions
+                const lastDeliverySessions = deliverySessions.slice(0, 5);
+    
+                setPosSessions({
+                    activeSessions,
+                    lastActiveSessions: lastActiveByLocation,
+                    lastDeliverySessions
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching sessions:', error);
+        }
+    };
+
+    useEffect(() => {
+        loadDashData();
+        fetchSessions();
+        // Refresh sessions every 5 minutes
+        const interval = setInterval(fetchSessions, 5 * 60 * 1000);
+        return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[fromDate, toDate, locationFilter, productFilter, employeeFilter, company, products, sales, accommodations, rentals])
+    }, [fromDate, toDate, locationFilter, productFilter, employeeFilter, company, products, sales, accommodations, rentals])
 
     // Helpers to map names
     const productName = useMemo(()=>{
@@ -934,6 +996,127 @@ const DashView = () =>{
                 </div>
 
                 {dashErr && <div className='dash-error'>{dashErr}</div>}
+
+                {/* Alert Section */}
+                <div className='alert-section'>
+                    {/* Low Stock Alerts */}
+                    <div className='alert-panel'>
+                        <h3><FaExclamationTriangle className='icon' /> Stock Alerts</h3>
+                        <div className='alert-content'>
+                            {restock.length > 0 ? (
+                                <div className='alert-category'>
+                                    <h4>Low Stock Items ({restock.length})</h4>
+                                    <div className='alert-items'>
+                                        {restock.slice(0, 5).map((item, idx) => (
+                                            <div key={`low-stock-${idx}`} className='alert-item'>
+                                                <span className='alert-item-name'>{item.name}</span>
+                                                <span className='alert-item-detail'>Stock: {fmt(item.stock)} (Min: {Math.ceil(item.threshold)})</span>
+                                            </div>
+                                        ))}
+                                        {restock.length > 5 && (
+                                            <div className='alert-more'>+ {restock.length - 5} more items</div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className='no-alerts'>No low stock items</div>
+                            )}
+
+                            {/* Price Discrepancy Alerts */}
+                            {(() => {
+                                const priceIssues = products?.filter(p => 
+                                    p.costPrice > 0 && p.salesPrice > 0 && p.costPrice > p.salesPrice
+                                ).slice(0, 5) || [];
+                                
+                                return priceIssues.length > 0 ? (
+                                    <div className='alert-category'>
+                                        <h4>Price Discrepancies ({priceIssues.length})</h4>
+                                        <div className='alert-items'>
+                                            {priceIssues.map((item, idx) => (
+                                                <div key={`price-issue-${idx}`} className='alert-item warning'>
+                                                    <span className='alert-item-name'>{item.name || 'Unnamed Product'}</span>
+                                                    <span className='alert-item-detail'>
+                                                        {`Cost: ₦${fmt(item.costPrice)} > Sales: ₦${fmt(item.salesPrice)}`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : null;
+                            })()}
+                        </div>
+                    </div>
+
+                    {/* POS Sessions */}
+                    <div className='alert-panel'>
+                        <h3><FaStore className='icon' /> POS Sessions</h3>
+                        <div className='alert-content'>
+                            {posSessions.activeSessions.length > 0 ? (
+                                <div className='alert-category'>
+                                    <h4>Active Sessions ({posSessions.activeSessions.length})</h4>
+                                    <div className='alert-items'>
+                                        {posSessions.activeSessions.slice(0, 3).map((session, idx) => (
+                                            <div key={`active-${idx}`} className='alert-item success'>
+                                                <span className='alert-item-name'>{session.wrh || 'Unknown Location'}</span>
+                                                <span className='alert-item-detail'>
+                                                    Started: {new Date(session.start).toLocaleString()}
+                                                    {employeeName(session.employee_id) && ` by ${employeeName(session.employee_id)}`}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className='no-alerts'>No active POS sessions</div>
+                            )}
+
+                            {posSessions.lastActiveSessions.length > 0 && (
+                                <div className='alert-category'>
+                                    <h4>Last Active by Location</h4>
+                                    <div className='alert-items'>
+                                        {posSessions.lastActiveSessions.slice(0, 3).map((session, idx) => (
+                                            <div key={`last-${idx}`} className='alert-item'>
+                                                <span className='alert-item-name'>{session.wrh || 'Unknown Location'}</span>
+                                                <span className='alert-item-detail'>
+                                                    {session.end 
+                                                        ? `Ended: ${new Date(session.end).toLocaleString()}` 
+                                                        : `Started: ${new Date(session.start).toLocaleString()}`}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Delivery Sessions */}
+                    <div className='alert-panel'>
+                        <h3><FaTruck className='icon' /> Delivery Sessions</h3>
+                        <div className='alert-content'>
+                            {posSessions.lastDeliverySessions.length > 0 ? (
+                                <div className='alert-items'>
+                                    {posSessions.lastDeliverySessions.map((session, idx) => (
+                                        <div key={`delivery-${idx}`} className='alert-item'>
+                                            <span className='alert-item-name'>
+                                                {session.active === true ? '🟢 ' : '⚪ '}
+                                                {employeeName(session.employee_id) || `Delivery #${idx + 1}`}
+                                            </span>
+                                            <span className='alert-item-detail'>
+                                                {session.active === true ? 'Active' : 'Inactive'} • {session.wrh || 'No address'}
+                                            </span>
+                                            <span className='alert-item-time'>
+                                                {new Date(session.end || session.start).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className='no-alerts'>No recent delivery sessions</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
                 {/* Financial Summary */}
                 <div className='financial-summary'>
