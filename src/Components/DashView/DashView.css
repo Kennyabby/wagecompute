@@ -32,9 +32,10 @@
 .dashview{
     display: block;
     width: 100%;
-    min-height: 100%;
+    min-height: 100vh;
     padding: 16px;
     background: #f6f7fb;
+    overflow: auto;
 }
 
 .dash-filters {
