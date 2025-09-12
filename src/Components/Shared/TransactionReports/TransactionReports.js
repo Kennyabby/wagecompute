@@ -24,6 +24,10 @@ const TransactionReports = ({
     const [showFilters, setShowFilters] = useState(false);
     const [expandedSessions, setExpandedSessions] = useState({});
     
+    const payPointAccounts = {
+        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5399647958', 
+        'moniepoint3':'MP3-5536588063', 'moniepoint4':'MP4-5342270174', 'cash':'cash'
+    }
     // State for filters
     const [filters, setFilters] = useState({
         startDate: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -960,7 +964,7 @@ const TransactionReports = ({
                             <div className="breakdown-items"> 
                                 {Object.entries(salesByPayPoint).map(([payPoint, amount]) => (
                                     <div key={`pay-${payPoint}`} className="breakdown-item">
-                                        <span className="breakdown-label">{payPoint.toUpperCase()}</span>
+                                        <span className="breakdown-label">{payPointAccounts[payPoint]}</span>
                                         <span className="breakdown-value">{formatCurrency(amount)}</span>
                                     </div>
                                 ))}
