@@ -14,12 +14,12 @@ import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
-function App() {
+// const SERVER = "http://localhost:3001"
+const SERVER = "https://enterpriseserver.vercel.app"
+// const SERVER = "https://hserver.techpros.com.ng"
+// const SERVER = "http://3.251.76.94"
 
-  // const SERVER = "http://localhost:3001"
-  const SERVER = "https://enterpriseserver.vercel.app"
-  // const SERVER = "https://hserver.techpros.com.ng"
-  // const SERVER = "http://3.251.76.94"
+function App() {
   
   const [viewAccess, setViewAccess] = useState(null)
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
