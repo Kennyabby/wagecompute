@@ -93,6 +93,7 @@ const PointOfSales = () => {
         'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
         'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail}, 'cash':{...paymentDetailClone.paymentDetail}
     })
+    
     const [paymentDetails, setPaymentDetails] = useState({...structuredClone({payPoints}).payPoints});
 
     // Settings States

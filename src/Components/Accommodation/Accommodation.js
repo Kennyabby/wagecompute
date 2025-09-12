@@ -68,6 +68,7 @@ const Accommodation = ()=>{
             price: 5000
         }
     }
+
     const defaultCustomerFields = {
         i_d: '',
         fullName: '',
@@ -94,8 +95,8 @@ const Accommodation = ()=>{
     }
 
     const payPoints = {
-        'moniepoint1':'', 'moniepoint2':'', 
-        'moniepoint3':'', 'moniepoint4':'', 'cash':''
+        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5399647958', 
+        'moniepoint3':'MP3-5536588063', 'moniepoint4':'MP4-5342270174', 'cash':'cash'
     }
 
     const [accommodationFields, setAccommodationFields] = useState({...defaultAccommodationFields})
@@ -200,6 +201,7 @@ const Accommodation = ()=>{
             setFillMode('')
         }
     },[salesOpts])
+
     const calculateAccommodationSales = ()=>{
         var salesReportList = []        
         {customers.forEach((customer)=>{
@@ -1097,7 +1099,7 @@ const Accommodation = ()=>{
                                 >
                                     <option value=''>Select Payment Point</option>
                                     {Object.keys(payPoints).map((payPoint, index)=>{
-                                        return <option key={index} value={payPoint}>{payPoint.toUpperCase()}</option>
+                                        return <option key={index} value={payPoint}>{payPoints[payPoint]}</option>
                                     })}
                                 </select>
                             </div>                            
