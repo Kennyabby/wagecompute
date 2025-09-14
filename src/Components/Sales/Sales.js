@@ -902,7 +902,7 @@ const Sales = ()=>{
                 setAlert('Checking for duplicates...')
                 setAlertTimeout(100000)
                 
-                const isDuplicate = await checkDuplicateTransaction(company, entry);            
+                const isDuplicate = false // await checkDuplicateTransaction(company, {
                 
                 if (!isDuplicate){
                     setAlertState('info')
@@ -916,7 +916,7 @@ const Sales = ()=>{
                         quantity: Math.abs(Number(entry.quantity)) * -1,
                         baseQuantity: Math.abs(Number(entry.baseQuantity)) * -1,
                         totalCost: Math.abs(Number(entry.costPrice)) * Math.abs(Number(entry.baseQuantity)) * -1,
-                         totalSales: Math.abs(Number(entry.totalSales)) * -1,
+                        totalSales: Math.abs(Number(entry.totalSales)) * -1,
                         postingDate: postingDate,
                         postingStamp: new Date(postingDate),
                         createdAt: createdAt,
