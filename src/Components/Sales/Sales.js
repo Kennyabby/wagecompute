@@ -44,6 +44,13 @@ const Sales = ()=>{
         'moniepoint1':'', 'moniepoint2':'', 
         'moniepoint3':'', 'moniepoint4':'', 'cash':''
     }
+
+    const payPointAccounts = {
+        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5399647958', 
+        'moniepoint3':'MP3-5536588063', 'moniepoint4':'MP4-5342270174', 
+        'cash':'CASH', 'Employee':'EMPLOYEE'
+    }
+
     const salesUnits = {
         'open bar1':{...payPoints}, 'open bar2':{...payPoints}, 
         'kitchen':{...payPoints}, 'vip':{...payPoints}, 
@@ -2419,7 +2426,7 @@ const Sales = ()=>{
                                                 <option value=''>Select Recovery Point</option>
                                                 {Object.keys(payPoints).map((paypoint,index)=>{
                                                     return (
-                                                        <option key={index} value={paypoint}>{`${paypoint.toUpperCase()}`}</option>
+                                                        <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
                                                     )
                                                 })}
                                                 <option key={'em001'} value='Employee'>EMPLOYEE</option>
@@ -2583,7 +2590,7 @@ const Sales = ()=>{
                                 >
                                     <option value=''>Select Payment Point</option>
                                     {Object.keys(payPoints).map((payPoint, index)=>{
-                                        return <option key={index} value={payPoint}>{payPoint.toUpperCase()}</option>
+                                        return <option key={index} value={payPoint}>{payPointAccounts[payPoint]}</option>
                                     })}
                                 </select>
                             </div>   
@@ -2811,6 +2818,7 @@ const Sales = ()=>{
                                                         key={id}                                                   
                                                         handleFieldChange={handleFieldChange}
                                                         salesUnits={salesUnits}
+                                                        payPointAccounts={payPointAccounts}
                                                         salesUnit={salesUnit}
                                                         field={field}    
                                                         isView={isView}                                                
@@ -3011,7 +3019,7 @@ const Sales = ()=>{
     )
 }
 
-const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isView})=> {
+const SalesEntry = ({salesUnits, salesUnit, payPointAccounts, field, index, handleFieldChange, isView})=> {
     const [open, setOpen] = useState(false)
     const [salesAmount, setSalesAmount] = useState(0)
     useEffect(()=>{
@@ -3045,7 +3053,7 @@ const SalesEntry = ({salesUnits, salesUnit, field, index, handleFieldChange, isV
             {open && Object.keys(salesUnits[salesUnit]).map((payPoint, id)=>{
                 return (
                     <div className='inpcov' key={id}>
-                        <div>{payPoint.toUpperCase()}</div>
+                        <div>{payPointAccounts[payPoint]}</div>
                         <input 
                             className='forminp'
                             name={salesUnit}
