@@ -1072,7 +1072,7 @@ const DashView = () =>{
                                                             <span className='alert-item-name'>{item.name}</span>
                                                             <span className='alert-item-detail'>Stock: {fmt(item.stock)} (Min: {Math.ceil(item.threshold)})</span>
                                                             <span className='alert-item-detail'>Coverage: {item.threshold > 0 ? (item.stock / (item.threshold / 7)).toFixed(1) : 'N/A'} days</span>
-                                                            <span className='alert-item-detail'>{item.threshold > 0 && (item.stock / (item.threshold / 7)) < 3 ? 'Low stock' : ''}</span>
+                                                            {/* <span className='alert-item-detail'>{item.threshold > 0 && (item.stock / (item.threshold / 7)) < 3 ? 'Low stock' : ''}</span> */}
                                                         </div>
                                                     ))
                                                 ) : (
