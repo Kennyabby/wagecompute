@@ -19,7 +19,7 @@ const PointOfSales = () => {
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
         salesSessions, setSalesSessions,
-        paymentReceipts, getAllOrders
+        paymentReceipts, getPosOrders
     } = useContext(ContextProvider);
 
     // Core States
@@ -1018,7 +1018,7 @@ const PointOfSales = () => {
             createNewOrder(currentTable);
             setPaymentDetails({...payPoints})
             printReceipt(newOrder);
-            getAllOrders(company)
+            getPosOrders(company)
             return
         }
     };

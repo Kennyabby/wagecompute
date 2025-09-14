@@ -360,7 +360,6 @@ const Accommodation = ()=>{
             getAccommodations(company)
             setCurAccomodation({...curAccommodation, ...updatedPayment})
             setAccommodationFields({...accommodationFields, ...updatedPayment})
-            obtainPaymentReceipts()
             setIsView(true)
             setAlertState('success')
             setAlert(
