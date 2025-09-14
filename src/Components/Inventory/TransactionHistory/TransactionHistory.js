@@ -289,12 +289,16 @@ const TransactionHistory = () => {
           // Update product totals
           processedData[productId].quantity += quantity;
           processedData[productId].cost += cost;
-          processedData[productId].value += salesValue;
+          if (type === 'sales'){
+            processedData[productId].value += salesValue;
+          }
           
           // Update location-specific totals
           processedData[productId].locations[location].quantity += quantity;
           processedData[productId].locations[location].cost += cost;
-          processedData[productId].locations[location].value += salesValue;
+          if (type === 'sales'){
+            processedData[productId].locations[location].value += salesValue;
+          }
   
           // Update grand totals
           totalQuantity += quantity;
