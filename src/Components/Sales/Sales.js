@@ -1184,7 +1184,6 @@ const Sales = ()=>{
         if (sale.productsRef){
             const transactions = await getSalesProducts(company, sale);             
             if (transactions.length){ 
-                console.log(transactions)
                 const validEntries = {}
                 wrhs.forEach(async(wh)=>{   
                     var ctent = 0
