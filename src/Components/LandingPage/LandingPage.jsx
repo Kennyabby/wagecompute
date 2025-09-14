@@ -1,5 +1,7 @@
 import React, { useEffect, useContext } from "react";
 import ContextProvider from "../../Resources/ContextProvider";
+import Navbar from "./Navbar";
+import HeroSection from "./HeroSection";
 
 const LandingPage = () => {
   const { storePath } = useContext(ContextProvider);
@@ -10,7 +12,11 @@ const LandingPage = () => {
 
   return (
     <>
-      <h1>Welcome to WageCompute</h1>
+      <Navbar />
+      <HeroSection />
+      <section className="bg-white rounded-t-full mt-[-200px] text-black h-[30vh] py-12 px-4">
+
+      </section>
     </>
   );
 };
