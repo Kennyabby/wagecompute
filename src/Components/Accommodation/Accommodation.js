@@ -313,18 +313,6 @@ const Accommodation = ()=>{
     }
 
     const postPayment = async ()=>{
-        if (paymentReceipts.find((payrec)=>{
-            return (
-                payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
-                && payrec.paymentPoint === accommodationFields.payPoint
-            )
-        })){
-            setAlertState('error')
-            setAlert('Payment Receipt Number Already Used for the Selected Payment Point')
-            setAlertTimeout(5000)
-            return
-        }
-
         setAlertState('info')
         setAlert(
             `Updating Payment Status...`
@@ -1264,13 +1252,24 @@ const Accommodation = ()=>{
                             onClick={()=>{
                                 if (accommodationFields.accommodationAmount){
                                     if (fillmode === 'payment'){
-                                        if (accommodationFields.paymentAmount>0 && accommodationFields.payPoint &&
+                                        if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
                                             accommodationFields.paymentReceipt
                                         ){
                                             const paymentFields = {
                                                 paymentAmount: accommodationFields.paymentAmount,
                                                 payPoint: accommodationFields.payPoint,
                                                 paymentReceipt: accommodationFields.paymentReceipt
+                                            }
+                                            if (paymentReceipts.find((payrec)=>{
+                                                return (
+                                                    payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
+                                                    && payrec.paymentPoint === accommodationFields.payPoint
+                                                )
+                                            })){
+                                                setAlertState('error')
+                                                setAlert('Payment Receipt Number Already Used for the Selected Payment Point')
+                                                setAlertTimeout(5000)
+                                                return
                                             }
                                             runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, postPayment, curAccommodation.createdAt)
                                         }else{
