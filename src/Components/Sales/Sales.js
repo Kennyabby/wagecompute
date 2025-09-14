@@ -778,15 +778,7 @@ const Sales = ()=>{
                 postProductsSales(entryWrh, validEntries[entryWrh], timestamp, entriesLength)
             })
         }
-        const allProductsAvailable = isProductAvailable(validEntries)
-        if (pendingSales.length) {
-            setAlertState('error');
-            setAlert(`You have ${pendingSales.length} pending sales reconciliation, please link products for the following days: ${pendingSales.map(p => p.postingDate).join(', ')}`);
-            setAlertTimeout(8000);
-            setAddingProducts(false)
-            setPostCount(0)   
-            return;         
-        }
+        const allProductsAvailable = isProductAvailable(validEntries)        
         if (!allProductsAvailable.value){
             setAlertState('error');
             setAlert(`Insufficient quantity in store, for the following product(s): ${allProductsAvailable.message.join(', ')}`);
@@ -795,6 +787,14 @@ const Sales = ()=>{
             setPostCount(0)   
             return;         
         }else{
+            if (pendingSales.length) {
+                setAlertState('error');
+                setAlert(`You have ${pendingSales.length} pending sales reconciliation, please link products for the following days: ${pendingSales.map(p => p.postingDate).join(', ')}`);
+                setAlertTimeout(8000);
+                setAddingProducts(false)
+                setPostCount(0)   
+                return;         
+            }
             runApprovalWorkFlow(postingDate, curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
         }
     }
