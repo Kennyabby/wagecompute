@@ -24,6 +24,7 @@ const Accommodation = ()=>{
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow,
+        paymentReceipts, obtainPaymentReceipts,
         removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
 
@@ -311,6 +312,18 @@ const Accommodation = ()=>{
     }
 
     const postPayment = async ()=>{
+        if (paymentReceipts.find((payrec)=>{
+            return (
+                payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
+                && payrec.paymentPoint === accommodationFields.payPoint
+            )
+        })){
+            setAlertState('error')
+            setAlert('Payment Receipt Number Already Used for the Selected Payment Point')
+            setAlertTimeout(5000)
+            return
+        }
+
         setAlertState('info')
         setAlert(
             `Updating Payment Status...`
@@ -347,6 +360,7 @@ const Accommodation = ()=>{
             getAccommodations(company)
             setCurAccomodation({...curAccommodation, ...updatedPayment})
             setAccommodationFields({...accommodationFields, ...updatedPayment})
+            obtainPaymentReceipts()
             setIsView(true)
             setAlertState('success')
             setAlert(
@@ -829,7 +843,7 @@ const Accommodation = ()=>{
                                     <div className='deptdesc'>{`Accommodation Posted By:`} <b>{
                                         employees.length?employees.filter((employee)=>{
                                             return employee.i_d === employeeId
-                                        })[0]['firstName']:''
+                                        })[0]?.['firstName']:''
                                     }</b></div>
                                 </div>
                                 {(companyRecord.status==='admin') && <div 

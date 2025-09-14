@@ -32,6 +32,7 @@ function App() {
   const [liveErrorMessages, setLiveErrorMessages] = useState('Loading...')
   const [sessions, setSessions] = useState(null);
   const [tables, setTables] = useState([]);
+  const [posOrders, setPosOrders] = useState([]);
   const [deliverySessions, setDeliverySessions] = useState([])
   const [salesSessions, setSalesSessions] = useState([])
 
@@ -41,6 +42,7 @@ function App() {
   const [curApproval, setCurApproval] = useState(null)
   const [showApprovalBox, setShowApprovalBox] = useState(false)
   
+  const [paymentReceipts, setPaymentReceipts] = useState([])
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
   const [alertTimeout, setAlertTimeout] = useState(100000)
@@ -233,6 +235,10 @@ function App() {
       }
     }
   },[enableBlockVal, reloadCount, companyRecord, company])
+
+  useEffect(()=>{
+    obtainPaymentReceipts()
+  },[posOrders, sales, accommodations])
 
   useEffect(()=>{
     if (pauseView){
@@ -704,15 +710,15 @@ function App() {
         window.localStorage.removeItem('lgt-vw')
         getSettings(cmp_val)
         fetchProfiles(cmp_val)
+        getSales(cmp_val)
+        getPosOrders(cmp_val)
+        getAccommodations(cmp_val)
         getEmployees(cmp_val)
         getDepartments(cmp_val)
         getPositions(cmp_val)
         getCustomers(cmp_val)
-        getAccommodations(cmp_val)
         // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
-        getSales(cmp_val)
         fetchTables(cmp_val)
-        fetchSessions(cmp_val , "sales", resp.record)
         fetchSessions(cmp_val , "delivery", resp.record)
         getProducts(cmp_val)
         getRentals(cmp_val)
@@ -726,6 +732,9 @@ function App() {
             employees: resp.record.permissions.includes('edit_employees')
           }
         })
+        getAccommodations(cmp_val)
+        getPosOrders(cmp_val)
+        getSales(cmp_val)
         setRecoveryVal(resp.record.enableDebtRecovery)
         setEnableBlockVal(!resp.record.enableLogin)        
         getSettings(cmp_val)
@@ -756,6 +765,79 @@ function App() {
           }
       }
     }
+  }
+
+  const obtainPaymentReceipts = ()=>{
+    const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4']    
+    const recoveryReceipts = []
+    const accommodationReceipts = []
+    const posOrderReceipts = []
+
+    let paymentReceipts = []
+    if (sales){
+      sales.forEach((sale)=>{
+        (sale.recoveryList || []).forEach((recovery)=>{
+          if (paymentPoints.includes(recovery.recoveryPoint)){
+            recoveryReceipts.push({
+              paymentModule: 'recovery',
+              paymentPoint: recovery.recoveryPoint,
+              paymentAmount: Number(recovery.recoveryAmount),
+              paymentReceipt: Number(recovery.recoveryReceipt),
+              paymentFor: `For ${sale.postingDate} Debt`,
+              paymentDate: recovery.recoveryDate,
+              paymentHandler: recovery.recoveryEmployeeId,
+              paymentModuleRef: sale.createdAt
+            })
+          }
+        })
+      })
+    }
+    if (accommodations){
+      accommodations.forEach((acc)=>{
+        if (paymentPoints.includes(acc.payPoint)){
+          accommodationReceipts.push({
+            paymentModule: 'accommodation',
+            paymentPoint: acc.payPoint,
+            paymentAmount: Number(acc.paymentAmount),
+            paymentReceipt: Number(acc.paymentReceipt),
+            paymentFor: `For Room ${acc.roomNo}`,
+            paymentDate: acc.postingDate,
+            paymentHandler: acc.employeeId,
+            paymentModuleRef: acc.createdAt
+          })
+        }
+      })
+    }
+
+    if (posOrders){
+      posOrders.forEach((order)=>{
+        if (order.salesPosts){
+          Object.keys(order.salesPosts).forEach((payPoint)=>{
+            if (paymentPoints.includes(payPoint)){
+              const location = order.salesPosts[payPoint]
+              const receiptNo= order.receipts[payPoint]
+              const amount = Number(order[payPoint])
+              posOrderReceipts.push({
+                paymentModule: 'POS Order',
+                paymentPoint: payPoint,
+                paymentAmount: amount,
+                paymentReceipt: Number(receiptNo),
+                paymentFor: `For ${order.orderNumber} Order in ${location}`,
+                paymentDate: new Date(order.createdAt).toISOString().split('T')[0],
+                paymentHandler: order.handlerId,
+                paymentModuleRef: order.createdAt
+              })
+            }
+          })
+        } 
+      })
+    }
+    paymentReceipts = [
+      ...recoveryReceipts, 
+      ...accommodationReceipts, 
+      ...posOrderReceipts
+    ]
+    setPaymentReceipts(paymentReceipts)
   }
   
   const fetchProfiles = async (company) => {
@@ -803,6 +885,16 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setAllSessions(resp.record)
+    }
+  }
+  const getPosOrders = async (company) => {
+    const resp = await fetchServer("POST", {
+      database: company,
+      collection: "Orders",
+      prop: {}
+    }, "getDocsDetails", SERVER)
+    if (resp.record){
+      setPosOrders(resp.record)
     }
   }
   const getDepartments = async (company) =>{
@@ -1728,6 +1820,7 @@ function App() {
           purchase, setPurchase, getPurchase,
           expenses, setExpenses, getExpenses,
           rentals, setRentals, getRentals,
+          paymentReceipts, obtainPaymentReceipts,
           
           settings, setSettings, getSettings,
           colSettings, setColSettings,
