@@ -17,6 +17,10 @@ const SalesReport = ({
         'moniepoint3':'', 'moniepoint4':'', 
         'cash':'', 'Employee':''
     }
+    const payPointAccounts = {
+        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5399647958', 
+        'moniepoint3':'MP3-5536588063', 'moniepoint4':'MP4-5342270174', 'cash':'cash', 'Employee':'Employee'
+    }
     const salesUnits = {
         'open bar1':{...payPoints}, 'open bar2':{...payPoints}, 
         'kitchen':{...payPoints}, 'vip':{...payPoints}, 
@@ -305,7 +309,7 @@ const SalesReport = ({
                                                     var totalPaypointAmount = 0
                                                     return (
                                                         <tr>
-                                                            <td className='prr-ttrow'>{payPoint.toUpperCase()}</td>                                                        
+                                                            <td className='prr-ttrow'>{payPointAccounts[payPoint]}</td>                                                        
                                                             {reportEmployees.map((emp)=>{
                                                                 totalPaypointAmount += reportAllPayPoints[payPoint][emp.i_d]
                                                                 return(
@@ -336,7 +340,7 @@ const SalesReport = ({
                                                     <th><h8 className='prr-theader'>PAYMENT POINT</h8></th>
                                                     {Object.keys(payPoints).map((paypoint)=>{
                                                         return(
-                                                            <th><h8 className='prr-theader'>{paypoint.toUpperCase()}</h8></th>
+                                                            <th><h8 className='prr-theader'>{payPointAccounts[paypoint]}</h8></th>
                                                         )
                                                     })}
                                                     <th><h8 className='prr-theader'>SUB TOTAL</h8></th>
