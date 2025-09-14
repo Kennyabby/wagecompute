@@ -233,7 +233,7 @@ const TransactionHistory = () => {
               case 'transfers':
                 return ['Transfer Shipment', 'Transfer Receipt'].includes(tx.documentType);
               case 'adjustments':
-                return ['Positive Entry', 'Negative Entry'].includes(tx.entryType);
+                return ['Positive Entry', 'Nagative Entry'].includes(tx.entryType);
               default:
                 return true;
             }
@@ -1020,7 +1020,7 @@ const TransactionHistory = () => {
                   },
                   in: {
                     $cond: [
-                      { $eq: ["$entryType", "Negative Entry"] },
+                      { $eq: ["$entryType", "Nagative Entry"] },
                       { $abs: "$$qty" },
                       0
                     ]
@@ -1110,7 +1110,7 @@ const TransactionHistory = () => {
                   },
                   in: {
                     $cond: [
-                      { $eq: ["$entryType", "Negative Entry"] },
+                      { $eq: ["$entryType", "Nagative Entry"] },
                       { $abs: "$$cost" },
                       0
                     ]
@@ -1687,7 +1687,7 @@ const TransactionHistory = () => {
             <option value="Transfer Shipment">Transfer Out</option>
             <option value="Transfer Receipt">Transfer In</option>
             <option value="Positive Entry">Positive Adjustment</option>
-            <option value="Negative Entry">Negative Adjustment</option>
+            <option value="Nagative Entry">Negative Adjustment</option>
           </select>
         </div>
 
