@@ -190,7 +190,6 @@ const Sales = ()=>{
         getEmployees(cmp_val)
         getRentals(cmp_val)
         getAccommodations(cmp_val)
-        getAllSessions(cmp_val)
         getApprovals(cmp_val)
         const intervalId = setInterval(()=>{
             if (cmp_val){
