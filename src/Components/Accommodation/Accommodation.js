@@ -97,7 +97,8 @@ const Accommodation = ()=>{
 
     const payPoints = {
         'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5399647958', 
-        'moniepoint3':'MP3-5536588063', 'moniepoint4':'MP4-5342270174', 'cash':'cash'
+        'moniepoint3':'MP3-5536588063', 'moniepoint4':'MP4-5342270174', 
+        'cash':'CASH', 'Employee':'EMPLOYEE'
     }
 
     const [accommodationFields, setAccommodationFields] = useState({...defaultAccommodationFields})
