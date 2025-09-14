@@ -1175,8 +1175,9 @@ const Sales = ()=>{
         setIsProductApprover(false)
         const productsApprovals = approvals.filter((appr)=>{return appr.section === 'addSalesProduct'})
         if (sale.productsRef){
-            const transactions = await getSalesProducts(company, sale); 
-            if (transactions.length){
+            const transactions = await getSalesProducts(company, sale);             
+            if (transactions.length){ 
+                console.log(transactions)
                 const validEntries = {}
                 wrhs.forEach(async(wh)=>{   
                     var ctent = 0
