@@ -27,10 +27,10 @@ const Navbar = () => {
           ))}
         </div>
         <div>
-          <button className="bg-white text-[#4CAF50] font-semibold px-6 py-[12px] rounded-[10px] shadow-lg hover:bg-gray-100 transition">
+          <button className="bg-white text-[#4CAF50] font-semibold px-6 py-[12px] rounded-[10px] shadow-lg hover:bg-gray-300 transition">
             Sign in
           </button>
-          <button className="bg-[#4CAF50] text-white font-semibold px-6 py-[12px] rounded-[10px] shadow-lg hover:bg-red-700 transition ml-4">
+          <button className="bg-[#4CAF50] text-white font-semibold px-6 py-[12px] rounded-[10px] shadow-lg transition ml-4">
             Try for free
           </button>
         </div>
