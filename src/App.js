@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import "./App.css";
+import "./index.css";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import ContextProvider from "./Resources/ContextProvider";
 import PauseView from "./Components/PauseView/PauseView";
