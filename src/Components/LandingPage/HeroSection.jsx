@@ -22,7 +22,7 @@ const HeroSection = () => {
         </p>
         <a
           href="/login"
-          className="bg-[#4CAF50] text-white font-semibold px-6 py-3 rounded-[10px] shadow-lg hover:bg-gray-100 transition"
+          className="bg-[#4CAF50] text-white font-semibold px-6 py-3 rounded-[10px] hover:text-[#4CAF50] shadow-lg hover:bg-gray-100 transition"
         >
           Get Started - It's Free!
         </a>
