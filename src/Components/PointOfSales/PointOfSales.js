@@ -19,6 +19,7 @@ const PointOfSales = () => {
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
         salesSessions, setSalesSessions,
+        paymentReceipts, getAllOrders
     } = useContext(ContextProvider);
 
     // Core States
@@ -896,6 +897,26 @@ const PointOfSales = () => {
             receipts[payPoint] = paymentDetails[payPoint].receipt
             salesPosts[payPoint] = paymentDetails[payPoint].salesPost
         })
+        let voidReceipts = []
+        Object.keys(receipts).forEach((payPoint)=>{
+            if (paymentReceipts.find((payrec)=>{
+                return (
+                    payrec.paymentReceipt === Number(receipts[payPoint])
+                    && payrec.paymentPoint === payPoint
+                )
+            })){
+                voidReceipts.push(payPoint)                
+            }
+        })
+
+        if (voidReceipts.length){
+            setAlertState('error');
+            setAlert(`Receipt Number Already Used For ${voidReceipts.join(', ')} Payment Point(s)`);
+            setAlertTimeout(5000)
+            setMakingPayment(false)
+            return;
+        }
+
         if (totalPayment < currentOrder.totalSales) {
             setAlertState('error');
             setAlert('Insufficient payment amount');
@@ -997,6 +1018,7 @@ const PointOfSales = () => {
             createNewOrder(currentTable);
             setPaymentDetails({...payPoints})
             printReceipt(newOrder);
+            getAllOrders(company)
             return
         }
     };

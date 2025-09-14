@@ -408,7 +408,7 @@ const DashView = () =>{
                     const stock = Number(p.totalStock||0)
                     return { id: pid, name: p.name, stock, threshold }
                 })
-                .filter(r=> r.threshold>0 && r.stock <= r.threshold)
+                .filter(r=> r.threshold>0 && r.stock < r.threshold)
                 .sort((a,b)=> (a.stock - b.stock))
                 .slice(0, 10)
 

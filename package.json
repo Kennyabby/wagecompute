@@ -51,7 +51,7 @@
     ]
   },
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "devDependencies": {
     "ajv-keywords": "^3.5.2",
