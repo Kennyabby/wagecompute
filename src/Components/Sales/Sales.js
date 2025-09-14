@@ -36,7 +36,8 @@ const Sales = ()=>{
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         curApproval, setCurApproval, showApprovalBox, setShowApprovalBox,
         approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval,
-        setApprovalStatus, setApprovalMessage,               
+        setApprovalStatus, setApprovalMessage,   
+        paymentReceipts, obtainPaymentReceipts,            
     } = useContext(ContextProvider)
 
     const payPoints = {
@@ -1342,6 +1343,7 @@ const Sales = ()=>{
                 }else{                
                     setEmployees(updatedEmployees)
                     getEmployees(company)
+                    getSales(company)
                     setRecoveryFields([])
                     setAlertState('success')
                     setAlert('Debt Recovered Successfully!')
@@ -2952,6 +2954,25 @@ const Sales = ()=>{
                                         }
                                     })
                                     if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo){
+                                        
+                                        let voidReceipts = []
+                                        recoveryFields.forEach((field)=>{
+                                            if (paymentReceipts.find((payrec)=>{
+                                                return (
+                                                    payrec.paymentReceipt === Number(field.recoveryReceipt)
+                                                    && payrec.paymentPoint === field.recoveryPoint
+                                                )
+                                            })){
+                                            voidReceipts.push(field.recoveryPoint)
+                                            }
+                                        })
+
+                                        if (voidReceipts.length){
+                                            setAlertState('error')
+                                            setAlert(`Receipt Number Already Used For ${voidReceipts.join(', ')} Payment Point(s)`);
+                                            setAlertTimeout(5000)
+                                            return
+                                        }
                                         const recoveryData = {
                                             recoveryFields,
                                             recoveryEmployeeId,

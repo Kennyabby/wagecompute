@@ -1797,6 +1797,7 @@ function App() {
           sessions, setSessions, fetchSessions,
           salesSessions, setSalesSessions,
           deliverySessions, setDeliverySessions,
+          getPosOrders,
           isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
           tables, setTables, fetchTables,
 
