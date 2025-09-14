@@ -313,17 +313,17 @@ const Accommodation = ()=>{
     }
 
     const postPayment = async ()=>{
-        if (paymentReceipts.find((payrec)=>{
-            return (
-                payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
-                && payrec.paymentPoint === accommodationFields.payPoint
-            )
-        })){
-            setAlertState('error')
-            setAlert('Payment Receipt Number Already Used for the Selected Payment Point')
-            setAlertTimeout(5000)
-            return
-        }
+        // if (paymentReceipts.find((payrec)=>{
+        //     return (
+        //         payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
+        //         && payrec.paymentPoint === accommodationFields.payPoint
+        //     )
+        // })){
+        //     setAlertState('error')
+        //     setAlert('Payment Receipt Number Already Used for the Selected Payment Point')
+        //     setAlertTimeout(5000)
+        //     return
+        // }
 
         setAlertState('info')
         setAlert(
