@@ -629,10 +629,10 @@ const Stock = ({
         setIsExporting(true);
         try {
             const visibleData = prepareExportData();
-            const exportDateRange = {
-                startDate: formatDate(dateRange.startDate, 'yyyy-MM-dd'),
-                endDate: formatDate(dateRange.endDate, 'yyyy-MM-dd')
-            };
+            // const exportDateRange = {
+            //     startDate: formatDate(dateRange.startDate, 'yyyy-MM-dd'),
+            //     endDate: formatDate(dateRange.endDate, 'yyyy-MM-dd')
+            // };
 
             // Get columns with proper formatting
             const exportColumns = availableColumns
@@ -682,7 +682,7 @@ const Stock = ({
                 visibleData,
                 exportColumns,
                 getCompanyInfo(),
-                exportDateRange,
+                dateRange,
                 'Stock Report',
                 filters
             );
@@ -700,10 +700,10 @@ const Stock = ({
         setIsExporting(true);
         try {
             const visibleData = prepareExportData();
-            const exportDateRange = {
-                startDate: formatDate(dateRange.startDate, 'yyyy-MM-dd'),
-                endDate: formatDate(dateRange.endDate, 'yyyy-MM-dd')
-            };
+            // const exportDateRange = {
+            //     startDate: formatDate(dateRange.startDate, 'yyyy-MM-dd'),
+            //     endDate: formatDate(dateRange.endDate, 'yyyy-MM-dd')
+            // };
 
             // Get columns with proper formatting
             const exportColumns = availableColumns
@@ -753,7 +753,7 @@ const Stock = ({
                 visibleData,
                 exportColumns,
                 getCompanyInfo(),
-                exportDateRange,
+                dateRange,
                 'Stock Report',
                 filters
             );
