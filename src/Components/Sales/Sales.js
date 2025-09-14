@@ -208,9 +208,9 @@ const Sales = ()=>{
 
     useEffect(()=>{
         const ftrsales = sales.sort((a,b) =>{return new Date(b.postingDate).getTime() > new Date(a.postingDate)})
-        const pendings = ftrsales.slice(1,5).filter((sl)=>{return !sl.productsRef})
+        const pendings = ftrsales.slice(1,5).filter((sl)=>{return (!sl.productsRef && sl.postingDate < postingDate)})
         setPendingSales(pendings)
-    },[sales])
+    },[sales, postingDate])
 
     useEffect(()=>{
         var accommodationRecord = []
