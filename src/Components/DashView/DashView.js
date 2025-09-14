@@ -1,5 +1,5 @@
 import './DashView.css'
-
+import React from 'react'
 import {useEffect, useMemo, useState, useCallback } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
@@ -38,7 +38,8 @@ const DashView = () =>{
     
     const [fromDate, setFromDate] = useState(saleFrom || defaultFromDate)
     const [toDate, setToDate] = useState(saleTo || defaultToDate)
-    
+        // Track expanded locations for stock alerts
+        const [expandedLocations, setExpandedLocations] = useState({})
     // Filters
     const [locationFilter, setLocationFilter] = useState('')
     const [productFilter, setProductFilter] = useState('')
@@ -1035,29 +1036,52 @@ const DashView = () =>{
                     <div className='alert-panel'>
                         <h3><FaExclamationTriangle className='icon' /> Stock Alerts</h3>
                         <div className='alert-content'>
-                            {restock.length > 0 ? (
-                                restock.map((locAlert, locIdx) => (
-                                    <div className='alert-category' key={`location-${locIdx}`}>
-                                        <h4>{locAlert.location} ({locAlert.lowStockProducts.length})</h4>
-                                        <div className='alert-items'>
-                                            {locAlert.lowStockProducts.length > 0 ? (
-                                                locAlert.lowStockProducts.map((item, idx) => (
-                                                    <div key={`low-stock-${locAlert.location}-${idx}`} className='alert-item'>
-                                                        <span className='alert-item-name'>{item.name}</span>
-                                                        <span className='alert-item-detail'>Stock: {fmt(item.stock)} (Min: {Math.ceil(item.threshold)})</span>
-                                                        <span className='alert-item-detail'>Coverage: {item.threshold > 0 ? (item.stock / (item.threshold / 7)).toFixed(1) : 'N/A'} days</span>
-                                                        <span className='alert-item-detail'>{item.threshold > 0 && (item.stock / (item.threshold / 7)) < 3 ? 'Low stock' : ''}</span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className='no-alerts'>No low stock items</div>
-                                            )}
-                                        </div>
+                                {restock.length > 0 ? (
+                                    <div className='location-labels-row' style={{display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '16px'}}>
+                                        {restock.map((locAlert, locIdx) => (
+                                            <div
+                                                key={`location-label-${locIdx}`}
+                                                className={`location-label${expandedLocations[locIdx] ? ' active' : ''}`}
+                                                style={{
+                                              fontWeight: 'bold',
+                                              cursor: 'pointer',
+                                              padding: '8px 16px',
+                                              borderRadius: '6px',
+                                              background: expandedLocations[locIdx] ? '#f0f8ff' : '#fff',
+                                              border: expandedLocations[locIdx] ? '2px solid #1976d2' : '1px solid #ddd',
+                                              boxShadow: expandedLocations[locIdx] ? '0 2px 8px rgba(25,118,210,0.12)' : 'none'
+                                                }}
+                                                onClick={() => setExpandedLocations({ [locIdx]: true })}
+                                            >
+                                                {locAlert.location} <span style={{color:'#c00', fontWeight:'normal'}}>({locAlert.lowStockProducts.length})</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))
-                            ) : (
-                                <div className='no-alerts'>No low stock items by location</div>
-                            )}
+                                ) : (
+                                    <div className='no-alerts'>No low stock items by location</div>
+                                )}
+
+                                {/* Show products for expanded location only */}
+                                {restock.map((locAlert, locIdx) => (
+                                    expandedLocations[locIdx] ? (
+                                        <div className='alert-category' key={`location-products-${locIdx}`} style={{marginBottom:'24px'}}>
+                                            <div className='alert-items'>
+                                                {locAlert.lowStockProducts.length > 0 ? (
+                                                    locAlert.lowStockProducts.map((item, idx) => (
+                                                        <div key={`low-stock-${locAlert.location}-${idx}`} className='alert-item'>
+                                                            <span className='alert-item-name'>{item.name}</span>
+                                                            <span className='alert-item-detail'>Stock: {fmt(item.stock)} (Min: {Math.ceil(item.threshold)})</span>
+                                                            <span className='alert-item-detail'>Coverage: {item.threshold > 0 ? (item.stock / (item.threshold / 7)).toFixed(1) : 'N/A'} days</span>
+                                                            <span className='alert-item-detail'>{item.threshold > 0 && (item.stock / (item.threshold / 7)) < 3 ? 'Low stock' : ''}</span>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className='no-alerts'>No low stock items</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : null
+                                ))}
 
                             {/* Price Discrepancy Alerts */}
                             {(() => {
@@ -1501,52 +1525,6 @@ const DashView = () =>{
                                 </div>
                             )))}
                             {!productLocationSalesBreakdown.length && <div className='empty-row'>No data</div>}
-                        </div>
-                    </div>
-                    <div className='panel'>
-                        <div className='panel-title'>Products To Restock</div>
-                        <div className='list-table'>
-                            <div className='list-head'>
-                                <div>Product</div>
-                                <div>Stock</div>
-                                <div>7-day Threshold</div>
-                                <div>Coverage (days)</div>
-                                <div>Warning</div>
-                            </div>
-                            {restock.map((r,i)=>(
-                                <div className='list-row' key={i}>
-                                    <div>{r.name || r.id}</div>
-                                    <div>{fmt(r.stock)}</div>
-                                    <div>{fmt(Math.ceil(r.threshold))}</div>
-                                    <div>{r.threshold>0 ? (r.stock/ (r.threshold/7)).toFixed(1) : 'N/A'}</div>
-                                    <div>{r.threshold>0 && (r.stock/ (r.threshold/7)) < 3 ? 'Low stock' : ''}</div>
-                                </div>
-                            ))}
-                            {/* {!restock.length && <div className='empty-row'>No low-stock items</div>} */}
-
-                                {restock.length > 0 ? (
-                                    restock.map((locAlert, locIdx) => (
-                                        locAlert.lowStockProducts.length > 0 ? (
-                                            locAlert.lowStockProducts.map((item, idx) => (
-                                                <div className='list-row' key={`restock-${locAlert.location}-${idx}`}>
-                                                    <div>{locAlert.location}</div>
-                                                    <div>{item.name}</div>
-                                                    <div>{fmt(item.stock)}</div>
-                                                    <div>{fmt(Math.ceil(item.threshold))}</div>
-                                                    <div>{item.threshold > 0 ? (item.stock / (item.threshold / 7)).toFixed(1) : 'N/A'}</div>
-                                                    <div>{item.threshold > 0 && (item.stock / (item.threshold / 7)) < 3 ? 'Low stock' : ''}</div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className='list-row' key={`restock-${locAlert.location}-empty`}>
-                                                <div>{locAlert.location}</div>
-                                                <div colSpan={5} className='empty-row'>No low-stock items</div>
-                                            </div>
-                                        )
-                                    ))
-                                ) : (
-                                    <div className='empty-row'>No low-stock items</div>
-                                )}
                         </div>
                     </div>
 
