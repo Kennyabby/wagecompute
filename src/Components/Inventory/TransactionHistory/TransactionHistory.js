@@ -287,8 +287,9 @@ const TransactionHistory = () => {
           }
   
           // Update product totals
+          let productCost = products.find(p => p.i_d === productId)?.costPrice || 0;
           processedData[productId].quantity += quantity;
-          processedData[productId].cost += cost;
+          processedData[productId].cost += quantity * productCost; // Use costPrice for cost calculation
           if (type === 'sales'){
             processedData[productId].value += salesValue;
           }
@@ -302,7 +303,7 @@ const TransactionHistory = () => {
   
           // Update grand totals
           totalQuantity += quantity;
-          totalCost += cost;
+          totalCost += (quantity * productCost);
           totalValue += salesValue;
         });
   
@@ -1345,17 +1346,33 @@ const TransactionHistory = () => {
       });
 
       // Calculate opening stock cost
-      const openingStockCost = (openingPurchasedQty) ? Number(((openingPurchaseCost/openingPurchasedQty) * openingStockForSales).toFixed(2)) : 0;
+      const openingStockCost = (openingPurchasedQty) ? Number(((openingPurchaseCost/openingPurchasedQty) * openingStock).toFixed(2)) : 0;
+
+      const totalPurchasedQty = openingPurchasedQty + (summaryData.purchases || 0);
+      const totalPurchaseCost = openingPurchaseCost + (summaryData.purchasesCost || 0);
+      const averageCost = (totalPurchasedQty > 0) ? (totalPurchaseCost / totalPurchasedQty) : 0;
+      
+      // Calculate Transfer Cost
+      const transfersInCost = (summaryData.transfersIn || 0) * averageCost
+      const transfersOutCost = (summaryData.transfersOut || 0) * averageCost
+
+      // Calculate Adjustment Cost
+      const positiveAdjustmentsCost = (summaryData.positiveAdjustments || 0) * averageCost
+      const negativeAdjustmentsCost = (summaryData.negativeAdjustments || 0) * averageCost
+
       // Calculate derived cost values
-      const netTransferCost = (summaryData.transfersInCost || 0) - (summaryData.transfersOutCost || 0);
-      const netAdjustmentCost = (summaryData.positiveAdjustmentsCost || 0) - (summaryData.negativeAdjustmentsCost || 0);
+      const netTransferCost = transfersInCost - transfersOutCost;
+      const netAdjustmentCost = positiveAdjustmentsCost - negativeAdjustmentsCost;
       
       // Calculate closing stock cost
-      const closingStockCost = openingStockCost + 
-                             (summaryData.purchasesCost || 0) - 
-                             (summaryData.costOfGoodsSold || 0) + 
-                             netTransferCost + 
-                             netAdjustmentCost;
+      // const closingStockCost = openingStockCost + 
+      //                        (summaryData.purchasesCost || 0) - 
+      //                        (summaryData.costOfGoodsSold || 0) + 
+      //                        netTransferCost + 
+      //                        netAdjustmentCost;
+
+      const closingStock = openingStock + (summaryData.purchases || 0) - (summaryData.sales || 0) + (summaryData.transfersIn || 0) - (summaryData.transfersOut || 0) + (summaryData.positiveAdjustments || 0) - (summaryData.negativeAdjustments || 0);
+      const closingStockCost = Number(averageCost * closingStock).toFixed(2)
 
       // Update state
       setTransactions(enrichedTransactions);
@@ -1369,22 +1386,17 @@ const TransactionHistory = () => {
         transfersOut: summaryData.transfersOut,
         positiveAdjustments: summaryData.positiveAdjustments,
         negativeAdjustments: summaryData.negativeAdjustments,
-        closingStock: openingStock + summaryData.purchases 
-        - summaryData.sales 
-        + summaryData.transfersIn 
-        - summaryData.transfersOut 
-        + summaryData.positiveAdjustments 
-        - summaryData.negativeAdjustments,
+        closingStock: closingStock,
         
         // Cost Values
         openingStockCost,
         purchasesCost: summaryData.purchasesCost || 0,
         salesValue: summaryData.salesValue || 0,
         costOfGoodsSold: summaryData.costOfGoodsSold || 0,
-        transfersInCost: summaryData.transfersInCost || 0,
-        transfersOutCost: summaryData.transfersOutCost || 0,
-        positiveAdjustmentsCost: summaryData.positiveAdjustmentsCost || 0,
-        negativeAdjustmentsCost: summaryData.negativeAdjustmentsCost || 0,
+        transfersInCost: transfersInCost || 0,
+        transfersOutCost: transfersOutCost || 0,
+        positiveAdjustmentsCost: positiveAdjustmentsCost || 0,
+        negativeAdjustmentsCost: negativeAdjustmentsCost || 0,
         closingStockCost,
         
         // Calculated Values
