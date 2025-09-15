@@ -159,6 +159,17 @@ const DashView = () =>{
         })
     }
 
+    useEffect(()=>{
+        if (products.length){
+            getProductsStockReport(company, products, {
+                startDate: fromDate,
+                endDate: toDate,
+                location: locationFilter,
+                productId: productFilter
+            })   
+        }
+    },[company])
+    
     // Ensure base data
     useEffect(()=>{
         const cmp_val = window.localStorage.getItem('sessn-cmp')

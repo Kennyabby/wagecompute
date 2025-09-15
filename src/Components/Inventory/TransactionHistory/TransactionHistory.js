@@ -1027,11 +1027,16 @@ const TransactionHistory = () => {
     }));
   }, [transactions, getTransactionType]);
 
+  useEffect(()=>{
+    if (products.length){
+      handleApplyFilters()
+    }
+  },[company])
   // Fetch initial data and when filters change
   useEffect(() => {
     if (products.length){
       if (!products[0].hasOwnProperty('stockSummary')){
-        handleApplyFilters()
+        handleApplyFilters() 
       }else{
         fetchTransactionHistory()
       }
