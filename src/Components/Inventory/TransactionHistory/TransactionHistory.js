@@ -297,7 +297,7 @@ const TransactionHistory = () => {
           
           // Update location-specific totals
           processedData[productId].locations[location].quantity += quantity;
-          processedData[productId].locations[location].cost += cost;
+          processedData[productId].locations[location].cost += quantity * productCost;
           if (type === 'sales'){
             processedData[productId].locations[location].value += salesValue;
           }
@@ -318,6 +318,7 @@ const TransactionHistory = () => {
           locations: Object.entries(product.locations).map(([location, data]) => ({
             name: location,
             quantity: data.quantity,
+            unitCost: data.quantity ? (data.cost/data.quantity) : 0,
             cost: data.cost,
             value: data.value,
             percentage: data.quantity / product.quantity * 100
@@ -491,7 +492,7 @@ const TransactionHistory = () => {
 
       // Unit Cost
       doc.text(
-        formatCurrency(Number(product.cost)/Number(product.quantity)),
+        formatCurrency(Math.abs(product.unitCost)),
         margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
         currentY + 5,
         { align: 'right' }
@@ -539,7 +540,7 @@ const TransactionHistory = () => {
          
           // Location unit cost
           doc.text(
-            locData.quantity ? formatCurrency(locData.cost / locData.quantity) : '0.00',
+            formatCurrency(Math.abs(locData.unitCost)),
             margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
             currentY + 5,
             { align: 'right' }
@@ -547,7 +548,7 @@ const TransactionHistory = () => {
          
           // Location total cost
           doc.text(
-            formatCurrency(locData.cost),
+            formatCurrency(Math.abs(locData.cost)),
             margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4]/2,
             currentY + 5,
             { align: 'right' }
@@ -599,7 +600,7 @@ const TransactionHistory = () => {
     
     // Average Unit Cost
     doc.text(
-      formatCurrency(summary.averageUnitCost || 0),
+      formatCurrency(Math.abs(summary.averageUnitCost) || 0),
       margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
       currentY + 6,
       { align: 'right' }
@@ -614,7 +615,7 @@ const TransactionHistory = () => {
     );
     
     // Draw bottom border
-    currentY += 5;
+    currentY += 10;
     doc.setDrawColor(0, 0, 0);
     doc.line(margin, currentY, pageWidth - margin, currentY);
     
