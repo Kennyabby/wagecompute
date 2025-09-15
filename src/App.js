@@ -1487,9 +1487,10 @@ function App() {
           purchaseInfo[productId].purchasedQty += item.purchasedQty || 0;
           purchaseInfo[productId].purchaseCost += item.purchaseCost || 0;
           stockMap[productId][location].openingQuantity = item.openingQuantity || 0;
-          stockMap[productId][location].openingCost = (products.find(p => p.i_d === productId)?.salesPrice && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
+          stockMap[productId][location].openingCost = (true && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
           stockMap[productId][location].closingQty = item.openingQuantity || 0;
-          const closingCost = (products.find(p => p.i_d === productId)?.salesPrice && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
+          const closingCost = (true && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
+          // products.find(p => p.i_d === productId)?.salesPrice
           stockMap[productId][location].closingCost = closingCost
           stockMap[productId][location].closingSalesValue = stockMap[productId][location].closingQty * (products.find(p => p.i_d === productId)?.salesPrice || 0);
           stockMap[productId][location].averageCost = item.openingQuantity !== 0 ? Number((closingCost / item.openingQuantity).toFixed(2)) : 0;
@@ -1552,7 +1553,7 @@ function App() {
           const totalQty = purchaseInfo[productId].purchasedQty
           
           locationData.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
-          locationData.closingCost = (products.find(p => p.i_d === productId)?.salesPrice) ? (locationData.closingQty * locationData.averageCost) : 0;
+          locationData.closingCost =true ? (locationData.closingQty * locationData.averageCost) : 0;
           locationData.closingSalesValue = locationData.closingQty * (products.find(p => p.i_d === productId)?.salesPrice || 0);
         });
       }
