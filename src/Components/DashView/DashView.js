@@ -169,7 +169,9 @@ const DashView = () =>{
             if (products.length && !products[0]?.stockSummary){
                 getProductsStockReport(cmp_val, products, {
                     startDate: fromDate,
-                    endDate: toDate
+                    endDate: toDate,
+                    location: locationFilter,
+                    productId: productFilter
                 })
             }
             if (!purchase?.length){
@@ -191,7 +193,7 @@ const DashView = () =>{
                 getEmployees(cmp_val)
             }
         }
-    },[company, products])
+    },[company, products, fromDate, toDate, locationFilter, productFilter, seasonFilter])
 
     const loadDashData = async()=>{
         if (!company) return
@@ -279,11 +281,11 @@ const DashView = () =>{
                     if (type === 'sale' || type === 'sales'){
                         salesQty += qty
                         salesAmount += (totSales || (totCost))
-                        cogs += productIds.includes(t.productId) ? totCost : 0
+                        cogs += totCost 
                         byProduct.set(pid, (byProduct.get(pid)||0) + qty)
                         byLocation.set(loc, (byLocation.get(loc)||0) + (totSales || totCost))
                         const cur = byDate.get(d) || { sales:0, purchases:0 }
-                        cur.sales += (totSales || totCost)
+                        cur.sales += (totSales || 0)
                         byDate.set(d, cur)
                         // product-location qty breakdown
                         if (!productLocMap.get(pid)) productLocMap.set(pid, new Map())
@@ -298,15 +300,6 @@ const DashView = () =>{
                         byDate.set(d, cur)
                     }
                 })
-                // openingResp.record.forEach((trs)=>{
-                //     const type = String(trs.entryType||'').toLowerCase()
-                //     if (type === 'purchase'){
-                //         purchasesQty += Number(trs.baseQuantity||0)
-                //         if (productIds.includes(trs.productId)){
-                //             purchasesAmount += Number(trs.totalCost||0)
-                //         }
-                //     }
-                // })
             }
             // Inventory aggregates from products
             let inventoryQty = 0, inventoryValue = 0, inventorySales = 0
@@ -411,7 +404,6 @@ const DashView = () =>{
                     const avg = (productLocMap.get(pid)?.get(location) || 0) / dayCount;
                     let threshold = avg * 7;
                     threshold = threshold > 7 ? threshold : (threshold > 0 ? 7 : 0); // Minimum threshold of 7 units
-                    console.log(pid, avg * 7, stock.quantity, location)
                     if (threshold > 0 && stock.quantity < threshold) {
                         if (!locationMap[location]) locationMap[location] = [];
                         locationMap[location].push({

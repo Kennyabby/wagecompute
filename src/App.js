@@ -1171,6 +1171,9 @@ function App() {
       // Set default date range if not provided (current month to date)
       const startDate = new Date(dateRange.startDate) || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
       const endDate = new Date(dateRange.endDate) || new Date();
+      const location = dateRange.location || 'all';
+      const transactionType = dateRange.transactionType || 'all';
+      const productId = dateRange.productId || null;
       // console.log(startDate, endDate)
       // Format dates for MongoDB query
       const formattedStartDate = startDate.toISOString().split('T')[0];
@@ -1186,6 +1189,14 @@ function App() {
             {
               $match: {
                 postingDate: { $lt: formattedStartDate },
+                ...(location !== 'all' && { location }),
+                ...(productId && { productId }),
+                ...(transactionType !== 'all' && { 
+                  $or: [
+                    { entryType: transactionType },
+                    { documentType: transactionType }
+                  ].filter(Boolean)
+                })
               }
             },
             {
@@ -1268,6 +1279,14 @@ function App() {
                     { $lte: ["$postingDate", formattedEndDate] }
                   ],
                 },
+                ...(location !== 'all' && { location }),
+                ...(productId && { productId }),
+                ...(transactionType !== 'all' && { 
+                  $or: [
+                    { entryType: transactionType },
+                    { documentType: transactionType }
+                  ].filter(Boolean)
+                })
               }
             },
             {
@@ -1379,6 +1398,22 @@ function App() {
                     ]
                   }
                 },
+                transferInCost: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$documentType", "Transfer Receipt"] },
+                        { $gt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
                 transferOutQty: {
                   $sum: {
                     $cond: [
@@ -1390,6 +1425,22 @@ function App() {
                         { $isNumber: "$baseQuantity" },
                         "$baseQuantity",
                         { $toDouble: "$baseQuantity" }
+                      ]},
+                      0
+                    ]
+                  }
+                },
+                transferOutCost: {
+                  $sum: {
+                    $cond: [
+                      { $and: [
+                        { $eq: ["$documentType", "Transfer Shipment"] },
+                        { $lt: ["$baseQuantity", 0] }
+                      ]},
+                      { $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
                       ]},
                       0
                     ]
@@ -1525,9 +1576,13 @@ function App() {
           locationData.soldQty = item.soldQty || 0;
           locationData.salesValue = item.salesValue || 0;
           locationData.costOfGoodsSold = item.costOfGoodsSold || 0;
+          
           locationData.transferInQty = item.transferInQty || 0;
           locationData.transferOutQty = item.transferOutQty || 0;
           
+          locationData.transferInCost = item.transferInCost || 0;
+          locationData.transferOutCost = item.transferOutCost || 0;
+
           // Positive adjustments
           locationData.positiveAdjustmentQty = item.positiveAdjustmentQty || 0;
           locationData.positiveAdjustmentCost = item.positiveAdjustmentCost || 0;
@@ -1571,8 +1626,12 @@ function App() {
           soldQty: (acc.soldQty || 0) + (loc.soldQty || 0),
           salesValue: (acc.salesValue || 0) + (loc.salesValue || 0),
           costOfGoodsSold: (acc.costOfGoodsSold || 0) + (loc.costOfGoodsSold || 0),
+          
+          // Transfer fields
           transferInQty: (acc.transferInQty || 0) + (loc.transferInQty || 0),
           transferOutQty: (acc.transferOutQty || 0) + (loc.transferOutQty || 0),
+          transferInCost: (acc.transferInCost || 0) + (loc.transferInCost || 0),
+          transferOutCost: (acc.transferOutCost || 0) + (loc.transferOutCost || 0),
           
           // Adjustment fields
           positiveAdjustmentQty: (acc.positiveAdjustmentQty || 0) + (loc.positiveAdjustmentQty || 0),
@@ -1629,7 +1688,9 @@ function App() {
     salesValue: 0,
     costOfGoodsSold: 0,
     transferInQty: 0,
+    transferInCost: 0,
     transferOutQty: 0,
+    transferOutCost: 0,
     positiveAdjustmentQty: 0,
     positiveAdjustmentCost: 0,
     negativeAdjustmentQty: 0,

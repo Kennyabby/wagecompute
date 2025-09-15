@@ -19,6 +19,7 @@ const TransactionHistory = () => {
     setAlertTimeout,
     products,
     companyRecord,
+    getProductsStockReport
   } = useContext(ContextProvider);
 
   const [transactions, setTransactions] = useState([]);
@@ -745,7 +746,6 @@ const TransactionHistory = () => {
       // Format dates to match the database format (ISO strings)
       const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
       const formattedEndDate = new Date(endDate).toISOString().split('T')[0];
-
       
       // Build the transactions query
       const transactionsQuery = {
@@ -790,441 +790,10 @@ const TransactionHistory = () => {
         // limit: filters.limit
       };
 
-      // Create aggregation pipeline for summary data
-      const summaryPipeline = [
-        {
-          $match: {
-            $expr: {
-              $and: [
-                { $gte: [{ $toString: "$postingDate" }, formattedStartDate] },
-                { $lte: [{ $toString: "$postingDate" }, formattedEndDate] }
-              ]
-            },
-            ...(filters.location !== 'all' && { location: filters.location }),
-            ...(filters.productId && { productId: filters.productId }),
-            ...(filters.transactionType !== 'all' && { 
-              $or: [
-                { entryType: filters.transactionType },
-                { documentType: filters.transactionType }
-              ].filter(Boolean)
-            })
-          }
-        },
-        {
-          $project: {
-            baseQuantity: {
-              $cond: [
-                { $isNumber: "$baseQuantity" },
-                "$baseQuantity",
-                { $toDouble: "$baseQuantity" }
-              ]
-            },
-            totalCost: {
-              $cond: [
-                { $isNumber: "$totalCost" },
-                "$totalCost",
-                { $toDouble: "$totalCost" }
-              ]
-            },
-            totalSales: {
-              $cond: [
-                { $isNumber: "$totalSales" },
-                "$totalSales",
-                { $toDouble: "$totalSales" }
-              ]
-            },
-            entryType: 1,
-            documentType: 1
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            // Total in/out quantities
-            totalInQuantity: {
-              $sum: {
-                $cond: [
-                  { $gt: ["$baseQuantity", 0] },
-                  "$baseQuantity",
-                  0
-                ]
-              }
-            },
-            totalOutQuantity: {
-              $sum: {
-                $cond: [
-                  { $lt: ["$baseQuantity", 0] },
-                  { $abs: "$baseQuantity" },
-                  0
-                ]
-              }
-            },
-            // Purchases
-            purchases: {
-              $sum: {
-                $let: {
-                  vars: {
-                    qty: {
-                      $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$entryType", "Purchase"] },
-                      "$$qty",
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            purchasesCost: {
-              $sum: {
-                $let: {
-                  vars: {
-                    cost: {
-                      $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$entryType", "Purchase"] },
-                      { $abs: "$$cost" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            // Sales
-            sales: {
-              $sum: {
-                $let: {
-                  vars: {
-                    qty: {
-                      $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$entryType", "Sales"] },
-                      { $abs: "$$qty" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            salesValue: {
-              $sum: {
-                $cond: [
-                  { $and: [
-                    { $eq: ["$entryType", "Sales"] },
-                    { $isNumber: "$totalSales" }
-                  ]},
-                  { $abs: "$totalSales" },
-                  0
-                ]
-              }
-            },
-            // Transfers
-            transfersIn: {
-              $sum: {
-                $let: {
-                  vars: {
-                    qty: {
-                      $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$documentType", "Transfer Receipt"] },
-                      "$$qty",
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            transfersOut: {
-              $sum: {
-                $let: {
-                  vars: {
-                    qty: {
-                      $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$documentType", "Transfer Shipment"] },
-                      { $abs: "$$qty" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            // Adjustments
-            positiveAdjustments: {
-              $sum: {
-                $let: {
-                  vars: {
-                    qty: {
-                      $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$entryType", "Positive Entry"] },
-                      "$$qty",
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            negativeAdjustments: {
-              $sum: {
-                $let: {
-                  vars: {
-                    qty: {
-                      $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$entryType", "Nagative Entry"] },
-                      { $abs: "$$qty" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            // Transfer Costs
-            transfersInCost: {
-              $sum: {
-                $let: {
-                  vars: {
-                    cost: {
-                      $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$documentType", "Transfer Receipt"] },
-                      { $abs: "$$cost" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            transfersOutCost: {
-              $sum: {
-                $let: {
-                  vars: {
-                    cost: {
-                      $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$documentType", "Transfer Shipment"] },
-                      { $abs: "$$cost" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            // Adjustment Costs
-            positiveAdjustmentsCost: {
-              $sum: {
-                $let: {
-                  vars: {
-                    cost: {
-                      $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$entryType", "Positive Entry"] },
-                      { $abs: "$$cost" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            negativeAdjustmentsCost: {
-              $sum: {
-                $let: {
-                  vars: {
-                    cost: {
-                      $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$entryType", "Nagative Entry"] },
-                      { $abs: "$$cost" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            // Cost of Goods Sold
-            costOfGoodsSold: {
-              $sum: {
-                $let: {
-                  vars: {
-                    cost: {
-                      $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $eq: ["$entryType", "Sales"] },
-                      { $abs: "$$cost" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            // Average Cost (for opening stock calculation)
-            averageCost: {
-              $avg: {
-                $cond: {
-                  if: { $ne: ["$totalCost", 0] },
-                  then: { $divide: ["$totalCost", "$baseQuantity"] },
-                  else: null
-                }
-              }
-            },
-            // Total In/Out Costs
-            totalInCost: {
-              $sum: {
-                $let: {
-                  vars: {
-                    qty: {
-                      $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]
-                    },
-                    cost: {
-                      $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $gt: ["$$qty", 0] },
-                      { $abs: "$$cost" },
-                      0
-                    ]
-                  }
-                }
-              }
-            },
-            totalOutCost: {
-              $sum: {
-                $let: {
-                  vars: {
-                    qty: {
-                      $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]
-                    },
-                    cost: {
-                      $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: [
-                      { $lt: ["$$qty", 0] },
-                      { $abs: "$$cost" },
-                      0
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        }
-      ];
-
       // Fetch data in parallel
-      const [transactionsResp, summaryResp] = await Promise.all([
+      const [transactionsResp] = await Promise.all([
         fetchServer('POST', transactionsQuery, 'getDocsDetails', server),
-        fetchServer('POST', {
-          database: company,
-          collection: 'InventoryTransactions',
-          prop: summaryPipeline
-        }, 'aggregateDocs', server)
       ]);
-
 
       // Process transactions
       const transactions = transactionsResp?.record || [];
@@ -1232,6 +801,8 @@ const TransactionHistory = () => {
       // Initialize summary data with default values
       const summaryData = {
         // Quantities
+        openingStock: 0,
+        closingStock: 0,
         purchases: 0,
         sales: 0,
         transfersIn: 0,
@@ -1240,6 +811,8 @@ const TransactionHistory = () => {
         negativeAdjustments: 0,
         
         // Cost Values
+        openingStockCost: 0,
+        closingStockCost: 0,
         purchasesCost: 0,
         salesValue: 0,
         costOfGoodsSold: 0,
@@ -1256,33 +829,28 @@ const TransactionHistory = () => {
         totalOutCost: 0
       };
 
-      if (summaryResp && summaryResp.record && summaryResp.record.length > 0) {
-        const summary = summaryResp.record[0];
-        
-        // Quantities
-        summaryData.purchases = summary.purchases || 0;
-        summaryData.sales = summary.sales || 0;
-        summaryData.transfersIn = summary.transfersIn || 0;
-        summaryData.transfersOut = summary.transfersOut || 0;
-        summaryData.positiveAdjustments = summary.positiveAdjustments || 0;
-        summaryData.negativeAdjustments = summary.negativeAdjustments || 0;
-        
-        // Cost Values
-        summaryData.purchasesCost = summary.purchasesCost || 0;
-        summaryData.salesValue = summary.salesValue || 0;
-        summaryData.costOfGoodsSold = summary.costOfGoodsSold || 0;
-        summaryData.transfersInCost = summary.transfersInCost || 0;
-        summaryData.transfersOutCost = summary.transfersOutCost || 0;
-        summaryData.positiveAdjustmentsCost = summary.positiveAdjustmentsCost || 0;
-        summaryData.negativeAdjustmentsCost = summary.negativeAdjustmentsCost || 0;
-        summaryData.averageCost = summary.averageCost || 0;
-        
-        // Totals
-        summaryData.totalIn = summary.totalInQuantity || 0;
-        summaryData.totalOut = summary.totalOutQuantity || 0;
-        summaryData.totalInCost = summary.totalInCost || 0;
-        summaryData.totalOutCost = summary.totalOutCost || 0;
-      }
+      products.forEach(product => {
+        summaryData.openingStock += product.stockSummary?.openingQuantity || 0;
+        summaryData.purchases += product.stockSummary?.purchasedQty || 0;
+        summaryData.sales += product.stockSummary?.soldQty || 0;
+        summaryData.transfersIn += product.stockSummary?.transferInQty || 0;
+        summaryData.transfersOut += product.stockSummary?.transferOutQty || 0;
+        summaryData.positiveAdjustments += product.stockSummary?.positiveAdjustmentQty || 0;
+        summaryData.negativeAdjustments += product.stockSummary?.negativeAdjustmentQty || 0;
+        summaryData.closingStock += product.stockSummary?.closingQty || 0;
+
+        summaryData.openingStockCost += product.stockSummary?.openingCost || 0;
+        summaryData.closingStockCost += product.stockSummary?.closingCost || 0;
+        summaryData.purchasesCost += product.stockSummary?.purchaseCost || 0;
+        summaryData.salesValue += product.stockSummary?.salesValue || 0;
+        summaryData.costOfGoodsSold += product.stockSummary?.costOfGoodsSold || 0;
+        summaryData.transfersInCost += product.stockSummary?.transferInCost || 0;
+        summaryData.transfersOutCost += product.stockSummary?.transferOutCost || 0;
+        summaryData.positiveAdjustmentsCost += product.stockSummary?.positiveAdjustmentCost || 0;
+        summaryData.negativeAdjustmentsCost += product.stockSummary?.negativeAdjustmentCost || 0;
+        summaryData.averageCost += product.stockSummary?.averageCost || 0;
+      })
+    
       return {
         transactions,
         summaryData
@@ -1303,7 +871,7 @@ const TransactionHistory = () => {
         }
       };
     }
-  }, [company, fetchServer]);
+  }, [company, fetchServer, products]);
 
   // Memoize the fetchTransactionHistory function
   const fetchTransactionHistory = useCallback(async () => {
@@ -1311,10 +879,6 @@ const TransactionHistory = () => {
     
     setLoading(true);
     try {
-      // Format dates for DB query (YYYY-MM-DD format)
-      const startDate = formatDateForDB(filters.startDate);
-      const endDate = formatDateForDB(filters.endDate);
-      
       // Get opening balance and transactions in parallel
       const [openingBalance, transactionsData] = await Promise.all([
         getOpeningBalance(filters.startDate, filters.location, filters.productId),
@@ -1327,37 +891,21 @@ const TransactionHistory = () => {
       
       
 
-      // Calculate opening stock cost
-      const openingStockCost = (openingPurchasedQty) ? Number(((openingPurchaseCost/openingPurchasedQty) * openingStock).toFixed(2)) : 0;
-
-      const totalPurchasedQty = openingPurchasedQty + (summaryData.purchases || 0);
-      const totalPurchaseCost = openingPurchaseCost + (summaryData.purchasesCost || 0);
-      const averageCost = (totalPurchasedQty > 0) ? (totalPurchaseCost / totalPurchasedQty) : 0;
-      
       // Calculate Transfer Cost
-      const transfersInCost = (summaryData.transfersIn || 0) * averageCost
-      const transfersOutCost = (summaryData.transfersOut || 0) * averageCost
+      const transfersInCost = (summaryData.transfersInCost || 0)
+      const transfersOutCost = (summaryData.transfersOutCost || 0)
 
       // Calculate Adjustment Cost
-      const positiveAdjustmentsCost = (summaryData.positiveAdjustments || 0) * averageCost
-      const negativeAdjustmentsCost = (summaryData.negativeAdjustments || 0) * averageCost
+      const positiveAdjustmentsCost = (summaryData.positiveAdjustmentsCost || 0) 
+      const negativeAdjustmentsCost = (summaryData.negativeAdjustmentsCost || 0)
 
       // Calculate derived cost values
-      const netTransferCost = transfersInCost - transfersOutCost;
-      const netAdjustmentCost = positiveAdjustmentsCost - negativeAdjustmentsCost;
+      const netTransferCost = transfersInCost + transfersOutCost;
+      const netAdjustmentCost = positiveAdjustmentsCost + negativeAdjustmentsCost;
       
-      // Calculate closing stock cost
-      // const closingStockCost = openingStockCost + 
-      //                        (summaryData.purchasesCost || 0) - 
-      //                        (summaryData.costOfGoodsSold || 0) + 
-      //                        netTransferCost + 
-      //                        netAdjustmentCost;
-
-      const closingStock = openingStock + (summaryData.purchases || 0) - (summaryData.sales || 0) + (summaryData.transfersIn || 0) - (summaryData.transfersOut || 0) + (summaryData.positiveAdjustments || 0) - (summaryData.negativeAdjustments || 0);
-      const closingStockCost = Number(averageCost * closingStock).toFixed(2)
 
       // Calculate running balance
-      let runningBalance = closingStock;
+      let runningBalance = summaryData.closingStock;
       const enrichedTransactions = (fetchedTransactions || []).map(tx => {
         const quantity = Number(tx.baseQuantity) || 0;
         runningBalance -= quantity;
@@ -1381,17 +929,17 @@ const TransactionHistory = () => {
       setTotalCount(totalCount);
       setSummary({
         // Quantities
-        openingStock,
+        openingStock: summaryData.openingStock,
         purchases: summaryData.purchases,
         sales: summaryData.sales,
         transfersIn: summaryData.transfersIn,
         transfersOut: summaryData.transfersOut,
         positiveAdjustments: summaryData.positiveAdjustments,
         negativeAdjustments: summaryData.negativeAdjustments,
-        closingStock: closingStock,
+        closingStock: summaryData.closingStock,
         
         // Cost Values
-        openingStockCost,
+        openingStockCost: summaryData.openingStockCost || 0,
         purchasesCost: summaryData.purchasesCost || 0,
         salesValue: summaryData.salesValue || 0,
         costOfGoodsSold: summaryData.costOfGoodsSold || 0,
@@ -1399,17 +947,12 @@ const TransactionHistory = () => {
         transfersOutCost: transfersOutCost || 0,
         positiveAdjustmentsCost: positiveAdjustmentsCost || 0,
         negativeAdjustmentsCost: negativeAdjustmentsCost || 0,
-        closingStockCost,
+        closingStockCost: summaryData.closingStockCost || 0,
         
         // Calculated Values
         netTransferCost,
         netAdjustmentCost,
         
-        // Totals
-        totalIn: summaryData.totalIn,
-        totalOut: summaryData.totalOut,
-        totalInCost: summaryData.totalInCost,
-        totalOutCost: summaryData.totalOutCost,
       });
     } catch (error) {
       console.log(error)
@@ -1421,13 +964,10 @@ const TransactionHistory = () => {
     }
   }, [
     company, 
-    filters, 
+    filters,
+    products,
     getOpeningBalance, 
-    fetchTransactionsData, 
-    // formatTransactionDate,
-    // formatDateString,
-    // formatDateForDB,
-    // getTransactionReference,
+    fetchTransactionsData,
   ]);
 
   
@@ -1489,8 +1029,12 @@ const TransactionHistory = () => {
 
   // Fetch initial data and when filters change
   useEffect(() => {
-    if (company){
-      fetchTransactionHistory()
+    if (products.length){
+      if (!products[0].hasOwnProperty('stockSummary')){
+        handleApplyFilters()
+      }else{
+        fetchTransactionHistory()
+      }
     }
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -1502,7 +1046,7 @@ const TransactionHistory = () => {
     }, 300); // Small debounce to prevent rapid successive calls
     
     return () => clearTimeout(timer);
-  }, [company]);
+  }, [company,products]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -1514,7 +1058,19 @@ const TransactionHistory = () => {
   };
 
   const handleApplyFilters = () => {
-    fetchTransactionHistory();
+    setLoading(true)
+    const { startDate, endDate, location, productId, transactionType } = filters;
+    // Format dates to ISO strings (YYYY-MM-DD)
+    // This ensures compatibility with the database date format
+    const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
+    const formattedEndDate = new Date(endDate).toISOString().split('T')[0];
+    getProductsStockReport(company, products, {
+      startDate: formattedStartDate, 
+      endDate: formattedEndDate,
+      ...(location !== 'all' && { location }),
+      ...(productId && { productId }),
+      ...(transactionType !== 'all' && { transactionType })
+    })
   };
 
   const handleResetFilters = () => {
@@ -1770,7 +1326,7 @@ const TransactionHistory = () => {
         {/* Sales */}
         <div className="summary-card out clickable" onClick={() => handleSummaryCardClick('sales')}>
           <div className="summary-label">Sales</div>
-          <div className="summary-value">-{formatNumber(summary.sales)}</div>
+          <div className="summary-value">{formatNumber(summary.sales)}</div>
           <div className="summary-subtext">
             <div>Value: ₦{formatNumber(summary.salesValue)}</div>
             <div>COGS: ₦{formatNumber(summary.costOfGoodsSold)}</div>
@@ -1784,7 +1340,7 @@ const TransactionHistory = () => {
             <div className="transfer-row">
               <span className="transfer-in">+{formatNumber(summary.transfersIn)}</span>
               <span className="transfer-separator">/</span>
-              <span className="transfer-out">-{formatNumber(summary.transfersOut)}</span>
+              <span className="transfer-out">{formatNumber(summary.transfersOut)}</span>
             </div>
           </div>
           <div className="summary-subtext">
@@ -1801,7 +1357,7 @@ const TransactionHistory = () => {
             <div className="adjustment-row">
               <span className="adjustment-positive">+{formatNumber(summary.positiveAdjustments)}</span>
               <span className="adjustment-separator">/</span>
-              <span className="adjustment-negative">-{formatNumber(summary.negativeAdjustments)}</span>
+              <span className="adjustment-negative">{formatNumber(summary.negativeAdjustments)}</span>
             </div>
           </div>
           <div className="summary-subtext">
