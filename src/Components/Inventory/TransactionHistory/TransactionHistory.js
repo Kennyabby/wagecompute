@@ -1325,25 +1325,7 @@ const TransactionHistory = () => {
       const { transactions: fetchedTransactions, totalCount, summaryData } = transactionsData;
       const {openingStock, openingPurchaseCost, openingPurchasedQty, openingStockForSales} = openingBalance;
       
-      // Calculate running balance
-      let runningBalance = openingStock;
-      const enrichedTransactions = (fetchedTransactions || []).map(tx => {
-        const quantity = Number(tx.baseQuantity) || 0;
-        runningBalance += quantity;
-        
-        return {
-          ...tx,
-          quantity,
-          runningBalance,
-          reference: getTransactionReference(tx),
-          formattedDate: formatDateString(tx.postingDate) || formatTransactionDate(tx.createdAt),
-          formattedQuantity: quantity > 0 ? `+${quantity}` : quantity.toString(),
-          formattedCost: tx.costPrice ? `₦${Number(tx.costPrice).toLocaleString()}` : 'N/A',
-          formattedTotalCost: tx.totalCost ? `₦${Math.abs(Number(tx.totalCost)).toLocaleString()}` : 'N/A',
-          formattedBalance: runningBalance,
-          documentNumber: tx.referenceNo || tx.orderNumber || 'N/A'
-        };
-      });
+      
 
       // Calculate opening stock cost
       const openingStockCost = (openingPurchasedQty) ? Number(((openingPurchaseCost/openingPurchasedQty) * openingStock).toFixed(2)) : 0;
@@ -1373,6 +1355,26 @@ const TransactionHistory = () => {
 
       const closingStock = openingStock + (summaryData.purchases || 0) - (summaryData.sales || 0) + (summaryData.transfersIn || 0) - (summaryData.transfersOut || 0) + (summaryData.positiveAdjustments || 0) - (summaryData.negativeAdjustments || 0);
       const closingStockCost = Number(averageCost * closingStock).toFixed(2)
+
+      // Calculate running balance
+      let runningBalance = closingStock;
+      const enrichedTransactions = (fetchedTransactions || []).map(tx => {
+        const quantity = Number(tx.baseQuantity) || 0;
+        runningBalance -= quantity;
+        
+        return {
+          ...tx,
+          quantity,
+          runningBalance,
+          reference: getTransactionReference(tx),
+          formattedDate: formatDateString(tx.postingDate) || formatTransactionDate(tx.createdAt),
+          formattedQuantity: quantity > 0 ? `+${quantity}` : quantity.toString(),
+          formattedCost: tx.costPrice ? `₦${Number(tx.costPrice).toLocaleString()}` : 'N/A',
+          formattedTotalCost: tx.totalCost ? `₦${Math.abs(Number(tx.totalCost)).toLocaleString()}` : 'N/A',
+          formattedBalance: runningBalance,
+          documentNumber: tx.referenceNo || tx.orderNumber || 'N/A'
+        };
+      });
 
       // Update state
       setTransactions(enrichedTransactions);
@@ -1448,11 +1450,11 @@ const TransactionHistory = () => {
         'Document #': tx.documentNumber,
         'Product': tx.name || `Product ${tx.productId}`,
         'Location': tx.location || 'N/A',
+        'Running Balance': tx.formattedBalance,
         'Quantity': tx.formattedQuantity,
         'Unit Cost': tx.formattedCost,
         'Total Cost': tx.formattedTotalCost,
-        'Reference': tx.reference,
-        'Running Balance': tx.formattedBalance
+        'Reference': tx.reference
       })));
       
       const wb = utils.book_new();
@@ -1477,11 +1479,11 @@ const TransactionHistory = () => {
       'Document #': tx.referenceNo || tx.orderNumber || 'N/A',
       'Product': tx.name || `Product ${tx.productId}`,
       'Location': tx.location || 'N/A',
+      'Running Balance': tx.runningBalance || 0,
       'Quantity': tx.baseQuantity,
       'Unit Cost': tx.costPrice || 0,
       'Total Cost': tx.totalCost ? Math.abs(Number(tx.totalCost)) : 0,
       'Reference': tx.referenceNo || tx.orderNumber || tx.documentType || 'N/A',
-      'Running Balance': tx.runningBalance || 0,
     }));
   }, [transactions, getTransactionType]);
 
@@ -1855,10 +1857,10 @@ const TransactionHistory = () => {
                 <th>Document #</th>
                 <th>Product</th>
                 <th>Location</th>
+                <th>Running Balance</th>
                 <th>Quantity</th>
                 <th>Unit Cost</th>
                 <th>Total Cost</th>
-                <th>Running Balance</th>
                 <th>Reference</th>
               </tr>
             </thead>
@@ -1883,12 +1885,12 @@ const TransactionHistory = () => {
                     <td>{tx.referenceNo || tx.orderNumber || 'N/A'}</td>
                     <td>{tx.name || (products.find(product => product.i_d === tx.productId))?.name || `Product ${tx.productId}`}</td>
                     <td>{tx.location || 'N/A'}</td>
+                    <td>{tx.runningBalance?.toLocaleString() || 'N/A'}</td>
                     <td className={tx.baseQuantity > 0 ? 'positive' : 'negative'}>
                       {tx.baseQuantity > 0 ? '+' : ''}{tx.baseQuantity}
                     </td>
                     <td>{tx.costPrice ? `₦${Number(tx.costPrice).toLocaleString()}` : 'N/A'}</td>
                     <td>{tx.totalCost ? `₦${Math.abs(Number(tx.totalCost)).toLocaleString()}` : 'N/A'}</td>
-                    <td>{tx.runningBalance?.toLocaleString() || 'N/A'}</td>
                     <td>
                       {tx.referenceNo || tx.orderNumber || tx.documentType || 'N/A'}
                     </td>
