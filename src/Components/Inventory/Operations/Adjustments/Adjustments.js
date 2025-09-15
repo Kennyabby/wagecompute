@@ -151,7 +151,7 @@ const Adjustments = ({
                 entct++
                 setAdjustmentPostCount((adjustmentPostCount)=>{
                     var newCount = adjustmentPostCount + 1 
-                    postAdjustments(entry, entry.i_d, fltAdjustments.length, newCount+1)
+                    postAdjustments(entry, entry.i_d, fltAdjustments.length, newCount)
                     return newCount
                 })
                 // console.log(adjustedProduct)
