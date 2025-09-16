@@ -1131,7 +1131,7 @@ const Accommodation = ()=>{
                                 />
                             </div>
                             
-                            {accommodationFields.paymentStatus==='Make Payment' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_group_payment')) && <>
+                            {accommodationFields.paymentStatus==='Make Payment' && !curApproval && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_group_payment')) && <>
                                 <div className='acpymdt'>Apply Receipt to other Pending Accommodations</div>
                                 <div className='inpcov'>
                                     <div>Select Other Accommodation to Pay</div>
@@ -1171,7 +1171,6 @@ const Accommodation = ()=>{
                                     />
                                 </div>
                                 <div className='acpymdt' style={{marginTop: '0px'}}>
-
                                     <div 
                                         className='yesbtn salesyesbtn'
                                         title='Fill All Fields plus the payPoint and PayReceipt first'
