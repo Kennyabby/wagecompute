@@ -2178,7 +2178,7 @@ const POSDashboard = ({
             <div className='pos-sessions'>
                 <div className='pos-sessions-nav'>
                     <div className={'live-nav'}>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
+                        {(companyRecord?.status === 'admin') && <button 
                             className="action-btn"
                             onClick={() => setShowReports(true)}
                             style={{ marginRight: '10px' }}
