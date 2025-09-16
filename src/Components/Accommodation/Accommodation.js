@@ -48,7 +48,10 @@ const Accommodation = ()=>{
     const [postingDate, setPostingDate] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [curAccommodation, setCurAccomodation] = useState(null)
     const [curCustomer, setCurCustomer] = useState(null)
-
+    const [unPaidAccommodations, setUnPaidAccommodations] = useState([])
+    const [selectedUnPaidAccommodations, setSelectedUnPaidAccommodations] = useState([])
+    const [curSelectedUnPaidAccommodation, setCurSelectedUnPaidAccommodation] = useState('')
+    const [curPaymentAmount, setCurPaymentAmount] = useState(0)    
     const rooms = {
         '1':{
             price: 10000
@@ -139,6 +142,11 @@ const Accommodation = ()=>{
     }, [approvals])
 
     useEffect(()=>{
+        if (curAccommodation?.paymentStatus === 'Make Payment'){
+            setSelectedUnPaidAccommodations([])
+            setCurSelectedUnPaidAccommodation('')
+            setCurPaymentAmount(0)            
+        }
         if (curAccommodation){
             setPostingDate(curAccommodation.postingDate)
             setAccommodationFields({...curAccommodation})
@@ -154,6 +162,10 @@ const Accommodation = ()=>{
         }
     },[curAccommodation, curApproval])
 
+    useEffect(()=>{
+        const pendings = accommodations.filter((accommodation)=>{ return accommodation.paymentStatus === 'Make Payment' && accommodation.createdAt !== (curAccommodation ? curAccommodation.createdAt : 0)})
+        setUnPaidAccommodations(pendings)
+    },[accommodations, curAccommodation])
     useEffect(()=>{
         if (!isView){
             setCustomerFields((customerFields)=>{
@@ -182,12 +194,6 @@ const Accommodation = ()=>{
             handleAccommodationViewClick(reportSales)
         }
     },[reportSales])
-
-    useEffect(()=>{
-        if (curApproval){
-            
-        }
-    },[curApproval])
     
     useEffect(()=>{
         if (salesOpts){
@@ -376,8 +382,8 @@ const Accommodation = ()=>{
 
     const deleteAccommodation = async (accommodation)=>{
         const today = new Date()
-        const postingDate = new Date(accommodation.postingDate)
-        if (postingDate < today.setDate(today.getDate()-1) || postingDate > today){
+        const postingDate = new Date(accommodation.postingDate).toISOString().slice(0, 10)
+        if (postingDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)){
             setAlertState('error')
             setAlert('Cannot delete accommodation after more than 1 day')
             setAlertTimeout(3000)
@@ -833,6 +839,7 @@ const Accommodation = ()=>{
                                             return employee.i_d === employeeId
                                         })[0]?.['firstName']:''
                                     }</b></div>
+                                    {approval && <div className='deptdesc'>{approval.data.paymentReceipt}</div>}
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
                                     className='edit'
@@ -906,6 +913,9 @@ const Accommodation = ()=>{
                                 }
                                 setCurApproval(null)
                                 setIsApprover(false)
+                                setSelectedUnPaidAccommodations([])
+                                setCurSelectedUnPaidAccommodation('')
+                                setCurPaymentAmount('')
                             }}
                         />
                     }
@@ -1071,7 +1081,7 @@ const Accommodation = ()=>{
                             </div>                                             
                         </div>}
                         {salesOpts==='accommodation' && fillmode === 'payment' && <div className='addnewsales'>
-                            <div className='acpymdt'>Payment Details</div>
+                            <div className='acpymdt'>{`Payment Details (Room No: ${accommodationFields.roomNo}, Date: ${accommodationFields.postingDate})`}</div>
                             <div className='inpcov'>
                                 <div>Payment Amount</div>
                                 <input 
@@ -1094,7 +1104,7 @@ const Accommodation = ()=>{
                                     type='text'
                                     placeholder='Payment Point'
                                     value={accommodationFields.payPoint}
-                                    disabled={isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)}
+                                    disabled={(isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)) || selectedUnPaidAccommodations.length>0}
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)
                                     }}
@@ -1112,13 +1122,122 @@ const Accommodation = ()=>{
                                     name='paymentReceipt'
                                     type='text'
                                     placeholder='Enter Receipt Number'
-                                    disabled={(isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)) || accommodationFields.payPoint === 'cash'}
+                                    disabled={(isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)) || accommodationFields.payPoint === 'cash' || selectedUnPaidAccommodations.length>0}
                                     value={accommodationFields.paymentReceipt}
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
                             </div>
+                            
+                            {accommodationFields.paymentStatus==='Make Payment' && companyRecord?.status === 'adimn' && <>
+                                <div className='acpymdt'>Apply Receipt to other Pending Accommodations</div>
+                                <div className='inpcov'>
+                                    <div>Select Other Accommodation to Pay</div>
+                                    <select 
+                                        className='forminp'
+                                        name='multiplePayments'
+                                        type='text'
+                                        placeholder='Select A Pending Accommodation'
+                                        value={curSelectedUnPaidAccommodation}
+                                        onChange={(e)=>{
+                                            setCurSelectedUnPaidAccommodation(e.target.value)
+                                        }}
+                                    >
+                                        <option value=''>Select A Pending Accommodation</option>
+                                        {unPaidAccommodations.filter((flt)=>{
+                                            return !(selectedUnPaidAccommodations.map((sel)=>{return sel.createdAt})).includes(flt.createdAt) 
+                                        }).map((accm, index1)=>{
+                                            return <option key={index1} value={accm.createdAt}>{`Rooom ${accm.roomNo} (${accm.postingDate} By ${accm.customerId})`}</option>
+                                        })}
+                                    </select>
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Payment Amount</div>
+                                    <input 
+                                        className='forminp'
+                                        name='paymentAmount'
+                                        type='number'
+                                        placeholder='Enter Payment Amount'
+                                        disabled={!curSelectedUnPaidAccommodation}
+                                        value={curPaymentAmount}
+                                        onChange={(e)=>{
+                                            const relatedAccommodation = unPaidAccommodations.find((accm)=>{return accm.createdAt === Number(curSelectedUnPaidAccommodation)})
+                                            if (e.target.value <= Number(relatedAccommodation?.accommodationAmount || 0)){
+                                                setCurPaymentAmount(e.target.value)
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <div className='acpymdt' style={{marginTop: '0px'}}>
+
+                                    <div 
+                                        className='yesbtn salesyesbtn'
+                                        title='Fill All Fields plus the payPoint and PayReceipt first'
+                                        style={{
+                                            cursor: (
+                                                curSelectedUnPaidAccommodation 
+                                                && curPaymentAmount
+                                                && accommodationFields.payPoint
+                                                && accommodationFields.paymentReceipt
+                                            ) ? 'pointer' : 'not-allowed'
+                                        }}
+                                        onClick={()=>{
+                                            if (
+                                                curSelectedUnPaidAccommodation 
+                                                && curPaymentAmount 
+                                                && accommodationFields.payPoint
+                                                && accommodationFields.paymentReceipt
+                                            ){
+                                                const selectedAcc = unPaidAccommodations.find((accm)=>{
+                                                    return accm.createdAt === Number(curSelectedUnPaidAccommodation)
+                                                })
+                                                if (selectedAcc){
+                                                    setSelectedUnPaidAccommodations((prevState)=>{
+                                                        return [
+                                                            {
+                                                                ...selectedAcc,
+                                                                paymentAmount: curPaymentAmount,
+                                                                paymentReceipt: accommodationFields.paymentReceipt,
+                                                                payPoint: accommodationFields.payPoint
+                                                            }, 
+                                                            ...prevState
+                                                        ]
+                                                    })
+                                                    setCurSelectedUnPaidAccommodation('')
+                                                    setCurPaymentAmount('')
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        Add Room (+)
+                                    </div>
+                                </div>
+                                {selectedUnPaidAccommodations.length>0 && selectedUnPaidAccommodations.map((accommodation, index)=>{
+                                    return (
+                                        <div className='acpymdt' key={index} style={{textAlign:'left'}}>
+                                            <div>{`Room No: ${accommodation.roomNo}`}</div>
+                                            <div>{`Payment Point: ${accommodation.payPoint}`}</div>
+                                            <div>{`Amount: ₦${Number(accommodation.paymentAmount).toLocaleString()}`}</div>
+                                            <div>{`Receipt No: ${accommodation.paymentReceipt || 'N/A'}`}</div>
+                                            <div>{`Debt: ₦${(Number(accommodation.accommodationAmount) - Number(accommodation.paymentAmount)).toLocaleString()}`}</div>
+                                            <p>....</p>
+                                            {(accommodation.createdAt !== curAccommodation.createdAt) && <div 
+                                                className = 'edit' 
+                                                style={{color: 'red', cursor: 'pointer', marginTop: '3px'}}
+                                                onClick={()=>{
+                                                    setSelectedUnPaidAccommodations((prevState)=>{
+                                                        return prevState.filter((accm, index1)=>{
+                                                            return accm.createdAt !== accommodation.createdAt
+                                                        })
+                                                    })
+                                                }}
+                                            >Remove</div>}
+                                        </div>
+                                    )
+                                })}
+                            </>}
+                            
                         </div>}
                         
                         {salesOpts==='customers' && <div className='basic'>                            
@@ -1255,6 +1374,7 @@ const Accommodation = ()=>{
                                         if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
                                             accommodationFields.paymentReceipt
                                         ){
+                                        
                                             const paymentFields = {
                                                 paymentAmount: accommodationFields.paymentAmount,
                                                 payPoint: accommodationFields.payPoint,
@@ -1271,7 +1391,19 @@ const Accommodation = ()=>{
                                                 setAlertTimeout(5000)
                                                 return
                                             }
+                                                                                        
                                             runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, postPayment, curAccommodation.createdAt)
+                                            if (selectedUnPaidAccommodations.length){
+                                                selectedUnPaidAccommodations.forEach((selectedAccommodation)=>{
+                                                    const paymentFields = {
+                                                        paymentAmount: selectedAccommodation.paymentAmount,
+                                                        payPoint: selectedAccommodation.payPoint,
+                                                        paymentReceipt: selectedAccommodation.paymentReceipt
+                                                    }
+                                                                
+                                                    runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, postPayment, selectedAccommodation.createdAt)
+                                                })
+                                            }
                                         }else{
                                             setActionMessage('')
                                             setAlertState('error')
@@ -1285,7 +1417,7 @@ const Accommodation = ()=>{
                                         var requiredNo = Object.keys(accommodationFields).length - 3
                                         Object.keys(accommodationFields).forEach((field)=>{
                                             if (accommodationFields[field]){
-                                                ct++
+                                                ct++ 
                                             }
                                         })
                                         if (ct===requiredNo){
