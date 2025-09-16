@@ -318,11 +318,12 @@ const Accommodation = ()=>{
         }
     }
 
-    const postPayment = async ()=>{
+    const postPayment = async (accommodationFields)=>{
         setAlertState('info')
         setAlert(
             `Updating Payment Status...`
         )
+        setAlertTimeout(100000)
         var paymentStatus = 'Partially Paid'
         if (accommodationFields.paymentAmount > 0 && Number(accommodationFields.paymentAmount) === Number(accommodationFields.accommodationAmount)){
             paymentStatus = 'Fully Paid'
@@ -1130,7 +1131,7 @@ const Accommodation = ()=>{
                                 />
                             </div>
                             
-                            {accommodationFields.paymentStatus==='Make Payment' && companyRecord?.status === 'adimn' && <>
+                            {accommodationFields.paymentStatus==='Make Payment' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_group_payment')) && <>
                                 <div className='acpymdt'>Apply Receipt to other Pending Accommodations</div>
                                 <div className='inpcov'>
                                     <div>Select Other Accommodation to Pay</div>
@@ -1392,18 +1393,20 @@ const Accommodation = ()=>{
                                                 return
                                             }
                                                                                         
-                                            runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, postPayment, curAccommodation.createdAt)
+                                            runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, ()=>{postPayment(accommodationFields)}, curAccommodation.createdAt)
                                             if (selectedUnPaidAccommodations.length){
                                                 selectedUnPaidAccommodations.forEach((selectedAccommodation)=>{
-                                                    const paymentFields = {
+                                                    let accPaymentFields = {
                                                         paymentAmount: selectedAccommodation.paymentAmount,
                                                         payPoint: selectedAccommodation.payPoint,
-                                                        paymentReceipt: selectedAccommodation.paymentReceipt
+                                                        paymentReceipt: selectedAccommodation.paymentReceipt,
+                                                        accommodationAmount: selectedAccommodation.accommodationAmount,
+                                                        createdAt: selectedAccommodation.createdAt
                                                     }
-                                                                
-                                                    runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, postPayment, selectedAccommodation.createdAt)
+                                                    runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, ()=>{postPayment(accPaymentFields)}, selectedAccommodation.createdAt)
                                                 })
                                             }
+
                                         }else{
                                             setActionMessage('')
                                             setAlertState('error')
