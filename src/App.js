@@ -772,39 +772,46 @@ function App() {
     const recoveryReceipts = []
     const accommodationReceipts = []
     const posOrderReceipts = []
+    const dateBoundary = new Date('2025-07-01').toISOString().slice(0,10)
 
     let paymentReceipts = []
     if (sales){
       sales.forEach((sale)=>{
         (sale.recoveryList || []).forEach((recovery)=>{
           if (paymentPoints.includes(recovery.recoveryPoint)){
-            recoveryReceipts.push({
-              paymentModule: 'recovery',
-              paymentPoint: recovery.recoveryPoint,
-              paymentAmount: Number(recovery.recoveryAmount),
-              paymentReceipt: Number(recovery.recoveryReceipt),
-              paymentFor: `For ${sale.postingDate} Debt`,
-              paymentDate: recovery.recoveryDate,
-              paymentHandler: recovery.recoveryEmployeeId,
-              paymentModuleRef: sale.createdAt
-            })
+            let dateVar = new Date(recovery.recoveryDate).toISOString().slice(0,10) 
+            if (dateVar >= dateBoundary){
+              recoveryReceipts.push({
+                paymentModule: 'recovery',
+                paymentPoint: recovery.recoveryPoint,
+                paymentAmount: Number(recovery.recoveryAmount),
+                paymentReceipt: Number(recovery.recoveryReceipt),
+                paymentFor: `For ${sale.postingDate} Debt`,
+                paymentDate: recovery.recoveryDate,
+                paymentHandler: recovery.recoveryEmployeeId,
+                paymentModuleRef: sale.createdAt
+              })
+            }
           }
         })
       })
     }
     if (accommodations){
       accommodations.forEach((acc)=>{
+        let dateVar = new Date(acc.postingDate).toISOString().slice(0,10)
         if (paymentPoints.includes(acc.payPoint)){
-          accommodationReceipts.push({
-            paymentModule: 'accommodation',
-            paymentPoint: acc.payPoint,
-            paymentAmount: Number(acc.paymentAmount),
-            paymentReceipt: Number(acc.paymentReceipt),
-            paymentFor: `For Room ${acc.roomNo}`,
-            paymentDate: acc.postingDate,
-            paymentHandler: acc.employeeId,
-            paymentModuleRef: acc.createdAt
-          })
+          if (dateVar >= dateBoundary){
+            accommodationReceipts.push({
+              paymentModule: 'accommodation',
+              paymentPoint: acc.payPoint,
+              paymentAmount: Number(acc.paymentAmount),
+              paymentReceipt: Number(acc.paymentReceipt),
+              paymentFor: `For Room ${acc.roomNo}`,
+              paymentDate: acc.postingDate,
+              paymentHandler: acc.employeeId,
+              paymentModuleRef: acc.createdAt
+            })
+          }
         }
       })
     }
@@ -814,24 +821,28 @@ function App() {
         if (order.salesPosts){
           Object.keys(order.salesPosts).forEach((payPoint)=>{
             if (paymentPoints.includes(payPoint)){
-              const location = order.salesPosts[payPoint]
-              const receiptNo= order.receipts[payPoint]
-              const amount = Number(order[payPoint])
-              posOrderReceipts.push({
-                paymentModule: 'POS Order',
-                paymentPoint: payPoint,
-                paymentAmount: amount,
-                paymentReceipt: Number(receiptNo),
-                paymentFor: `For ${order.orderNumber} Order in ${location}`,
-                paymentDate: new Date(order.createdAt).toISOString().split('T')[0],
-                paymentHandler: order.handlerId,
-                paymentModuleRef: order.createdAt
-              })
+              let dateVar = new Date(order.createdAt).toISOString().split('T')[0]
+              if(dateVar >= dateBoundary) {
+                const location = order.salesPosts[payPoint]
+                const receiptNo= order.receipts[payPoint]
+                const amount = Number(order[payPoint])
+                posOrderReceipts.push({
+                  paymentModule: 'POS Order',
+                  paymentPoint: payPoint,
+                  paymentAmount: amount,
+                  paymentReceipt: Number(receiptNo),
+                  paymentFor: `For ${order.orderNumber} Order in ${location}`,
+                  paymentDate: dateVar,
+                  paymentHandler: order.handlerId,
+                  paymentModuleRef: order.createdAt
+                })
+              }
             }
           })
         } 
       })
     }
+
     paymentReceipts = [
       ...recoveryReceipts, 
       ...accommodationReceipts, 
