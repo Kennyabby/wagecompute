@@ -1390,20 +1390,19 @@ const Accommodation = ()=>{
                                                 setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
                                                 setAlertTimeout(5000)
                                                 return
-                                            }else{
-                                                const voidReceipt = paymentReceipts.filter((payrec)=>{
-                                                    return(
-                                                        payrec.paymentReceipt > Number(accommodationFields.paymentReceipt)
-                                                        && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
-                                                    )
-                                                })
-                                                if(voidReceipt.length){
-                                                    console.log(voidReceipt)
-                                                    setAlertState('error')
-                                                    setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
-                                                    setAlertTimeout(5000)
-                                                    return
-                                                }
+                                            }else {
+                                                // let voidReceipts = paymentReceipts.filter((payrec)=>{
+                                                //     return(
+                                                //         payrec.paymentReceipt > Number(accommodationFields.paymentReceipt)
+                                                //         && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
+                                                //     )
+                                                // })
+                                                // if(voidReceipts.length){
+                                                //     setAlertState('error')
+                                                //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
+                                                //     setAlertTimeout(5000)
+                                                //     return
+                                                // }
                                             }
                                                                                         
                                             runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, ()=>{postPayment(accommodationFields)}, curAccommodation.createdAt)
