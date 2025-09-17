@@ -1,4 +1,5 @@
 import './DashView.css'
+import PaymentReceiptsModal from './PaymentReceiptsModal'
 import React from 'react'
 import {useEffect, useMemo, useState, useCallback } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
@@ -21,6 +22,8 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 const fmt = (n)=> Number(n||0).toLocaleString()
 
 const DashView = () =>{
+    // Modal state for payment receipts
+    const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const {
         storePath,
         fetchServer, server, company,
@@ -30,7 +33,7 @@ const DashView = () =>{
         expenses, getExpenses,
         accommodations, getAccommodations,
         rentals, getRentals,
-        employees, getEmployees
+        employees, getEmployees, paymentReceipts
     } = useContext(ContextProvider)
     // Default date range (current month)
     const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10)
@@ -1039,6 +1042,24 @@ const DashView = () =>{
                 </div>
                 
                 <div className='alert-section'> 
+                        {/* Access Payment Receipts Alert */}
+                        <div className='alert-panel payment-receipts-alert' style={{marginBottom: '24px', background: '#e3f2fd', border: '2px solid #1976d2', borderRadius: '10px', cursor: 'pointer', padding: '16px', boxSizing: 'border-box', width: '100%', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'stretch'}} onClick={()=>setShowReceiptsModal(true)}>
+                            <h3 style={{display:'flex',alignItems:'center',flexWrap:'wrap',fontSize:'1.15em',marginBottom:'12px'}}><FaInfoCircle style={{color:'#1976d2',marginRight:8}}/> Access Payment Receipts</h3>
+                            <div style={{display:'flex',flexWrap:'wrap',gap:'16px',justifyContent:'space-between',marginTop:'4px',marginBottom:'8px'}}>
+                                <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
+                                    Recovery<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='recovery').length}</span>
+                                </div>
+                                <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
+                                    Accommodation<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='accommodation').length}</span>
+                                </div>
+                                <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
+                                    POS<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='POS Order').length}</span>
+                                </div>
+                            </div>
+                            <div style={{fontSize:'0.95em',color:'#555',marginTop:'4px',textAlign:'center'}}>Click to view, filter, and manage all payment receipts</div>
+                        </div>
+                        {/* Receipts Modal Trigger State */}
+                            <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
                     {/* Low Stock Alerts */}
                     <div className='alert-panel'>
                         <h3><FaExclamationTriangle className='icon' /> Stock Alerts</h3>
