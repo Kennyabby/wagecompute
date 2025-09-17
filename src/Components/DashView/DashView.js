@@ -473,11 +473,13 @@ const DashView = () =>{
             ])
             
             let reconciledSalesTotal = 0
+            let expectedSalesTotal = 0
             const seriesData = Array.from(allDates).sort().map(date=>{
                 const inv = byDate.get(date) || {sales:0, purchases:0}
-                // const salesVal = salesByDateFromSalesDocs.has(date) ? (salesByDateFromSalesDocs.get(date)||0) : (inv.sales||0)
-                const salesVal = (inv.sales||0)
-                reconciledSalesTotal += Number(salesVal||0)
+                const salesVal = salesByDateFromSalesDocs.has(date) ? (salesByDateFromSalesDocs.get(date)||0) : (inv.sales||0)
+                const salesVal1 = (inv.sales||0)
+                expectedSalesTotal += Number(salesVal || 0) 
+                reconciledSalesTotal += Number(salesVal1 || 0)
                 return {
                     date,
                     sales: salesVal,
@@ -489,6 +491,7 @@ const DashView = () =>{
             })
 
             setKpis({ 
+                expectedSalesAmount: expectedSalesTotal,
                 salesAmount: reconciledSalesTotal, salesQty, 
                 purchasesAmount, purchasesQty, 
                 expensesAmount: expensesTotal, 
