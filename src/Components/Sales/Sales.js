@@ -2970,7 +2970,7 @@ const Sales = ()=>{
                                                     && payrec.paymentPoint === field.recoveryPoint
                                                 )
                                             })){
-                                            voidReceipts.push(field.recoveryPoint)
+                                                voidReceipts.push(field.recoveryPoint)
                                             }
                                         })
 
@@ -2979,6 +2979,25 @@ const Sales = ()=>{
                                             setAlert(`Receipt Number Already Used For ${voidReceipts.join(', ')} Payment Point(s)`);
                                             setAlertTimeout(5000)
                                             return
+                                        }else{
+                                            let voidReceipts1 = []
+                                            recoveryFields.forEach((field)=>{
+                                                let voidReceipts2 = paymentReceipts.filter((payrec)=>{
+                                                    return(
+                                                        payrec.paymentReceipt > Number(field.paymentReceipt)
+                                                        && payrec.paymentPoint === field.recoveryPoint && payrec.paymentDate < field.recoveryDate
+                                                    )
+                                                })
+                                                if(voidReceipts2.length){
+                                                    voidReceipts1 = voidReceipts1.concat(voidReceipts2)                                                    
+                                                }
+                                            })
+                                            if (voidReceipts1.length){
+                                                setAlertState('error')
+                                                setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
+                                                setAlertTimeout(5000)
+                                                return
+                                            }
                                         }
                                         const recoveryData = {
                                             recoveryFields,

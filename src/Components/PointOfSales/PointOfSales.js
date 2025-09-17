@@ -897,25 +897,6 @@ const PointOfSales = () => {
             receipts[payPoint] = paymentDetails[payPoint].receipt
             salesPosts[payPoint] = paymentDetails[payPoint].salesPost
         })
-        let voidReceipts = []
-        Object.keys(receipts).forEach((payPoint)=>{
-            if (paymentReceipts.find((payrec)=>{
-                return (
-                    payrec.paymentReceipt === Number(receipts[payPoint])
-                    && payrec.paymentPoint === payPoint
-                )
-            })){
-                voidReceipts.push(payPoint)                
-            }
-        })
-
-        if (voidReceipts.length){
-            setAlertState('error');
-            setAlert(`Receipt Number Already Used For ${voidReceipts.join(', ')} Payment Point(s)`);
-            setAlertTimeout(5000)
-            setMakingPayment(false)
-            return;
-        }
 
         if (totalPayment < currentOrder.totalSales) {
             setAlertState('error');
@@ -1762,6 +1743,7 @@ const PointOfSales = () => {
                     setPaymentDetails={setPaymentDetails}
                     setShowPaymentModal={setShowPaymentModal}
                     handlePayment={handlePayment}
+                    paymentReceipts={paymentReceipts}
                     payPoints={payPoints}
                     setAlert={setAlert}
                     setAlertState={setAlertState}
@@ -1781,7 +1763,8 @@ const PaymentModal = ({
     method, setMethod, wrh, curSession,
     paymentDetails, setPaymentDetails, wrhCategories,
     setShowPaymentModal, handlePayment, allPaymentReceipts,
-    payPoints, setAlertState, setAlert, setAlertTimeout
+    payPoints, setAlertState, setAlert, setAlertTimeout,
+    paymentReceipts
 }) => {
     const [paymentSum, setPaymentSum] = useState(0)
     const [cashAmount, setCashAmount] = useState(0)
@@ -1795,10 +1778,27 @@ const PaymentModal = ({
         setPaymentSum(paymentAmount)
     },[paymentDetails])
     const confirmReceiptsAvailable = (receipts)=>{
-        var available = true
-        const receiptNumbers = Object.values(receipts)
-
-        return available
+        let voidReceipts = []
+        var postingDate = new Date(currentOrder.createdAt).toISOString().split('T')[0]
+        Object.keys(receipts).forEach((payPoint)=>{
+            if (
+                paymentReceipts.find((payrec)=>{
+                    return (
+                        payrec.paymentReceipt === Number(receipts[payPoint])
+                        && payrec.paymentPoint === payPoint
+                    )
+                }) 
+                ||  paymentReceipts.find((payrec)=>{
+                    return(
+                        payrec.paymentReceipt > Number(receipts[payPoint])
+                        && payrec.paymentPoint === payPoint && payrec.paymentDate < postingDate
+                    )
+                })
+            ){
+                voidReceipts.push(payPoint)                
+            }
+        })
+        return {available: voidReceipts.length === 0, voidReceipts}
     }
     const validatePayment = async ()=>{
         var payPointsWithNoReceipts = []        
@@ -1812,7 +1812,7 @@ const PaymentModal = ({
             })
         }
         if (!payPointsWithNoReceipts.length){
-            const isReceiptsAvailable = confirmReceiptsAvailable(receipts)
+            const {isReceiptsAvailable, voidReceipts} = confirmReceiptsAvailable(receipts)
             if (isReceiptsAvailable){
                 if (Number(currentOrder.totalSales)>paymentSum){
                     const remainingDifference = Number(currentOrder.totalSales) - paymentSum
@@ -1824,6 +1824,10 @@ const PaymentModal = ({
                     await handlePayment()
                     setLoading (false)
                 }
+            }else{
+                setAlertState('error');
+                setAlert(`Receipt Number Already Used for an Earlier Period for the Following Pay Points: ${voidReceipts.join(', ')}!`);
+                setAlertTimeout(5000)
             }
         }else{
             var errmess = ''

@@ -1,5 +1,5 @@
 import './Accommodation.css'
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, use } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import AccommodationReceipt from './AccommodationReport/AccommodationReceipt';
@@ -1380,12 +1380,13 @@ const Accommodation = ()=>{
                                                 payPoint: accommodationFields.payPoint,
                                                 paymentReceipt: accommodationFields.paymentReceipt
                                             }
-                                            if (paymentReceipts.find((payrec)=>{
+                                            let usedReceipt = paymentReceipts.find((payrec)=>{
                                                 return (
                                                     payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
                                                     && payrec.paymentPoint === accommodationFields.payPoint
                                                 )
-                                            })){
+                                            })
+                                            if (usedReceipt){
                                                 setAlertState('error')
                                                 setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
                                                 setAlertTimeout(5000)
@@ -1397,7 +1398,6 @@ const Accommodation = ()=>{
                                                         && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
                                                     )
                                                 })
-                                                // console.log(voidReceipts)
                                                 if(voidReceipts.length){
                                                     setAlertState('error')
                                                     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
