@@ -1788,12 +1788,12 @@ const PaymentModal = ({
                         && payrec.paymentPoint === payPoint
                     )
                 }) 
-                ||  paymentReceipts.find((payrec)=>{
-                    return(
-                        payrec.paymentReceipt > Number(receipts[payPoint])
-                        && payrec.paymentPoint === payPoint && payrec.paymentDate < postingDate
-                    )
-                })
+                // ||  paymentReceipts.find((payrec)=>{
+                //     return(
+                //         payrec.paymentReceipt > Number(receipts[payPoint])
+                //         && payrec.paymentPoint === payPoint && payrec.paymentDate < postingDate
+                //     )
+                // })
             ){
                 voidReceipts.push(payPoint)                
             }
