@@ -153,7 +153,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
           {filteredReceipts.length === 0 ? (
             <div style={{textAlign:'center',color:'#888',marginTop:32}}>No receipts found for selected filters.</div>
           ) : viewType === 'card' ? (
-            <div style={{display:'flex',flexWrap:'wrap',gap:'18px'}}>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'18px', margin:'5px auto'}}>
               {filteredReceipts.map((r,idx)=>{
                 const emp = employees?.find(e => String(e.i_d) === String(r.paymentHandler) || String(e.id) === String(r.paymentHandler));
                 return (
@@ -172,7 +172,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
             </div>
           ) : (
             <div style={{overflowX:'auto'}}>
-               <table style={{width:'100%',borderCollapse:'collapse',background:'#f5faff'}}>
+               <table style={{width:'100%',borderCollapse:'collapse',background:'#f5faff', margin: '5px auto'}}>
                   <thead>
                     <tr style={{background:'#e3f2fd',color:'#1976d2'}}>
                       <th style={{padding:'8px',border:'1px solid #90caf9',cursor:'pointer'}} onClick={()=>setSortConfig(s=>({key:'paymentModule',direction:s.key==='paymentModule'&&s.direction==='asc'?'desc':'asc'}))}>
@@ -217,6 +217,14 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                         </tr>
                       );
                     })}
+                    {/* Totals row */}
+                    <tr style={{background:'#e3f2fd',fontWeight:'bold',color:'#1976d2'}}>
+                      <td style={{padding:'8px',border:'1px solid #90caf9'}} colSpan={2}>Total</td>
+                      <td style={{padding:'8px',border:'1px solid #90caf9'}}>
+                        ₦{filteredReceipts.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0).toLocaleString()}
+                      </td>
+                      <td style={{padding:'8px',border:'1px solid #90caf9'}} colSpan={5}></td>
+                    </tr>
                   </tbody>
                 </table>
             </div>
