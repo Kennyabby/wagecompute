@@ -1,4 +1,5 @@
 import './Accommodation.css'
+import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal'
 import { useState, useEffect, useContext, use } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
@@ -30,6 +31,7 @@ const Accommodation = ()=>{
 
     const [showReport, setShowReport] = useState(false)
     const [showReceipt, setShowReceipt] = useState(false)
+    const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const [reportSales, setReportSales] = useState(null)
     const [isMultiple, setIsMultiple] = useState(false)
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
@@ -383,8 +385,8 @@ const Accommodation = ()=>{
 
     const deleteAccommodation = async (accommodation)=>{
         const today = new Date()
-        const postingDate = new Date(accommodation.postingDate).toISOString().slice(0, 10)
-        if (postingDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)){
+        let postDate = new Date(accommodation.postingDate).toISOString().slice(0, 10)
+        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)){
             setAlertState('error')
             setAlert('Cannot delete accommodation after more than 1 day')
             setAlertTimeout(3000)
@@ -648,6 +650,8 @@ const Accommodation = ()=>{
     return (
         <>
             <div className='sales'> 
+                 {/* Receipts Modal Trigger State  */}
+                <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />   
                 {showApprovalBox && <ApprovalBox
                     onClose={()=>{
                         setShowApprovalBox(false)
@@ -690,7 +694,7 @@ const Accommodation = ()=>{
                         // acceptSalesDebt()
                     }}
                 />}   
-                <div className='emplist saleslist'>    
+                <div className='emplist saleslist'> 
                     {companyRecord.status==='admin' && <FaTableCells                         
                         className='allslrepicon'
                         onClick={()=>{
@@ -843,14 +847,14 @@ const Accommodation = ()=>{
                                         })[0]?.['firstName']:''
                                     }</b></div>
                                     {approval && isApprover && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {approval.data.paymentReceipt}</div>}
-                                    {approval && isApprover && <div className='deptdesc' style={{fontSize:'13px', fontWeight:'bold'}}>{
+                                    {approval && isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
                                         approval.data?.voidReceipt && 
-                                        <div style={{color:'red'}}>Void Receipt Reason: Receipt "{approval.data?.voidReceipt.voidReceipt}"" already used on {approval.data?.voidReceipt.voidReceiptDate}. <a>Click to View Receipt Report</a></div>
+                                        <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{approval.data?.voidReceipt.voidReceipt}"" already used on {approval.data?.voidReceipt.voidReceiptDate}. <a>Click to View Receipt Report</a></div>
                                     }</div>}
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
                                     className='edit'
-                                    style={{color:'red', background: 'white', borderRadius: '7px', padding: '5px 10px', border:'solid red 1.3px'}}
+                                    style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}
                                     name='delete'         
                                     onClick={()=>{                                        
                                         setAlertState('info')
