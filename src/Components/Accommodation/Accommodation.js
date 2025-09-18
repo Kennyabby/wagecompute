@@ -1409,7 +1409,7 @@ const Accommodation = ()=>{
                                                     voidReceiptHandler: usedReceipt?.paymentHandler
                                                 }
                                                 paymentFields.voidReceipt = voidReceiptDetails
-                                                if (companyRecord?.status !== 'admin'){
+                                                if (companyRecord?.status === 'admin'){
                                                     setAlertState('error')
                                                     setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
                                                     setAlertTimeout(5000)
