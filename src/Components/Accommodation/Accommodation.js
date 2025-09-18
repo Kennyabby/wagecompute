@@ -1380,6 +1380,8 @@ const Accommodation = ()=>{
                                                 payPoint: accommodationFields.payPoint,
                                                 paymentReceipt: accommodationFields.paymentReceipt
                                             }
+                                            let foundVoidReceipt = false
+                                            let voidReceiptDetails = {}
                                             let usedReceipt = paymentReceipts.find((payrec)=>{
                                                 return (
                                                     payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
@@ -1398,11 +1400,23 @@ const Accommodation = ()=>{
                                                         && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
                                                     )
                                                 })
-                                                if(voidReceipts.length){
-                                                    setAlertState('error')
-                                                    setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
-                                                    setAlertTimeout(5000)
-                                                    return
+                                                // if(voidReceipts.length){
+                                                //     setAlertState('error')
+                                                //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
+                                                //     setAlertTimeout(5000)
+                                                //     return
+                                                // }
+                                                if (voidReceipts.length){
+                                                    foundVoidReceipt = true
+                                                    voidReceiptDetails = {
+                                                        voidReceipt: voidReceipts[0]?.paymentReceipt,
+                                                        voidReceiptDate: voidReceipts[0]?.paymentDate,
+                                                        voidReceiptPoint: voidReceipts[0]?.paymentPoint,
+                                                        voidReceiptAmount: voidReceipts[0]?.paymentAmount,
+                                                        voidReceiptModule: voidReceipts[0]?.paymentModule,
+                                                        voidReceiptHandler: voidReceipts[0]?.paymentHandler
+                                                    }
+                                                    paymentFields.voidReceipt = voidReceiptDetails
                                                 }
                                             }
                                                                                         
@@ -1416,6 +1430,7 @@ const Accommodation = ()=>{
                                                         accommodationAmount: selectedAccommodation.accommodationAmount,
                                                         createdAt: selectedAccommodation.createdAt
                                                     }
+                                                    accPaymentFields.voidReceipt = voidReceiptDetails
                                                     runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, ()=>{postPayment(accPaymentFields)}, selectedAccommodation.createdAt)
                                                 })
                                             }
