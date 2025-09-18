@@ -1409,10 +1409,12 @@ const Accommodation = ()=>{
                                                     voidReceiptHandler: usedReceipt?.paymentHandler
                                                 }
                                                 paymentFields.voidReceipt = voidReceiptDetails
-                                                // setAlertState('error')
-                                                // setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
-                                                // setAlertTimeout(5000)
-                                                return
+                                                if (companyRecord?.status !== 'admin'){
+                                                    setAlertState('error')
+                                                    setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
+                                                    setAlertTimeout(5000)
+                                                    return
+                                                }
                                             }else {
                                                 let voidReceipts = paymentReceipts.filter((payrec)=>{
                                                     return(
@@ -1420,12 +1422,7 @@ const Accommodation = ()=>{
                                                         && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
                                                     )
                                                 })
-                                                // if(voidReceipts.length){
-                                                //     setAlertState('error')
-                                                //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
-                                                //     setAlertTimeout(5000)
-                                                //     return
-                                                // }
+                                                
                                                 if (voidReceipts.length){
                                                     foundVoidReceipt = true
                                                     voidReceiptDetails = {
@@ -1437,6 +1434,13 @@ const Accommodation = ()=>{
                                                         voidReceiptHandler: voidReceipts[0]?.paymentHandler
                                                     }
                                                     paymentFields.voidReceipt = voidReceiptDetails
+
+                                                    // if (companyRecord?.status === 'admin'){
+                                                    //     setAlertState('error')
+                                                    //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
+                                                    //     setAlertTimeout(5000)
+                                                    //     return
+                                                    // }
                                                 }
                                             }
                                                                                         
