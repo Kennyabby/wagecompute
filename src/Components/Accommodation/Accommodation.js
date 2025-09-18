@@ -1220,7 +1220,7 @@ const Accommodation = ()=>{
                                             }
                                         }}
                                     >
-                                        Add Room (+)
+                                        Add Payment (+)
                                     </div>
                                 </div>
                                 {selectedUnPaidAccommodations.length>0 && selectedUnPaidAccommodations.map((accommodation, index)=>{
