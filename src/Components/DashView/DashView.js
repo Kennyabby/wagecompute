@@ -1055,15 +1055,41 @@ const DashView = () =>{
                         }}>
                             <h3 style={{display:'flex',alignItems:'center',flexWrap:'wrap',fontSize:'1.15em',marginBottom:'12px'}}><FaInfoCircle style={{color:'#1976d2',marginRight:8}}/> Access Payment Receipts</h3>
                             <div style={{display:'flex',flexWrap:'wrap',gap:'16px',justifyContent:'space-between',marginTop:'4px',marginBottom:'8px'}}>
-                                <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
-                                    Recovery<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='recovery').length}</span>
-                                </div>
-                                <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
-                                    Accommodation<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='accommodation').length}</span>
-                                </div>
-                                <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
-                                    POS<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='POS Order').length}</span>
-                                </div>
+                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
+                                            Recovery<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='recovery').length}</span>
+                                    </div>
+                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
+                                            Accommodation<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='accommodation').length}</span>
+                                    </div>
+                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
+                                            POS<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='POS Order').length}</span>
+                                    </div>
+                            </div>
+                            {/* Duplicates by payPoint summary */}
+                            <div style={{margin:'10px 0',padding:'8px',background:'#fff',borderRadius:'8px',boxShadow:'0 2px 8px rgba(25,118,210,0.06)',color:'#1976d2',fontWeight:'bold',fontSize:'0.98em'}}>
+                                {(() => {
+                                    // Group by payPoint and count duplicate receipts
+                                    const payPointMap = {};
+                                    paymentReceipts.forEach(r => {
+                                        if (!r.paymentReceipt || !(r.payPoint || r.paymentPoint)) return;
+                                        const key = r.payPoint || r.paymentPoint;
+                                        if (!payPointMap[key]) payPointMap[key] = {};
+                                        payPointMap[key][r.paymentReceipt] = (payPointMap[key][r.paymentReceipt] || 0) + 1;
+                                    });
+                                    const summary = Object.entries(payPointMap).map(([payPoint, receipts]) => {
+                                        const dupCount = Object.values(receipts).filter(count => count > 1).reduce((a,b)=>a+b,0);
+                                        return { payPoint, dupCount };
+                                    }).filter(s => s.dupCount > 0);
+                                    if (summary.length === 0) return 'No duplicate receipts found by payPoint.';
+                                    return (
+                                        <span>
+                                            Duplicate Receipts by PayPoint:<br/>
+                                            {summary.map(s => (
+                                                <span key={s.payPoint} style={{display:'block',margin:'2px 0'}}>PayPoint <b>{s.payPoint}</b>: <span style={{color:'#d32f2f'}}>{s.dupCount}</span> duplicate{(s.dupCount>1)?'s':''}</span>
+                                            ))}
+                                        </span>
+                                    );
+                                })()}
                             </div>
                             <div style={{fontSize:'0.95em',color:'#555',marginTop:'4px',textAlign:'center'}}>Click to view, filter, and manage all payment receipts</div>
                         </div>
