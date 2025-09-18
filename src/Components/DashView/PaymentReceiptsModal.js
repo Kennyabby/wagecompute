@@ -21,7 +21,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     paypoint: '',
     module: '',
     handler: '',
-    receipt: ''
+    receipt: '',
+    onlyDuplicates: false
   });
 
   // View type state
@@ -42,6 +43,15 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
       if (filter.receipt && String(r.paymentReceipt) !== String(filter.receipt)) return false;
       return true;
     });
+    // Filter for duplicates if enabled
+    if (filter.onlyDuplicates) {
+      const receiptCount = {};
+      data.forEach(r => {
+        const key = String(r.paymentReceipt);
+        receiptCount[key] = (receiptCount[key] || 0) + 1;
+      });
+      data = data.filter(r => receiptCount[String(r.paymentReceipt)] > 1);
+    }
     if (sortConfig?.key) {
       data = [...data].sort((a, b) => {
         let aVal = a[sortConfig.key];
@@ -77,7 +87,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
             Download PDF
           </button>
         </div>
-        <button onClick={onClose} style={{position:'absolute',top:16,right:16,fontSize:22,background:'none',border:'none',cursor:'pointer'}}><FaTimes /></button>
+        <button onClick={onClose} style={{position:'absolute',top:5,right:5,fontSize:22,background:'none',border:'none',cursor:'pointer'}}><FaTimes /></button>
         <h2 style={{marginBottom:16}}><FaReceipt style={{marginRight:8}}/>Payment Receipts</h2>
         <div className="modal-filters" style={{
           display:'grid',
@@ -125,6 +135,10 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
           <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
             <label style={{fontWeight:'bold',color:'#1976d2'}}>Receipt #</label>
             <input type="text" value={filter.receipt} onChange={e=>setFilter(f=>({...f,receipt:e.target.value}))} placeholder="Enter receipt number" style={{padding:'6px',borderRadius:'4px',border:'1px solid #90caf9'}} />
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:'6px',alignItems:'flex-start',marginTop:'8px'}}>
+            <label style={{fontWeight:'bold',color:'#1976d2'}}>Show Only Duplicates</label>
+            <input type="checkbox" checked={filter.onlyDuplicates} onChange={e=>setFilter(f=>({...f,onlyDuplicates:e.target.checked}))} style={{width:'18px',height:'18px'}} />
           </div>
         </div>
         <div style={{marginBottom:'12px',fontWeight:'bold',color:'#1976d2',fontSize:'1.05em'}}>
