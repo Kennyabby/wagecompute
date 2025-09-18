@@ -461,8 +461,8 @@ const Purchase = ()=>{
 
     const deletePurchase = async (purchase)=>{
         const today = new Date()
-        const postingDate = new Date(purchase.postingDate)
-        if (postingDate < today.setDate(today.getDate()) || postingDate > today){
+        let postDate = new Date(purchase.postingDate).toISOString().slice(0, 10)
+        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)){
             setAlertState('error')
             setAlert('Cannot delete purchase after more than 1 day')
             setAlertTimeout(3000)
@@ -633,7 +633,7 @@ const Purchase = ()=>{
                                     {(companyRecord.status==='admin') && <div 
                                         className='edit'
                                         name='delete'         
-                                        style={{color:'red'}}                           
+                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
                                         onClick={async ()=>{                                        
                                             setAlertState('info')
                                             setAlert('Deleting Approval Data...')
@@ -687,7 +687,7 @@ const Purchase = ()=>{
                                     {(companyRecord.status==='admin') && <div 
                                         className='edit'
                                         name='delete'         
-                                        style={{color:'red'}}                           
+                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
                                         onClick={()=>{                                        
                                             setAlertState('info')
                                             setAlert('You are about to delete the selected Purchase Record. Please Delete again if you are sure!')
