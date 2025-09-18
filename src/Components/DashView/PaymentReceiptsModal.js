@@ -142,7 +142,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
           </div>
         </div>
         <div style={{marginBottom:'12px',fontWeight:'bold',color:'#1976d2',fontSize:'1.05em'}}>
-          {filteredReceipts.length} result{filteredReceipts.length === 1 ? '' : 's'} found
+          {filteredReceipts.length} result{filteredReceipts.length === 1 ? '' : 's'} found. Total Amount: ₦{filteredReceipts.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0).toLocaleString()}
         </div>
         <div style={{marginBottom:'18px',display:'flex',gap:'12px',alignItems:'center'}}>
           <span style={{fontWeight:'bold',color:'#555'}}>View:</span>
