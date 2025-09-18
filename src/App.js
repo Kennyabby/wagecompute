@@ -14,25 +14,30 @@ import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
-// const SERVER = "http://localhost:3001"
-const SERVER = "https://enterpriseserver.vercel.app"
-// const SERVER = "https://hserver.techpros.com.ng"
-// const SERVER = "http://3.251.76.94"
-
 function App() {
+
+  // const SERVER = "http://localhost:3001"
+  const SERVER = "https://enterpriseserver.vercel.app"
+  // const SERVER = "https://hserver.techpros.com.ng"
+  // const SERVER = "http://3.251.76.94"
   
   const [viewAccess, setViewAccess] = useState(null)
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
 
-  const [saleNextFrom, setSaleNextFrom] = useState(null)
-  const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
-  const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
+  const [saleNextFrom, setSaleNextFrom] = useState(null);
+  const [saleFrom, setSaleFrom] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 2)
+      .toISOString()
+      .slice(0, 10)
+  );
+  const [saleTo, setSaleTo] = useState(
+    new Date(Date.now()).toISOString().slice(0, 10)
+  );
 
-  const [isLive, setIsLive] = useState(false)
-  const [liveErrorMessages, setLiveErrorMessages] = useState('Loading...')
+  const [isLive, setIsLive] = useState(false);
+  const [liveErrorMessages, setLiveErrorMessages] = useState("Loading...");
   const [sessions, setSessions] = useState(null);
   const [tables, setTables] = useState([]);
-  const [posOrders, setPosOrders] = useState([]);
   const [deliverySessions, setDeliverySessions] = useState([])
   const [salesSessions, setSalesSessions] = useState([])
 
@@ -42,7 +47,6 @@ function App() {
   const [curApproval, setCurApproval] = useState(null)
   const [showApprovalBox, setShowApprovalBox] = useState(false)
   
-  const [paymentReceipts, setPaymentReceipts] = useState([])
   const [alert, setAlert] = useState('')
   const [alertState, setAlertState] = useState(null)
   const [alertTimeout, setAlertTimeout] = useState(100000)
@@ -88,436 +92,544 @@ function App() {
   const dashList = ['dashboard', 
     'employees','departments','positions','attendance','payroll', 'pos', 'delivery', 'sales','inventory','accommodations','purchase','expenses','reports','settings']
   const months = [
-      'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY',
-      'AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'
-  ]
+    "JANUARY",
+    "FEBRUARY",
+    "MARCH",
+    "APRIL",
+    "MAY",
+    "JUNE",
+    "JULY",
+    "AUGUST",
+    "SEPTEMBER",
+    "OCTOBER",
+    "NOVEMBER",
+    "DECEMBER",
+  ];
   const monthDays = {
-      'JANUARY':31,'FEBRUARY':28,'MARCH':31,'APRIL':30,'MAY':31,'JUNE':30,'JULY':31,
-      'AUGUST':31,'SEPTEMBER':30,'OCTOBER':31,'NOVEMBER':30,'DECEMBER':31
-  }
-  const years = ['2030','2029','2028','2027','2026','2025','2024','2023',
-      '2022','2021','2020']
+    JANUARY: 31,
+    FEBRUARY: 28,
+    MARCH: 31,
+    APRIL: 30,
+    MAY: 31,
+    JUNE: 30,
+    JULY: 31,
+    AUGUST: 31,
+    SEPTEMBER: 30,
+    OCTOBER: 31,
+    NOVEMBER: 30,
+    DECEMBER: 31,
+  };
+  const years = [
+    "2030",
+    "2029",
+    "2028",
+    "2027",
+    "2026",
+    "2025",
+    "2024",
+    "2023",
+    "2022",
+    "2021",
+    "2020",
+  ];
 
-  const [hostDb, setHostDb] = useState('The_Plantain_Planet')
-  const genDb = 'WCDatabase'
-  const Navigate = useNavigate()
+  const [hostDb, setHostDb] = useState("The_Plantain_Planet");
+  const genDb = "WCDatabase";
+  const Navigate = useNavigate();
 
-  useEffect(()=>{
-    var cmp_val = window.localStorage.getItem('sessn-cmp')
-    getViewAccess(hostDb)
-    getSettings(cmp_val)
-    getChartOfAccounts(cmp_val)
-    const intervalId = setInterval(()=>{
-      if (cmp_val){
-        setReloadCount((prevCount)=>{
-          return prevCount + 1
-        })
-        getSettings(cmp_val)
-        getChartOfAccounts(cmp_val)
-        getViewAccess(hostDb)
+  useEffect(() => {
+    var cmp_val = window.localStorage.getItem("sessn-cmp");
+    getViewAccess(hostDb);
+    getSettings(cmp_val);
+    getChartOfAccounts(cmp_val);
+    const intervalId = setInterval(() => {
+      if (cmp_val) {
+        setReloadCount((prevCount) => {
+          return prevCount + 1;
+        });
+        getSettings(cmp_val);
+        getChartOfAccounts(cmp_val);
+        getViewAccess(hostDb);
       }
-    },50000)
+    }, 50000);
     return () => clearInterval(intervalId);
-  },[window.localStorage.getItem('sessn-cmp')])
+  }, [window.localStorage.getItem("sessn-cmp")]);
 
-  useEffect(()=>{
-    if(settings?.length){
-      const updateThisUserState = async ()=>{
-        if (companyRecord?.status!=='admin'){
-          var sid = window.localStorage.getItem('sessn-id')
-          const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Profile", 
-            sessionId:  sid
-          }, "getDocDetails", SERVER)
-          if (![null, undefined].includes(resp.record)){
-            setCompanyRecord(resp.record) 
-            setRecoveryVal(resp.record.enableDebtRecovery)
-            setEnableBlockVal(!resp.record.enableLogin)
-            setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
-              resp.record.permissions.includes('all')
-            )
-            setEditAccess((editAccess)=>{
-              return {...editAccess, 
-                employees: (resp.record.permissions.includes('edit_employees') || resp.record.permissions.includes('all'))
-              }
-            })
-            setPosWrhAccess((posWrhAccess)=>{
-              return {...posWrhAccess, 
-                ['open bar1']: (resp.record.permissions.includes('pos_open bar1') || resp.record.permissions.includes('all')),
-                ['open bar2']: (resp.record.permissions.includes('pos_open bar2') || resp.record.permissions.includes('all')),
-                ['vip']: (resp.record.permissions.includes('pos_vip') || resp.record.permissions.includes('all')),
-                ['kitchen']: (resp.record.permissions.includes('pos_kitchen') || resp.record.permissions.includes('all')),
-              }
-            })
-            setDeliveryWrhAccess((deliveryWrhAccess)=>{
-              return {...deliveryWrhAccess, 
-                ['open bar1']: (resp.record.permissions.includes('delivery_open bar1') || resp.record.permissions.includes('all')),
-                ['open bar2']: (resp.record.permissions.includes('delivery_open bar2') || resp.record.permissions.includes('all')),
-                ['vip']: (resp.record.permissions.includes('delivery_vip') || resp.record.permissions.includes('all')),
-                ['kitchen']: (resp.record.permissions.includes('delivery_kitchen') || resp.record.permissions.includes('all')),
-              }
-            })
+  useEffect(() => {
+    if (settings?.length) {
+      const updateThisUserState = async () => {
+        if (companyRecord?.status !== "admin") {
+          var sid = window.localStorage.getItem("sessn-id");
+          const resp = await fetchServer(
+            "POST",
+            {
+              database: company,
+              collection: "Profile",
+              sessionId: sid,
+            },
+            "getDocDetails",
+            SERVER
+          );
+          if (![null, undefined].includes(resp.record)) {
+            setCompanyRecord(resp.record);
+            setRecoveryVal(resp.record.enableDebtRecovery);
+            setEnableBlockVal(!resp.record.enableLogin);
+            setAllowBacklogs(
+              resp.record.permissions.includes("allowBacklogs") ||
+                resp.record.permissions.includes("all")
+            );
+            setEditAccess((editAccess) => {
+              return {
+                ...editAccess,
+                employees:
+                  resp.record.permissions.includes("edit_employees") ||
+                  resp.record.permissions.includes("all"),
+              };
+            });
+            setPosWrhAccess((posWrhAccess) => {
+              return {
+                ...posWrhAccess,
+                ["open bar1"]:
+                  resp.record.permissions.includes("pos_open bar1") ||
+                  resp.record.permissions.includes("all"),
+                ["open bar2"]:
+                  resp.record.permissions.includes("pos_open bar2") ||
+                  resp.record.permissions.includes("all"),
+                ["vip"]:
+                  resp.record.permissions.includes("pos_vip") ||
+                  resp.record.permissions.includes("all"),
+                ["kitchen"]:
+                  resp.record.permissions.includes("pos_kitchen") ||
+                  resp.record.permissions.includes("all"),
+              };
+            });
+            setDeliveryWrhAccess((deliveryWrhAccess) => {
+              return {
+                ...deliveryWrhAccess,
+                ["open bar1"]:
+                  resp.record.permissions.includes("delivery_open bar1") ||
+                  resp.record.permissions.includes("all"),
+                ["open bar2"]:
+                  resp.record.permissions.includes("delivery_open bar2") ||
+                  resp.record.permissions.includes("all"),
+                ["vip"]:
+                  resp.record.permissions.includes("delivery_vip") ||
+                  resp.record.permissions.includes("all"),
+                ["kitchen"]:
+                  resp.record.permissions.includes("delivery_kitchen") ||
+                  resp.record.permissions.includes("all"),
+              };
+            });
           }
         }
-      }
+      };
 
-      updateThisUserState()
-      const colSetFilt = settings.filter((setting)=>{
-        return setting.name === 'import_columns'
-      })
-      delete colSetFilt[0]?._id
-      setColSettings(colSetFilt[0]?colSetFilt[0]:{})
+      updateThisUserState();
+      const colSetFilt = settings.filter((setting) => {
+        return setting.name === "import_columns";
+      });
+      delete colSetFilt[0]?._id;
+      setColSettings(colSetFilt[0] ? colSetFilt[0] : {});
     }
-  },[settings,changingSettings])
+  }, [settings, changingSettings]);
 
-  useEffect(()=>{
-    if (companyRecord?.status !== 'admin'){
-      if (enableBlockVal){
-        logout()
-      }else{
-        if (!reloadCount){
-          if (companyRecord?.permissions.includes('employees')){
-            getEmployees(company)
-            getDepartments(company)
-            getPositions(company)
-            window.localStorage.removeItem('lgt-vw')
-            Navigate('/employees')
+  useEffect(() => {
+    if (companyRecord?.status !== "admin") {
+      if (enableBlockVal) {
+        logout();
+      } else {
+        if (!reloadCount) {
+          if (companyRecord?.permissions.includes("employees")) {
+            getEmployees(company);
+            getDepartments(company);
+            getPositions(company);
+            window.localStorage.removeItem("lgt-vw");
+            Navigate("/employees");
           }
-          if (companyRecord?.permissions.includes('attendance')){
-            getAttendance(company)
-            window.localStorage.removeItem('lgt-vw')
-            Navigate('/attendance')
+          if (companyRecord?.permissions.includes("attendance")) {
+            getAttendance(company);
+            window.localStorage.removeItem("lgt-vw");
+            Navigate("/attendance");
           }
-          if (companyRecord?.permissions.includes('purchase')){
-            getPurchase(company)
-            window.localStorage.removeItem('lgt-vw')
-            Navigate('/purchase')
+          if (companyRecord?.permissions.includes("purchase")) {
+            getPurchase(company);
+            window.localStorage.removeItem("lgt-vw");
+            Navigate("/purchase");
           }
-          if (companyRecord?.permissions.includes('expenses')){
-            getExpenses(company)
-            window.localStorage.removeItem('lgt-vw')
-            Navigate('/expenses')
+          if (companyRecord?.permissions.includes("expenses")) {
+            getExpenses(company);
+            window.localStorage.removeItem("lgt-vw");
+            Navigate("/expenses");
           }
-          if (companyRecord?.permissions.includes('inventory') ||
-            companyRecord?.permissions.includes('pos') ||
-            companyRecord?.permissions.includes('delivery')
-          ){
-            getProducts(company)
-            Navigate('/inventory')
+          if (
+            companyRecord?.permissions.includes("inventory") ||
+            companyRecord?.permissions.includes("pos") ||
+            companyRecord?.permissions.includes("delivery")
+          ) {
+            getProducts(company);
+            Navigate("/inventory");
           }
-          if (companyRecord?.permissions.includes('delivery')){
-            fetchSessions(company , "delivery")
-            fetchTables(company)
-            Navigate('/delivery')
+          if (companyRecord?.permissions.includes("delivery")) {
+            fetchSessions(company, "delivery");
+            fetchTables(company);
+            Navigate("/delivery");
           }
-          if (companyRecord?.permissions.includes('pos')){
-            fetchSessions(company , "sales")
-            fetchTables(company)
-            Navigate('/pos')
-          }  
-          if (companyRecord?.permissions.includes('accommodations')){
-            getCustomers(company)
-            getAccommodations(company)
-            Navigate('/accommodations')
-          }        
-          if (companyRecord?.permissions.includes('sales')){
-            getAccommodations(company)
-            getSales(company)
-            fetchSessions(company , "sales", companyRecord)
-            fetchSessions(company , "delivery", companyRecord)
+          if (companyRecord?.permissions.includes("pos")) {
+            fetchSessions(company, "sales");
+            fetchTables(company);
+            Navigate("/pos");
+          }
+          if (companyRecord?.permissions.includes("accommodations")) {
+            getCustomers(company);
+            getAccommodations(company);
+            Navigate("/accommodations");
+          }
+          if (companyRecord?.permissions.includes("sales")) {
+            getAccommodations(company);
+            getSales(company);
+            fetchSessions(company, "sales", companyRecord);
+            fetchSessions(company, "delivery", companyRecord);
             // getSales(company, 'first', saleFrom, saleTo, 10)
-            getRentals(company)
-            window.localStorage.removeItem('lgt-vw')
-            Navigate('/sales')
+            getRentals(company);
+            window.localStorage.removeItem("lgt-vw");
+            Navigate("/sales");
           }
         }
       }
     }
   },[enableBlockVal, reloadCount, companyRecord, company])
 
-  useEffect(()=>{
-    obtainPaymentReceipts()
-  },[posOrders, sales, accommodations])
-
-  useEffect(()=>{
-    if (pauseView){
-      if (companyRecord){
-        logout()
+  useEffect(() => {
+    if (pauseView) {
+      if (companyRecord) {
+        logout();
       }
     }
-  },[pauseView, companyRecord])
+  }, [pauseView, companyRecord]);
 
-  useEffect(()=>{
-    setPauseView(!window.localStorage.getItem('ps-vw'))    
-  },[window.localStorage.getItem('ps-vw')])
+  useEffect(() => {
+    setPauseView(!window.localStorage.getItem("ps-vw"));
+  }, [window.localStorage.getItem("ps-vw")]);
 
-  const logout = async ()=>{
-    const resps = await fetchServer("POST", {
-      database: company,
-      collection: "Profile", 
-      record: companyRecord
-    }, "closeSession", SERVER)          
-    if (resps.err){
-      console.log(resps.mess)
-      setAlertState('error')
-      setAlert(resps.mess)
-      setAlertTimeout(3000)
-    }else{
-      window.localStorage.removeItem('ps-vw')
-      window.localStorage.removeItem('acc-vw')
-      if (!pauseView){
-        window.localStorage.setItem('lgt-mess', 'Login Access Denied. Please Request For Access!')      
+  const logout = async () => {
+    const resps = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Profile",
+        record: companyRecord,
+      },
+      "closeSession",
+      SERVER
+    );
+    if (resps.err) {
+      console.log(resps.mess);
+      setAlertState("error");
+      setAlert(resps.mess);
+      setAlertTimeout(3000);
+    } else {
+      window.localStorage.removeItem("ps-vw");
+      window.localStorage.removeItem("acc-vw");
+      if (!pauseView) {
+        window.localStorage.setItem(
+          "lgt-mess",
+          "Login Access Denied. Please Request For Access!"
+        );
       }
-      window.location.reload()
-    }        
-  }
+      window.location.reload();
+    }
+  };
 
   const getSessionEnd = (sessionStart) => {
-      const closingHour = 8
-      const sessionStartDate = new Date(sessionStart);
-      const sessionEndDate = new Date(sessionStartDate);
+    const closingHour = 8;
+    const sessionStartDate = new Date(sessionStart);
+    const sessionEndDate = new Date(sessionStartDate);
 
-      // Set the session end time to 8am of the same day
-      sessionEndDate.setHours(closingHour, 0, 0, 0);
+    // Set the session end time to 8am of the same day
+    sessionEndDate.setHours(closingHour, 0, 0, 0);
 
-      // If the session started after 8am, set the end time to 8am of the next day
-      if (sessionStartDate.getTime() >= sessionEndDate.getTime()) {
-          sessionEndDate.setDate(sessionStartDate.getDate() + 1);
-      }
+    // If the session started after 8am, set the end time to 8am of the next day
+    if (sessionStartDate.getTime() >= sessionEndDate.getTime()) {
+      sessionEndDate.setDate(sessionStartDate.getDate() + 1);
+    }
 
-      return sessionEndDate.getTime();
+    return sessionEndDate.getTime();
   };
 
   const shuffleList = (array) => {
     var currentIndex = array.length,
       randomIndex,
-      temporaryValue
+      temporaryValue;
     while (0 !== currentIndex) {
-      var randomIndex = Math.floor(Math.random() * currentIndex)
-      currentIndex -= 1
-      temporaryValue = array[currentIndex]
-      array[currentIndex] = array[randomIndex]
-      array[randomIndex] = temporaryValue
+      var randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex -= 1;
+      temporaryValue = array[currentIndex];
+      array[currentIndex] = array[randomIndex];
+      array[randomIndex] = temporaryValue;
     }
-    return array
-  }
+    return array;
+  };
 
   const generateCode = (length) => {
-    let number = '0123456789987654321001234567899876543210'
-    if (length && length<=number.length){
-      var list = number.split('')
-      var shuffledList = shuffleList(list)
-      const code = shuffledList.slice(0, length).join('')
-      return code
-    }else{
-      return null
+    let number = "0123456789987654321001234567899876543210";
+    if (length && length <= number.length) {
+      var list = number.split("");
+      var shuffledList = shuffleList(list);
+      const code = shuffledList.slice(0, length).join("");
+      return code;
+    } else {
+      return null;
     }
-  }
+  };
 
-  const removeComma = (value)=>{
-    let numberValue = value
-    if (value){
-      numberValue = parseInt(value.replace(/,/g, ''), 10);
+  const removeComma = (value) => {
+    let numberValue = value;
+    if (value) {
+      numberValue = parseInt(value.replace(/,/g, ""), 10);
     }
-    return numberValue
-  }
+    return numberValue;
+  };
 
-  const generateSeries = (pre, array, id)=> {
-
-    let max = 0
-    array.forEach((obj=>{
-      let idVal = Number(obj[id].slice(pre.split('').length,))
-      if (idVal > max){
-        max = idVal
+  const generateSeries = (pre, array, id) => {
+    let max = 0;
+    array.forEach((obj) => {
+      let idVal = Number(obj[id].slice(pre.split("").length));
+      if (idVal > max) {
+        max = idVal;
       }
-    }))
+    });
     let numPart = max + 1;
     let newNumber = pre + numPart.toString().padStart(5, "0");
 
     return newNumber;
+  };
 
-  }
-
-  const postApprovalUpdate = async (company, module, section, curApproval)=>{
-    setAlertState('info')
-    setAlert('Updating Approval...')
-    setAlertTimeout(100000)
+  const postApprovalUpdate = async (company, module, section, curApproval) => {
+    setAlertState("info");
+    setAlert("Updating Approval...");
+    setAlertTimeout(100000);
     const approvalState = {
+      approved: approvalStatus,
+      message: approvalMessage,
+      createdAt: curApproval.createdAt,
+      lastUpdatedBy: companyRecord?.emailid,
+    };
+    if (approvalStatus) {
+      approvalState.approvedBy =
+        companyRecord?.emailid || companyRecord?.emailid;
+    }
+    const resp = await updateApproval(company, module, section, {
+      ...approvalState,
+    });
+    if (resp.completed) {
+      getApprovals(company);
+      setAlertState("success");
+      setAlert("Approval Updated!");
+      setAlertTimeout(5000);
+      setApprovalStatus(false);
+      setApprovalMessage("");
+      setShowApprovalBox(false);
+      setCurApproval({
+        ...curApproval,
         approved: approvalStatus,
         message: approvalMessage,
         createdAt: curApproval.createdAt,
-        lastUpdatedBy: companyRecord?.emailid
+        lastUpdatedBy: companyRecord?.emailid,
+      });
+    } else {
+      setAlertState("error");
+      setAlert(resp.mess);
+      setAlertTimeout(5000);
+      setApprovalStatus(false);
+      setApprovalMessage("");
     }
-    if (approvalStatus){
-        approvalState.approvedBy = companyRecord?.emailid || companyRecord?.emailid
-    }
-    const resp = await updateApproval(company, module, section, {                                                                
-        ...approvalState
-    })
-    if (resp.completed){
-        getApprovals(company)
-        setAlertState('success')
-        setAlert('Approval Updated!')
-        setAlertTimeout(5000)
-        setApprovalStatus(false)
-        setApprovalMessage('')
-        setShowApprovalBox(false)
-        setCurApproval({...curApproval, 
-            approved: approvalStatus,
-            message: approvalMessage,
-            createdAt: curApproval.createdAt,
-            lastUpdatedBy: companyRecord?.emailid
-        })
-    }else{
-        setAlertState('error')
-        setAlert(resp.mess)
-        setAlertTimeout(5000)
-        setApprovalStatus(false)
-        setApprovalMessage('')
-    }
-  }
+  };
 
-  const runApprovalWorkFlow = async(postingDate, curApproval, module, section, data, runApproval, link)=>{
-      
-    const executePostAction = ()=>{
-        runApproval()            
-        if (curApproval?.createdAt){
-            removeApproval(company, module, section, {                        
-                createdAt: curApproval.createdAt,
-                postingDate: curApproval.postingDate                                                 
-            })
+  const runApprovalWorkFlow = async (
+    postingDate,
+    curApproval,
+    module,
+    section,
+    data,
+    runApproval,
+    link
+  ) => {
+    const executePostAction = () => {
+      runApproval();
+      if (curApproval?.createdAt) {
+        removeApproval(company, module, section, {
+          createdAt: curApproval.createdAt,
+          postingDate: curApproval.postingDate,
+        });
+      }
+    };
+
+    const executeApprovalAction = async (previous) => {
+      if (
+        companyRecord?.permissions.includes(section) ||
+        companyRecord?.status === "admin"
+      ) {
+        executePostAction();
+      } else {
+        setAlertState("info");
+        setAlert("Sending Approval Request...");
+        setAlertTimeout(100000);
+        const approvalData = {
+          data: data,
+          createdAt: previous?.createdAt
+            ? previous.createdAt
+            : new Date().getTime(),
+          postingDate: postingDate,
+          isApproval: true,
+          handlerId: companyRecord?.emailid,
+          messages: previous?.createdAt
+            ? [
+                ...previous.messages,
+                { message: previous.message, createdAt: new Date().getTime() },
+              ]
+            : [],
+        };
+        if (link) {
+          approvalData.link = link;
         }
-    }
-
-    const executeApprovalAction = async (previous)=>{
-        if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
-            executePostAction()
-        }else{
-            setAlertState('info')
-            setAlert('Sending Approval Request...')
-            setAlertTimeout(100000)
-            const approvalData = {
-                data: data,
-                createdAt: previous?.createdAt ? previous.createdAt: new Date().getTime(),
-                postingDate: postingDate,   
-                isApproval: true,  
-                handlerId: companyRecord?.emailid,  
-                messages: previous?.createdAt ? [
-                    ...previous.messages, 
-                    {message: previous.message, createdAt: new Date().getTime()}
-                ] : []                        
-            }
-            if (link){
-                approvalData.link = link
-            }
-            const resp = await requestApproval(company, module, section, approvalData)
-            if (resp.completed){
-                if(previous?.createdAt){
-                    removeApproval(company, module, section, {                        
-                        createdAt: previous.createdAt,
-                        postingDate: previous.postingDate                                                 
-                    })
-                }
-                setAlertState('success')
-                setAlert('Approval Request Sent Successfully!')
-                setAlertTimeout(5000)
-                getApprovals(company)
-                setCurApproval(approvalData)
-            }else{
-                setAlertState('error')
-                setAlert(resp.mess)
-                setAlertTimeout(5000)
-            }
+        const resp = await requestApproval(
+          company,
+          module,
+          section,
+          approvalData
+        );
+        if (resp.completed) {
+          if (previous?.createdAt) {
+            removeApproval(company, module, section, {
+              createdAt: previous.createdAt,
+              postingDate: previous.postingDate,
+            });
+          }
+          setAlertState("success");
+          setAlert("Approval Request Sent Successfully!");
+          setAlertTimeout(5000);
+          getApprovals(company);
+          setCurApproval(approvalData);
+        } else {
+          setAlertState("error");
+          setAlert(resp.mess);
+          setAlertTimeout(5000);
         }
-    }
+      }
+    };
 
-    if (![null, undefined].includes(curApproval)){
-        if (curApproval.approved){
-            executePostAction()
-        }else{
-            if (!curApproval.message){
-                if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
-                   setShowApprovalBox(true)
-                }else{
-                    setAlertState('info')
-                    setAlert('Already sent for approval. Please wait for response!')
-                    setAlertTimeout(5000)
-                }
-            }else{
-                executeApprovalAction(curApproval)
-            }
+    if (![null, undefined].includes(curApproval)) {
+      if (curApproval.approved) {
+        executePostAction();
+      } else {
+        if (!curApproval.message) {
+          if (
+            companyRecord?.permissions.includes(section) ||
+            companyRecord?.status === "admin"
+          ) {
+            setShowApprovalBox(true);
+          } else {
+            setAlertState("info");
+            setAlert("Already sent for approval. Please wait for response!");
+            setAlertTimeout(5000);
+          }
+        } else {
+          executeApprovalAction(curApproval);
         }
-    }else{
-        executeApprovalAction()
+      }
+    } else {
+      executeApprovalAction();
     }
-  }
+  };
 
-  const requestApproval = async (company, module, section, data)=>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Approvals", 
-      update: {
-        ...data,
-        module: module,
-        section: section
-      } 
-    }, "createDoc", SERVER)
-    if (!resp.err){
-      return {completed: resp.isDelivered, mess: resp.mess}
-    }else{
-      return {completed: false, mess: resp.mess}
+  const requestApproval = async (company, module, section, data) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Approvals",
+        update: {
+          ...data,
+          module: module,
+          section: section,
+        },
+      },
+      "createDoc",
+      SERVER
+    );
+    if (!resp.err) {
+      return { completed: resp.isDelivered, mess: resp.mess };
+    } else {
+      return { completed: false, mess: resp.mess };
     }
-  }
+  };
 
-  const getApprovals = async (company)=>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Approvals", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (Array.isArray(resp.record)){
-      setApprovals(resp.record)
+  const getApprovals = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Approvals",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (Array.isArray(resp.record)) {
+      setApprovals(resp.record);
     }
-  }
+  };
 
-  const updateApproval = async (company, module, section, update)=>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Approvals", 
-      prop: [{module: module, section: section, createdAt: update.createdAt}, {...update}] 
-    }, "updateOneDoc", SERVER)
-    if (!resp.err){
-      return {completed: resp.updated, mess: resp.mess}
-    }else{
-      return {completed: false, mess: resp.mess}
+  const updateApproval = async (company, module, section, update) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Approvals",
+        prop: [
+          { module: module, section: section, createdAt: update.createdAt },
+          { ...update },
+        ],
+      },
+      "updateOneDoc",
+      SERVER
+    );
+    if (!resp.err) {
+      return { completed: resp.updated, mess: resp.mess };
+    } else {
+      return { completed: false, mess: resp.mess };
     }
-  }
+  };
 
-  const removeApproval = async (company, module, section, update)=>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Approvals", 
-      update: {        
-        module: module,
-        section: section,
-        createdAt: update.createdAt,
-        postingDate: update.postingDate
-      } 
-    }, "removeDoc", SERVER)
-    if (!resp.err){
-      getApprovals(company)
-      return {completed: resp.isRemoved, mess: resp.mess}
-    }else{
-      return {completed: false, mess: resp.mess}
+  const removeApproval = async (company, module, section, update) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Approvals",
+        update: {
+          module: module,
+          section: section,
+          createdAt: update.createdAt,
+          postingDate: update.postingDate,
+        },
+      },
+      "removeDoc",
+      SERVER
+    );
+    if (!resp.err) {
+      getApprovals(company);
+      return { completed: resp.isRemoved, mess: resp.mess };
+    } else {
+      return { completed: false, mess: resp.mess };
     }
-  }
+  };
 
   const exportFile = useCallback((data, fileName) => {
-      const ws = utils.json_to_sheet(data);
-      const wb = utils.book_new();
-      utils.book_append_sheet(wb, ws, "Data");
-      writeFileXLSX(wb, `${fileName}.xlsx`);
+    const ws = utils.json_to_sheet(data);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, "Data");
+    writeFileXLSX(wb, `${fileName}.xlsx`);
   }, []);
 
   const importFile = async ({ event, fields, pivot, start }) => {
@@ -527,25 +639,25 @@ function App() {
         reject(new Error("No file selected"));
         return;
       }
-  
+
       const reader = new FileReader();
-  
+
       const columns = Object.keys(fields);
-  
+
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target.result);
           const workbook = read(data, { type: "array" });
-  
+
           const sheetNames = workbook.SheetNames;
           const firstSheetName = sheetNames[pivot];
           const worksheet = workbook.Sheets[firstSheetName];
-  
+
           const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
-  
+
           const knownColumnName = columns[0]; // First column name as reference
           let headerRowIndex = null;
-  
+
           // Find the header row
           for (let i = 0; i < jsonData.length; i++) {
             if (jsonData[i].includes(knownColumnName)) {
@@ -553,23 +665,23 @@ function App() {
               break;
             }
           }
-          
-          let headerfound = true
+
+          let headerfound = true;
           if (headerRowIndex === null) {
-            headerfound = false
-            headerRowIndex = 0
+            headerfound = false;
+            headerRowIndex = 0;
           }
-  
+
           // Extract headers and rows starting from the header row
           const headers = jsonData[headerRowIndex];
           columns.forEach((column) => {
             fields[column] = "";
           });
-          let startIndex = headerRowIndex + 2
+          let startIndex = headerRowIndex + 2;
           let rows = jsonData.slice(headerRowIndex + 1);
-          if (start && start > (headerRowIndex + 2)){
-            rows = jsonData.slice(start - 1)
-            startIndex = start
+          if (start && start > headerRowIndex + 2) {
+            rows = jsonData.slice(start - 1);
+            startIndex = start;
           }
           // Map rows to objects
           const result = rows.map((row) => {
@@ -579,7 +691,7 @@ function App() {
             });
             return obj;
           });
-  
+
           resolve({
             headerfound,
             headers,
@@ -591,85 +703,95 @@ function App() {
           reject(error);
         }
       };
-  
+
       reader.onerror = (error) => reject(error);
       reader.readAsArrayBuffer(file);
     });
   };
 
-  const storePath = (path)=>{
-    setPath(path)
-    window.localStorage.setItem('curr-path',path)
-  }
+  const storePath = (path) => {
+    setPath(path);
+    window.localStorage.setItem("curr-path", path);
+  };
 
   const fetchSessions = async (company, type, companyRecord) => {
-      const sessionsResponse = await fetchServer("POST", {
-          database: company,
-          collection: "POSSessions",
-          prop: {type:type}
-      }, "getDocsDetails", SERVER);
+    const sessionsResponse = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "POSSessions",
+        prop: { type: type },
+      },
+      "getDocsDetails",
+      SERVER
+    );
 
-      if(!sessionsResponse.err){
-          if (sessionsResponse.mess){
-              setIsLive(false)
-              // setLiveErrorMessages(sessionsResponse.mess)
-          }else{
-              const thisSessions = sessionsResponse.record.filter((session)=>{
-                  return session.employee_id === companyRecord?.emailid
-              })
-              // setSessions(thisSessions)
-              if (type === 'sales'){
-                  setSalesSessions(thisSessions)
-              }
-              if (type === 'delivery'){
-                  setDeliverySessions(thisSessions)
-              }
-              setAllSessions(sessionsResponse.record)
-          }
-      }else{
-          if (sessionsResponse.mess !== 'Request aborted'){
-              setIsLive(false)
-              setLiveErrorMessages('Slow Network. Check Connection')
-          }
+    if (!sessionsResponse.err) {
+      if (sessionsResponse.mess) {
+        setIsLive(false);
+        // setLiveErrorMessages(sessionsResponse.mess)
+      } else {
+        const thisSessions = sessionsResponse.record.filter((session) => {
+          return session.employee_id === companyRecord?.emailid;
+        });
+        // setSessions(thisSessions)
+        if (type === "sales") {
+          setSalesSessions(thisSessions);
+        }
+        if (type === "delivery") {
+          setDeliverySessions(thisSessions);
+        }
+        setAllSessions(sessionsResponse.record);
       }
-  }
+    } else {
+      if (sessionsResponse.mess !== "Request aborted") {
+        setIsLive(false);
+        setLiveErrorMessages("Slow Network. Check Connection");
+      }
+    }
+  };
 
   const fetchTables = async (company) => {
-      const tablesResponse = await fetchServer("POST", {
-          database: company,
-          collection: "Tables"
-      }, "getDocsDetails", SERVER);
-      if (!tablesResponse.err){
-          if (!tablesResponse.mess){
-              setTables(tablesResponse.record)  
-          }
-      }else{
-          if (tablesResponse.mess !== 'Request aborted'){
-              setIsLive(false)
-              setLiveErrorMessages('Slow Network. Check Connection')
-          }
+    const tablesResponse = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Tables",
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (!tablesResponse.err) {
+      if (!tablesResponse.mess) {
+        setTables(tablesResponse.record);
       }
-  }
+    } else {
+      if (tablesResponse.mess !== "Request aborted") {
+        setIsLive(false);
+        setLiveErrorMessages("Slow Network. Check Connection");
+      }
+    }
+  };
 
-  const removeSessions = (path)=>{
-    window.localStorage.removeItem('sess-recg-id')
-    window.localStorage.removeItem('idt-curr-usr')
-    window.localStorage.removeItem('sessn-id')
-    window.localStorage.removeItem('curr-path')
-    window.localStorage.removeItem('slvw')
-    window.localStorage.removeItem('sldtl')
-    window.localStorage.removeItem('sessn-cmp') 
-    window.localStorage.removeItem('pos-wrh')
-    setSessID(null)
-    Navigate("/")
-    setTimeout(()=>{
-      if (path !== undefined){
-        Navigate("/"+path)
-      }else{        
-        Navigate("/login")
+  const removeSessions = (path) => {
+    window.localStorage.removeItem("sess-recg-id");
+    window.localStorage.removeItem("idt-curr-usr");
+    window.localStorage.removeItem("sessn-id");
+    window.localStorage.removeItem("curr-path");
+    window.localStorage.removeItem("slvw");
+    window.localStorage.removeItem("sldtl");
+    window.localStorage.removeItem("sessn-cmp");
+    window.localStorage.removeItem("pos-wrh");
+    setSessID(null);
+    Navigate("/");
+    setTimeout(() => {
+      if (path !== undefined) {
+        Navigate("/" + path);
+      } else {
+        Navigate("/login");
       }
-    },5000)
-  }
+    }, 5000);
+  };
 
   const loadPage = async (propVal, currPath)=>{
     Navigate('/')
@@ -710,15 +832,15 @@ function App() {
         window.localStorage.removeItem('lgt-vw')
         getSettings(cmp_val)
         fetchProfiles(cmp_val)
-        getSales(cmp_val)
-        getPosOrders(cmp_val)
-        getAccommodations(cmp_val)
         getEmployees(cmp_val)
         getDepartments(cmp_val)
         getPositions(cmp_val)
         getCustomers(cmp_val)
+        getAccommodations(cmp_val)
         // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
+        getSales(cmp_val)
         fetchTables(cmp_val)
+        fetchSessions(cmp_val , "sales", resp.record)
         fetchSessions(cmp_val , "delivery", resp.record)
         getProducts(cmp_val)
         getRentals(cmp_val)
@@ -732,180 +854,108 @@ function App() {
             employees: resp.record.permissions.includes('edit_employees')
           }
         })
-        getAccommodations(cmp_val)
-        getPosOrders(cmp_val)
-        getSales(cmp_val)
         setRecoveryVal(resp.record.enableDebtRecovery)
         setEnableBlockVal(!resp.record.enableLogin)        
         getSettings(cmp_val)
         getEmployees(cmp_val)        
       }
     }
-  }
+  };
 
   const getViewAccess = async (company) => {
-    if (!window.localStorage.getItem('acc-vw')){
-      const resps = await fetchServer("POST", {
+    if (!window.localStorage.getItem("acc-vw")) {
+      const resps = await fetchServer(
+        "POST",
+        {
           database: company,
           collection: "Profile",
-          prop: {'name': 'activation'}
-      }, "getActivationDetails", SERVER)
+          prop: { name: "activation" },
+        },
+        "getActivationDetails",
+        SERVER
+      );
       if (resps.err) {
-          console.log(resps.mess)
-          setViewAccess('405')
+        console.log(resps.mess);
+        setViewAccess("405");
       } else {
-          if (!resps.mess){
-            setViewAccess(resps.record[0].pauseDB)
-            if (resps.record[0].pauseDB){
-              window.localStorage.removeItem('ps-vw')
-            }else{
-              window.localStorage.setItem('ps-vw', 'true')
-            }
-            setPauseView(resps.record[0].pauseDB)
+        if (!resps.mess) {
+          setViewAccess(resps.record[0].pauseDB);
+          if (resps.record[0].pauseDB) {
+            window.localStorage.removeItem("ps-vw");
+          } else {
+            window.localStorage.setItem("ps-vw", "true");
           }
+          setPauseView(resps.record[0].pauseDB);
+        }
       }
     }
   }
-
-  const obtainPaymentReceipts = ()=>{
-    const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4']    
-    const recoveryReceipts = []
-    const accommodationReceipts = []
-    const posOrderReceipts = []
-    const dateBoundary = new Date('2025-07-15').toISOString().slice(0,10)
-
-    let paymentReceipts = []
-    if (sales){
-      sales.forEach((sale)=>{
-        (sale.recoveryList || []).forEach((recovery)=>{
-          if (paymentPoints.includes(recovery.recoveryPoint)){
-            let dateVar = new Date(recovery.recoveryDate).toISOString().slice(0,10) 
-            if (dateVar >= dateBoundary){
-              recoveryReceipts.push({
-                paymentModule: 'recovery',
-                paymentPoint: recovery.recoveryPoint,
-                paymentAmount: Number(recovery.recoveryAmount),
-                paymentReceipt: Number(recovery.recoveryReceipt),
-                paymentFor: `For ${sale.postingDate} Debt`,
-                paymentDate: recovery.recoveryDate,
-                paymentHandler: recovery.recoveryEmployeeId,
-                paymentModuleRef: sale.createdAt
-              })
-            }
-          }
-        })
-      })
-    }
-    if (accommodations){
-      accommodations.forEach((acc)=>{
-        let dateVar = new Date(acc.postingDate).toISOString().slice(0,10)
-        if (paymentPoints.includes(acc.payPoint)){
-          if (dateVar >= dateBoundary){
-            accommodationReceipts.push({
-              paymentModule: 'accommodation',
-              paymentPoint: acc.payPoint,
-              paymentAmount: Number(acc.paymentAmount),
-              paymentReceipt: Number(acc.paymentReceipt),
-              paymentFor: `For Room ${acc.roomNo}`,
-              paymentDate: acc.postingDate,
-              paymentHandler: acc.employeeId,
-              paymentModuleRef: acc.createdAt
-            })
-          }
-        }
-      })
-    }
-
-    if (posOrders){
-      posOrders.forEach((order)=>{
-        if (order.salesPosts){
-          Object.keys(order.salesPosts).forEach((payPoint)=>{
-            if (paymentPoints.includes(payPoint)){
-              let dateVar = new Date(order.createdAt).toISOString().split('T')[0]
-              if(dateVar >= dateBoundary) {
-                const location = order.salesPosts[payPoint]
-                const receiptNo= order.receipts[payPoint]
-                const amount = Number(order[payPoint])
-                posOrderReceipts.push({
-                  paymentModule: 'POS Order',
-                  paymentPoint: payPoint,
-                  paymentAmount: amount,
-                  paymentReceipt: Number(receiptNo),
-                  paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
-                  paymentDate: dateVar,
-                  paymentHandler: order.handlerId,
-                  paymentModuleRef: order.createdAt
-                })
-              }
-            }
-          })
-        } 
-      })
-    }
-
-    paymentReceipts = [
-      ...recoveryReceipts, 
-      ...accommodationReceipts, 
-      ...posOrderReceipts
-    ]
-    setPaymentReceipts(paymentReceipts)
-  }
   
   const fetchProfiles = async (company) => {
-    const resps = await fetchServer("POST", {
+    const resps = await fetchServer(
+      "POST",
+      {
         database: company,
         collection: "Profile",
-        prop: {'verified': true}
-    }, "getDocsDetails", SERVER)
+        prop: { verified: true },
+      },
+      "getDocsDetails",
+      SERVER
+    );
     if (resps.err) {
-        console.log(resps.mess)
+      console.log(resps.mess);
     } else {
-        setProfiles(resps.record)
+      setProfiles(resps.record);
     }
-  }
-  
+  };
+
   const fetchDBProfiles = async (company) => {
-    const resps = await fetchServer("POST", {
+    const resps = await fetchServer(
+      "POST",
+      {
         database: genDb,
         collection: "Profiles",
-        prop: {'db': company}
-    }, "getDocsDetails", SERVER)
+        prop: { db: company },
+      },
+      "getDocsDetails",
+      SERVER
+    );
     if (resps.err) {
-        console.log(resps.mess)
+      console.log(resps.mess);
     } else {
-        setDBProfiles(resps.record)
+      setDBProfiles(resps.record);
     }
-  }
+  };
 
   const getChartOfAccounts = async (company) => {
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "ChartOfAccounts", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setChartOfAccounts(resp.record)
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "ChartOfAccounts",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setChartOfAccounts(resp.record);
     }
-  }
+  };
 
   const getAllSessions = async (company) => {
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "POSSessions", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setAllSessions(resp.record)
-    }
-  }
-  const getPosOrders = async (company) => {
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Orders",
-      prop: {}
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setPosOrders(resp.record)
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "POSSessions",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setAllSessions(resp.record);
     }
   }
   const getDepartments = async (company) =>{
@@ -917,139 +967,173 @@ function App() {
     if (resp.record){
       setDepartments(resp.record)
     }
-  }
+  };
 
-  const getPositions = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Positions", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setPositions(resp.record)
+  const getPositions = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Positions",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setPositions(resp.record);
     }
-  }
+  };
 
-  const getEmployees = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Employees", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setEmployees(resp.record)
+  const getEmployees = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Employees",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setEmployees(resp.record);
     }
-  }
+  };
 
-  const getCustomers = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Customers", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setCustomers(resp.record)
+  const getCustomers = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Customers",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setCustomers(resp.record);
     }
-  }
+  };
 
-  const getAttendance = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Attendance", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setAttendance(resp.record)
+  const getAttendance = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Attendance",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setAttendance(resp.record);
     }
-  }
+  };
 
-  const getSales = async (company, type=null, fromDate=null, toDate=null, limit=null) =>{
-    
-    var defaultEndPoint = 'getDocsDetails'
-    
+  const getSales = async (
+    company,
+    type = null,
+    fromDate = null,
+    toDate = null,
+    limit = null
+  ) => {
+    var defaultEndPoint = "getDocsDetails";
+
     const body = {
       database: company,
-      collection: "Sales", 
-      prop: {} 
-    }
+      collection: "Sales",
+      prop: {},
+    };
 
-    const salesFromDate = new Date(fromDate)
-    const salesToDate = new Date(toDate)
-    if (type !== null){
-      if (fromDate){
-        body.fromDate = new Date(fromDate).getTime()
+    const salesFromDate = new Date(fromDate);
+    const salesToDate = new Date(toDate);
+    if (type !== null) {
+      if (fromDate) {
+        body.fromDate = new Date(fromDate).getTime();
       }
-      if (toDate){
-        body.toDate = new Date(toDate).getTime()
+      if (toDate) {
+        body.toDate = new Date(toDate).getTime();
       }
-      body.limit = limit
-      if (type === 'first' || nextSales === null){
-        salesFromDate.setDate(salesFromDate.getDate() - 1)
-        salesToDate.setDate(salesToDate.getDate() + 3)
-        body.fromDate = salesFromDate.getTime()
-        body.toDate = salesToDate.getTime()
-        defaultEndPoint = 'getDocsDetailsFirst'
-      }else{
-        defaultEndPoint = 'getDocsDetailsNext'
+      body.limit = limit;
+      if (type === "first" || nextSales === null) {
+        salesFromDate.setDate(salesFromDate.getDate() - 1);
+        salesToDate.setDate(salesToDate.getDate() + 3);
+        body.fromDate = salesFromDate.getTime();
+        body.toDate = salesToDate.getTime();
+        defaultEndPoint = "getDocsDetailsFirst";
+      } else {
+        defaultEndPoint = "getDocsDetailsNext";
       }
     }
 
     // console.log('sales Load Count is:', salesLoadCount)
-    if (!salesLoadCount){
-      setSalesLoadCount((prevCount)=>{
-        return prevCount + 1
-      })
+    if (!salesLoadCount) {
+      setSalesLoadCount((prevCount) => {
+        return prevCount + 1;
+      });
       // console.log('fetching sales...')
-      const resp = await fetchServer("POST", {
-       ...body
-      }, defaultEndPoint, SERVER)
-      if (resp.record){
-        setSalesLoadCount(0)
+      const resp = await fetchServer(
+        "POST",
+        {
+          ...body,
+        },
+        defaultEndPoint,
+        SERVER
+      );
+      if (resp.record) {
+        setSalesLoadCount(0);
         // console.log('got sales record response. Resetting Sales Load Count!')
         // console.log('sales fetch type is :', type)
-        if (!type){
-          setSales(resp.record)
-        }else{
-          const salesResp = resp.record
+        if (!type) {
+          setSales(resp.record);
+        } else {
+          const salesResp = resp.record;
           // console.log('checking if response is empty:', salesResp)
-          if (salesResp.length){
+          if (salesResp.length) {
             // console.log('response is not empty')
             // console.log(salesResp[salesResp.length -1].createdAt, nextSales[nextSales.length -1]?.createdAt)
             // console.log('conditioning with this variables->','nextSales:', nextSales, 'salesResp:', salesResp)
-            if (nextSales === null || salesResp[salesResp.length -1].createdAt !== nextSales[nextSales.length -1]?.createdAt){
+            if (
+              nextSales === null ||
+              salesResp[salesResp.length - 1].createdAt !==
+                nextSales[nextSales.length - 1]?.createdAt
+            ) {
               // console.log('setting next sales')
-              setNextSales(resp.record)
+              setNextSales(resp.record);
               // console.log(resp.record)
-              if (type==='next' && nextSales !== null){
+              if (type === "next" && nextSales !== null) {
                 // console.log('type is next, so appending to sales Record!')
-                setSales((sales)=>{
-                  return [...sales, ...resp.record]
-                })
-              }else{
+                setSales((sales) => {
+                  return [...sales, ...resp.record];
+                });
+              } else {
                 // console.log('type is first, so resetting sales Record to this!')
-                setSales(resp.record)
-              } 
-            }else{
+                setSales(resp.record);
+              }
+            } else {
               // console.log('sales record is same as next sales record. Not setting next sales!')
               // console.log('nextSales:', nextSales[nextSales.length -1].createdAt, 'salesResp:', salesResp[salesResp.length -1].createdAt)
-              setNextSales(null)
+              setNextSales(null);
             }
           }
         }
       }
-      if (resp.err){
-        setSalesLoadCount(0)
+      if (resp.err) {
+        setSalesLoadCount(0);
       }
-    }else{
+    } else {
       // console.log('not fetching sales. Another sales fetch is in progress!')
     }
-  }
+  };
 
   // const getProducts = async (company) =>{
   //   const resp = await fetchServer("POST", {
   //     database: company,
-  //     collection: "Products", 
-  //     prop: {} 
+  //     collection: "Products",
+  //     prop: {}
   //   }, "getDocsDetails", SERVER)
 
   //   if (resp.record){
@@ -1061,24 +1145,40 @@ function App() {
 
   const getProducts = async (company) => {
     const knownFields = [
-      "_id", "i_d", "name", "salesPrice", "costPrice", "category",
-      "purchaseVat", "salesVat", "salesUom", "purchaseUom",
-      "buyTo", "createdAt", "type", "vipPrice"
+      "_id",
+      "i_d",
+      "name",
+      "salesPrice",
+      "costPrice",
+      "category",
+      "purchaseVat",
+      "salesVat",
+      "salesUom",
+      "purchaseUom",
+      "buyTo",
+      "createdAt",
+      "type",
+      "vipPrice",
     ];
 
     // Build a projection object like { _id: 1, i_d: 1, name: 1, ... }
-    const projection = Object.fromEntries(knownFields.map(key => [key, 1]));
+    const projection = Object.fromEntries(knownFields.map((key) => [key, 1]));
 
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Products",
-      prop: {},
-      project: projection
-    }, "getDocsDetails", SERVER);
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Products",
+        prop: {},
+        project: projection,
+      },
+      "getDocsDetails",
+      SERVER
+    );
 
     if (resp.record && resp.record.length) {
       setProducts(resp.record);
-      getProductsWithStock(company, resp.record)
+      getProductsWithStock(company, resp.record);
     }
   };
 
@@ -1094,38 +1194,38 @@ function App() {
             $group: {
               _id: {
                 productId: "$productId",
-                location: "$location"
+                location: "$location",
               },
               totalStock: {
                 $sum: {
                   $cond: [
                     { $isNumber: "$baseQuantity" },
                     "$baseQuantity",
-                    { $toDouble: "$baseQuantity" }
-                  ]
-                }
+                    { $toDouble: "$baseQuantity" },
+                  ],
+                },
               },
               totalCost: {
                 $sum: {
                   $cond: [
                     { $isNumber: "$totalCost" },
                     "$totalCost",
-                    { $toDouble: "$totalCost" }
-                  ]
-                }
+                    { $toDouble: "$totalCost" },
+                  ],
+                },
               },
               totalSales: {
                 $sum: {
                   $cond: [
                     { $isNumber: "$totalSales" },
                     "$totalSales",
-                    { $toDouble: "$totalSales" }
-                  ]
-                }
-              }
-            }
-          }
-        ]
+                    { $toDouble: "$totalSales" },
+                  ],
+                },
+              },
+            },
+          },
+        ],
       },
       "aggregateDocs",
       SERVER
@@ -1134,39 +1234,48 @@ function App() {
       const stockData = stockResp.record || [];
       // 2. Organize stock by productId and location
       const stockMap = {}; // { productId: { locationA: { qty, cost }, ... } }
-      
-      stockData.forEach(item => {
+
+      stockData.forEach((item) => {
         const { productId, location } = item._id;
         if (!stockMap[productId]) stockMap[productId] = {};
         stockMap[productId][location] = {
           quantity: item.totalStock,
           cost: item.totalCost,
-          sales: item.totalSales
+          sales: item.totalSales,
         };
       });
-      
+
       // 3. Enrich products with location-wise stock and cost
-      const enrichedProducts = products.map(product => {
+      const enrichedProducts = products.map((product) => {
         const stockInfo = stockMap[product.i_d] || {};
 
         // Sum up total stock and total cost across all locations
-        const totalStock = Object.values(stockInfo).reduce((sum, loc) => sum + Number(loc.quantity), 0);
-        const totalCost = Object.values(stockInfo).reduce((sum, loc) => sum + Number(loc.cost), 0);
-        const totalSales = Object.values(stockInfo).reduce((sum, loc) => sum + Number(loc.sales), 0);
+        const totalStock = Object.values(stockInfo).reduce(
+          (sum, loc) => sum + Number(loc.quantity),
+          0
+        );
+        const totalCost = Object.values(stockInfo).reduce(
+          (sum, loc) => sum + Number(loc.cost),
+          0
+        );
+        const totalSales = Object.values(stockInfo).reduce(
+          (sum, loc) => sum + Number(loc.sales),
+          0
+        );
 
         return {
           ...product,
           locationStock: stockInfo, // now includes both quantity and cost
           totalStock,
           totalCost,
-          totalSales
+          totalSales,
         };
       });
 
       // 4. Set enriched products
       setProducts(enrichedProducts);
       return enrichedProducts;
-    }       
+    }
     return products;
   };
 
@@ -1180,15 +1289,12 @@ function App() {
   const getProductsStockReport = async (company, products, dateRange = {}) => {
     try {
       // Set default date range if not provided (current month to date)
-      const startDate = new Date(dateRange.startDate) || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const endDate = new Date(dateRange.endDate) || new Date();
-      const location = dateRange.location || 'all';
-      const transactionType = dateRange.transactionType || 'all';
-      const productId = dateRange.productId || null;
-      // console.log(startDate, endDate)
+      const startDate = dateRange.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const endDate = dateRange.endDate || new Date();
+      
       // Format dates for MongoDB query
-      const formattedStartDate = startDate.toISOString().split('T')[0];
-      const formattedEndDate = endDate.toISOString().split('T')[0];
+      const formattedStartDate = startDate.toISOString();
+      const formattedEndDate = endDate.toISOString();
       
       // 1. Get opening stock (stock before start date)
       const openingStockResp = await fetchServer(
@@ -1199,77 +1305,82 @@ function App() {
           prop: [
             {
               $match: {
-                postingDate: { $lt: formattedStartDate },
-                ...(location !== 'all' && { location }),
-                ...(productId && { productId }),
-                ...(transactionType !== 'all' && { 
-                  $or: [
-                    { entryType: transactionType },
-                    { documentType: transactionType }
-                  ].filter(Boolean)
-                })
+                $expr: {
+                  $lt: [
+                    { $toString: "$postingStamp" },
+                    formattedStartDate
+                  ]
+                }
               }
             },
             {
               $group: {
                 _id: {
                   productId: "$productId",
-                  location: "$location"
+                  location: "$location",
                 },
                 openingQuantity: {
                   $sum: {
                     $cond: [
                       { $isNumber: "$baseQuantity" },
                       "$baseQuantity",
-                      { $toDouble: "$baseQuantity" }
-                    ]
-                  }
+                      { $toDouble: "$baseQuantity" },
+                    ],
+                  },
                 },
                 // Purchases
                 purchasedQty: {
                   $sum: {
                     $cond: [
-                      { $and: [
-                        { $eq: ["$entryType", "Purchase"] },
-                        { $gt: ["$baseQuantity", 0] }
-                      ]},
-                      { $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]},
-                      0
-                    ]
-                  }
+                      {
+                        $and: [
+                          { $eq: ["$entryType", "Purchase"] },
+                          { $gt: ["$baseQuantity", 0] },
+                        ],
+                      },
+                      {
+                        $cond: [
+                          { $isNumber: "$baseQuantity" },
+                          "$baseQuantity",
+                          { $toDouble: "$baseQuantity" },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
                 },
                 purchaseCost: {
                   $sum: {
                     $cond: [
-                      { $and: [
-                        { $eq: ["$entryType", "Purchase"] },
-                        { $gte: ["$totalCost", 0] }
-                      ]},
-                      { $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]},
-                      0
-                    ]
-                  }
+                      {
+                        $and: [
+                          { $eq: ["$entryType", "Purchase"] },
+                          { $gte: ["$totalCost", 0] },
+                        ],
+                      },
+                      {
+                        $cond: [
+                          { $isNumber: "$totalCost" },
+                          "$totalCost",
+                          { $toDouble: "$totalCost" },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
                 },
                 openingCost: {
                   $sum: {
                     $cond: [
                       { $isNumber: "$totalCost" },
                       "$totalCost",
-                      { $toDouble: "$totalCost" }
-                    ]
-                  }
-                }
-              }
-            }
-          ]
+                      { $toDouble: "$totalCost" },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
         },
         "aggregateDocs",
         SERVER
@@ -1286,18 +1397,10 @@ function App() {
               $match: {
                 $expr: {
                   $and: [
-                    { $gte: ["$postingDate", formattedStartDate] },
-                    { $lte: ["$postingDate", formattedEndDate] }
-                  ],
-                },
-                ...(location !== 'all' && { location }),
-                ...(productId && { productId }),
-                ...(transactionType !== 'all' && { 
-                  $or: [
-                    { entryType: transactionType },
-                    { documentType: transactionType }
-                  ].filter(Boolean)
-                })
+                    { $gte: [{ $toString: "$postingStamp" }, formattedStartDate] },
+                    { $lte: [{ $toString: "$postingStamp" }, formattedEndDate] }
+                  ]
+                }
               }
             },
             {
@@ -1310,58 +1413,66 @@ function App() {
                 documentType: 1,
                 entryType: 1,
                 postingDate: 1,
-                postingStamp: 1
-              }
+                postingStamp: 1,
+              },
             },
             {
               $group: {
                 _id: {
                   productId: "$productId",
-                  location: "$location"
+                  location: "$location",
                 },
                 // Purchases
                 purchasedQty: {
                   $sum: {
                     $cond: [
-                      { $and: [
-                        { $eq: ["$entryType", "Purchase"] },
-                        { $gt: ["$baseQuantity", 0] }
-                      ]},
-                      { $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]},
-                      0
-                    ]
-                  }
+                      {
+                        $and: [
+                          { $eq: ["$entryType", "Purchase"] },
+                          { $gt: ["$baseQuantity", 0] },
+                        ],
+                      },
+                      {
+                        $cond: [
+                          { $isNumber: "$baseQuantity" },
+                          "$baseQuantity",
+                          { $toDouble: "$baseQuantity" },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
                 },
                 purchaseCost: {
                   $sum: {
                     $cond: [
-                      { $and: [
-                        { $eq: ["$entryType", "Purchase"] },
-                        { $gt: ["$totalCost", 0] }
-                      ]},
-                      { $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]},
-                      0
-                    ]
-                  }
+                      {
+                        $and: [
+                          { $eq: ["$entryType", "Purchase"] },
+                          { $gt: ["$totalCost", 0] },
+                        ],
+                      },
+                      {
+                        $cond: [
+                          { $isNumber: "$totalCost" },
+                          "$totalCost",
+                          { $toDouble: "$totalCost" },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
                 },
                 // Sales
                 soldQty: {
                   $sum: {
                     $cond: [
                       { $eq: ["$entryType", "Sales"] },
-                      { $cond: [
+                      { $abs: { $cond: [
                         { $isNumber: "$baseQuantity" },
                         "$baseQuantity",
                         { $toDouble: "$baseQuantity" }
-                      ]},
+                      ]}},
                       0
                     ]
                   }
@@ -1370,11 +1481,11 @@ function App() {
                   $sum: {
                     $cond: [
                       { $eq: ["$entryType", "Sales"] },
-                      { $cond: [
+                      { $abs: { $cond: [
                         { $isNumber: "$totalSales" },
                         "$totalSales",
                         { $toDouble: "$totalSales" }
-                      ]},
+                      ]}},
                       0
                     ]
                   }
@@ -1383,11 +1494,11 @@ function App() {
                   $sum: {
                     $cond: [
                       { $eq: ["$entryType", "Sales"] },
-                      { $cond: [
+                      { $abs: { $cond: [
                         { $isNumber: "$totalCost" },
                         "$totalCost",
                         { $toDouble: "$totalCost" }
-                      ]},
+                      ]}},
                       0
                     ]
                   }
@@ -1396,18 +1507,22 @@ function App() {
                 transferInQty: {
                   $sum: {
                     $cond: [
-                      { $and: [
-                        { $eq: ["$documentType", "Transfer Receipt"] },
-                        { $gt: ["$baseQuantity", 0] }
-                      ]},
-                      { $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]},
-                      0
-                    ]
-                  }
+                      {
+                        $and: [
+                          { $eq: ["$documentType", "Transfer Receipt"] },
+                          { $gt: ["$baseQuantity", 0] },
+                        ],
+                      },
+                      {
+                        $cond: [
+                          { $isNumber: "$baseQuantity" },
+                          "$baseQuantity",
+                          { $toDouble: "$baseQuantity" },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
                 },
                 transferInCost: {
                   $sum: {
@@ -1432,27 +1547,11 @@ function App() {
                         { $eq: ["$documentType", "Transfer Shipment"] },
                         { $lt: ["$baseQuantity", 0] }
                       ]},
-                      { $cond: [
+                      { $abs: { $cond: [
                         { $isNumber: "$baseQuantity" },
                         "$baseQuantity",
                         { $toDouble: "$baseQuantity" }
-                      ]},
-                      0
-                    ]
-                  }
-                },
-                transferOutCost: {
-                  $sum: {
-                    $cond: [
-                      { $and: [
-                        { $eq: ["$documentType", "Transfer Shipment"] },
-                        { $lt: ["$baseQuantity", 0] }
-                      ]},
-                      { $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]},
+                      ]}},
                       0
                     ]
                   }
@@ -1461,34 +1560,42 @@ function App() {
                 positiveAdjustmentQty: {
                   $sum: {
                     $cond: [
-                      { $and: [
-                        { $eq: ["$documentType", "Positive Adjustment"] },
-                        { $gt: ["$baseQuantity", 0] }
-                      ]},
-                      { $cond: [
-                        { $isNumber: "$baseQuantity" },
-                        "$baseQuantity",
-                        { $toDouble: "$baseQuantity" }
-                      ]},
-                      0
-                    ]
-                  }
+                      {
+                        $and: [
+                          { $eq: ["$documentType", "Positive Adjustment"] },
+                          { $gt: ["$baseQuantity", 0] },
+                        ],
+                      },
+                      {
+                        $cond: [
+                          { $isNumber: "$baseQuantity" },
+                          "$baseQuantity",
+                          { $toDouble: "$baseQuantity" },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
                 },
                 positiveAdjustmentCost: {
                   $sum: {
                     $cond: [
-                      { $and: [
-                        { $eq: ["$documentType", "Positive Adjustment"] },
-                        { $gt: ["$baseQuantity", 0] }
-                      ]},
-                      { $cond: [
-                        { $isNumber: "$totalCost" },
-                        "$totalCost",
-                        { $toDouble: "$totalCost" }
-                      ]},
-                      0
-                    ]
-                  }
+                      {
+                        $and: [
+                          { $eq: ["$documentType", "Positive Adjustment"] },
+                          { $gt: ["$baseQuantity", 0] },
+                        ],
+                      },
+                      {
+                        $cond: [
+                          { $isNumber: "$totalCost" },
+                          "$totalCost",
+                          { $toDouble: "$totalCost" },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
                 },
                 // Negative Adjustments
                 negativeAdjustmentQty: {
@@ -1498,11 +1605,11 @@ function App() {
                         { $eq: ["$documentType", "Negative Adjustment"] },
                         { $lt: ["$baseQuantity", 0] }
                       ]},
-                      { $cond: [
+                      { $abs: { $cond: [
                         { $isNumber: "$baseQuantity" },
                         "$baseQuantity",
                         { $toDouble: "$baseQuantity" }
-                      ]},
+                      ]}},
                       0
                     ]
                   }
@@ -1514,11 +1621,11 @@ function App() {
                         { $eq: ["$documentType", "Negative Adjustment"] },
                         { $lt: ["$baseQuantity", 0] }
                       ]},
-                      { $cond: [
+                      { $abs: { $cond: [
                         { $isNumber: "$totalCost" },
                         "$totalCost",
                         { $toDouble: "$totalCost" }
-                      ]},
+                      ]}},
                       0
                     ]
                   }
@@ -1533,26 +1640,27 @@ function App() {
 
       // 3. Process and merge the data
       const stockMap = {};
-      const purchaseInfo = {}
-      
+      const purchaseInfo = {};
+
       // Process opening stock
       if (openingStockResp.record) {
-        openingStockResp.record.forEach(item => {
+        openingStockResp.record.forEach((item) => {
           const { productId, location } = item._id;
           if (!stockMap[productId]) stockMap[productId] = {};
           if (!purchaseInfo[productId]) purchaseInfo[productId] = {};
           if (!stockMap[productId][location]) {
             stockMap[productId][location] = createEmptyStockData();
           }
-          if (!purchaseInfo[productId].purchasedQty) purchaseInfo[productId].purchasedQty = 0;
-          if (!purchaseInfo[productId].purchaseCost) purchaseInfo[productId].purchaseCost = 0;
+          if (!purchaseInfo[productId].purchasedQty)
+            purchaseInfo[productId].purchasedQty = 0;
+          if (!purchaseInfo[productId].purchaseCost)
+            purchaseInfo[productId].purchaseCost = 0;
           purchaseInfo[productId].purchasedQty += item.purchasedQty || 0;
           purchaseInfo[productId].purchaseCost += item.purchaseCost || 0;
           stockMap[productId][location].openingQuantity = item.openingQuantity || 0;
-          stockMap[productId][location].openingCost = (true && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
+          stockMap[productId][location].openingCost = (products.find(p => p.i_d === productId)?.salesPrice && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
           stockMap[productId][location].closingQty = item.openingQuantity || 0;
-          const closingCost = (true && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
-          // products.find(p => p.i_d === productId)?.salesPrice
+          const closingCost = (products.find(p => p.i_d === productId)?.salesPrice && item.purchasedQty) ? Number(((item.purchaseCost/item.purchasedQty) * item.openingQuantity).toFixed(2)) : 0;
           stockMap[productId][location].closingCost = closingCost
           stockMap[productId][location].closingSalesValue = stockMap[productId][location].closingQty * (products.find(p => p.i_d === productId)?.salesPrice || 0);
           stockMap[productId][location].averageCost = item.openingQuantity !== 0 ? Number((closingCost / item.openingQuantity).toFixed(2)) : 0;
@@ -1561,25 +1669,27 @@ function App() {
       }
 
       if (transactionsResp.record) {
-        transactionsResp.record.forEach(item => {
-          const { productId } = item._id;          
+        transactionsResp.record.forEach((item) => {
+          const { productId } = item._id;
           if (!purchaseInfo[productId]) purchaseInfo[productId] = {};
-          if (!purchaseInfo[productId].purchasedQty) purchaseInfo[productId].purchasedQty = 0;
-          if (!purchaseInfo[productId].purchaseCost) purchaseInfo[productId].purchaseCost = 0;
+          if (!purchaseInfo[productId].purchasedQty)
+            purchaseInfo[productId].purchasedQty = 0;
+          if (!purchaseInfo[productId].purchaseCost)
+            purchaseInfo[productId].purchaseCost = 0;
           purchaseInfo[productId].purchasedQty += item.purchasedQty || 0;
           purchaseInfo[productId].purchaseCost += item.purchaseCost || 0;
-        })
+        });
       }
 
       // Process transactions within date range
       if (transactionsResp.record) {
-        transactionsResp.record.forEach(item => {
+        transactionsResp.record.forEach((item) => {
           const { productId, location } = item._id;
           if (!stockMap[productId]) stockMap[productId] = {};
           if (!stockMap[productId][location]) {
             stockMap[productId][location] = createEmptyStockData();
           }
-          
+
           // Update with transaction data
           const locationData = stockMap[productId][location];
           locationData.purchasedQty = item.purchasedQty || 0;
@@ -1591,43 +1701,42 @@ function App() {
           locationData.transferInQty = item.transferInQty || 0;
           locationData.transferOutQty = item.transferOutQty || 0;
           
-          locationData.transferInCost = item.transferInCost || 0;
-          locationData.transferOutCost = item.transferOutCost || 0;
-
           // Positive adjustments
           locationData.positiveAdjustmentQty = item.positiveAdjustmentQty || 0;
-          locationData.positiveAdjustmentCost = item.positiveAdjustmentCost || 0;
-          
+          locationData.positiveAdjustmentCost =
+            item.positiveAdjustmentCost || 0;
+
           // Negative adjustments
           locationData.negativeAdjustmentQty = item.negativeAdjustmentQty || 0;
-          locationData.negativeAdjustmentCost = item.negativeAdjustmentCost || 0;
-          
+          locationData.negativeAdjustmentCost =
+            item.negativeAdjustmentCost || 0;
+
           // Net adjustments
-          locationData.netAdjustmentQty = (item.positiveAdjustmentQty || 0) + (item.negativeAdjustmentQty || 0);
-          locationData.netAdjustmentCost = (item.positiveAdjustmentCost || 0) + (item.negativeAdjustmentCost || 0);
+          locationData.netAdjustmentQty = (item.positiveAdjustmentQty || 0) - (item.negativeAdjustmentQty || 0);
+          locationData.netAdjustmentCost = (item.positiveAdjustmentCost || 0) - (item.negativeAdjustmentCost || 0);
           
           // Calculate closing quantities
           locationData.closingQty = (locationData.openingQuantity || 0) + 
                                    (locationData.purchasedQty || 0) + 
-                                   (locationData.transferInQty || 0) + 
-                                   (locationData.transferOutQty || 0) + 
+                                   (locationData.transferInQty || 0) - 
+                                   (locationData.transferOutQty || 0) - 
                                    (locationData.soldQty || 0) + 
                                    (locationData.netAdjustmentQty || 0);
           
           // Calculate closing cost (using average cost method)
-          const totalCost = purchaseInfo[productId].purchaseCost
-          const totalQty = purchaseInfo[productId].purchasedQty
-          
+          const totalCost = purchaseInfo[productId].purchaseCost;
+          const totalQty = purchaseInfo[productId].purchasedQty;
+
           locationData.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
-          locationData.closingCost =true ? (locationData.closingQty * locationData.averageCost) : 0;
+          locationData.closingCost = (products.find(p => p.i_d === productId)?.salesPrice) ? (locationData.closingQty * locationData.averageCost) : 0;
           locationData.closingSalesValue = locationData.closingQty * (products.find(p => p.i_d === productId)?.salesPrice || 0);
         });
       }
 
       // 4. Enrich products with the calculated stock data
-      const enrichedProducts = products.map(product => {
+      const enrichedProducts = products.map((product) => {
         const locationData = stockMap[product.i_d] || {};
-        
+
         // Calculate totals across all locations
         const totals = Object.values(locationData).reduce((acc, loc) => ({
           openingQuantity: (acc.openingQuantity || 0) + (loc.openingQuantity || 0),
@@ -1637,12 +1746,8 @@ function App() {
           soldQty: (acc.soldQty || 0) + (loc.soldQty || 0),
           salesValue: (acc.salesValue || 0) + (loc.salesValue || 0),
           costOfGoodsSold: (acc.costOfGoodsSold || 0) + (loc.costOfGoodsSold || 0),
-          
-          // Transfer fields
           transferInQty: (acc.transferInQty || 0) + (loc.transferInQty || 0),
           transferOutQty: (acc.transferOutQty || 0) + (loc.transferOutQty || 0),
-          transferInCost: (acc.transferInCost || 0) + (loc.transferInCost || 0),
-          transferOutCost: (acc.transferOutCost || 0) + (loc.transferOutCost || 0),
           
           // Adjustment fields
           positiveAdjustmentQty: (acc.positiveAdjustmentQty || 0) + (loc.positiveAdjustmentQty || 0),
@@ -1660,30 +1765,30 @@ function App() {
         }), createEmptyStockData());
 
         // Calculate net adjustments
-        const netAdjustmentQty = (totals.positiveAdjustmentQty || 0) + (totals.negativeAdjustmentQty || 0);
-        const netAdjustmentCost = (totals.positiveAdjustmentCost || 0) + (totals.negativeAdjustmentCost || 0);
+        const netAdjustmentQty = (totals.positiveAdjustmentQty || 0) - (totals.negativeAdjustmentQty || 0);
+        const netAdjustmentCost = (totals.positiveAdjustmentCost || 0) - (totals.negativeAdjustmentCost || 0);
         
         // Add net adjustments to totals for backward compatibility
         totals.netAdjustmentQty = netAdjustmentQty;
         totals.netAdjustmentCost = netAdjustmentCost;
-        
+
         // Calculate average cost
-        const totalQty = (totals.purchasedQty || 0);
-        const totalCost = (totals.purchaseCost || 0);
+        const totalQty = totals.purchasedQty || 0;
+        const totalCost = totals.purchaseCost || 0;
         totals.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
 
         return {
           ...product,
           locationStockDetails: locationData,
-          stockSummary: totals
+          stockSummary: totals,
         };
       });
-      setProducts(enrichedProducts)
+      setProducts(enrichedProducts);
       return enrichedProducts;
     } catch (error) {
-      console.error('Error in getProductsStockReport:', error);
-      setAlertState('error');
-      setAlert('Error loading inventory report data');
+      console.error("Error in getProductsStockReport:", error);
+      setAlertState("error");
+      setAlert("Error loading inventory report data");
       setAlertTimeout(5000);
       return products; // Return original products in case of error
     }
@@ -1711,151 +1816,182 @@ function App() {
     closingQty: 0,
     closingCost: 0,
     closingSalesValue: 0,
-    averageCost: 0
+    averageCost: 0,
   });
 
-  const getAccommodations = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Accommodations", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setAccommodations(resp.record)
-    }
-  }
-
-  const getPurchase = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Purchase", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setPurchase(resp.record)
-    }
-  }
-
-  const getExpenses = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Expenses", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setExpenses(resp.record)
-    }
-  }
-
-  const getRentals = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Rentals", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    // console.log(resp.record)
-    if (resp.record){
-      setRentals(resp.record)
-    }
-  }
-
-  const getSettings = async (company) =>{
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Settings", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setSettings(resp.record)
-    }
-  }
-
-  const getImage = async (body)=>{
-    const resp = await fetchServer("POST", 
-      body, 
-      "getImgUrl", 
+  const getAccommodations = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Accommodations",
+        prop: {},
+      },
+      "getDocsDetails",
       SERVER
-    )
-    if (resp.err){
-      console.log(resp.mess)
-      return ''
-    }else{
-      return resp.url
+    );
+    if (resp.record) {
+      setAccommodations(resp.record);
     }
-  }
+  };
+
+  const getPurchase = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Purchase",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setPurchase(resp.record);
+    }
+  };
+
+  const getExpenses = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Expenses",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setExpenses(resp.record);
+    }
+  };
+
+  const getRentals = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Rentals",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    // console.log(resp.record)
+    if (resp.record) {
+      setRentals(resp.record);
+    }
+  };
+
+  const getSettings = async (company) => {
+    const resp = await fetchServer(
+      "POST",
+      {
+        database: company,
+        collection: "Settings",
+        prop: {},
+      },
+      "getDocsDetails",
+      SERVER
+    );
+    if (resp.record) {
+      setSettings(resp.record);
+    }
+  };
+
+  const getImage = async (body) => {
+    const resp = await fetchServer("POST", body, "getImgUrl", SERVER);
+    if (resp.err) {
+      console.log(resp.mess);
+      return "";
+    } else {
+      return resp.url;
+    }
+  };
 
   function excelDateToTimestamp(excelDateValue) {
-    if (String(excelDateValue).split('').includes('/') ||
-    String(excelDateValue).split('').includes('-')){
-        return excelDateValue
-    }else{
-        const secondsInDay = 86400; // 24 hours * 60 minutes * 60 seconds
-        const millisecondsInDay = secondsInDay * 1000;
-    
-        // Excel epoch is December 30, 1899
-        const excelEpoch = new Date('1899-12-30').getTime();
-    
-        // Convert Excel date value to JavaScript timestamp
-        var timestamp = excelEpoch + (Number(excelDateValue) - 1) * millisecondsInDay;
-        if (excelDateValue >= 60) {
-            timestamp += millisecondsInDay; // Add one day for dates after February 29, 1900
-        }
-    
-        return timestamp;
+    if (
+      String(excelDateValue).split("").includes("/") ||
+      String(excelDateValue).split("").includes("-")
+    ) {
+      return excelDateValue;
+    } else {
+      const secondsInDay = 86400; // 24 hours * 60 minutes * 60 seconds
+      const millisecondsInDay = secondsInDay * 1000;
+
+      // Excel epoch is December 30, 1899
+      const excelEpoch = new Date("1899-12-30").getTime();
+
+      // Convert Excel date value to JavaScript timestamp
+      var timestamp =
+        excelEpoch + (Number(excelDateValue) - 1) * millisecondsInDay;
+      if (excelDateValue >= 60) {
+        timestamp += millisecondsInDay; // Add one day for dates after February 29, 1900
+      }
+
+      return timestamp;
     }
   }
 
-  const getDate = (dateval) =>{
-    const current = dateval? new Date(dateval): new Date();
-    const date = `${current.getDate()}/${current.getMonth() + 1}/${current.getFullYear()}`;
-    return date
-  }
+  const getDate = (dateval) => {
+    const current = dateval ? new Date(dateval) : new Date();
+    const date = `${current.getDate()}/${
+      current.getMonth() + 1
+    }/${current.getFullYear()}`;
+    return date;
+  };
 
-  useEffect(()=>{
-    var currPath = window.localStorage.getItem('curr-path')
-    if (currPath !== null && pathList.includes(currPath)){
-      var cmp_val = window.localStorage.getItem('sessn-cmp')
-      setCompany(cmp_val)
-      if (!cmp_val){
-        removeSessions()
-      }else{
-        var sid = window.localStorage.getItem('sessn-id')
-        var sess = 0
-        if (sid !==null ){
-          sid.split('').forEach((chr)=>{
-            sess += chr.codePointAt(0)
-          })
-          const sesn = window.localStorage.getItem('sess-recg-id')
-          const session = window.localStorage.getItem('idt-curr-usr')
-          if (sesn !== null && session != null){
-            if (sesn / session === sess){
-              loadPage(sid, currPath)
+  useEffect(() => {
+    var currPath = window.localStorage.getItem("curr-path");
+    if (currPath !== null && pathList.includes(currPath)) {
+      var cmp_val = window.localStorage.getItem("sessn-cmp");
+      setCompany(cmp_val);
+      if (!cmp_val) {
+        removeSessions();
+      } else {
+        var sid = window.localStorage.getItem("sessn-id");
+        var sess = 0;
+        if (sid !== null) {
+          sid.split("").forEach((chr) => {
+            sess += chr.codePointAt(0);
+          });
+          const sesn = window.localStorage.getItem("sess-recg-id");
+          const session = window.localStorage.getItem("idt-curr-usr");
+          if (sesn !== null && session != null) {
+            if (sesn / session === sess) {
+              loadPage(sid, currPath);
             } else {
-              removeSessions()
+              removeSessions();
             }
-          }else{
-            removeSessions()
+          } else {
+            removeSessions();
           }
-        }else{
-          removeSessions(currPath)
+        } else {
+          removeSessions(currPath);
         }
       }
-    }else{
-      removeSessions()
+    } else {
+      removeSessions();
     }
-  },[sessId])
+  }, [sessId]);
 
-  
   return (
     <>
-        <ContextProvider.Provider value={{
+      <ContextProvider.Provider
+        value={{
           fetchServer,
-          server:SERVER, viewAccess,
+          server: SERVER,
+          viewAccess,
           genDb,
-          pauseView, setPauseView,
-          loginMessage, setLoginMessage,
-          generateCode, generateSeries, 
-          exportFile, importFile,
+          pauseView,
+          setPauseView,
+          loginMessage,
+          setLoginMessage,
+          generateCode,
+          generateSeries,
+          exportFile,
+          importFile,
           getSessionEnd,
           companyRecord, setCompanyRecord,  
           chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
@@ -1870,17 +2006,25 @@ function App() {
           sessions, setSessions, fetchSessions,
           salesSessions, setSalesSessions,
           deliverySessions, setDeliverySessions,
-          getPosOrders,
           isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
           tables, setTables, fetchTables,
 
-          approvals, setApprovals, getApprovals,
-          runApprovalWorkFlow, requestApproval, postApprovalUpdate, 
-          updateApproval, removeApproval,
-          approvalStatus, setApprovalStatus,
-          approvalMessage, setApprovalMessage,
-          curApproval, setCurApproval,
-          showApprovalBox, setShowApprovalBox,
+          approvals,
+          setApprovals,
+          getApprovals,
+          runApprovalWorkFlow,
+          requestApproval,
+          postApprovalUpdate,
+          updateApproval,
+          removeApproval,
+          approvalStatus,
+          setApprovalStatus,
+          approvalMessage,
+          setApprovalMessage,
+          curApproval,
+          setCurApproval,
+          showApprovalBox,
+          setShowApprovalBox,
 
           saleFrom, setSaleFrom,
           saleTo, setSaleTo,
@@ -1894,7 +2038,6 @@ function App() {
           purchase, setPurchase, getPurchase,
           expenses, setExpenses, getExpenses,
           rentals, setRentals, getRentals,
-          paymentReceipts, obtainPaymentReceipts,
           
           settings, setSettings, getSettings,
           colSettings, setColSettings,
@@ -1907,13 +2050,21 @@ function App() {
           enableBlockVal, setEnableBlockVal,
           changingSettings, setChangingSettings,
 
-          setAlert, setAlertState, setAlertTimeout,
-          alert, alertState, alertTimeout, actionMessage, 
-          setAction, setActionMessage,
+          setAlert,
+          setAlertState,
+          setAlertTimeout,
+          alert,
+          alertState,
+          alertTimeout,
+          actionMessage,
+          setAction,
+          setActionMessage,
           storePath,
-          months, monthDays, years,
+          months,
+          monthDays,
+          years,
           path,
-          dashList, 
+          dashList,
           loadPage,
           getImage,
           excelDateToTimestamp,
@@ -1921,24 +2072,30 @@ function App() {
           removeComma,
           removeSessions,
           sessId,
-          company
-        }}>
-          {!actionMessage && <Notify 
-              notifyMessage = {alert}
-              notifyState = {alertState}
-              timeout = {alertTimeout}             
-          />}
-          {!pauseView ? <Routes>
-            <Route path='/' element={<LoadingPage/>}></Route>
-            <Route path='/login' element={<Login/>}></Route>
-            <Route path='/profile' element={<Profile/>}></Route>
-            <Route path='/test' element={<FormPage/>}></Route>
-            <Route path='/dash' element={<DashView/>}></Route>
-            <Route path='/:id' element={<Dashboard/>}></Route>
-          </Routes> :
-          <PauseView/>
-          }
-        </ContextProvider.Provider>
+          company,
+        }}
+      >
+        {!actionMessage && (
+          <Notify
+            notifyMessage={alert}
+            notifyState={alertState}
+            timeout={alertTimeout}
+          />
+        )}
+        {!pauseView ? (
+          <Routes>
+            <Route path="/" element={<LoadingPage />}></Route>
+            <Route path="/landing-page" element={<LandingPage />}></Route>
+            <Route path="/login" element={<Login />}></Route>
+            <Route path="/profile" element={<Profile />}></Route>
+            <Route path="/test" element={<FormPage />}></Route>
+            <Route path="/dash" element={<DashView />}></Route>
+            <Route path="/:id" element={<Dashboard />}></Route>
+          </Routes>
+        ) : (
+          <PauseView />
+        )}
+      </ContextProvider.Provider>
     </>
   );
 }
