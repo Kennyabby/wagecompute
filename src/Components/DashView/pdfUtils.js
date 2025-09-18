@@ -3,20 +3,24 @@ import jsPDF from 'jspdf';
 
 export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount, employees }) {
   const doc = new jsPDF({ orientation: 'landscape' });
-  const marginLeft = 14;
+  const marginLeft = 7;
   const marginTop = 18;
   const rowHeight = 10;
-  const colWidths = [30, 30, 30, 30, 30, 50, 40, 40]; // px widths for each column
+  const colWidths = [33, 30, 30, 30, 30, 50, 48, 35]; // px widths for each column
   const columns = [
     'Module', 'Paypoint', 'Amount', 'Receipt #', 'Date', 'Handler', 'For', 'Ref'
   ];
-
+  const payPointAccounts = {
+    'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
+    'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063', 
+    'cash':'CASH', 'Employee':'EMPLOYEE'
+  }
   // Title
   doc.setFontSize(16);
   doc.text('Payment Receipts Report', marginLeft, marginTop);
   doc.setFontSize(11);
   doc.text(`Filters:`, marginLeft, marginTop + 10);
-  doc.text(`Date From: ${filter.from || 'Any'} | Date To: ${filter.to || 'Any'} | Paypoint: ${filter.paypoint || 'Any'} | Module: ${filter.module || 'Any'} | Handler: ${filter.handler || 'Any'} | Receipt #: ${filter.receipt || 'Any'}`, marginLeft, marginTop + 16);
+  doc.text(`Date From: ${filter.from || 'Any'} | Date To: ${filter.to || 'Any'} | Paypoint: ${payPointAccounts?.[filter.paypoint] || 'Any'} | Module: ${filter.module || 'Any'} | Handler: ${filter.handler || 'Any'} | Receipt #: ${filter.receipt || 'Any'}`, marginLeft, marginTop + 16);
   doc.text(`Total Results: ${resultCount}`, marginLeft, marginTop + 24);
 
   // Table header
@@ -51,7 +55,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
     const handlerDisplay = empName ? `${r.paymentHandler} (${empName})` : r.paymentHandler;
     const row = [
       r.paymentModule.toUpperCase(),
-      r.paymentPoint,
+      payPointAccounts[r.paymentPoint],
       `${Number(r.paymentAmount).toLocaleString()}`,
       r.paymentReceipt,
       new Date(r.paymentDate).toLocaleDateString(),
@@ -63,7 +67,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
       doc.rect(x, y, colWidths[i], rowHeight);
       let text = String(cell);
       // Truncate if too long
-      if (text.length > 22) text = text.slice(0, 19) + '...';
+      if (text.length > 25) text = text.slice(0, 26) + '...';
       doc.text(text, x + 2, y + 7);
       x += colWidths[i];
     });

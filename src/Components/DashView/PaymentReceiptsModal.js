@@ -14,6 +14,11 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     }, null)?.toISOString().slice(0, 10);
   }, [paymentReceipts]);
 
+  const payPointAccounts = {
+    'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
+    'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063', 
+    'cash':'CASH', 'Employee':'EMPLOYEE'
+  }
   // Filter state
   const [filter, setFilter] = useState({
     from: earliestDate,
@@ -111,7 +116,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
             <label style={{fontWeight:'bold',color:'#1976d2'}}>Paypoint</label>
             <select value={filter.paypoint} onChange={e=>setFilter(f=>({...f,paypoint:e.target.value}))} style={{padding:'6px',borderRadius:'4px',border:'1px solid #90caf9'}}>
               <option value="">All</option>
-              {paypoints.map(p=>(<option key={p} value={p}>{p}</option>))}
+              {paypoints.map(p=>(<option key={p} value={p}>{payPointAccounts[p]}</option>))}
             </select>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
@@ -207,7 +212,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                       return (
                         <tr key={idx} style={{background:'#fff'}}>
                           <td style={{padding:'8px',border:'1px solid #90caf9',fontWeight:'bold'}}>{r.paymentModule.toUpperCase()}</td>
-                          <td style={{padding:'8px',border:'1px solid #90caf9'}}>{r.paymentPoint}</td>
+                          <td style={{padding:'8px',border:'1px solid #90caf9'}}>{payPointAccounts[r.paymentPoint]}</td>
                           <td style={{padding:'8px',border:'1px solid #90caf9'}}>₦{Number(r.paymentAmount).toLocaleString()}</td>
                           <td style={{padding:'8px',border:'1px solid #90caf9'}}>{r.paymentReceipt}</td>
                           <td style={{padding:'8px',border:'1px solid #90caf9'}}>{new Date(r.paymentDate).toLocaleDateString()}</td>
