@@ -2091,7 +2091,7 @@ const Sales = ()=>{
                                         {isApprover && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {data.paymentReceipt}</div>}
                                         {isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
                                             data?.voidReceipt && 
-                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}"" already used on {data?.voidReceipt.voidReceiptDate}. <a>Click to View Receipt Report</a></div>
+                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}" already used on {data?.voidReceipt.voidReceiptDate}. <a>Click to View Receipt Report</a></div>
                                         }</div>}
                                     </div>
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
@@ -2980,13 +2980,14 @@ const Sales = ()=>{
                                         let voidReceiptDetails = {}
                                         let voidReceipts = []
                                         recoveryFields.forEach((field)=>{
-                                            if (paymentReceipts.find((payrec)=>{
+                                            let usedReceipt = paymentReceipts.find((payrec)=>{
                                                 return (
                                                     payrec.paymentReceipt === Number(field.recoveryReceipt)
                                                     && payrec.paymentPoint === field.recoveryPoint
                                                 )
-                                            })){
-                                                voidReceipts.push(field.recoveryPoint)
+                                            })
+                                            if (usedReceipt){
+                                                voidReceipts.push(usedReceipt)
                                             }
                                         })
 
@@ -3037,7 +3038,6 @@ const Sales = ()=>{
                                                 // return
                                             }
                                         }
-                                        
                                         runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
                                     }else{
                                         setActionMessage('')
