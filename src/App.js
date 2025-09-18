@@ -772,7 +772,7 @@ function App() {
     const recoveryReceipts = []
     const accommodationReceipts = []
     const posOrderReceipts = []
-    const dateBoundary = new Date('2025-08-01').toISOString().slice(0,10)
+    const dateBoundary = new Date('2025-07-15').toISOString().slice(0,10)
 
     let paymentReceipts = []
     if (sales){
@@ -831,7 +831,7 @@ function App() {
                   paymentPoint: payPoint,
                   paymentAmount: amount,
                   paymentReceipt: Number(receiptNo),
-                  paymentFor: `For ${order.orderNumber} Order in ${location}`,
+                  paymentFor: `(${location})-${order.orderNumber} Order in ${location}`,
                   paymentDate: dateVar,
                   paymentHandler: order.handlerId,
                   paymentModuleRef: order.createdAt
