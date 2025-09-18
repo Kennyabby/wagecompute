@@ -1,4 +1,5 @@
 import './Sales.css'
+import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal';
 import { useState, useEffect, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
@@ -62,6 +63,7 @@ const Sales = ()=>{
     const [showReport, setShowReport] = useState(false)
     const [showDebtReport, setShowDebtReport] = useState(false)
     const [showReceipt, setShowReceipt] = useState(false)
+    const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const [reportSales, setReportSales] = useState(null)
     const [isMultiple, setIsMultiple] = useState(false)
     const [saleEmployee, setSaleEmployee] = useState('')
@@ -1679,7 +1681,9 @@ const Sales = ()=>{
     }
     return (
         <>
-            <div className='sales'>    
+            <div className='sales'>   
+                {/* Receipts Modal Trigger State  */}
+                <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />    
                 {showApprovalBox && <ApprovalBox
                     onClose={()=>{
                         setShowApprovalBox(false)
@@ -2067,7 +2071,7 @@ const Sales = ()=>{
                         }
                     }).map((recovery, index)=>{
                         if (recovery.isApproval){
-                            const {createdAt, postingDate, message, handlerId, approved} = recovery
+                            const {createdAt, postingDate, message, handlerId, approved, data} = recovery
                             var textColor = 'red'
                             if (approved){
                                 textColor ='green'
@@ -2084,6 +2088,11 @@ const Sales = ()=>{
                                         <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
                                         {message && <div>Message: <b>{message}</b></div>}
                                         <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                        {isApprover && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {data.paymentReceipt}</div>}
+                                        {isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
+                                            data?.voidReceipt && 
+                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}"" already used on {data?.voidReceipt.voidReceiptDate}. <a>Click to View Receipt Report</a></div>
+                                        }</div>}
                                     </div>
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'
@@ -2961,7 +2970,14 @@ const Sales = ()=>{
                                         }
                                     })
                                     if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo){
+                                        const recoveryData = {
+                                            recoveryFields,
+                                            recoveryEmployeeId,
+                                            recoveryMonth
+                                        }
                                         
+                                        let foundVoidReceipt = false
+                                        let voidReceiptDetails = {}
                                         let voidReceipts = []
                                         recoveryFields.forEach((field)=>{
                                             if (paymentReceipts.find((payrec)=>{
@@ -2975,10 +2991,22 @@ const Sales = ()=>{
                                         })
 
                                         if (voidReceipts.length){
-                                            setAlertState('error')
-                                            setAlert(`Receipt Number Already Used For ${voidReceipts.join(', ')} Payment Point(s)`);
-                                            setAlertTimeout(5000)
-                                            return
+                                            foundVoidReceipt = true
+                                            voidReceiptDetails = {
+                                                voidReceipt: voidReceipts[0]?.paymentReceipt,
+                                                voidReceiptDate: voidReceipts[0]?.paymentDate,
+                                                voidReceiptPoint: voidReceipts[0]?.paymentPoint,
+                                                voidReceiptAmount: voidReceipts[0]?.paymentAmount,
+                                                voidReceiptModule: voidReceipts[0]?.paymentModule,
+                                                voidReceiptHandler: voidReceipts[0]?.paymentHandler
+                                            }
+                                            recoveryData.voidReceipt = voidReceiptDetails
+                                            if (companyRecord?.status === 'admin'){
+                                                setAlertState('error')
+                                                setAlert(`Receipt Number Already Used For ${voidReceipts.join(', ')} Payment Point(s)`);
+                                                setAlertTimeout(5000)
+                                                return
+                                            }
                                         }else{
                                             let voidReceipts1 = []
                                             recoveryFields.forEach((field)=>{
@@ -2993,17 +3021,23 @@ const Sales = ()=>{
                                                 }
                                             })
                                             if (voidReceipts1.length){
-                                                setAlertState('error')
-                                                setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
-                                                setAlertTimeout(5000)
-                                                return
+                                                foundVoidReceipt = true
+                                                voidReceiptDetails = {
+                                                    voidReceipt: voidReceipts1[0]?.paymentReceipt,
+                                                    voidReceiptDate: voidReceipts1[0]?.paymentDate,
+                                                    voidReceiptPoint: voidReceipts1[0]?.paymentPoint,
+                                                    voidReceiptAmount: voidReceipts1[0]?.paymentAmount,
+                                                    voidReceiptModule: voidReceipts1[0]?.paymentModule,
+                                                    voidReceiptHandler: voidReceipts1[0]?.paymentHandler
+                                                }
+                                                recoveryData.voidReceipt = voidReceiptDetails
+                                                // setAlertState('error')
+                                                // setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
+                                                // setAlertTimeout(5000)
+                                                // return
                                             }
                                         }
-                                        const recoveryData = {
-                                            recoveryFields,
-                                            recoveryEmployeeId,
-                                            recoveryMonth
-                                        }
+                                        
                                         runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
                                     }else{
                                         setActionMessage('')
