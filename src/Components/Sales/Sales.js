@@ -2088,10 +2088,9 @@ const Sales = ()=>{
                                         <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
                                         {message && <div>Message: <b>{message}</b></div>}
                                         <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
-                                        {isApprover && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {data.paymentReceipt}</div>}
                                         {isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
                                             data?.voidReceipt && 
-                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}" already used on {data?.voidReceipt.voidReceiptDate}. <a>Click to View Receipt Report</a></div>
+                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}" already used on {data?.voidReceipt.voidReceiptDate} in {data?.voidReceipt.voidReceiptPoint.toUpperCase()}. <a>Click to View Receipt Report</a></div>
                                         }</div>}
                                     </div>
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
@@ -2979,6 +2978,7 @@ const Sales = ()=>{
                                         let foundVoidReceipt = false
                                         let voidReceiptDetails = {}
                                         let voidReceipts = []
+                                        const recoveryPoints = []
                                         recoveryFields.forEach((field)=>{
                                             let usedReceipt = paymentReceipts.find((payrec)=>{
                                                 return (
@@ -2988,6 +2988,7 @@ const Sales = ()=>{
                                             })
                                             if (usedReceipt){
                                                 voidReceipts.push(usedReceipt)
+                                                recoveryPoints.push(usedReceipt.paymentPoint)
                                             }
                                         })
 
@@ -3004,7 +3005,7 @@ const Sales = ()=>{
                                             recoveryData.voidReceipt = voidReceiptDetails
                                             if (companyRecord?.status === 'admin'){
                                                 setAlertState('error')
-                                                setAlert(`Receipt Number Already Used For ${voidReceipts.join(', ')} Payment Point(s)`);
+                                                setAlert(`Receipt Number Already Used For ${recoveryPoints.join(', ')} Payment Point(s)`);
                                                 setAlertTimeout(5000)
                                                 return
                                             }
