@@ -458,7 +458,7 @@ const Expenses = ()=>{
                                 {(companyRecord.status==='admin') && <div 
                                     className='edit'
                                     name='delete'         
-                                    style={{color:'red'}}                           
+                                    style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
                                     onClick={()=>{                                        
                                         setAlertState('info')
                                         setAlert('You are about to delete the selected Expense Record. Please Delete again if you are sure!')
