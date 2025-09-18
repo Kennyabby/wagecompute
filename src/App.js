@@ -831,7 +831,7 @@ function App() {
                   paymentPoint: payPoint,
                   paymentAmount: amount,
                   paymentReceipt: Number(receiptNo),
-                  paymentFor: `(${location})-${order.orderNumber} Order in ${location}`,
+                  paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
                   paymentDate: dateVar,
                   paymentHandler: order.handlerId,
                   paymentModuleRef: order.createdAt
