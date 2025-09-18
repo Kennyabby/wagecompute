@@ -1387,7 +1387,6 @@ const Accommodation = ()=>{
                                                 )
                                             })
                                             if (usedReceipt){
-                                                console.log(usedReceipt)
                                                 setAlertState('error')
                                                 setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
                                                 setAlertTimeout(5000)
@@ -1400,7 +1399,6 @@ const Accommodation = ()=>{
                                                     )
                                                 })
                                                 if(voidReceipts.length){
-                                                    console.log(voidReceipts)
                                                     setAlertState('error')
                                                     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
                                                     setAlertTimeout(5000)

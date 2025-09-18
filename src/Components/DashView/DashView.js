@@ -980,6 +980,8 @@ const DashView = () =>{
     return(
         <>
             <div className='dashview'>
+                {/* Receipts Modal Trigger State */}
+                <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
                 {/* Filters */}
                 <div className='dash-filters'>
                     <div className='filter-group'>
@@ -1043,7 +1045,14 @@ const DashView = () =>{
                 
                 <div className='alert-section'> 
                         {/* Access Payment Receipts Alert */}
-                        <div className='alert-panel payment-receipts-alert' style={{marginBottom: '24px', background: '#e3f2fd', border: '2px solid #1976d2', borderRadius: '10px', cursor: 'pointer', padding: '16px', boxSizing: 'border-box', width: '100%', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'stretch'}} onClick={()=>setShowReceiptsModal(true)}>
+                        <div className='alert-panel payment-receipts-alert' style={{marginBottom: '24px', background: '#e3f2fd', border: '2px solid #1976d2', borderRadius: '10px', cursor: 'pointer', padding: '16px', boxSizing: 'border-box', width: '100%', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'stretch'}} onClick={()=>{
+                            window.scrollTo({
+                                top: 0,
+                                left: 0,
+                                behavior: "smooth"
+                            });
+                            setShowReceiptsModal(true)
+                        }}>
                             <h3 style={{display:'flex',alignItems:'center',flexWrap:'wrap',fontSize:'1.15em',marginBottom:'12px'}}><FaInfoCircle style={{color:'#1976d2',marginRight:8}}/> Access Payment Receipts</h3>
                             <div style={{display:'flex',flexWrap:'wrap',gap:'16px',justifyContent:'space-between',marginTop:'4px',marginBottom:'8px'}}>
                                 <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
@@ -1058,8 +1067,7 @@ const DashView = () =>{
                             </div>
                             <div style={{fontSize:'0.95em',color:'#555',marginTop:'4px',textAlign:'center'}}>Click to view, filter, and manage all payment receipts</div>
                         </div>
-                        {/* Receipts Modal Trigger State */}
-                            <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
+                        
                     {/* Low Stock Alerts */}
                     <div className='alert-panel'>
                         <h3><FaExclamationTriangle className='icon' /> Stock Alerts</h3>
