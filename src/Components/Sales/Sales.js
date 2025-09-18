@@ -1226,8 +1226,8 @@ const Sales = ()=>{
 
     const deleteSales = async (sale)=>{
         const today = new Date()
-        const postingDate = new Date(sale.postingDate)
-        if (postingDate < today.setDate(today.getDate()-1) || postingDate > today){
+        let postDate = new Date(sale.postingDate).toISOString().slice(0, 10)
+        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)){
             setAlertState('error')
             setAlert('Cannot delete sales after more than 1 day')
             setAlertTimeout(3000)
@@ -1870,7 +1870,7 @@ const Sales = ()=>{
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'
                                         name='delete'         
-                                        style={{color:'red'}}                           
+                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                          
                                         onClick={async ()=>{                                        
                                             setAlertState('info')
                                             setAlert('Deleting Approval Data...')
@@ -1950,7 +1950,7 @@ const Sales = ()=>{
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'
                                         name='delete'         
-                                        style={{color:'red'}}                           
+                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
                                         onClick={()=>{                                        
                                             setAlertState('info')
                                             setAlert('You are about to delete the selected Sales Record. Please Delete again if you are sure!')
@@ -1996,7 +1996,7 @@ const Sales = ()=>{
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'
                                         name='delete'         
-                                        style={{color:'red'}}                           
+                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}
                                         onClick={async ()=>{                                        
                                             setAlertState('info')
                                             setAlert('Deleting Approval Data...')
@@ -2043,7 +2043,7 @@ const Sales = ()=>{
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'
                                         name='delete'         
-                                        style={{color:'red'}}                           
+                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}
                                         onClick={()=>{                                        
                                             setAlertState('info')
                                             setAlert('You are about to delete the selected Rental Record. Please Delete again if you are sure!')
@@ -2088,7 +2088,7 @@ const Sales = ()=>{
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'
                                         name='delete'         
-                                        style={{color:'red'}}                           
+                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
                                         onClick={async ()=>{                                        
                                             setAlertState('info')
                                             setAlert('Deleting Recovery Approval Data...')
