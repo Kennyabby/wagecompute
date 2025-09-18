@@ -1399,9 +1399,19 @@ const Accommodation = ()=>{
                                                 )
                                             })
                                             if (usedReceipt){
-                                                setAlertState('error')
-                                                setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
-                                                setAlertTimeout(5000)
+                                                foundVoidReceipt = true
+                                                voidReceiptDetails = {
+                                                    voidReceipt: usedReceipt?.paymentReceipt,
+                                                    voidReceiptDate: usedReceipt?.paymentDate,
+                                                    voidReceiptPoint: usedReceipt?.paymentPoint,
+                                                    voidReceiptAmount: usedReceipt?.paymentAmount,
+                                                    voidReceiptModule: usedReceipt?.paymentModule,
+                                                    voidReceiptHandler: usedReceipt?.paymentHandler
+                                                }
+                                                paymentFields.voidReceipt = voidReceiptDetails
+                                                // setAlertState('error')
+                                                // setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
+                                                // setAlertTimeout(5000)
                                                 return
                                             }else {
                                                 let voidReceipts = paymentReceipts.filter((payrec)=>{
@@ -1440,7 +1450,9 @@ const Accommodation = ()=>{
                                                         accommodationAmount: selectedAccommodation.accommodationAmount,
                                                         createdAt: selectedAccommodation.createdAt
                                                     }
-                                                    accPaymentFields.voidReceipt = voidReceiptDetails
+                                                    if (foundVoidReceipt){
+                                                        accPaymentFields.voidReceipt = voidReceiptDetails
+                                                    }
                                                     runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, ()=>{postPayment(accPaymentFields)}, selectedAccommodation.createdAt)
                                                 })
                                             }
