@@ -4,6 +4,7 @@ import {Routes, Route, useNavigate } from 'react-router-dom';
 import ContextProvider from './Resources/ContextProvider';
 import PauseView from './Components/PauseView/PauseView';
 import LoadingPage from './Components/LoadingPage/LoadingPage';
+import LandingPage from './Components/LandingPage/LandingPage';
 import Login from './Components/Login/Login';
 import Profile from './Components/Profile/Profile';
 import Dashboard from './Components/Dashboard/Dashboard';
