@@ -815,6 +815,8 @@ const Accommodation = ()=>{
                                         if (approval){
                                             setCurApproval(approval)
                                             setAccommodationFields({...accommodationFields, ...approval.data})
+                                        }else{
+                                            setCurApproval(null)
                                         }
                                     }}
                                 >
@@ -840,12 +842,16 @@ const Accommodation = ()=>{
                                             return employee.i_d === employeeId
                                         })[0]?.['firstName']:''
                                     }</b></div>
-                                    {approval && <div className='deptdesc'>{approval.data.paymentReceipt}</div>}
+                                    {approval && isApprover && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {approval.data.paymentReceipt}</div>}
+                                    {approval && isApprover && <div className='deptdesc' style={{fontSize:'13px', fontWeight:'bold'}}>{
+                                        approval.data?.voidReceipt && 
+                                        <div style={{color:'red'}}>Void Receipt Reason: Receipt "{approval.data?.voidReceipt.voidReceipt}"" already used on {approval.data?.voidReceipt.voidReceiptDate}. <a>Click to View Receipt Report</a></div>
+                                    }</div>}
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
                                     className='edit'
+                                    style={{color:'red', background: 'white', borderRadius: '7px', padding: '5px 10px', border:'solid red 1.3px'}}
                                     name='delete'         
-                                    style={{color:'red'}}                           
                                     onClick={()=>{                                        
                                         setAlertState('info')
                                         setAlert('You are about to delete the selected Accommodation Record. Please Delete again if you are sure!')
