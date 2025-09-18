@@ -82,7 +82,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
 
   return (
     <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:5000,background:'rgba(0,0,0,0.25)'}}>
-  <div className="modal-content" style={{background:'#fff',borderRadius:12,maxWidth:1200,width:'98%',margin:'40px auto',padding:32,boxShadow:'0 4px 32px rgba(0,0,0,0.12)',position:'relative'}}>
+        <div className="modal-content" style={{position: 'relative', background:'#fff',borderRadius:12,maxWidth:1200,width:'98%',margin:'40px auto',padding:32,boxShadow:'0 4px 32px rgba(0,0,0,0.12)',position:'relative'}}>
         {/* PDF Download Section */}
         <div style={{marginBottom:'18px',display:'flex',justifyContent:'flex-end'}}>
           <button
