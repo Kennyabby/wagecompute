@@ -2090,7 +2090,7 @@ const Sales = ()=>{
                                         <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
                                         {isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
                                             data?.voidReceipt && 
-                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}" already used on {data?.voidReceipt.voidReceiptDate} in {data?.voidReceipt.voidReceiptPoint.toUpperCase()}. <a>Click to View Receipt Report</a></div>
+                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}" already used on {data?.voidReceipt.voidReceiptDate} in {data?.voidReceipt.voidReceiptPoint.toUpperCase()}. <a>Click to Find Receipt Report</a></div>
                                         }</div>}
                                     </div>
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
