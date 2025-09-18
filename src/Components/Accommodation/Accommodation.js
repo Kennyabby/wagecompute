@@ -104,7 +104,7 @@ const Accommodation = ()=>{
         'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
         'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063', 
         'cash':'CASH', 'Employee':'EMPLOYEE'
-    }
+    } 
 
     const [accommodationFields, setAccommodationFields] = useState({...defaultAccommodationFields})
     const [customerFields, setCustomerFields] = useState({
