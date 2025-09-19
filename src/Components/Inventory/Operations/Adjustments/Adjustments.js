@@ -319,6 +319,7 @@ const Adjustments = ({
                                             type='number'   
                                             className='countedInp'
                                             name='counted'
+                                            placeholder={product.name}
                                             value={adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.counted}
                                             onChange={(e)=>{handleInputChange({e, availableQty, productId: product.i_d})}} 
                                         />
