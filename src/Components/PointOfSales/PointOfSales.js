@@ -1795,17 +1795,17 @@ const PaymentModal = ({
                 //     )
                 // })
             ){
-                voidReceipts.push(payPoint)                
+                voidReceipts.push(payPoint.toUpperCase())                
             }
         })
-        return {available: voidReceipts.length === 0, voidReceipts}
+        return {isReceiptsAvailable: (voidReceipts.length === 0), voidReceipts}
     }
     const validatePayment = async ()=>{
         var payPointsWithNoReceipts = []        
         if (!paymentDetails['cash'].amount || (Number(paymentDetails['cash'].amount || 0) < Number(currentOrder.totalSales || 0))){
             Object.keys(paymentDetails).forEach((payPoint)=>{
                 if (payPoint !== 'cash'){
-                    if (paymentDetails[payPoint].amount && !paymentDetails[payPoint]['receipt']){
+                    if (Number(paymentDetails[payPoint].amount) > 0 && !paymentDetails[payPoint]['receipt']){
                         payPointsWithNoReceipts.push(payPoint.toUpperCase())
                     }
                 }
@@ -1826,7 +1826,7 @@ const PaymentModal = ({
                 }
             }else{
                 setAlertState('error');
-                setAlert(`Receipt Number Already Used for an Earlier Period for the Following Pay Points: ${voidReceipts.join(', ')}!`);
+                setAlert(`Receipt Number Already Used for the Following Pay Points: ${voidReceipts.join(', ')}!`);
                 setAlertTimeout(5000)
             }
         }else{
@@ -1887,14 +1887,14 @@ const PaymentModal = ({
                 const changeAmount = amountNum - cashAmount;
                 setPaymentDetails((paymentDetails)=>{
                     return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: changeAmount}
+                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: changeAmount }
                     }
                 })
             }
         }else{
             setPaymentDetails((paymentDetails)=>{
                 return {
-                    ...paymentDetails, [method]: {...paymentDetails[method], [name]: value}
+                    ...paymentDetails, [method]: {...paymentDetails[method], [name]: value,  ...(Number(value)=== 0 && {receipt:''})}
                 }
             })
             if (name==='receipt'){
@@ -1956,7 +1956,7 @@ const PaymentModal = ({
                         <label>Change: ₦{Number(paymentDetails[method].change).toFixed(2)}</label>
                     </div>
                 )}
-                {method !== 'cash' && paymentDetails[method].amount && (
+                {method !== 'cash' && Number(paymentDetails[method].amount) > 0 && (
                     <div className="form-group">
                         <label>Receipt No:</label>
                         <input
@@ -1968,7 +1968,7 @@ const PaymentModal = ({
                         />
                     </div>
                 )}
-                {paymentDetails[method].amount && (
+                {Number(paymentDetails[method].amount) > 0 && (
                     <div className="form-group">
                         <label>Payment Post:</label>
                         <select
