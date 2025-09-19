@@ -914,7 +914,7 @@ const AddProduct = ({
         const element = targetRef.current;
         const options = {
             margin:       0.1,
-            filename:     `PRODUCT PURCHASE DETAILS ${getDate(curPurchase.purchaseDate || curPurchase.postingDate)}.pdf`,
+            filename:     `${curApproval? '(APPROVALS) ': ''}PRODUCT PURCHASE DETAILS ${getDate(curPurchase?.purchaseDate || curPurchase?.postingDate || curApproval.postingDate)}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
