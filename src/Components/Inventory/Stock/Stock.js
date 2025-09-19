@@ -104,20 +104,20 @@ const Stock = ({
         
         // Purchases
         { id: 'purchasedQty', name: 'Purchased Qty', category: 'purchases', visible: true, required: true },
-        { id: 'purchaseCost', name: 'Purchase Cost', category: 'purchases', visible: true, required: true },
+        { id: 'purchaseCost', name: 'Purchase Cost', category: 'purchases', visible: true, required: false },
         
         // Transfers
-        { id: 'transferInQty', name: 'Transfer In', category: 'transfers', visible: true, required: true },
-        { id: 'transferOutQty', name: 'Transfer Out', category: 'transfers', visible: true, required: true },
+        { id: 'transferInQty', name: 'Transfer In', category: 'transfers', visible: true, required: false },
+        { id: 'transferOutQty', name: 'Transfer Out', category: 'transfers', visible: true, required: false },
         
         // Sales
         { id: 'soldQty', name: 'Sold Qty', category: 'sales', visible: true, required: true },
-        { id: 'salesValue', name: 'Sales Value', category: 'sales', visible: true, required: true },
+        { id: 'salesValue', name: 'Sales Value', category: 'sales', visible: true, required: false },
         { id: 'costOfGoodsSold', name: 'COGS', category: 'sales', visible: true, required: false },
         
         // Adjustments
-        { id: 'netAdjustmentQty', name: 'Net Adjustment Qty', category: 'adjustments', visible: false, required: true },
-        { id: 'netAdjustmentCost', name: 'Net Adjustment Cost', category: 'adjustments', visible: false, required: true },
+        { id: 'netAdjustmentQty', name: 'Net Adjustment Qty', category: 'adjustments', visible: false, required: false },
+        { id: 'netAdjustmentCost', name: 'Net Adjustment Cost', category: 'adjustments', visible: false, required: false },
         { id: 'positiveAdjustmentQty', name: 'Positive Adjustment Qty', category: 'adjustments', visible: false, required: false },
         { id: 'positiveAdjustmentCost', name: 'Positive Adjustment Cost', category: 'adjustments', visible: false, required: false },
         { id: 'negativeAdjustmentQty', name: 'Negative Adjustment Qty', category: 'adjustments', visible: false, required: false },
@@ -126,8 +126,8 @@ const Stock = ({
         // Closing Stock
         { id: 'closingQty', name: 'Closing Stock', category: 'closing', visible: true, required: true },
         { id: 'averageCost', name: 'Average Cost', category: 'closing', visible: true, required: false },
-        { id: 'closingCost', name: 'Closing Cost', category: 'closing', visible: true, required: false},
-        { id: 'closingSalesValue', name: 'Closing Value', category: 'closing', visible: true, required: true },
+        { id: 'closingCost', name: 'Closing Cost', category: 'closing', visible: true, required: true},
+        { id: 'closingSalesValue', name: 'Closing Value', category: 'closing', visible: true, required: false },
         
         // Transfer related (hidden by default)
         { id: 'quantityToTransfer', name: 'Quantity to Transfer', category: 'transfer', visible: false, required: false },
@@ -965,7 +965,7 @@ const Stock = ({
                                                     className='countedInp stockCountedInp' 
                                                     type='number' 
                                                     name='quantityToTransfer' 
-                                                    placeholder='enter'
+                                                    placeholder={product.name}
                                                     value={transferEntries.find(entry => product.i_d === entry.productId)?.quantityToTransfer || ''} 
                                                     onChange={(e) => handleInputChange({ 
                                                         e, 
