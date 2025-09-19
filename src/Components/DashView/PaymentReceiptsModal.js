@@ -107,7 +107,15 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
               ];
               const companyInfo = { name: 'Payment Receipts', address: '', phone: '', email: '' };
               const dateRange = { startDate: filter.from, endDate: filter.to };
-              generateExcel(filteredReceipts, columns, companyInfo, dateRange, 'Plantain Planet Payment Receipts Report', filter);
+              const excelFilteredReceipts = filteredReceipts.map((receipt)=>{
+                const employee = employees?.find(e => String(e.i_d) === String(receipt.paymentHandler))
+                return {
+                    ...receipt,
+                    paymentPoint: payPointAccounts[receipt.paymentPoint] || receipt.paymentPoint,
+                    paymentHandler: (`${employee.i_d} (${employee?.firstName||''} ${employee?.lastName||''}) ${employee?.name||employee?.fullName||''}`).trim() || receipt.paymentHandler,
+                }
+             })
+              generateExcel(excelFilteredReceipts, columns, companyInfo, dateRange, 'Plantain Planet Payment Receipts Report', filter);
             }}
           >
             Download Excel
