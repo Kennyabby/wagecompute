@@ -45,6 +45,7 @@ const Products = ({
         salesVat:'',
         salesUom:'pcs',
         purchaseUom:'pcs',
+        restockLevel: '',
         buyTo: ''
     })
     const productExportFormat = {
@@ -57,6 +58,7 @@ const Products = ({
         salesVat:'',
         salesUom:'pcs',
         purchaseUom:'pcs',
+        restockLevel: '',
         type:'goods'
     }
     const [headersMap, setHeadersMap] = useState({
@@ -68,6 +70,7 @@ const Products = ({
         salesVat: 'salesVat',
         salesUom:'salesUom',
         purchaseUom:'purchaseUom',
+        restockLevel: 'restockLevel',
         type:'type',
     })
 
@@ -692,6 +695,17 @@ const Products = ({
                                     )
                                 })}
                             </select>
+                        </div>}
+                        {defaultProductType === 'goods' && <div className='otherInpCov'>
+                            <label>Restock Level</label>
+                            <input 
+                                className='otherInp'
+                                type='number'
+                                name='restockLevel'
+                                placeholder='Restock Level'
+                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                value={productFields.restockLevel}
+                            />
                         </div>}
                         {defaultProductType === 'goods' && <div className='otherInpCov'>
                             <label>Buy To</label>
