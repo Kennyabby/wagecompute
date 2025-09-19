@@ -975,7 +975,7 @@ const AddProduct = ({
             <div className='addproduct'>
                 <div className='add-products'>
                     <div className='add-products-title'>
-                        <label>Purchased Details</label>
+                        <label>Product Purchase Details</label>
                         {companyRecord?.status==='admin' && isProductView && <div
                             className='slprwh-print'
                             onClick={()=>{
