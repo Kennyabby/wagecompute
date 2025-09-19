@@ -2,6 +2,7 @@ import React, { useState, useMemo, useContext } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import { FaTimes, FaFilter, FaReceipt } from 'react-icons/fa';
 import { exportReceiptsTableToPDF } from './pdfUtils';
+import { generateExcel } from '../../utils/exportUtils';
 
 const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
   const { employees } = useContext(ContextProvider);
@@ -84,12 +85,32 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:5000,background:'rgba(0,0,0,0.25)'}}>
         <div className="modal-content" style={{position: 'relative', background:'#fff',borderRadius:12,maxWidth:1200,width:'98%',margin:'40px auto',padding:32,boxShadow:'0 4px 32px rgba(0,0,0,0.12)',position:'relative'}}>
         {/* PDF Download Section */}
-        <div style={{marginTop: '25px',marginBottom:'2px',display:'flex',justifyContent:'flex-end'}}>
+        <div style={{marginTop: '25px',marginBottom:'2px',display:'flex',justifyContent:'flex-end',gap:'12px'}}>
           <button
             style={{padding:'8px 20px',borderRadius:'6px',background:'#1976d2',color:'#fff',fontWeight:'bold',border:'none',boxShadow:'0 2px 8px rgba(25,118,210,0.08)',cursor:'pointer'}}
             onClick={()=>exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount: filteredReceipts.length, employees })}
           >
             Download PDF
+          </button>
+          <button
+            style={{padding:'8px 20px',borderRadius:'6px',background:'#388e3c',color:'#fff',fontWeight:'bold',border:'none',boxShadow:'0 2px 8px rgba(56,142,60,0.08)',cursor:'pointer'}}
+            onClick={()=>{
+              const columns = [
+                { name: 'Module', reference: 'paymentModule' },
+                { name: 'Paypoint', reference: 'paymentPoint' },
+                { name: 'Amount', reference: 'paymentAmount', numeric: true },
+                { name: 'Receipt #', reference: 'paymentReceipt' },
+                { name: 'Date', reference: 'paymentDate' },
+                { name: 'Handler', reference: 'paymentHandler' },
+                { name: 'For', reference: 'paymentFor' },
+                { name: 'Ref', reference: 'paymentModuleRef' }
+              ];
+              const companyInfo = { name: 'Payment Receipts', address: '', phone: '', email: '' };
+              const dateRange = { startDate: filter.from, endDate: filter.to };
+              generateExcel(filteredReceipts, columns, companyInfo, dateRange, 'Payment Receipts Report', filter);
+            }}
+          >
+            Download Excel
           </button>
         </div>
         <button onClick={onClose} style={{position:'absolute',top:5,right:5,fontSize:22,background:'none',border:'none',cursor:'pointer'}}><FaTimes /></button>
