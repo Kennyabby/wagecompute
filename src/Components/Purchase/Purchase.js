@@ -699,12 +699,12 @@ const Purchase = ()=>{
                                         style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
                                         onClick={()=>{                                        
                                             setAlertState('info')
-                                            setAlert('You are about to delete the selected Purchase Record. Please Delete again if you are sure!')
+                                            setAlert('You are about to Reverse the selected Purchase Record. Please click again if you are sure!')
                                             setAlertTimeout(5000)                                                                                    
                                             deletePurchase(pur)
                                         }}
                                     >
-                                        Delete
+                                        Reverse
                                     </div>}
                                 </div>
                             )
