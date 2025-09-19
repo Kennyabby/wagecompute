@@ -1062,7 +1062,7 @@ const DashView = () =>{
                                             Accommodation<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='accommodation').length}</span>
                                     </div>
                                     <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
-                                            POS<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='POS Order').length}</span>
+                                            POS<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule.split(' ').includes('POS')).length}</span>
                                     </div>
                             </div>
                             {/* Duplicates by payPoint summary */}
