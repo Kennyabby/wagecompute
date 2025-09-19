@@ -21,7 +21,7 @@ const Purchase = ()=>{
         showApprovalBox, setShowApprovalBox,
         curApproval, setCurApproval,
         approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval,
-        setApprovalStatus, setApprovalMessage,               
+        setApprovalStatus, setApprovalMessage, getProductsStockReport              
     } = useContext(ContextProvider)
 
     const getEntriesController = useRef(null)
@@ -68,12 +68,20 @@ const Purchase = ()=>{
     },[storePath])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
-        getProducts(cmp_val)
+        if(!products.length){
+            getProducts(cmp_val)
+        }
         getApprovals(cmp_val)
+        if (products.length){
+            if (!products[0]?.stockSummary){
+                getProductsStockReport(cmp_val, products)
+            }
+        }
         const intervalId = setInterval(()=>{
-          if (cmp_val){
-            if (products){
-                getProductsWithStock(cmp_val, products)
+            if (cmp_val){
+                if (products.length){
+                    getProductsWithStock(cmp_val, products)
+                    getProductsStockReport(cmp_val, products)
             }
             getApprovals(cmp_val)
             getEmployees(cmp_val)
@@ -82,7 +90,7 @@ const Purchase = ()=>{
           }
         },45000)
         return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
+    },[window.localStorage.getItem('sessn-cmp'), products])
     useEffect(()=>{
         if (settings.length){  
             const uomSetFilt = settings.filter((setting)=>{
@@ -542,6 +550,7 @@ const Purchase = ()=>{
                     isProductView={isProductView}
                     setIsProductView={setIsProductView}
                     companyRecord={companyRecord}
+                    curApproval={curApproval}
                 />}
                 {showReport && <PurchaseReport
                     reportPurchases = {reportPurchase}
@@ -897,7 +906,7 @@ export default Purchase
 
 const AddProduct = ({
     products, category, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
-    handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord
+    handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord, curApproval
 })=>{    
     const targetRef = useRef(null)
     const { getDate } = useContext(ContextProvider)
@@ -978,6 +987,12 @@ const AddProduct = ({
                         <div className='add-products-content-title'>
                             <div>Product Name</div>
                             <div>Product ID</div>
+                            {companyRecord?.status === 'admin' && curApproval &&
+                                <>
+                                    <div style={{color: 'red'}}>Current Stock</div>
+                                    <div style={{color: 'red'}}>Requested Stock (units)</div>
+                                </>
+                            }
                             <div>Purchase Quantity</div>
                             <div>Purchase UOM</div>
                             <div>Purchase Amount</div>
@@ -988,10 +1003,17 @@ const AddProduct = ({
                             const numB = parseInt(b.productId.replace("PD", ""), 10);
                             return numA - numB;
                         }).map((entry, index)=>{
+                            let currentStock = (products.find((p)=>{return p.i_d === entry.productId}))?.stockSummary?.closingQty
                             return (
                                 <div key={index} className='add-products-content-entry'>
                                     <div>{entry.name}</div>
                                     <div>{entry.productId}</div>
+                                    {companyRecord.status === 'admin' && curApproval &&
+                                        <>
+                                            <div style={{color: 'red'}}>{currentStock}</div>
+                                            <div style={{color: 'red'}}>{entry.baseQuantity}</div>
+                                        </>
+                                    }
                                     <div>
                                         <input 
                                             type='number'

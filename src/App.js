@@ -1180,8 +1180,8 @@ function App() {
   const getProductsStockReport = async (company, products, dateRange = {}) => {
     try {
       // Set default date range if not provided (current month to date)
-      const startDate = new Date(dateRange.startDate) || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const endDate = new Date(dateRange.endDate) || new Date();
+      const startDate = dateRange.startDate ? new Date(dateRange.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const endDate = dateRange.endDate ? new Date(dateRange.endDate) : new Date();
       const location = dateRange.location || 'all';
       const transactionType = dateRange.transactionType || 'all';
       const productId = dateRange.productId || null;
@@ -1678,6 +1678,11 @@ function App() {
           stockSummary: totals
         };
       });
+      if (companyRecord?.status === 'admin' && !products[0]?.stockSummary){
+        setAlertState('info');
+        setAlert('inventory data ready!');
+        setAlertTimeout(3000);
+      }
       setProducts(enrichedProducts)
       return enrichedProducts;
     } catch (error) {
