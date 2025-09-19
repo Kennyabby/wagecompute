@@ -107,7 +107,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
               ];
               const companyInfo = { name: 'Payment Receipts', address: '', phone: '', email: '' };
               const dateRange = { startDate: filter.from, endDate: filter.to };
-              generateExcel(filteredReceipts, columns, companyInfo, dateRange, 'Payment Receipts Report', filter);
+              generateExcel(filteredReceipts, columns, companyInfo, dateRange, 'Plantain Planet Payment Receipts Report', filter);
             }}
           >
             Download Excel
