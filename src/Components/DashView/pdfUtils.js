@@ -78,6 +78,23 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
       y = marginTop;
     }
   });
+  // Add totals row
+  x = marginLeft;
+  doc.setFillColor(227, 242, 253);
+  doc.setTextColor(25, 118, 210);
+  doc.setFontSize(10);
+  doc.rect(x, y, colWidths[0]+colWidths[1], rowHeight, 'F');
+  doc.text('Total', x + 2, y + 7);
+  x += colWidths[0]+colWidths[1];
+  const totalAmount = filteredReceipts.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
+  doc.rect(x, y, colWidths[2], rowHeight, 'F');
+  doc.text(`₦${totalAmount.toLocaleString()}`, x + 2, y + 7);
+  x += colWidths[2];
+  // Fill rest of row
+  for(let i=3;i<colWidths.length;i++) {
+    doc.rect(x, y, colWidths[i], rowHeight, 'F');
+    x += colWidths[i];
+  }
 
   doc.save('payment_receipts_report.pdf');
 }
