@@ -15,13 +15,14 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
     'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063', 
     'cash':'CASH', 'Employee':'EMPLOYEE'
   }
+  const totalAmount = filteredReceipts.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
   // Title
   doc.setFontSize(16);
-  doc.text('Payment Receipts Report', marginLeft, marginTop);
+  doc.text('The Plantain Planet Payment Receipts Report', marginLeft, marginTop);
   doc.setFontSize(11);
   doc.text(`Filters:`, marginLeft, marginTop + 10);
   doc.text(`Date From: ${filter.from || 'Any'} | Date To: ${filter.to || 'Any'} | Paypoint: ${payPointAccounts?.[filter.paypoint] || 'Any'} | Module: ${filter.module || 'Any'} | Handler: ${filter.handler || 'Any'} | Receipt #: ${filter.receipt || 'Any'}`, marginLeft, marginTop + 16);
-  doc.text(`Total Results: ${resultCount}`, marginLeft, marginTop + 24);
+  doc.text(`Total Results: ${resultCount} | Total Amount: ${totalAmount.toLocaleString()}`, marginLeft, marginTop + 24);
 
   // Table header
   let x = marginLeft;
@@ -85,10 +86,12 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   doc.setFontSize(10);
   doc.rect(x, y, colWidths[0]+colWidths[1], rowHeight, 'F');
   doc.text('Total', x + 2, y + 7);
-  x += colWidths[0]+colWidths[1];
-  const totalAmount = filteredReceipts.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
+  x += colWidths[0]+colWidths[1];  
+  doc.setFillColor(227, 242, 253);
+  doc.setTextColor(25, 118, 210);
+  doc.setFontSize(10);
   doc.rect(x, y, colWidths[2], rowHeight, 'F');
-  doc.text(`₦${totalAmount.toLocaleString()}`, x + 2, y + 7);
+  doc.text(`${totalAmount.toLocaleString()}`, x + 2, y + 7);
   x += colWidths[2];
   // Fill rest of row
   for(let i=3;i<colWidths.length;i++) {
