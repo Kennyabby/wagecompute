@@ -772,7 +772,7 @@ function App() {
     const recoveryReceipts = []
     const accommodationReceipts = []
     const posOrderReceipts = []
-    const dateBoundary = new Date('2025-07-15').toISOString().slice(0,10)
+    const dateBoundary = new Date('2025-07-01').toISOString().slice(0,10)
 
     let paymentReceipts = []
     if (sales){
@@ -827,7 +827,7 @@ function App() {
                 const receiptNo= order.receipts[payPoint]
                 const amount = Number(order[payPoint])
                 posOrderReceipts.push({
-                  paymentModule: 'POS Order',
+                  paymentModule: `POS Order-${location}`,
                   paymentPoint: payPoint,
                   paymentAmount: amount,
                   paymentReceipt: Number(receiptNo),
