@@ -6,9 +6,9 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   const marginLeft = 7;
   const marginTop = 18;
   const rowHeight = 10;
-  const colWidths = [33, 30, 30, 30, 30, 50, 48, 35]; // px widths for each column
+  const colWidths = [38, 30, 30, 25, 25, 50, 48, 38]; // px widths for each column
   const columns = [
-    'Module', 'Paypoint', 'Amount', 'Receipt #', 'Date', 'Handler', 'For', 'Ref'
+    'Module', 'Paypoint', 'Amount', 'Receipt #', 'Date', 'Handler', 'For', 'Approved By'
   ];
   const payPointAccounts = {
     'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
@@ -54,6 +54,15 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
       }
     }
     const handlerDisplay = empName ? `${r.paymentHandler} (${empName})` : r.paymentHandler;
+    
+    let approverName = '';
+    if (employees && r.paymentApprover) {
+      const emp = employees.find(e => String(e.i_d) === String(r.paymentApprover) || String(e.id) === String(r.paymentApprover));
+      if (emp) {
+        approverName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName||'')) : '');
+      }
+    }
+    const approverDisplay = approverName ? `${r.paymentApprover} (${approverName})` : r.paymentApprover;
     const row = [
       r.paymentModule.toUpperCase(),
       payPointAccounts[r.paymentPoint],
@@ -62,7 +71,8 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
       new Date(r.paymentDate).toLocaleDateString(),
       handlerDisplay,
       r.paymentFor,
-      r.paymentModuleRef
+      approverDisplay
+    //   r.paymentModuleRef
     ];
     row.forEach((cell, i) => {
       doc.rect(x, y, colWidths[i], rowHeight);

@@ -238,7 +238,7 @@ function App() {
 
   useEffect(()=>{
     obtainPaymentReceipts()
-  },[posOrders, sales, accommodations])
+  },[posOrders, sales, accommodations, allSessions])
 
   useEffect(()=>{
     if (pauseView){
@@ -624,7 +624,7 @@ function App() {
               if (type === 'delivery'){
                   setDeliverySessions(thisSessions)
               }
-              setAllSessions(sessionsResponse.record)
+              // setAllSessions(sessionsResponse.record)
           }
       }else{
           if (sessionsResponse.mess !== 'Request aborted'){
@@ -633,6 +633,54 @@ function App() {
           }
       }
   }
+
+  // Fetch POS and delivery sessions
+  const fetchAllSessions = async (company, setState) => {
+    if (!company) return;
+    try {            
+        const sessionsResponse = await getAllSessions(company)
+
+        if (Array.isArray(sessionsResponse)){
+            // Sort all sessions by start time (newest first)
+            const allSessions = sessionsResponse.sort((a, b) => new Date(b.start) - new Date(a.start));
+            
+            // Get and sort sales sessions (newest first)
+            const salesSessions = allSessions
+                .filter(s => s.type === 'sales')
+                .sort((a, b) => new Date(b.start) - new Date(a.start));
+            
+            // Get and sort delivery sessions (newest first)
+            const deliverySessions = allSessions
+                .filter(s => s.type === 'delivery')
+                .sort((a, b) => new Date(b.start) - new Date(a.start));
+            
+            // Get active sales sessions
+            const activeSessions = salesSessions.filter(s => s.active);
+            
+            // Get last active sessions by location (most recent per location)
+            const lastActiveByLocation = [];
+            const locationMap = new Map();
+            
+            salesSessions.forEach(session => {
+                if (session.wrh && !locationMap.has(session.wrh)) {
+                    locationMap.set(session.wrh, session);
+                    lastActiveByLocation.push(session);
+                }
+            });
+
+            // Get 5 most recent delivery sessions
+            const lastDeliverySessions = deliverySessions.slice(0, 5);
+            setAllSessions(allSessions)
+            setState({
+                activeSessions,
+                lastActiveSessions: lastActiveByLocation,
+                lastDeliverySessions
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching sessions:', error);
+    }
+  };
 
   const fetchTables = async (company) => {
       const tablesResponse = await fetchServer("POST", {
@@ -789,7 +837,8 @@ function App() {
                 paymentFor: `For ${sale.postingDate} Debt`,
                 paymentDate: recovery.recoveryDate,
                 paymentHandler: recovery.recoveryEmployeeId,
-                paymentModuleRef: sale.createdAt
+                paymentModuleRef: sale.createdAt,
+                paymentApprover: 'Default'
               })
             }
           }
@@ -809,14 +858,15 @@ function App() {
               paymentFor: `For Room ${acc.roomNo}`,
               paymentDate: acc.postingDate,
               paymentHandler: acc.employeeId,
-              paymentModuleRef: acc.createdAt
+              paymentModuleRef: acc.createdAt,
+              paymentApprover: 'Default'
             })
           }
         }
       })
     }
 
-    if (posOrders){
+    if (posOrders && allSessions){
       posOrders.forEach((order)=>{
         if (order.salesPosts){
           Object.keys(order.salesPosts).forEach((payPoint)=>{
@@ -826,6 +876,8 @@ function App() {
                 const location = order.salesPosts[payPoint]
                 const receiptNo= order.receipts[payPoint]
                 const amount = Number(order[payPoint])
+                const session = allSessions.find(session => (session.start === order.sessionId))
+                const sessionApprover = session?.endedby || 'Live'
                 posOrderReceipts.push({
                   paymentModule: `POS Order-${location}`,
                   paymentPoint: payPoint,
@@ -834,7 +886,8 @@ function App() {
                   paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
                   paymentDate: dateVar,
                   paymentHandler: order.handlerId,
-                  paymentModuleRef: order.createdAt
+                  paymentModuleRef: order.createdAt,
+                  paymentApprover: sessionApprover
                 })
               }
             }
@@ -896,6 +949,7 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setAllSessions(resp.record)
+      return resp.record
     }
   }
   const getPosOrders = async (company) => {
@@ -1872,7 +1926,7 @@ function App() {
           customers, setCustomers, getCustomers,
           attendance, setAttendance, getAttendance,
           allSessions, setAllSessions, getAllSessions,
-          sessions, setSessions, fetchSessions,
+          sessions, setSessions, fetchSessions, fetchAllSessions,
           salesSessions, setSalesSessions,
           deliverySessions, setDeliverySessions,
           getPosOrders,
