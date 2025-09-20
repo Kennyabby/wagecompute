@@ -26,7 +26,7 @@ const DashView = () =>{
     const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const {
         storePath,
-        fetchServer, server, company,
+        fetchServer, server, company, fetchAllSessions,
         products, getProducts, getProductsStockReport,
         sales, getSales, saleFrom, saleTo,
         purchase, getPurchase,
@@ -767,65 +767,17 @@ const DashView = () =>{
         return { debtTotal, debtRecovered }
     }
 
-    
-
-    // Fetch POS and delivery sessions
-    const fetchSessions = async () => {
-        if (!company) return;
-        try {            
-            const sessionsResponse = await fetchServer("POST", {
-                database: company,
-                collection: "POSSessions",
-                prop: {}
-            }, "getDocsDetails", server);
-
-            if (!sessionsResponse.err){
-                // Sort all sessions by start time (newest first)
-                const allSessions = sessionsResponse.record.sort((a, b) => new Date(b.start) - new Date(a.start));
-                
-                // Get and sort sales sessions (newest first)
-                const salesSessions = allSessions
-                    .filter(s => s.type === 'sales')
-                    .sort((a, b) => new Date(b.start) - new Date(a.start));
-                
-                // Get and sort delivery sessions (newest first)
-                const deliverySessions = allSessions
-                    .filter(s => s.type === 'delivery')
-                    .sort((a, b) => new Date(b.start) - new Date(a.start));
-                
-                // Get active sales sessions
-                const activeSessions = salesSessions.filter(s => s.active);
-                
-                // Get last active sessions by location (most recent per location)
-                const lastActiveByLocation = [];
-                const locationMap = new Map();
-                
-                salesSessions.forEach(session => {
-                    if (session.wrh && !locationMap.has(session.wrh)) {
-                        locationMap.set(session.wrh, session);
-                        lastActiveByLocation.push(session);
-                    }
-                });
-    
-                // Get 5 most recent delivery sessions
-                const lastDeliverySessions = deliverySessions.slice(0, 5);
-    
-                setPosSessions({
-                    activeSessions,
-                    lastActiveSessions: lastActiveByLocation,
-                    lastDeliverySessions
-                });
-            }
-        } catch (error) {
-            console.error('Error fetching sessions:', error);
-        }
-    };
-
     useEffect(() => {
         loadDashData();
-        fetchSessions();
+        fetchAllSessions(company, (prop)=>{
+            setPosSessions({...prop})
+        });
         // Refresh sessions every 5 minutes
-        const interval = setInterval(fetchSessions, 5 * 60 * 1000);
+        const interval = setInterval(()=>{
+            fetchAllSessions(company, (prop)=>{
+                setPosSessions({...prop})
+            });
+        }, 5 * 60 * 1000);
         return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fromDate, toDate, locationFilter, productFilter, employeeFilter, company, products, sales, accommodations, rentals])

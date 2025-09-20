@@ -103,16 +103,19 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                 { name: 'Date', reference: 'paymentDate' },
                 { name: 'Handler', reference: 'paymentHandler' },
                 { name: 'For', reference: 'paymentFor' },
-                { name: 'Ref', reference: 'paymentModuleRef' }
+                { name: 'Approved By', reference: 'paymentApprover' }
+                // { name: 'Ref', reference: 'paymentModuleRef' }
               ];
               const companyInfo = { name: 'Payment Receipts', address: '', phone: '', email: '' };
               const dateRange = { startDate: filter.from, endDate: filter.to };
               const excelFilteredReceipts = filteredReceipts.map((receipt)=>{
                 const employee = employees?.find(e => String(e.i_d) === String(receipt.paymentHandler))
+                const approver = employees?.find(e => String(e.i_d) === String(receipt.paymentApprover))
                 return {
                     ...receipt,
                     paymentPoint: payPointAccounts[receipt.paymentPoint] || receipt.paymentPoint,
                     paymentHandler: (`${employee.i_d} (${employee?.firstName||''} ${employee?.lastName||''}) ${employee?.name||employee?.fullName||''}`).trim() || receipt.paymentHandler,
+                    paymentApprover: approver ? ((`${approver.i_d} (${approver?.firstName||''} ${approver?.lastName||''}) ${approver?.name||approver?.fullName||''}`).trim()) : receipt.paymentApprover,
                 }
              })
               generateExcel(excelFilteredReceipts, columns, companyInfo, dateRange, 'Plantain Planet Payment Receipts Report', filter);
@@ -190,6 +193,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
             <div style={{display:'flex',flexWrap:'wrap',gap:'18px', margin:'5px auto'}}>
               {filteredReceipts.map((r,idx)=>{
                 const emp = employees?.find(e => String(e.i_d) === String(r.paymentHandler) || String(e.id) === String(r.paymentHandler));
+                const approver = employees?.find(e => String(e.i_d) === String(r.paymentApprover) || String(e.id) === String(r.paymentApprover));
+                console.log(approver)
                 return (
                   <div key={idx} className="receipt-card" style={{background:'#f5faff',border:'1px solid #90caf9',borderRadius:8,padding:'18px 16px',minWidth:260,flex:'1 1 260px',boxShadow:'0 2px 8px rgba(25,118,210,0.08)'}}>
                     <div style={{fontWeight:'bold',fontSize:'1.08em',marginBottom:6}}>{r.paymentModule.toUpperCase()}</div>
@@ -199,7 +204,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                     <div><b>Date:</b> {new Date(r.paymentDate).toLocaleDateString()}</div>
                     <div><b>Handler:</b> {r.paymentHandler} {emp ? <span style={{color:'#1976d2',fontWeight:'bold'}}>({emp.name || emp.fullName || emp.firstName + ' ' + emp.lastName})</span> : null}</div>
                     <div><b>For:</b> {r.paymentFor}</div>
-                    <div style={{fontSize:'0.95em',color:'#1976d2',marginTop:8}}><b>Ref:</b> {r.paymentModuleRef}</div>
+                    <div><b>Approved By:</b> {r.paymentApprover} {approver ? <span style={{color:'#1976d2',fontWeight:'bold'}}>({approver.name || approver.fullName || approver.firstName + ' ' + approver.lastName})</span> : null}</div>
+                    {/* <div style={{fontSize:'0.95em',color:'#1976d2',marginTop:8}}><b>Ref:</b> {r.paymentModuleRef}</div> */}
                   </div>
                 );
               })}
@@ -230,14 +236,18 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                       <th style={{padding:'8px',border:'1px solid #90caf9',cursor:'pointer'}} onClick={()=>setSortConfig(s=>({key:'paymentFor',direction:s.key==='paymentFor'&&s.direction==='asc'?'desc':'asc'}))}>
                         For {sortConfig.key==='paymentFor' ? (sortConfig.direction==='asc'?'▲':'▼') : ''}
                       </th>
-                      <th style={{padding:'8px',border:'1px solid #90caf9',cursor:'pointer'}} onClick={()=>setSortConfig(s=>({key:'paymentModuleRef',direction:s.key==='paymentModuleRef'&&s.direction==='asc'?'desc':'asc'}))}>
-                        Ref {sortConfig.key==='paymentModuleRef' ? (sortConfig.direction==='asc'?'▲':'▼') : ''}
+                      <th style={{padding:'8px',border:'1px solid #90caf9',cursor:'pointer'}} onClick={()=>setSortConfig(s=>({key:'paymentApprover',direction:s.key==='paymentApprover'&&s.direction==='asc'?'desc':'asc'}))}>
+                        Approved By {sortConfig.key==='paymentApprover' ? (sortConfig.direction==='asc'?'▲':'▼') : ''}
                       </th>
+                      {/* <th style={{padding:'8px',border:'1px solid #90caf9',cursor:'pointer'}} onClick={()=>setSortConfig(s=>({key:'paymentModuleRef',direction:s.key==='paymentModuleRef'&&s.direction==='asc'?'desc':'asc'}))}>
+                        Ref {sortConfig.key==='paymentModuleRef' ? (sortConfig.direction==='asc'?'▲':'▼') : ''}
+                      </th> */}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredReceipts.map((r,idx)=>{
                       const emp = employees?.find(e => String(e.i_d) === String(r.paymentHandler) || String(e.id) === String(r.paymentHandler));
+                      const approver = employees?.find(e => String(e.i_d) === String(r.paymentApprover) || String(e.id) === String(r.paymentApprover));
                       return (
                         <tr key={idx} style={{background:'#fff'}}>
                           <td style={{padding:'8px',border:'1px solid #90caf9',fontWeight:'bold'}}>{r.paymentModule.toUpperCase()}</td>
@@ -247,7 +257,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                           <td style={{padding:'8px',border:'1px solid #90caf9'}}>{new Date(r.paymentDate).toLocaleDateString()}</td>
                           <td style={{padding:'8px',border:'1px solid #90caf9'}}>{r.paymentHandler} {emp ? <span style={{color:'#1976d2',fontWeight:'bold'}}>({emp.name || emp.fullName || emp.firstName + ' ' + emp.lastName})</span> : null}</td>
                           <td style={{padding:'8px',border:'1px solid #90caf9'}}>{r.paymentFor}</td>
-                          <td style={{padding:'8px',border:'1px solid #90caf9',fontSize:'0.95em',color:'#1976d2'}}>{r.paymentModuleRef}</td>
+                          <td style={{padding:'8px',border:'1px solid #90caf9',fontSize:'0.95em',color:'#1976d2'}}>{r.paymentApprover} {approver ? <span style={{color:'#1976d2',fontWeight:'bold'}}>({approver.name || approver.fullName || approver.firstName + ' ' + approver.lastName})</span> : null}</td>
                         </tr>
                       );
                     })}
