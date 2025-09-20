@@ -877,7 +877,7 @@ function App() {
                 const receiptNo= order.receipts[payPoint]
                 const amount = Number(order[payPoint])
                 const session = allSessions.find(session => (session.start === order.sessionId))
-                const sessionApprover = session?.endedby || 'Live'
+                const sessionApprover = session?.endedby || 'Active Session'
                 posOrderReceipts.push({
                   paymentModule: `POS Order-${location}`,
                   paymentPoint: payPoint,
