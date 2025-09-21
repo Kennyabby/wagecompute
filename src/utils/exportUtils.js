@@ -140,7 +140,7 @@ export const generatePDF = (data, columns, companyInfo, dateRange, reportTitle, 
     }
 };
 
-export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle, filters = {}) => {
+export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle, filters = {}, grouped = false) => {
     try {
         // Create a new workbook
         const wb = XLSX.utils.book_new();
@@ -195,16 +195,45 @@ export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle
         wsData.push(headers);
         
         // Add data rows
-        data.forEach(item => {
-            const row = columns.map(col => {
-                const value = item[col.reference];
-                if (col.numeric) {
-                    return value !== undefined && value !== null ? parseFloat(value) : 0;
-                }
-                return value !== undefined && value !== null ? String(value) : '';
+        if (grouped) {
+            // data is [{ receiptNum, group }]
+            data.forEach(({ receiptNum, group }) => {
+                group.forEach(item => {
+                    const row = columns.map(col => {
+                        const value = item[col.reference];
+                        if (col.numeric) {
+                            return value !== undefined && value !== null ? parseFloat(value) : 0;
+                        }
+                        return value !== undefined && value !== null ? String(value) : '';
+                    });
+                    wsData.push(row);
+                });
+                // Subtotal row for this group
+                const subtotalRow = columns.map((col, colIndex) => {
+                    if (!col.numeric) {
+                        return colIndex === 0 ? `Subtotal for Receipt #${receiptNum}` : '';
+                    }
+                    // Calculate sum for numeric columns in group
+                    return group.reduce((sum, item) => {
+                        const value = parseFloat(item[col.reference] || 0);
+                        return sum + (isNaN(value) ? 0 : value);
+                    }, 0);
+                });
+                wsData.push(subtotalRow);
+                wsData.push([]); // Empty row after each group
             });
-            wsData.push(row);
-        });
+        } else {
+            data.forEach(item => {
+                const row = columns.map(col => {
+                    const value = item[col.reference];
+                    if (col.numeric) {
+                        return value !== undefined && value !== null ? parseFloat(value) : 0;
+                    }
+                    return value !== undefined && value !== null ? String(value) : '';
+                });
+                wsData.push(row);
+            });
+        }
         
         // Add totals row if there's data
         if (data.length > 0) {
@@ -212,14 +241,21 @@ export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle
                 if (!col.numeric || col.id === 'i_d' || col.id === 'name' || col.id === 'code' || col.id === 'category') {
                     return colIndex === 0 ? 'TOTAL' : '';
                 }
-                
-                // Calculate sum for numeric columns
-                return data.reduce((sum, item) => {
-                    const value = parseFloat(item[col.reference] || 0);
-                    return sum + (isNaN(value) ? 0 : value);
-                }, 0);
+                let total = 0;
+                if (grouped) {
+                    // data is [{ receiptNum, group }]
+                    total = data.reduce((sum, g) => sum + g.group.reduce((s, item) => {
+                        const value = parseFloat(item[col.reference] || 0);
+                        return s + (isNaN(value) ? 0 : value);
+                    }, 0), 0);
+                } else {
+                    total = data.reduce((sum, item) => {
+                        const value = parseFloat(item[col.reference] || 0);
+                        return sum + (isNaN(value) ? 0 : value);
+                    }, 0);
+                }
+                return total;
             });
-            
             wsData.push([]); // Empty row before totals
             wsData.push(totalsRow);
         }
