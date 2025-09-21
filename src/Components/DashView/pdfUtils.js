@@ -26,7 +26,19 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   doc.text('The Plantain Planet Payment Receipts Report', marginLeft, marginTop);
   doc.setFontSize(11);
   doc.text(`Filters:`, marginLeft, marginTop + 10);
-  doc.text(`Date From: ${filter.from || 'Any'} | Date To: ${filter.to || 'Any'} | Paypoint: ${payPointAccounts?.[filter.paypoint] || 'Any'} | Module: ${filter.module || 'Any'} | Handler: ${filter.handler || 'Any'} | Receipt #: ${filter.receipt || 'Any'}`, marginLeft, marginTop + 16);
+  // Format multi-select filters for display
+  const formatFilter = (val, mapObj) => {
+    if (Array.isArray(val)) {
+      if (val.length === 0) return 'Any';
+      return val.map(v => mapObj ? (mapObj[v] || v) : v).join(', ');
+    }
+    return val ? (mapObj ? (mapObj[val] || val) : val) : 'Any';
+  };
+  doc.text(
+    `Date From: ${filter.from || 'Any'} | Date To: ${filter.to || 'Any'} | Paypoint: ${formatFilter(filter.paypoint, payPointAccounts)} | Module: ${formatFilter(filter.module)} | Handler: ${formatFilter(filter.handler)} | Receipt #: ${filter.receipt || 'Any'}`,
+    marginLeft,
+    marginTop + 16
+  );
   doc.text(`Total Results: ${resultCount} | Total Amount: ${totalAmount.toLocaleString()}`, marginLeft, marginTop + 24);
 
   // Table header
