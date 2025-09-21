@@ -816,7 +816,7 @@ function App() {
   }
 
   const obtainPaymentReceipts = ()=>{
-    const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4']    
+    const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4','cash']    
     const recoveryReceipts = []
     const accommodationReceipts = []
     const posOrderReceipts = []
@@ -833,7 +833,7 @@ function App() {
                 paymentModule: 'recovery',
                 paymentPoint: recovery.recoveryPoint,
                 paymentAmount: Number(recovery.recoveryAmount),
-                paymentReceipt: Number(recovery.recoveryReceipt),
+                paymentReceipt: Number(recovery.recoveryReceipt) || recovery.recoveryReceipt,
                 paymentFor: `For ${sale.postingDate} Debt`,
                 paymentDate: recovery.recoveryDate,
                 paymentHandler: recovery.recoveryEmployeeId,
@@ -854,7 +854,7 @@ function App() {
               paymentModule: 'accommodation',
               paymentPoint: acc.payPoint,
               paymentAmount: Number(acc.paymentAmount),
-              paymentReceipt: Number(acc.paymentReceipt),
+              paymentReceipt: Number(acc.paymentReceipt) || acc.paymentReceipt,
               paymentFor: `For Room ${acc.roomNo}`,
               paymentDate: acc.postingDate,
               paymentHandler: acc.employeeId,
@@ -874,7 +874,7 @@ function App() {
               let dateVar = new Date(order.createdAt).toISOString().split('T')[0]
               if(dateVar >= dateBoundary) {
                 const location = order.salesPosts[payPoint]
-                const receiptNo= order.receipts[payPoint]
+                const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]
                 const amount = Number(order[payPoint])
                 const session = allSessions.find(session => (session.start === order.sessionId))
                 const sessionApprover = session?.endedby || 'Active Session'
@@ -882,7 +882,7 @@ function App() {
                   paymentModule: `POS Order-${location}`,
                   paymentPoint: payPoint,
                   paymentAmount: amount,
-                  paymentReceipt: Number(receiptNo),
+                  paymentReceipt: Number(receiptNo) || receiptNo,
                   paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
                   paymentDate: dateVar,
                   paymentHandler: order.handlerId,
