@@ -980,16 +980,19 @@ const Accommodation = ()=>{
                             </div>
                             <div className='inpcov'>
                                 <div>Select Customer</div>
-                                <select 
+                                <input 
                                     className='forminp'
                                     name='customerId'
                                     type='text'
+                                    list='customerslist'
+                                    placeholder='Select Customer'
                                     value={accommodationFields.customerId}
                                     disabled={isView}
                                     onChange={(e)=>{
                                         handleAccommodationFieldChange(e)                                
                                     }}
-                                >
+                                />
+                                <datalist id='customerslist'>
                                     <option value=''>Select Customer</option>
                                     {customers?.map((customer)=>{
                                         return (
@@ -1001,7 +1004,7 @@ const Accommodation = ()=>{
                                             </option>
                                         )
                                     })}
-                                </select>
+                                </datalist>
                             </div>
                             <div className='inpcov'>
                                 <div>Room Number</div>
