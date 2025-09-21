@@ -1780,6 +1780,7 @@ const PaymentModal = ({
     const confirmReceiptsAvailable = (receipts)=>{
         let voidReceipts = []
         var postingDate = new Date(currentOrder.createdAt).toISOString().split('T')[0]
+        
         Object.keys(receipts).forEach((payPoint)=>{
             if (
                 paymentReceipts.find((payrec)=>{
@@ -1798,7 +1799,7 @@ const PaymentModal = ({
                 voidReceipts.push(payPoint.toUpperCase())                
             }
         })
-        return {isReceiptsAvailable: (voidReceipts.length === 0), voidReceipts}
+        return {isReceiptsAvailable: (voidReceipts.length === 0), voidReceipts, receipts}
     }
     const validatePayment = async ()=>{
         var payPointsWithNoReceipts = []        
@@ -1812,21 +1813,27 @@ const PaymentModal = ({
             })
         }
         if (!payPointsWithNoReceipts.length){
-            const {isReceiptsAvailable, voidReceipts} = confirmReceiptsAvailable(receipts)
-            if (isReceiptsAvailable){
-                if (Number(currentOrder.totalSales)>paymentSum){
-                    const remainingDifference = Number(currentOrder.totalSales) - paymentSum
-                    setAlertState('info')
-                    setAlert(`Insufficient payment amount. Remaining ${Number(remainingDifference).toLocaleString()}!`)
-                    setAlertTimeout(5000)
+            const {isReceiptsAvailable, voidReceipts, receipts} = confirmReceiptsAvailable(receipts)
+            if (receipts.length){
+                if (isReceiptsAvailable){
+                    if (Number(currentOrder.totalSales)>paymentSum){
+                        const remainingDifference = Number(currentOrder.totalSales) - paymentSum
+                        setAlertState('info')
+                        setAlert(`Insufficient payment amount. Remaining ${Number(remainingDifference).toLocaleString()}!`)
+                        setAlertTimeout(5000)
+                    }else{
+                        setLoading(true)
+                        await handlePayment()
+                        setLoading (false)
+                    }
                 }else{
-                    setLoading(true)
-                    await handlePayment()
-                    setLoading (false)
+                    setAlertState('error');
+                    setAlert(`Receipt Number Already Used for the Following Pay Points: ${voidReceipts.join(', ')}!`);
+                    setAlertTimeout(5000)
                 }
             }else{
                 setAlertState('error');
-                setAlert(`Receipt Number Already Used for the Following Pay Points: ${voidReceipts.join(', ')}!`);
+                setAlert(`Error validating receipts! Please enter Receipt Number.`);
                 setAlertTimeout(5000)
             }
         }else{
