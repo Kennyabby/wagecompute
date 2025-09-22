@@ -984,7 +984,7 @@ const AddProduct = ({
                 <div className='add-products'>
                     <div className='add-products-title'>
                         <label>Product Purchase Details</label>
-                        {companyRecord?.status==='admin' && isProductView && <div
+                        {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('export_purchase_report')) && isProductView && <div
                             className='slprwh-print'
                             onClick={()=>{
                                 printToPDF()
@@ -995,7 +995,7 @@ const AddProduct = ({
                         <div className='add-products-content-title'>
                             <div>Product Name</div>
                             <div>Product ID</div>
-                            {companyRecord?.status === 'admin' && curApproval &&
+                            {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
                                 <>
                                     <div style={{color: 'red'}}>Current Stock</div>
                                     <div style={{color: 'red'}}>Requested Stock (units)</div>
@@ -1016,7 +1016,7 @@ const AddProduct = ({
                                 <div key={index} className='add-products-content-entry'>
                                     <div>{entry.name}</div>
                                     <div>{entry.productId}</div>
-                                    {companyRecord.status === 'admin' && curApproval &&
+                                    {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
                                         <>
                                             <div style={{color: 'red'}}>{currentStock}</div>
                                             <div style={{color: 'red'}}>{entry.baseQuantity}</div>
