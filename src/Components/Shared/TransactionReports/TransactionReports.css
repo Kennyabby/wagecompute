@@ -87,7 +87,7 @@
     margin-left: 10px;
 }
 
-.btn-export {
+.btn-export, .rcpt-export {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -103,7 +103,7 @@
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
-.btn-export:hover {
+.btn-export:hover, .rcpt-export:hover {
     background: #f7fafc;
     border-color: #cbd5e0;
     transform: translateY(-1px);
@@ -113,7 +113,15 @@
 .btn-export svg {
     font-size: 1.1rem;
 }
-
+.rcpt-export{
+    font-weight: bold;
+    color: #3a8ab2;
+    border-color: #e8f0f4;
+    background-color: #f0fcff;
+}
+.rcpt-export:hover{
+    background-color: #d9f0f5;
+}
 .btn-export:first-child {
     color: #2f855a;
     border-color: #c6f6d5;
