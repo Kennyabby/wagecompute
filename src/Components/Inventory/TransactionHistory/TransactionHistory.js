@@ -1445,7 +1445,7 @@ const TransactionHistory = () => {
                     <td>{formatDate(tx.postingDate)}</td>
                     <td>{getTransactionType(tx)}</td>
                     <td>{tx.referenceNo || tx.orderNumber || 'N/A'}</td>
-                    <td>{tx.name || (products.find(product => product.i_d === tx.productId))?.name || `Product ${tx.productId}`}</td>
+                    <td>{tx.name || `${(products.find(product => product.i_d === tx.productId))?.name} (${tx.productId})` || `Product ${tx.productId}`}</td>
                     <td>{tx.location || 'N/A'}</td>
                     <td>{tx.runningBalance?.toLocaleString() || 'N/A'}</td>
                     <td className={tx.baseQuantity > 0 ? 'positive' : 'negative'}>
