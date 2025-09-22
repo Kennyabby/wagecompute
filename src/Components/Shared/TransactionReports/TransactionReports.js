@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
+import PaymentReceiptsModal from '../../DashView/PaymentReceiptsModal';
 import 'react-datepicker/dist/react-datepicker.css';
 import { 
   FaFileExcel, FaFilePdf, FaTimes, FaFilter, 
@@ -19,11 +20,11 @@ const TransactionReports = ({
     employees = [],
     onClose
 }) => {
-    const { company, server, fetchServer, user } = useContext(ContextProvider);
+    const { company, server, fetchServer, user, paymentReceipts } = useContext(ContextProvider);
     const [loading, setLoading] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [expandedSessions, setExpandedSessions] = useState({});
-    
+    const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const payPointAccounts = {
         'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5399647958', 
         'moniepoint3':'MP3-5536588063', 'moniepoint4':'MP4-5342270174', 'cash':'cash'
@@ -901,6 +902,8 @@ const TransactionReports = ({
     };
     return (
         <div className="transaction-reports-overlay">
+            {/* Receipts Modal Trigger State */}
+            <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
             <div className="transaction-reports">
                 {/* Header */}
                 <div className="reports-header">
@@ -914,11 +917,18 @@ const TransactionReports = ({
                             </h2>
                         </div>
                         <div className="export-actions">
+                            
                             <button 
                                 className="btn-export" 
                                 onClick={() => handleExport('excel')}
                             >
                                 <FaFileExcel /> Export to Excel
+                            </button>
+                            <button 
+                                className="rcpt-export" 
+                                onClick={() => {setShowReceiptsModal(true)}}
+                            >
+                                <FaFileExcel /> View POS Receipts
                             </button>
                             <button 
                                 className="btn-export" 
