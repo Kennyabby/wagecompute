@@ -138,16 +138,13 @@ const PointOfSales = () => {
     },[wrhs])
     
     useEffect(()=>{
-        // console.log('salesSessions', salesSessions)
         if (Array.isArray(salesSessions)){
             setSessions(salesSessions)
         }
     },[salesSessions])
     
     useEffect(()=>{
-        // console.log('loading', tables, sessions)
         if (tables?.length && sessions !== null){
-            console.log(salesSessions)
             if (sessions.length){
                 setIsLive(true)
                 setLoadSession(false)
@@ -2186,7 +2183,7 @@ const POSDashboard = ({
             <div className='pos-sessions'>
                 <div className='pos-sessions-nav'>
                     <div className={'live-nav'}>
-                        {(companyRecord?.status === 'admin') && <button 
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <button 
                             className="action-btn"
                             onClick={() => setShowReports(true)}
                             style={{ marginRight: '10px' }}

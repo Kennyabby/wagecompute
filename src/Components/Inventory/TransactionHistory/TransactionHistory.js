@@ -203,7 +203,7 @@ const TransactionHistory = () => {
 
   // Handle summary card click
   const handleSummaryCardClick = async (type) => {
-    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_inventory_report')){
+    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')){
       try {
         setLoading(true);
         
@@ -1389,7 +1389,7 @@ const TransactionHistory = () => {
       <div className="transactions-table-container">
         <div className="table-header">
           <h3>Transaction History</h3>
-          {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_inventory_report')) &&<div className="table-actions">
+          {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')) &&<div className="table-actions">
             <button 
               onClick={exportToExcel}
               className="btn btn-icon" 

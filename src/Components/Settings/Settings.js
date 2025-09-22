@@ -505,9 +505,9 @@ const Settings = () => {
                                                 </label>
                                             ))}
                                         </div>
-                                        <div>Allow Backlogs</div>
+                                        <div>Posting Permissions</div>
                                         <div className='permissions'>
-                                            {['allowBacklogs'].map((permission, index) => (
+                                            {['allowBacklogs', 'allow_sales_post', 'allow_accommodation_posts', 'allow_purchase_posts', 'allow_expense_posts'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -519,9 +519,9 @@ const Settings = () => {
                                                 </label>
                                             ))}
                                         </div>
-                                        <div> Import Permissions</div>
+                                        <div> Import/Export Permissions</div>
                                         <div className='permissions'>
-                                            {['imports', 'adjustments'].map((permission, index) => (
+                                            {['imports', 'export_inventory_report', 'export_sales_report', 'export_pos_report', 'export_purchase_report', 'export_expense_report', 'adjustments'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'

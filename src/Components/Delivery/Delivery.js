@@ -151,7 +151,7 @@ const Delivery = () => {
     },[allSessionOrders, curSession])
     
     useEffect(()=>{
-        if (deliverySessions?.length){
+        if (Array.isArray(deliverySessions)){
             setSessions(deliverySessions)
         }
     },[deliverySessions])

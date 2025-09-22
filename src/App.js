@@ -33,8 +33,8 @@ function App() {
   const [sessions, setSessions] = useState(null);
   const [tables, setTables] = useState([]);
   const [posOrders, setPosOrders] = useState([]);
-  const [deliverySessions, setDeliverySessions] = useState([])
-  const [salesSessions, setSalesSessions] = useState([])
+  const [deliverySessions, setDeliverySessions] = useState(null)
+  const [salesSessions, setSalesSessions] = useState(null)
 
   const [approvals, setApprovals] = useState([])
   const [approvalStatus, setApprovalStatus] = useState(false)
