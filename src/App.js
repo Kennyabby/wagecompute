@@ -603,35 +603,35 @@ function App() {
   }
 
   const fetchSessions = async (company, type, companyRecord) => {
-      const sessionsResponse = await fetchServer("POST", {
-          database: company,
-          collection: "POSSessions",
-          prop: {type:type}
-      }, "getDocsDetails", SERVER);
+    const sessionsResponse = await fetchServer("POST", {
+      database: company,
+      collection: "POSSessions",
+      prop: {type:type}
+    }, "getDocsDetails", SERVER);
 
-      if(!sessionsResponse.err){
-          if (sessionsResponse.mess){
-              setIsLive(false)
-              // setLiveErrorMessages(sessionsResponse.mess)
-          }else{
-              const thisSessions = sessionsResponse.record.filter((session)=>{
-                  return session.employee_id === companyRecord?.emailid
-              })
-              // setSessions(thisSessions)
-              if (type === 'sales'){
-                  setSalesSessions(thisSessions)
-              }
-              if (type === 'delivery'){
-                  setDeliverySessions(thisSessions)
-              }
-              // setAllSessions(sessionsResponse.record)
-          }
+    if(!sessionsResponse.err){
+      if (sessionsResponse.mess){
+        setIsLive(false)
+        // setLiveErrorMessages(sessionsResponse.mess)
       }else{
-          if (sessionsResponse.mess !== 'Request aborted'){
-              setIsLive(false)
-              setLiveErrorMessages('Slow Network. Check Connection')
-          }
+        const thisSessions = sessionsResponse.record.filter((session)=>{
+          return session.employee_id === companyRecord?.emailid
+        })
+        // setSessions(thisSessions)
+        if (type === 'sales'){
+          setSalesSessions(thisSessions)
+        }
+        if (type === 'delivery'){
+          setDeliverySessions(thisSessions)
+        }
+        // setAllSessions(sessionsResponse.record)
       }
+    }else{
+      if (sessionsResponse.mess !== 'Request aborted'){
+        setIsLive(false)
+        setLiveErrorMessages('Slow Network. Check Connection')
+      }
+    }
   }
 
   // Fetch POS and delivery sessions
