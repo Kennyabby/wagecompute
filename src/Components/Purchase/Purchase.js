@@ -258,8 +258,12 @@ const Purchase = ()=>{
                 }
 
                 const postUpdate = async ()=>{
+                    if (curApproval){
+                        curApproval.posted = true
+                    }
                     setAlertState('info')
                     setAlert('Updating Inventory...') 
+                    setAlertTimeout(100000)
                     if (curApproval!==null){
                         validEntries = curApproval.data.validEntries
                     }                   
@@ -284,6 +288,9 @@ const Purchase = ()=>{
                             setAlertState('error')
                             setAlert(resps.mess)
                             setAlertTimeout(5000)
+                            if (curApproval){
+                                curApproval.posted = false
+                            }
                         }else{
                             setPostCount((prevCount)=>{
                                 const newCount = prevCount + 1
@@ -291,6 +298,7 @@ const Purchase = ()=>{
                                     setProductAdd(false)
                                     setAlertState('success')
                                     setAlert(`${validEntries.length} Inventory Updated Successfully!`)                        
+                                    setAlertTimeout(100000)
                                     getProductsWithStock(company, products)
                                     const entryIds = validEntries.map(entry => {return entry.productId})
                                     if (curPurchase === null){
@@ -301,6 +309,7 @@ const Purchase = ()=>{
                                         setTimeout(async () => {
                                             setAlertState('info');
                                             setAlert('Linking to Posted Purchase...');
+                                            setAlertTimeout(100000);
                                             const resps1 = await fetchServer("POST", {
                                                 database: company,
                                                 collection: "Purchase",
@@ -313,9 +322,12 @@ const Purchase = ()=>{
                 
                                             if (resps1.err) {
                                                 console.log(resps1.mess);
-                                                setAlertState('info');
+                                                setAlertState('error');
                                                 setAlert(resps1.mess);
                                                 setAlertTimeout(5000);
+                                                if (curApproval){
+                                                    curApproval.posted = false
+                                                }
                                             } else {
                                                 
                                                 setAlertState('success');
@@ -324,6 +336,9 @@ const Purchase = ()=>{
                                                 setFields((fields)=>{
                                                     return {...fields, productsRef: createdAt}
                                                 })
+                                                if (curApproval){
+                                                    curApproval.posted = false
+                                                }
                                                 getPurchase(company);
                                                 const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
                                                 const transactions = await getPurchaseProducts(company, {productsRef: createdAt})
@@ -368,7 +383,10 @@ const Purchase = ()=>{
                         return
                     }                
                 }
-                runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
+                if (curApproval?.posted === false){
+                    curApproval.posted = true
+                    runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
+                }
             }else{ 
                 setAlertState('error')
                 setAlert('All Fields Are Required! Kindly Fill All')
