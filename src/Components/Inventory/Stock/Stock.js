@@ -774,7 +774,7 @@ const Stock = ({
             <ColumnManagerModal />
             <div className='filter-section'>
                 <div className="export-controls">
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_inventory_report')) && <>
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')) && <>
                         <button 
                             className="export-button"
                             onClick={handleExportPDF}

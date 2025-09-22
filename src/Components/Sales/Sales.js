@@ -540,7 +540,7 @@ const Sales = ()=>{
         if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
-        if(companyRecord?.permissions.includes('postSales') || companyRecord?.status==='admin'){
+        if(companyRecord?.permissions.includes('approveSales') || companyRecord?.status==='admin'){
             setIsApprover(true)
         }
     },[companyRecord])
@@ -1130,7 +1130,7 @@ const Sales = ()=>{
 
     const handleApprovalViewClick = (approval)=>{
         if (salesOpts === 'sales'){        
-            if(companyRecord?.permissions.includes('postSales') || companyRecord?.status==='admin'){
+            if(companyRecord?.permissions.includes('approveSales') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
             setCurSale(null)
@@ -1143,7 +1143,7 @@ const Sales = ()=>{
                 setIsView(true)
             }
         }else if(salesOpts === 'rentals'){
-            if(companyRecord?.permissions.includes('postRentals') || companyRecord?.status==='admin'){
+            if(companyRecord?.permissions.includes('approveRentals') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
             setCurRent(null)
@@ -1156,7 +1156,7 @@ const Sales = ()=>{
                 setIsView(true)
             }
         }else if (salesOpts === 'recovery'){
-            if(companyRecord?.permissions.includes('postRecovery') || companyRecord?.status==='admin'){
+            if(companyRecord?.permissions.includes('approveRecovery') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
             setCurApproval(approval)
@@ -1207,7 +1207,7 @@ const Sales = ()=>{
             })
 
             if (productApproval){
-                if(companyRecord?.permissions.includes('addSalesProduct') || companyRecord?.status==='admin'){
+                if(companyRecord?.permissions.includes('approveAddSalesProduct') || companyRecord?.status==='admin'){
                     setIsProductApprover(true)
                 }
                 // setSalesEntries({...(productApproval.data)})
@@ -1763,7 +1763,7 @@ const Sales = ()=>{
                     isProductApprover={isProductApprover}
                 />}
                 <div className='emplist saleslist' ref={scrollRef}>    
-                    {companyRecord.status==='admin' && <FaTableCells                         
+                    {(companyRecord.status==='admin' || companyRecord?.permissions.includes('export_sales_report')) && <FaTableCells                         
                         className='allslrepicon'
                         onClick={()=>{
                             calculateReportSales()
@@ -2200,15 +2200,15 @@ const Sales = ()=>{
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts==='sales' ? 'slopts': ''}>
                                 <div name='sales'>Sales</div>
-                                {companyRecord?.status==='admin' && salesApprovals.length > 0 && <div className='navdivicon1' name="sales">{salesApprovals.length}</div>}
+                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approveSales')) && salesApprovals.length > 0 && <div className='navdivicon1' name="sales">{salesApprovals.length}</div>}
                             </div>
                             <div name='rentals' className={salesOpts==='rentals' ? 'slopts': ''}>
                                 <div name='rentals'>Rentals</div>
-                                {companyRecord?.status==='admin' && rentalsApprovals.length > 0 && <div className='navdivicon1' name="rentals">{rentalsApprovals.length}</div>}
+                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approveRentals')) && rentalsApprovals.length > 0 && <div className='navdivicon1' name="rentals">{rentalsApprovals.length}</div>}
                             </div>                            
                             {<div name='recovery' className={salesOpts==='recovery' ? 'slopts': ''}>
                                 <div name='recovery'>Debt Recovery</div>
-                                {companyRecord?.status==='admin' && recoveryApprovals.length > 0 && <div className='navdivicon1' name="recovery">{recoveryApprovals.length}</div>}
+                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approveRecovery')) && recoveryApprovals.length > 0 && <div className='navdivicon1' name="recovery">{recoveryApprovals.length}</div>}
                             </div>}
                         </div>}
                         {salesOpts==='sales' && (!isView && <div className='addnewsales'>
@@ -3003,7 +3003,7 @@ const Sales = ()=>{
                                                 voidReceiptHandler: voidReceipts[0]?.paymentHandler
                                             }
                                             recoveryData.voidReceipt = voidReceiptDetails
-                                            if (companyRecord?.status === 'admin'){
+                                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approveRecovery')){
                                                 setAlertState('error')
                                                 setAlert(`Receipt Number Already Used For ${recoveryPoints.join(', ')} Payment Point(s)`);
                                                 setAlertTimeout(5000)
@@ -3372,7 +3372,7 @@ const AddProduct = ({
                                 resetSalesEntries()
                             }}
                         >Reset</div>}
-                        {companyRecord?.status==='admin' && isProductView && <div
+                        {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('export_sales_report')) && isProductView && <div
                             className='slprwh-print'
                             onClick={()=>{
                                 printToPDF()
