@@ -507,7 +507,7 @@ const Settings = () => {
                                         </div>
                                         <div>Posting Permissions</div>
                                         <div className='permissions'>
-                                            {['allowBacklogs', 'allow_sales_post', 'allow_accommodation_posts', 'allow_purchase_posts', 'allow_expense_posts'].map((permission, index) => (
+                                            {['allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products', 'allow_recovery_posts', 'allow_rental_posts' , 'allow_accommodation_posts', 'allow_purchase_posts', 'allow_expense_posts'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'

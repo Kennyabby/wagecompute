@@ -1447,7 +1447,14 @@ const Accommodation = ()=>{
                                                     // }
                                                 }
                                             }
-                                                                                        
+                                            if (curApproval && curApproval?.approved){  
+                                                if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_accommodation_posts')){
+                                                    setAlertState('error')
+                                                    setAlert('You are not allowed to post payments!')
+                                                    setAlertTimeout(3000)
+                                                    return
+                                                }                
+                                            }                                           
                                             runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, ()=>{postPayment(accommodationFields)}, curAccommodation.createdAt)
                                             if (selectedUnPaidAccommodations.length){
                                                 selectedUnPaidAccommodations.forEach((selectedAccommodation)=>{

@@ -15,6 +15,7 @@ import { MdAdd } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 import { use } from 'react';
+import { BsPass } from 'react-icons/bs';
 
 const Sales = ()=>{
     const {storePath, 
@@ -795,6 +796,14 @@ const Sales = ()=>{
                 setAddingProducts(false)
                 setPostCount(0)   
                 return;         
+            }
+            if (curSale.approval && curSale.approval?.approved){  
+                if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_add_sales_products')){
+                    setAlertState('error')
+                    setAlert('You are not allowed to add sales product!')
+                    setAlertTimeout(3000)
+                    return
+                }                
             }
             runApprovalWorkFlow(postingDate, curSale.approval, 'sales', 'addSalesProduct', validEntries, makePost, curSale.createdAt)                                    
         }
@@ -1614,7 +1623,7 @@ const Sales = ()=>{
     }
     const postRentals = async ()=> {
         setAlertState('info')
-        setAlert('Posting to Rntals...')
+        setAlert('Posting to Rentals...')
         setRentalsStatus('Posting to Rentals...')        
         const newRental = {
             ...rentalFields,
@@ -2913,6 +2922,14 @@ const Sales = ()=>{
                                                     // setIsProductView(false)
                                                     // setProductAdd(true)      
                                                     const data = [...accommodationRecords, ...sessionSalesRecords, ...fields]
+                                                    if (curApproval && curApproval?.approved){  
+                                                        if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_sales_posts')){
+                                                            setAlertState('error')
+                                                            setAlert('You are not allowed to post sales!')
+                                                            setAlertTimeout(3000)
+                                                            return
+                                                        }                
+                                                    }
                                                     runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
                                                 }else{
                                                     setAlertState('error')
@@ -3039,6 +3056,14 @@ const Sales = ()=>{
                                                 // return
                                             }
                                         }
+                                        if (curApproval && curApproval?.approved){  
+                                            if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_recovery_posts')){
+                                                setAlertState('error')
+                                                setAlert('You are not allowed to post recovery!')
+                                                setAlertTimeout(3000)
+                                                return
+                                            }                
+                                        }
                                         runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
                                     }else{
                                         setActionMessage('')
@@ -3060,6 +3085,14 @@ const Sales = ()=>{
                             }}
                             onClick={()=>{
                                 if (rentalFields.paymentAmount && rentalFields.expectedPayment){
+                                    if (curApproval && curApproval?.approved){  
+                                        if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_rental_posts')){
+                                            setAlertState('error')
+                                            setAlert('You are not allowed to post rentals!')
+                                            setAlertTimeout(3000)
+                                            return
+                                        }                
+                                    }
                                     runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrentals', rentalFields, postRentals)                                    
                                 }
                             }}

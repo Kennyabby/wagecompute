@@ -360,6 +360,14 @@ const Purchase = ()=>{
                         }        
                     })
                 }
+                if (curApproval && curApproval?.approved){  
+                    if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_purchase_posts')){
+                        setAlertState('error')
+                        setAlert('You are not allowed to post purchases!')
+                        setAlertTimeout(3000)
+                        return
+                    }                
+                }
                 runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
             }else{ 
                 setAlertState('error')
