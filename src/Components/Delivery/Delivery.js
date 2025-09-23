@@ -1398,7 +1398,7 @@ const Delivery = () => {
                 && <button 
                     className="place-order-btn"
                     onClick={() => handleOrderDelivery()}
-                    disabled={currentOrder?.items.length === 0 || placingOrder || !curSession.active || curSession.wrh !== wrh}
+                    disabled={currentOrder?.items.length === 0 || placingOrder || !curSession.active || curSession.wrh !== wrh || currentOrder.status === 'cancelled'}
                 >
                     Place Delivery (#{currentOrder.orderNumber})
                 </button>}
@@ -1779,7 +1779,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                     return (                    
                         <div 
                             key={order.i_d}
-                            className={`order-card ${order.delivery} ${order.orderNumber ===  currentOrder.orderNumber ? 'selected-delivery' : ''}`}
+                            className={`order-card ${order.status === 'cancelled' ? order.status : order.delivery} ${order.orderNumber ===  currentOrder.orderNumber ? 'selected-delivery' : ''}`}
                         >
                             <div onClick={() => {
                                 // console.log(order)
