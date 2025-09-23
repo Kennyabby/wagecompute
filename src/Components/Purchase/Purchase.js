@@ -383,7 +383,7 @@ const Purchase = ()=>{
                         return
                     }                
                 }
-                if (curApproval?.posted === false){
+                if (!curApproval?.posted){
                     curApproval.posted = true
                     runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
                 }
