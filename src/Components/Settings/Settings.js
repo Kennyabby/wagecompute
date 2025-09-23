@@ -479,7 +479,7 @@ const Settings = () => {
                                         <br/>
                                         <div>Edit / Delete Permissions</div>
                                         <div className='permissions'>
-                                            {['edit_employees', 'add_expense_category', 'cancel_pos_order', 'cancel_delivery_order', 'override_accomodation', 'allow_group_payment'].map((permission, index) => (
+                                            {['edit_employees', 'add_expense_category', 'cancel_pos_order', 'override_pos_receipts', 'cancel_delivery_order', 'override_accomodation', 'allow_group_payment'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
