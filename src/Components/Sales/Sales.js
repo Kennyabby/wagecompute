@@ -139,6 +139,9 @@ const Sales = ()=>{
         paymentAmount: '',
         balanceRemaining: 0
     }
+    const [kitchenRecord, setKitchenRecord] = useState({
+        ...defaultFields,
+    })
     const [accommodationRecords, setAccommodationRecords] = useState([])
     const [sessionSalesRecords, setSessionSalesRecords] = useState([])
     const [fields, setFields] = useState([])
@@ -3134,7 +3137,7 @@ const SalesEntry = ({salesUnits, salesUnit, payPointAccounts, field, index, hand
                     {salesUnit.toUpperCase()}
                 </div>
                 <div><b>Sales ({salesUnit}): </b>{`${Number(salesAmount).toLocaleString()}`}</div>
-                {kitchenSalesAmount>0 && <div><b>Sales ({`Kitchen}`}): </b>{`${Number(kitchenSalesAmount).toLocaleString()}`}</div>}
+                {kitchenSalesAmount>0 && <div><b>Sales ({`Kitchen`}): </b>{`${Number(kitchenSalesAmount).toLocaleString()}`}</div>}
                 {open ?
                     <FaChevronUp 
                         className='viewsales'
