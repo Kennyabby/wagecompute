@@ -1748,6 +1748,7 @@ const PointOfSales = () => {
                     setAlert={setAlert}
                     setAlertState={setAlertState}
                     setAlertTimeout={setAlertTimeout}
+                    companyRecord={companyRecord}
                 />}
             </div>
             }
@@ -1759,7 +1760,7 @@ export default PointOfSales;
 
 const PaymentModal = ({
     amount, setAmount, 
-    currentOrder, 
+    currentOrder, companyRecord,
     method, setMethod, wrh, curSession,
     paymentDetails, setPaymentDetails, wrhCategories,
     setShowPaymentModal, handlePayment, allPaymentReceipts,
@@ -1814,7 +1815,7 @@ const PaymentModal = ({
         }
         if (!payPointsWithNoReceipts.length){
             const {isReceiptsAvailable, voidReceipts} = confirmReceiptsAvailable(receipts)
-            if (isReceiptsAvailable){
+            if (isReceiptsAvailable || (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('override_pos_receipts'))){
                 if (Number(currentOrder.totalSales)>paymentSum){
                     const remainingDifference = Number(currentOrder.totalSales) - paymentSum
                     setAlertState('info')

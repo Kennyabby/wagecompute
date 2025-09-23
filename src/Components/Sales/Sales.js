@@ -575,6 +575,7 @@ const Sales = ()=>{
             index = prop.index - sessionSalesRecords.length
         }
         const name = e.target.getAttribute('name')
+        const isSplit = name.split('-').includes('Kitchen')
         const category = e.target.getAttribute('category')
         const value = e.target.value
         setFields((fields)=>{
@@ -595,7 +596,7 @@ const Sales = ()=>{
                 })
                 fields[index] = {
                     ...fields[index], 
-                    bankSales: (ct+Number(value))?ct+Number(value):'',
+                    bankSales: ((ct+Number(value))&&!isSplit)?ct+Number(value):'',
                     [name]:{
                         ...fields[index][name], 
                         [category]:value
@@ -614,7 +615,7 @@ const Sales = ()=>{
                 })
                 fields[index] = {
                     ...fields[index], 
-                    cashSales: (ct+Number(value))?ct+Number(value):'',
+                    cashSales: ((ct+Number(value))&&!isSplit)?ct+Number(value):'',
                     [name]:{
                         ...fields[index][name], 
                         [category]:value
@@ -2660,6 +2661,9 @@ const Sales = ()=>{
                         {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...fields].map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage) - Number(field.unAccountedSales || 0)
                             // console.log(index)
+                            if (!isView){
+                                field.isSplit = true
+                            }
                             return (
                                 <div key={index} className='empsalesblk'>
                                     <div className='pdsalesview'>
@@ -3107,20 +3111,30 @@ const Sales = ()=>{
 const SalesEntry = ({salesUnits, salesUnit, payPointAccounts, field, index, handleFieldChange, isView})=> {
     const [open, setOpen] = useState(false)
     const [salesAmount, setSalesAmount] = useState(0)
+    const [kitchenSalesAmount, setKitchenSalesAmount] = useState(0)
     useEffect(()=>{
         var sum = 0
         Object.keys(field[salesUnit]).forEach((payPoint)=>{
             sum += Number(field[salesUnit][payPoint])
         })
         setSalesAmount(sum)
-    },[field[salesUnit]])
+        
+        if (field.isSplit){
+            var kitchenSum = 0
+            Object.keys((field?.[`Kitchen-${salesUnit}`] || [])).forEach((payPoint)=>{
+                kitchenSum += Number(field?.[`Kitchen-${salesUnit}`]?.[payPoint] || 0)
+            })
+            setKitchenSalesAmount(kitchenSum)
+        }
+    },[field[salesUnit], field?.[`Kitchen-${salesUnit}`]])
     return (
         <div className='salesunit'>
             <div className='salesunittag'>
                 <div>
                     {salesUnit.toUpperCase()}
                 </div>
-                <div><b>Sales: </b>{`${Number(salesAmount).toLocaleString()}`}</div>
+                <div><b>Sales ({salesUnit}): </b>{`${Number(salesAmount).toLocaleString()}`}</div>
+                {kitchenSalesAmount>0 && <div><b>Sales ({`Kitchen}`}): </b>{`${Number(kitchenSalesAmount).toLocaleString()}`}</div>}
                 {open ?
                     <FaChevronUp 
                         className='viewsales'
@@ -3137,7 +3151,40 @@ const SalesEntry = ({salesUnits, salesUnit, payPointAccounts, field, index, hand
             </div>
             {open && Object.keys(salesUnits[salesUnit]).map((payPoint, id)=>{
                 return (
-                    <div className='inpcov' key={id}>
+                    field?.isSplit ? 
+                    <div style={{display: 'block'}}>
+                        <div className='inpcov' key={id}>
+                            <div>{`(${salesUnit}) ${payPointAccounts[payPoint]}`}</div>
+                            <input 
+                                className='forminp'
+                                name={salesUnit}
+                                category={payPoint}
+                                type='number'
+                                placeholder={payPoint}
+                                value={field[salesUnit][payPoint]}
+                                disabled={isView || (field.isAccommodation) || (field.isSession)}
+                                onChange={(e)=>{
+                                    handleFieldChange({index,e})
+                                }}
+                            />
+                        </div>
+                        <div className='inpcov' key={id}>
+                            <div>{`(${'Kitchen'}) ${payPointAccounts[payPoint]}`}</div>
+                            <input 
+                                className='forminp'
+                                name={`Kitchen-${salesUnit}`}
+                                category={payPoint}
+                                type='number'
+                                placeholder={payPoint}
+                                value={field[`Kitchen-${salesUnit}`]?.[payPoint] || ''}
+                                disabled={isView || (field.isAccommodation) || (field.isSession)}
+                                onChange={(e)=>{
+                                    handleFieldChange({index,e})
+                                }}
+                            />
+                        </div>
+                    </div> 
+                    : <div className='inpcov' key={id}>
                         <div>{payPointAccounts[payPoint]}</div>
                         <input 
                             className='forminp'
