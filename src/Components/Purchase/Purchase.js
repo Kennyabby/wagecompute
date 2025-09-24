@@ -383,8 +383,12 @@ const Purchase = ()=>{
                         return
                     }                
                 }
-                if (!curApproval?.posted){
-                    curApproval.posted = true
+                if (curApproval){
+                    if (!curApproval.posted){
+                        curApproval.posted = true
+                        runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
+                    }
+                }else{
                     runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
                 }
             }else{ 
