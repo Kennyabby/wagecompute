@@ -561,11 +561,13 @@ const Purchase = ()=>{
                         setShowApprovalBox(false)
                         setApprovalStatus(false)
                         setApprovalMessage('')
+                        curApproval.posted = false
                     }}
                     module={'purchase'}
                     section= {postAction}
                     postApprovalUpdate={()=>{
                         postApprovalUpdate(company, 'purchase', postAction, curApproval)                        
+                        curApproval.posted = false
                     }}
                 />}  
                 {productAdd && <AddProduct
