@@ -150,7 +150,7 @@ const SideNav = ()=>{
                 aria-label="Toggle menu"
             >
                 {isMenuOpen ? <MdClose /> : <BiMenu />}
-                {allApprovals?.length > 0 && (
+                {companyRecord.status === 'admin' && allApprovals?.length > 0 && (
                     <span className="mobile-menu-badge">
                         {allApprovals.length}
                     </span>
