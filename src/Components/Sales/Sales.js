@@ -69,6 +69,7 @@ const Sales = ()=>{
     const [isMultiple, setIsMultiple] = useState(false)
     const [saleEmployee, setSaleEmployee] = useState('')
     const [addEmployeeId, setAddEmployeeId] = useState('')
+    const [addKitchenEmployeeId, setAddKitchenEmployeeId] = useState('')
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [isProductView, setIsProductView] = useState(false)
     const [productAdd, setProductAdd] = useState(false)
@@ -139,9 +140,7 @@ const Sales = ()=>{
         paymentAmount: '',
         balanceRemaining: 0
     }
-    const [kitchenRecord, setKitchenRecord] = useState({
-        ...defaultFields,
-    })
+    const [kitchenRecords, setKitchenRecords] = useState([])
     const [accommodationRecords, setAccommodationRecords] = useState([])
     const [sessionSalesRecords, setSessionSalesRecords] = useState([])
     const [fields, setFields] = useState([])
@@ -432,6 +431,55 @@ const Sales = ()=>{
     },[allSessions, postingDate, isView, saleEmployee])
 
     useEffect(()=>{
+        const findKitchenField = fields.find((field)=>{return field.isSplit})
+        if (findKitchenField){
+            const kitchenRecords = []
+            const kitchenSalesPersons = []
+            fields.forEach((record)=>{
+                if (!kitchenSalesPersons.includes(record.kitchenEmployeeId)){
+                    kitchenSalesPersons.push(record.kitchenEmployeeId)
+                }
+            })
+    
+            kitchenSalesPersons.forEach((employeeId)=>{
+                const kitchenRecord = {}
+                let totalKitchenAmount = 0
+                let totalCashSales = 0
+                let totalBankSales = 0
+                const allPayPoints = {...payPoints}
+                fields.forEach((field)=>{
+                    if (field.kitchenEmployeeId === employeeId){
+                        totalKitchenAmount += Number(field.kitchenCashSales || 0) + Number(field.kitchenBankSales || 0)
+                        totalCashSales += Number(field.kitchenCashSales || 0)
+                        totalBankSales += Number(field.kitchenBankSales || 0)
+                        Object.keys(salesUnits).forEach((salesUnit)=>{
+                            Object.keys(payPoints).forEach((payPoint)=>{
+                                allPayPoints[payPoint] = Number(allPayPoints[payPoint]) + Number(field[`Kitchen-${salesUnit}`]?.[payPoint] || 0)
+                            })
+                        })
+                    }
+                })
+                const salesUnits1 = {...salesUnits}
+                salesUnits1['kitchen'] = {...allPayPoints}
+                kitchenRecord.isKitchen = true
+                kitchenRecord.employeeId = employeeId
+                kitchenRecord.totalSales = totalKitchenAmount
+                kitchenRecord.cashSales = totalCashSales
+                kitchenRecord.bankSales = totalBankSales
+                kitchenRecord.debt = ''
+                kitchenRecord.shortage = ''
+                kitchenRecord.debtRecovered = ''
+                kitchenRecord.salesPoint = 'kitchen'
+                Object.keys(salesUnits1).forEach((saleUnit)=>{
+                    kitchenRecord[saleUnit] = salesUnits1[saleUnit]
+                })
+                kitchenRecords.push(kitchenRecord)
+            })
+            setKitchenRecords(kitchenRecords)
+        }
+    },[fields])
+
+    useEffect(()=>{
         if (settings.length){  
             const uomSetFilt = settings.filter((setting)=>{
                 return setting.name === 'uom'
@@ -464,10 +512,12 @@ const Sales = ()=>{
 
     useEffect(()=>{
         setCurApproval(null)
+        setKitchenRecords([])
         if (salesOpts!=='sales'){
             setIsView(false)
             setFields([])
             setAddEmployeeId('')
+            setAddKitchenEmployeeId('')
             setCurSale(null)
         }else{                                  
             setIsView(false)                             
@@ -557,6 +607,7 @@ const Sales = ()=>{
             setReportSales(null)
             setFields([])
             setAddEmployeeId('')
+            setAddKitchenEmployeeId('')
             setCurSale(null)
             setIsView(false)
         }
@@ -575,12 +626,18 @@ const Sales = ()=>{
             index = prop.index - accommodationRecords.length
         }
         if(sessionSalesRecords.length){
-            index = prop.index - sessionSalesRecords.length
+            index = index - sessionSalesRecords.length
         }
+        if(kitchenRecords.length && !isView){
+            index = index - kitchenRecords.length
+        }
+        // console.log('changed index to:', index)
         const name = e.target.getAttribute('name')
         const isSplit = name.split('-').includes('Kitchen')
         const category = e.target.getAttribute('category')
         const value = e.target.value
+        const spNameList = name.split('-')
+        const isKitchenCash = spNameList.includes('Kitchen') && category === 'cash'
         setFields((fields)=>{
             if (category && category!=='cash'){
                 var ct = 0
@@ -590,16 +647,32 @@ const Sales = ()=>{
                         if(category!==payPoint && payPoint!=='cash'){                
                             ct1 += Number(fields[index][salesUnit][payPoint])
                         }else{
-                            if (name !== salesUnit && payPoint!=='cash') {
+                            if (salesUnit !== name && payPoint!=='cash') {
                                 ct1 += Number(fields[index][salesUnit][payPoint])
                             }
                         }
                     })
                     ct += Number(ct1)
                 })
+                var kct = 0
+                Object.keys(salesUnits).forEach((salesUnit)=>{
+                    const salesUnit1 = `Kitchen-${salesUnit}`
+                    var kct1 = 0                    
+                    Object.keys(fields[index]?.[salesUnit1] || {}).forEach((payPoint)=>{                    
+                        if(category!==payPoint && payPoint!=='cash'){                
+                            kct1 += Number(fields[index]?.[salesUnit1]?.[payPoint] || 0)
+                        }else{
+                            if (salesUnit1 !== name && payPoint!=='cash') {
+                                kct1 += Number(fields[index]?.[salesUnit1]?.[payPoint] || 0)
+                            }
+                        }
+                    })
+                    kct += Number(kct1)
+                })
                 fields[index] = {
                     ...fields[index], 
-                    bankSales: ((ct+Number(value))&&!isSplit)?ct+Number(value):'',
+                    ...(!isSplit  && {bankSales: ((ct+Number(value))&&!isSplit)?ct+Number(value):''}),
+                    ...(isSplit && {kitchenBankSales: ((kct+Number(value))&&isSplit)?kct+Number(value):''}),                    
                     [name]:{
                         ...fields[index][name], 
                         [category]:value
@@ -610,15 +683,28 @@ const Sales = ()=>{
                 Object.keys(salesUnits).forEach((salesUnit)=>{
                     var ct1 = 0                    
                     Object.keys(fields[index][salesUnit]).forEach((payPoint)=>{                    
-                        if(name !== salesUnit && payPoint === category){                
+                        if(salesUnit !== name && payPoint === category){                
                             ct1 += Number(fields[index][salesUnit][payPoint])
                         }
                     })
                     ct += Number(ct1)
                 })
+
+                var kct = 0
+                Object.keys(salesUnits).forEach((salesUnit)=>{
+                    const salesUnit1 = `Kitchen-${salesUnit}`
+                    var kct1 = 0                    
+                    Object.keys(fields[index]?.[salesUnit1] || {}).forEach((payPoint)=>{                    
+                        if(salesUnit1 !== name && payPoint === category){                
+                            kct1 += Number(fields[index]?.[salesUnit1]?.[payPoint] || 0)
+                        }
+                    })
+                    kct += Number(kct1)
+                })
                 fields[index] = {
                     ...fields[index], 
-                    cashSales: ((ct+Number(value))&&!isSplit)?ct+Number(value):'',
+                    ...(!isSplit  && {cashSales: ((ct+Number(value))&&!isSplit)?ct+Number(value):''}),                    
+                    ...(isSplit && {kitchenCashSales: ((kct+Number(value))&&isSplit)?kct+Number(value):''}),
                     [name]:{
                         ...fields[index][name], 
                         [category]:value
@@ -1010,7 +1096,6 @@ const Sales = ()=>{
                         })
                         return newProducts
                     })
-                    console.log( `Duplicates found: ${entry.productId} ${entryWrh}`)
                 }
             }
 
@@ -1027,8 +1112,9 @@ const Sales = ()=>{
             var totalBankSales = 0 
             let deliverySessions = []
             let salesSessions = []
-            const fields1 = [...accommodationRecords, ...sessionSalesRecords, ...fields]
+            const fields1 = [...accommodationRecords, ...sessionSalesRecords, ...(isApprover ? (curApproval ? [] : kitchenRecords) : []), ...fields]
             fields1.forEach((field)=>{
+                // delete field.isSplit
                 totalCashSales += Number(field.cashSales)
                 totalDebt += Number(field.debt)
                 totalShortage += Number(field.shortage)
@@ -1078,7 +1164,8 @@ const Sales = ()=>{
             }else{
                 setSales(newSales)
                 setCurApproval(null)
-                getApprovals(company)
+                getApprovals(company)                
+                setKitchenRecords([])
                 setCurSale(newSale)
                 setCurSaleDate(newSale.postingDate)
                 setIsView(true)
@@ -1146,6 +1233,7 @@ const Sales = ()=>{
             if(companyRecord?.permissions.includes('approveSales') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
+            setKitchenRecords([])
             setCurSale(null)
             setCurApproval(approval)
             setFields([...approval.data])
@@ -1186,6 +1274,7 @@ const Sales = ()=>{
     }
 
     const handleViewClick = async (sale) => {
+        setKitchenRecords([])
         setCurSale(sale)
         setCurApproval(null)
         setCurSaleDate(sale.postingDate)
@@ -1265,10 +1354,12 @@ const Sales = ()=>{
             }else{
                 setIsView(false)
                 setCurSale(null)
+                setKitchenRecords([])
                 setCurApproval(null)
                 setCurSaleDate(null)
                 setFields([])
                 setAddEmployeeId('')
+                setAddKitchenEmployeeId('')
                 setRecoveryEmployeeId('')            
                 setAlertState('success')
                 setAlert('Sales Deleted Successfully!')
@@ -1902,6 +1993,7 @@ const Sales = ()=>{
                                                 setAlertState('success')
                                                 setAlert('Deleted Approval Data Successfully!')
                                                 setAlertTimeout(3000)
+                                                setKitchenRecords([])
                                                 setCurSale(null)
                                             }
 
@@ -2181,6 +2273,8 @@ const Sales = ()=>{
                                 setIsView(false)
                                 setFields([])
                                 setAddEmployeeId('')
+                                setAddKitchenEmployeeId('')
+                                setKitchenRecords([])
                                 setCurSale(null)
                                 setCurApproval(null)
                             }}
@@ -2193,6 +2287,8 @@ const Sales = ()=>{
                                     setIsView(false)
                                     setFields([])
                                     setAddEmployeeId('')
+                                    setAddKitchenEmployeeId('')
+                                    setKitchenRecords([])
                                     setCurSale(null)
                                     setIsApprover(false)
                                 }else if (salesOpts==='rentals'){
@@ -2225,6 +2321,49 @@ const Sales = ()=>{
                             </div>}
                         </div>}
                         {salesOpts==='sales' && (!isView && <div className='addnewsales'>
+                            <div className='inpcov'>
+                                <div>Kitchen Person ID</div>
+                                <select 
+                                    className='forminp'
+                                    name='kitchenEmployeeId'
+                                    type='text'
+                                    value={addKitchenEmployeeId}                                    
+                                    onChange={(e)=>{
+                                        setAddKitchenEmployeeId(e.target.value)
+                                    }}
+                                >
+                                    <option value=''>Select Kitchen Person</option>
+                                    {employees.filter((fltemp)=>{
+                                        var ct = 0
+                                        fields.forEach((field)=>{
+                                            if (fltemp.i_d === field.employeeId){
+                                                ct++
+                                                if (['vip','accomodation'].includes(field.salesPoint)){
+                                                    ct--
+                                                }
+                                            }
+                                        })
+                                        if (!ct){
+                                            if (fltemp.dismissalDate){
+                                                if (new Date(fltemp.dismissalDate).getTime()>= new Date(saleFrom).getTime()){
+                                                    return fltemp
+                                                }
+                                            }else{
+                                                return fltemp
+                                            }
+                                        }
+                                    }).map((employee)=>{
+                                        return ( employee.department === 'KITCHEN' && 
+                                            <option 
+                                                key={employee.i_d}
+                                                value={employee.i_d}
+                                            >
+                                                {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                            </option>
+                                        )
+                                    })}
+                                </select>
+                            </div>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
                                 <select 
@@ -2269,7 +2408,7 @@ const Sales = ()=>{
                                 </select>
                             </div>
                             <div className='inpcov'>
-                                <div>Total Sales</div>
+                                <div>Total Sales (Excluding Kitchen Sales)</div>
                                 <input 
                                     className='forminp'
                                     name='totalSales'
@@ -2283,14 +2422,24 @@ const Sales = ()=>{
                             </div>
                             <div className='addempsales'
                                 style={{
-                                    cursor:(addEmployeeId&&addTotalSales)?'pointer':'not-allowed'
+                                    cursor:(addEmployeeId&&addTotalSales&&addKitchenEmployeeId)?'pointer':'not-allowed'
                                 }}
                                 onClick={()=>{
-                                    if (addEmployeeId && addTotalSales){
+                                    if (addEmployeeId && addKitchenEmployeeId && addTotalSales){
+                                        const newField = {
+                                            ...defaultFields,
+                                            employeeId: addEmployeeId, 
+                                            kitchenEmployeeId: addKitchenEmployeeId,
+                                            totalSales: addTotalSales  
+                                        }
                                         setFields((fields)=>{
-                                            return [{...defaultFields, employeeId:addEmployeeId, totalSales:addTotalSales},...fields]
+                                            return [
+                                                newField,
+                                                ...fields
+                                            ]
                                         })
                                         setAddEmployeeId('')
+                                        setAddKitchenEmployeeId('')
                                         setAddTotalSales('')
                                     }
                                 }}
@@ -2661,10 +2810,10 @@ const Sales = ()=>{
                                 />
                             </div>
                         </div>}
-                        {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...fields].map((field, index)=>{
+                        {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords), ...fields].map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage) - Number(field.unAccountedSales || 0)
                             // console.log(index)
-                            if (!isView){
+                            if (!isView && !field.isAccommodation && !field.isSession && !field.isKitchen){
                                 field.isSplit = true
                             }
                             return (
@@ -2672,7 +2821,7 @@ const Sales = ()=>{
                                     <div className='pdsalesview'>
                                         {`Pending Sales out of ₦${Number(field.totalSales).toLocaleString()}:`} <b> {'₦'+(Number(field.totalSales) - netTotal).toLocaleString()}</b> <b>{` ${field.postingDate? '('+getDate(field.postingDate)+')' : ''}`}</b>
                                     </div>
-                                    {!isView && !field.isAccommodation && !field.isSession && <MdDelete 
+                                    {!isView && !field.isAccommodation && !field.isSession && !field.isKitchen && <MdDelete 
                                         className='salesdelete'
                                         onClick={()=>{
                                             setFields((fields)=>{
@@ -2729,7 +2878,7 @@ const Sales = ()=>{
                                                 value={field.debt}
                                                 style={{cursor: !field.salesPoint ? 'not-allowed':'auto'}}
                                                 title={!field.salesPoint ? 'Please Select Sales Point Before Entering Debt':''}
-                                                disabled={isView || (field.isAccommodation) || (field.isSession) || !field.salesPoint}
+                                                disabled={isView || (field.isAccommodation) || (field.isKitchen) || (field.isSession) || !field.salesPoint}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -2743,7 +2892,7 @@ const Sales = ()=>{
                                                 type='text'
                                                 placeholder='Sales Point'
                                                 value={field.salesPoint}
-                                                disabled={isView || field.salesPoint || (field.isAccommodation) || (field.isSession)}
+                                                disabled={isView || field.salesPoint || (field.isAccommodation) || (field.isKitchen) || (field.isSession)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -2768,7 +2917,7 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Shortage'
                                                 value={field.shortage}
-                                                disabled={isView || (field.isAccommodation) || (field.isSession)}
+                                                disabled={isView || (field.isAccommodation) || (field.isKitchen) || (field.isSession)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -2782,7 +2931,7 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Un-Accounted'
                                                 value={field.unAccountedSales}
-                                                disabled={isView || (field.isAccommodation) || (field.isSession)}
+                                                disabled={isView || (field.isAccommodation) || (field.isKitchen) || (field.isSession)}
                                                 onChange={(e)=>{
                                                     handleFieldChange({index, e})
                                                 }}
@@ -2928,7 +3077,7 @@ const Sales = ()=>{
                                                 if (!activeSessions.length){                                                    
                                                     // setIsProductView(false)
                                                     // setProductAdd(true)      
-                                                    const data = [...accommodationRecords, ...sessionSalesRecords, ...fields]
+                                                    const data = [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields]
                                                     if (curApproval && curApproval?.approved){  
                                                         if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_sales_posts')){
                                                             setAlertState('error')
@@ -3155,7 +3304,7 @@ const SalesEntry = ({salesUnits, salesUnit, payPointAccounts, field, index, hand
             {open && Object.keys(salesUnits[salesUnit]).map((payPoint, id)=>{
                 return (
                     field?.isSplit ? 
-                    <div style={{display: 'block'}}>
+                    <div style={{display: 'block', padding:'0px 5px', margin:'5px', border: 'solid black 0.8px', borderRadius: '5px'}}>
                         <div className='inpcov' key={id}>
                             <div>{`(${salesUnit}) ${payPointAccounts[payPoint]}`}</div>
                             <input 
@@ -3165,13 +3314,13 @@ const SalesEntry = ({salesUnits, salesUnit, payPointAccounts, field, index, hand
                                 type='number'
                                 placeholder={payPoint}
                                 value={field[salesUnit][payPoint]}
-                                disabled={isView || (field.isAccommodation) || (field.isSession)}
+                                disabled={isView || (field.isAccommodation) || (field.isKitchen) || (field.isSession)}
                                 onChange={(e)=>{
                                     handleFieldChange({index,e})
                                 }}
                             />
                         </div>
-                        <div className='inpcov' key={id}>
+                        <div className='inpcov' key={id+'a'}>
                             <div>{`(${'Kitchen'}) ${payPointAccounts[payPoint]}`}</div>
                             <input 
                                 className='forminp'
@@ -3180,7 +3329,7 @@ const SalesEntry = ({salesUnits, salesUnit, payPointAccounts, field, index, hand
                                 type='number'
                                 placeholder={payPoint}
                                 value={field[`Kitchen-${salesUnit}`]?.[payPoint] || ''}
-                                disabled={isView || (field.isAccommodation) || (field.isSession)}
+                                disabled={isView || (field.isAccommodation) || (field.isKitchen) || (field.isSession)}
                                 onChange={(e)=>{
                                     handleFieldChange({index,e})
                                 }}
@@ -3196,7 +3345,7 @@ const SalesEntry = ({salesUnits, salesUnit, payPointAccounts, field, index, hand
                             type='number'
                             placeholder={payPoint}
                             value={field[salesUnit][payPoint]}
-                            disabled={isView || (field.isAccommodation) || (field.isSession)}
+                            disabled={isView || (field.isAccommodation) || (field.isKitchen) || (field.isSession)}
                             onChange={(e)=>{
                                 handleFieldChange({index,e})
                             }}
@@ -3333,7 +3482,6 @@ const AddProduct = ({
                 if (!curSale.approval){
                     setSalesEntries(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`)))
                 }else{
-                    // console.log(curSale.approval)
                     setApprovalEntries(curSale.approval)
                 }
 
@@ -3573,7 +3721,7 @@ const AddProduct = ({
                                 setIsProductView(false)
                                 setProductAdd(false)
                                 if(!isProductView){
-                                    if(curSale!==null && curSale.approval===undefined){
+                                    if(curSale!==null && [undefined, null].includes(curSale.approval)){
                                         localStorage.setItem(`sales-${curSale.createdAt}`, JSON.stringify(salesEntries));
                                     }
                                 }
