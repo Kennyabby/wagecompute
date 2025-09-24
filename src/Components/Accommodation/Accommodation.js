@@ -179,7 +179,7 @@ const Accommodation = ()=>{
         if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
-        if(companyRecord?.permissions.includes('postAccommodation') || companyRecord?.status==='admin'){
+        if(companyRecord?.permissions.includes('approve_accommodation') || companyRecord?.status==='admin'){
             setIsApprover(true)
         }
     },[companyRecord])
@@ -777,7 +777,7 @@ const Accommodation = ()=>{
                                     return ftrsale
                                 }
                             }else{
-                                if (companyRecord?.status !== 'admin'){
+                                if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('view_all_accommodation')){
                                     if (ftrsale.employeeId === companyRecord.emailid){
                                         return ftrsale
                                     }
