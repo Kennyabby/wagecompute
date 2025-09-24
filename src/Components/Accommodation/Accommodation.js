@@ -1384,123 +1384,129 @@ const Accommodation = ()=>{
                             }}
                             onClick={()=>{
                                 if (accommodationFields.accommodationAmount){
-                                    if (fillmode === 'payment'){
-                                        if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
-                                            accommodationFields.paymentReceipt
-                                        ){
-                                        
-                                            const paymentFields = {
-                                                paymentAmount: accommodationFields.paymentAmount,
-                                                payPoint: accommodationFields.payPoint,
-                                                paymentReceipt: accommodationFields.paymentReceipt
-                                            }
-                                            let foundVoidReceipt = false
-                                            let voidReceiptDetails = {}
-                                            let usedReceipt = paymentReceipts.find((payrec)=>{
-                                                return (
-                                                    payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
-                                                    && payrec.paymentPoint === accommodationFields.payPoint
-                                                )
-                                            })
-                                            if (usedReceipt){
-                                                foundVoidReceipt = true
-                                                voidReceiptDetails = {
-                                                    voidReceipt: usedReceipt?.paymentReceipt,
-                                                    voidReceiptDate: usedReceipt?.paymentDate,
-                                                    voidReceiptPoint: usedReceipt?.paymentPoint,
-                                                    voidReceiptAmount: usedReceipt?.paymentAmount,
-                                                    voidReceiptModule: usedReceipt?.paymentModule,
-                                                    voidReceiptHandler: usedReceipt?.paymentHandler
+                                    if (accommodationFields.employeeId === companyRecord?.emailid || companyRecord?.status === 'admin'){
+                                        if (fillmode === 'payment'){
+                                            if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
+                                                accommodationFields.paymentReceipt
+                                            ){
+                                            
+                                                const paymentFields = {
+                                                    paymentAmount: accommodationFields.paymentAmount,
+                                                    payPoint: accommodationFields.payPoint,
+                                                    paymentReceipt: accommodationFields.paymentReceipt
                                                 }
-                                                paymentFields.voidReceipt = voidReceiptDetails
-                                                if (companyRecord?.status === 'admin'){
-                                                    setAlertState('error')
-                                                    setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
-                                                    setAlertTimeout(5000)
-                                                    return
-                                                }
-                                            }else {
-                                                let voidReceipts = paymentReceipts.filter((payrec)=>{
-                                                    return(
-                                                        payrec.paymentReceipt > Number(accommodationFields.paymentReceipt)
-                                                        && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
+                                                let foundVoidReceipt = false
+                                                let voidReceiptDetails = {}
+                                                let usedReceipt = paymentReceipts.find((payrec)=>{
+                                                    return (
+                                                        payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
+                                                        && payrec.paymentPoint === accommodationFields.payPoint
                                                     )
                                                 })
-                                                
-                                                if (voidReceipts.length){
+                                                if (usedReceipt){
                                                     foundVoidReceipt = true
                                                     voidReceiptDetails = {
-                                                        voidReceipt: voidReceipts[0]?.paymentReceipt,
-                                                        voidReceiptDate: voidReceipts[0]?.paymentDate,
-                                                        voidReceiptPoint: voidReceipts[0]?.paymentPoint,
-                                                        voidReceiptAmount: voidReceipts[0]?.paymentAmount,
-                                                        voidReceiptModule: voidReceipts[0]?.paymentModule,
-                                                        voidReceiptHandler: voidReceipts[0]?.paymentHandler
+                                                        voidReceipt: usedReceipt?.paymentReceipt,
+                                                        voidReceiptDate: usedReceipt?.paymentDate,
+                                                        voidReceiptPoint: usedReceipt?.paymentPoint,
+                                                        voidReceiptAmount: usedReceipt?.paymentAmount,
+                                                        voidReceiptModule: usedReceipt?.paymentModule,
+                                                        voidReceiptHandler: usedReceipt?.paymentHandler
                                                     }
                                                     paymentFields.voidReceipt = voidReceiptDetails
-
-                                                    // if (companyRecord?.status === 'admin'){
-                                                    //     setAlertState('error')
-                                                    //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
-                                                    //     setAlertTimeout(5000)
-                                                    //     return
-                                                    // }
+                                                    if (companyRecord?.status === 'admin'){
+                                                        setAlertState('error')
+                                                        setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
+                                                        setAlertTimeout(5000)
+                                                        return
+                                                    }
+                                                }else {
+                                                    let voidReceipts = paymentReceipts.filter((payrec)=>{
+                                                        return(
+                                                            payrec.paymentReceipt > Number(accommodationFields.paymentReceipt)
+                                                            && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
+                                                        )
+                                                    })
+                                                    
+                                                    if (voidReceipts.length){
+                                                        foundVoidReceipt = true
+                                                        voidReceiptDetails = {
+                                                            voidReceipt: voidReceipts[0]?.paymentReceipt,
+                                                            voidReceiptDate: voidReceipts[0]?.paymentDate,
+                                                            voidReceiptPoint: voidReceipts[0]?.paymentPoint,
+                                                            voidReceiptAmount: voidReceipts[0]?.paymentAmount,
+                                                            voidReceiptModule: voidReceipts[0]?.paymentModule,
+                                                            voidReceiptHandler: voidReceipts[0]?.paymentHandler
+                                                        }
+                                                        paymentFields.voidReceipt = voidReceiptDetails
+    
+                                                        // if (companyRecord?.status === 'admin'){
+                                                        //     setAlertState('error')
+                                                        //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
+                                                        //     setAlertTimeout(5000)
+                                                        //     return
+                                                        // }
+                                                    }
                                                 }
+                                                if (curApproval && curApproval?.approved){  
+                                                    if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_accommodation_posts')){
+                                                        setAlertState('error')
+                                                        setAlert('You are not allowed to post payments!')
+                                                        setAlertTimeout(3000)
+                                                        return
+                                                    }                
+                                                }                                           
+                                                runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, ()=>{postPayment(accommodationFields)}, curAccommodation.createdAt)
+                                                if (selectedUnPaidAccommodations.length){
+                                                    selectedUnPaidAccommodations.forEach((selectedAccommodation)=>{
+                                                        let accPaymentFields = {
+                                                            paymentAmount: selectedAccommodation.paymentAmount,
+                                                            payPoint: selectedAccommodation.payPoint,
+                                                            paymentReceipt: selectedAccommodation.paymentReceipt,
+                                                            accommodationAmount: selectedAccommodation.accommodationAmount,
+                                                            createdAt: selectedAccommodation.createdAt
+                                                        }
+                                                        if (foundVoidReceipt){
+                                                            accPaymentFields.voidReceipt = voidReceiptDetails
+                                                        }
+                                                        runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, ()=>{postPayment(accPaymentFields)}, selectedAccommodation.createdAt)
+                                                    })
+                                                }
+    
+                                            }else{
+                                                setActionMessage('')
+                                                setAlertState('error')
+                                                setAlert(
+                                                    `All Fields Are Required! Kindly Fill All`
+                                                )
+                                                setAlertTimeout(5000)
                                             }
-                                            if (curApproval && curApproval?.approved){  
-                                                if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_accommodation_posts')){
-                                                    setAlertState('error')
-                                                    setAlert('You are not allowed to post payments!')
-                                                    setAlertTimeout(3000)
-                                                    return
-                                                }                
-                                            }                                           
-                                            runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, ()=>{postPayment(accommodationFields)}, curAccommodation.createdAt)
-                                            if (selectedUnPaidAccommodations.length){
-                                                selectedUnPaidAccommodations.forEach((selectedAccommodation)=>{
-                                                    let accPaymentFields = {
-                                                        paymentAmount: selectedAccommodation.paymentAmount,
-                                                        payPoint: selectedAccommodation.payPoint,
-                                                        paymentReceipt: selectedAccommodation.paymentReceipt,
-                                                        accommodationAmount: selectedAccommodation.accommodationAmount,
-                                                        createdAt: selectedAccommodation.createdAt
-                                                    }
-                                                    if (foundVoidReceipt){
-                                                        accPaymentFields.voidReceipt = voidReceiptDetails
-                                                    }
-                                                    runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, ()=>{postPayment(accPaymentFields)}, selectedAccommodation.createdAt)
-                                                })
-                                            }
-
                                         }else{
-                                            setActionMessage('')
-                                            setAlertState('error')
-                                            setAlert(
-                                                `All Fields Are Required! Kindly Fill All`
-                                            )
-                                            setAlertTimeout(5000)
+                                            var ct=0                                    
+                                            var requiredNo = Object.keys(accommodationFields).length - 3
+                                            Object.keys(accommodationFields).forEach((field)=>{
+                                                if (accommodationFields[field]){
+                                                    ct++ 
+                                                }
+                                            })
+                                            if (ct===requiredNo){
+                                                if (!accommodationFields.posted){
+                                                    postAccommodation()
+                                                }
+                                                accommodationFields.posted = true
+                                            }else{
+                                                setActionMessage('')
+                                                setAlertState('error')
+                                                setAlert(
+                                                    `All Fields Are Required! Kindly Fill All`
+                                                )
+                                                setAlertTimeout(5000)                                        
+                                            }
                                         }
                                     }else{
-                                        var ct=0                                    
-                                        var requiredNo = Object.keys(accommodationFields).length - 3
-                                        Object.keys(accommodationFields).forEach((field)=>{
-                                            if (accommodationFields[field]){
-                                                ct++ 
-                                            }
-                                        })
-                                        if (ct===requiredNo){
-                                            if (!accommodationFields.posted){
-                                                postAccommodation()
-                                            }
-                                            accommodationFields.posted = true
-                                        }else{
-                                            setActionMessage('')
-                                            setAlertState('error')
-                                            setAlert(
-                                                `All Fields Are Required! Kindly Fill All`
-                                            )
-                                            setAlertTimeout(5000)                                        
-                                        }
+                                        setAlertState('error')
+                                        setAlert('You are not allowed to post payments for this employee!')
+                                        setAlertTimeout(3000)
                                     }
                                 }
                             }}
