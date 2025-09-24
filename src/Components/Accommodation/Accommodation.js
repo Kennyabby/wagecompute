@@ -850,7 +850,7 @@ const Accommodation = ()=>{
                                     {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {approval.data.paymentReceipt}</div>}
                                     {approval && isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
                                         approval.data?.voidReceipt && 
-                                        <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{approval.data?.voidReceipt.voidReceipt}"" already used on {approval.data?.voidReceipt.voidReceiptDate} in {payPoints[approval.data?.voidReceipt.voidReceiptPoint]}. <a>Click to Find Receipt Report</a></div>
+                                        <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{approval.data?.voidReceipt.voidReceipt}" already used on the date {approval.data?.voidReceipt.voidReceiptDate} for {payPoints[approval.data?.voidReceipt.voidReceiptPoint]}. <a>Click to Find Receipt Report</a></div>
                                     }</div>}
                                 </div>
                                 {(companyRecord.status==='admin') && <div 
