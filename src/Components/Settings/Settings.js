@@ -507,7 +507,7 @@ const Settings = () => {
                                         </div>
                                         <div>Posting Permissions</div>
                                         <div className='permissions'>
-                                            {['allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products', 'allow_recovery_posts', 'allow_rental_posts' , 'allow_accommodation_posts', 'allow_purchase_posts', 'allow_expense_posts'].map((permission, index) => (
+                                            {['allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products', 'allow_recovery_posts', 'allow_rental_posts' , 'allow_accommodation_posts', 'allow_purchase_posts', 'allow_expense_posts', 'allow_payment_posts'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -521,7 +521,7 @@ const Settings = () => {
                                         </div>
                                         <div>Approval Permissions</div>
                                         <div className='permissions'>
-                                            {['approve_sales','approve_rentals','approve_recovery','approve_accommodation'].map((permission, index) => (
+                                            {['approve_sales','approve_rentals','approve_recovery','approve_accommodation', 'approve_purchase', 'approve_expense', 'approve_payment'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
