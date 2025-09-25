@@ -1860,7 +1860,6 @@ const PaymentModal = ({
             }else if (wrhCategories['kitchen'].includes(item.category)){
                 kc++
             }
-
         })
         
         if (bc > 0 && kc > 0){
