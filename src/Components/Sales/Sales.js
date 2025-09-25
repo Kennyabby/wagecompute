@@ -1957,7 +1957,7 @@ const Sales = ()=>{
                         }
                     }).map((sale, index)=>{
                         if (sale.isApproval){
-                            const {createdAt, postingDate, message, handlerId, approved} = sale
+                            const {createdAt, postingDate, message, handlerId, approved, approvers} = sale
                             var textColor = 'red'
                             if (approved){
                                 textColor ='green'
@@ -1974,6 +1974,23 @@ const Sales = ()=>{
                                         <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
                                         {message && <div>Message: <b>{message}</b></div>}
                                         <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                        {approvers?.length && 
+                                            <div 
+                                                className='deptdesc' 
+                                                style={{
+                                                    fontWeight:'bold', 
+                                                    fontSize: '13px',
+                                                    color: 'greenyellow',
+                                                    background: 'rgba(0,0,0,0.7)',
+                                                    width: 'fit-content',
+                                                    padding: '5px',
+                                                    borderRadius: '8px',
+                                                    border: 'solid greenyellow 3px',
+                                                }}
+                                            > 
+                                                ## SALES VERIFIED ##
+                                            </div>
+                                        }
                                     </div>
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'
@@ -2055,6 +2072,23 @@ const Sales = ()=>{
                                         <div>Debts: <b>{'₦'+(Number(totalDebt)+Number(totalShortage)-Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                         <div>Recovered: <b>{'₦'+(Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
                                         <div className='deptdesc'>{`Number of Sales Made:`} <b>{`${record.length}`}</b></div>
+                                        {approval && approval?.approvers?.length && 
+                                            <div 
+                                                className='deptdesc' 
+                                                style={{
+                                                    fontWeight:'bold', 
+                                                    fontSize: '13px',
+                                                    color: 'greenyellow',
+                                                    background: 'rgba(0,0,0,0.7)',
+                                                    width: 'fit-content',
+                                                    padding: '5px',
+                                                    borderRadius: '8px',
+                                                    border: 'solid greenyellow 3px',
+                                                }}
+                                            > 
+                                                ## SALES PRODUCTS VERIFIED ##
+                                            </div>
+                                        }
                                     </div>
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'

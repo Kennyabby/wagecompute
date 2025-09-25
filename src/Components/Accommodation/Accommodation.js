@@ -861,7 +861,8 @@ const Accommodation = ()=>{
                                             }}
                                         > 
                                             ## PAYMENT VERIFIED ##
-                                        </div>}
+                                        </div>
+                                    }
                                     {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Payment Point: {payPoints[approval.data.payPoint].toUpperCase()}</div>}
                                     {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {approval.data.paymentReceipt}</div>}
                                     {approval && isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
