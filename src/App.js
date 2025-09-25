@@ -400,14 +400,14 @@ function App() {
     }
 
     const moduleApproval = moduleApprovers[module]
-    const canApprove = ![null, undefined].includes(moduleApproval?.[approverId])
+    const canApprove = ![null, undefined].includes(moduleApproval?.approverIds?.[approverId])
     if (canApprove){
-      const approverSections = moduleApproval[approverId].sections
+      const approverSections = moduleApproval?.approverIds?.[approverId].sections
       if (approverSections.includes('all') || approverSections.includes(section)){
         respConfig.isApprover = true
         const approvalType = moduleApproval.type
         const finalLevel = moduleApproval.finalLevel
-        const approverLevel = moduleApproval[approverId][approvalType]
+        const approverLevel = moduleApproval.approverIds?.[approverId][approvalType]
         respConfig.approverLevel = approverLevel
         respConfig.finalLevel = finalLevel
       }
@@ -462,13 +462,13 @@ function App() {
         }
       }else{
         setAlertState('error')
-        setAlert(finalLevel === approverLevel ? 'Awaiting Approval Verification!': 'You Have Already Verified. Awaiting Next Approval!')
-        setAlertTimeout(3000) 
+        setAlert((finalLevel === approverLevel || sectionApprovers.length < approverLevel) ? 'Verification is Pending. Awaiting Approval Verification!': 'You Have Already Verified. Awaiting Next Approval!')
+        setAlertTimeout(5000) 
       }
     }else{
         setAlertState('error')
         setAlert('You Have No Approval Permissions For This Section!')
-        setAlertTimeout(3000)
+        setAlertTimeout(5000)
     }
   }
 
