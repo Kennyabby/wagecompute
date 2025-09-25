@@ -846,6 +846,22 @@ const Accommodation = ()=>{
                                             return employee.i_d === employeeId
                                         })[0]?.['firstName']:''
                                     }</b></div>
+                                    {approval && approval?.approvers?.length && 
+                                        <div 
+                                            className='deptdesc' 
+                                            style={{
+                                                fontWeight:'bold', 
+                                                fontSize: '16px',
+                                                color: 'greenyellow',
+                                                background: 'rgba(0,0,0,0.6)',
+                                                width: 'fit-content',
+                                                padding: '5px',
+                                                borderRadius: '8px',
+                                                border: 'solid greenyellow 3px',
+                                            }}
+                                        > 
+                                            ## PAYMENT VERIFIED ##
+                                        </div>}
                                     {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Payment Point: {payPoints[approval.data.payPoint].toUpperCase()}</div>}
                                     {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {approval.data.paymentReceipt}</div>}
                                     {approval && isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
@@ -1384,7 +1400,7 @@ const Accommodation = ()=>{
                             }}
                             onClick={()=>{
                                 if (accommodationFields.accommodationAmount){
-                                    if (accommodationFields.employeeId === companyRecord?.emailid || (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_accommodation'))){
+                                    if (accommodationFields.employeeId === companyRecord?.emailid || (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_postaccommodation'))){
                                         if (fillmode === 'payment'){
                                             if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
                                                 accommodationFields.paymentReceipt
