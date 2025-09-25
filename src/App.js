@@ -485,7 +485,7 @@ function App() {
     }
 
     const executeApprovalAction = async (previous)=>{
-        if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
+        if (companyRecord?.permissions.includes('approve_'+section) || companyRecord?.status==='admin'){
             executePostAction()
         }else{
             setAlertState('info')
@@ -531,7 +531,7 @@ function App() {
             executePostAction()
         }else{
             if (!curApproval.message){
-                if (companyRecord?.permissions.includes(section) || companyRecord?.status==='admin'){
+                if (companyRecord?.permissions.includes('approve_'+section) || companyRecord?.status==='admin'){
                    setShowApprovalBox(true)
                 }else{
                     setAlertState('info')
