@@ -851,9 +851,9 @@ const Accommodation = ()=>{
                                             className='deptdesc' 
                                             style={{
                                                 fontWeight:'bold', 
-                                                fontSize: '16px',
+                                                fontSize: '13px',
                                                 color: 'greenyellow',
-                                                background: 'rgba(0,0,0,0.6)',
+                                                background: 'rgba(0,0,0,0.7)',
                                                 width: 'fit-content',
                                                 padding: '5px',
                                                 borderRadius: '8px',
