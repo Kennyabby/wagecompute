@@ -430,7 +430,7 @@ function App() {
 
         const updatedSectionApprovers = sectionApprovers.concat(companyRecord?.emailid)
         const approvalState = {
-            approvers: updatedSectionApprovers,
+            approvers: (approvalStatus ? updatedSectionApprovers: sectionApprovers),
             approved: (finalLevel === approverLevel ? approvalStatus: false),
             message: approvalMessage,
             createdAt: curApproval.createdAt,
