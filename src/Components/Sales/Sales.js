@@ -594,7 +594,7 @@ const Sales = ()=>{
         if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
-        if(companyRecord?.permissions.includes('approve_sales') || companyRecord?.status==='admin'){
+        if(companyRecord?.permissions.includes('approve_postsales') || companyRecord?.status==='admin'){
             setIsApprover(true)
         }
     },[companyRecord])
@@ -1244,7 +1244,7 @@ const Sales = ()=>{
                 setIsView(true)
             }
         }else if(salesOpts === 'rentals'){
-            if(companyRecord?.permissions.includes('approve_rentals') || companyRecord?.status==='admin'){
+            if(companyRecord?.permissions.includes('approve_postrentals') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
             setCurRent(null)
@@ -1257,7 +1257,7 @@ const Sales = ()=>{
                 setIsView(true)
             }
         }else if (salesOpts === 'recovery'){
-            if(companyRecord?.permissions.includes('approve_recovery') || companyRecord?.status==='admin'){
+            if(companyRecord?.permissions.includes('approve_postrecovery') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
             setCurApproval(approval)

@@ -521,7 +521,7 @@ const Settings = () => {
                                         </div>
                                         <div>Approval Permissions</div>
                                         <div className='permissions'>
-                                            {['approve_sales','approve_rentals','approve_recovery','approve_accommodation', 'approve_purchase', 'approve_expense', 'approve_payment'].map((permission, index) => (
+                                            {['approve_postsales','approve_postaddSalesProduct','approve_postrentals','approve_postrecovery','approve_postaccommodation', 'approve_postpurchase', 'approve_postexpense', 'approve_postpayment'].map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
