@@ -1861,17 +1861,18 @@ const PaymentModal = ({
                 kc++
             }
 
-            if (bc > 0 && kc > 0){
-                return 'mulitple'
-            }
         })
-
-        if (bc > 0 && kc === 0){
+        
+        if (bc > 0 && kc > 0){
+            return 'multiple'
+        }
+        else if (bc > 0 && kc === 0){
             return wrh
         }else if (kc > 0 && bc === 0){
             return 'kitchen'
         }
     }
+
     const handleAmountChange = (e) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value;
