@@ -1384,7 +1384,7 @@ const Accommodation = ()=>{
                             }}
                             onClick={()=>{
                                 if (accommodationFields.accommodationAmount){
-                                    if (accommodationFields.employeeId === companyRecord?.emailid || companyRecord?.status === 'admin'){
+                                    if (accommodationFields.employeeId === companyRecord?.emailid || (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_accommodation'))){
                                         if (fillmode === 'payment'){
                                             if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
                                                 accommodationFields.paymentReceipt
