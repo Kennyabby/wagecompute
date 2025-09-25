@@ -519,6 +519,20 @@ const Settings = () => {
                                                 </label>
                                             ))}
                                         </div>
+                                        <div>Approval Permissions</div>
+                                        <div className='permissions'>
+                                            {['approve_sales','approve_rentals','approve_recovery','approve_accommodation'].map((permission, index) => (
+                                                <label key={index} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        value={permission}
+                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
+                                                        onChange={handlePermissionsChange}
+                                                    />
+                                                    <span className='permission-text'>{permission}</span>
+                                                </label>
+                                            ))}
+                                        </div>
                                         <div> Import/Export Permissions</div>
                                         <div className='permissions'>
                                             {['imports', 'export_inventory_report', 'export_sales_report', 'export_pos_report', 'export_purchase_report', 'export_expense_report', 'adjustments'].map((permission, index) => (

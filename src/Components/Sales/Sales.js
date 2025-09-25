@@ -594,7 +594,7 @@ const Sales = ()=>{
         if (!allowBacklogs){
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
-        if(companyRecord?.permissions.includes('approveSales') || companyRecord?.status==='admin'){
+        if(companyRecord?.permissions.includes('approve_sales') || companyRecord?.status==='admin'){
             setIsApprover(true)
         }
     },[companyRecord])
@@ -1230,7 +1230,7 @@ const Sales = ()=>{
 
     const handleApprovalViewClick = (approval)=>{
         if (salesOpts === 'sales'){        
-            if(companyRecord?.permissions.includes('approveSales') || companyRecord?.status==='admin'){
+            if(companyRecord?.permissions.includes('approve_sales') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
             setKitchenRecords([])
@@ -1244,7 +1244,7 @@ const Sales = ()=>{
                 setIsView(true)
             }
         }else if(salesOpts === 'rentals'){
-            if(companyRecord?.permissions.includes('approveRentals') || companyRecord?.status==='admin'){
+            if(companyRecord?.permissions.includes('approve_rentals') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
             setCurRent(null)
@@ -1257,7 +1257,7 @@ const Sales = ()=>{
                 setIsView(true)
             }
         }else if (salesOpts === 'recovery'){
-            if(companyRecord?.permissions.includes('approveRecovery') || companyRecord?.status==='admin'){
+            if(companyRecord?.permissions.includes('approve_recovery') || companyRecord?.status==='admin'){
                 setIsApprover(true)
             }
             setCurApproval(approval)
