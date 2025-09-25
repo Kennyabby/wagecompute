@@ -143,6 +143,7 @@ const Sales = ()=>{
     const [kitchenRecords, setKitchenRecords] = useState([])
     const [accommodationRecords, setAccommodationRecords] = useState([])
     const [sessionSalesRecords, setSessionSalesRecords] = useState([])
+    const [wrhCategories, setWrhCategories] = useState({})
     const [fields, setFields] = useState([])
     const [recoveryFields, setRecoveryFields] = useState([])
     const [rentalFields, setRentalFields] = useState({
@@ -215,6 +216,20 @@ const Sales = ()=>{
         const pendings = ftrsales.slice(1,5).filter((sl)=>{return (!sl.productsRef && sl.postingDate < postingDate)})
         setPendingSales(pendings)
     },[sales, postingDate])
+
+    useEffect(()=>{
+        if (wrhs.length){
+            setWrhCategories((wrhCategories)=>{
+                const cat = {}
+                wrhs.forEach((wrh)=>{
+                    if (!wrh.purchase){
+                        cat[wrh.name] = wrh.productCategories
+                    }
+                })
+                return {...cat}
+            })
+        }
+    },[wrhs])
 
     useEffect(()=>{
         var accommodationRecord = []
@@ -341,6 +356,7 @@ const Sales = ()=>{
                         postingDates:[]
                     }
                 })
+                let mct = 0
                 wrhPoints.forEach((wh)=>{
                     const saleRecord = {}
                     saleRecord.isSession = true
@@ -356,41 +372,68 @@ const Sales = ()=>{
                             && session.type === 'sales' && session.end && sessionOrder.status === 'completed'
                                 && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
                             ){
+                                
                                 const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
-                                if (sessionOrder?.salesPosts[salesPostsPay[0]] ===  wh){
-                                    wrhSessionOrders.push({session, sessionOrder})
+                                salesPostsPay.forEach((pay)=>{
+                                    let splitPayment = {}
+                                    if (sessionOrder?.salesPosts[pay] ===  wh){
+                                        splitPayment[wh] = 1                                                                                
+                                    }else if (sessionOrder?.salesPosts[pay] === 'multiple'){
+                                        mct++
+                                        if (mct === 1){
+                                            const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
+                                            let kct = 0
+                                            let bct = 0
+                                            sessionOrder.items.forEach((item)=>{
+                                                const warehouse = sessionOrder.wrh
+                                                const totalItemPrice = (Number(item.deliveredQauntity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
+                                                if (wrhCategories[warehouse].includes(item.category)){
+                                                    bct += totalItemPrice
+                                                }else if (wrhCategories['kitchen'].includes(item.category)){
+                                                    kct += totalItemPrice
+                                                }
+                                            })
+            
+                                            splitPayment[wh] = totalOrderPayment ? (Number(bct)/totalOrderPayment) : 0
+                                            splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderPayment) : 0
+                                        }                                        
+                                    }else{
+                                        return
+                                    }
+                                    wrhSessionOrders.push({session, sessionOrder, splitPayment})
                                     sessionOrder?.deliverySessions?.forEach((deliverySession)=>{
                                         if (!deliverySessions.includes(deliverySession)){
                                             deliverySessions.push(deliverySession)
-                                        }
+                                        }   
                                     })
+
                                     if (!salesSessions.includes(sessionOrder.sessionId)){
                                         salesSessions.push(sessionOrder.sessionId)
                                     }
-                                }
+                                })
                             }
                         })
 
                     })
                     
-                    wrhSessionOrders.forEach(({session, sessionOrder}, index)=>{
+                    wrhSessionOrders.forEach(({session, sessionOrder, splitPayment}, index)=>{
                         if (session.employee_id !== employeeId && wh === 'kitchen'){
-                            totalWrhTransactions[wh].totalSales += Number(sessionOrder.totalPayment)                        
+                            totalWrhTransactions[wh].totalSales += (Number(sessionOrder.totalPayment) * splitPayment[wh])                        
                             Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                 if (sessionOrder[payPoint]){
-                                    totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + Number(sessionOrder[payPoint])
-                                    totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? Number(sessionOrder['cash']) : 0)
-                                    totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? Number(sessionOrder[payPoint]) : 0)
+                                    totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * splitPayment[wh])
+                                    totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash'] * splitPayment[wh])) : 0)
+                                    totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint] * splitPayment[wh])) : 0)
                                 }                            
                             })
                         }else{
                             if (session.wrh === wh){
-                                totalWrhTransactions[wh].totalSales += Number(sessionOrder.totalPayment)                        
+                                totalWrhTransactions[wh].totalSales += (Number(sessionOrder.totalPayment) * splitPayment[wh])                        
                                 Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                     if (sessionOrder[payPoint]){
-                                        totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + Number(sessionOrder[payPoint])
-                                        totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? Number(sessionOrder['cash']) : 0)
-                                        totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? Number(sessionOrder[payPoint]) : 0)
+                                        totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * splitPayment[wh])
+                                        totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * splitPayment[wh]) : 0)
+                                        totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * splitPayment[wh]) : 0)
                                     }                            
                                 })
                                 if (index === wrhSessionOrders.length-1){
@@ -532,6 +575,7 @@ const Sales = ()=>{
             setProductsApprovals(approvals.filter((appr)=>{return appr.section === 'addSalesProduct'}))
         }
     },[approvals, salesOpts])
+
     useEffect(()=>{
         setSalesApprovals(approvals.filter((appr)=>{
             return (
@@ -553,6 +597,7 @@ const Sales = ()=>{
             )
         }))
     },[approvals])
+
     useEffect(()=>{
         if (curSale){
             setPostingDate(curSale.postingDate)                        
