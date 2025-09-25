@@ -338,43 +338,137 @@ function App() {
     return newNumber;
 
   }
+  
+  const getApprovalConfig =  (module, section, approverId) => {
+    const moduleApprovers = {
+      'sales': {
+        finalLevel: 1,
+        type: 'rank',
+          approverIds: {
+            '65': {
+              rank: 0,
+              sections: ['postsales']
+            }, 
+            '1': {
+              rank: 1,
+              sections: ['all']
+            }, 
+            'theplantainplanet22@gmail.com': {
+              rank: 1,
+              sections: ['all']
+            }
+          },
+        },
+        
+        'accommodation': {
+          finalLevel: 1,
+          type: 'rank',
+          approverIds: {
+            '65': {
+              rank: 0,
+              sections: ['postaccommodation']
+            }, 
+            '1': {
+              rank: 1,
+              sections: ['all']
+            }, 
+            'theplantainplanet22@gmail.com': {
+              rank: 1,
+              sections: ['all']
+            }
+          },
+        },
+
+        'purchase': {
+          finalLevel: 0,
+          type: 'rank',
+          approverIds: {
+            '1': {
+              rank: 0,
+              sections: ['all']
+            }, 
+            'theplantainplanet22@gmail.com': {
+              rank: 0,
+              sections: ['all']
+            }
+          },
+        }
+    }
+
+    const respConfig = {
+      isApprover: false
+    }
+
+    const moduleApproval = moduleApprovers[module]
+    const canApprove = ![null, undefined].includes(moduleApproval?.[approverId])
+    if (canApprove){
+      const approverSections = moduleApproval[approverId].sections
+      if (approverSections.includes('all') || approverSections.includes(section)){
+        respConfig.isApprover = true
+        const approvalType = moduleApproval.type
+        const finalLevel = moduleApproval.finalLevel
+        const approverLevel = moduleApproval[approverId][approvalType]
+        respConfig.approverLevel = approverLevel
+        respConfig.finalLevel = finalLevel
+      }
+    }
+    
+    return respConfig
+  }
 
   const postApprovalUpdate = async (company, module, section, curApproval)=>{
-    setAlertState('info')
-    setAlert('Updating Approval...')
-    setAlertTimeout(100000)
-    const approvalState = {
-        approved: approvalStatus,
-        message: approvalMessage,
-        createdAt: curApproval.createdAt,
-        lastUpdatedBy: companyRecord?.emailid
-    }
-    if (approvalStatus){
-        approvalState.approvedBy = companyRecord?.emailid || companyRecord?.emailid
-    }
-    const resp = await updateApproval(company, module, section, {                                                                
-        ...approvalState
-    })
-    if (resp.completed){
-        getApprovals(company)
-        setAlertState('success')
-        setAlert('Approval Updated!')
-        setAlertTimeout(5000)
-        setApprovalStatus(false)
-        setApprovalMessage('')
-        setShowApprovalBox(false)
-        setCurApproval({...curApproval, 
-            approved: approvalStatus,
+    const {isApprover, approverLevel, finalLevel} = getApprovalConfig(module, section, companyRecord?.emailid)
+    if(isApprover){
+      let sectionApprovers = []
+      if (Array.isArray(curApproval?.approvers)){
+        sectionApprovers = sectionApprovers.concat(curApproval.approvers)
+      }
+      if (sectionApprovers.length === approverLevel){
+        setAlertState('info')
+        setAlert('Updating Approval...')
+        setAlertTimeout(100000)
+
+        const updatedSectionApprovers = sectionApprovers.concat(companyRecord?.emailid)
+        const approvalState = {
+            approvers: updatedSectionApprovers,
+            approved: (finalLevel === approverLevel ? approvalStatus: false),
             message: approvalMessage,
             createdAt: curApproval.createdAt,
             lastUpdatedBy: companyRecord?.emailid
+        }
+        if (approvalStatus){
+            approvalState.approvedBy = companyRecord?.emailid
+        }
+        const resp = await updateApproval(company, module, section, {                                                                
+            ...approvalState
         })
+        if (resp.completed){
+            getApprovals(company)
+            setAlertState('success')
+            setAlert('Approval Updated!')
+            setAlertTimeout(5000)
+            setApprovalStatus(false)
+            setApprovalMessage('')
+            setShowApprovalBox(false)
+            setCurApproval({...curApproval, 
+                ...approvalState
+            })
+        }else{
+            setAlertState('error')
+            setAlert(resp.mess)
+            setAlertTimeout(5000)
+            setApprovalStatus(false)
+            setApprovalMessage('')
+        }
+      }else{
+        setAlertState('error')
+        setAlert(finalLevel === approverLevel ? 'Awaiting Approval Verification!': 'You Have Already Verified. Awaiting Next Approval!')
+        setAlertTimeout(3000) 
+      }
     }else{
         setAlertState('error')
-        setAlert(resp.mess)
-        setAlertTimeout(5000)
-        setApprovalStatus(false)
-        setApprovalMessage('')
+        setAlert('You Have No Approval Permissions For This Section!')
+        setAlertTimeout(3000)
     }
   }
 
