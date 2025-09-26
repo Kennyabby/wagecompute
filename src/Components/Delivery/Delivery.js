@@ -1367,7 +1367,7 @@ const Delivery = () => {
             <div className="order-entry">
                 <div className="selected-items">
                     {currentOrder.items.map(item => (
-                        (item.delivery !== 'completed') && wrhCategories[wrh].includes(item.category) &&
+                        (item.delivery !== 'completed' ) && wrhCategories[wrh].includes(item.category) &&
                         <div 
                             key={item.id} 
                             className="selected-item" 
