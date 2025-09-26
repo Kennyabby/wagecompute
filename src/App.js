@@ -35,6 +35,8 @@ function App() {
   const [posOrders, setPosOrders] = useState([]);
   const [deliverySessions, setDeliverySessions] = useState(null)
   const [salesSessions, setSalesSessions] = useState(null)
+  const [allSalesSessions, setAllSalesSessions] = useState(null)
+  const [allDeliverySessions, setAllDeliverySessions] = useState(null)
 
   const [approvals, setApprovals] = useState([])
   const [approvalStatus, setApprovalStatus] = useState(false)
@@ -714,11 +716,12 @@ function App() {
         // setSessions(thisSessions)
         if (type === 'sales'){
           setSalesSessions(thisSessions)
+          setAllSalesSessions(sessionsResponse.record)
         }
         if (type === 'delivery'){
           setDeliverySessions(thisSessions)
+          setAllDeliverySessions(sessionsResponse.record)
         }
-        // setAllSessions(sessionsResponse.record)
       }
     }else{
       if (sessionsResponse.mess !== 'Request aborted'){
@@ -2023,8 +2026,8 @@ function App() {
           attendance, setAttendance, getAttendance,
           allSessions, setAllSessions, getAllSessions,
           sessions, setSessions, fetchSessions, fetchAllSessions,
-          salesSessions, setSalesSessions,
-          deliverySessions, setDeliverySessions,
+          salesSessions, setSalesSessions, allSalesSessions,
+          deliverySessions, setDeliverySessions, allDeliverySessions,
           getPosOrders,
           isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
           tables, setTables, fetchTables,

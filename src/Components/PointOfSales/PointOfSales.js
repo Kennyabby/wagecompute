@@ -18,7 +18,7 @@ const PointOfSales = () => {
         fetchSessions, sessions, setSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
-        salesSessions, setSalesSessions,
+        salesSessions, allSalesSessions, setSalesSessions,
         paymentReceipts, getPosOrders
     } = useContext(ContextProvider);
 
@@ -428,9 +428,9 @@ const PointOfSales = () => {
                 setAlert('Session Ended!');
             }
             setAlertTimeout(3000)
+            setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
             fetchSessions(company, "sales", companyRecord)
             setEndSession(false)
-            setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
             setCountedSales({})
             setSessionUser(null)
             setAlertTimeout(5000)
@@ -1646,6 +1646,7 @@ const PointOfSales = () => {
                 setEndSession={setEndSession}
                 curSession={curSession}
                 sessions={sessions}
+                allSalesSessions={allSalesSessions}
                 allSessions={allSessions}
                 setAllSessions={setAllSessions}
                 deliverySessions={deliverySessions}
@@ -2128,7 +2129,7 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
 };
 
 const POSDashboard = ({
-    sessions, profiles, employees, companyRecord, 
+    sessions, allSalesSessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
@@ -2148,6 +2149,9 @@ const POSDashboard = ({
     },[allSessions])
 
     useEffect(()=>{
+        if (allSalesSessions.length){
+            setAllSessions(allSalesSessions)
+        }
         const getSessionsData = async ()=>{
             const ordersResponse = await fetchServer("POST", {
                 database: company,
