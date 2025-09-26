@@ -978,6 +978,8 @@ function App() {
                   paymentAmount: amount,
                   paymentReceipt: Number(receiptNo) || receiptNo,
                   paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
+                  paymentTable: order.tableId,
+                  paymentOrder: order.orderNumber,
                   paymentDate: dateVar,
                   paymentHandler: order.handlerId,
                   paymentModuleRef: order.createdAt,

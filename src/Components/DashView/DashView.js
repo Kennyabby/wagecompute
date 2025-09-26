@@ -1018,7 +1018,7 @@ const DashView = () =>{
                                     </div>
                             </div>
                             {/* Duplicates by payPoint summary */}
-                            <div style={{margin:'10px 0',padding:'8px',background:'#fff',borderRadius:'8px',boxShadow:'0 2px 8px rgba(25,118,210,0.06)',color:'#1976d2',fontWeight:'bold',fontSize:'0.98em'}}>
+                            {/* <div style={{margin:'10px 0',padding:'8px',background:'#fff',borderRadius:'8px',boxShadow:'0 2px 8px rgba(25,118,210,0.06)',color:'#1976d2',fontWeight:'bold',fontSize:'0.98em'}}>
                                 {(() => {
                                     // Group by payPoint and count duplicate receipts
                                     const payPointMap = {};
@@ -1042,7 +1042,7 @@ const DashView = () =>{
                                         </span>
                                     );
                                 })()}
-                            </div>
+                            </div> */}
                             <div style={{fontSize:'0.95em',color:'#555',marginTop:'4px',textAlign:'center'}}>Click to view, filter, and manage all payment receipts</div>
                         </div>
                         
