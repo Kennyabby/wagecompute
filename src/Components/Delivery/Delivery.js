@@ -1403,8 +1403,8 @@ const Delivery = () => {
                         const deliveredItems = currentOrder.items.filter((item)=>{
                             if (wrhCategories[wrh].includes(item.category)){
                                 totalItems += Number(item.quantity)
-                                deliveredQuantity += Number(item.deliveredQuantity || 0)
-                                return Number(item.deliveredQuantity || 0) > 0
+                                deliveredQuantity += Number(item?.deliveredQuantity || 0)
+                                return Number(item?.deliveredQuantity || 0) > 0
                             }
                         })
                         if (deliveredQuantity < totalItems){
