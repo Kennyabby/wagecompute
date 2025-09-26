@@ -1781,23 +1781,25 @@ const PaymentModal = ({
     const confirmReceiptsAvailable = (receipts)=>{
         let voidReceipts = []
         var postingDate = new Date(currentOrder.createdAt).toISOString().split('T')[0]
-        
+        const maximumPayHours = (companyRecord?.permissions?.includes('override_pos_receipts') || companyRecord?.status === 'admin') ? 15 : 9 // 15 hours for admin, 9 hours for others
         Object.keys(receipts).forEach((payPoint)=>{
+            const queryReceiptDetails = paymentReceipts.find((payrec)=>{
+                return (
+                    payrec.paymentReceipt === Number(receipts[payPoint])
+                    && payrec.paymentPoint === payPoint
+                )
+            })
+            let hourDiff = 9
+            if (queryReceiptDetails){
+                hourDiff = Math.abs((new Date().getTime() - new Date(queryReceiptDetails.paymentModuleRef).getTime()) / 36e5); // Difference in hours
+            }
             if (
-                paymentReceipts.find((payrec)=>{
-                    return (
-                        payrec.paymentReceipt === Number(receipts[payPoint])
-                        && payrec.paymentPoint === payPoint
-                    )
-                }) 
-                // ||  paymentReceipts.find((payrec)=>{
-                //     return(
-                //         payrec.paymentReceipt > Number(receipts[payPoint])
-                //         && payrec.paymentPoint === payPoint && payrec.paymentDate < postingDate
-                //     )
-                // })
+                queryReceiptDetails    
             ){
-                voidReceipts.push(payPoint.toUpperCase())                
+                if (queryReceiptDetails?.paymentTable === currentOrder.tableId && hourDiff <= maximumPayHours){
+                }else{
+                    voidReceipts.push(payPoint.toUpperCase())                
+                }
             }
         })
         return {isReceiptsAvailable: (voidReceipts.length === 0), voidReceipts}
@@ -1815,7 +1817,7 @@ const PaymentModal = ({
         }
         if (!payPointsWithNoReceipts.length){
             const {isReceiptsAvailable, voidReceipts} = confirmReceiptsAvailable(receipts)
-            if (isReceiptsAvailable || (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('override_pos_receipts'))){
+            if (isReceiptsAvailable){
                 if (Number(currentOrder.totalSales)>paymentSum){
                     const remainingDifference = Number(currentOrder.totalSales) - paymentSum
                     setAlertState('info')
