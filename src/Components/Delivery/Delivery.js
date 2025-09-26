@@ -21,7 +21,7 @@ const Delivery = () => {
         fetchSessions, sessions, setSessions,
         getSessionEnd, allSessions, setAllSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
-        deliverySessions, setDeliverySessions,
+        deliverySessions, allDeliverySessions, setDeliverySessions,
     } = useContext(ContextProvider);
 
     // Core States
@@ -1603,6 +1603,7 @@ const Delivery = () => {
                 setEndSession={setEndSession}
                 curSession={curSession}
                 sessions={sessions}
+                allDeliverySessions={allDeliverySessions}
                 allSessions={allSessions}
                 setAllSessions={setAllSessions}
                 setAllSessionOrders={setAllSessionOrders}
@@ -1832,7 +1833,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
 };
 
 const DeliveryDashboard = ({
-    sessions, profiles, employees, companyRecord, 
+    sessions, allDeliverySessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, allSessionOrders, getSessionSales, curSession,
@@ -1852,6 +1853,9 @@ const DeliveryDashboard = ({
     },[allSessions])
 
     useEffect(()=>{
+        if (allDeliverySessions.length){
+            setAllSessions(allDeliverySessions)
+        }
         const getSessionsData = async ()=>{
             const ordersResponse = await fetchServer("POST", {
                 database: company,
