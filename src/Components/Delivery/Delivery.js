@@ -1397,7 +1397,24 @@ const Delivery = () => {
                 {(currentOrder.delivery!=='cancelled' && currentOrder.delivery!=='completed') 
                 && <button 
                     className="place-order-btn"
-                    onClick={() => handleOrderDelivery()}
+                    onClick={() => {
+                        var totalItems = 0
+                        var deliveredQuantity = 0
+                        const deliveredItems = currentOrder.items.filter((item)=>{
+                            if (wrhCategories[wrh].includes(item.category)){
+                                totalItems += Number(item.quantity)
+                                deliveredQuantity += Number(item.deliveredQuantity || 0)
+                                return Number(item.deliveredQuantity || 0) > 0
+                            }
+                        })
+                        if (deliveredQuantity < totalItems){
+                            handleOrderDelivery()
+                        }else{
+                            setAlertState('error')
+                            setAlert('Nothing to Post. You Have Completed Your Delivery!')
+                            setAlertTimeout(3000)
+                        }
+                    }}
                     disabled={currentOrder?.items.length === 0 || placingOrder || !curSession.active || curSession.wrh !== wrh || currentOrder.status === 'cancelled'}
                 >
                     Place Delivery (#{currentOrder.orderNumber})
@@ -1798,6 +1815,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                             && (
                                 <button 
                                     disabled={cancelling}
+                                    style={{padding: '5px', borderRadius: '5px'}}
                                     className="cancel-order-btn cancel-delivery-btn"
                                     onClick={() => handleCancelDelivery(order)}
                                     title="Cancel Delivery"
