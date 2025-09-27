@@ -1853,7 +1853,7 @@ const DeliveryDashboard = ({
     },[allSessions])
 
     useEffect(()=>{
-        if (allDeliverySessions.length){
+        if (allDeliverySessions?.length){
             setAllSessions(allDeliverySessions)
         }
         const getSessionsData = async ()=>{
@@ -1874,7 +1874,7 @@ const DeliveryDashboard = ({
             }
         }
         getSessionsData()
-    },[])
+    },[allDeliverySessions])
 
     const showPendingSessionAlert = ()=>{
         setAlertState('error')
