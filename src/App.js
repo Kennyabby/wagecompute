@@ -425,7 +425,7 @@ function App() {
       if (Array.isArray(curApproval?.approvers)){
         sectionApprovers = sectionApprovers.concat(curApproval.approvers)
       }
-      if (sectionApprovers.length === approverLevel){
+      if (sectionApprovers.length <= approverLevel){
         setAlertState('info')
         setAlert('Updating Approval...')
         setAlertTimeout(100000)
@@ -464,7 +464,7 @@ function App() {
         }
       }else{
         setAlertState('error')
-        setAlert((finalLevel === approverLevel || sectionApprovers.length < approverLevel) ? 'Verification is Pending. Awaiting Approval Verification!': 'You Have Already Verified. Awaiting Next Approval!')
+        setAlert((finalLevel === approverLevel || sectionApprovers.length < approverLevel) ? 'Verification is Pending. Awaiting Approval Verification!': 'Verification already done!')
         setAlertTimeout(5000) 
       }
     }else{

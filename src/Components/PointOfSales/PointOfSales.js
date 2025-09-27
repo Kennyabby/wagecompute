@@ -2149,7 +2149,7 @@ const POSDashboard = ({
     },[allSessions])
 
     useEffect(()=>{
-        if (allSalesSessions.length){
+        if (allSalesSessions?.length){
             setAllSessions(allSalesSessions)
         }
         const getSessionsData = async ()=>{
@@ -2178,7 +2178,7 @@ const POSDashboard = ({
             // }
         }
         getSessionsData()
-    },[])
+    },[allSalesSessions])
 
     const showPendingSessionAlert = ()=>{
         setAlertState('error')

@@ -323,7 +323,12 @@ const Sales = ()=>{
             var activeSessions = []
             const salesEndDate = new Date(postingDate1)
             salesEndDate.setDate(salesEndDate.getDate() + 1)
+            let multSessions = [] 
             allSessions.forEach((session)=>{
+                let bmultSessions = {}
+                let kmultSessions = {}
+                let ordersToSkip = []
+                let foundMult = false
                 if (getSessionEnd(session.start) === getSessionEnd(salesEndDate)){
                     const employeeId = session.employee_id
                     if (!sessionEmployees.includes(employeeId)){
@@ -338,9 +343,61 @@ const Sales = ()=>{
                     if (!session.end){
                         activeSessions.push(session.i_d)
                     }
+                    
+                    const sessionCopy = (structuredClone({session})).session
+                    if (sessionCopy.type === 'sales'){
+                        const sessionOrders = sessionCopy?.orders || []
+                        sessionOrders.forEach((sessionOrder)=>{
+                            const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                            salesPostsPay.forEach((pay)=>{
+                                if (sessionOrder.salesPosts[pay] === 'multiple'){
+                                    foundMult = true
+                                    let splitPayment = {}
+                                    const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
+                                    console.log('totalOrderPayment:',totalOrderPayment)
+                                    let kct = 0
+                                    let bct = 0
+                                    const warehouse = sessionOrder.wrh
+                                    sessionOrder.items.forEach((item)=>{
+                                        const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
+                                        if (wrhCategories[warehouse].includes(item.category)){
+                                            bct += totalItemPrice
+                                        }else if (wrhCategories['kitchen'].includes(item.category)){
+                                            kct += totalItemPrice
+                                        }
+                                    })
+                                    console.log('bar count:',bct,'kitchen count:',kct)
+                                    splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderPayment) : 0
+                                    splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderPayment) : 0
+                                    console.log(splitPayment)  
+                                    // delete sessionOrder.salesPosts[pay]
+                                    sessionOrder.salesPosts[pay] = warehouse
+                                    sessionOrder[pay] = splitPayment[warehouse] * totalOrderPayment
+                                    sessionOrder.totalPayment = splitPayment[warehouse] * totalOrderPayment
+                                    sessionOrder.totalSales = splitPayment[warehouse] * totalOrderPayment
+                                    bmultSessions = (structuredClone({sessionCopy})).sessionCopy
+                                    sessionOrder.salesPosts[pay] = 'kitchen'
+                                    sessionOrder[pay] = splitPayment['kitchen'] * totalOrderPayment
+                                    sessionOrder.totalPayment = splitPayment['kitchen'] * totalOrderPayment
+                                    sessionOrder.totalSales = splitPayment['kitchen'] * totalOrderPayment
+                                    kmultSessions = sessionCopy
+                                    
+                                }else{
+                                    ordersToSkip.push(sessionOrder)
+                                }
+                            })
+                        })
+                    }
+                }
+                if (foundMult){
+                    kmultSessions.orders = kmultSessions.orders.filter((sessionOr)=>{return !ordersToSkip.includes(sessionOr)})
+                    bmultSessions.orders = bmultSessions.orders.filter((sessionOr)=>{return !ordersToSkip.includes(sessionOr)})
+                    multSessions = multSessions.concat([kmultSessions, bmultSessions])
                 }
             })
+            console.log('multipleLoc sessions:', multSessions)
             setActiveSessions(activeSessions)
+            let mct = 0
             sessionEmployees.forEach((employeeId)=>{                
                 let totalWrhTransactions = {}
                 wrhPoints.forEach((wh)=>{
@@ -356,14 +413,14 @@ const Sales = ()=>{
                         postingDates:[]
                     }
                 })
-                let mct = 0
+                let deliverySessions = []
+                let salesSessions = []
                 wrhPoints.forEach((wh)=>{
+                    let wrhSessionOrders = []
                     const saleRecord = {}
                     saleRecord.isSession = true
-                    let wrhSessionOrders = []
-                    let deliverySessions = []
-                    let salesSessions = []
-                    allSessions.forEach((session)=>{
+                    const updatedAllSessions = [...allSessions]
+                    updatedAllSessions.forEach((session)=>{
                         const salesEndDate = new Date(postingDate1)
                         salesEndDate.setDate(salesEndDate.getDate() + 1);                        
                         const sessionOrders = session?.orders || []
@@ -377,30 +434,11 @@ const Sales = ()=>{
                                 salesPostsPay.forEach((pay)=>{
                                     let splitPayment = {}
                                     if (sessionOrder?.salesPosts[pay] ===  wh){
-                                        splitPayment[wh] = 1                                                                                
-                                    }else if (sessionOrder?.salesPosts[pay] === 'multiple'){
-                                        mct++
-                                        if (mct === 1){
-                                            const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
-                                            let kct = 0
-                                            let bct = 0
-                                            sessionOrder.items.forEach((item)=>{
-                                                const warehouse = sessionOrder.wrh
-                                                const totalItemPrice = (Number(item.deliveredQauntity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
-                                                if (wrhCategories[warehouse].includes(item.category)){
-                                                    bct += totalItemPrice
-                                                }else if (wrhCategories['kitchen'].includes(item.category)){
-                                                    kct += totalItemPrice
-                                                }
-                                            })
-            
-                                            splitPayment[wh] = totalOrderPayment ? (Number(bct)/totalOrderPayment) : 0
-                                            splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderPayment) : 0
-                                        }                                        
+                                        splitPayment[wh] = 1                                           
+                                        wrhSessionOrders.push({session, sessionOrder, splitPayment})                                                        
                                     }else{
-                                        return
+                                        return 
                                     }
-                                    wrhSessionOrders.push({session, sessionOrder, splitPayment})
                                     sessionOrder?.deliverySessions?.forEach((deliverySession)=>{
                                         if (!deliverySessions.includes(deliverySession)){
                                             deliverySessions.push(deliverySession)
@@ -415,15 +453,14 @@ const Sales = ()=>{
                         })
 
                     })
-                    
                     wrhSessionOrders.forEach(({session, sessionOrder, splitPayment}, index)=>{
                         if (session.employee_id !== employeeId && wh === 'kitchen'){
                             totalWrhTransactions[wh].totalSales += (Number(sessionOrder.totalPayment) * splitPayment[wh])                        
                             Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                 if (sessionOrder[payPoint]){
                                     totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * splitPayment[wh])
-                                    totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash'] * splitPayment[wh])) : 0)
-                                    totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint] * splitPayment[wh])) : 0)
+                                    totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * splitPayment[wh]) : 0)
+                                    totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * splitPayment[wh]) : 0)
                                 }                            
                             })
                         }else{
