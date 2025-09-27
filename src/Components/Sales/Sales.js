@@ -343,7 +343,18 @@ const Sales = ()=>{
                     if (!session.end){
                         activeSessions.push(session.i_d)
                     }
-                    
+                    if (session.type === 'sales'){
+                        const sessionOrders = session?.orders || []
+                        sessionOrders.forEach((sessionOrder)=>{
+                            const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                            salesPostsPay.forEach((pay)=>{
+                                if (sessionOrder.salesPosts[pay] !== 'multiple'){
+                                    ordersToSkip.push(sessionOrder)
+                                }
+                            })
+                        })
+                    }
+
                     const sessionCopy = (structuredClone({session})).session
                     if (sessionCopy.type === 'sales'){
                         const sessionOrders = sessionCopy?.orders || []
@@ -354,48 +365,88 @@ const Sales = ()=>{
                                     foundMult = true
                                     let splitPayment = {}
                                     const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
-                                    console.log('totalOrderPayment:',totalOrderPayment)
                                     let kct = 0
                                     let bct = 0
                                     const warehouse = sessionOrder.wrh
+                                    let blastDeliveredBy = ''
+                                    sessionOrder.items.forEach((item)=>{
+                                        const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
+                                        if (wrhCategories[warehouse].includes(item.category)){
+                                            bct += totalItemPrice
+                                            blastDeliveredBy = item.lastDeliveredBy
+                                        }else if (wrhCategories['kitchen'].includes(item.category)){
+                                            kct += totalItemPrice
+                                        }
+                                        const employeeId = item.lastDeliveredBy
+                                        if (employeeId && !sessionEmployees.includes(employeeId)){
+                                            sessionEmployees = sessionEmployees.concat(employeeId)
+                                        }
+                                    })
+                                    splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderPayment) : 0
+                                    splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderPayment) : 0
+                                    // delete sessionOrder.salesPosts[pay]
+                                    sessionOrder.salesPosts[pay] = warehouse
+                                    sessionOrder[pay] = splitPayment[warehouse] * totalOrderPayment
+                                    sessionOrder.totalPayment = splitPayment[warehouse] * totalOrderPayment
+                                    sessionOrder.totalSales = splitPayment[warehouse] * totalOrderPayment
+                                    sessionOrder.lastDeliveredBy = blastDeliveredBy
+                                    
+                                }
+                            })
+                        })
+                    }
+                    bmultSessions = (structuredClone({sessionCopy})).sessionCopy                                                    
+
+                    const sessionCopy1 = (structuredClone({session})).session
+                    if (sessionCopy1.type === 'sales'){
+                        const sessionOrders = sessionCopy1?.orders || []
+                        sessionOrders.forEach((sessionOrder)=>{
+                            const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                            salesPostsPay.forEach((pay)=>{
+                                if (sessionOrder.salesPosts[pay] === 'multiple'){
+                                    foundMult = true
+                                    let splitPayment = {}
+                                    const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
+                                    let kct = 0
+                                    let bct = 0
+                                    const warehouse = sessionOrder.wrh
+                                    let klastDeliveredBy = ''
                                     sessionOrder.items.forEach((item)=>{
                                         const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
                                         if (wrhCategories[warehouse].includes(item.category)){
                                             bct += totalItemPrice
                                         }else if (wrhCategories['kitchen'].includes(item.category)){
                                             kct += totalItemPrice
+                                            klastDeliveredBy = item.lastDeliveredBy
+                                        }
+                                        const employeeId = item.lastDeliveredBy
+                                        if (employeeId && !sessionEmployees.includes(employeeId)){
+                                            sessionEmployees = sessionEmployees.concat(employeeId)
                                         }
                                     })
-                                    console.log('bar count:',bct,'kitchen count:',kct)
                                     splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderPayment) : 0
                                     splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderPayment) : 0
-                                    console.log(splitPayment)  
-                                    // delete sessionOrder.salesPosts[pay]
-                                    sessionOrder.salesPosts[pay] = warehouse
-                                    sessionOrder[pay] = splitPayment[warehouse] * totalOrderPayment
-                                    sessionOrder.totalPayment = splitPayment[warehouse] * totalOrderPayment
-                                    sessionOrder.totalSales = splitPayment[warehouse] * totalOrderPayment
-                                    bmultSessions = (structuredClone({sessionCopy})).sessionCopy
+                                    
                                     sessionOrder.salesPosts[pay] = 'kitchen'
                                     sessionOrder[pay] = splitPayment['kitchen'] * totalOrderPayment
                                     sessionOrder.totalPayment = splitPayment['kitchen'] * totalOrderPayment
                                     sessionOrder.totalSales = splitPayment['kitchen'] * totalOrderPayment
-                                    kmultSessions = sessionCopy
-                                    
-                                }else{
-                                    ordersToSkip.push(sessionOrder)
+                                    sessionOrder.lastDeliveredBy = klastDeliveredBy                                    
                                 }
                             })
                         })
                     }
+                    kmultSessions = (structuredClone({sessionCopy1})).sessionCopy1
                 }
+
                 if (foundMult){
-                    kmultSessions.orders = kmultSessions.orders.filter((sessionOr)=>{return !ordersToSkip.includes(sessionOr)})
-                    bmultSessions.orders = bmultSessions.orders.filter((sessionOr)=>{return !ordersToSkip.includes(sessionOr)})
+                    const ordersToSkipCopy = (structuredClone({ordersToSkip})).ordersToSkip
+                    const ordersToSkipCopy1 = (structuredClone({ordersToSkip})).ordersToSkip
+                    bmultSessions.orders = bmultSessions.orders.filter((sessionOr)=>{return !ordersToSkipCopy.find((order)=>{return order.orderNumber === sessionOr.orderNumber})})
+                    kmultSessions.orders = kmultSessions.orders.filter((sessionOr)=>{return !ordersToSkipCopy1.find((order)=>{return order.orderNumber === sessionOr.orderNumber})})
                     multSessions = multSessions.concat([kmultSessions, bmultSessions])
                 }
             })
-            console.log('multipleLoc sessions:', multSessions)
             setActiveSessions(activeSessions)
             let mct = 0
             sessionEmployees.forEach((employeeId)=>{                
@@ -413,13 +464,14 @@ const Sales = ()=>{
                         postingDates:[]
                     }
                 })
+
                 let deliverySessions = []
                 let salesSessions = []
                 wrhPoints.forEach((wh)=>{
                     let wrhSessionOrders = []
                     const saleRecord = {}
                     saleRecord.isSession = true
-                    const updatedAllSessions = [...allSessions]
+                    const updatedAllSessions = [...multSessions, ...allSessions]
                     updatedAllSessions.forEach((session)=>{
                         const salesEndDate = new Date(postingDate1)
                         salesEndDate.setDate(salesEndDate.getDate() + 1);                        
