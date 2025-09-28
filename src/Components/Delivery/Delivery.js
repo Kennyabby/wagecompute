@@ -912,26 +912,28 @@ const Delivery = () => {
         var deliveredOrderItems = []
         var itemsToDeplete = []
         edittedOrderItems.forEach((item, index)=>{
-            var previousItemState = pendingOrderItems.find((itm)=>{
-                return itm.i_d === item.i_d
-            })
-            if (wrhCategories[wrh].includes(item.category)){
-                const depletedQuantity = Number(item.orderQuantity || (item.remainingQuantity || item.quantity))
-                previousItemState.deliveredQuantity = Number(previousItemState.deliveredQuantity || 0) + depletedQuantity
-                previousItemState.remainingQuantity = Number(previousItemState.quantity) - Number(previousItemState.deliveredQuantity)
-                previousItemState.lastDeliveredBy = companyRecord.emailid
-                previousItemState.lastDeliveredAt = deliveryDataUpdate.lastDeliveredAt
-                previousItemState.lastDeliverySession = curSession.i_d
-                previousItemState.lastDelvieredQuantity = depletedQuantity
-                item.depletedQuantity = depletedQuantity
-                itemsToDeplete.push(item)
-                // if (Number(previousItemState.quantity) === Number(item.quantity)){
-                //     previousItemState.delivery = 'completed'                
-                // }           
-                if (Number(previousItemState.remainingQuantity) === 0){
-                    previousItemState.delivery = 'completed'                
-                }           
-                deliveredOrderItems.push(previousItemState)
+            if (item.delivery!=='completed'){
+                var previousItemState = pendingOrderItems.find((itm)=>{
+                    return itm.i_d === item.i_d
+                })
+                if (wrhCategories[wrh].includes(item.category)){
+                    const depletedQuantity = Number(item.orderQuantity || (item.remainingQuantity || item.quantity))
+                    previousItemState.deliveredQuantity = Number(previousItemState.deliveredQuantity || 0) + depletedQuantity
+                    previousItemState.remainingQuantity = Number(previousItemState.quantity) - Number(previousItemState.deliveredQuantity)
+                    previousItemState.lastDeliveredBy = companyRecord.emailid
+                    previousItemState.lastDeliveredAt = deliveryDataUpdate.lastDeliveredAt
+                    previousItemState.lastDeliverySession = curSession.i_d
+                    previousItemState.lastDelvieredQuantity = depletedQuantity
+                    item.depletedQuantity = depletedQuantity
+                    itemsToDeplete.push(item)
+                    // if (Number(previousItemState.quantity) === Number(item.quantity)){
+                    //     previousItemState.delivery = 'completed'                
+                    // }           
+                    if (Number(previousItemState.remainingQuantity) === 0){
+                        previousItemState.delivery = 'completed'                
+                    }           
+                    deliveredOrderItems.push(previousItemState)
+                }
             }
         })
 
