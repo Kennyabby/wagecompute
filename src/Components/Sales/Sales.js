@@ -2979,8 +2979,8 @@ const Sales = ()=>{
                             </div>
                         </div>}
                         {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords), ...fields].map((field, index)=>{
-                            const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage) - Number(field.unAccountedSales || 0)
-                            // console.log(index)
+                            const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
+                            // console.log(index) 
                             if (!isView && !field.isAccommodation && !field.isSession && !field.isKitchen){
                                 field.isSplit = true
                             }
@@ -3238,7 +3238,7 @@ const Sales = ()=>{
                                     var wt = 0
                                     fields.forEach((field)=>{
                                         const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
-                                        Number(field.debt) + Number(field.shortage) - Number(field.unAccountedSales || 0)
+                                        Number(field.debt) + Number(field.shortage)
                                         if (enteredSales === Number(field.totalSales)){
                                             rt++
                                             if (rt===fields.length){
