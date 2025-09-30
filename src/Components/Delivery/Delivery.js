@@ -184,6 +184,20 @@ const Delivery = () => {
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')        
+        // loadInitialData()
+        const intervalId = setInterval(()=>{
+            if (cmp_val){
+                // Fetch tables
+                loadInitialData()
+                // Fetch products
+                // getProducts(cmp_val)
+            }
+        },50000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
+    
     useEffect(()=> {
         // Fetch products
         if (products.length){
@@ -508,7 +522,7 @@ const Delivery = () => {
             if(!ordersResponse.err){
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
-                    if(ordersResponse.record?.length){
+                    if(ordersResponse?.record?.length){
                         setAllSessionOrders(ordersResponse.record)
                         setAllOrders(ordersResponse.record.filter((order) =>{
                             if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){
@@ -516,6 +530,7 @@ const Delivery = () => {
                                 return order
                             }                            
                         })) 
+                        setPlacingOrder(false)
                         var ordersUpdate = ordersResponse.record
                         if (currentOrder!==null){
                             if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
@@ -762,9 +777,10 @@ const Delivery = () => {
 
     const handleOrderSelect = (order) => {
         const orderClone = structuredClone({order});
+        const posOrderClone = structuredClone({order})
         setSelectedProduct(null);
         setCurrentOrder(orderClone.order);
-        setPosCurrentOrder((structuredClone({order})).order)
+        setPosCurrentOrder(posOrderClone.order)
     };
 
     // =========================================
@@ -849,7 +865,6 @@ const Delivery = () => {
                         }
                         loadInitialData()
                         if (action === 'deplete'){
-                            setPlacingOrder(false)
                             setAlertState('success');
                             setAlert('Delivery processed successfully');
                             setAlertTimeout(2000)
@@ -912,11 +927,11 @@ const Delivery = () => {
         var deliveredOrderItems = []
         var itemsToDeplete = []
         edittedOrderItems.forEach((item, index)=>{
-            if (item.delivery!=='completed'){
-                var previousItemState = pendingOrderItems.find((itm)=>{
-                    return itm.i_d === item.i_d
-                })
-                if (wrhCategories[wrh].includes(item.category)){
+            var previousItemState = pendingOrderItems.find((itm)=>{
+                return itm.i_d === item.i_d
+            })
+            if (wrhCategories[wrh].includes(item.category)){
+                if (item.delivery !== 'completed'){
                     const depletedQuantity = Number(item.orderQuantity || (item.remainingQuantity || item.quantity))
                     previousItemState.deliveredQuantity = Number(previousItemState.deliveredQuantity || 0) + depletedQuantity
                     previousItemState.remainingQuantity = Number(previousItemState.quantity) - Number(previousItemState.deliveredQuantity)
@@ -932,9 +947,9 @@ const Delivery = () => {
                     if (Number(previousItemState.remainingQuantity) === 0){
                         previousItemState.delivery = 'completed'                
                     }           
-                    deliveredOrderItems.push(previousItemState)
                 }
-            }
+                deliveredOrderItems.push(previousItemState)
+            }            
         })
 
         const insufficientProducts = []
@@ -955,6 +970,7 @@ const Delivery = () => {
             setAlert(`Insufficient quantity in "${wrh}" store, for the following product(s): ${insufficientProducts.join(', ')}`);
             setAlertTimeout(8000);
             setPlacingOrder(false)
+            setCurrentOrder(posCurrentOrder)
             return;
         }
         
@@ -972,10 +988,12 @@ const Delivery = () => {
                 }
                 updatedOrderItems.push(deliveredItem)
             }else{
+                if (item.delivery ===  'completed'){
+                    totalDelivered += 1
+                }
                 updatedOrderItems.push(item)
             }            
         })
-
         deliveryDataUpdate.delivery = (totalDelivered === updatedOrderItems.length) ? 'completed' : 'pending'
         deliveryDataUpdate.items = updatedOrderItems
         if (currentOrder.status === 'completed' && deliveryDataUpdate.delivery === 'completed'){
@@ -1014,39 +1032,51 @@ const Delivery = () => {
                 delivery: 'completed'}
             ]
             
-            const resp = await fetchServer("POST", {
-                database: company,
-                collection: "Tables",
-                prop: [{'wrh':currentOrder.wrh}, {activeTables: [
-                    ...activeTablesUpdate
-                ]}]
-            }, "updateOneDoc", server)
-            
-            if (resp.err){
-                setAlertState('error');
-                setAlert('Error updating table');
-                setAlertTimeout(3000)
-                return;
+            if (itemsToDeplete.length){
+                const resp = await fetchServer("POST", {
+                    database: company,
+                    collection: "Tables",
+                    prop: [{'wrh':currentOrder.wrh}, {activeTables: [
+                        ...activeTablesUpdate
+                    ]}]
+                }, "updateOneDoc", server)
+                
+                if (resp.err){
+                    setAlertState('error');
+                    setAlert('Error updating table');
+                    setAlertTimeout(3000)
+                    return;
+                }
             }
         }
         // Update the order with the new delivery data
-
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Orders",
-            prop: [{orderNumber: currentOrder.orderNumber}, {...deliveryDataUpdate}]
-        }, "updateOneDoc", server);
-
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error processing delivery');
-            setPlacingOrder(false)
-            return
-        } else {
-            setTimeout(()=>{
-                updateInventory('deplete', itemsToDeplete, deliveryDataUpdate)                                                        
-            },1000)
-            return
+        if (itemsToDeplete.length){
+            const response = await fetchServer("POST", {
+                database: company,
+                collection: "Orders",
+                prop: [{orderNumber: currentOrder.orderNumber}, {...deliveryDataUpdate}]
+            }, "updateOneDoc", server);
+    
+            if (response.err) {
+                setAlertState('error');
+                setAlert('Error processing delivery');
+                setPlacingOrder(false)
+                return
+            } else {
+                setCurrentOrder((currentOrder)=>{
+                    return {...currentOrder, ...deliveryDataUpdate}
+                })
+                setPosCurrentOrder((currentOrder)=>{
+                    return {...currentOrder, ...deliveryDataUpdate}
+                })
+                setTimeout(()=>{
+                    updateInventory('deplete', itemsToDeplete, deliveryDataUpdate)                                                        
+                },500)
+                return
+            }
+        }else{
+            setAlertState('error')
+            setAlert('Nothing to Post Here!')
         }
     };
 
@@ -1641,7 +1671,7 @@ const Delivery = () => {
                         <div className="header-actions">
                             <button 
                                 className="action-btn"
-                                disabled={placingOrder || makingPayment}
+                                // disabled={makingPayment}
                                 onClick={() => {
                                     fetchSessions(company, "delivery", companyRecord)
                                     fetchTables(company)
