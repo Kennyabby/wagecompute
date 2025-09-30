@@ -653,7 +653,7 @@ const Purchase = ()=>{
                         return second - first
                     }).map((pur, index)=>{
                         if (pur.isApproval){
-                            const {createdAt, postingDate, message, handlerId, approved} = pur
+                            const {createdAt, postingDate, message, handlerId, approved, approvers} = pur
                             var textColor = 'red'
                             if (approved){
                                 textColor ='green'
@@ -670,6 +670,23 @@ const Purchase = ()=>{
                                         <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
                                         {message && <div>Message: <b>{message}</b></div>}
                                         <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                        {approvers?.length && 
+                                            <div 
+                                                className='deptdesc' 
+                                                style={{
+                                                    fontWeight:'bold', 
+                                                    fontSize: '13px',
+                                                    color: 'greenyellow',
+                                                    background: 'rgba(0,0,0,0.7)',
+                                                    width: 'fit-content',
+                                                    padding: '5px',
+                                                    borderRadius: '8px',
+                                                    border: 'solid greenyellow 3px',
+                                                }}
+                                            > 
+                                                ## SALES VERIFIED ##
+                                            </div>
+                                        }
                                     </div>
                                     {(companyRecord.status==='admin') && <div 
                                         className='edit'

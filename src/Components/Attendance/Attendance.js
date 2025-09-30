@@ -360,7 +360,7 @@ const Attendance = () =>{
                 >{'+'}</div>
                 {[...attendanceApprovals, ...attendance].map((att, id)=>{
                     if (att.isApproval){
-                        const {createdAt, postingDate, message, handlerId, approved, data} = att
+                        const {createdAt, postingDate, message, handlerId, approved, data, approvers} = att
                         const {no, month, year, payees} = data
                         var textColor = 'red'
                         if (approved){
@@ -384,6 +384,23 @@ const Attendance = () =>{
                                     <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
                                     {message && <div>Message: <b>{message}</b></div>}
                                     <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                    {approvers?.length && 
+                                        <div 
+                                            className='deptdesc' 
+                                            style={{
+                                                fontWeight:'bold', 
+                                                fontSize: '13px',
+                                                color: 'greenyellow',
+                                                background: 'rgba(0,0,0,0.7)',
+                                                width: 'fit-content',
+                                                padding: '5px',
+                                                borderRadius: '8px',
+                                                border: 'solid greenyellow 3px',
+                                            }}
+                                        > 
+                                            ## SALES VERIFIED ##
+                                        </div>
+                                    }
                                 </div>
                                 {companyRecord.status==='admin' && <div 
                                     className='edit'
