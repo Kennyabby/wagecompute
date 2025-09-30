@@ -37,9 +37,11 @@ const SideNav = ()=>{
    
     useEffect(()=>{
         setAllApprovals(approvals.filter((appr)=>{
-            return(
-                !appr.approved && !appr.message
-            )
+            if (company?.status === 'admin' || companyRecord?.permissions.includes('approve_post'+appr.module)){
+                return(
+                    !appr.approved && !appr.message
+                )
+            }
         }))
         setSalesApprovals(approvals.filter((appr)=>{
             return (
@@ -150,7 +152,7 @@ const SideNav = ()=>{
                 aria-label="Toggle menu"
             >
                 {isMenuOpen ? <MdClose /> : <BiMenu />}
-                {companyRecord?.status === 'admin' && allApprovals?.length > 0 && (
+                {allApprovals?.length > 0 && (
                     <span className="mobile-menu-badge">
                         {allApprovals.length}
                     </span>
@@ -240,7 +242,7 @@ const SideNav = ()=>{
                             <div name="sales" className={'navdiv ' + (curPath==='sales'?'selected':'')}>
                                 <GiPayMoney className='navdivicon' name="sales"/>
                                 <div name="sales">Sales</div>
-                                {companyRecord?.status==='admin' && salesApprovals.length > 0 && <div className='navdivcount'>{salesApprovals.length}</div>}
+                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postsales')) && salesApprovals.length > 0 && <div className='navdivcount'>{salesApprovals.length}</div>}
                             </div>
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos')) && 
@@ -259,7 +261,7 @@ const SideNav = ()=>{
                             <div name="accommodations" className={'navdiv ' + (curPath==='accommodations'?'selected':'')}>
                                 <FaHotel className='navdivicon' name="accommodations"/>
                                 <div name="accommodations">Accommodation</div>
-                                {companyRecord?.status==='admin' && accommodationApprovals.length > 0 && <div className='navdivcount'>{accommodationApprovals.length}</div>}
+                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postaccommodation')) && accommodationApprovals.length > 0 && <div className='navdivcount'>{accommodationApprovals.length}</div>}
                             </div>
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && 
