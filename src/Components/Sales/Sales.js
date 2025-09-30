@@ -444,7 +444,9 @@ const Sales = ()=>{
                     const ordersToSkipCopy1 = (structuredClone({ordersToSkip})).ordersToSkip
                     bmultSessions.orders = bmultSessions.orders.filter((sessionOr)=>{return !ordersToSkipCopy.find((order)=>{return order.orderNumber === sessionOr.orderNumber})})
                     kmultSessions.orders = kmultSessions.orders.filter((sessionOr)=>{return !ordersToSkipCopy1.find((order)=>{return order.orderNumber === sessionOr.orderNumber})})
-                    multSessions = multSessions.concat([kmultSessions, bmultSessions])
+                    if (!multSessions.includes(kmultSessions) && !multSessions.includes(bmultSessions)){
+                        multSessions = multSessions.concat([kmultSessions, bmultSessions])
+                    }
                 }
             })
             setActiveSessions(activeSessions)
