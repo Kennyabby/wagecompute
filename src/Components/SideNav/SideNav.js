@@ -37,7 +37,7 @@ const SideNav = ()=>{
    
     useEffect(()=>{
         setAllApprovals(approvals.filter((appr)=>{
-            if (company?.status === 'admin' || companyRecord?.permissions.includes('approve_post'+appr.module)){
+            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_post'+appr.module)){
                 return(
                     !appr.approved && !appr.message
                 )
