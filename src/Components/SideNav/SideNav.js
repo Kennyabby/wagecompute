@@ -268,7 +268,7 @@ const SideNav = ()=>{
                             <div name="purchase" className={'navdiv ' + (curPath==='purchase'?'selected':'')}>
                                 <GiBuyCard className='navdivicon' name="purchase"/>
                                 <div name="purchase">Direct Purchase</div>
-                                {companyRecord?.status==='admin' && purchaseApprovals.length > 0 && <div className='navdivcount'>{purchaseApprovals.length}</div>}
+                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postpurchase')) && purchaseApprovals.length > 0 && <div className='navdivcount'>{purchaseApprovals.length}</div>}
                             </div>
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && 
