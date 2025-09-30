@@ -223,7 +223,7 @@ const SideNav = ()=>{
                             <div name="attendance" className={'navdiv ' + (curPath==='attendance'?'selected':'')}>
                                 <GiPlayerTime className='navdivicon' name="attendance"/>
                                 <div name="attendance">Attendance</div>
-                                {companyRecord?.status==='admin' && attendanceApprovals.length > 0 && <div className='navdivcount'>{attendanceApprovals.length}</div>}
+                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postattendance')) && attendanceApprovals.length > 0 && <div className='navdivcount'>{attendanceApprovals.length}</div>}
                             </div>
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && 

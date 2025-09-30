@@ -346,55 +346,74 @@ function App() {
       'sales': {
         finalLevel: 1,
         type: 'rank',
-          approverIds: {
-            '65': {
-              rank: 0,
-              sections: ['postsales']
-            }, 
-            '1': {
-              rank: 1,
-              sections: ['all']
-            }, 
-            'theplantainplanet22@gmail.com': {
-              rank: 1,
-              sections: ['all']
-            }
-          },
+        approverIds: {
+          '65': {
+            rank: 0,
+            sections: ['postsales']
+          }, 
+          '1': {
+            rank: 1,
+            sections: ['all']
+          }, 
+          'theplantainplanet22@gmail.com': {
+            rank: 1,
+            sections: ['all']
+          }
         },
+      },
         
-        'accommodation': {
-          finalLevel: 1,
-          type: 'rank',
-          approverIds: {
-            '65': {
-              rank: 0,
-              sections: ['postaccommodation']
-            }, 
-            '1': {
-              rank: 1,
-              sections: ['all']
-            }, 
-            'theplantainplanet22@gmail.com': {
-              rank: 1,
-              sections: ['all']
-            }
-          },
+      'accommodation': {
+        finalLevel: 1,
+        type: 'rank',
+        approverIds: {
+          '65': {
+            rank: 0,
+            sections: ['postaccommodation']
+          }, 
+          '1': {
+            rank: 1,
+            sections: ['all']
+          }, 
+          'theplantainplanet22@gmail.com': {
+            rank: 1,
+            sections: ['all']
+          }
         },
+      },
 
-        'purchase': {
-          finalLevel: 0,
-          type: 'rank',
-          approverIds: {
-            '1': {
-              rank: 0,
-              sections: ['all']
-            }, 
-            'theplantainplanet22@gmail.com': {
-              rank: 0,
-              sections: ['all']
-            }
-          },
-        }
+      'purchase': {
+        finalLevel: 1,
+        type: 'rank',
+        approverIds: {
+          '65': {
+            rank: 0,
+            sections: ['postpurchase']
+          }, 
+          '1': {
+            rank: 1,
+            sections: ['all']
+          }, 
+          'theplantainplanet22@gmail.com': {
+            rank: 1,
+            sections: ['all']
+          }
+        },
+      },
+
+      'attendance': {
+        finalLevel: 0,
+        type: 'rank',
+        approverIds: {
+          '1': {
+            rank: 0,
+            sections: ['all']
+          }, 
+          'theplantainplanet22@gmail.com': {
+            rank: 0,
+            sections: ['all']
+          }
+        },
+      }
     }
 
     const respConfig = {
