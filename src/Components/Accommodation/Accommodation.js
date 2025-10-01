@@ -6,6 +6,7 @@ import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import AccommodationReceipt from './AccommodationReport/AccommodationReceipt';
 import AccommodationReport from './AccommodationReport/AccommodationReport';
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
+import { uploadFile, updateFile, getFileUrl, deleteFile, createFolder } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 import { FaTableCells } from "react-icons/fa6";
 import Notify from '../../Resources/Notify/Notify';
 import { MdAdd } from "react-icons/md";
@@ -111,6 +112,7 @@ const Accommodation = ()=>{
         ...defaultCustomerFields
     })
     const [isView, setIsView] = useState(false)
+    const [fileUpload, setFileUpload] = useState(false)
 
     useEffect(()=>{
         storePath('accommodations')  
@@ -1161,6 +1163,8 @@ const Accommodation = ()=>{
                                     }}
                                 />
                             </div>
+
+                            {/* Logic for Payment Receipt Upload Here */}
                             
                             {accommodationFields.paymentStatus==='Make Payment' && !curApproval && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_group_payment')) && <>
                                 <div className='acpymdt'>Apply Receipt to other Pending Accommodations</div>
