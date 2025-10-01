@@ -712,6 +712,7 @@ function App() {
     });
   };
 
+
   const storePath = (path)=>{
     setPath(path)
     window.localStorage.setItem('curr-path',path)
