@@ -57,16 +57,16 @@ const Accommodation = ()=>{
     const [curPaymentAmount, setCurPaymentAmount] = useState(0)    
     const rooms = {
         '1':{
-            price: 10000
+            price: 15000
         },
         '2':{
             price: 10000
         },
         '3':{
-            price: 10000
+            price: 15000
         },
         '4':{
-            price: 10000
+            price: 15000
         },
         '5':{
             price: 15000
