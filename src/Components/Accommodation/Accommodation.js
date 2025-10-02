@@ -69,7 +69,7 @@ const Accommodation = ()=>{
             price: 15000
         },
         '5':{
-            price: 15000
+            price: 20000
         },
         'SHORT REST':{
             price: 5000
