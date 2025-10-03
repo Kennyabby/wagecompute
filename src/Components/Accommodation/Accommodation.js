@@ -384,7 +384,7 @@ const Accommodation = ()=>{
             return
         }
         setAlertState('info')
-        setAlert('Uploading Image...')
+        setAlert('Uploading Receipt...')
         setAlertTimeout(100000)
         const collection = 'Accommodations'
         const createdAt = curAccommodation.createdAt
@@ -408,12 +408,34 @@ const Accommodation = ()=>{
                 return {...accommodationFields, ...res}
             })
             setAlertState('success')
-            setAlert('Image Uploaded Successfully!')
+            setAlert('Receipt Uploaded Successfully!')
             setAlertTimeout(3000)
             getAccommodations(company)
         }
     }
 
+    const handleImageDelete = async (imgId)=>{
+        setAlertState('info')
+        setAlert('Deleting Receipt...')
+        setAlertTimeout(100000)
+        const res = await deleteFile(imgId, server)
+        if (res.deleted){
+            const updatedAccommodtion = {
+                imgId: null,
+                viewLink: null,
+                downloadLink: null
+            }
+            const resp = await fetchServer('POST', {
+                database: company,
+                collection: 'Accommodtions',
+                prop: [{createdAt: curAccommodation.createdAt}, {...updatedAccommodtion}]                
+            }, 'updateOneDoc', server)
+        }else{
+            setAlertState('error')
+            setAlert('Error Deleting Receipt. Check your network!')
+            setAlertTimeout(3000)
+        }
+    }
     const handleCustomerViewClick = (customer) =>{
         setCurCustomer(customer)
         setSalesOpts('customers')
@@ -1246,7 +1268,9 @@ const Accommodation = ()=>{
                                     color='red'
                                     onClick={()=>{
                                         setImageUpload(null)
-                                        // deleteFile(accommodationFields.imgId, server)
+                                        if (accommodationFields.imgId){
+                                            handleImageDelete(accommodationFields.imgId)
+                                        }
                                     }}
                                 > Delete</button>)
                                 }
