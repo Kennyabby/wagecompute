@@ -22,7 +22,7 @@ export async function uploadFile(file, folderPath, createdAt, company, collectio
         imageInfo: {
             fileName: file.name,
             mimeType: file.type,
-            data: base64,
+            fileData: base64,
             options: {folderPath}, // optional - will be made under BASE_FOLDER_PATH
         }
         
@@ -30,7 +30,7 @@ export async function uploadFile(file, folderPath, createdAt, company, collectio
     'uploadImage', 
     server
   )
-  return res.json();
+  return res;
 }
 
 export async function updateFile(fileId, file, createdAt, company, collection, server) {
@@ -50,21 +50,21 @@ export async function updateFile(fileId, file, createdAt, company, collection, s
     'updateImage', 
     server
   )
-  return res.json();
+  return res;
 }
 
 export async function getFileUrl(fileId, server) {
   const res = await fetchServer('POST',{imgId: fileId}, 'getImageLink', server);
-  return res.json();
+  return res;
 }
 
 export async function deleteFile(fileId, server) {
   const res = await fetchServer('POST',{imgId: fileId}, 'deleteImage', server);
-  return res.json();
+  return res;
 }
 
 // Optional: ensure folder endpoint
 export async function createFolder(folderPath, server) {
   const res = await fetchServer('POST', {folderPath}, 'createFolderPath', server)
-  return res.json();
+  return res;
 }
