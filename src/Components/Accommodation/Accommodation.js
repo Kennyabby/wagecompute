@@ -1235,13 +1235,13 @@ const Accommodation = ()=>{
                                         }}
                                     />
                                 </div>}
-                                {(!accommodationFields.imgId) ? <button 
+                                {(!accommodationFields.imgId) && <button 
                                     className='imgupld'
                                     onClick={()=>{
                                         handleImageUpload(imageUpload)
                                     }}
-                                > Upload</button> : 
-                                ((companyRecord?.status === 'admin' || imageUpload) && <button 
+                                > Upload</button>} 
+                                {(((companyRecord?.status === 'admin' && accommodationFields.imgId) || imageUpload) && <button 
                                     className='imgupld'
                                     color='red'
                                     onClick={()=>{
