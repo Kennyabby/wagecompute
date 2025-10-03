@@ -112,7 +112,7 @@ const Accommodation = ()=>{
         ...defaultCustomerFields
     })
     const [isView, setIsView] = useState(false)
-    const [fileUpload, setFileUpload] = useState(false)
+    const [imageUpload, setImageUpload] = useState(null)
 
     useEffect(()=>{
         storePath('accommodations')  
@@ -160,6 +160,7 @@ const Accommodation = ()=>{
             setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
         }
         if (curApproval){
+            setImageUpload(null)
             setPostingDate(curAccommodation.postingDate)
             setAccommodationFields({...curAccommodation, ...curApproval.data})
             setIsView(true)
@@ -204,6 +205,7 @@ const Accommodation = ()=>{
             setIsView(false)
             setCurApproval(null)
             setCurAccomodation(null)
+            setImageUpload(null)
             setAccommodationFields({...defaultAccommodationFields})
             setCurCustomer(null)
             setCustomerFields({...defaultCustomerFields})    
@@ -368,6 +370,43 @@ const Accommodation = ()=>{
             setAlertTimeout(5000)
           }
     }
+
+    const handleImageSelect = (e)=>{
+        const file = e.target.files[0]
+        setImageUpload(file)
+    }
+
+    const handleImageUpload = async (imageUpload)=>{
+        if (!imageUpload) {
+            setAlertState('error')
+            setAlert("Please select an image first")
+            setAlertTimeout(3000);
+            return
+        }
+        setAlertState('info')
+        setAlert('Uploading Image...')
+        setAlertTimeout(100000)
+        const collection = 'Accommodation'
+        const createdAt = curAccommodation.createdAt
+        const res = await uploadFile(
+            imageUpload, company+"/Payment Receipts", 
+            createdAt, company, collection, server
+        ); 
+        if (res?.downloadLink){
+            // console.log(res.imgId, res.downloadLink, res.viewLink)
+            setCurAccomodation((curAccommodation)=>{
+                return {...curAccommodation, ...res}
+            })
+            setAccommodationFields((accommodationFields)=>{
+                return {...accommodationFields, ...res}
+            })
+            setAlertState('success')
+            setAlert('Image Uploaded Successfully!')
+            setAlertTimeout(3000)
+            getAccommodations(company)
+        }
+    }
+
     const handleCustomerViewClick = (customer) =>{
         setCurCustomer(customer)
         setSalesOpts('customers')
@@ -379,6 +418,7 @@ const Accommodation = ()=>{
     const handleAccommodationViewClick = (accommodation) =>{
         setCurAccomodation(accommodation)
         setSalesOpts('accommodation')
+        setImageUpload(null)
         if (fillmode){
             setFillMode('')
         }        
@@ -947,6 +987,7 @@ const Accommodation = ()=>{
                                 setSelectedUnPaidAccommodations([])
                                 setCurSelectedUnPaidAccommodation('')
                                 setCurPaymentAmount('')
+                                setImageUpload(null)
                             }}
                         />
                     }
@@ -1165,6 +1206,37 @@ const Accommodation = ()=>{
                             </div>
 
                             {/* Logic for Payment Receipt Upload Here */}
+                            {<section className='imgview'>
+                                <div className='acpymdt'>Upload Payment Receipt</div>
+                                {(accommodationFields.imgId || imageUpload) && <img className='imgtag' src={accommodationFields?.downloadLink || (imageUpload? (URL.createObjectURL(imageUpload)): '')} alt='receipt'/>}
+                                {!imageUpload && <div className='inpcov'>
+                                    <div>Upload Image</div>
+                                    <input 
+                                        className='forminp'
+                                        name='imgId'
+                                        type='file'
+                                        accept='image/*'                                       
+                                        onChange={(e)=>{
+                                            handleImageSelect(e)
+                                        }}
+                                    />
+                                </div>}
+                                {(!accommodationFields.imgId) ? <button 
+                                    className='imgupld'
+                                    onClick={()=>{
+                                        handleImageUpload(imageUpload)
+                                    }}
+                                > Upload</button> : 
+                                (companyRecord?.status === 'admin' && <button 
+                                    className='imgupld'
+                                    color='red'
+                                    onClick={()=>{
+                                        setImageUpload(null)
+                                        // deleteFile(accommodationFields.imgId, server)
+                                    }}
+                                > Delete</button>)
+                                }
+                            </section>}
                             
                             {accommodationFields.paymentStatus==='Make Payment' && !curApproval && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_group_payment')) && <>
                                 <div className='acpymdt'>Apply Receipt to other Pending Accommodations</div>
