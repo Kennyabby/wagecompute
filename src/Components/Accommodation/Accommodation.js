@@ -848,7 +848,7 @@ const Accommodation = ()=>{
                                             return employee.i_d === employeeId
                                         })[0]?.['firstName']:''
                                     }</b></div>
-                                    {approval && approval?.approvers?.length && 
+                                    {approval && approval?.approvers?.length > 0 && 
                                         <div 
                                             className='deptdesc' 
                                             style={{
