@@ -386,14 +386,21 @@ const Accommodation = ()=>{
         setAlertState('info')
         setAlert('Uploading Image...')
         setAlertTimeout(100000)
-        const collection = 'Accommodation'
+        const collection = 'Accommodations'
         const createdAt = curAccommodation.createdAt
         const res = await uploadFile(
             imageUpload, company+"/Payment Receipts", 
             createdAt, company, collection, server
         ); 
+        if (res.mess){
+            setAlertState('error')
+            setAlert(res.mess)
+            setAlertTimeout(3000)
+            return
+        }
         if (res?.downloadLink){
             // console.log(res.imgId, res.downloadLink, res.viewLink)
+            setImageUpload(null)
             setCurAccomodation((curAccommodation)=>{
                 return {...curAccommodation, ...res}
             })
@@ -1208,8 +1215,15 @@ const Accommodation = ()=>{
                             {/* Logic for Payment Receipt Upload Here */}
                             {<section className='imgview'>
                                 <div className='acpymdt'>Upload Payment Receipt</div>
-                                {(accommodationFields.imgId || imageUpload) && <img className='imgtag' src={accommodationFields?.downloadLink || (imageUpload? (URL.createObjectURL(imageUpload)): '')} alt='receipt'/>}
-                                {!imageUpload && <div className='inpcov'>
+                                
+                                {(accommodationFields.imgId || imageUpload) && 
+                                
+                                <a href={accommodationFields?.viewLink || ''} target="_blank" rel="noopener noreferrer">                        
+                                    <img className='imgtag' src={(accommodationFields?.imgId? `https://drive.google.com/thumbnail?id=${accommodationFields.imgId}&sz=w1000`: '') || (imageUpload? (URL.createObjectURL(imageUpload)): '')} 
+                                        alt='receipt'
+                                    />
+                                </a>}
+                                {!imageUpload && !accommodationFields.imgId && <div className='inpcov'>
                                     <div>Upload Image</div>
                                     <input 
                                         className='forminp'
@@ -1227,7 +1241,7 @@ const Accommodation = ()=>{
                                         handleImageUpload(imageUpload)
                                     }}
                                 > Upload</button> : 
-                                (companyRecord?.status === 'admin' && <button 
+                                ((companyRecord?.status === 'admin' || imageUpload) && <button 
                                     className='imgupld'
                                     color='red'
                                     onClick={()=>{

@@ -36,10 +36,12 @@
     text-align: center;
     margin: 20px auto;
     width: 80%;
+    overflow-x: auto;
 }
 .imgtag{
-    height: 200px;
+    height: 300px;
     margin: 10px auto;
+    cursor: pointer;
 }
 .imgupld{
     margin: 5px auto;
