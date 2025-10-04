@@ -1,5 +1,6 @@
 import './Accommodation.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal'
+import heic2any from "heic2any";
 import { useState, useEffect, useContext, use } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
@@ -372,9 +373,28 @@ const Accommodation = ()=>{
           }
     }
 
-    const handleImageSelect = (e)=>{
+    const handleImageSelect = async (e)=>{
         const file = e.target.files[0]
-        setImageUpload(file)
+        let blob = file;
+        // ✅ Convert HEIC to JPEG if necessary
+        if (file.type === "image/heic" || file.name.endsWith(".heic")) {
+            try {                
+                const converted = await heic2any({
+                    blob: file,
+                    toType: "image/jpeg",
+                    quality: 0.9,
+                });
+                blob = converted;
+            } catch (err) {
+                setAlertState('error')
+                setAlert(`Image conversion failed: ${err}`)
+                setAlertTimeout(3000)
+                return
+            }
+        }
+
+        // const previewUrl = URL.createObjectURL(blob);
+        setImageUpload(blob)
     }
 
     const handleImageUpload = async (imageUpload)=>{
