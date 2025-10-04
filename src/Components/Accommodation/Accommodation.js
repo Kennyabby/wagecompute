@@ -1264,7 +1264,6 @@ const Accommodation = ()=>{
                                 
                                 <a href={accommodationFields?.viewLink || ''} target="_blank" rel="noopener noreferrer">                        
                                     <img className='imgtag' src={(accommodationFields?.imgId? `https://drive.google.com/thumbnail?id=${accommodationFields.imgId}&sz=w1000`: '') || (imageUpload? (URL.createObjectURL(imageUpload)): '')} 
-                                        capture="environment"
                                         alt='receipt'
                                     />
                                 </a>}
@@ -1274,7 +1273,8 @@ const Accommodation = ()=>{
                                         className='forminp'
                                         name='imgId'
                                         type='file'
-                                        accept='image/*'                                       
+                                        accept='image/*' 
+                                        capture="environment"                                      
                                         onChange={(e)=>{
                                             handleImageSelect(e)
                                         }}
