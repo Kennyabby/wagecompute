@@ -1250,7 +1250,7 @@ const Accommodation = ()=>{
                             </div>
 
                             {/* Logic for Payment Receipt Upload Here */}
-                            {<section className='imgview'>
+                            {accommodationFields?.paymentReceipt?.toLowerCase() !== 'cash' && <section className='imgview'>
                                 <div className='acpymdt'>Upload Payment Receipt</div>
                                 
                                 {(accommodationFields.imgId || imageUpload) && 
