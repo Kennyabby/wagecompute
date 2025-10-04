@@ -684,7 +684,7 @@ const Purchase = ()=>{
                                                     border: 'solid greenyellow 3px',
                                                 }}
                                             > 
-                                                ## SALES VERIFIED ##
+                                                ## PURCHASE VERIFIED ##
                                             </div>
                                         }
                                     </div>
