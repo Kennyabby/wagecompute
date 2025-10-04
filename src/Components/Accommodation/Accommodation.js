@@ -422,13 +422,12 @@ const Accommodation = ()=>{
             return
         }
         if (res?.downloadLink){
-            // console.log(res.imgId, res.downloadLink, res.viewLink)
             setImageUpload(null)
             setCurAccomodation((curAccommodation)=>{
                 return {...curAccommodation, ...res}
             })
             setAccommodationFields((accommodationFields)=>{
-                return {...accommodationFields, ...res}
+                return {...accommodationFields, ...res, receiptLastUploadedBy: companyRecord?.emailid}
             })
             setUploadingReceipt(false)
             setAlertState('success')
@@ -448,7 +447,8 @@ const Accommodation = ()=>{
             const updatedAccommodtion = {
                 imgId: null,
                 viewLink: null,
-                downloadLink: null
+                downloadLink: null,                
+                receiptLastDeletedBy: companyRecord?.emailid
             }
 
             const resp = await fetchServer('POST', {
