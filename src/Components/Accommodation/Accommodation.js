@@ -113,7 +113,8 @@ const Accommodation = ()=>{
     })
     const [isView, setIsView] = useState(false)
     const [imageUpload, setImageUpload] = useState(null)
-
+    const [uploadingReceipt, setUploadingReceipt] = useState(false)
+    const [deletingReceipt, setDeletingReceipt] = useState(false)
     useEffect(()=>{
         storePath('accommodations')  
     },[storePath])
@@ -383,6 +384,7 @@ const Accommodation = ()=>{
             setAlertTimeout(3000);
             return
         }
+        setUploadingReceipt(true)
         setAlertState('info')
         setAlert('Uploading Receipt...')
         setAlertTimeout(100000)
@@ -393,6 +395,7 @@ const Accommodation = ()=>{
             createdAt, company, collection, server
         ); 
         if (res.mess){
+            setUploadingReceipt(false)
             setAlertState('error')
             setAlert(res.mess)
             setAlertTimeout(3000)
@@ -407,6 +410,7 @@ const Accommodation = ()=>{
             setAccommodationFields((accommodationFields)=>{
                 return {...accommodationFields, ...res}
             })
+            setUploadingReceipt(false)
             setAlertState('success')
             setAlert('Receipt Uploaded Successfully!')
             setAlertTimeout(3000)
@@ -415,6 +419,7 @@ const Accommodation = ()=>{
     }
 
     const handleImageDelete = async (imgId)=>{
+        setDeletingReceipt(true)
         setAlertState('info')
         setAlert('Deleting Receipt...')
         setAlertTimeout(100000)
@@ -439,12 +444,14 @@ const Accommodation = ()=>{
                 setAccommodationFields((accommodationFields)=>{
                     return {...accommodationFields, ...updatedAccommodtion}
                 })
+                setDeletingReceipt(false)
                 setAlertState('success')
-                setAlert('Receipt Deleted successfully!')
+                setAlert('Receipt Deleted Successfully!')
                 setAlertTimeout(3000)
                 getAccommodations(company)
             }
         }else{
+            setDeletingReceipt(false)
             setAlertState('error')
             setAlert('Error Deleting Receipt. Check your network!')
             setAlertTimeout(3000)
@@ -1274,6 +1281,8 @@ const Accommodation = ()=>{
                                 </div>}
                                 {(!accommodationFields.imgId) && <button 
                                     className='imgupld'
+                                    style={{cursor: uploadingReceipt ? 'not-allowed': 'pointer'}}
+                                    disabled={uploadingReceipt}
                                     onClick={()=>{
                                         handleImageUpload(imageUpload)
                                     }}
@@ -1281,6 +1290,8 @@ const Accommodation = ()=>{
                                 {(((companyRecord?.status === 'admin' && accommodationFields.imgId) || imageUpload) && <button 
                                     className='imgupld'
                                     color='red'
+                                    style={{cursor: deletingReceipt ? 'not-allowed': 'pointer'}}
+                                    disabled={deletingReceipt}
                                     onClick={()=>{
                                         setImageUpload(null)
                                         if (accommodationFields.imgId){
@@ -1535,90 +1546,96 @@ const Accommodation = ()=>{
                                             if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
                                                 accommodationFields.paymentReceipt
                                             ){
-                                            
-                                                const paymentFields = {
-                                                    paymentAmount: accommodationFields.paymentAmount,
-                                                    payPoint: accommodationFields.payPoint,
-                                                    paymentReceipt: accommodationFields.paymentReceipt
-                                                }
-                                                let foundVoidReceipt = false
-                                                let voidReceiptDetails = {}
-                                                let usedReceipt = paymentReceipts.find((payrec)=>{
-                                                    return (
-                                                        payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
-                                                        && payrec.paymentPoint === accommodationFields.payPoint
-                                                    )
-                                                })
-                                                if (usedReceipt){
-                                                    foundVoidReceipt = true
-                                                    voidReceiptDetails = {
-                                                        voidReceipt: usedReceipt?.paymentReceipt,
-                                                        voidReceiptDate: usedReceipt?.paymentDate,
-                                                        voidReceiptPoint: usedReceipt?.paymentPoint,
-                                                        voidReceiptAmount: usedReceipt?.paymentAmount,
-                                                        voidReceiptModule: usedReceipt?.paymentModule,
-                                                        voidReceiptHandler: usedReceipt?.paymentHandler
+                                                if (accommodationFields.imgId && accommodationFields.paymentReceipt.toLowerCase() !=='cash'){
+                                                    const paymentFields = {
+                                                        paymentAmount: accommodationFields.paymentAmount,
+                                                        payPoint: accommodationFields.payPoint,
+                                                        paymentReceipt: accommodationFields.paymentReceipt
                                                     }
-                                                    paymentFields.voidReceipt = voidReceiptDetails
-                                                    if (companyRecord?.status === 'admin'){
-                                                        setAlertState('error')
-                                                        setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
-                                                        setAlertTimeout(5000)
-                                                        return
-                                                    }
-                                                }else {
-                                                    let voidReceipts = paymentReceipts.filter((payrec)=>{
-                                                        return(
-                                                            payrec.paymentReceipt > Number(accommodationFields.paymentReceipt)
-                                                            && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
+                                                    let foundVoidReceipt = false
+                                                    let voidReceiptDetails = {}
+                                                    let usedReceipt = paymentReceipts.find((payrec)=>{
+                                                        return (
+                                                            payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
+                                                            && payrec.paymentPoint === accommodationFields.payPoint
                                                         )
                                                     })
-                                                    
-                                                    if (voidReceipts.length){
+                                                    if (usedReceipt){
                                                         foundVoidReceipt = true
                                                         voidReceiptDetails = {
-                                                            voidReceipt: voidReceipts[0]?.paymentReceipt,
-                                                            voidReceiptDate: voidReceipts[0]?.paymentDate,
-                                                            voidReceiptPoint: voidReceipts[0]?.paymentPoint,
-                                                            voidReceiptAmount: voidReceipts[0]?.paymentAmount,
-                                                            voidReceiptModule: voidReceipts[0]?.paymentModule,
-                                                            voidReceiptHandler: voidReceipts[0]?.paymentHandler
+                                                            voidReceipt: usedReceipt?.paymentReceipt,
+                                                            voidReceiptDate: usedReceipt?.paymentDate,
+                                                            voidReceiptPoint: usedReceipt?.paymentPoint,
+                                                            voidReceiptAmount: usedReceipt?.paymentAmount,
+                                                            voidReceiptModule: usedReceipt?.paymentModule,
+                                                            voidReceiptHandler: usedReceipt?.paymentHandler
                                                         }
                                                         paymentFields.voidReceipt = voidReceiptDetails
-    
-                                                        // if (companyRecord?.status === 'admin'){
-                                                        //     setAlertState('error')
-                                                        //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
-                                                        //     setAlertTimeout(5000)
-                                                        //     return
-                                                        // }
+                                                        if (companyRecord?.status === 'admin'){
+                                                            setAlertState('error')
+                                                            setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
+                                                            setAlertTimeout(5000)
+                                                            return
+                                                        }
+                                                    }else {
+                                                        let voidReceipts = paymentReceipts.filter((payrec)=>{
+                                                            return(
+                                                                payrec.paymentReceipt > Number(accommodationFields.paymentReceipt)
+                                                                && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
+                                                            )
+                                                        })
+                                                        
+                                                        if (voidReceipts.length){
+                                                            foundVoidReceipt = true
+                                                            voidReceiptDetails = {
+                                                                voidReceipt: voidReceipts[0]?.paymentReceipt,
+                                                                voidReceiptDate: voidReceipts[0]?.paymentDate,
+                                                                voidReceiptPoint: voidReceipts[0]?.paymentPoint,
+                                                                voidReceiptAmount: voidReceipts[0]?.paymentAmount,
+                                                                voidReceiptModule: voidReceipts[0]?.paymentModule,
+                                                                voidReceiptHandler: voidReceipts[0]?.paymentHandler
+                                                            }
+                                                            paymentFields.voidReceipt = voidReceiptDetails
+        
+                                                            // if (companyRecord?.status === 'admin'){
+                                                            //     setAlertState('error')
+                                                            //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
+                                                            //     setAlertTimeout(5000)
+                                                            //     return
+                                                            // }
+                                                        }
                                                     }
+                                                    if (curApproval && curApproval?.approved){  
+                                                        if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_accommodation_posts')){
+                                                            setAlertState('error')
+                                                            setAlert('You are not allowed to post payments!')
+                                                            setAlertTimeout(3000)
+                                                            return
+                                                        }                
+                                                    }                                           
+                                                    runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, ()=>{postPayment(accommodationFields)}, curAccommodation.createdAt)
+                                                    if (selectedUnPaidAccommodations.length){
+                                                        selectedUnPaidAccommodations.forEach((selectedAccommodation)=>{
+                                                            let accPaymentFields = {
+                                                                paymentAmount: selectedAccommodation.paymentAmount,
+                                                                payPoint: selectedAccommodation.payPoint,
+                                                                paymentReceipt: selectedAccommodation.paymentReceipt,
+                                                                accommodationAmount: selectedAccommodation.accommodationAmount,
+                                                                createdAt: selectedAccommodation.createdAt
+                                                            }
+                                                            if (foundVoidReceipt){
+                                                                accPaymentFields.voidReceipt = voidReceiptDetails
+                                                            }
+                                                            runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, ()=>{postPayment(accPaymentFields)}, selectedAccommodation.createdAt)
+                                                        })
+                                                    }
+                                                }else{
+                                                    setAlertState('error')
+                                                    setAlert(
+                                                        `Upload Payment Receipt!`
+                                                    )
+                                                    setAlertTimeout(5000)   
                                                 }
-                                                if (curApproval && curApproval?.approved){  
-                                                    if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_accommodation_posts')){
-                                                        setAlertState('error')
-                                                        setAlert('You are not allowed to post payments!')
-                                                        setAlertTimeout(3000)
-                                                        return
-                                                    }                
-                                                }                                           
-                                                runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, ()=>{postPayment(accommodationFields)}, curAccommodation.createdAt)
-                                                if (selectedUnPaidAccommodations.length){
-                                                    selectedUnPaidAccommodations.forEach((selectedAccommodation)=>{
-                                                        let accPaymentFields = {
-                                                            paymentAmount: selectedAccommodation.paymentAmount,
-                                                            payPoint: selectedAccommodation.payPoint,
-                                                            paymentReceipt: selectedAccommodation.paymentReceipt,
-                                                            accommodationAmount: selectedAccommodation.accommodationAmount,
-                                                            createdAt: selectedAccommodation.createdAt
-                                                        }
-                                                        if (foundVoidReceipt){
-                                                            accPaymentFields.voidReceipt = voidReceiptDetails
-                                                        }
-                                                        runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, ()=>{postPayment(accPaymentFields)}, selectedAccommodation.createdAt)
-                                                    })
-                                                }
-    
                                             }else{
                                                 setActionMessage('')
                                                 setAlertState('error')
