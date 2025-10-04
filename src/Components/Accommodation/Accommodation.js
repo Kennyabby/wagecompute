@@ -432,11 +432,18 @@ const Accommodation = ()=>{
                 prop: [{createdAt: curAccommodation.createdAt}, {...updatedAccommodtion}]                
             }, 'updateOneDoc', server)
             if (resp.updated){
+                setCurAccomodation((curAccommodation)=>{
+                    
+                    return {...curAccommodation, ...updatedAccommodtion}
+                })
+                setAccommodationFields((accommodationFields)=>{
+                    return {...accommodationFields, ...updatedAccommodtion}
+                })
                 setAlertState('success')
                 setAlert('Receipt Deleted successfully!')
                 setAlertTimeout(3000)
+                getAccommodations(company)
             }
-
         }else{
             setAlertState('error')
             setAlert('Error Deleting Receipt. Check your network!')
