@@ -419,23 +419,31 @@ const Accommodation = ()=>{
         setAlert('Deleting Receipt...')
         setAlertTimeout(100000)
         const res = await deleteFile(imgId, server)
-        if (res.deleted){
+        if (res.success){
             const updatedAccommodtion = {
                 imgId: null,
                 viewLink: null,
                 downloadLink: null
             }
+
             const resp = await fetchServer('POST', {
                 database: company,
-                collection: 'Accommodtions',
+                collection: 'Accommodations',
                 prop: [{createdAt: curAccommodation.createdAt}, {...updatedAccommodtion}]                
             }, 'updateOneDoc', server)
+            if (resp.updated){
+                setAlertState('success')
+                setAlert('Receipt Deleted successfully!')
+                setAlertTimeout(3000)
+            }
+
         }else{
             setAlertState('error')
             setAlert('Error Deleting Receipt. Check your network!')
             setAlertTimeout(3000)
         }
     }
+
     const handleCustomerViewClick = (customer) =>{
         setCurCustomer(customer)
         setSalesOpts('customers')
