@@ -398,7 +398,7 @@ const Attendance = () =>{
                                                 border: 'solid greenyellow 3px',
                                             }}
                                         > 
-                                            ## SALES VERIFIED ##
+                                            ## ATTENDANCE VERIFIED ##
                                         </div>
                                     }
                                 </div>
