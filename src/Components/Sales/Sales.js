@@ -3404,7 +3404,7 @@ const Sales = ()=>{
                                     }
                                 }
                             }}
-                        >{recoveryStatus ? (curApproval?.approved? rentalsStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>}
+                        >{recoveryStatus ? (curApproval?.approved? recoveryStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>}
                         {salesOpts === 'rentals' && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor:(rentalFields.paymentAmount && rentalFields.expectedPayment)?'pointer':'not-allowed'
