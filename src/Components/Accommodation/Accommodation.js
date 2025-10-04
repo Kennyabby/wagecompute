@@ -1308,7 +1308,7 @@ const Accommodation = ()=>{
                                         handleImageUpload(imageUpload)
                                     }}
                                 > Upload</button>} 
-                                {((((companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('delete_payment_receipts')) && accommodationFields.imgId) || imageUpload) && <button 
+                                {((((companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('edit_payment_receipts')) && accommodationFields.imgId) || imageUpload) && <button 
                                     className='imgupld'
                                     color='red'
                                     style={{cursor: deletingReceipt ? 'not-allowed': 'pointer'}}
