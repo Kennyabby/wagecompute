@@ -182,7 +182,11 @@ const Accommodation = ()=>{
     },[customers, isView])
     useEffect(()=>{
         if (!allowBacklogs){
-            setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+            if (companyRecord?.status === 'admin'){
+                setSaleFrom(new Date(Date.now()).toISOString().slice(0, 10))
+            }else{
+                setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+            }
         }
         if(companyRecord?.permissions.includes('approve_postaccommodation') || companyRecord?.status==='admin'){
             setIsApprover(true)
