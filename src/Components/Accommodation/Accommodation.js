@@ -1277,7 +1277,7 @@ const Accommodation = ()=>{
                             </div>
 
                             {/* Logic for Payment Receipt Upload Here */}
-                            {accommodationFields?.paymentReceipt?.toLowerCase() !== 'cash' && <section className='imgview'>
+                            {accommodationFields?.paymentReceipt?.toLowerCase() !== 'cash' && accommodationFields.payPoint && <section className='imgview'>
                                 <div className='acpymdt'>Upload Payment Receipt</div>
                                 
                                 {(accommodationFields.imgId || imageUpload) && 
@@ -1567,7 +1567,7 @@ const Accommodation = ()=>{
                                             if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
                                                 accommodationFields.paymentReceipt
                                             ){
-                                                if (accommodationFields.imgId && accommodationFields.paymentReceipt.toLowerCase() !=='cash'){
+                                                if (accommodationFields.imgId || accommodationFields.paymentReceipt.toLowerCase() === 'cash'){
                                                     const paymentFields = {
                                                         paymentAmount: accommodationFields.paymentAmount,
                                                         payPoint: accommodationFields.payPoint,
