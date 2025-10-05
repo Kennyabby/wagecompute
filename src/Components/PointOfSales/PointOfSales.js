@@ -481,7 +481,7 @@ const PointOfSales = () => {
 
     const loadTableData = () =>{
         let orderTables = []
-        for (let i=0; i<20; i++){
+        for (let i=0; i<30; i++){
             const orderTable = {}
             orderTable.i_d = i+1
             orderTable.name = `Table ${i+1}`
