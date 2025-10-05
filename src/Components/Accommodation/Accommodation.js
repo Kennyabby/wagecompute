@@ -424,10 +424,9 @@ const Accommodation = ()=>{
             return
         }
         if (res?.downloadLink){
-            setImageUpload(null)
-            // setCurAccomodation((curAccommodation)=>{
-            //     return {...curAccommodation, ...res}
-            // })
+            setCurAccomodation((curAccommodation)=>{
+                return {...curAccommodation, ...res}
+            })
             setAccommodationFields((accommodationFields)=>{
                 return {...accommodationFields, ...res, receiptLastUploadedBy: companyRecord?.emailid}
             })
