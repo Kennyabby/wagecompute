@@ -340,6 +340,9 @@ const Accommodation = ()=>{
             paymentAmount: accommodationFields.paymentAmount,
             payPoint: accommodationFields.payPoint,
             paymentReceipt: accommodationFields.paymentReceipt,
+            imgId: accommodationFields.imgId,
+            viewLink: accommodationFields.viewLink,
+            downloadLink: accommodationFields.downloadLink,
             paymentStatus: paymentStatus
         }
         
@@ -1391,7 +1394,10 @@ const Accommodation = ()=>{
                                                                 ...selectedAcc,
                                                                 paymentAmount: curPaymentAmount,
                                                                 paymentReceipt: accommodationFields.paymentReceipt,
-                                                                payPoint: accommodationFields.payPoint
+                                                                payPoint: accommodationFields.payPoint,
+                                                                imgId: accommodationFields.imgId,
+                                                                viewLink: accommodationFields.viewLink,
+                                                                downloadLink: accommodationFields.downloadLink
                                                             }, 
                                                             ...prevState
                                                         ]
@@ -1642,6 +1648,9 @@ const Accommodation = ()=>{
                                                                 payPoint: selectedAccommodation.payPoint,
                                                                 paymentReceipt: selectedAccommodation.paymentReceipt,
                                                                 accommodationAmount: selectedAccommodation.accommodationAmount,
+                                                                imgId: selectedAccommodation.imgId,
+                                                                viewLink: selectedAccommodation.viewLink,
+                                                                downloadLink: selectedAccommodation.downloadLink,
                                                                 createdAt: selectedAccommodation.createdAt
                                                             }
                                                             if (foundVoidReceipt){

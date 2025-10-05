@@ -215,7 +215,7 @@ const Employees = () =>{
             setAlert(
                 `The Employee Record is in use in another Model. Delete the Corresponding Record Before Proceeding`
             )
-            setAlertTimeout(12000)
+            setAlertTimeout(5000)
         }else{
             setAlertState('info')
             setAlert(
