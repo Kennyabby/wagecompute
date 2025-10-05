@@ -146,7 +146,7 @@ const Accommodation = ()=>{
         }))
         
     }, [approvals])
-
+   
     useEffect(()=>{
         if (curAccommodation?.paymentStatus === 'Make Payment'){
             setSelectedUnPaidAccommodations([])
@@ -396,7 +396,6 @@ const Accommodation = ()=>{
             }
         }
 
-        // const previewUrl = URL.createObjectURL(blob);
         setImageUpload(blob)
     }
 
@@ -930,7 +929,6 @@ const Accommodation = ()=>{
                                         border: approval? `solid ${textColor} 3px` : 'solid black 0px'
                                     }}
                                     onClick={()=>{
-
                                         setFillMode('payment')
                                         if (approval){
                                             setCurApproval(approval)
@@ -1281,15 +1279,17 @@ const Accommodation = ()=>{
 
                             {/* Logic for Payment Receipt Upload Here */}
                             {accommodationFields?.paymentReceipt?.toLowerCase() !== 'cash' && accommodationFields.payPoint && <section className='imgview'>
+                               
                                 <div className='acpymdt'>Upload Payment Receipt</div>
                                 
                                 {(accommodationFields.imgId || imageUpload) && 
                                 
-                                <a href={accommodationFields?.viewLink || ''} target="_blank" rel="noopener noreferrer">                        
-                                    <img className='imgtag' src={(accommodationFields?.imgId? `https://drive.google.com/thumbnail?id=${accommodationFields.imgId}&sz=w1000`: '') || (imageUpload? (URL.createObjectURL(imageUpload)): '')} 
-                                        alt='receipt'
-                                    />
-                                </a>}
+                                    <a href={accommodationFields?.viewLink || ''} target="_blank" rel="noopener noreferrer">                        
+                                        <img className='imgtag' src={(accommodationFields?.imgId? `https://drive.google.com/thumbnail?id=${accommodationFields.imgId}&sz=w1000`: '') || (imageUpload? (URL.createObjectURL(imageUpload)): '')} 
+                                            alt='receipt'
+                                        />
+                                    </a>
+                                }
                                 {!imageUpload && !accommodationFields.imgId && <div className='inpcov'>
                                     <div>Upload Image</div>
                                     <input 
