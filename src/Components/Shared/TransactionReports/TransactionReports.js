@@ -785,11 +785,12 @@ const TransactionReports = ({
             result.totals.totalOrders += sessionOrders;
             
             const sessionSales = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {
-                const payPoint = Object.keys(order.salesPosts)[0] || 'Default';
-                result.salesByPayPoint[payPoint] = (result.salesByPayPoint[payPoint] || 0) + Number(order[payPoint] || 0);
-                const location = order.salesPosts[payPoint]
-                result.salesByLocation[location] = (result.salesByLocation[location] || 0) + Number(order[payPoint] || 0);
-                return sum + (parseFloat(order.totalSales) || 0);
+                Object.keys(order.salesPosts)?.forEach((payPoint)=>{
+                    result.salesByPayPoint[payPoint] = (result.salesByPayPoint[payPoint] || 0) + Number(order[payPoint] || 0);
+                    const location = order.salesPosts[payPoint]
+                    result.salesByLocation[location] = (result.salesByLocation[location] || 0) + Number(order[payPoint] || 0);
+                    return sum + (parseFloat(order.totalSales) || 0);
+                })
             }, 0) || 0;
             
             result.totals.totalSales += sessionSales;
