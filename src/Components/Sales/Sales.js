@@ -878,7 +878,7 @@ const Sales = ()=>{
                     }else{
                         switch (value){
                             case 'accomodation':
-                                if (companyRecord?.permissions.includes('override_accomodation')){
+                                if (companyRecord?.permissions.includes('override_accomodation') || isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')
@@ -887,7 +887,7 @@ const Sales = ()=>{
                                 }
                                 break
                             case 'vip':
-                                if (companyRecord?.permissions.includes('override_vip')){
+                                if (companyRecord?.permissions.includes('override_vip') || isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')  
@@ -896,7 +896,7 @@ const Sales = ()=>{
                                 }
                                 break
                             case 'open bar1':
-                                if (companyRecord?.permissions.includes('override_open bar1')){
+                                if (companyRecord?.permissions.includes('override_open bar1') || isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')
@@ -905,7 +905,7 @@ const Sales = ()=>{
                                 }
                                 break
                             case 'open bar2':
-                                if (companyRecord?.permissions.includes('override_open bar2')){
+                                if (companyRecord?.permissions.includes('override_open bar2') || isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')
@@ -914,7 +914,7 @@ const Sales = ()=>{
                                 }
                                 break
                             case 'kitchen':
-                                if (companyRecord?.permissions.includes('override_kitchen')){
+                                if (companyRecord?.permissions.includes('override_kitchen') || isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')
@@ -2616,8 +2616,8 @@ const Sales = ()=>{
                                     onChange={(e)=>{
                                         setIsDebtSales(e.target.checked)
                                     }}
-                                    />
-                                    <div>For Sales Debt</div>
+                                />
+                                <div>For Sales Debt</div>
                             </div>
                             <div className='inpcov'>
                                 <div>Total Sales (Excluding Kitchen Sales)</div>
@@ -2642,7 +2642,8 @@ const Sales = ()=>{
                                             ...defaultFields,
                                             employeeId: addEmployeeId, 
                                             kitchenEmployeeId: addKitchenEmployeeId,
-                                            totalSales: addTotalSales  
+                                            totalSales: addTotalSales,  
+                                            isDebtSales: isDebtSales
                                         }
                                         setFields((fields)=>{
                                             return [
@@ -3195,7 +3196,7 @@ const Sales = ()=>{
                                                 </div>
                                             })}
                                         </div>}
-                                        {!isDebtSales && Object.keys(salesUnits).map((salesUnit, id)=>{                                            
+                                        {!field.isDebtSales && Object.keys(salesUnits).map((salesUnit, id)=>{                                            
                                             if (salesUnit === field.salesPoint){
                                                 return(
                                                     <SalesEntry
