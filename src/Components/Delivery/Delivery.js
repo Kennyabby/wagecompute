@@ -58,6 +58,7 @@ const Delivery = () => {
     const [tableOrders, setTableOrders] = useState([]);
     const [orderType, setOrderType] = useState('dine-in');
     const [cancelling, setCancelling] = useState(false)
+    const [deliveryCompleted, setDeliveryCompleted] = useState(false)
 
     // Product States
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -870,13 +871,29 @@ const Delivery = () => {
                             setAlertTimeout(2000)
                             setCurrentOrder((currentOrder)=>{
                                 return {...currentOrder, ...deliveryDataUpdate}
-                            })                           
+                            })             
+                            setTableOrders((tableOrders)=>{
+                                tableOrders.forEach((tableOrder, index)=>{
+                                    if (tableOrder.orderNumber === currentOrder.orderNumber){
+                                        tableOrders[index] = {...currentOrder, ...deliveryDataUpdate}
+                                    }
+                                })
+                                return tableOrders
+                            })                                          
                         }else{
                             setCancelling(false)
                             setAlertState('success');
                             setAlert('Delivery cancelled successfully');
                             setAlertTimeout(2000);
                             setCurrentOrder((currentOrder)=>{ return {...currentOrder, ...deliveryDataUpdate} })           
+                            setTableOrders((tableOrders)=>{
+                                tableOrders.forEach((tableOrder, index)=>{
+                                    if (tableOrder.orderNumber === currentOrder.orderNumber){
+                                        tableOrders[index] = {...currentOrder, ...deliveryDataUpdate}
+                                    }
+                                })
+                                return tableOrders
+                            }) 
                         }
                         if (products.length){
                             getProductsWithStock(company, products)
@@ -1017,6 +1034,7 @@ const Delivery = () => {
                 return;
             }
         }else if (deliveryDataUpdate.delivery === 'completed'){
+            setDeliveryCompleted(true)
             const prevTable = tables.find((table)=>{return table['wrh'] === currentOrder.wrh})
             const activeTablesUpdate = [
                 ...(prevTable.activeTables.filter((table)=>{return (
@@ -1068,7 +1086,7 @@ const Delivery = () => {
                 })
                 setPosCurrentOrder((currentOrder)=>{
                     return {...currentOrder, ...deliveryDataUpdate}
-                })
+                })                
                 setTimeout(()=>{
                     updateInventory('deplete', itemsToDeplete, deliveryDataUpdate)                                                        
                 },500)
@@ -1684,6 +1702,7 @@ const Delivery = () => {
                                     setCurrentOrder(null)
                                     setPlacingOrder(false)
                                     setMakingPayment(false)
+                                    setDeliveryCompleted(false)
                                 }}
                             >
                                 Back to Tables
