@@ -360,6 +360,8 @@ const Sales = ()=>{
                         const sessionOrders = sessionCopy?.orders || []
                         sessionOrders.forEach((sessionOrder)=>{
                             const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                            let multTotalPayment = 0
+                            let multTotalSales = 0
                             salesPostsPay.forEach((pay)=>{
                                 if (sessionOrder.salesPosts[pay] === 'multiple'){
                                     foundMult = true
@@ -386,13 +388,14 @@ const Sales = ()=>{
                                     splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderPayment) : 0
                                     // delete sessionOrder.salesPosts[pay]
                                     sessionOrder.salesPosts[pay] = warehouse
-                                    sessionOrder[pay] = splitPayment[warehouse] * totalOrderPayment
-                                    sessionOrder.totalPayment = splitPayment[warehouse] * totalOrderPayment
-                                    sessionOrder.totalSales = splitPayment[warehouse] * totalOrderPayment
+                                    sessionOrder[pay] = splitPayment[warehouse] * totalOrderPayment                                    
                                     sessionOrder.lastDeliveredBy = blastDeliveredBy
-                                    
+                                    multTotalPayment += splitPayment[warehouse] * totalOrderPayment
+                                    multTotalSales += splitPayment[warehouse] * totalOrderPayment
                                 }
                             })
+                            sessionOrder.totalPayment = multTotalPayment
+                            sessionOrder.totalSales = multTotalSales
                         })
                     }
                     bmultSessions = (structuredClone({sessionCopy})).sessionCopy                                                    
@@ -402,6 +405,8 @@ const Sales = ()=>{
                         const sessionOrders = sessionCopy1?.orders || []
                         sessionOrders.forEach((sessionOrder)=>{
                             const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                            let multTotalPayment = 0
+                            let multTotalSales = 0
                             salesPostsPay.forEach((pay)=>{
                                 if (sessionOrder.salesPosts[pay] === 'multiple'){
                                     foundMult = true
@@ -429,11 +434,13 @@ const Sales = ()=>{
                                     
                                     sessionOrder.salesPosts[pay] = 'kitchen'
                                     sessionOrder[pay] = splitPayment['kitchen'] * totalOrderPayment
-                                    sessionOrder.totalPayment = splitPayment['kitchen'] * totalOrderPayment
-                                    sessionOrder.totalSales = splitPayment['kitchen'] * totalOrderPayment
+                                    multTotalPayment += splitPayment['kitchen'] * totalOrderPayment
+                                    multTotalSales += splitPayment['kitchen'] * totalOrderPayment
                                     sessionOrder.lastDeliveredBy = klastDeliveredBy                                    
                                 }
                             })
+                            sessionOrder.totalPayment = multTotalPayment
+                            sessionOrder.totalSales = multTotalSales
                         })
                     }
                     kmultSessions = (structuredClone({sessionCopy1})).sessionCopy1
