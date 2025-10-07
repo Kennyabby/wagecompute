@@ -782,6 +782,7 @@ const TransactionReports = ({
         };
 
         processedData.forEach(session => {
+            console.log(session)
             result.totals.totalSessions += 1;
             const sessionOrders = session.orders?.length || 0;
             result.totals.totalOrders += sessionOrders;
