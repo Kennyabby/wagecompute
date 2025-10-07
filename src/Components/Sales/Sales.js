@@ -389,9 +389,9 @@ const Sales = ()=>{
                                     // delete sessionOrder.salesPosts[pay]
                                     sessionOrder.salesPosts[pay] = warehouse
                                     sessionOrder[pay] = splitPayment[warehouse] * totalOrderPayment                                    
-                                    sessionOrder.lastDeliveredBy = blastDeliveredBy
                                     multTotalPayment += splitPayment[warehouse] * totalOrderPayment
                                     multTotalSales += splitPayment[warehouse] * totalOrderPayment
+                                    sessionOrder.lastDeliveredBy = blastDeliveredBy
                                 }
                             })
                             sessionOrder.totalPayment = multTotalPayment
@@ -481,13 +481,13 @@ const Sales = ()=>{
                     const saleRecord = {}
                     saleRecord.isSession = true
                     const updatedAllSessions = [...multSessions, ...allSessions]
-                    updatedAllSessions.forEach((session)=>{
+                    updatedAllSessions.forEach((session)=>{                        
                         const salesEndDate = new Date(postingDate1)
                         salesEndDate.setDate(salesEndDate.getDate() + 1);                        
                         const sessionOrders = session?.orders || []
                         sessionOrders.forEach((sessionOrder)=>{
-                        if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
-                            && session.type === 'sales' && session.end && sessionOrder.status === 'completed'
+                            if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
+                                && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales) && session.end && sessionOrder.status === 'completed'
                                 && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
                             ){
                                 
@@ -500,20 +500,25 @@ const Sales = ()=>{
                                         splitPayment[wh] = 1        
                                         if (wct>1){
                                             splitPayment['exclude'] = true
-                                        }                             
-                                        wrhSessionOrders.push({session, sessionOrder, splitPayment})                                                        
-                                    }else{
-                                        return 
-                                    }
-                                    sessionOrder?.deliverySessions?.forEach((deliverySession)=>{
-                                        if (!deliverySessions.includes(deliverySession)){
-                                            deliverySessions.push(deliverySession)
-                                        }   
-                                    })
+                                        }       
 
-                                    if (!salesSessions.includes(sessionOrder.sessionId)){
-                                        salesSessions.push(sessionOrder.sessionId)
-                                    }
+                                        if (sessionOrder.handlerId === employeeId){
+                                            wrhSessionOrders.push({session, sessionOrder, splitPayment})                                                        
+                                        }else{
+                                            if(session.employee_id !== employeeId && wh === 'kitchen'){
+                                                wrhSessionOrders.push({session, sessionOrder, splitPayment})                                                        
+                                            }
+                                        }
+                                        sessionOrder?.deliverySessions?.forEach((deliverySession)=>{
+                                            if (!deliverySessions.includes(deliverySession)){
+                                                deliverySessions.push(deliverySession)
+                                            }   
+                                        })
+
+                                        if (!salesSessions.includes(sessionOrder.sessionId)){
+                                            salesSessions.push(sessionOrder.sessionId)
+                                        }
+                                    }                                    
                                 })
                             }
                         })
@@ -539,6 +544,8 @@ const Sales = ()=>{
                                         totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                     }                            
                                 })
+                                // if (session.employee_id === employeeId){
+                                // }
                                 if (index === wrhSessionOrders.length-1){
                                     const {totalSalesAmount, debtDue, unAccountedSales} = session
                                     totalWrhTransactions[wh].debt += Number(debtDue)
