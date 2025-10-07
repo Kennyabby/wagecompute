@@ -3252,56 +3252,68 @@ const Sales = ()=>{
                         </div>}               
                         {salesOpts === 'sales' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:fields.length?'pointer':'not-allowed'
+                                cursor:(fields.length || (accommodationRecords.length && sessionSalesRecords.length))?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
-                                if (fields.length){
+                                if (fields.length || (accommodationRecords.length && sessionSalesRecords.length)){
                                     var rt = 0
                                     var ct = 0
                                     var wt = 0
-                                    fields.forEach((field)=>{
-                                        const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
-                                        Number(field.debt) + Number(field.shortage)
-                                        if (enteredSales === Number(field.totalSales)){
-                                            rt++
-                                            if (rt===fields.length){
-                                                if (!activeSessions.length){                                                    
-                                                    // setIsProductView(false)
-                                                    // setProductAdd(true)      
-                                                    const data = [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields]
-                                                    if (curApproval && curApproval?.approved){  
-                                                        if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_sales_posts')){
-                                                            setAlertState('error')
-                                                            setAlert('You are not allowed to post sales!')
-                                                            setAlertTimeout(3000)
-                                                            return
-                                                        }                
-                                                    }
-                                                    runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
-                                                }else{
+                                    const validateSales = ()=>{
+                                        if (!activeSessions.length){                                                    
+                                            // setIsProductView(false)
+                                            // setProductAdd(true)      
+                                            const data = [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields]
+                                            if (curApproval && curApproval?.approved){  
+                                                if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_sales_posts')){
                                                     setAlertState('error')
-                                                    setAlert('You still have active POS/Delivery sessions for this posting date. Please end them before posting!')
-                                                    setAlertTimeout(5000)
+                                                    setAlert('You are not allowed to post sales!')
+                                                    setAlertTimeout(3000)
+                                                    return
+                                                }                
+                                            }
+                                            runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
+                                        }else{
+                                            setAlertState('error')
+                                            setAlert('You still have active POS/Delivery sessions for this posting date. Please end them before posting!')
+                                            setAlertTimeout(5000)
+                                        }
+                                    }
+                                    if (fields.length){
+                                        fields.forEach((field)=>{
+                                            const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
+                                            Number(field.debt) + Number(field.shortage)
+                                            if (enteredSales === Number(field.totalSales)){
+                                                rt++
+                                                if (rt===fields.length){
+                                                    validateSales()
+                                                }
+                                            }else{
+                                                if (enteredSales < Number(field.totalSales)){
+                                                    ct++
+                                                }else if (enteredSales > Number(field.totalSales)){
+                                                    wt++
                                                 }
                                             }
-                                        }else{
-                                            if (enteredSales < Number(field.totalSales)){
-                                                ct++
-                                            }else if (enteredSales > Number(field.totalSales)){
-                                                wt++
-                                            }
+                                        })
+                                        if (!isApprover){
+                                            
                                         }
-                                    })
-                                    if (wt){
-                                        setActionMessage('')
-                                        setAlertState('error')
-                                        setAlert('Negative difference(s) detected in the employee sales you want to post. Please Make sure your entries match with the total sales before posting')
-                                        setAlertTimeout(5000)
-                                    }else if (ct){
-                                        setAlertState('info')
-                                        setActionMessage('Accept')                                        
-                                        setAlert('Positive Diffrence(s) Detected. Would you like to accept these diffrences as Debt?')
-                                        setAlertTimeout(15000)
+                                        if (wt){
+                                            setActionMessage('')
+                                            setAlertState('error')
+                                            setAlert('Negative difference(s) detected in the employee sales you want to post. Please Make sure your entries match with the total sales before posting')
+                                            setAlertTimeout(5000)
+                                        }else if (ct){
+                                            setAlertState('info')
+                                            setActionMessage('Accept')                                        
+                                            setAlert('Positive Diffrence(s) Detected. Would you like to accept these diffrences as Debt?')
+                                            setAlertTimeout(15000)
+                                        }
+                                    }else{
+                                        if ((accommodationRecords.length && sessionSalesRecords.length)){
+                                            validateSales()
+                                        }
                                     }
                                 }
                             }}
