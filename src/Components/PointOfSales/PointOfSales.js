@@ -740,29 +740,6 @@ const PointOfSales = () => {
         setAlertTimeout(1000000)
         setPlacingOrder(true)
         // Save the current order to database
-        const activeOrder = {
-            tableId: currentOrder.tableId,
-            sessionId: currentOrder.sessionId,
-            handlerId: companyRecord.emailid,
-            status: 'pending',
-            delivery: 'pending',
-            wrh: wrh,
-            orderNumber: currentOrder.orderNumber,
-            createdAt: new Date().getTime()
-        }
-        const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Tables",
-            prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables || []), {...activeOrder}]}]
-        }, "updateOneDoc", server)
-        if (resp.err){
-            setAlertState('error');
-            setAlert('Error updating table');
-            setAlertTimeout(3000)
-            setPlacingOrder(false)
-            return
-        }
         
         const placedOrder = {
             ...currentOrder, 
@@ -785,18 +762,43 @@ const PointOfSales = () => {
         }
         else{
             // Update tableOrders state with the new order
-            setTableOrders(prev => ([
-                ...prev, placedOrder
-            ]));
+            setAlertState('success');
+            setAlert('Order placed successfully');
+            setAlertTimeout(2000)
+            const activeOrder = {
+                tableId: currentOrder.tableId,
+                sessionId: currentOrder.sessionId,
+                handlerId: companyRecord.emailid,
+                status: 'pending',
+                delivery: 'pending',
+                wrh: wrh,
+                orderNumber: currentOrder.orderNumber,
+                createdAt: new Date().getTime()
+            }
+            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables || []), {...activeOrder}]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                setPlacingOrder(false)
+                return
+            }else{
+                setTableOrders(prev => ([
+                    ...prev, placedOrder
+                ]));
+            }
             fetchSessions(company, "sales", companyRecord)
             fetchTables(company)
             getProducts(company)
             loadInitialData()
             setCurrentOrder(placedOrder)
             setPlacingOrder(false)
-            setAlertState('success');
-            setAlert('Order placed successfully');
-            setAlertTimeout(2000)
+           
             // View Payment Modal
             // setShowPaymentModal(true);
         }
