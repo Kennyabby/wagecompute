@@ -18,7 +18,8 @@ const TransactionReports = ({
     orders = [],
     tables = [],
     employees = [],
-    onClose
+    onClose,
+    wrhCategories
 }) => {
     const { company, server, fetchServer, user, paymentReceipts } = useContext(ContextProvider);
     const [loading, setLoading] = useState(false);
@@ -784,11 +785,33 @@ const TransactionReports = ({
             const sessionOrders = session.orders?.length || 0;
             result.totals.totalOrders += sessionOrders;
             
-            const sessionSales = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {
+            const sessionSales = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {                
+                const warehouse = order.wrh
+                let splitPayment = {}
+                if (order.salesPosts?.[Object.keys(order?.salesPosts || {})[0]] === 'multiple'){
+                    const totalOrderSales = Number(order?.totalSales || 0)
+                    let kct = 0
+                    let bct = 0
+                    order.items.forEach((item)=>{
+                        const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
+                        if (wrhCategories[warehouse].includes(item.category)){
+                            bct += totalItemPrice
+                        }else if (wrhCategories['kitchen'].includes(item.category)){
+                            kct += totalItemPrice
+                        }
+                        splitPayment[warehouse] = totalOrderSales ? (Number(bct)/totalOrderSales) : 0
+                        splitPayment['kitchen'] = totalOrderSales ? (Number(kct)/totalOrderSales) : 0                    
+                    })
+                }
                 Object.keys(order?.salesPosts || {})?.forEach((payPoint)=>{
                     result.salesByPayPoint[payPoint] = (result.salesByPayPoint[payPoint] || 0) + Number(order[payPoint] || 0);
                     const location = order.salesPosts[payPoint]
-                    result.salesByLocation[location] = (result.salesByLocation[location] || 0) + Number(order[payPoint] || 0);
+                    if (location === 'multiple'){
+                        result.salesByLocation[warehouse] = (result.salesByLocation[warehouse] || 0) + (Number(splitPayment[warehouse] || 0) * Number(order[payPoint]));
+                        result.salesByLocation['kitchen'] = (result.salesByLocation['kitchen'] || 0) + (Number(splitPayment['kitchen'] || 0) * Number(order[payPoint]));
+                    }else{
+                        result.salesByLocation[location] = (result.salesByLocation[location] || 0) + Number(order[payPoint] || 0);
+                    }
                 })
                 return sum + (parseFloat(order.totalSales) || 0);
             }, 0) || 0;

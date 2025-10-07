@@ -1668,6 +1668,7 @@ const PointOfSales = () => {
                 setAlertState={setAlertState}
                 setAlert={setAlert}
                 setAlertTimeout={setAlertTimeout}
+                wrhCategories={wrhCategories}
             />:
             <div>                
                 {activeScreen === 'order' && (
@@ -2133,7 +2134,7 @@ const POSDashboard = ({
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
-    setAlertState, setAlert, setAlertTimeout, tables
+    setAlertState, setAlert, setAlertTimeout, tables, wrhCategories
 }) => {
     const { fetchServer, server, company } = useContext(ContextProvider);
     const [pendingSessions, setPendingSessions] = useState([]);
@@ -2372,6 +2373,7 @@ const POSDashboard = ({
                         tables={tables}
                         employees={employees}
                         onClose={() => setShowReports(false)}
+                        wrhCategories={wrhCategories}
                     />
                 )}
             </div>
