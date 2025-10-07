@@ -70,6 +70,7 @@ const Sales = ()=>{
     const [saleEmployee, setSaleEmployee] = useState('')
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [addKitchenEmployeeId, setAddKitchenEmployeeId] = useState('')
+    const [isDebtSales, setIsDebtSales] = useState(false)
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [isProductView, setIsProductView] = useState(false)
     const [productAdd, setProductAdd] = useState(false)
@@ -673,6 +674,7 @@ const Sales = ()=>{
             setFields([])
             setAddEmployeeId('')
             setAddKitchenEmployeeId('')
+            setIsDebtSales(false)
             setCurSale(null)
         }else{                                  
             setIsView(false)                             
@@ -765,6 +767,7 @@ const Sales = ()=>{
             setFields([])
             setAddEmployeeId('')
             setAddKitchenEmployeeId('')
+            setIsDebtSales(false)
             setCurSale(null)
             setIsView(false)
         }
@@ -983,14 +986,15 @@ const Sales = ()=>{
 
     const acceptSalesDebt = ()=>{
         setFields((fields)=>{
-            fields.forEach((field)=>{
+            const newFields = [...accommodationRecords, ...sessionSalesRecords, ...fields].map((field)=>{
                 const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
                 const debtDue = Number(field.totalSales) - netTotal 
                 if (debtDue){
                     field.debt = Number(field.debt) + debtDue
                 }
+                return field
             })
-            return [...fields]
+            return [...newFields]
         })
     }
 
@@ -1517,6 +1521,7 @@ const Sales = ()=>{
                 setFields([])
                 setAddEmployeeId('')
                 setAddKitchenEmployeeId('')
+                setIsDebtSales(false)
                 setRecoveryEmployeeId('')            
                 setAlertState('success')
                 setAlert('Sales Deleted Successfully!')
@@ -2465,6 +2470,7 @@ const Sales = ()=>{
                                 setFields([])
                                 setAddEmployeeId('')
                                 setAddKitchenEmployeeId('')
+                                setIsDebtSales(false)
                                 setKitchenRecords([])
                                 setCurSale(null)
                                 setCurApproval(null)
@@ -2479,6 +2485,7 @@ const Sales = ()=>{
                                     setFields([])
                                     setAddEmployeeId('')
                                     setAddKitchenEmployeeId('')
+                                    setIsDebtSales(false)
                                     setKitchenRecords([])
                                     setCurSale(null)
                                     setIsApprover(false)
@@ -2599,6 +2606,20 @@ const Sales = ()=>{
                                 </select>
                             </div>
                             <div className='inpcov'>
+                                <input 
+                                    className='forminp'
+                                    style={{fontSize: '10px', cursor: 'pointer', margin: 'auto'}}
+                                    name='isDebtSales'
+                                    type='checkbox'
+                                    placeholder='For Sales Debt'
+                                    value={isDebtSales}
+                                    onChange={(e)=>{
+                                        setIsDebtSales(e.target.checked)
+                                    }}
+                                    />
+                                    <div>For Sales Debt</div>
+                            </div>
+                            <div className='inpcov'>
                                 <div>Total Sales (Excluding Kitchen Sales)</div>
                                 <input 
                                     className='forminp'
@@ -2631,6 +2652,7 @@ const Sales = ()=>{
                                         })
                                         setAddEmployeeId('')
                                         setAddKitchenEmployeeId('')
+                                        setIsDebtSales(false)
                                         setAddTotalSales('')
                                     }
                                 }}
@@ -3173,12 +3195,12 @@ const Sales = ()=>{
                                                 </div>
                                             })}
                                         </div>}
-                                        {Object.keys(salesUnits).map((salesUnit, id)=>{                                            
+                                        {!isDebtSales && Object.keys(salesUnits).map((salesUnit, id)=>{                                            
                                             if (salesUnit === field.salesPoint){
                                                 return(
                                                     <SalesEntry
                                                         key={id}                                                   
-                                                        handleFieldChange={handleFieldChange}
+                                                        handleFieldChange={handleFieldChange} 
                                                         salesUnits={salesUnits}
                                                         payPointAccounts={payPointAccounts}
                                                         salesUnit={salesUnit}
@@ -3279,7 +3301,7 @@ const Sales = ()=>{
                                             setAlertTimeout(5000)
                                         }
                                     }
-                                    [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, fields].forEach((field)=>{
+                                    [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields].forEach((field)=>{
                                         const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
                                         Number(field.debt) + Number(field.shortage)
                                         if (enteredSales === Number(field.totalSales)){
