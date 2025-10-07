@@ -367,6 +367,7 @@ const Sales = ()=>{
                                     foundMult = true
                                     let splitPayment = {}
                                     const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
+                                    const totalOrderSales = Number(sessionOrder?.totalSales || 0)
                                     let kct = 0
                                     let bct = 0
                                     const warehouse = sessionOrder.wrh
@@ -384,13 +385,13 @@ const Sales = ()=>{
                                             sessionEmployees = sessionEmployees.concat(employeeId)
                                         }
                                     })
-                                    splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderPayment) : 0
-                                    splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderPayment) : 0
+                                    splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderSales) : 0
+                                    splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderSales) : 0
                                     // delete sessionOrder.salesPosts[pay]
                                     sessionOrder.salesPosts[pay] = warehouse
-                                    sessionOrder[pay] = splitPayment[warehouse] * totalOrderPayment                                    
-                                    multTotalPayment += splitPayment[warehouse] * totalOrderPayment
-                                    multTotalSales += splitPayment[warehouse] * totalOrderPayment
+                                    sessionOrder[pay] = splitPayment[warehouse] * totalOrderSales                                    
+                                    multTotalPayment += splitPayment[warehouse] * totalOrderSales
+                                    multTotalSales += splitPayment[warehouse] * totalOrderSales
                                     sessionOrder.lastDeliveredBy = blastDeliveredBy
                                 }
                             })
@@ -412,6 +413,7 @@ const Sales = ()=>{
                                     foundMult = true
                                     let splitPayment = {}
                                     const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
+                                    const totalOrderSales = Number(sessionOrder?.totalSales || 0)
                                     let kct = 0
                                     let bct = 0
                                     const warehouse = sessionOrder.wrh
@@ -429,13 +431,13 @@ const Sales = ()=>{
                                             sessionEmployees = sessionEmployees.concat(employeeId)
                                         }
                                     })
-                                    splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderPayment) : 0
-                                    splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderPayment) : 0
+                                    splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderSales) : 0
+                                    splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderSales) : 0
                                     
                                     sessionOrder.salesPosts[pay] = 'kitchen'
-                                    sessionOrder[pay] = splitPayment['kitchen'] * totalOrderPayment
-                                    multTotalPayment += splitPayment['kitchen'] * totalOrderPayment
-                                    multTotalSales += splitPayment['kitchen'] * totalOrderPayment
+                                    sessionOrder[pay] = splitPayment['kitchen'] * totalOrderSales
+                                    multTotalPayment += splitPayment['kitchen'] * totalOrderSales
+                                    multTotalSales += splitPayment['kitchen'] * totalOrderSales
                                     sessionOrder.lastDeliveredBy = klastDeliveredBy                                    
                                 }
                             })
@@ -486,7 +488,7 @@ const Sales = ()=>{
                         salesEndDate.setDate(salesEndDate.getDate() + 1);                        
                         const sessionOrders = session?.orders || []
                         sessionOrders.forEach((sessionOrder)=>{
-                            if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
+                            if ((sessionOrder.lastDeliveredBy === employeeId)
                                 && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales) && session.end && sessionOrder.status === 'completed'
                                 && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
                             ){
