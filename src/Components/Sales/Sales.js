@@ -3279,41 +3279,32 @@ const Sales = ()=>{
                                             setAlertTimeout(5000)
                                         }
                                     }
-                                    if (fields.length){
-                                        fields.forEach((field)=>{
-                                            const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
-                                            Number(field.debt) + Number(field.shortage)
-                                            if (enteredSales === Number(field.totalSales)){
-                                                rt++
-                                                if (rt===fields.length){
-                                                    validateSales()
-                                                }
-                                            }else{
-                                                if (enteredSales < Number(field.totalSales)){
-                                                    ct++
-                                                }else if (enteredSales > Number(field.totalSales)){
-                                                    wt++
-                                                }
+                                    [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, fields].forEach((field)=>{
+                                        const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
+                                        Number(field.debt) + Number(field.shortage)
+                                        if (enteredSales === Number(field.totalSales)){
+                                            rt++
+                                            if (rt===fields.length){
+                                                validateSales()
                                             }
-                                        })
-                                        if (!isApprover){
-                                            
+                                        }else{
+                                            if (enteredSales < Number(field.totalSales)){
+                                                ct++
+                                            }else if (enteredSales > Number(field.totalSales)){
+                                                wt++
+                                            }
                                         }
-                                        if (wt){
-                                            setActionMessage('')
-                                            setAlertState('error')
-                                            setAlert('Negative difference(s) detected in the employee sales you want to post. Please Make sure your entries match with the total sales before posting')
-                                            setAlertTimeout(5000)
-                                        }else if (ct){
-                                            setAlertState('info')
-                                            setActionMessage('Accept')                                        
-                                            setAlert('Positive Diffrence(s) Detected. Would you like to accept these diffrences as Debt?')
-                                            setAlertTimeout(15000)
-                                        }
-                                    }else{
-                                        if ((accommodationRecords.length && sessionSalesRecords.length)){
-                                            validateSales()
-                                        }
+                                    })
+                                    if (wt){
+                                        setActionMessage('')
+                                        setAlertState('error')
+                                        setAlert('Negative difference(s) detected in the employee sales you want to post. Please Make sure your entries match with the total sales before posting')
+                                        setAlertTimeout(5000)
+                                    }else if (ct){
+                                        setAlertState('info')
+                                        setActionMessage('Accept')                                        
+                                        setAlert('Positive Diffrence(s) Detected. Would you like to accept these diffrences as Debt?')
+                                        setAlertTimeout(15000)
                                     }
                                 }
                             }}
