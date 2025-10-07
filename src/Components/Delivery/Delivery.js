@@ -625,7 +625,7 @@ const Delivery = () => {
             setSelectedProduct(null)
             // Fetch ALL orders for this table and session(removed status filter)
             setAlertState('info');
-            setAlert('Loading table orders...');
+            setAlert(`Loading Table ${table.i_d} Orders...`);
             setAlertTimeout(100000)
             const orderFilter = { tableId: table.i_d}
             // if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
