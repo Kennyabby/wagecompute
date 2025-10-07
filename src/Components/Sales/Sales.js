@@ -488,7 +488,7 @@ const Sales = ()=>{
                         salesEndDate.setDate(salesEndDate.getDate() + 1);                        
                         const sessionOrders = session?.orders || []
                         sessionOrders.forEach((sessionOrder)=>{
-                            if ((sessionOrder.lastDeliveredBy === employeeId)
+                            if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
                                 && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales) && session.end && sessionOrder.status === 'completed'
                                 && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
                             ){
