@@ -774,6 +774,7 @@ const TransactionReports = ({
                 totalSessions: 0,
                 totalOrders: 0,
                 totalSales: 0,
+                totalPayment: 0,
                 totalItems: 0
             },
             salesByLocation: {},
@@ -789,7 +790,7 @@ const TransactionReports = ({
                 const warehouse = order.wrh
                 let splitPayment = {}
                 if (order.salesPosts?.[Object.keys(order?.salesPosts || {})[0]] === 'multiple'){
-                    const totalOrderSales = Number(order?.totalSales || 0)
+                    const totalOrderSales = Number(order?.totalSales || 0)                    
                     let kct = 0
                     let bct = 0
                     order.items.forEach((item)=>{
@@ -815,9 +816,13 @@ const TransactionReports = ({
                 })
                 return sum + (parseFloat(order.totalSales) || 0);
             }, 0) || 0;
-            
             result.totals.totalSales += sessionSales;
             
+            const sessionPayments = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {                
+                return sum + (parseFloat(order.totalPayment) || 0)
+            }, 0) || 0;
+            result.totals.totalPayment += sessionPayments; 
+
             result.totals.totalItems += session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {
                 return sum + ((order.items || []).reduce((itemSum, item) => {
                     return itemSum + (parseFloat(item.quantity) || 0);
@@ -976,6 +981,10 @@ const TransactionReports = ({
                         <div className="stat-item total-amount">
                             <span className="stat-label">Total Sales</span>
                             <span className="stat-value">{formatCurrency(totals.totalSales)}</span>
+                        </div>
+                        <div className="stat-item total-amount">
+                            <span className="stat-label">Total Payments</span>
+                            <span className="stat-value">{formatCurrency(totals.totalPayment)}</span>
                         </div>
                     </div>
                     
