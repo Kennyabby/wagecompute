@@ -70,7 +70,11 @@ const Sales = ()=>{
     const [saleEmployee, setSaleEmployee] = useState('')
     const [addEmployeeId, setAddEmployeeId] = useState('')
     const [addKitchenEmployeeId, setAddKitchenEmployeeId] = useState('')
+    
     const [isDebtSales, setIsDebtSales] = useState(false)
+    const [debtCalculated, setDebtCalculated] = useState(false)
+    let debtCalcInterval = null
+    
     const [recoveryEmployeeId, setRecoveryEmployeeId] = useState('')
     const [isProductView, setIsProductView] = useState(false)
     const [productAdd, setProductAdd] = useState(false)
@@ -983,10 +987,11 @@ const Sales = ()=>{
             }
         }  
     }
-
+    
     const acceptSalesDebt = ()=>{
+        setDebtCalculated(true)
         setFields((fields)=>{
-            const newFields = [...accommodationRecords, ...sessionSalesRecords, ...fields].map((field)=>{
+            const newFields = [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields].map((field)=>{
                 const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
                 const debtDue = Number(field.totalSales) - netTotal 
                 if (debtDue){
@@ -995,7 +1000,12 @@ const Sales = ()=>{
                 return field
             })
             return [...newFields]
-        })
+        })      
+        debtCalcInterval = setInterval(()=>{
+            setAccommodationRecords([])
+            setSessionSalesRecords([])
+            setKitchenRecords([])
+        }, 500)  
     }
 
     const isProductAvailable = (validEntries)=>{
@@ -3282,11 +3292,16 @@ const Sales = ()=>{
                                     var rt = 0
                                     var ct = 0
                                     var wt = 0
+                                    let data = []
+                                    if (debtCalculated){
+                                        data = fields
+                                    }else{
+                                        data = [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields]
+                                    }
                                     const validateSales = ()=>{
                                         if (!activeSessions.length){                                                    
                                             // setIsProductView(false)
                                             // setProductAdd(true)      
-                                            const data = [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields]
                                             if (curApproval && curApproval?.approved){  
                                                 if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_sales_posts')){
                                                     setAlertState('error')
@@ -3296,13 +3311,14 @@ const Sales = ()=>{
                                                 }                
                                             }
                                             runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
+                                            clearInterval(debtCalcInterval)
                                         }else{
                                             setAlertState('error')
                                             setAlert('You still have active POS/Delivery sessions for this posting date. Please end them before posting!')
                                             setAlertTimeout(5000)
                                         }
                                     }
-                                    [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields].forEach((field)=>{
+                                    data.forEach((field)=>{
                                         const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
                                         Number(field.debt) + Number(field.shortage)
                                         if (enteredSales === Number(field.totalSales)){
