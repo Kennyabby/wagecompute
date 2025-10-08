@@ -1284,12 +1284,16 @@ const Sales = ()=>{
             let deliverySessions = []
             let salesSessions = []
             const fields1 = [...accommodationRecords, ...sessionSalesRecords, ...(isApprover ? (curApproval ? [] : kitchenRecords) : []), ...fields]
+            let dct = 0
             fields1.forEach((field)=>{
                 // delete field.isSplit
                 totalCashSales += Number(field.cashSales)
                 totalDebt += Number(field.debt)
                 totalShortage += Number(field.shortage)
                 totalBankSales += Number(field.bankSales)
+                if ((field.debt || field.shortage) &&  !field.cashSales && !field.bankSales){
+                    dct++
+                }
                 if (field.isSession){
                     field.deliverySessions?.forEach((deliverySession)=>{
                         if (!deliverySessions.includes(deliverySession)){
@@ -1313,7 +1317,7 @@ const Sales = ()=>{
                 deliverySessions,
                 salesSessions,
                 approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
-                // productsRef: createdAt,
+                ...(dct === 0 && {productsRef: 'auto-generated'}),
                 record: [...fields1]
             }
             if (curSale === null){
