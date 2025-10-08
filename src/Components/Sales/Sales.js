@@ -3034,7 +3034,7 @@ const Sales = ()=>{
                                 />
                             </div>
                         </div>}
-                        {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords), ...fields].map((field, index)=>{
+                        {salesOpts==='sales' && [...fields, ...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords)].map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
                             // console.log(index) 
                             if (!isView && !field.isAccommodation && !field.isSession && !field.isKitchen){
