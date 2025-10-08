@@ -882,7 +882,7 @@ const Sales = ()=>{
                     }else{
                         switch (value){
                             case 'accomodation':
-                                if (companyRecord?.permissions.includes('override_accomodation') || isDebtSales){
+                                if (companyRecord?.permissions.includes('override_accomodation') || fields[index]?.isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')
@@ -891,7 +891,7 @@ const Sales = ()=>{
                                 }
                                 break
                             case 'vip':
-                                if (companyRecord?.permissions.includes('override_vip') || isDebtSales){
+                                if (companyRecord?.permissions.includes('override_vip') || fields[index]?.isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')  
@@ -900,7 +900,7 @@ const Sales = ()=>{
                                 }
                                 break
                             case 'open bar1':
-                                if (companyRecord?.permissions.includes('override_open bar1') || isDebtSales){
+                                if (companyRecord?.permissions.includes('override_open bar1') || fields[index]?.isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')
@@ -909,7 +909,7 @@ const Sales = ()=>{
                                 }
                                 break
                             case 'open bar2':
-                                if (companyRecord?.permissions.includes('override_open bar2') || isDebtSales){
+                                if (companyRecord?.permissions.includes('override_open bar2') || fields[index]?.isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')
@@ -918,7 +918,7 @@ const Sales = ()=>{
                                 }
                                 break
                             case 'kitchen':
-                                if (companyRecord?.permissions.includes('override_kitchen') || isDebtSales){
+                                if (companyRecord?.permissions.includes('override_kitchen') || fields[index]?.isDebtSales){
                                     fields[index] = {...fields[index], [name] : value}
                                 }else{
                                     setAlertState('error')
@@ -3038,7 +3038,7 @@ const Sales = ()=>{
                                 />
                             </div>
                         </div>}
-                        {salesOpts==='sales' && [...fields, ...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords)].map((field, index)=>{
+                        {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords), ...fields].map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
                             // console.log(index) 
                             if (!isView && !field.isAccommodation && !field.isSession && !field.isKitchen){
@@ -3327,7 +3327,7 @@ const Sales = ()=>{
                                         Number(field.debt) + Number(field.shortage)
                                         if (enteredSales === Number(field.totalSales)){
                                             rt++
-                                            if (rt===fields.length){
+                                            if (rt===data.length){
                                                 validateSales()
                                             }
                                         }else{
