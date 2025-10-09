@@ -791,6 +791,7 @@ const PointOfSales = () => {
                 setTableOrders(prev => ([
                     ...prev, placedOrder
                 ]));
+                printKitchenOrder(placedOrder)
             }
             fetchSessions(company, "sales", companyRecord)
             fetchTables(company)
