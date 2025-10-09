@@ -633,7 +633,13 @@ const TransactionReports = ({
                                                             <FaBoxOpen /> {order.items?.length || 0} items
                                                         </span>
                                                         <span className="order-total">
-                                                            {formatCurrency(order.totalSales || 0)}
+                                        
+                                                        </span>
+                                                        <span className="order-total">
+                                                            Sales {formatCurrency(order.totalSales || 0)}
+                                                        </span>
+                                                        <span className="order-total">
+                                                            Payment {formatCurrency(order.totalPayment || 0)}
                                                         </span>
                                                         <span className={`status-badge ${order.status || 'pending'}`}>
                                                             {order.status || 'Pending'}
@@ -782,7 +788,6 @@ const TransactionReports = ({
         };
 
         processedData.forEach(session => {
-            console.log(session)
             result.totals.totalSessions += 1;
             const sessionOrders = session.orders?.length || 0;
             result.totals.totalOrders += sessionOrders;
@@ -996,7 +1001,7 @@ const TransactionReports = ({
                     {/* Sales by Location and Pay Point */}
                     <div className="sales-breakdown">
                         <div className="breakdown-section">
-                            <h4>Sales by Location</h4>
+                            <h4>Sales by Location (Payments Made)</h4>
                             <div className="breakdown-items">
                                 {Object.entries(salesByLocation).map(([location, amount]) => (
                                     <div key={`loc-${location}`} className="breakdown-item">
