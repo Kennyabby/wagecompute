@@ -586,6 +586,8 @@ const Sales = ()=>{
                     }
                 })
             })
+        }else{
+            setActiveSessions([])
         }
         setSessionSalesRecords(sessionSalesRecords)
     },[allSessions, postingDate, isView, saleEmployee])
