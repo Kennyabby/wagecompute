@@ -1047,6 +1047,50 @@ const PointOfSales = () => {
         printWindow.print();
         // printWindow.close();
     };
+    
+    const printKitchenOrder = (orderData) => {
+        const orderEmployee = employees.find((employee)=>{return employee.i_d === orderData.handlerId})
+        const receiptContent = `
+            <div class="receipt">
+                <h2>Kitchen Order Slip</h2>
+                <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})`: 'Admin'}</p>
+                <p>From: Table ${orderData.tableId}</p>
+                <p>Order: #${orderData.orderNumber}</p>
+                <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
+                <hr/>
+                    ${orderData.items.map(item => {
+                        return ` 
+                        ${wrhCategories['kitchen'].includes(item.category)  ? `<div class="receipt-item">
+                            <span>${item.name} x ${item.quantity}</span>
+                            <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
+                        </div>` : ''}
+                    `}).join('')}
+                <hr/>
+                <div class="receipt-total">
+                    <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>{
+                        return sum + (wrhCategories['kitchen'].includes(item.category) ?(Number(item.quantity) * Number(item.salesPrice)): 0)
+                    }, 0) || 0)).toFixed(2)}</p>                    
+                </div>
+                <p>Printed For Kitchen Use Only!</p>
+            </div>
+        `;
+
+        const printWindow = window.open('', '', 'width=300,height=600');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <style>
+                        .receipt { font-family: monospace; width: 300px; padding: 20px; }
+                        .receipt-item { display: flex; justify-content: space-between; }
+                        .receipt-total { margin-top: 20px; }
+                    </style>
+                </head>
+                <body>${receiptContent}</body>
+            </html>
+        `);
+        printWindow.print();
+        // printWindow.close();
+    };
 
     // =========================================
     // 7. UI Interaction Handlers
@@ -1447,6 +1491,17 @@ const PointOfSales = () => {
                     disabled={!currentOrder.totalSales || makingPayment || currentTable.status === 'unavailable'}
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
+                </button>}
+                {currentOrder.items.find((item)=>{return wrhCategories['kitchen'].includes(item.category)}) 
+                && ((currentOrder.handlerId === companyRecord?.emailid) 
+                    || companyRecord?.status === 'admin' 
+                    || companyRecord?.permissions?.includes('access_pos_sessions')
+                ) && <button 
+                    className="place-order-btn"
+                    onClick={() => printKitchenOrder(currentOrder)}
+                    disabled={!currentOrder.items.length}
+                >
+                    Print Kitchen Order
                 </button>}
             </div>
             <div className="products-panel">
