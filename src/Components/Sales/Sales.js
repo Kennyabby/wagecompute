@@ -3475,10 +3475,12 @@ const Sales = ()=>{
                                                 return
                                             }                
                                         }
-                                        setPostingRecovery(true)
-                                        const result = await runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
-                                        if (result){
-                                            setPostingRecovery(false)
+                                        if (!postingRecovery){
+                                            setPostingRecovery(true)
+                                            const result = await runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
+                                            if (result){
+                                                setPostingRecovery(false)
+                                            }
                                         }
                                     }else{
                                         setActionMessage('')
