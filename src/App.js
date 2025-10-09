@@ -565,11 +565,11 @@ function App() {
                     return true
                 }
             }else{
-                executeApprovalAction(curApproval)
+                return executeApprovalAction(curApproval)
             }
         }
     }else{
-        executeApprovalAction()
+       return executeApprovalAction()
     }
   }
 
