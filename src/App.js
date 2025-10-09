@@ -496,19 +496,20 @@ function App() {
 
   const runApprovalWorkFlow = async(postingDate, curApproval, module, section, data, runApproval, link)=>{
       
-    const executePostAction = ()=>{
-        runApproval()            
+    const executePostAction = async ()=>{
+        const result = await runApproval()            
         if (curApproval?.createdAt){
             removeApproval(company, module, section, {                        
                 createdAt: curApproval.createdAt,
                 postingDate: curApproval.postingDate                                                 
             })
         }
+        return result
     }
 
     const executeApprovalAction = async (previous)=>{
         if (companyRecord?.permissions.includes('approve_'+section) || companyRecord?.status==='admin'){
-            executePostAction()
+            return executePostAction()
         }else{
             setAlertState('info')
             setAlert('Sending Approval Request...')
@@ -540,17 +541,19 @@ function App() {
                 setAlertTimeout(5000)
                 getApprovals(company)
                 setCurApproval(approvalData)
+                return  true
             }else{
                 setAlertState('error')
                 setAlert(resp.mess)
                 setAlertTimeout(5000)
+                return false
             }
         }
     }
 
     if (![null, undefined].includes(curApproval)){
         if (curApproval.approved){
-            executePostAction()
+            return executePostAction()
         }else{
             if (!curApproval.message){
                 if (companyRecord?.permissions.includes('approve_'+section) || companyRecord?.status==='admin'){
@@ -559,6 +562,7 @@ function App() {
                     setAlertState('info')
                     setAlert('Already sent for approval. Please wait for response!')
                     setAlertTimeout(5000)
+                    return true
                 }
             }else{
                 executeApprovalAction(curApproval)
