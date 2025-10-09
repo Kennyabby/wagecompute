@@ -156,6 +156,7 @@ const Sales = ()=>{
     })
     const [isView, setIsView] = useState(false)
 
+    const [postingRecovery, setPostingRecovery] = useState(false)
     // useEffect(()=>{
     //     const divElement = scrollRef.current;
     //     const handleScroll = () => {
@@ -1573,6 +1574,7 @@ const Sales = ()=>{
     }
 
     const postRecovery = async()=>{
+        let result = false
         setRecoveryStatus('Posting Recovery ....')
         setAlertState('info')
         setAlert('Posting Recovery ....')
@@ -1630,6 +1632,7 @@ const Sales = ()=>{
                     setAlert(resps.mess)
                     setAlertTimeout(5000)
                     setRecoveryStatus('Post Recovery')
+                    result = false
                 }else{                
                     setEmployees(updatedEmployees)
                     getEmployees(company)
@@ -1640,6 +1643,7 @@ const Sales = ()=>{
                     setAlertTimeout(5000)
                     setRecoveryStatus('Post Recovery')
                     setRecoveryEmployeeId('')
+                    result = true
                 }
             }else{
                 var updtSale = {}
@@ -1694,6 +1698,7 @@ const Sales = ()=>{
                     setAlert(resps.mess)
                     setAlertTimeout(5000)
                     setRecoveryStatus('Post Recovery')
+                    result = false
                 }else{                
                     setSales(updatedSales)
                     getSales(company)
@@ -1703,6 +1708,7 @@ const Sales = ()=>{
                     setAlertTimeout(5000)
                     setRecoveryStatus('Post Recovery')
                     setRecoveryEmployeeId('')
+                    result = true
                 }                            
             }
             if (field.recoveryPoint === 'Employee'){
@@ -1736,11 +1742,12 @@ const Sales = ()=>{
                 }else{
                     setEmployees(updatedEmployees)
                     getEmployees(company)
+                    result = true
                 }
             }
         })
         
-        
+        return result
     }
 
     const calculateReportSales = ()=>{
@@ -3184,11 +3191,20 @@ const Sales = ()=>{
                                         </div>
                                         {field.recoverdList !==undefined && <div 
                                             onClick={()=>{
-                                                if (!field.viewHistory){
-                                                    field.viewHistory = true
-                                                }else{
-                                                    field.viewHistory = false
-                                                }
+                                                console.log('clicked')
+                                                setFields((fields)=>{
+                                                    const updatedFields = fields.map((field,ind)=>{
+                                                        if (ind === index){
+                                                            if (!field.viewHistory){
+                                                                field.viewHistory = true
+                                                            }else{
+                                                                field.viewHistory = false
+                                                            }
+                                                        } 
+                                                        return field
+                                                    })
+                                                    return updatedFields
+                                                })  
                                             }}
                                             className='addempsales'
                                         >{field.viewHistory? `Hide Recovery History`:'View Recovery History'}</div>}
@@ -3356,9 +3372,9 @@ const Sales = ()=>{
                         >{curApproval ? (curApproval.approved? postStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>} 
                         {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:recoveryFields.length?'pointer':'not-allowed'
+                                cursor:(recoveryFields.length && !postingRecovery)?'pointer':'not-allowed'
                             }}
-                            onClick={()=>{
+                            onClick={async()=>{
                                 if (recoveryFields.length){
                                     var ct=0
                                     var ct1=0
@@ -3459,7 +3475,11 @@ const Sales = ()=>{
                                                 return
                                             }                
                                         }
-                                        runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
+                                        setPostingRecovery(true)
+                                        const result = await runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrecovery', recoveryData, postRecovery)
+                                        if (result){
+                                            setPostingRecovery(false)
+                                        }
                                     }else{
                                         setActionMessage('')
                                         setAlertState('error')
