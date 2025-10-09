@@ -988,7 +988,7 @@ const TransactionReports = ({
                             <span className="stat-value">{formatCurrency(totals.totalPayment)}</span>
                         </div>
                         <div className="stat-item total-amount">
-                            <span className="stat-label">Difference</span>
+                            <span className="stat-label">Difference (P - S)</span>
                             <span className="stat-value">{formatCurrency(totals.totalPayment - totals.totalSales)}</span>
                         </div>
                     </div>
