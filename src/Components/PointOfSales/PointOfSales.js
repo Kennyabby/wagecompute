@@ -765,6 +765,12 @@ const PointOfSales = () => {
             setAlertState('success');
             setAlert('Order placed successfully');
             setAlertTimeout(2000)
+            fetchSessions(company, "sales", companyRecord)
+            fetchTables(company)
+            getProducts(company)
+            loadInitialData()
+            setCurrentOrder(placedOrder)
+            setPlacingOrder(false)
             const activeOrder = {
                 tableId: currentOrder.tableId,
                 sessionId: currentOrder.sessionId,
@@ -793,12 +799,7 @@ const PointOfSales = () => {
                 ]));
                 printKitchenOrder(placedOrder)
             }
-            fetchSessions(company, "sales", companyRecord)
-            fetchTables(company)
-            getProducts(company)
-            loadInitialData()
-            setCurrentOrder(placedOrder)
-            setPlacingOrder(false)
+            
            
             // View Payment Modal
             // setShowPaymentModal(true);
