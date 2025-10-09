@@ -627,20 +627,19 @@ const TransactionReports = ({
                                                                 <FaChair /> {order.tableName || `Table ${order.tableId || 'N/A'}`}
                                                             </div>
                                                         )}
-                                                    </div>
-                                                    <div className="order-stats">
-                                                        <span className="order-items">
-                                                            <FaBoxOpen /> {order.items?.length || 0} items
-                                                        </span>
-                                                        <span className="order-total">
-                                        
-                                                        </span>
                                                         <span className="order-total">
                                                             Sales {formatCurrency(order.totalSales || 0)}
                                                         </span>
                                                         <span className="order-total">
                                                             Payment {formatCurrency(order.totalPayment || 0)}
                                                         </span>
+                                                    </div>
+                                                    <div className="order-stats">
+                                                        <span className="order-items">
+                                                            <FaBoxOpen /> {order.items?.length || 0} items
+                                                        </span>
+                                                    
+                                                        
                                                         <span className={`status-badge ${order.status || 'pending'}`}>
                                                             {order.status || 'Pending'}
                                                         </span>
