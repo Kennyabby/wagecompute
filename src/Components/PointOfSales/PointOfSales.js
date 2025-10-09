@@ -928,90 +928,92 @@ const PointOfSales = () => {
             ...currentOrder,
             ...paymentDataUpdate
         }
-        printReceipt(newOrder);
-        // if (currentOrder.delivery === 'completed'){
-        //     const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        //     const resp = await fetchServer("POST", {
-        //         database: company,
-        //         collection: "Tables",
-        //         prop: [{'wrh':wrh}, {activeTables: [
-        //             ...(prevTable.activeTables.filter((table)=>{return (
-        //                 table.tableId !== currentOrder.tableId && 
-        //                 table.sessionId !== currentOrder.sessionId &&
-        //                 table.handlerId !== companyRecord.emailid && 
-        //                 table.orderNumber !== currentOrder.orderNumber
-        //             )}))
-        //         ]}]
-        //     }, "updateOneDoc", server)
-        //     if (resp.err){
-        //         setAlertState('error');
-        //         setAlert('Error updating table');
-        //         setAlertTimeout(3000)
-        //         return;
-        //     }
-        // }else{
-        //     const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-        //     const resp = await fetchServer("POST", {
-        //         database: company,
-        //         collection: "Tables",
-        //         prop: [{'wrh':wrh}, {activeTables: [
-        //             ...(prevTable.activeTables.filter((table)=>{return (
-        //                 table.tableId !== currentOrder.tableId && 
-        //                 table.sessionId !== currentOrder.sessionId &&
-        //                 table.handlerId !== companyRecord.emailid && 
-        //                 table.orderNumber !== currentOrder.orderNumber
-        //             )})),
-        //             {...(prevTable.activeTables.find((table)=>{return (
-        //                 table.tableId === currentOrder.tableId && 
-        //                 table.sessionId === currentOrder.sessionId &&
-        //                 table.handlerId === companyRecord.emailid && 
-        //                 table.orderNumber === currentOrder.orderNumber
-        //             )})), 
-        //             status: 'completed'}
-        //         ]}]
-        //     }, "updateOneDoc", server)
-        //     if (resp.err){
-        //         setAlertState('error');
-        //         setAlert('Error updating table');
-        //         setAlertTimeout(3000)
-        //         return;
-        //     }
-        // }
+        if (currentOrder.delivery === 'completed'){
+            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':wrh}, {activeTables: [
+                    ...(prevTable.activeTables.filter((table)=>{return (
+                        table.tableId !== currentOrder.tableId && 
+                        table.sessionId !== currentOrder.sessionId &&
+                        table.handlerId !== companyRecord.emailid && 
+                        table.orderNumber !== currentOrder.orderNumber
+                    )}))
+                ]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                return;
+            }
+        }else{
+            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+            const resp = await fetchServer("POST", {
+                database: company,
+                collection: "Tables",
+                prop: [{'wrh':wrh}, {activeTables: [
+                    ...(prevTable.activeTables.filter((table)=>{return (
+                        table.tableId !== currentOrder.tableId && 
+                        table.sessionId !== currentOrder.sessionId &&
+                        table.handlerId !== companyRecord.emailid && 
+                        table.orderNumber !== currentOrder.orderNumber
+                    )})),
+                    {...(prevTable.activeTables.find((table)=>{return (
+                        table.tableId === currentOrder.tableId && 
+                        table.sessionId === currentOrder.sessionId &&
+                        table.handlerId === companyRecord.emailid && 
+                        table.orderNumber === currentOrder.orderNumber
+                    )})), 
+                    status: 'completed'}
+                ]}]
+            }, "updateOneDoc", server)
+            if (resp.err){
+                setAlertState('error');
+                setAlert('Error updating table');
+                setAlertTimeout(3000)
+                return;
+            }
+        }
 
-        // const response = await fetchServer("POST", {
-        //     database: company,
-        //     collection: "Orders",
-        //     prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
-        // }, "updateOneDoc", server);
+        const response = await fetchServer("POST", {
+            database: company,
+            collection: "Orders",
+            prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
+        }, "updateOneDoc", server);
 
-        // if (response.err) {
-        //     setAlertState('error');
-        //     setAlert('Error processing payment');
-        //     setMakingPayment(false)
-        //     return
-        // } else {
-        //     fetchSessions(company, "sales", companyRecord)
-        //     fetchTables(company)
-        //     getProducts(company)
-        //     loadInitialData()
-        //     setMakingPayment(false)
-        //     setAlertState('success');
-        //     setAlert('Payment processed successfully');
-        //     setAlertTimeout(2000)
-        //     setShowPaymentModal(false);
-        //     createNewOrder(currentTable);
-        //     setPaymentDetails({...payPoints})
-        //     printReceipt(newOrder);
-        //     getPosOrders(company)
-        //     return
-        // }
+        if (response.err) {
+            setAlertState('error');
+            setAlert('Error processing payment');
+            setMakingPayment(false)
+            return
+        } else {
+            fetchSessions(company, "sales", companyRecord)
+            fetchTables(company)
+            getProducts(company)
+            loadInitialData()
+            setMakingPayment(false)
+            setAlertState('success');
+            setAlert('Payment processed successfully');
+            setAlertTimeout(2000)
+            createNewOrder(currentTable);
+            printReceipt(newOrder);
+            setShowPaymentModal(false);
+            getPosOrders(company)
+            setPaymentDetails({...payPoints})
+            return
+        }
     };
 
     const printReceipt = (orderData) => {
+        const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
         const receiptContent = `
             <div class="receipt">
-                <h2>${companyRecord.name}</h2>
-                <p>Order #${orderData.orderNumber}</p>
+                <h2>${companyRecord.name} Payment Receipt</h2>
+                <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
+                <p>Order: #${orderData.orderNumber}</p>
+                <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
                 <p>Date: ${new Date().toLocaleString()}</p>
                 <hr/>
                 ${orderData.items.map(item => `
@@ -1070,17 +1072,17 @@ const PointOfSales = () => {
             <div class="receipt">
                 <h2>Kitchen Order Slip</h2>
                 <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
-                <p>From: Table ${orderData.tableId}</p>
+                <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
                 <p>Order: #${orderData.orderNumber}</p>
                 <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                 <hr/>
-                ${orderData.items.map(item => (
-                    wrhCategories['kitchen'].includes(item.category) ? `
-                        <div class="receipt-item">
-                            <span>${item.name} x ${item.quantity}</span>
-                            <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
-                        </div>` : ''
-                )).join('')}
+                    ${orderData.items.map(item => (
+                        wrhCategories['kitchen'].includes(item.category) ? `
+                            <div class="receipt-item">
+                                <span>${item.name} x ${item.quantity}</span>
+                                <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
+                            </div>` : ''
+                    )).join('')}
                 <hr/>
                 <div class="receipt-total">
                     <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>
@@ -1529,7 +1531,7 @@ const PointOfSales = () => {
                 && ((currentOrder.handlerId === companyRecord?.emailid) 
                     || companyRecord?.status === 'admin' 
                     || companyRecord?.permissions?.includes('access_pos_sessions')
-                ) && <button 
+                ) && ['pending', 'completed'].includes(currentOrder.status) && <button 
                     className="place-order-btn"
                     onClick={() => printKitchenOrder(currentOrder)}
                     disabled={!currentOrder.items.length}
