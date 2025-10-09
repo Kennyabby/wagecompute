@@ -927,83 +927,83 @@ const PointOfSales = () => {
             ...currentOrder,
             ...paymentDataUpdate
         }
+        printReceipt(newOrder);
+        // if (currentOrder.delivery === 'completed'){
+        //     const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        //     const resp = await fetchServer("POST", {
+        //         database: company,
+        //         collection: "Tables",
+        //         prop: [{'wrh':wrh}, {activeTables: [
+        //             ...(prevTable.activeTables.filter((table)=>{return (
+        //                 table.tableId !== currentOrder.tableId && 
+        //                 table.sessionId !== currentOrder.sessionId &&
+        //                 table.handlerId !== companyRecord.emailid && 
+        //                 table.orderNumber !== currentOrder.orderNumber
+        //             )}))
+        //         ]}]
+        //     }, "updateOneDoc", server)
+        //     if (resp.err){
+        //         setAlertState('error');
+        //         setAlert('Error updating table');
+        //         setAlertTimeout(3000)
+        //         return;
+        //     }
+        // }else{
+        //     const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+        //     const resp = await fetchServer("POST", {
+        //         database: company,
+        //         collection: "Tables",
+        //         prop: [{'wrh':wrh}, {activeTables: [
+        //             ...(prevTable.activeTables.filter((table)=>{return (
+        //                 table.tableId !== currentOrder.tableId && 
+        //                 table.sessionId !== currentOrder.sessionId &&
+        //                 table.handlerId !== companyRecord.emailid && 
+        //                 table.orderNumber !== currentOrder.orderNumber
+        //             )})),
+        //             {...(prevTable.activeTables.find((table)=>{return (
+        //                 table.tableId === currentOrder.tableId && 
+        //                 table.sessionId === currentOrder.sessionId &&
+        //                 table.handlerId === companyRecord.emailid && 
+        //                 table.orderNumber === currentOrder.orderNumber
+        //             )})), 
+        //             status: 'completed'}
+        //         ]}]
+        //     }, "updateOneDoc", server)
+        //     if (resp.err){
+        //         setAlertState('error');
+        //         setAlert('Error updating table');
+        //         setAlertTimeout(3000)
+        //         return;
+        //     }
+        // }
 
-        if (currentOrder.delivery === 'completed'){
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-            const resp = await fetchServer("POST", {
-                database: company,
-                collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [
-                    ...(prevTable.activeTables.filter((table)=>{return (
-                        table.tableId !== currentOrder.tableId && 
-                        table.sessionId !== currentOrder.sessionId &&
-                        table.handlerId !== companyRecord.emailid && 
-                        table.orderNumber !== currentOrder.orderNumber
-                    )}))
-                ]}]
-            }, "updateOneDoc", server)
-            if (resp.err){
-                setAlertState('error');
-                setAlert('Error updating table');
-                setAlertTimeout(3000)
-                return;
-            }
-        }else{
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-            const resp = await fetchServer("POST", {
-                database: company,
-                collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [
-                    ...(prevTable.activeTables.filter((table)=>{return (
-                        table.tableId !== currentOrder.tableId && 
-                        table.sessionId !== currentOrder.sessionId &&
-                        table.handlerId !== companyRecord.emailid && 
-                        table.orderNumber !== currentOrder.orderNumber
-                    )})),
-                    {...(prevTable.activeTables.find((table)=>{return (
-                        table.tableId === currentOrder.tableId && 
-                        table.sessionId === currentOrder.sessionId &&
-                        table.handlerId === companyRecord.emailid && 
-                        table.orderNumber === currentOrder.orderNumber
-                    )})), 
-                    status: 'completed'}
-                ]}]
-            }, "updateOneDoc", server)
-            if (resp.err){
-                setAlertState('error');
-                setAlert('Error updating table');
-                setAlertTimeout(3000)
-                return;
-            }
-        }
+        // const response = await fetchServer("POST", {
+        //     database: company,
+        //     collection: "Orders",
+        //     prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
+        // }, "updateOneDoc", server);
 
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Orders",
-            prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
-        }, "updateOneDoc", server);
-
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error processing payment');
-            setMakingPayment(false)
-            return
-        } else {
-            fetchSessions(company, "sales", companyRecord)
-            fetchTables(company)
-            getProducts(company)
-            loadInitialData()
-            setMakingPayment(false)
-            setAlertState('success');
-            setAlert('Payment processed successfully');
-            setAlertTimeout(2000)
-            setShowPaymentModal(false);
-            createNewOrder(currentTable);
-            setPaymentDetails({...payPoints})
-            printReceipt(newOrder);
-            getPosOrders(company)
-            return
-        }
+        // if (response.err) {
+        //     setAlertState('error');
+        //     setAlert('Error processing payment');
+        //     setMakingPayment(false)
+        //     return
+        // } else {
+        //     fetchSessions(company, "sales", companyRecord)
+        //     fetchTables(company)
+        //     getProducts(company)
+        //     loadInitialData()
+        //     setMakingPayment(false)
+        //     setAlertState('success');
+        //     setAlert('Payment processed successfully');
+        //     setAlertTimeout(2000)
+        //     setShowPaymentModal(false);
+        //     createNewOrder(currentTable);
+        //     setPaymentDetails({...payPoints})
+        //     printReceipt(newOrder);
+        //     getPosOrders(company)
+        //     return
+        // }
     };
 
     const printReceipt = (orderData) => {
@@ -1031,8 +1031,17 @@ const PointOfSales = () => {
             </div>
         `;
 
-        const printWindow = window.open('', '', 'width=300,height=600');
-        printWindow.document.write(`
+         // Create a hidden iframe
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+
+        // Write your content into it
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(`
             <html>
                 <head>
                     <style>
@@ -1044,39 +1053,55 @@ const PointOfSales = () => {
                 <body>${receiptContent}</body>
             </html>
         `);
-        printWindow.print();
-        // printWindow.close();
+        iframe.contentDocument.close();
+
+        // Print directly from the iframe
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+
+        // Cleanup
+        setTimeout(() => iframe.remove(), 1000);        
     };
     
     const printKitchenOrder = (orderData) => {
-        const orderEmployee = employees.find((employee)=>{return employee.i_d === orderData.handlerId})
+        const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
         const receiptContent = `
             <div class="receipt">
                 <h2>Kitchen Order Slip</h2>
-                <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})`: 'Admin'}</p>
+                <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
                 <p>From: Table ${orderData.tableId}</p>
                 <p>Order: #${orderData.orderNumber}</p>
                 <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                 <hr/>
-                    ${orderData.items.map(item => {
-                        return ` 
-                        ${wrhCategories['kitchen'].includes(item.category)  ? `<div class="receipt-item">
+                ${orderData.items.map(item => (
+                    wrhCategories['kitchen'].includes(item.category) ? `
+                        <div class="receipt-item">
                             <span>${item.name} x ${item.quantity}</span>
                             <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
-                        </div>` : ''}
-                    `}).join('')}
+                        </div>` : ''
+                )).join('')}
                 <hr/>
                 <div class="receipt-total">
-                    <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>{
-                        return sum + (wrhCategories['kitchen'].includes(item.category) ?(Number(item.quantity) * Number(item.salesPrice)): 0)
-                    }, 0) || 0)).toFixed(2)}</p>                    
+                    <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>
+                        sum + (wrhCategories['kitchen'].includes(item.category)
+                        ? Number(item.quantity) * Number(item.salesPrice) : 0)
+                    , 0)) || 0).toFixed(2)}</p>                    
                 </div>
                 <p>Printed For Kitchen Use Only!</p>
             </div>
         `;
 
-        const printWindow = window.open('', '', 'width=300,height=600');
-        printWindow.document.write(`
+        // Create a hidden iframe
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+
+        // Write your content into it
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(`
             <html>
                 <head>
                     <style>
@@ -1088,9 +1113,16 @@ const PointOfSales = () => {
                 <body>${receiptContent}</body>
             </html>
         `);
-        printWindow.print();
-        // printWindow.close();
+        iframe.contentDocument.close();
+
+        // Print directly from the iframe
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+
+        // Cleanup
+        setTimeout(() => iframe.remove(), 1000);
     };
+
 
     // =========================================
     // 7. UI Interaction Handlers
