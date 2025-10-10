@@ -509,7 +509,7 @@ function App() {
 
     const executeApprovalAction = async (previous)=>{
         if (companyRecord?.permissions.includes('approve_'+section) || companyRecord?.status==='admin'){
-            await executePostAction()
+            executePostAction()
             return true
         }else{
             setAlertState('info')
@@ -554,7 +554,7 @@ function App() {
 
     if (![null, undefined].includes(curApproval)){
         if (curApproval.approved){
-            await executePostAction()
+            executePostAction()
             return true
         }else{
             if (!curApproval.message){
@@ -567,12 +567,12 @@ function App() {
                     return true
                 }
             }else{
-                await executeApprovalAction(curApproval)
+                executeApprovalAction(curApproval)
                 return true
             }
         }
     }else{
-       await executeApprovalAction()
+       executeApprovalAction()
        return true
     }
   }

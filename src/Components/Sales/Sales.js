@@ -3794,7 +3794,10 @@ const AddProduct = ({
                     accommodationAmount += Number(saleRecord.totalSales)
                 }
                 if (saleRecord.isSession){
-                    sessionSalesAmount += (Number(saleRecord.totalSales) - Number(saleRecord.unAccountedSales ? saleRecord.debt : 0) - Number(saleRecord.shortage))
+                    sessionSalesAmount += (Number(saleRecord.totalSales))
+                    if (!isProductView){
+                        sessionSalesAmount -= (Number(saleRecord.unAccountedSales ? saleRecord.debt : 0) + Number(saleRecord.shortage))
+                    }
                 }
             })
             let totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
