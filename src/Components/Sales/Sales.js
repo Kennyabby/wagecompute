@@ -391,13 +391,13 @@ const Sales = ()=>{
                                             sessionEmployees = sessionEmployees.concat(employeeId)
                                         }
                                     })
-                                    splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderSales) : 0
-                                    splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderSales) : 0
-                                    // delete sessionOrder.salesPosts[pay]
+                                    splitPayment[warehouse] = (totalOrderPayment ? (Number(bct)/totalOrderSales) : 0)
+                                    splitPayment['kitchen'] = (totalOrderPayment ? (Number(kct)/totalOrderSales) : 0)
                                     sessionOrder.salesPosts[pay] = warehouse
-                                    sessionOrder[pay] = splitPayment[warehouse] * totalOrderSales                                    
-                                    multTotalPayment += splitPayment[warehouse] * totalOrderSales
-                                    multTotalSales += splitPayment[warehouse] * totalOrderSales
+                                    const orderPay = structuredClone({orderPay: sessionOrder[pay]}).orderPay
+                                    sessionOrder[pay] = (splitPayment[warehouse] * orderPay)                                    
+                                    multTotalPayment += splitPayment[warehouse] * orderPay
+                                    multTotalSales += splitPayment[warehouse] * orderPay
                                     sessionOrder.lastDeliveredBy = blastDeliveredBy
                                 }
                             })
@@ -437,14 +437,15 @@ const Sales = ()=>{
                                             sessionEmployees = sessionEmployees.concat(employeeId)
                                         }
                                     })
-                                    splitPayment[warehouse] = totalOrderPayment ? (Number(bct)/totalOrderSales) : 0
-                                    splitPayment['kitchen'] = totalOrderPayment ? (Number(kct)/totalOrderSales) : 0
+                                    splitPayment[warehouse] = (totalOrderPayment ? (Number(bct)/totalOrderSales) : 0)
+                                    splitPayment['kitchen'] = (totalOrderPayment ? (Number(kct)/totalOrderSales) : 0)
                                     
                                     sessionOrder.salesPosts[pay] = 'kitchen'
-                                    sessionOrder[pay] = splitPayment['kitchen'] * totalOrderSales
-                                    multTotalPayment += splitPayment['kitchen'] * totalOrderSales
-                                    multTotalSales += splitPayment['kitchen'] * totalOrderSales
-                                    sessionOrder.lastDeliveredBy = klastDeliveredBy                                    
+                                    const orderPay = structuredClone({orderPay: sessionOrder[pay]}).orderPay
+                                    sessionOrder[pay] = (splitPayment['kitchen'] * orderPay)                                    
+                                    multTotalPayment += splitPayment['kitchen'] * orderPay
+                                    multTotalSales += splitPayment['kitchen'] * orderPay
+                                    sessionOrder.lastDeliveredBy = klastDeliveredBy                                   
                                 }
                             })
                             sessionOrder.totalPayment = multTotalPayment
@@ -457,135 +458,138 @@ const Sales = ()=>{
                 if (foundMult){
                     const ordersToSkipCopy = (structuredClone({ordersToSkip})).ordersToSkip
                     const ordersToSkipCopy1 = (structuredClone({ordersToSkip})).ordersToSkip
-                    bmultSessions.orders = bmultSessions.orders.filter((sessionOr)=>{return !ordersToSkipCopy.find((order)=>{return order.orderNumber === sessionOr.orderNumber})})
-                    kmultSessions.orders = kmultSessions.orders.filter((sessionOr)=>{return !ordersToSkipCopy1.find((order)=>{return order.orderNumber === sessionOr.orderNumber})})
+                    bmultSessions.orders = bmultSessions.orders?.filter((sessionOr)=>{return !ordersToSkipCopy.find((order)=>{return order.orderNumber === sessionOr.orderNumber})})
+                    kmultSessions.orders = kmultSessions.orders?.filter((sessionOr)=>{return !ordersToSkipCopy1.find((order)=>{return order.orderNumber === sessionOr.orderNumber})})
                     if (!multSessions.includes(kmultSessions) && !multSessions.includes(bmultSessions)){
                         multSessions = multSessions.concat([kmultSessions, bmultSessions])
                     }
                 }
             })
+            // console.log(multSessions)
             setActiveSessions(activeSessions)
             let mct = 0
-            sessionEmployees.forEach((employeeId)=>{                
-                let totalWrhTransactions = {}
-                wrhPoints.forEach((wh)=>{
-                    const payPointsClone = structuredClone({payPoints})
-                    const allPayPoints = {...(payPointsClone.payPoints)}
-                    totalWrhTransactions[wh] = {
-                        totalSales: 0,
-                        cashSales: 0,
-                        bankSales: 0,
-                        debt: 0,
-                        unAccountedSales: 0,
-                        allPayPoints,
-                        postingDates:[]
-                    }
-                })
-
-                let deliverySessions = []
-                let salesSessions = []
-                wrhPoints.forEach((wh)=>{
-                    let wrhSessionOrders = []
-                    const saleRecord = {}
-                    saleRecord.isSession = true
-                    const updatedAllSessions = [...multSessions, ...allSessions]
-                    updatedAllSessions.forEach((session)=>{                        
-                        const salesEndDate = new Date(postingDate1)
-                        salesEndDate.setDate(salesEndDate.getDate() + 1);                        
-                        const sessionOrders = session?.orders || []
-                        sessionOrders.forEach((sessionOrder)=>{
-                            if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
-                                && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales) && session.end && sessionOrder.status === 'completed'
-                                && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
-                            ){
-                                
-                                const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
-                                let wct = 0
-                                salesPostsPay.forEach((pay)=>{
-                                    let splitPayment = {}
-                                    if (sessionOrder?.salesPosts[pay] ===  wh){
-                                        wct++
-                                        splitPayment[wh] = 1        
-                                        if (wct>1){
-                                            splitPayment['exclude'] = true
-                                        }       
-
-                                        if (sessionOrder.handlerId === employeeId){
-                                            wrhSessionOrders.push({session, sessionOrder, splitPayment})                                                        
-                                        }else{
-                                            if(session.employee_id !== employeeId && wh === 'kitchen'){
-                                                wrhSessionOrders.push({session, sessionOrder, splitPayment})                                                        
-                                            }
-                                        }
-                                        sessionOrder?.deliverySessions?.forEach((deliverySession)=>{
-                                            if (!deliverySessions.includes(deliverySession)){
-                                                deliverySessions.push(deliverySession)
-                                            }   
-                                        })
-
-                                        if (!salesSessions.includes(sessionOrder.sessionId)){
-                                            salesSessions.push(sessionOrder.sessionId)
-                                        }
-                                    }                                    
-                                })
-                            }
-                        })
-
+            sessionEmployees.forEach((employeeId)=>{  
+                if (employeeId !== null){
+                    let totalWrhTransactions = {}
+                    wrhPoints.forEach((wh)=>{
+                        const payPointsClone = structuredClone({payPoints})
+                        const allPayPoints = {...(payPointsClone.payPoints)}
+                        totalWrhTransactions[wh] = {
+                            totalSales: 0,
+                            cashSales: 0,
+                            bankSales: 0,
+                            debt: 0,
+                            unAccountedSales: 0,
+                            allPayPoints,
+                            postingDates:[]
+                        }
                     })
-                    wrhSessionOrders.forEach(({session, sessionOrder, splitPayment}, index)=>{
-                        if (session.employee_id !== employeeId && wh === 'kitchen'){
-                            totalWrhTransactions[wh].totalSales += (Number(sessionOrder.totalPayment) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))                        
-                            Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
-                                if (sessionOrder[payPoint]){
-                                    totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))
-                                    totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
-                                    totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
-                                }                            
+    
+                    let deliverySessions = []
+                    let salesSessions = []
+                    wrhPoints.forEach((wh)=>{
+                        let wrhSessionOrders = []
+                        const saleRecord = {}
+                        saleRecord.isSession = true
+                        const updatedAllSessions = [...multSessions, ...allSessions]
+                        updatedAllSessions.forEach((session)=>{                        
+                            const salesEndDate = new Date(postingDate1)
+                            salesEndDate.setDate(salesEndDate.getDate() + 1);                        
+                            const sessionOrders = session?.orders || []
+                            sessionOrders.forEach((sessionOrder)=>{
+                                if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
+                                    && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales) && session.end && sessionOrder.status === 'completed'
+                                    && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
+                                ){
+                                    
+                                    const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                                    let wct = 0
+                                    salesPostsPay.forEach((pay)=>{
+                                        let splitPayment = {}
+                                        if (sessionOrder?.salesPosts[pay] ===  wh){
+                                            wct++
+                                            splitPayment[wh] = 1        
+                                            if (wct>1){
+                                                splitPayment['exclude'] = true
+                                            }       
+    
+                                            if (sessionOrder.handlerId === employeeId){
+                                                wrhSessionOrders.push({session, sessionOrder, splitPayment})                                                        
+                                            }else{
+                                                if(session.employee_id !== employeeId && wh === 'kitchen'){
+                                                    wrhSessionOrders.push({session, sessionOrder, splitPayment})                                                        
+                                                }
+                                            }
+                                            sessionOrder?.deliverySessions?.forEach((deliverySession)=>{
+                                                if (!deliverySessions.includes(deliverySession)){
+                                                    deliverySessions.push(deliverySession)
+                                                }   
+                                            })
+    
+                                            if (!salesSessions.includes(sessionOrder.sessionId)){
+                                                salesSessions.push(sessionOrder.sessionId)
+                                            }
+                                        }                                    
+                                    })
+                                }
                             })
-                        }else{
-                            if (session.wrh === wh){
-                                totalWrhTransactions[wh].totalSales += (Number(sessionOrder.totalPayment) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))                        
+    
+                        })
+                        // console.log('for warehouse:',wh,'by',employeeId,'wrhSessionOrders is:',wrhSessionOrders)
+                        wrhSessionOrders.forEach(({session, sessionOrder, splitPayment}, index)=>{
+                            if (session.employee_id !== employeeId && wh === 'kitchen'){
+                                
+                                totalWrhTransactions[wh].totalSales += Number(sessionOrder.totalSales) * (splitPayment['exclude'] ? 0 : splitPayment[wh])                     
                                 Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                     if (sessionOrder[payPoint]){
-                                        totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))
+                                        totalWrhTransactions[wh].allPayPoints[payPoint]  = (Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])))
                                         totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                         totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                     }                            
                                 })
-                                // if (session.employee_id === employeeId){
-                                // }
-                                if (index === wrhSessionOrders.length-1){
-                                    const {totalSalesAmount, debtDue, unAccountedSales} = session
-                                    totalWrhTransactions[wh].debt += Number(debtDue)
-                                    totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
-                                    totalWrhTransactions[wh].totalSales += Number(debtDue) + Number(unAccountedSales)                        
+                            }else{                            
+                                if (session.wrh === wh){
+                                    totalWrhTransactions[wh].totalSales += (Number(sessionOrder.totalSales) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))                       
+                                    Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
+                                        if (sessionOrder[payPoint]){
+                                            totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))
+                                            totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                            totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                        }                            
+                                    })
+                                    if (index === wrhSessionOrders.length-1){
+                                        const {totalSalesAmount, debtDue, unAccountedSales} = session
+                                        totalWrhTransactions[wh].debt += Number(debtDue)
+                                        totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
+                                        totalWrhTransactions[wh].totalSales += Number(debtDue) + Number(unAccountedSales)                        
+                                    }
                                 }
+    
                             }
-
-                        }
-
-                    })
-                    
-                    if (wrhSessionOrders.length && totalWrhTransactions[wh].totalSales){
-                        const salesUnits1 = {...salesUnits}
-                        salesUnits1[wh] = {...(totalWrhTransactions[wh].allPayPoints)}
-                        saleRecord.employeeId = employeeId
-                        saleRecord.totalSales = totalWrhTransactions[wh].totalSales
-                        saleRecord.cashSales = totalWrhTransactions[wh].cashSales
-                        saleRecord.bankSales = totalWrhTransactions[wh].bankSales
-                        saleRecord.debt = totalWrhTransactions[wh].debt
-                        saleRecord.unAccountedSales = totalWrhTransactions[wh].unAccountedSales
-                        saleRecord.shortage = ''
-                        saleRecord.debtRecovered = ''
-                        saleRecord.salesPoint = wh
-                        saleRecord.salesSessions = salesSessions
-                        saleRecord.deliverySessions = deliverySessions
-                        Object.keys(salesUnits1).forEach((saleUnit)=>{
-                            saleRecord[saleUnit] = salesUnits1[saleUnit]
+    
                         })
-                        sessionSalesRecords.push(saleRecord)
-                    }
-                })
+                        
+                        if (wrhSessionOrders.length && totalWrhTransactions[wh].totalSales){
+                            const salesUnits1 = {...salesUnits}
+                            salesUnits1[wh] = {...(totalWrhTransactions[wh].allPayPoints)}
+                            saleRecord.employeeId = employeeId
+                            saleRecord.totalSales = totalWrhTransactions[wh].totalSales
+                            saleRecord.cashSales = totalWrhTransactions[wh].cashSales
+                            saleRecord.bankSales = totalWrhTransactions[wh].bankSales
+                            saleRecord.debt = totalWrhTransactions[wh].debt
+                            saleRecord.unAccountedSales = totalWrhTransactions[wh].unAccountedSales
+                            saleRecord.shortage = ''
+                            saleRecord.debtRecovered = ''
+                            saleRecord.salesPoint = wh
+                            saleRecord.salesSessions = salesSessions
+                            saleRecord.deliverySessions = deliverySessions
+                            Object.keys(salesUnits1).forEach((saleUnit)=>{
+                                saleRecord[saleUnit] = salesUnits1[saleUnit]
+                            })
+                            sessionSalesRecords.push(saleRecord)
+                        }
+                    })
+                }              
             })
         }else{
             setActiveSessions([])
