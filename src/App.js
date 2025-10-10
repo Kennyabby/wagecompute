@@ -509,7 +509,8 @@ function App() {
 
     const executeApprovalAction = async (previous)=>{
         if (companyRecord?.permissions.includes('approve_'+section) || companyRecord?.status==='admin'){
-            return (await executePostAction())
+            await executePostAction()
+            return true
         }else{
             setAlertState('info')
             setAlert('Sending Approval Request...')
@@ -546,14 +547,15 @@ function App() {
                 setAlertState('error')
                 setAlert(resp.mess)
                 setAlertTimeout(5000)
-                return false
+                return true
             }
         }
     }
 
     if (![null, undefined].includes(curApproval)){
         if (curApproval.approved){
-            return (await executePostAction())
+            await executePostAction()
+            return true
         }else{
             if (!curApproval.message){
                 if (companyRecord?.permissions.includes('approve_'+section) || companyRecord?.status==='admin'){
@@ -565,11 +567,13 @@ function App() {
                     return true
                 }
             }else{
-                return (await executeApprovalAction(curApproval))
+                await executeApprovalAction(curApproval)
+                return true
             }
         }
     }else{
-       return (await executeApprovalAction())
+       await executeApprovalAction()
+       return true
     }
   }
 

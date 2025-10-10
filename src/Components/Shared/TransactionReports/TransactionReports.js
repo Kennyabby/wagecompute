@@ -428,7 +428,7 @@ const TransactionReports = ({
                                         const emp = employees.find(e => e.i_d === empId);
                                         return emp ? (
                                             <option key={emp.i_d} value={emp.i_d}>
-                                                {`${emp.firstName || ''} ${emp.lastName || ''}`.trim() || `Employee ${emp.i_d}`}
+                                                {`${emp.firstName || ''} ${emp.lastName || ''} (${emp.i_d})`.trim() || `Employee ${emp.i_d}`}
                                             </option>
                                         ) : null;
                                     })}
@@ -557,7 +557,7 @@ const TransactionReports = ({
                                     </span>
                                     {session.employee_id && (
                                         <span className="session-employee">
-                                            <FaUser /> {getEmployeeName(session.employee_id) || 'N/A'}
+                                            <FaUser /> {`${getEmployeeName(session.employee_id)} (${session.employee_id})` || 'N/A'}
                                         </span>
                                     )}
                                 </div>
