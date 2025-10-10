@@ -2189,7 +2189,7 @@ const Sales = ()=>{
                                                     border: 'solid greenyellow 3px',
                                                 }}
                                             > 
-                                                ## SALES DEBT VERIFIED ##
+                                                ## SALES VERIFIED ##
                                             </div>
                                         }
                                     </div>
