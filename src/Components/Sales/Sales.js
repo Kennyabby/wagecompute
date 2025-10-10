@@ -539,25 +539,33 @@ const Sales = ()=>{
                         wrhSessionOrders.forEach(({session, sessionOrder, splitPayment}, index)=>{
                             if (session.employee_id !== employeeId && wh === 'kitchen'){
                                 
-                                totalWrhTransactions[wh].totalSales += Number(sessionOrder.totalSales) * (splitPayment['exclude'] ? 0 : splitPayment[wh])                     
+                                let tcashSales = 0
+                                let tbankSales = 0
                                 Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                     if (sessionOrder[payPoint]){
                                         totalWrhTransactions[wh].allPayPoints[payPoint]  = (Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])))
                                         totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                         totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                        tbankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                        tcashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                     }                            
                                 })
+                                totalWrhTransactions[wh].totalSales += (tbankSales + tcashSales)
                             }else{                            
                                 if (session.wrh === wh){
-                                    totalWrhTransactions[wh].totalSales += (Number(sessionOrder.totalSales) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))                       
+                                    let tcashSales = 0
+                                    let tbankSales = 0
                                     Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                         if (sessionOrder[payPoint]){
                                             totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))
                                             totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                             totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                            tbankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                            tcashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                         }                            
                                     })
-                                    if (index === wrhSessionOrders.length-1){
+                                    totalWrhTransactions[wh].totalSales += (tbankSales + tcashSales)
+                                    if (index === wrhSessionOrders.length-1){ 
                                         const {totalSalesAmount, debtDue, unAccountedSales} = session
                                         totalWrhTransactions[wh].debt += Number(debtDue)
                                         totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
@@ -1107,7 +1115,7 @@ const Sales = ()=>{
                     accommodationAmount += Number(saleRecord.totalSales)
                 }
                 if (saleRecord.isSession){
-                    sessionSalesAmount += Number(saleRecord.totalSales)
+                    sessionSalesAmount += (Number(saleRecord.totalSales) - Number(saleRecord.unAccountedSales? saleRecord.debt: 0) - Number(saleRecord.shortage))
                 }
             })
             const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
@@ -1298,7 +1306,7 @@ const Sales = ()=>{
                 totalDebt += Number(field.debt)
                 totalShortage += Number(field.shortage)
                 totalBankSales += Number(field.bankSales)
-                if ((field.debt || field.shortage) &&  !field.cashSales && !field.bankSales){
+                if ((field.debt || field.shortage) &&  !field.unAccountedSales){
                     dct++
                 }
                 if (field.isSession){
@@ -1983,6 +1991,7 @@ const Sales = ()=>{
                         setApprovalStatus(false)
                         setApprovalMessage('')
                         setAddingProducts(false)
+                        setPostingRecovery(false)
                     }}
                     module={'sales'}
                     section={productAdd ? 'addSalesProduct' : `post${salesOpts}`}
@@ -3053,7 +3062,7 @@ const Sales = ()=>{
                         </div>}
                         {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords), ...fields].map((field, index)=>{
                             const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
-                            // console.log(index) 
+                            // console.log('employeeId:', field.employeeId, 'sales:', field.totalSales, 'cash:', field.cashSales, 'bank:',field.bankSales,'debt:', field.debt, 'shortage:', field.shortage, 'net:', netTotal, 'difference:', field.totalSales-netTotal) 
                             if (!isView && !field.isAccommodation && !field.isSession && !field.isKitchen){
                                 field.isSplit = true
                             }
@@ -3333,6 +3342,7 @@ const Sales = ()=>{
                                                     setAlertState('error')
                                                     setAlert('You are not allowed to post sales!')
                                                     setAlertTimeout(3000)
+                                                    clearInterval(debtCalcInterval)
                                                     return
                                                 }                
                                             }
@@ -3782,7 +3792,7 @@ const AddProduct = ({
                     accommodationAmount += Number(saleRecord.totalSales)
                 }
                 if (saleRecord.isSession){
-                    sessionSalesAmount += Number(saleRecord.totalSales)
+                    sessionSalesAmount += (Number(saleRecord.totalSales) - Number(saleRecord.unAccountedSales ? saleRecord.debt : 0) - Number(saleRecord.shortage))
                 }
             })
             let totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
