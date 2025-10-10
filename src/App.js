@@ -497,7 +497,7 @@ function App() {
   const runApprovalWorkFlow = async(postingDate, curApproval, module, section, data, runApproval, link)=>{
       
     const executePostAction = async ()=>{
-        runApproval()            
+        await runApproval()            
         if (curApproval?.createdAt){
             removeApproval(company, module, section, {                        
                 createdAt: curApproval.createdAt,
