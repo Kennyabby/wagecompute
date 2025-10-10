@@ -1352,8 +1352,8 @@ const Sales = ()=>{
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
-                setAlertTimeout(5000)
                 setPostStatus('Post Sales')
+                setAlertTimeout(5000)
             }else{
                 setSales(newSales)
                 setCurApproval(null)
@@ -1526,14 +1526,14 @@ const Sales = ()=>{
         let postDate = new Date(sale.postingDate).toISOString().slice(0, 10)
         if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)){
             setAlertState('error')
-            setAlert('Cannot delete sales after more than 1 day')
+            setAlert('Cannot reverse sales after more than 1 day')
             setAlertTimeout(3000)
             return
         }
 
         if (deleteCount === sale.createdAt) {
             setAlertState('info')
-            setAlert('Deleting...')
+            setAlert('Reversing Sales...')
             const resps = await fetchServer("POST", {
                 database: company,
                 collection: "Sales", 
@@ -2189,7 +2189,7 @@ const Sales = ()=>{
                                                     border: 'solid greenyellow 3px',
                                                 }}
                                             > 
-                                                ## SALES VERIFIED ##
+                                                ## SALES DEBT VERIFIED ##
                                             </div>
                                         }
                                     </div>
@@ -2287,7 +2287,7 @@ const Sales = ()=>{
                                                     border: 'solid greenyellow 3px',
                                                 }}
                                             > 
-                                                ## SALES PRODUCTS VERIFIED ##
+                                                ## SALES DEBT PRODUCTS VERIFIED ##
                                             </div>
                                         }
                                     </div>
@@ -2298,8 +2298,7 @@ const Sales = ()=>{
                                         onClick={()=>{                                        
                                             setAlertState('info')
                                             setAlert('You are about to Reverse the selected Sales Record. Please click again if you are sure!')
-                                            setAlertTimeout(5000)
-                                                                                        
+                                            setAlertTimeout(5000)                                                                                        
                                             deleteSales(sale)
                                         }}
                                     >
