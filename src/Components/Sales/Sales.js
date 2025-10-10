@@ -2156,7 +2156,7 @@ const Sales = ()=>{
                         ){
                             return ftrsale
                         }
-                    }).map((sale, index)=>{
+                    }).sort((a,b)=> (new Date(b.postingDate).getTime()) - (new Date(a.postingDate)).getTime()).map((sale, index)=>{
                         if (sale.isApproval){
                             const {createdAt, postingDate, message, handlerId, approved, approvers} = sale
                             var textColor = 'red'
