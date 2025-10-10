@@ -1352,8 +1352,8 @@ const Sales = ()=>{
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
-                setPostStatus('Post Sales')
                 setAlertTimeout(5000)
+                setPostStatus('Post Sales')
             }else{
                 setSales(newSales)
                 setCurApproval(null)
