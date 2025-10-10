@@ -1291,6 +1291,9 @@ const Sales = ()=>{
 
     const addSales = async (reference)=> { 
         if (postingDate){
+            setAlertState('info')
+            setAlert('Posting Sales...')
+            setAlertTimeout(100000)
             setPostStatus('Posting Sales...')
             var totalCashSales = 0
             var totalDebt = 0      
