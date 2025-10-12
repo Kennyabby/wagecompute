@@ -691,6 +691,7 @@ const Sales = ()=>{
         if (salesOpts!=='sales'){
             setIsView(false)
             setFields([])
+            setRecoveryFields([])
             setAddEmployeeId('')
             setAddKitchenEmployeeId('')
             setIsDebtSales(false)
@@ -699,6 +700,7 @@ const Sales = ()=>{
             setIsView(false)                             
             setCurRent(null)
             setRentalFields({...defaultRentalFields})
+            setRecoveryFields([])
         }
     },[salesOpts])
 
@@ -2506,6 +2508,7 @@ const Sales = ()=>{
                             onClick={()=>{
                                 setIsView(false)
                                 setFields([])
+                                setRecoveryFields([])
                                 setAddEmployeeId('')
                                 setAddKitchenEmployeeId('')
                                 setIsDebtSales(false)
@@ -2529,6 +2532,7 @@ const Sales = ()=>{
                                     setIsApprover(false)
                                 }else if (salesOpts==='rentals'){
                                     setIsView(false)
+                                    setRecoveryFields([])
                                     setRentalFields({...defaultRentalFields})
                                     setCurRent(null)
                                 }
@@ -2707,6 +2711,7 @@ const Sales = ()=>{
                                     name='employeeId'
                                     type='text'
                                     value={recoveryEmployeeId}
+                                    disabled={isView}
                                     onChange={(e)=>{
                                         setRecoveryEmployeeId(e.target.value)
                                         setRecoveryFields([])
@@ -2764,7 +2769,7 @@ const Sales = ()=>{
                                             name='recoveryReceipt'
                                             type='text'
                                             placeholder='Enter Receipt Number'
-                                            disabled={field.recoveryPoint === 'Employee'}
+                                            disabled={field.recoveryPoint === 'Employee' || isView}
                                             value={field.recoveryReceipt}
                                             onChange={(e)=>{
                                                 handleRecoveryFieldChange({index, e})
@@ -2777,6 +2782,7 @@ const Sales = ()=>{
                                                 name='recoverySales'
                                                 type='text'
                                                 value={field.recoverySales}
+                                                disabled={isView}
                                                 onChange={(e)=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
@@ -2826,7 +2832,7 @@ const Sales = ()=>{
                                                 type='number'
                                                 placeholder='Recovery Amount'
                                                 value={field.recoveryAmount}
-                                                disabled={field.recoverySales?false:true}
+                                                disabled={!field.recoverySales || isView}
                                                 onChange={(e)=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
@@ -2838,6 +2844,7 @@ const Sales = ()=>{
                                                 className='forminp'
                                                 name='recoveryPoint'
                                                 type='text'
+                                                disabled={isView}
                                                 value={field.recoveryPoint}
                                                 onChange={(e)=>{
                                                     handleRecoveryFieldChange({index, e})
@@ -2860,6 +2867,7 @@ const Sales = ()=>{
                                                     name='recoveryTransferId'
                                                     type='text'
                                                     value={field.recoveryTransferId}
+                                                    disabled={isView}
                                                     onChange={(e)=>{
                                                         handleRecoveryFieldChange({index, e})
                                                     }}
@@ -2887,6 +2895,7 @@ const Sales = ()=>{
                                                 name='recoveryDate'
                                                 type='date'
                                                 placeholder='Recovery Date'
+                                                disabled={isView}
                                                 value={field.recoveryDate}
                                                 onChange={(e)=>{
                                                     handleRecoveryFieldChange({index, e})
@@ -3294,7 +3303,7 @@ const Sales = ()=>{
                                 name='recoveryMonth'
                                 type='text'
                                 value={recoveryMonth}
-                                // disabled={isView}
+                                disabled={isView}
                                 onChange={(e)=>{
                                     const month = e.target.value
                                     const today = new Date()
