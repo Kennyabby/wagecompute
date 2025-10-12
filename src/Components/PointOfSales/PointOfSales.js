@@ -1884,8 +1884,12 @@ const PaymentModal = ({
         const maximumPayHours = (companyRecord?.permissions?.includes('override_pos_receipts') || companyRecord?.status === 'admin') ? 15 : 9 // 15 hours for admin, 9 hours for others
         Object.keys(receipts).forEach((payPoint)=>{
             const queryReceiptDetails = paymentReceipts.find((payrec)=>{
+                const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
+                    return Number(rec.trim(''))
+                })
                 return (
-                    payrec.paymentReceipt === Number(receipts[payPoint])
+                    (payrec.paymentReceipt === Number(receipts[payPoint]) 
+                    || payRecs.includes(Number(receipts[payPoint])))
                     && payrec.paymentPoint === payPoint
                 )
             })
@@ -1920,9 +1924,13 @@ const PaymentModal = ({
             if (isReceiptsAvailable){
                 if (Number(currentOrder.totalSales)>paymentSum){
                     const remainingDifference = Number(currentOrder.totalSales) - paymentSum
-                    setAlertState('info')
+                    setAlertState('error')
                     setAlert(`Insufficient payment amount. Remaining ${Number(remainingDifference).toLocaleString()}!`)
-                    setAlertTimeout(5000)
+                    setAlertTimeout(3000)
+                }else if ((Number(currentOrder.totalSales)<(paymentSum - Math.abs(Number(paymentDetails['cash'].change))))){
+                    setAlertState('error')
+                    setAlert(`Payment Amount is greater than Total Sales. Total amount remaining should be 0.00`)
+                    setAlertTimeout(3000)
                 }else{
                     setLoading(true)
                     await handlePayment()
@@ -1931,7 +1939,7 @@ const PaymentModal = ({
             }else{
                 setAlertState('error');
                 setAlert(`Receipt Number Already Used for the Following Pay Points: ${voidReceipts.join(', ')}!`);
-                setAlertTimeout(5000)
+                setAlertTimeout(3000)
             }
         }else{
             var errmess = ''
@@ -1946,9 +1954,9 @@ const PaymentModal = ({
                     }
                 }
             })
-            setAlertState('info')
+            setAlertState('error')
             setAlert(`Please Enter Receipt Number for the following Pay Points: ${errmess} !`)
-            setAlertTimeout(5000)
+            setAlertTimeout(3000)
         }
     }
 
@@ -1984,14 +1992,14 @@ const PaymentModal = ({
                 const changeAmount = amountNum - currentOrder.totalSales;
                 setPaymentDetails((paymentDetails)=>{
                     return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: changeAmount}
+                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: amountNum ? changeAmount : 0}
                     }
                 })
             }else{
                 const changeAmount = amountNum - cashAmount;
                 setPaymentDetails((paymentDetails)=>{
                     return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: changeAmount }
+                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: amountNum ? changeAmount : 0}
                     }
                 })
             }
