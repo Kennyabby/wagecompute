@@ -569,7 +569,7 @@ const Sales = ()=>{
                                         const {totalSalesAmount, debtDue, unAccountedSales} = session
                                         totalWrhTransactions[wh].debt += Number(debtDue)
                                         totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
-                                        totalWrhTransactions[wh].totalSales += Number(unAccountedSales)                        
+                                        totalWrhTransactions[wh].totalSales += Number(debtDue) + Number(unAccountedSales)                        
                                     }
                                 }
     
