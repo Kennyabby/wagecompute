@@ -1871,6 +1871,7 @@ const PaymentModal = ({
     const [cashAmount, setCashAmount] = useState(0)
     const [loading, setLoading] = useState(false)
     const [receipts, setReceipts] = useState({})
+    
     useEffect(()=>{
         var paymentAmount = 0
         Object.keys(paymentDetails).forEach((payPoint)=>{
@@ -1878,6 +1879,7 @@ const PaymentModal = ({
         })
         setPaymentSum(paymentAmount)
     },[paymentDetails])
+
     const confirmReceiptsAvailable = (receipts)=>{
         let voidReceipts = []
         var postingDate = new Date(currentOrder.createdAt).toISOString().split('T')[0]
@@ -1908,6 +1910,7 @@ const PaymentModal = ({
         })
         return {isReceiptsAvailable: (voidReceipts.length === 0), voidReceipts}
     }
+
     const validatePayment = async ()=>{
         var payPointsWithNoReceipts = []        
         if (!paymentDetails['cash'].amount || (Number(paymentDetails['cash'].amount || 0) < Number(currentOrder.totalSales || 0))){
