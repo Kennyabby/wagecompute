@@ -1,12 +1,22 @@
-.notify{
+.notify-overlay{
     position: fixed;
-    top: 20px;
-    right: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
     z-index: 6000;
+    background: rgba(0, 0, 0, 0.8);
+}
+.notify{
     max-width: 300px;
     border-radius: 10px;
     background: rgba(245, 245, 162, 0.893);
-    padding: 7px 10px;
+    padding: 17px 20px;
+    margin: auto;
 }
 .notifymess{
     display: inline-flex;
