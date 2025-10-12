@@ -1585,8 +1585,12 @@ const Accommodation = ()=>{
                                                     let foundVoidReceipt = false
                                                     let voidReceiptDetails = {}
                                                     let usedReceipt = paymentReceipts.find((payrec)=>{
+                                                        const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
+                                                            return Number(rec.trim(''))
+                                                        })
                                                         return (
-                                                            payrec.paymentReceipt === Number(accommodationFields.paymentReceipt)
+                                                            (payrec.paymentReceipt === Number(accommodationFields.paymentReceipt) 
+                                                            || payRecs.includes(Number(accommodationFields.paymentReceipt)))
                                                             && payrec.paymentPoint === accommodationFields.payPoint
                                                         )
                                                     })
