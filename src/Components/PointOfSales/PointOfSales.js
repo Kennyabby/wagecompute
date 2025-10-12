@@ -14,7 +14,7 @@ const PointOfSales = () => {
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, posWrhAccess, employees, 
         profiles, fetchProfiles, getSessionEnd,
-        products, getProducts, setProducts,  
+        products, getProducts, setProducts, getEmployeeName,
         fetchSessions, sessions, setSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
@@ -1630,6 +1630,7 @@ const PointOfSales = () => {
                         <div className="pos-time-display">
                             <div>{currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                             <div className="time">{formatTime(currentTime)}</div>
+                            <div style={{fontWeight: 'bold'}}>User: {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}</div>
                         </div>
                         <div className="pos-tables-layout">
                             <div 

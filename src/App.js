@@ -341,6 +341,17 @@ function App() {
     return newNumber;
 
   }
+
+  const getEmployeeName = (employeeId)=>{
+    const emp = employees?.find((employee)=>{
+      return employeeId === employee.i_d
+    })
+    if (emp){
+      return `${emp.firstName} ${emp.lastName}`
+    }else{
+        return 'Default'
+    }
+  }
   
   const getApprovalConfig =  (module, section, approverId) => {
     const moduleApprovers = {
@@ -2057,7 +2068,7 @@ function App() {
           sessions, setSessions, fetchSessions, fetchAllSessions,
           salesSessions, setSalesSessions, allSalesSessions,
           deliverySessions, setDeliverySessions, allDeliverySessions,
-          getPosOrders,
+          getPosOrders, getEmployeeName,
           isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
           tables, setTables, fetchTables,
 
