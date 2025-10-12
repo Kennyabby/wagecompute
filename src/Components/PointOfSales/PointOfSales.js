@@ -466,7 +466,7 @@ const PointOfSales = () => {
                 }
                 if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_sessions')){
                     // console.log('starting session')
-                    // setStartSession(true)
+                    setStartSession(true)
                 }
                 // setEndSession(false)
             }
