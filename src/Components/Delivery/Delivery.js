@@ -1465,7 +1465,7 @@ const Delivery = () => {
                             setAlertTimeout(3000)
                         }
                     }}
-                    disabled={currentOrder?.items.length === 0 || placingOrder || curSession.wrh !== wrh || currentOrder.status === 'cancelled'}
+                    disabled={currentOrder?.items.length === 0 || placingOrder || ((companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions')) && (!curSession.active || curSession.wrh !== wrh ))|| currentOrder.status === 'cancelled'}
                 >
                     Place Delivery (#{currentOrder.orderNumber})
                 </button>}
