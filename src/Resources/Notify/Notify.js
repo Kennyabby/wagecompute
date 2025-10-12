@@ -48,32 +48,34 @@ const Notify = ({
     }
     return (    
         <>
-            {notifyMessage && <div className='notify' style={{border: `solid ${color} 1.5px`}}>
-                <div className='notifymess'>                    
-                    <div style={{color:color, marginRight: '5px', fontWeight:'bold'}}>{icon}</div>
-                    <div>
-                        {notifyMessage}
+            {notifyMessage && <div className='notify-overlay'>
+                <div className='notify' style={{border: `solid ${color} 1.5px`}}>
+                    <div className='notifymess'>                    
+                        <div style={{color:color, marginRight: '5px', fontWeight:'bold'}}>{icon}</div>
+                        <div>
+                            {notifyMessage}
+                        </div>
                     </div>
+                    {actionMessage && <div className='notifyactn'>
+                        <div 
+                            className='notifycl'
+                            onClick={()=>{
+                                setAlert('')
+                                setAlertState(null)
+                                setActionMessage('')
+                            }}
+                        >Cancel</div>
+                        <div 
+                            className='notifyacp'
+                            onClick={()=>{
+                                action()
+                                setAlert('')
+                                setAlertState(null)
+                                setActionMessage('')
+                            }}
+                        >{actionMessage}</div>
+                    </div>}
                 </div>
-                {actionMessage && <div className='notifyactn'>
-                    <div 
-                        className='notifycl'
-                        onClick={()=>{
-                            setAlert('')
-                            setAlertState(null)
-                            setActionMessage('')
-                        }}
-                    >Cancel</div>
-                    <div 
-                        className='notifyacp'
-                        onClick={()=>{
-                            action()
-                            setAlert('')
-                            setAlertState(null)
-                            setActionMessage('')
-                        }}
-                    >{actionMessage}</div>
-                </div>}
             </div>}
         </>
     )
