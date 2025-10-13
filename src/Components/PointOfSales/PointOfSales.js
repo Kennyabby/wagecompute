@@ -1871,7 +1871,7 @@ const PaymentModal = ({
     const [cashAmount, setCashAmount] = useState(0)
     const [loading, setLoading] = useState(false)
     const [receipts, setReceipts] = useState({})
-    
+
     useEffect(()=>{
         var paymentAmount = 0
         Object.keys(paymentDetails).forEach((payPoint)=>{
@@ -1888,6 +1888,8 @@ const PaymentModal = ({
             const queryReceiptDetails = paymentReceipts.find((payrec)=>{
                 const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
                     return Number(rec.trim(''))
+                }).filter((fltRec)=>{
+                    return fltRec.toLowerCase() !== 'cash'
                 })
                 return (
                     (payrec.paymentReceipt === Number(receipts[payPoint]) 
