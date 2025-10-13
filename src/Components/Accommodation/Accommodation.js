@@ -1586,9 +1586,13 @@ const Accommodation = ()=>{
                                                     let voidReceiptDetails = {}
                                                     let usedReceipt = paymentReceipts.find((payrec)=>{
                                                         const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
-                                                            return Number(rec.trim(''))
+                                                            if (rec.trim('').toLowerCase()==='cash'){
+                                                                return rec.trim('')
+                                                            }else{
+                                                                return Number(rec.trim(''))
+                                                            }
                                                         }).filter((fltRec)=>{
-                                                            return fltRec.toLowerCase() !== 'cash'
+                                                            return fltRec !== 'cash'
                                                         })
                                                         return (
                                                             (payrec.paymentReceipt === Number(accommodationFields.paymentReceipt) 

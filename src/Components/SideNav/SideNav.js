@@ -25,6 +25,7 @@ const SideNav = ()=>{
     const [purchaseApprovals, setPurchaseApprovals] = useState([])
     const [attendanceApprovals, setAttendanceApprovals] = useState([])
     const [accommodationApprovals, setAccommodationApprovals] = useState([])
+    const [expenseApprovals, setExpenseApprovals] = useState([])
     const [allApprovals, setAllApprovals] = useState([])
     const [isCollapsed, setIsCollapsed] = useState(false);
     const location = useLocation()
@@ -64,7 +65,13 @@ const SideNav = ()=>{
                 (appr.module === 'attendance' && (!appr.approved && !appr.message))
             )
         }))
+        setExpenseApprovals(approvals.filter((appr)=>{
+            return (
+                (appr.module === 'expense' && (!appr.approved && !appr.message))
+            )
+        }))
     },[approvals])
+
     useEffect(()=>{
         if (companyRecord){
             setCompanyName(companyRecord.name)
@@ -82,6 +89,7 @@ const SideNav = ()=>{
           Navigate('/'+name)  
         }
     }
+
     const logout = async()=>{
         setLogStatus('Ending Session')
         const resps = await fetchServer("POST", {
@@ -273,8 +281,9 @@ const SideNav = ()=>{
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && 
                             <div name="expenses" className={'navdiv ' + (curPath==='expenses'?'selected':'')}>
-                                <GiExpense className='navdivicon' name="expenses"/>
-                                <div name="expenses">Admin Expenses</div>                            
+                                <GiExpense className='navdivicon' name="expenses"/> 
+                                <div name="expenses">Admin Expenses</div>
+                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postexpense')) && expenseApprovals.length > 0 && <div className='navdivcount'>{expenseApprovals.length}</div>}                           
                             </div>
                         }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings')) && 
