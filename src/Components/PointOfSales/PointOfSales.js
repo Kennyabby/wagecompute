@@ -1887,9 +1887,13 @@ const PaymentModal = ({
         Object.keys(receipts).forEach((payPoint)=>{
             const queryReceiptDetails = paymentReceipts.find((payrec)=>{
                 const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
-                    return Number(rec.trim(''))
+                    if (rec.trim('').toLowerCase()==='cash'){
+                        return rec.trim('')
+                    }else{
+                        return Number(rec.trim(''))
+                    }
                 }).filter((fltRec)=>{
-                    return fltRec.toLowerCase() !== 'cash'
+                    return fltRec !== 'cash'
                 })
                 return (
                     (payrec.paymentReceipt === Number(receipts[payPoint]) 
@@ -1939,7 +1943,7 @@ const PaymentModal = ({
                 }else{
                     setLoading(true)
                     await handlePayment()
-                    setLoading (false)
+                    // setLoading (false)
                 }
             }else{
                 setAlertState('error');

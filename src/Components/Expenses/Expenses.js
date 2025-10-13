@@ -19,8 +19,10 @@ const Expenses = ()=>{
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
         employees, getEmployees, getExpenses, setExpenses, expenses, 
         attendance, getAttendance, alert,alertState,alertTimeout,actionMessage, 
-        setAlert, setAlertState, setAlertTimeout, setActionMessage
+        setAlert, setAlertState, setAlertTimeout, setActionMessage,
+        removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
+    
     const [expensesStatus, setExpensesStatus] = useState('Post Expenses')
     const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [curExpense, setCurExpense] = useState(null)
@@ -59,9 +61,11 @@ const Expenses = ()=>{
     const [fields, setFields] = useState({...defaultFields})
     const departments = ['Admin']
     const [expensesCategory, setExpensesCategory] = useState([])
+    
     useEffect(()=>{
         storePath('expenses')  
     },[storePath])
+
     useEffect(()=>{
         const expenseLedger = chartOfAccounts.find((acc)=>{
             return acc.name === 'Expenses'                
