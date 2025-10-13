@@ -1943,7 +1943,7 @@ const PaymentModal = ({
                 }else{
                     setLoading(true)
                     await handlePayment()
-                    // setLoading (false)
+                    setLoading (false)
                 }
             }else{
                 setAlertState('error');
