@@ -1225,7 +1225,6 @@ const Delivery = () => {
         }
     };
     const renderSessionEntry = () => {
-
         var posDeliveryAccess = []
         if (sessionUser!==null){
             const userDeliveryWrhAccess = { 
@@ -1388,6 +1387,7 @@ const Delivery = () => {
             </>
         );
     };
+    
     const renderKeypad = () => (
         <div className="keypad-section">
             <div className="quantity-display">{quantity || '0'}</div>

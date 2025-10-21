@@ -1936,7 +1936,7 @@ const PaymentModal = ({
                     setAlertState('error')
                     setAlert(`Insufficient payment amount. Remaining ${Number(remainingDifference).toLocaleString()}!`)
                     setAlertTimeout(3000)
-                }else if ((Number(currentOrder.totalSales)<(paymentSum - Math.abs(Number(paymentDetails['cash'].change))))){
+                }else if ((Number(currentOrder.totalSales)<(paymentSum - (Number(paymentDetails['cash'].change))))){
                     setAlertState('error')
                     setAlert(`Payment Amount is greater than Total Sales. Total amount remaining should be 0.00`)
                     setAlertTimeout(3000)
