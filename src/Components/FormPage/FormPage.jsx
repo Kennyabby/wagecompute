@@ -53,6 +53,7 @@ const FormPage = ()=>{
     const [employeeWorkedDays, setEmployeeWorkedDays] = useState({})
     const [sundayWorkedDays, setSundayWorkedDays] = useState({})
     const [holidayWorkedDays, setHolidayWorkedDays] = useState({})
+    const workHours = 8
     const Navigate = useNavigate()
     useEffect(()=>{
         storePath('test')  
@@ -106,14 +107,11 @@ const FormPage = ()=>{
 
     const computeMonthlyHours = (totalTimeObject)=>{
         const holidayDates = holidays.map((holiday)=>{return getDate(holiday.value)})
-        console.log('holidays:',holidayDates)
         const expectedPunchedDays = punchedDays.filter((punchday)=>{
             if (holidayDates.includes(punchday)){
-                console.log('matched: ', punchday)
             }
             return !holidayDates.includes(punchday)
         })
-        console.log('expected:',expectedPunchedDays)
        
         var employeeDet = employeeDetails
         var toexport = []
@@ -170,28 +168,34 @@ const FormPage = ()=>{
                         shift: timeObject['Shift']
                     }
                     if(expectedPunchedDays.includes(timeObject['Date'])){
-                        asumTime += Number(timeObject['Total Hours'])
-                        act++
-                        setEmployeeWorkedDays((employeeWorkedDays)=>{
-                            employeeWorkedDays[employeeID] = employeeWorkedDays[employeeID].concat([details])
-                            return employeeWorkedDays
-                        })
+                        if (timeObject['First Punch']!=='00:00' && timeObject['Last Punch']!=='00:00'){
+                            asumTime += Number(timeObject['Total Hours'])
+                            act++
+                            setEmployeeWorkedDays((employeeWorkedDays)=>{
+                                employeeWorkedDays[employeeID] = employeeWorkedDays[employeeID].concat([details])
+                                return employeeWorkedDays
+                            })
+                        }
                     }
                     if (holidayDates.includes(timeObject['Date'])){
-                        hct++
-                        hsumTime += Number(timeObject['Total Hours']) 
-                        setHolidayWorkedDays((holidayWorkedDays)=>{
-                            holidayWorkedDays[employeeID] = holidayWorkedDays[employeeID].concat([details])
-                            return holidayWorkedDays
-                        })
+                        if (timeObject['First Punch']!=='00:00' && timeObject['Last Punch']!=='00:00'){
+                            hct++
+                            hsumTime += Number(timeObject['Total Hours']) 
+                            setHolidayWorkedDays((holidayWorkedDays)=>{
+                                holidayWorkedDays[employeeID] = holidayWorkedDays[employeeID].concat([details])
+                                return holidayWorkedDays
+                            })
+                        }
                     }
                     if(newworkdate.getDay()===0){
-                        ssumTime += Number(timeObject['Total Hours']) 
-                        sct++
-                        setSundayWorkedDays((sundayWorkedDays)=>{
-                            sundayWorkedDays[employeeID] = sundayWorkedDays[employeeID].concat([details])
-                            return sundayWorkedDays
-                        })
+                        if (timeObject['First Punch']!=='00:00' && timeObject['Last Punch']!=='00:00'){
+                            ssumTime += Number(timeObject['Total Hours']) 
+                            sct++
+                            setSundayWorkedDays((sundayWorkedDays)=>{
+                                sundayWorkedDays[employeeID] = sundayWorkedDays[employeeID].concat([details])
+                                return sundayWorkedDays
+                            })
+                        }
 
                         // if(expectedPunchedDays.includes(timeObject['Date'])){
                         //     asumTime -= timeObject['Total Hours'] 
@@ -204,12 +208,16 @@ const FormPage = ()=>{
                         // }
                     }
                     if (timeObject['Shift']==='Morning'){
-                        msh++
+                        if (timeObject['First Punch']!=='00:00' && timeObject['Last Punch']!=='00:00'){
+                            msh++
+                        }
                         // if(newworkdate.getDay()===0){
                         //     msh--
                         // }
                     }else if (timeObject['Shift']==='Night'){
-                        nsh++
+                        if (timeObject['First Punch']!=='00:00' && timeObject['Last Punch']!=='00:00'){
+                            nsh++
+                        }
                         // if(newworkdate.getDay()===0){
                         //     nsh--
                         // }
@@ -218,8 +226,8 @@ const FormPage = ()=>{
 
             })
             const expectedWorkDays = expectedPunchedDays.length - excludedWorkDates
-            const expectedWorkHours = expectedWorkDays * 9
-            const salaryPerHour = (employeeSalary/expectedWorkDays)/9
+            const expectedWorkHours = expectedWorkDays * workHours
+            const salaryPerHour = (employeeSalary/expectedWorkDays)/workHours
             const auctualWorkHours = parseFloat((asumTime).toFixed(2))
             const expectedWorkSalary = parseFloat((expectedWorkHours*salaryPerHour).toFixed(2))
             const employeeWorkSalary = parseFloat((auctualWorkHours*salaryPerHour).toFixed(2)) 
@@ -343,11 +351,13 @@ const FormPage = ()=>{
             var totalHoursPunched = punch['Total Hours']
             const punchDate = punch['Date']
             if (!datesPunched.includes(punchDate)){
-                datesPunched = datesPunched.concat(punchDate)
+                if (punch['First Punch']!=='00:00' && punch['Last Punch']!=='00:00'){
+                    datesPunched = datesPunched.concat(punchDate)
+                }
             }
           
             if (totalHoursPunched === 0){
-                totalHoursPunched = 9
+                totalHoursPunched = workHours
             }
             setTotalTimeObject((totalTimeObject)=>{
                 return [...totalTimeObject, {'Employee ID': employeeID, 
@@ -425,7 +435,6 @@ const FormPage = ()=>{
     }
 
     const calculateTotalTime = (clockIn, clockOut) => {
-
         if (clockOut !== null){
             var clockInlength = clockIn.split(':').length
             var clockOutlength = clockOut.split(':').length
@@ -463,14 +472,45 @@ const FormPage = ()=>{
             const employeeFirst = punch['First Name'];
             const employeeLast = punch['Last Name'];
             const employeeDept = punch['Department'];
-            const employeeFpunch = punch['First Punch'];
-            const employeeLpunch = punch['Last Punch'];
+            let employeeFpunch = punch['First Punch'];
+            let employeeLpunch = punch['Last Punch'];
             punch['Date'] = getDate(excelDateToTimestamp(punch['Date']))
             const punchDate = punch['Date'];
             var nextPunch = null;
             if (index < expdata.length - 1) {
                 nextPunch = expdata[index + 1];
+                if (nextPunch['First Punch']===undefined){
+                    if (nextPunch['Last Punch']){
+                        nextPunch['First Punch'] = nextPunch['Last Punch']
+                    }else{
+                        nextPunch['First Punch'] = '00:00'
+                        nextPunch['Last Punch'] = '00:00'
+                    }
+                }
+                else if (nextPunch['Last Punch']===undefined){
+                    if (nextPunch['First Punch']){
+                        nextPunch['Last Punch'] = nextPunch['First Punch']
+                    }else{
+                        nextPunch['First Punch'] = '00:00'
+                        nextPunch['Last Punch'] = '00:00'
+                    }
+                }
             }
+            if (!employeeFpunch){
+                if (employeeLpunch){
+                    employeeFpunch = employeeLpunch
+                }else{
+                    employeeFpunch = '00:00'
+                }
+            }
+            if (!employeeLpunch){
+                if (employeeFpunch){
+                    employeeLpunch = employeeFpunch
+                }else{
+                    employeeLpunch = '00:00'
+                }
+            }
+            
             const totalHours = calculateTotalTime(employeeLpunch, nextPunch===null ? null : nextPunch['First Punch'])
             const mTotalHours = calculateTotalTime(employeeFpunch, employeeLpunch)
             let updatedPunch= {
