@@ -3374,9 +3374,9 @@ const Sales = ()=>{
                                                 validateSales()
                                             }
                                         }else{
-                                            if (enteredSales < Number(field.totalSales)){
+                                            if (Math.round(enteredSales) < Number(field.totalSales)){
                                                 ct++
-                                            }else if (enteredSales > Number(field.totalSales)){
+                                            }else if (Math.round(enteredSales) > Number(field.totalSales)){
                                                 wt++
                                             }
                                         }
