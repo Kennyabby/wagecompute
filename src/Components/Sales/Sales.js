@@ -3357,7 +3357,6 @@ const Sales = ()=>{
                                                     return
                                                 }                
                                             }
-                                            console.log('ran workflow')
                                             runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
                                             clearInterval(debtCalcInterval)
                                         }else{
@@ -3366,7 +3365,6 @@ const Sales = ()=>{
                                             setAlertTimeout(5000)
                                         }
                                     }
-                                    console.log('data')
                                     data.forEach((field)=>{
                                         const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
                                         Number(field.debt) + Number(field.shortage)
