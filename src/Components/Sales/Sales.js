@@ -3331,10 +3331,10 @@ const Sales = ()=>{
                         </div>}               
                         {salesOpts === 'sales' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:(fields.length || (accommodationRecords.length && sessionSalesRecords.length))?'pointer':'not-allowed'
+                                cursor:(fields.length || (accommodationRecords.length || sessionSalesRecords.length))?'pointer':'not-allowed'
                             }}
                             onClick={()=>{
-                                if (fields.length || (accommodationRecords.length && sessionSalesRecords.length)){
+                                if (fields.length || (accommodationRecords.length || sessionSalesRecords.length)){
                                     var rt = 0
                                     var ct = 0
                                     var wt = 0
