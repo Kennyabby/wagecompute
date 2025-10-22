@@ -170,8 +170,8 @@ const SideNav = ()=>{
             <div className={`menu-overlay ${isMenuOpen ? 'open' : ''}`} onClick={toggleMenu}></div>
             <div className={`sidenav ${isMenuOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className='navheader'>
-                    {/* {!isCollapsed && <span>{companyName.toUpperCase()}</span>} */}
-                    {!isCollapsed && <span>{'TEST COMPANY'}</span>}
+                    {!isCollapsed && <span>{companyName.toUpperCase()}</span>}
+                    {/* {!isCollapsed && <span>{'TEST COMPANY'}</span>} */}
                     <button 
                         className="collapse-btn" 
                         onClick={toggleCollapse}
