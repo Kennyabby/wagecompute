@@ -2235,6 +2235,20 @@ const Sales = ()=>{
                                 totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef,
                                 approval
                             } = sale 
+
+                            let unAccountedSalesDebt = 0
+                            record.forEach((rec)=>{
+                                unAccountedSalesDebt += Number(rec.unAccountedSales || 0)
+                            //    if (Number(rec.debt || 0) === Number(rec.unAccountedSales || 0)){
+                            //     }
+                            })
+                            let adjProductsRef = productsRef ? productsRef : null
+                            
+                            if (!unAccountedSalesDebt){
+                                adjProductsRef = 'auto-generated'
+                                sale.productsRef = 'auto-generated'                                
+                            }
+                                
                             var textColor = 'red'
                             if (approval?.approved){
                                 textColor = 'green'
@@ -2245,7 +2259,7 @@ const Sales = ()=>{
                                         handleViewClick(sale)
                                     }}
                                 >
-                                    {productsRef ? 
+                                    {adjProductsRef ? 
                                         <div
                                             className='slprd'
                                             onClick={()=>{
