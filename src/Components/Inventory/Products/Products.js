@@ -618,7 +618,7 @@ const Products = ({
                                 type='number'
                                 name='salesPrice'
                                 placeholder='0.00'
-                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                                 value={productFields.salesPrice}
                             />
                         </div>
@@ -629,7 +629,7 @@ const Products = ({
                                 type='number'
                                 name='vipPrice'
                                 placeholder='0.00'
-                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                                 value={productFields.vipPrice !== undefined ? productFields.vipPrice: ''}
                             />
                         </div>
@@ -651,7 +651,7 @@ const Products = ({
                                 type='number'
                                 name='salesVat'
                                 placeholder='0%'
-                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                                 value={productFields.salesVat}
                             />
                         </div>
@@ -662,7 +662,7 @@ const Products = ({
                                 type='number'
                                 name='purchaseVat'
                                 placeholder='0%'
-                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                                 value={productFields.purchaseVat}
                             />
                         </div>}
@@ -672,7 +672,7 @@ const Products = ({
                                 className='otherInp'
                                 name='salesUom'
                                 value={productFields.salesUom}
-                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                             >
                                 {uoms.map((uom, id)=>{
                                     return (
@@ -687,7 +687,7 @@ const Products = ({
                                 className='otherInp'
                                 name='purchaseUom'
                                 value={productFields.purchaseUom}
-                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                             >
                                 {uoms.map((uom, id)=>{
                                     return (
@@ -703,7 +703,7 @@ const Products = ({
                                 type='number'
                                 name='restockLevel'
                                 placeholder='Restock Level'
-                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                                 value={productFields.restockLevel}
                             />
                         </div>}
@@ -729,7 +729,7 @@ const Products = ({
                                 name='category'
                                 placeholder='all'
                                 value={productFields.category}
-                                disabled={isProductView && companyRecord?.status !== 'admin'}
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                             >
                                 <option value={'all'}>All</option>
                                 {categories.map((category, id)=>{
