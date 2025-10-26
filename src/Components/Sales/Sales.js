@@ -1298,7 +1298,8 @@ const Sales = ()=>{
             setAlertTimeout(100000)
             setPostStatus('Posting Sales...')
             var totalCashSales = 0
-            var totalDebt = 0      
+            var totalDebt = 0   
+            var totalSalesDebt = 0   
             var totalShortage = 0 
             var totalBankSales = 0 
             let deliverySessions = []
@@ -1309,6 +1310,7 @@ const Sales = ()=>{
                 // delete field.isSplit
                 totalCashSales += Number(field.cashSales)
                 totalDebt += Number(field.debt)
+                totalSalesDebt += Number(field.debt) - Number(field.unAccountedSales || 0)
                 totalShortage += Number(field.shortage)
                 totalBankSales += Number(field.bankSales)
                 if ((field.debt || field.shortage) &&  !field.unAccountedSales){
@@ -1333,6 +1335,7 @@ const Sales = ()=>{
                 totalCashSales,
                 totalBankSales,
                 totalDebt,
+                totalSalesDebt,
                 totalShortage,
                 deliverySessions,
                 salesSessions,
@@ -2231,7 +2234,7 @@ const Sales = ()=>{
                             if (productApproval){                               
                                 sale.approval = productApproval
                             }
-                            const {createdAt, postingDate, totalCashSales, totalDebt, record, 
+                            const {createdAt, postingDate, totalCashSales, totalDebt, totalSalesDebt, record, 
                                 totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef,
                                 approval
                             } = sale 
@@ -2283,7 +2286,7 @@ const Sales = ()=>{
                                         </span>}
                                     <div className='dets sldets'>
                                         <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                        <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage)).toLocaleString()}</b></div>
+                                        <div>Total Sales: <b>{'₦'+(Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)-Number(totalSalesDebt || 0)+Number(totalShortage)).toLocaleString()}</b></div>
                                         <div>Bank: <b>{'₦'+totalBankSales?.toLocaleString()}</b></div>
                                         <div>Cash: <b>{'₦'+totalCashSales.toLocaleString()}</b></div>
                                         <div>Debts: <b>{'₦'+(Number(totalDebt)+Number(totalShortage)-Number(totalDebtRecovered?totalDebtRecovered:0)).toLocaleString()}</b></div>
