@@ -1135,7 +1135,7 @@ const DashView = () =>{
                                                 <span className='alert-item-name'>{session.wrh || 'Unknown Location'}</span>
                                                 <span className='alert-item-detail'>
                                                     Started: {new Date(session.start).toLocaleString()}
-                                                    {employeeName(session.employee_id) && ` by ${employeeName(session.employee_id)}`}
+                                                    {employeeName(session.employee_id) && ` for ${employeeName(session.employee_id)}`}
                                                 </span>
                                             </div>
                                         ))}
