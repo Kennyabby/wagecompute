@@ -1117,7 +1117,7 @@ const Sales = ()=>{
                     accommodationAmount += Number(saleRecord.totalSales)
                 }
                 if (saleRecord.isSession){
-                    sessionSalesAmount += (Number(saleRecord.totalSales) - Number(saleRecord.unAccountedSales? saleRecord.debt: 0) - Number(saleRecord.shortage))
+                    sessionSalesAmount += (Number(saleRecord.totalSales) - Number(saleRecord.unAccountedSales? saleRecord.unAccountedSales: 0) - Number(saleRecord.shortage))
                 }
             })
             const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
@@ -3822,7 +3822,7 @@ const AddProduct = ({
                 if (saleRecord.isSession){
                     sessionSalesAmount += (Number(saleRecord.totalSales))
                     if (!isProductView){
-                        sessionSalesAmount -= (Number(saleRecord.unAccountedSales ? saleRecord.debt : 0) + Number(saleRecord.shortage))
+                        sessionSalesAmount -= (Number(saleRecord.unAccountedSales ? saleRecord.unAccountedSales : 0) + Number(saleRecord.shortage))
                     }
                 }
             })
