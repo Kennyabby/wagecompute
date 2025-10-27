@@ -981,7 +981,7 @@ const Sales = ()=>{
                     return [...fields]
                 })
             }else if (name==='recoveryPoint'){
-                if(value!=='Employee' || companyRecord?.status === 'admin'){                    
+                if(value!=='Employee' || (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('enable_employee_debt_recovery'))){                    
                     setRecoveryFields((fields)=>{
                         fields[index] = {...fields[index], [name]:value, recoveryTransferId:'',recoveryReceipt:''}
                         return [...fields]
