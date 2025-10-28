@@ -1618,9 +1618,10 @@ const Accommodation = ()=>{
                                                             return
                                                         }
                                                     }else {
-                                                        let voidReceipts = paymentReceipts.filter((payrec)=>{
+                                                        let voidReceipts = paymentReceipts.filter((payrec)=>{  
+                                                                                                                      
                                                             return(
-                                                                payrec.paymentReceipt > Number(accommodationFields.paymentReceipt)
+                                                                String(payrec).toLowerCase()!=='cash' && Number(payrec.paymentReceipt) > Number(accommodationFields.paymentReceipt)
                                                                 && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
                                                             )
                                                         })
