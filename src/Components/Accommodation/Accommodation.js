@@ -1594,11 +1594,17 @@ const Accommodation = ()=>{
                                                         }).filter((fltRec)=>{
                                                             return fltRec !== 'cash'
                                                         })
-                                                        return (
-                                                            (payrec.paymentReceipt === Number(accommodationFields.paymentReceipt) 
-                                                            || payRecs.includes(Number(accommodationFields.paymentReceipt)))
-                                                            && payrec.paymentPoint === accommodationFields.payPoint
-                                                        )
+                                                        let accRecs = String(accommodationFields.paymentReceipt).split(',').map((rec)=>{
+                                                            return rec.trim('').toLowerCase()!=='cash'
+                                                        })
+                                                        let accRecFiltered = accRecs.filter((fltRec)=>{
+                                                            return (
+                                                                (payrec.paymentReceipt === Number(fltRec) 
+                                                                || payRecs.includes(Number(fltRec)))
+                                                                && payrec.paymentPoint === accommodationFields.payPoint
+                                                            )
+                                                        })
+                                                        return accRecFiltered.length > 0
                                                     })
                                                     if (usedReceipt){
                                                         foundVoidReceipt = true
@@ -1618,12 +1624,27 @@ const Accommodation = ()=>{
                                                             return
                                                         }
                                                     }else {
-                                                        let voidReceipts = paymentReceipts.filter((payrec)=>{  
-                                                                                                                      
-                                                            return(
-                                                                String(payrec).toLowerCase()!=='cash' && Number(payrec.paymentReceipt) > Number(accommodationFields.paymentReceipt)
-                                                                && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
-                                                            )
+                                                        let voidReceipts = paymentReceipts.filter((payrec)=>{                                       
+                                                            const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
+                                                                if (rec.trim('').toLowerCase()==='cash'){
+                                                                    return rec.trim('')
+                                                                }else{
+                                                                    return Number(rec.trim(''))
+                                                                }
+                                                            }).filter((fltRec)=>{
+                                                                return fltRec !== 'cash'
+                                                            })
+                                                            let accRecs = String(accommodationFields.paymentReceipt).split(',').map((rec)=>{
+                                                                return rec.trim('').toLowerCase()!=='cash'
+                                                            })
+                                                            let accRecFiltered = accRecs.filter((fltRec)=>{
+                                                                payRecs.forEach((prtRec)=>{
+                                                                    return(
+                                                                        String(fltRec).toLowerCase()!=='cash' && Number(prtRec) > Number(fltRec)
+                                                                        && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
+                                                                    )
+                                                                })
+                                                            })
                                                         })
                                                         
                                                         if (voidReceipts.length){
