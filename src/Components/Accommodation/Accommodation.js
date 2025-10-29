@@ -1635,7 +1635,7 @@ const Accommodation = ()=>{
                                                             }).filter((fltRec)=>{
                                                                 return fltRec !== 'cash'
                                                             })
-                                                            let accRecs = String(accommodationFields.paymentReceipt).split(',').map((rec)=>{
+                                                            let accRecs = String(accommodationFields.paymentReceipt).split(',').filter((rec)=>{
                                                                 return rec.trim('').toLowerCase()!=='cash'
                                                             })
                                                             let accRecFiltered = accRecs.filter((fltRec)=>{
@@ -1646,6 +1646,7 @@ const Accommodation = ()=>{
                                                                     )
                                                                 })
                                                             })
+                                                            return accRecFiltered.length > 0
                                                         })
                                                         
                                                         if (voidReceipts.length){
