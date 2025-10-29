@@ -1895,11 +1895,17 @@ const PaymentModal = ({
                 }).filter((fltRec)=>{
                     return fltRec !== 'cash'
                 })
-                return (
-                    (payrec.paymentReceipt === Number(receipts[payPoint]) 
-                    || payRecs.includes(Number(receipts[payPoint])))
-                    && payrec.paymentPoint === payPoint
-                )
+                let accRecs = String(receipts[payPoint]).split(',').filter((rec)=>{
+                    return rec.trim('').toLowerCase()!=='cash'
+                })
+                let accRecFiltered = accRecs.filter((fltRec)=>{
+                    return (
+                        (payrec.paymentReceipt === Number(fltRec) 
+                        || payRecs.includes(Number(fltRec)))
+                        && payrec.paymentPoint === payPoint
+                    )
+                })
+                return accRecFiltered.length > 0
             })
             let hourDiff = 9
             if (queryReceiptDetails){
