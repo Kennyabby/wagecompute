@@ -3498,10 +3498,26 @@ const Sales = ()=>{
                                         const recoveryPoints = []
                                         recoveryFields.forEach((field)=>{
                                             let usedReceipt = paymentReceipts.find((payrec)=>{
-                                                return (
-                                                    payrec.paymentReceipt === Number(field.recoveryReceipt)
-                                                    && payrec.paymentPoint === field.recoveryPoint
-                                                )
+                                                const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
+                                                    if (rec.trim('').toLowerCase()==='cash'){
+                                                        return rec.trim('')
+                                                    }else{
+                                                        return Number(rec.trim(''))
+                                                    }
+                                                }).filter((fltRec)=>{
+                                                    return fltRec !== 'cash'
+                                                })
+                                                let accRecs = String(field.recoveryReceipt).split(',').filter((rec)=>{
+                                                    return rec.trim('').toLowerCase()!=='cash'
+                                                })
+                                                let accRecFiltered = accRecs.filter((fltRec)=>{
+                                                    return (
+                                                        (payrec.paymentReceipt === Number(fltRec) 
+                                                        || payRecs.includes(Number(fltRec)))
+                                                        && payrec.paymentPoint === field.recoveryPoint
+                                                    )
+                                                })
+                                                return accRecFiltered.length > 0
                                             })
                                             if (usedReceipt){
                                                 voidReceipts.push(usedReceipt)
@@ -3530,10 +3546,27 @@ const Sales = ()=>{
                                             let voidReceipts1 = []
                                             recoveryFields.forEach((field)=>{
                                                 let voidReceipts2 = paymentReceipts.filter((payrec)=>{
-                                                    return(
-                                                        payrec.paymentReceipt > Number(field.paymentReceipt)
-                                                        && payrec.paymentPoint === field.recoveryPoint && payrec.paymentDate < field.recoveryDate
-                                                    )
+                                                    const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
+                                                        if (rec.trim('').toLowerCase()==='cash'){
+                                                            return rec.trim('')
+                                                        }else{
+                                                            return Number(rec.trim(''))
+                                                        }
+                                                    }).filter((fltRec)=>{
+                                                        return fltRec !== 'cash'
+                                                    })
+                                                    let accRecs = String(field.recoveryReceipt).split(',').filter((rec)=>{
+                                                        return rec.trim('').toLowerCase()!=='cash'
+                                                    })
+                                                    let accRecFiltered = accRecs.filter((fltRec)=>{
+                                                        payRecs.forEach((prtRec)=>{
+                                                            return(
+                                                                String(fltRec).toLowerCase()!=='cash' && Number(prtRec) > Number(fltRec)
+                                                                && payrec.paymentPoint === field.recoveryPoint && payrec.paymentDate < field.recoveryDate
+                                                            )
+                                                        })
+                                                    })
+                                                    return accRecFiltered.length > 0                                                    
                                                 })
                                                 if(voidReceipts2.length){
                                                     voidReceipts1 = voidReceipts1.concat(voidReceipts2)                                                    
