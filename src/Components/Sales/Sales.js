@@ -197,22 +197,22 @@ const Sales = ()=>{
     
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getApprovals(cmp_val)
         getAllSessions(cmp_val)
         getSales(cmp_val)
         getEmployees(cmp_val)
         getRentals(cmp_val)
         getAccommodations(cmp_val)
-        getApprovals(cmp_val)
         const intervalId = setInterval(()=>{
             if (cmp_val){
+                getApprovals(cmp_val)
                 getSales(cmp_val)
                 getEmployees(cmp_val)
                 getRentals(cmp_val)
                 getAccommodations(cmp_val)
                 getAllSessions(cmp_val)
-                getApprovals(cmp_val)
             }
-        },60000)
+        },30000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -239,7 +239,6 @@ const Sales = ()=>{
 
     useEffect(()=>{
         var accommodationRecord = []
-        setAccommodationRecords([])
         const postingDate1 = postingDate
         var ct=0
         sales.forEach((sale)=>{
@@ -302,14 +301,13 @@ const Sales = ()=>{
                 }
             })
         }
-        if (accommodationRecords.length < accommodationRecord){
+        if (accommodationRecords !== accommodationRecord){
             setAccommodationRecords(accommodationRecord)
         }
     },[accommodations, postingDate, isView, saleEmployee]) 
 
     useEffect(()=>{
         var sessionSalesRecord = []
-        setSessionSalesRecords([])
         var wrhPoints = []
         wrhs.forEach((wh)=>{
             if (!wh.purchase){
@@ -606,7 +604,7 @@ const Sales = ()=>{
         }else{
             setActiveSessions([])
         }
-        if (sessionSalesRecords.length < sessionSalesRecord.length){
+        if (sessionSalesRecords !== sessionSalesRecord){
             setSessionSalesRecords(sessionSalesRecord)
         }
     },[allSessions, postingDate, isView, saleEmployee])
@@ -615,7 +613,6 @@ const Sales = ()=>{
         const findKitchenField = fields.find((field)=>{return field.isSplit})
         if (findKitchenField){
             const kitchenRecords1 = []
-            setKitchenRecords([])
             const kitchenSalesPersons = []
             fields.forEach((record)=>{
                 if (!kitchenSalesPersons.includes(record.kitchenEmployeeId)){
@@ -657,7 +654,7 @@ const Sales = ()=>{
                 })
                 kitchenRecords1.push(kitchenRecord)
             })
-            if (kitchenRecords.length < kitchenRecords1.length){
+            if (kitchenRecords.length !== kitchenRecords1){
                 setKitchenRecords(kitchenRecords1)
             }
         }
@@ -1036,10 +1033,12 @@ const Sales = ()=>{
                 return field
             })
             return [...newFields]
-        })      
-        setAccommodationRecords([])
-        setSessionSalesRecords([])
-        setKitchenRecords([])         
+        }) 
+        setTimeout(()=>{
+            setAccommodationRecords([])
+            setSessionSalesRecords([])
+            setKitchenRecords([])         
+        },500)     
     }
 
     const isProductAvailable = (validEntries)=>{
@@ -1390,29 +1389,28 @@ const Sales = ()=>{
                 setIsView(true)
                 setFields([...(newSale.record)])
                 getSales(company)
-                const transactions = await getSalesProducts(company, newSale); 
-                if (transactions.length){
-                    const validEntries = {}
-                    wrhs.forEach(async(wh)=>{   
-                        var ctent = 0
-                        validEntries[wh.name]=[] 
-                        transactions.forEach((transaction)=>{
-                            if (transaction.location === wh.name){
-                                ctent++
-                                validEntries[wh.name].push(transaction)
-                            }
-                        })        
-                        if (!ctent){
-                            delete validEntries[wh.name]
-                        }
-                    })               
-                    setSalesEntries({...validEntries})
-                }
-                
                 setAlertState('success')
                 setAlert('Sales Posted Successfully!')
                 setAlertTimeout(5000)
                 setPostStatus('Post Sales')
+                // const transactions = await getSalesProducts(company, newSale); 
+                // if (transactions.length){
+                //     const validEntries = {}
+                //     wrhs.forEach(async(wh)=>{   
+                //         var ctent = 0
+                //         validEntries[wh.name]=[] 
+                //         transactions.forEach((transaction)=>{
+                //             if (transaction.location === wh.name){
+                //                 ctent++
+                //                 validEntries[wh.name].push(transaction)
+                //             }
+                //         })        
+                //         if (!ctent){
+                //             delete validEntries[wh.name]
+                //         }
+                //     })               
+                //     setSalesEntries({...validEntries})
+                // }                            
                 return true
             }
         }
