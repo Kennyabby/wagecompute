@@ -316,6 +316,7 @@ const Accommodation = ()=>{
             setAlert(resps.mess)
             setAlertTimeout(5000)
             setAccommodationStatus('Post Accommodation')
+            accommodationFields.posted = false
         }else{
             setAccommodations(newAccommodations)
             setCurAccomodation(newAccommodation)
@@ -1594,7 +1595,7 @@ const Accommodation = ()=>{
                                                         }).filter((fltRec)=>{
                                                             return fltRec !== 'cash'
                                                         })
-                                                        let accRecs = String(accommodationFields.paymentReceipt).split(',').map((rec)=>{
+                                                        let accRecs = String(accommodationFields.paymentReceipt).split(',').filter((rec)=>{
                                                             return rec.trim('').toLowerCase()!=='cash'
                                                         })
                                                         let accRecFiltered = accRecs.filter((fltRec)=>{
