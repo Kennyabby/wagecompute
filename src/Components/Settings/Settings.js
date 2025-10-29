@@ -187,7 +187,8 @@ const Settings = () => {
                     enableLogin: loginDetails.enableLogin,
                     enableDebtRecovery: loginDetails.enableDebtRecovery,
                     sessionId:'',
-                    status: 'user'
+                    status: 'user',
+                    access:'user'
                 }
                 const resps = await fetchServer("POST", {
                     database: company,
