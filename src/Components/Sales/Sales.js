@@ -239,6 +239,7 @@ const Sales = ()=>{
 
     useEffect(()=>{
         var accommodationRecord = []
+        setAccommodationRecords([])
         const postingDate1 = postingDate
         var ct=0
         sales.forEach((sale)=>{
@@ -301,11 +302,14 @@ const Sales = ()=>{
                 }
             })
         }
-        setAccommodationRecords(accommodationRecord)
+        if (accommodationRecords.length < accommodationRecord){
+            setAccommodationRecords(accommodationRecord)
+        }
     },[accommodations, postingDate, isView, saleEmployee]) 
 
     useEffect(()=>{
-        var sessionSalesRecords = []
+        var sessionSalesRecord = []
+        setSessionSalesRecords([])
         var wrhPoints = []
         wrhs.forEach((wh)=>{
             if (!wh.purchase){
@@ -594,7 +598,7 @@ const Sales = ()=>{
                             Object.keys(salesUnits1).forEach((saleUnit)=>{
                                 saleRecord[saleUnit] = salesUnits1[saleUnit]
                             })
-                            sessionSalesRecords.push(saleRecord)
+                            sessionSalesRecord.push(saleRecord)
                         }
                     })
                 }              
@@ -602,13 +606,16 @@ const Sales = ()=>{
         }else{
             setActiveSessions([])
         }
-        setSessionSalesRecords(sessionSalesRecords)
+        if (sessionSalesRecords.length < sessionSalesRecord.length){
+            setSessionSalesRecords(sessionSalesRecord)
+        }
     },[allSessions, postingDate, isView, saleEmployee])
 
     useEffect(()=>{
         const findKitchenField = fields.find((field)=>{return field.isSplit})
         if (findKitchenField){
-            const kitchenRecords = []
+            const kitchenRecords1 = []
+            setKitchenRecords([])
             const kitchenSalesPersons = []
             fields.forEach((record)=>{
                 if (!kitchenSalesPersons.includes(record.kitchenEmployeeId)){
@@ -648,9 +655,11 @@ const Sales = ()=>{
                 Object.keys(salesUnits1).forEach((saleUnit)=>{
                     kitchenRecord[saleUnit] = salesUnits1[saleUnit]
                 })
-                kitchenRecords.push(kitchenRecord)
+                kitchenRecords1.push(kitchenRecord)
             })
-            setKitchenRecords(kitchenRecords)
+            if (kitchenRecords.length < kitchenRecords1.length){
+                setKitchenRecords(kitchenRecords1)
+            }
         }
     },[fields])
 
@@ -1009,20 +1018,28 @@ const Sales = ()=>{
         setDebtCalculated(true)
         setFields((fields)=>{
             const newFields = [...accommodationRecords, ...sessionSalesRecords, ...kitchenRecords, ...fields].map((field)=>{
-                const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
+                let netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
+                if (field.isSession){
+                    if (curSale === null){
+                        netTotal -= Number(field.debt)
+                    }else{
+                        if (field.unAccountedSales){
+                            netTotal -= (Number(field.debt)-Number(field.unAccountedSales))
+                        }
+                    }
+                }
                 const debtDue = Number(field.totalSales) - netTotal 
                 if (debtDue){
                     field.debt = Number(field.debt) + debtDue
+                    field.debtAccepted = true
                 }
                 return field
             })
             return [...newFields]
         })      
-        debtCalcInterval = setInterval(()=>{
-            setAccommodationRecords([])
-            setSessionSalesRecords([])
-            setKitchenRecords([])
-        }, 500)  
+        setAccommodationRecords([])
+        setSessionSalesRecords([])
+        setKitchenRecords([])         
     }
 
     const isProductAvailable = (validEntries)=>{
@@ -1117,7 +1134,10 @@ const Sales = ()=>{
                     accommodationAmount += Number(saleRecord.totalSales)
                 }
                 if (saleRecord.isSession){
-                    sessionSalesAmount += (Number(saleRecord.totalSales) - Number(saleRecord.unAccountedSales? saleRecord.unAccountedSales: 0) - Number(saleRecord.shortage))
+                    if (saleRecord.isSession){
+                        sessionSalesAmount += Number(saleRecord.cashSales) + Number(saleRecord.bankSales) + Number(saleRecord.debt) + Number(saleRecord.shortage)
+                        sessionSalesAmount -= (Number(saleRecord.unAccountedSales ? saleRecord.unAccountedSales : 0) + Number(saleRecord.shortage))
+                    }
                 }
             })
             const totalSalesAmount = Number(totalCashSales)+Number(totalBankSales)+Number(totalDebt)+Number(totalShortage) - accommodationAmount - sessionSalesAmount
@@ -1359,6 +1379,7 @@ const Sales = ()=>{
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
                 setPostStatus('Post Sales')
+                return true
             }else{
                 setSales(newSales)
                 setCurApproval(null)
@@ -1392,6 +1413,7 @@ const Sales = ()=>{
                 setAlert('Sales Posted Successfully!')
                 setAlertTimeout(5000)
                 setPostStatus('Post Sales')
+                return true
             }
         }
     }
@@ -3089,7 +3111,19 @@ const Sales = ()=>{
                             </div>
                         </div>}
                         {salesOpts==='sales' && [...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords), ...fields].map((field, index)=>{
-                            const netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
+                            let netTotal = Number(field.cashSales) + Number(field.bankSales)+ Number(field.debt) + Number(field.shortage)
+   
+                            if (field.isSession){
+                                if(field.debtAccepted){
+                                    netTotal -= (Number(field.debt)-Number(field.unAccountedSales || 0))                                  
+                                }else{
+                                    if (curSale === null){
+                                        netTotal -= Number(field.debt)
+                                    }else{
+                                        netTotal -= (Number(field.debt)-Number(field.unAccountedSales || 0))                                        
+                                    }
+                                }
+                            }
                             // console.log('employeeId:', field.employeeId, 'sales:', field.totalSales, 'cash:', field.cashSales, 'bank:',field.bankSales,'debt:', field.debt, 'shortage:', field.shortage, 'net:', netTotal, 'difference:', field.totalSales-netTotal) 
                             if (!isView && !field.isAccommodation && !field.isSession && !field.isKitchen){
                                 field.isSplit = true
@@ -3370,12 +3404,12 @@ const Sales = ()=>{
                                                     setAlertState('error')
                                                     setAlert('You are not allowed to post sales!')
                                                     setAlertTimeout(3000)
-                                                    clearInterval(debtCalcInterval)
+                                                    // clearInterval(debtCalcInterval)
                                                     return
                                                 }                
                                             }
                                             runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
-                                            clearInterval(debtCalcInterval)
+                                            // clearInterval(debtCalcInterval)
                                         }else{
                                             setAlertState('error')
                                             setAlert('You still have active POS/Delivery sessions for this posting date. Please end them before posting!')
@@ -3383,8 +3417,23 @@ const Sales = ()=>{
                                         }
                                     }
                                     data.forEach((field)=>{
-                                        const enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
+                                        let enteredSales = Number(field.cashSales) + Number(field.bankSales) + 
                                         Number(field.debt) + Number(field.shortage)
+                                        if (field.isSession){
+                                            if(field.debtAccepted){
+                                                if(field.unAccountedSales){
+                                                    enteredSales -= (Number(field.debt)-Number(field.unAccountedSales))
+                                                }
+                                            }else{
+                                                if (curSale === null){
+                                                    enteredSales -= Number(field.debt)
+                                                }else{
+                                                    if (field.unAccountedSales){
+                                                        enteredSales -= (Number(field.debt)-Number(field.unAccountedSales))
+                                                    }
+                                                }
+                                            }
+                                        }
                                         if (Math.round(enteredSales) === Number(field.totalSales)){
                                             rt++
                                             if (rt===data.length){
@@ -3815,12 +3864,13 @@ const AddProduct = ({
             } = (curSale || {})
             var accommodationAmount = 0
             let sessionSalesAmount = 0
+            console.log('start: 0')
             record.forEach((saleRecord)=>{
                 if (saleRecord.salesPoint === 'accomodation'){
                     accommodationAmount += Number(saleRecord.totalSales)
                 }
                 if (saleRecord.isSession){
-                    sessionSalesAmount += (Number(saleRecord.totalSales))
+                    sessionSalesAmount += Number(saleRecord.cashSales) + Number(saleRecord.bankSales) + Number(saleRecord.debt) + Number(saleRecord.shortage)
                     if (!isProductView){
                         sessionSalesAmount -= (Number(saleRecord.unAccountedSales ? saleRecord.unAccountedSales : 0) + Number(saleRecord.shortage))
                     }
