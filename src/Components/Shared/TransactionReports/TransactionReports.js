@@ -562,6 +562,49 @@ const TransactionReports = ({
                                     )}
                                 </div>
                             </div>
+                            <div className="session-header-main">
+                                <h3 style={{marginTop: '8px'}}>Entered Closing Record:</h3>
+                                <div className="session-meta">
+                                    <span className="session-date">
+                                        {`MP1: ${(session.moniepoint1 || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`MP2: ${(session.moniepoint2 || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`MP3: ${(session.moniepoint3 || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`MP4: ${(session.moniepoint4 || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`CASH: ${(session.cash || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`CASH CHANGE: ${(session.totalCashChange || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`TOTAL: ${(Number(session.moniepoint1 || 0) + Number(session.moniepoint2 || 0) + Number(session.moniepoint3 || 0) + Number(session.moniepoint4 || 0) + Number(session.cash || 0)).toLocaleString()}`}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="session-header-main">
+                                <h3 style={{marginTop: '8px'}}>Debts:</h3>
+                                <div className="session-meta">
+                                    <span className="session-date">
+                                        {`SALES DEBT: ${(session.debtDue || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`PENDING: ${(session.pendingSales || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`UNACCOUNTED: ${(session.unAccountedSales || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`TOTAL DEBT: ${(Number(session.debtDue || 0) + Number(session.pendingSales || 0) + Number(session.unAccountedSales || 0)).toLocaleString()}`}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         <div className="session-stats">
                             <div className="stat">
