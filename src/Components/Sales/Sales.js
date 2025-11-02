@@ -2469,6 +2469,12 @@ const Sales = ()=>{
                             if (approved){
                                 textColor ='green'
                             }
+                            const foundDebtReasons = []
+                            data.recoveryFields.forEach((recoveryField)=>{
+                                if (Number(recoveryField.recoveryReason || 0) > 1){
+                                    foundDebtReasons.push(recoveryField.recoveryReason)
+                                }
+                            })
                             return (
                                 <div className={'dept sldept' + (curApproval?.createdAt===createdAt?' curview':'')} key={index} 
                                     onClick={(e)=>{
@@ -2481,10 +2487,11 @@ const Sales = ()=>{
                                         <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
                                         {message && <div>Message: <b>{message}</b></div>}
                                         <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
-                                        {isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
-                                            data?.voidReceipt && 
-                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}" already used on {data?.voidReceipt.voidReceiptDate} in {data?.voidReceipt.voidReceiptPoint.toUpperCase()}. <a>Click to Find Receipt Report</a></div>
-                                        }</div>}
+                                        {isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>
+                                            {foundDebtReasons.length>0 && <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> {recoveryReasons[(foundDebtReasons[0])]}</div>}
+                                             {data?.voidReceipt && 
+                                            <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}" already used on {data?.voidReceipt.voidReceiptDate} in {data?.voidReceipt.voidReceiptPoint.toUpperCase()}. <a>Click to Find Receipt Report</a></div>}
+                                        </div>}
                                     </div>
                                     {(companyRecord.status==='admin' && !saleEmployee) && <div 
                                         className='edit'
@@ -2821,7 +2828,7 @@ const Sales = ()=>{
                                             name='recoveryReceipt'
                                             type='text'
                                             placeholder='Enter Receipt Number'
-                                            disabled={field.recoveryPoint === 'Employee' || (isView && companyRecord.status!=='admin')}
+                                            disabled={field.recoveryPoint === 'Employee' || (isView && (companyRecord.status!=='admin' || companyRecord?.permissions.includes('allow_recovery_posts')))}
                                             value={field.recoveryReceipt}
                                             onChange={(e)=>{
                                                 handleRecoveryFieldChange({index, e})
@@ -2899,7 +2906,7 @@ const Sales = ()=>{
                                                 type='text'
                                                 placeholder='Recovery Reason'
                                                 value={field.recoveryReason}
-                                                disabled={!field.recoverySales || (isView && companyRecord.status!=='admin')}
+                                                disabled={!field.recoverySales || (isView && (companyRecord.status!=='admin' || companyRecord?.permissions.includes('allow_recovery_posts')))}
                                                 onChange={(e)=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
@@ -3507,6 +3514,7 @@ const Sales = ()=>{
                                     var ct2=0
                                     var ct3=0
                                     var ct4=0
+                                    var foundDebtReasons = []
                                     var requiredNo = recoveryFields.length
                                     recoveryFields.forEach((recoveryField)=>{
                                         const {recoveryReason, recoveryReceipt, recoveryAmount, recoveryDate, recoveryPoint} = recoveryField
@@ -3524,6 +3532,9 @@ const Sales = ()=>{
                                         }
                                         if (recoveryReason){
                                             ct4++
+                                            if (Number(recoveryReason || 0) > 1){
+                                                foundDebtReasons.push(recoveryReason)
+                                            }
                                         }
                                     })
                                     if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo && ct4===requiredNo){
@@ -3578,10 +3589,13 @@ const Sales = ()=>{
                                             }
                                             recoveryData.voidReceipt = voidReceiptDetails
                                             if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approveRecovery')){
-                                                setAlertState('error')
-                                                setAlert(`Receipt Number Already Used For ${recoveryPoints.join(', ')} Payment Point(s)`);
-                                                setAlertTimeout(5000)
-                                                return
+                                                if (foundDebtReasons.length && foundDebtReasons.length === voidReceipts.length){
+                                                }else{
+                                                    setAlertState('error')
+                                                    setAlert(`Receipt Number Already Used For ${recoveryPoints.join(', ')} Payment Point(s)`);
+                                                    setAlertTimeout(5000)
+                                                    return
+                                                }
                                             }
                                         }else{
                                             let voidReceipts1 = []
