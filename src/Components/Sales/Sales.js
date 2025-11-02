@@ -234,7 +234,7 @@ const Sales = ()=>{
                 getAccommodations(cmp_val)
                 getAllSessions(cmp_val)
             }
-        },30000)
+        },20000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -2568,7 +2568,7 @@ const Sales = ()=>{
                                 textColor ='green'
                             }
                             const foundDebtReasons = []
-                            data.recoveryFields.forEach((recoveryField)=>{
+                            data?.recoveryFields?.forEach((recoveryField)=>{
                                 if (Number(recoveryField.recoveryReason || 0) > 1){
                                     foundDebtReasons.push(recoveryField.recoveryReason)
                                 }
