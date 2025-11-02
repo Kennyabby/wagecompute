@@ -2586,7 +2586,7 @@ const Sales = ()=>{
                                         {message && <div>Message: <b>{message}</b></div>}
                                         <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
                                         {isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>
-                                            {foundDebtReasons.length>0 && <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> {recoveryReasons[(foundDebtReasons[0])]}</div>}
+                                            {foundDebtReasons.length>0 && <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> {recoveryReasons[Number(foundDebtReasons[0])-1].value}</div>}
                                              {data?.voidReceipt && 
                                             <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{data?.voidReceipt.voidReceipt}" already used on {data?.voidReceipt.voidReceiptDate} in {data?.voidReceipt.voidReceiptPoint.toUpperCase()}. <a>Click to Find Receipt Report</a></div>}
                                         </div>}
