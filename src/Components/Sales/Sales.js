@@ -1,5 +1,6 @@
 import './Sales.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal';
+import heic2any from "heic2any";
 import { useState, useEffect, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
@@ -9,6 +10,7 @@ import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf, { f } from 'html2pdf.js';
 import SalesReport from './SalesReport/SalesReport';
 import RentalReceipt from './RentalReceipt/RentalReceipt';
+import { uploadFile, updateFile, getFileUrl, deleteFile, createFolder } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 import DebtReport from './DebtReport/DebtReport';
 import Notify from '../../Resources/Notify/Notify';
 import { MdAdd } from "react-icons/md";
@@ -125,6 +127,11 @@ const Sales = ()=>{
     const scrollRef = useRef(null)
     const loadRef = useRef(null)
     const getEntriesController = useRef(null)
+
+    const [imageUpload, setImageUpload] = useState(null)
+    const [uploadingReceipt, setUploadingReceipt] = useState(false)
+    const [deletingReceipt, setDeletingReceipt] = useState(false)
+
     const defaultFields = {
         employeeId: '',
         totalSales: '',
@@ -2023,6 +2030,97 @@ const Sales = ()=>{
             },12000)
         }
     }
+
+    const handleImageSelect = async (e)=>{
+        const file = e.target.files[0]
+        let blob = file;
+        // ✅ Convert HEIC to JPEG if necessary
+        if (file.type === "image/heic" || file.name.endsWith(".heic")) {
+            try {                
+                const converted = await heic2any({
+                    blob: file,
+                    toType: "image/jpeg",
+                    quality: 0.9,
+                });
+                blob = converted;
+            } catch (err) {
+                setAlertState('error')
+                setAlert(`Image conversion failed: ${err}`)
+                setAlertTimeout(3000)
+                return
+            }
+        }
+
+        setImageUpload(blob)
+    }
+
+    const handleImageUpload = async (imageUpload)=>{
+        if (!imageUpload) {
+            setAlertState('error')
+            setAlert("Please select an image first")
+            setAlertTimeout(3000);
+            return
+        }
+        setUploadingReceipt(true)
+        setAlertState('info')
+        setAlert('Uploading Receipt...')
+        setAlertTimeout(100000)
+        const collection = 'Approvals'
+        const createdAt = curApproval.createdAt
+        const res = await uploadFile(
+            imageUpload, company+"/Payment Receipts", 
+            createdAt, company, collection, server
+        ); 
+        if (res.mess){
+            setUploadingReceipt(false)
+            setAlertState('error')
+            setAlert(res.mess)
+            setAlertTimeout(3000)
+            return
+        }
+        if (res?.downloadLink){
+            getApprovals(company)
+            
+            setUploadingReceipt(false)
+            setAlertState('success')
+            setAlert('Receipt Uploaded Successfully!')
+            setAlertTimeout(3000)
+        }
+    }
+
+    const handleImageDelete = async (imgId)=>{
+        setDeletingReceipt(true)
+        setAlertState('info')
+        setAlert('Deleting Receipt...')
+        setAlertTimeout(100000)
+        const res = await deleteFile(imgId, server)
+        if (res.success){
+            const updatedApprovals = {
+                imgId: null,
+                viewLink: null,
+                downloadLink: null,                
+                receiptLastDeletedBy: companyRecord?.emailid
+            }
+
+            const resp = await fetchServer('POST', {
+                database: company,
+                collection: 'Approvals',
+                prop: [{createdAt: curApproval.createdAt}, {...updatedApprovals}]                
+            }, 'updateOneDoc', server)
+            if (resp.updated){
+                getApprovals(company)
+                setDeletingReceipt(false)
+                setAlertState('success')
+                setAlert('Receipt Deleted Successfully!')
+                setAlertTimeout(3000)
+            }
+        }else{
+            setDeletingReceipt(false)
+            setAlertState('error')
+            setAlert('Error Deleting Receipt. Check your network!')
+            setAlertTimeout(3000)
+        }
+    }
     return (
         <>
             <div className='sales'>   
@@ -2983,6 +3081,52 @@ const Sales = ()=>{
                                                 }}
                                             />
                                         </div>
+                                        {field.recoveryReceipt?.toLowerCase() !== 'cash' && field.recoveryPoint && <section className='imgview'>
+                               
+                                            <div className='acpymdt'>Upload Payment Receipt</div>
+                                            
+                                            {(field.imgId || imageUpload) &&                                             
+                                                <a href={field?.viewLink || ''} target="_blank" rel="noopener noreferrer">                        
+                                                    <img className='imgtag' src={(field?.imgId? `https://drive.google.com/thumbnail?id=${field.imgId}&sz=w1000`: '') || (imageUpload? (URL.createObjectURL(imageUpload)): '')} 
+                                                        alt='receipt'
+                                                    />
+                                                </a>
+                                            }
+                                            {!imageUpload && !field.imgId && <div className='inpcov'>
+                                                <div>Upload Image</div>
+                                                <input 
+                                                    className='forminp'
+                                                    name='imgId'
+                                                    type='file'
+                                                    accept='image/*' 
+                                                    capture="environment"                                      
+                                                    onChange={(e)=>{
+                                                        handleImageSelect(e)
+                                                    }}
+                                                />
+                                            </div>}
+                                            {(!field.imgId) && <button 
+                                                className='imgupld'
+                                                style={{cursor: uploadingReceipt ? 'not-allowed': 'pointer'}}
+                                                disabled={uploadingReceipt}
+                                                onClick={()=>{
+                                                    handleImageUpload(imageUpload)
+                                                }}
+                                            > Upload</button>} 
+                                            {((((companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('edit_payment_receipts')) && field.imgId) || imageUpload) && <button 
+                                                className='imgupld'
+                                                color='red'
+                                                style={{cursor: deletingReceipt ? 'not-allowed': 'pointer'}}
+                                                disabled={deletingReceipt}
+                                                onClick={()=>{
+                                                    setImageUpload(null)
+                                                    if (field.imgId){
+                                                        handleImageDelete(field.imgId)
+                                                    }
+                                                }}
+                                            > Delete</button>)
+                                            }
+                                        </section>}
                                     </div>
                                 )
                             })
@@ -3660,13 +3804,12 @@ const Sales = ()=>{
                                             }
                                         }
                                     }else{
-                                        setActionMessage('')
                                         setAlertState('error')
                                         setAlert(
                                             `${ct<requiredNo?' "All Receipt Numbers Must Be Entered", ':''}\
-                                            ${ct2<requiredNo?' "All Recovery Reasons Must Be Specified", ':''}\
                                             ${ct1<requiredNo?' "All Recovery Amounts Must Be Greater Than 0", ':''}\
                                             ${ct3<requiredNo?' "All Recovery Points Must Be Selected", ':''}\
+                                            ${ct4<requiredNo?' "All Recovery Reasons Must Be Specified", ':''}\
                                             ${ct2<requiredNo?' "All Recovery Dates Must Be Specified", ':''}`
                                         )
                                         setAlertTimeout(3000)                                        
