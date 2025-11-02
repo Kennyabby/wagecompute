@@ -633,24 +633,32 @@ const Attendance = () =>{
                     {/* <pre>{JSON.stringify(excelData, null, 2)}</pre> */}
                 </div>:
                 <div style={{position:'relative'}}>
-                    {curApproval?.data && <button style={{postion: 'absolute'}} onClick={()=>{
-                        const headers = Object.keys(curApproval?.data?.record[0]);
-                        const rows = curApproval?.data?.record.map(obj => headers.map(header => obj[header]));
-
-                        let csvContent =
-                        headers.join(",") +
-                        "\n" +
-                        rows.map(e => e.join(",")).join("\n");
-
-                        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-
-                        link.href = url;
-                        link.setAttribute("download", "attendance_record.csv");
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                    {<button style={{position: 'absolute', top: '0px', right: '0px'}} onClick={()=>{
+                        const data = curApproval?.data ? curApproval?.data?.record : attendance.find((att)=>{return String(att.no) === String(viewNo)})?.record
+                        if (data){
+                            
+                            const headers = Object.keys(data[0]);
+                            const rows = data.map(obj => headers.map(header => obj[header]));
+    
+                            let csvContent =
+                            headers.join(",") +
+                            "\n" +
+                            rows.map(e => e.join(",")).join("\n");
+    
+                            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+    
+                            link.href = url;
+                            link.setAttribute("download", "attendance_record.csv");
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }else{
+                            setAlertState('error')
+                            setAlert('No Data Available to Export')
+                            setAlertTimeout(3000)
+                        }
                     }}>
                         Export Attendance
                     </button>}
