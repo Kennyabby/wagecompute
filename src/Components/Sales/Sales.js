@@ -3081,7 +3081,7 @@ const Sales = ()=>{
                                                 }}
                                             />
                                         </div>
-                                        {field.recoveryReceipt?.toLowerCase() !== 'cash' && field.recoveryPoint && <section className='imgview'>
+                                        {false && field.recoveryReceipt?.toLowerCase() !== 'cash' && field.recoveryPoint && <section className='imgview'>
                                
                                             <div className='acpymdt'>Upload Payment Receipt</div>
                                             
