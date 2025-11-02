@@ -1047,7 +1047,7 @@ const Sales = ()=>{
                         }
                     }
                 }
-                const debtDue = Number(field.totalSales) - netTotal 
+                const debtDue = Math.round(Number(field.totalSales)) - Math.round(netTotal )
                 if (debtDue){
                     field.debt = Number(field.debt) + debtDue
                     field.debtAccepted = true
@@ -3626,7 +3626,7 @@ const Sales = ()=>{
                                                 validateSales()
                                             }
                                         }else{
-                                            if (Math.round(enteredSales) < Number(field.totalSales)){
+                                            if (Math.round(enteredSales) < Math.round(Number(field.totalSales))){
                                                 ct++
                                             }else if (Math.round(enteredSales) > Math.round(Number(field.totalSales))){
                                                 wt++
