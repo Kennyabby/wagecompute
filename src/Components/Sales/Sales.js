@@ -3628,7 +3628,7 @@ const Sales = ()=>{
                                         }else{
                                             if (Math.round(enteredSales) < Number(field.totalSales)){
                                                 ct++
-                                            }else if (Math.round(enteredSales) > Number(field.totalSales)){
+                                            }else if (Math.round(enteredSales) > Math.round(Number(field.totalSales))){
                                                 wt++
                                             }
                                         }
