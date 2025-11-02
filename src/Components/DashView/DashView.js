@@ -1207,7 +1207,9 @@ const DashView = () =>{
                         <h3>Sales</h3>
                         <div className='amount'>₦ {fmt(kpis.salesAmount || 0)}</div>
                     </div> */}
-                    <div className='financial-card'>
+                    <div className='financial-card' onClick={()=>{
+                        navigate('/inventory')
+                    }}>
                         <h3>COGS</h3>
                         <div className='amount'>₦ {fmt(kpis.cogs || 0)}</div>
                     </div>
@@ -1217,7 +1219,9 @@ const DashView = () =>{
                             ₦ {fmt(kpis.grossProfit || 0)}
                         </div>
                     </div>
-                    <div className='financial-card'>
+                    <div className='financial-card' onClick={()=>{
+                        navigate('/expenses')
+                    }}>
                         <h3>Total Expenses</h3>
                         <div className='amount'>₦ {fmt(kpis.expensesAmount || 0)}</div>
                     </div> 
@@ -1233,7 +1237,9 @@ const DashView = () =>{
 
                 {/* KPIs */}
                 <div className='kpi-grid'>
-                    <div className='kpi-card'>
+                    <div className='kpi-card' onClick={()=>{
+                        navigate('/inventory')
+                    }}>
                         <div className='kpi-label'>Product Sales Amount</div>
                         <div className='kpi-value'>₦ {fmt(kpis.salesAmount)}</div>
                         <div className='kpi-sub'>{fmt(kpis.salesQty)} units</div>
@@ -1247,15 +1253,21 @@ const DashView = () =>{
                             </div>
                         )}
                     </div>
-                    <div className='kpi-card'>
+                    <div className='kpi-card' onClick={()=>{
+                        navigate('/accommodations')
+                    }}>
                         <div className='kpi-label'>Accommodations</div>
                         <div className='kpi-value'>₦ {fmt(kpis.accommodationsAmount)}</div>
                     </div>
-                    <div className='kpi-card'>
-                        <div className='kpi-label'>Rentals</div>
+                    <div className='kpi-card' onClick={()=>{
+                        navigate('/sales')
+                    }}>
+                        <div className='kpi-label' >Rentals</div>
                         <div className='kpi-value'>₦ {fmt(kpis.rentalsAmount)}</div>
                     </div>
-                    <div className='kpi-card'>
+                    <div className='kpi-card' onClick={()=>{
+                        navigate('/sales')
+                    }}> 
                         <div className='kpi-label'>Debts</div>
                         <div className='kpi-value'>₦ {fmt(kpis.debtTotal)}</div>
                         <div className='kpi-sub'>Recovered: ₦ {fmt(kpis.debtRecovered)}</div>
@@ -1268,7 +1280,9 @@ const DashView = () =>{
                         <div className='kpi-sub'>₦ {fmt(kpis.inventoryValue)} (Cost value)</div>
                         <div className='kpi-sub'>₦ {fmt(kpis.inventorySales)} (Sales value)</div>
                     </div>
-                    <div className='kpi-card'>
+                    <div className='kpi-card' onClick={()=>{
+                        navigate('/purchase')
+                    }}>
                         <div className='kpi-label'>Direct Purchases</div>
                         <div className='kpi-value'>₦ {fmt(kpis.purchasesAmount)}</div>
                         <div className='kpi-sub'>{fmt(kpis.purchasesQty)} units</div>
@@ -1286,7 +1300,9 @@ const DashView = () =>{
                         <div className='kpi-label'>Gross Profit</div>
                         <div className='kpi-value'>₦ {fmt(kpis.grossProfit||0)}</div>
                     </div>
-                    <div className='kpi-card'>
+                    <div className='kpi-card' onClick={()=>{
+                        navigate('/expenses')
+                    }}>
                         <div className='kpi-label'>Expenses</div>
                         <div className='kpi-value'>₦ {fmt(kpis.expensesAmount)}</div>
                         {topExpenseCategories.length > 0 && (

@@ -42,6 +42,20 @@ const Sales = ()=>{
         paymentReceipts, obtainPaymentReceipts,            
     } = useContext(ContextProvider)
 
+    const recoveryReasons = [    
+        {
+            i_d: 1,
+            value: 'Sales Debt',
+        },
+        {
+            i_d: 2,
+            value: 'Unpresented POS Receipt',
+        },
+        {
+            i_d: 3,
+            value: 'Mismatched POS Pay Point',
+        }
+    ]
     const payPoints = {
         'moniepoint1':'', 'moniepoint2':'', 
         'moniepoint3':'', 'moniepoint4':'', 'cash':''
@@ -126,6 +140,7 @@ const Sales = ()=>{
     const defaultRecoveryFields = {
         recoveryReceipt: '',
         recoverySales: '',
+        recoveryReason: '',
         recoveryAmount: '',
         recoveryPoint: '',
         recoveryDate: '',
@@ -2806,7 +2821,7 @@ const Sales = ()=>{
                                             name='recoveryReceipt'
                                             type='text'
                                             placeholder='Enter Receipt Number'
-                                            disabled={field.recoveryPoint === 'Employee' || isView}
+                                            disabled={field.recoveryPoint === 'Employee' || (isView && companyRecord.status!=='admin')}
                                             value={field.recoveryReceipt}
                                             onChange={(e)=>{
                                                 handleRecoveryFieldChange({index, e})
@@ -2874,6 +2889,28 @@ const Sales = ()=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
                                             />
+                                        </div>
+                                        <div className='inpcov'>
+                                            <div>Recovery Reason</div>
+                                            <select 
+                                                className='forminp'
+                                                style={{cursor: field.recoverySales?'auto':'not-allowed'}}
+                                                name='recoveryReason'
+                                                type='text'
+                                                placeholder='Recovery Reason'
+                                                value={field.recoveryReason}
+                                                disabled={!field.recoverySales || (isView && companyRecord.status!=='admin')}
+                                                onChange={(e)=>{
+                                                    handleRecoveryFieldChange({index, e})
+                                                }}
+                                            >
+                                                <option value={''}>Recovery Reason</option>
+                                                {recoveryReasons.map((reason,index)=>{
+                                                    return (
+                                                        <option key={index} value={reason.i_d}>{`${reason.value}`}</option>
+                                                    )
+                                                })}
+                                            </select>
                                         </div>
                                         <div className='inpcov'>
                                             <div>Recovery Point</div>
@@ -3469,9 +3506,10 @@ const Sales = ()=>{
                                     var ct1=0
                                     var ct2=0
                                     var ct3=0
+                                    var ct4=0
                                     var requiredNo = recoveryFields.length
                                     recoveryFields.forEach((recoveryField)=>{
-                                        const {recoveryReceipt, recoveryAmount, recoveryDate, recoveryPoint} = recoveryField
+                                        const {recoveryReason, recoveryReceipt, recoveryAmount, recoveryDate, recoveryPoint} = recoveryField
                                         if (recoveryReceipt){
                                             ct++
                                         }
@@ -3484,8 +3522,11 @@ const Sales = ()=>{
                                         if (recoveryPoint){
                                             ct3++
                                         }
+                                        if (recoveryReason){
+                                            ct4++
+                                        }
                                     })
-                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo){
+                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo && ct4===requiredNo){
                                         const recoveryData = {
                                             recoveryFields,
                                             recoveryEmployeeId,
@@ -3608,12 +3649,13 @@ const Sales = ()=>{
                                         setActionMessage('')
                                         setAlertState('error')
                                         setAlert(
-                                            `${ct<requiredNo?' "All Receipt Number Must Be Entered", ':''}\
-                                            ${ct1<requiredNo?' "All Recovery Amount Must Be Greater Than 0", ':''}\
-                                            ${ct3<requiredNo?' "All Recovery Point Must Be Selected", ':''}\
-                                            ${ct2<requiredNo?' "All Recovery Date Must Be Specified", ':''}`
+                                            `${ct<requiredNo?' "All Receipt Numbers Must Be Entered", ':''}\
+                                            ${ct2<requiredNo?' "All Recovery Reasons Must Be Specified", ':''}\
+                                            ${ct1<requiredNo?' "All Recovery Amounts Must Be Greater Than 0", ':''}\
+                                            ${ct3<requiredNo?' "All Recovery Points Must Be Selected", ':''}\
+                                            ${ct2<requiredNo?' "All Recovery Dates Must Be Specified", ':''}`
                                         )
-                                        setAlertTimeout(10000)                                        
+                                        setAlertTimeout(3000)                                        
                                     }
                                 }
                             }}
