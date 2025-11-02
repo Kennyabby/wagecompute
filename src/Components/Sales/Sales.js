@@ -2926,7 +2926,7 @@ const Sales = ()=>{
                                             name='recoveryReceipt'
                                             type='text'
                                             placeholder='Enter Receipt Number'
-                                            disabled={field.recoveryPoint === 'Employee' || (isView && (companyRecord.status!=='admin' || !companyRecord?.permissions.includes('allow_recovery_posts')))}
+                                            disabled={field.recoveryPoint === 'Employee' || (isView && (companyRecord.status!=='admin' && !companyRecord?.permissions.includes('allow_recovery_posts')))}
                                             value={field.recoveryReceipt}
                                             onChange={(e)=>{
                                                 handleRecoveryFieldChange({index, e})
@@ -3004,7 +3004,7 @@ const Sales = ()=>{
                                                 type='text'
                                                 placeholder='Recovery Reason'
                                                 value={field.recoveryReason}
-                                                disabled={!field.recoverySales || (isView && (companyRecord.status!=='admin' || !companyRecord?.permissions.includes('allow_recovery_posts')))}
+                                                disabled={!field.recoverySales || (isView && (companyRecord.status!=='admin' && !companyRecord?.permissions.includes('allow_recovery_posts')))}
                                                 onChange={(e)=>{
                                                     handleRecoveryFieldChange({index, e})
                                                 }}
