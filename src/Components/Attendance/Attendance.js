@@ -3,7 +3,11 @@ import './Attendance.css'
 import {useEffect, useState, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
+import { mkConfig, generateCsv, asString } from "export-to-csv";
+
 import * as XLSX from 'xlsx';
+
+const csvConfig = mkConfig({ useKeysAsHeaders: true }); 
 
 const Attendance = () =>{
     const {storePath,
@@ -149,13 +153,14 @@ const Attendance = () =>{
         reader.readAsArrayBuffer(file);
     };
 
-    const addAttendace = async (year, month, newAttendace)=>{
+    const addAttendace = async (year, month, newAttendace, rawData)=>{
           const curNo = attendance.length+1
           const approvalData = {
             no:curNo,
             month,
             year,
-            payees:newAttendace,
+            payees: newAttendace,
+            record: rawData,
             createdAt: new Date(Date.now()).toISOString().slice(0, 10),
             lastUpdatedBy: companyRecord?.emailid,
             approvedBy: curApproval?.approvedBy || companyRecord?.emailid
@@ -627,9 +632,31 @@ const Attendance = () =>{
 
                     {/* <pre>{JSON.stringify(excelData, null, 2)}</pre> */}
                 </div>:
-                <div>
+                <div style={{position:'relative'}}>
+                    {curApproval?.data && <button style={{postion: 'absolute'}} onClick={()=>{
+                        const headers = Object.keys(curApproval?.data?.record[0]);
+                        const rows = curApproval?.data?.record.map(obj => headers.map(header => obj[header]));
+
+                        let csvContent =
+                        headers.join(",") +
+                        "\n" +
+                        rows.map(e => e.join(",")).join("\n");
+
+                        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+
+                        link.href = url;
+                        link.setAttribute("download", "attendance_record.csv");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }}>
+                        Export Attendance
+                    </button>}
                     {
                         (curApproval? [...attendance, {...curApproval.data}] : attendance).map((att, id)=>{
+
                             if (String(att.no) === String(viewNo)){
                                 const {payees} = att
                                 return <div key={id}>
