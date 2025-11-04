@@ -312,10 +312,10 @@ const Attendance = () =>{
                 newRow['Total Pay'] = totalPay
                 analyzedData = analyzedData.concat(newRow)
             })
-            addAttendace(year, month, analyzedData)
+            addAttendace(year, month, analyzedData, rawData)
         }else{
-            const {year, month, payees} = curApproval.data
-            addAttendace(year, month, payees)
+            const {year, month, payees, record} = curApproval.data
+            addAttendace(year, month, payees, record)
         }
     }
     const handleButtonClick = () => {
