@@ -241,7 +241,7 @@ const Sales = ()=>{
 
     useEffect(()=>{
         const ftrsales = sales.sort((a,b) =>{return new Date(b.postingDate).getTime() > new Date(a.postingDate)})
-        const pendings = ftrsales.slice(1,5).filter((sl)=>{
+        const pendings = ftrsales.slice(1,20).filter((sl)=>{
             let unAccountedSalesDebt = 0
             const record = sl.record
             record.forEach((rec)=>{
