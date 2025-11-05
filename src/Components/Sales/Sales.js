@@ -247,7 +247,7 @@ const Sales = ()=>{
             record.forEach((rec)=>{
                 unAccountedSalesDebt += Number(rec.unAccountedSales || 0)         
             })
-            return ((!sl.productsRef && unAccountedSalesDebt > 0) && sl.postingDate < postingDate)
+            return ((!sl.productsRef && unAccountedSalesDebt >=200) && sl.postingDate < postingDate)
         })
         setPendingSales(pendings)
     },[sales, postingDate])
@@ -2387,7 +2387,7 @@ const Sales = ()=>{
                             })
                             let adjProductsRef = productsRef ? productsRef : null
                             
-                            if (!unAccountedSalesDebt){
+                            if (Math.round(unAccountedSalesDebt) < 200){
                                 adjProductsRef = 'auto-generated'
                                 sale.productsRef = 'auto-generated'                                
                             }
