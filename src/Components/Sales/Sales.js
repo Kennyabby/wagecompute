@@ -529,7 +529,7 @@ const Sales = ()=>{
                             const sessionOrders = session?.orders || []
                             sessionOrders.forEach((sessionOrder)=>{
                                 if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
-                                    && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales) && session.end && sessionOrder.status === 'completed'
+                                    && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales || session.totalPendingSales) && session.end && (sessionOrder.status === 'completed' || session.totalPendingSales)
                                     && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
                                 ){
                                     
@@ -3627,7 +3627,7 @@ const Sales = ()=>{
                                                 }
                                             }
                                         }
-                                        
+
                                         if (Math.round(enteredSales) === Math.round(Number(field.totalSales))){
                                             rt++
                                             if (rt===data.length){
