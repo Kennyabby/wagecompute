@@ -217,7 +217,7 @@ const SideNav = ()=>{
                                 name="departments" 
                                 className={'navdiv ' + (curPath==='departments'?'selected':'')}
                                 data-tooltip="Departments"
-                            >
+                            >   
                                 <MdSubject className='navdivicon' name="departments"/>
                                 <div name="departments">Departments</div>
                             </div>

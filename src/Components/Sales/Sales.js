@@ -3627,7 +3627,8 @@ const Sales = ()=>{
                                                 }
                                             }
                                         }
-                                        if (Math.round(enteredSales) === Number(field.totalSales)){
+                                        
+                                        if (Math.round(enteredSales) === Math.round(Number(field.totalSales))){
                                             rt++
                                             if (rt===data.length){
                                                 validateSales()
