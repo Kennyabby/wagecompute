@@ -15,7 +15,7 @@ const PointOfSales = () => {
         settings, getDate, posWrhAccess, employees, 
         profiles, fetchProfiles, getSessionEnd,
         products, getProducts, setProducts, getEmployeeName,
-        fetchSessions, sessions, setSessions,
+        fetchSessions, sessions, setSessions, posOrders,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
         salesSessions, allSalesSessions, setSalesSessions,
@@ -170,6 +170,9 @@ const PointOfSales = () => {
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
+    useEffect(()=>{
+        setAllSessionOrders(posOrders)
+    },[posOrders])
     useEffect(()=> {
         // Fetch products
         getProducts(company)

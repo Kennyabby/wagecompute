@@ -15,8 +15,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 
 // const SERVER = "http://localhost:3001"
-// const SERVER = "https://enterpriseserver.vercel.app"
-const SERVER = "https://wageserver.onrender.com"
+const SERVER = "https://enterpriseserver.vercel.app"
+// const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
 // const SERVER = "http://3.251.76.94"
 
@@ -119,7 +119,7 @@ function App() {
         getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
-    },50000)
+    },60000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
 
@@ -2068,6 +2068,7 @@ function App() {
           allSessions, setAllSessions, getAllSessions,
           sessions, setSessions, fetchSessions, fetchAllSessions,
           salesSessions, setSalesSessions, allSalesSessions,
+          posOrders, setPosOrders,
           deliverySessions, setDeliverySessions, allDeliverySessions,
           getPosOrders, getEmployeeName,
           isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
