@@ -2067,7 +2067,7 @@ function App() {
           attendance, setAttendance, getAttendance,
           allSessions, setAllSessions, getAllSessions,
           sessions, setSessions, fetchSessions, fetchAllSessions,
-          salesSessions, setSalesSessions, allSalesSessions,
+          salesSessions, setSalesSessions, allSalesSessions, setAllSalesSessions,
           posOrders, setPosOrders,
           deliverySessions, setDeliverySessions, allDeliverySessions,
           getPosOrders, getEmployeeName,
