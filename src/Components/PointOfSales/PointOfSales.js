@@ -304,12 +304,13 @@ const PointOfSales = () => {
     }
     const createSession = async (sessionUser)=>{
         if (wrh){
+            const newDate = new Date().getTime()
             const newSession = {
                 employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
-                i_d: new Date().getTime(),
+                i_d: newDate,
                 type:'sales',
                 wrh: wrh,
-                start: new Date().getTime(),
+                start: newDate,
                 startedBy: companyRecord.emailid,
                 end: null,
                 active: true, 
@@ -528,7 +529,7 @@ const PointOfSales = () => {
             database: company,
             collection: "Orders"
         }, "getDocsDetails", server);
-        if (!ordersResponse.err){
+        if (!ordersResponse.err){    
             setAllSessionOrders(ordersResponse.record)        
         }
 
@@ -2260,6 +2261,7 @@ const POSDashboard = ({
     const { fetchServer, server, company } = useContext(ContextProvider);
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
+    const [stableSalesSessions, setStableSalesSessions] = useState([])
     useEffect(()=>{
         var pendingSessions = allSessions.filter((session)=>{
             return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
@@ -2268,11 +2270,11 @@ const POSDashboard = ({
         })
         // console.log(curSession)
         setPendingSessions(pendingSessions)        
-    },[allSessions])
+    },[stableSalesSessions])
 
     useEffect(()=>{
         if (allSalesSessions?.length){
-            setAllSessions(allSalesSessions)
+            setStableSalesSessions(allSalesSessions)
         }
         const getSessionsData = async ()=>{
             const ordersResponse = await fetchServer("POST", {
@@ -2288,7 +2290,7 @@ const POSDashboard = ({
                 prop: {type: 'sales'}
             }, "getDocsDetails", server);             
             if(!sessionsResponse.err){
-                setAllSessions(sessionsResponse.record)
+                setStableSalesSessions(sessionsResponse.record)
             }
             // const deliverySessionsResponse = await fetchServer("POST", {
             //     database: company,
@@ -2359,7 +2361,7 @@ const POSDashboard = ({
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
                                     
-                                    const employeeSessions = allSessions.filter(session => {
+                                    const employeeSessions = stableSalesSessions.filter(session => {
                                         return (
                                             session.employee_id === profile.emailid                                        
                                         )
@@ -2489,7 +2491,7 @@ const POSDashboard = ({
                 {showReports && (
                     <TransactionReports
                         type="sales"
-                        sessions={allSessions}
+                        sessions={stableSalesSessions}
                         orders={allSessionOrders}
                         tables={tables}
                         employees={employees}

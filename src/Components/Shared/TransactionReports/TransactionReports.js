@@ -115,8 +115,12 @@ const TransactionReports = ({
             // Skip invalid sessions
             if (!session || !session.i_d) return;
             
-            const sessionOrders = (orders || []).filter(order => 
-                order && order.sessionId === session.i_d
+            let initSessionOrders = orders
+            if (!initSessionOrders.length){
+                initSessionOrders = session?.orders || []
+            }
+            const sessionOrders = initSessionOrders.filter(order => 
+               order.sessionId === session.i_d
             );
             
             const sessionData = {
