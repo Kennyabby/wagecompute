@@ -18,7 +18,7 @@ const PointOfSales = () => {
         fetchSessions, sessions, setSessions, posOrders,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
-        salesSessions, allSalesSessions, setSalesSessions,
+        salesSessions, allSalesSessions, setSalesSessions, setAllSalesSessions,
         paymentReceipts, getPosOrders
     } = useContext(ContextProvider);
 
@@ -268,6 +268,7 @@ const PointOfSales = () => {
             })
         }
     },[tables,curSession, wrh, employees])
+
     const getSessionSales = (orders) =>{
         const payPointList = Object.keys(payPoints)
         const allSales = {}
@@ -341,10 +342,12 @@ const PointOfSales = () => {
                     setAlert('Welcome Back!');
                 }
                 setAlertTimeout(2000)
+                fetchSessions(company, "sales", companyRecord)
                 setStartSession(false)
                 setCurrSession(newSession)
                 setOpeningCash(0)
                 setAllSessions((allSessions)=>{return [...allSessions, newSession]})
+                setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, newSession]})
                 if (![null, undefined].includes(sessionUser)){
                     if (sessionUser.profile.emailid === companyRecord.emailid){
                         setSessions([...sessions, newSession])                    
@@ -432,7 +435,9 @@ const PointOfSales = () => {
                 setAlert('Session Ended!');
             }
             setAlertTimeout(3000)
+            fetchSessions(company, "sales", companyRecord)
             setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
+            setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, {...session, ...sessionUpdate}]})
             fetchSessions(company, "sales", companyRecord)
             setEndSession(false)
             setCountedSales({})
