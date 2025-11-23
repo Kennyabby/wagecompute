@@ -3597,12 +3597,10 @@ const Sales = ()=>{
                                                     setAlertState('error')
                                                     setAlert('You are not allowed to post sales!')
                                                     setAlertTimeout(3000)
-                                                    // clearInterval(debtCalcInterval)
                                                     return
                                                 }                
                                             }
                                             runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)                                                                                                  
-                                            // clearInterval(debtCalcInterval)
                                         }else{
                                             setAlertState('error')
                                             setAlert('You still have active POS/Delivery sessions for this posting date. Please end them before posting!')

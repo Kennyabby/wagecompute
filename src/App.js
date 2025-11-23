@@ -210,12 +210,12 @@ function App() {
             Navigate('/inventory')
           }
           if (companyRecord?.permissions.includes('delivery')){
-            fetchSessions(company , "delivery")
+            fetchSessions(company , "delivery", companyRecord)
             fetchTables(company)
             Navigate('/delivery')
           }
           if (companyRecord?.permissions.includes('pos')){
-            fetchSessions(company , "sales")
+            fetchSessions(company , "sales", companyRecord)
             fetchTables(company)
             Navigate('/pos')
           }  
@@ -904,6 +904,7 @@ function App() {
         getCustomers(cmp_val)
         // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
         fetchTables(cmp_val)
+        fetchSessions(cmp_val , "sales", resp.record)
         fetchSessions(cmp_val , "delivery", resp.record)
         getProducts(cmp_val)
         getRentals(cmp_val)
