@@ -1873,9 +1873,9 @@ function App() {
         };
       });
       if (companyRecord?.status === 'admin' && !products[0]?.stockSummary){
-        setAlertState('info');
-        setAlert('inventory data ready!');
-        setAlertTimeout(3000);
+        // setAlertState('info');
+        // setAlert('inventory data ready!');
+        // setAlertTimeout(3000);
       }
       setProducts(enrichedProducts)
       return enrichedProducts;
