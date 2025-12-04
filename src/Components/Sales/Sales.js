@@ -4100,7 +4100,6 @@ const AddProduct = ({
             } = (curSale || {})
             var accommodationAmount = 0
             let sessionSalesAmount = 0
-            console.log('start: 0')
             record.forEach((saleRecord)=>{
                 if (saleRecord.salesPoint === 'accomodation'){
                     accommodationAmount += Number(saleRecord.totalSales)

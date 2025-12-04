@@ -12,6 +12,8 @@ import { GiPayMoney, GiReceiveMoney, GiTakeMyMoney, GiMoneyStack, GiPlayerTime, 
 import { RiLogoutBoxLine, RiSettings2Fill } from "react-icons/ri";
 import { TbReportMoney } from "react-icons/tb";
 import { CgArrangeBack } from "react-icons/cg";
+import OfflineSyncModal from '../Offline Sync/OfflineSyncModal';
+import { loadPendingChanges } from '../../Resources/offlineDb';
 
 const SideNav = ()=>{
     const {
@@ -28,6 +30,8 @@ const SideNav = ()=>{
     const [expenseApprovals, setExpenseApprovals] = useState([])
     const [allApprovals, setAllApprovals] = useState([])
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [offlinePendingCount, setOfflinePendingCount] = useState(0);
+    const [showOfflineModal, setShowOfflineModal] = useState(false);
     const location = useLocation()
     const Navigate = useNavigate()
 
@@ -77,6 +81,21 @@ const SideNav = ()=>{
             setCompanyName(companyRecord.name)
         }
     },[companyRecord])
+
+    const refreshOfflinePendingCount = async ()=>{
+        try{
+            if (company && companyRecord?.emailid){
+                const list = await loadPendingChanges(company, companyRecord.emailid)
+                setOfflinePendingCount((list || []).length)
+            }
+        }catch(e){
+            // ignore count errors
+        }
+    }
+
+    useEffect(()=>{
+        refreshOfflinePendingCount()
+    },[company, companyRecord?.emailid])
 
     const handleNav = (e)=>{
         setIsMenuOpen(false)
@@ -266,6 +285,20 @@ const SideNav = ()=>{
                                 <div name="delivery">Order Delivery</div>
                             </div>
                         }
+                        {(companyRecord?.status === 'admin') && 
+                            <div 
+                                className={'navdiv ' + (curPath==='offline-sync'?'selected':'')}
+                                onClick={(e)=>{
+                                    e.stopPropagation();
+                                    setShowOfflineModal(true)
+                                }}
+                                data-tooltip="Offline Sync"
+                            >
+                                <TbReportMoney className='navdivicon'/>
+                                <div>Offline Sync</div>
+                                {offlinePendingCount > 0 && <div className='navdivcount'>{offlinePendingCount > 99 ? '99+' : offlinePendingCount}</div>}
+                            </div>
+                        }
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && 
                             <div name="accommodations" className={'navdiv ' + (curPath==='accommodations'?'selected':'')}>
                                 <FaHotel className='navdivicon' name="accommodations"/>
@@ -300,6 +333,13 @@ const SideNav = ()=>{
                     </ul>
                 </nav>
             </div>
+            <OfflineSyncModal 
+                isOpen={showOfflineModal}
+                onClose={()=>{
+                    setShowOfflineModal(false)
+                    refreshOfflinePendingCount()
+                }}
+            />
         </>
     )
 }

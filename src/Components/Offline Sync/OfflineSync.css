@@ -1,0 +1,39 @@
+.offline-modal {
+  max-width: 900px;
+}
+
+.offline-pending-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.offline-pending-table th,
+.offline-pending-table td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+}
+
+.offline-pending-table th {
+  background: #f5f5f5;
+}
+
+.offline-json {
+  max-height: 140px;
+  overflow: auto;
+  font-size: 0.7rem;
+  background: #fafafa;
+  padding: 4px;
+}
+
+.badge-pill {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #e53935;
+  color: white;
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 0.65rem;
+}

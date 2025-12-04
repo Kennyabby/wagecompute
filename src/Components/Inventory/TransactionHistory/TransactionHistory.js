@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import ContextProvider from '../../../Resources/ContextProvider';
+import { putInventoryTransactions, getAppCache, setAppCache } from '../../../Resources/offlineDb';
 import { FaFilter, FaFileExport, FaSearch, FaSync, FaDownload, FaFilePdf } from 'react-icons/fa';
 import { CSVLink } from 'react-csv';
 import { utils, writeFile } from 'xlsx';
@@ -7,6 +8,7 @@ import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import './TransactionHistory.css';
+
 
 const TransactionHistory = () => {
   const {
@@ -79,6 +81,79 @@ const TransactionHistory = () => {
     totalInCost: 0,
     totalOutCost: 0,
   });
+
+  const applyTxSnapshot = useCallback((snap) => {
+    if (!snap) return;
+    const defaults = {
+      openingStock: 0,
+      purchases: 0,
+      sales: 0,
+      transfersIn: 0,
+      transfersOut: 0,
+      positiveAdjustments: 0,
+      negativeAdjustments: 0,
+      closingStock: 0,
+      openingStockCost: 0,
+      purchasesCost: 0,
+      salesValue: 0,
+      costOfGoodsSold: 0,
+      transfersInCost: 0,
+      transfersOutCost: 0,
+      positiveAdjustmentsCost: 0,
+      negativeAdjustmentsCost: 0,
+      closingStockCost: 0,
+      netTransferCost: 0,
+      netAdjustmentCost: 0,
+      totalIn: 0,
+      totalOut: 0,
+      totalInCost: 0,
+      totalOutCost: 0,
+    };
+    setTransactions(snap.transactions || []);
+    setTotalCount(snap.totalCount || 0);
+    setSummary({
+      ...defaults,
+      ...(snap.summary || {}),
+    });
+  }, []);
+
+  const makeTxCacheKey = useCallback((companyKey, f) => {
+    const db = companyKey || 'global';
+    const {
+      startDate,
+      endDate,
+      location,
+      productId,
+      transactionType,
+    } = f || {};
+
+    const loc = location || 'all';
+    const prod = productId || 'all';
+    const type = transactionType || 'all';
+
+    return `tx-history:${db}:${startDate || ''}:${endDate || ''}:${loc}:${prod}:${type}`;
+  }, []);
+
+  const getTxCached = useCallback(async (companyKey, f) => {
+    try {
+      const key = makeTxCacheKey(companyKey, f);
+      const rec = await getAppCache(companyKey, key);
+      if (!rec || !rec.data) return null;
+      return rec.data;
+    } catch (e) {
+      console.warn('getTxCached failed', e);
+      return null;
+    }
+  }, [makeTxCacheKey]);
+
+  const setTxCached = useCallback((companyKey, f, snapshot) => {
+    try {
+      const key = makeTxCacheKey(companyKey, f);
+      setAppCache(companyKey, key, snapshot);
+    } catch (e) {
+      console.warn('setTxCached failed', e);
+    }
+  }, [makeTxCacheKey]);
 
   // Fetch locations from settings
   useEffect(() => {
@@ -798,6 +873,15 @@ const TransactionHistory = () => {
 
       // Process transactions
       const transactions = transactionsResp?.record || [];
+
+      // Mirror into IndexedDB inventoryTransactions store for Offline Debug Panel
+      try {
+        if (company && companyRecord?.emailid && Array.isArray(transactions)) {
+          await putInventoryTransactions(company, companyRecord.emailid, transactions);
+        }
+      } catch (e) {
+        console.warn('fetchTransactionsData: putInventoryTransactions failed', e);
+      }
       
       // Initialize summary data with default values
       const summaryData = {
@@ -874,43 +958,115 @@ const TransactionHistory = () => {
     }
   }, [company, fetchServer, products]);
 
-  // Memoize the fetchTransactionHistory function
   const fetchTransactionHistory = useCallback(async () => {
     if (!company) return;
-    
+
     setLoading(true);
+
     try {
-      // Get opening balance and transactions in parallel
+      const cached = await getTxCached(company, filters);
+      if (cached && Array.isArray(cached.transactions) && cached.summary) {
+        applyTxSnapshot(cached);
+        setLoading(false);
+
+        (async () => {
+          try {
+            const [openingBalance, transactionsData] = await Promise.all([
+              getOpeningBalance(filters.startDate, filters.location, filters.productId),
+              fetchTransactionsData(filters.startDate, filters.endDate, filters)
+            ]);
+
+            const { transactions: fetchedTransactions, totalCount, summaryData } = transactionsData;
+
+            const transfersInCost = (summaryData.transfersInCost || 0);
+            const transfersOutCost = (summaryData.transfersOutCost || 0);
+            const positiveAdjustmentsCost = (summaryData.positiveAdjustmentsCost || 0);
+            const negativeAdjustmentsCost = (summaryData.negativeAdjustmentsCost || 0);
+
+            const netTransferCost = transfersInCost + transfersOutCost;
+            const netAdjustmentCost = positiveAdjustmentsCost + negativeAdjustmentsCost;
+
+            let runningBalance = summaryData.closingStock;
+            const enrichedTransactions = (fetchedTransactions || []).map(tx => {
+              const quantity = Number(tx.baseQuantity) || 0;
+              runningBalance -= quantity;
+
+              return {
+                ...tx,
+                quantity,
+                runningBalance,
+                reference: getTransactionReference(tx),
+                formattedDate: formatDateString(tx.postingDate) || formatTransactionDate(tx.createdAt),
+                formattedQuantity: quantity > 0 ? `+${quantity}` : quantity.toString(),
+                formattedCost: tx.costPrice ? `₦${Number(tx.costPrice).toLocaleString()}` : 'N/A',
+                formattedTotalCost: tx.totalCost ? `₦${Math.abs(Number(tx.totalCost)).toLocaleString()}` : 'N/A',
+                formattedBalance: runningBalance,
+                documentNumber: tx.referenceNo || tx.orderNumber || 'N/A'
+              };
+            });
+
+            const summaryForState = {
+              openingStock: summaryData.openingStock,
+              purchases: summaryData.purchases,
+              sales: summaryData.sales,
+              transfersIn: summaryData.transfersIn,
+              transfersOut: summaryData.transfersOut,
+              positiveAdjustments: summaryData.positiveAdjustments,
+              negativeAdjustments: summaryData.negativeAdjustments,
+              closingStock: summaryData.closingStock,
+              openingStockCost: summaryData.openingStockCost || 0,
+              purchasesCost: summaryData.purchasesCost || 0,
+              salesValue: summaryData.salesValue || 0,
+              costOfGoodsSold: summaryData.costOfGoodsSold || 0,
+              transfersInCost: transfersInCost || 0,
+              transfersOutCost: transfersOutCost || 0,
+              positiveAdjustmentsCost: positiveAdjustmentsCost || 0,
+              negativeAdjustmentsCost: negativeAdjustmentsCost || 0,
+              closingStockCost: summaryData.closingStockCost || 0,
+              netTransferCost,
+              netAdjustmentCost,
+            };
+
+            setTransactions(enrichedTransactions);
+            setTotalCount(totalCount);
+            setSummary(summaryForState);
+            setTxCached(company, filters, {
+              transactions: enrichedTransactions,
+              summary: summaryForState,
+              totalCount,
+            });
+          } catch (e) {
+            console.warn('Background refresh of transaction history failed', e);
+          }
+        })();
+
+        return;
+      }
+    } catch (e) {
+      console.warn('TransactionHistory cache lookup failed', e);
+    }
+
+    try {
       const [openingBalance, transactionsData] = await Promise.all([
         getOpeningBalance(filters.startDate, filters.location, filters.productId),
         fetchTransactionsData(filters.startDate, filters.endDate, filters)
       ]);
 
-      // Process the data
       const { transactions: fetchedTransactions, totalCount, summaryData } = transactionsData;
-      const {openingStock, openingPurchaseCost, openingPurchasedQty, openingStockForSales} = openingBalance;
-      
-      
 
-      // Calculate Transfer Cost
-      const transfersInCost = (summaryData.transfersInCost || 0)
-      const transfersOutCost = (summaryData.transfersOutCost || 0)
+      const transfersInCost = (summaryData.transfersInCost || 0);
+      const transfersOutCost = (summaryData.transfersOutCost || 0);
+      const positiveAdjustmentsCost = (summaryData.positiveAdjustmentsCost || 0);
+      const negativeAdjustmentsCost = (summaryData.negativeAdjustmentsCost || 0);
 
-      // Calculate Adjustment Cost
-      const positiveAdjustmentsCost = (summaryData.positiveAdjustmentsCost || 0) 
-      const negativeAdjustmentsCost = (summaryData.negativeAdjustmentsCost || 0)
-
-      // Calculate derived cost values
       const netTransferCost = transfersInCost + transfersOutCost;
       const netAdjustmentCost = positiveAdjustmentsCost + negativeAdjustmentsCost;
-      
 
-      // Calculate running balance
       let runningBalance = summaryData.closingStock;
       const enrichedTransactions = (fetchedTransactions || []).map(tx => {
         const quantity = Number(tx.baseQuantity) || 0;
         runningBalance -= quantity;
-        
+
         return {
           ...tx,
           quantity,
@@ -925,11 +1081,7 @@ const TransactionHistory = () => {
         };
       });
 
-      // Update state
-      setTransactions(enrichedTransactions);
-      setTotalCount(totalCount);
-      setSummary({
-        // Quantities
+      const summaryForState = {
         openingStock: summaryData.openingStock,
         purchases: summaryData.purchases,
         sales: summaryData.sales,
@@ -938,8 +1090,6 @@ const TransactionHistory = () => {
         positiveAdjustments: summaryData.positiveAdjustments,
         negativeAdjustments: summaryData.negativeAdjustments,
         closingStock: summaryData.closingStock,
-        
-        // Cost Values
         openingStockCost: summaryData.openingStockCost || 0,
         purchasesCost: summaryData.purchasesCost || 0,
         salesValue: summaryData.salesValue || 0,
@@ -949,14 +1099,21 @@ const TransactionHistory = () => {
         positiveAdjustmentsCost: positiveAdjustmentsCost || 0,
         negativeAdjustmentsCost: negativeAdjustmentsCost || 0,
         closingStockCost: summaryData.closingStockCost || 0,
-        
-        // Calculated Values
         netTransferCost,
         netAdjustmentCost,
-        
+      };
+
+      setTransactions(enrichedTransactions);
+      setTotalCount(totalCount);
+      setSummary(summaryForState);
+      setTxCached(company, filters, {
+        transactions: enrichedTransactions,
+        summary: summaryForState,
+        totalCount,
       });
+
     } catch (error) {
-      console.log(error)
+      console.log(error);
       setAlertState('error');
       setAlert('Failed to load transaction history');
       setAlertTimeout(5000);
@@ -964,11 +1121,13 @@ const TransactionHistory = () => {
       setLoading(false);
     }
   }, [
-    company, 
+    company,
     filters,
-    products,
-    getOpeningBalance, 
+    getOpeningBalance,
     fetchTransactionsData,
+    getTxCached,
+    setTxCached,
+    applyTxSnapshot,
   ]);
 
   
@@ -1063,20 +1222,27 @@ const TransactionHistory = () => {
     }));
   };
 
-  const handleApplyFilters = () => {
-    setLoading(true)
+  const handleApplyFilters = () => {   
+
+    setLoading(true);
     const { startDate, endDate, location, productId, transactionType } = filters;
     // Format dates to ISO strings (YYYY-MM-DD)
     // This ensures compatibility with the database date format
     const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
     const formattedEndDate = new Date(endDate).toISOString().split('T')[0];
+
+    // Trigger the stock report (which has its own caching in App.js)
     getProductsStockReport(company, products, {
       startDate: formattedStartDate, 
       endDate: formattedEndDate,
       ...(location !== 'all' && { location }),
       ...(productId && { productId }),
       ...(transactionType !== 'all' && { transactionType })
-    })
+    });
+
+    // Also refresh the transaction history; this will read from cache again
+    // and then fetch fresh data to update cache + UI.
+    fetchTransactionHistory();
   };
 
   const handleResetFilters = () => {
@@ -1427,7 +1593,7 @@ const TransactionHistory = () => {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading && transactions.length === 0 ? (
                 <tr>
                   <td colSpan="9" className="loading-row">
                     Loading transactions...

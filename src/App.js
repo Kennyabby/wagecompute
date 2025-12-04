@@ -13,12 +13,41 @@ import Notify from './Resources/Notify/Notify';
 import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
+import { syncPendingChanges } from './Resources/offlineSync';
+import { getAppCache, setAppCache, clearAppCache, putSession, putTable } from './Resources/offlineDb';
 
 // const SERVER = "http://localhost:3001"
-// const SERVER = "https://enterpriseserver.vercel.app"
-const SERVER = "https://wageserver.onrender.com"
+const SERVER = "https://enterpriseserver.vercel.app"
+// const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
 // const SERVER = "http://3.251.76.94"
+
+// App-level cache helpers now backed by IndexedDB (appCache store)
+const CACHE_TTL_MS = 1 * 60 * 1000; // 1 minute TTL
+
+const makeCacheKey = (company, resource) => {
+  const db = company || 'global';
+  return `wc-cache:${db}:${resource}`;
+};
+
+// getCached returns a Promise resolving to cached data or null
+const getCached = async (companyKey, resource) => {
+  const rec = await getAppCache(companyKey, resource);
+  if (!rec) return null;
+  // if (!rec || !rec.updatedAt) return null;
+  // const isFresh = Date.now() - rec.updatedAt < CACHE_TTL_MS;
+  // return isFresh ? rec.data : null;
+  return rec.data;
+};
+
+// Fire-and-forget writes; failures are logged inside offlineDb
+const setCached = (companyKey, resource, data) => {
+  setAppCache(companyKey, resource, data);
+};
+
+const clearCache = (companyKey, resource) => {
+  clearAppCache(companyKey, resource);
+};
 
 function App() {
   
@@ -104,6 +133,22 @@ function App() {
   const [hostDb, setHostDb] = useState('The_Plantain_Planet')
   const genDb = 'WCDatabase'
   const Navigate = useNavigate()
+
+  useEffect(() => {
+    if (!company || !companyRecord?.emailid) return;
+
+    // if (!(companyRecord.status === 'admin' ||
+    //       companyRecord.permissions?.includes('access_pos_sessions'))) {
+    //   return;
+    // }
+
+    const id = setInterval(() => {
+      syncPendingChanges(company, companyRecord.emailid, fetchServer, SERVER)
+        .catch(() => {});
+    }, 5 * 60 * 1000); // every 5 minutes
+
+    return () => clearInterval(id);
+  }, [company, companyRecord?.emailid]);
 
   useEffect(()=>{
     var cmp_val = window.localStorage.getItem('sessn-cmp')
@@ -205,16 +250,22 @@ function App() {
           if (companyRecord?.permissions.includes('inventory') ||
             companyRecord?.permissions.includes('pos') ||
             companyRecord?.permissions.includes('delivery')
-          ){
+          ){            
             getProducts(company)
             Navigate('/inventory')
           }
           if (companyRecord?.permissions.includes('delivery')){
+            if(companyRecord?.permissions.includes('access_delivery_sessions')){
+              getAllSessions(company)
+            }
             fetchSessions(company , "delivery", companyRecord)
             fetchTables(company)
             Navigate('/delivery')
           }
           if (companyRecord?.permissions.includes('pos')){
+            if(companyRecord?.permissions.includes('access_pos_sessions')){
+              getAllSessions(company)
+            }
             fetchSessions(company , "sales", companyRecord)
             fetchTables(company)
             Navigate('/pos')
@@ -739,6 +790,21 @@ function App() {
   }
 
   const fetchSessions = async (company, type, companyRecord) => {
+    const cachedSalesSession = await getCached(company, 'salesSessions')
+    const cachedDeliverySession = await getCached(company, 'deliverySessions')
+    const cachedAllSalesSession = await getCached(company, 'allSalesSessions')
+    const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions')
+    if (type === 'sales' && cachedSalesSession){
+      setSalesSessions(cachedSalesSession)
+    }else if (type === 'delivery' && cachedDeliverySession){
+      setDeliverySessions(cachedDeliverySession)
+    }
+    if (cachedAllSalesSession){
+      setAllSalesSessions(cachedAllSalesSession)
+    }
+    if (cachedAllDeliverySession){
+      setAllDeliverySessions(cachedAllDeliverySession)
+    }
     const sessionsResponse = await fetchServer("POST", {
       database: company,
       collection: "POSSessions",
@@ -756,11 +822,28 @@ function App() {
         // setSessions(thisSessions)
         if (type === 'sales'){
           setSalesSessions(thisSessions)
+          setCached(company, 'salesSessions', thisSessions)
           setAllSalesSessions(sessionsResponse.record)
+          setCached(company, 'allSalesSessions', sessionsResponse.record)
         }
         if (type === 'delivery'){
           setDeliverySessions(thisSessions)
+          setCached(company, 'deliverySessions', thisSessions)
           setAllDeliverySessions(sessionsResponse.record)
+          setCached(company, 'allDeliverySessions', sessionsResponse.record)
+        }
+
+        // Mirror all sessions into IndexedDB sessions store for Offline Debug Panel
+        try {
+          if (company && companyRecord?.emailid && Array.isArray(sessionsResponse.record)) {
+            for (const s of sessionsResponse.record) {
+              if (s && s.start != null) {
+                await putSession(company, companyRecord.emailid, s);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('fetchSessions: putSession failed', e);
         }
       }
     }else{
@@ -826,7 +909,20 @@ function App() {
       }, "getDocsDetails", SERVER);
       if (!tablesResponse.err){
           if (!tablesResponse.mess){
-              setTables(tablesResponse.record)  
+              setTables(tablesResponse.record)
+
+              // Mirror tables into IndexedDB tables store for Offline Debug Panel
+              try {
+                if (company && companyRecord?.emailid && Array.isArray(tablesResponse.record)) {
+                  for (const t of tablesResponse.record) {
+                    if (t && t.i_d != null) {
+                      await putTable(company, companyRecord.emailid, t);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn('fetchTables: putTable failed', e);
+              }
           }
       }else{
           if (tablesResponse.mess !== 'Request aborted'){
@@ -906,6 +1002,7 @@ function App() {
         fetchTables(cmp_val)
         fetchSessions(cmp_val , "sales", resp.record)
         fetchSessions(cmp_val , "delivery", resp.record)
+        getAllSessions(cmp_val)
         getProducts(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)
@@ -953,7 +1050,11 @@ function App() {
     }
   }
 
-  const obtainPaymentReceipts = ()=>{
+  const obtainPaymentReceipts = async ()=>{
+    const cached = await getCached(company, 'paymentReceipts')
+    if (cached) {
+      setPaymentReceipts(cached)
+    }
     const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4','cash']    
     const recoveryReceipts = []
     const accommodationReceipts = []
@@ -1042,6 +1143,7 @@ function App() {
       ...posOrderReceipts
     ]
     setPaymentReceipts(paymentReceipts)
+    setCached(company, 'paymentReceipts', paymentReceipts, '')
   }
   
   const fetchProfiles = async (company) => {
@@ -1067,10 +1169,15 @@ function App() {
         console.log(resps.mess)
     } else {
         setDBProfiles(resps.record)
+        setCached(company, 'dbProfiles', resps.record)
     }
   }
 
   const getChartOfAccounts = async (company) => {
+    const cached = await getCached(company, 'chartOfAccounts');
+    if (cached) {
+      setChartOfAccounts(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "ChartOfAccounts", 
@@ -1078,10 +1185,15 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setChartOfAccounts(resp.record)
+      setCached(company, 'chartOfAccounts', resp.record)
     }
-  }
+  };
 
   const getAllSessions = async (company) => {
+    const cached = await getCached(company, 'allSessions');
+    if (cached) {
+      setAllSessions(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "POSSessions", 
@@ -1089,10 +1201,16 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setAllSessions(resp.record)
+      setCached(company, 'allSessions', resp.record)
       return resp.record
     }
   }
+
   const getPosOrders = async (company) => {
+    const cached = await getCached(company, 'posOrders');
+    if (cached) {
+      setPosOrders(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Orders",
@@ -1100,9 +1218,15 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setPosOrders(resp.record)
+      setCached(company, 'posOrders', resp.record)
     }
   }
+
   const getDepartments = async (company) =>{
+    const cached = await getCached(company, 'departments');
+    if (cached) {
+      setDepartments(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Departments", 
@@ -1110,10 +1234,15 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setDepartments(resp.record)
+      setCached(company, 'departments', resp.record)
     }
   }
 
   const getPositions = async (company) =>{
+    const cached = await getCached(company, 'positions');
+    if (cached) {
+      setPositions(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Positions", 
@@ -1121,10 +1250,15 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setPositions(resp.record)
+      setCached(company, 'positions', resp.record)
     }
   }
 
-  const getEmployees = async (company) =>{
+  const getEmployees = async (company) => {
+    const cached = await getCached(company, 'employees');
+    if (cached) {
+      setEmployees(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Employees", 
@@ -1132,10 +1266,15 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setEmployees(resp.record)
+      setCached(company, 'employees', resp.record)
     }
-  }
+  };
 
   const getCustomers = async (company) =>{
+    const cached = await getCached(company, 'customers');
+    if (cached) {
+      setCustomers(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Customers", 
@@ -1143,10 +1282,15 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setCustomers(resp.record)
+      setCached(company, 'customers', resp.record)
     }
   }
 
   const getAttendance = async (company) =>{
+    const cached = await getCached(company, 'attendance');
+    if (cached) {
+      setAttendance(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Attendance", 
@@ -1154,6 +1298,7 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setAttendance(resp.record)
+      setCached(company, 'attendance', resp.record)
     }
   }
 
@@ -1188,6 +1333,15 @@ function App() {
       }
     }
 
+    // For the simple, non-paginated case, allow cache to short-circuit
+    if (!type) {
+      const cached = await getCached(company, 'sales');
+      if (cached) {
+        setSales(cached);
+      } else {
+      }
+    }
+
     // console.log('sales Load Count is:', salesLoadCount)
     if (!salesLoadCount){
       setSalesLoadCount((prevCount)=>{
@@ -1203,6 +1357,9 @@ function App() {
         // console.log('sales fetch type is :', type)
         if (!type){
           setSales(resp.record)
+          try {
+            setCached(company, 'sales', resp.record)
+          } catch (e) {}
         }else{
           const salesResp = resp.record
           // console.log('checking if response is empty:', salesResp)
@@ -1239,21 +1396,11 @@ function App() {
     }
   }
 
-  // const getProducts = async (company) =>{
-  //   const resp = await fetchServer("POST", {
-  //     database: company,
-  //     collection: "Products", 
-  //     prop: {} 
-  //   }, "getDocsDetails", SERVER)
-
-  //   if (resp.record){
-  //     if (resp.record?.length){
-  //       setProducts(resp.record)
-  //     }
-  //   }
-  // }
-
   const getProducts = async (company) => {
+    const cached = await getCached(company, 'products');
+    if (cached && cached.length) {
+      setProducts(cached);
+    }
     const knownFields = [
       "_id", "i_d", "name", "salesPrice", "costPrice", "category",
       "purchaseVat", "salesVat", "salesUom", "purchaseUom",
@@ -1272,11 +1419,17 @@ function App() {
 
     if (resp.record && resp.record.length) {
       setProducts(resp.record);
+      setCached(company, 'products', resp.record);
       getProductsWithStock(company, resp.record)
     }
   };
 
   const getProductsWithStock = async (company, products) => {
+    const cached = await getCached(company, 'productsWithStock');
+    if (cached && cached.length) {
+      setProducts(cached);
+    }
+
     // 1. Fetch aggregated stock and cost from InventoryTransactions
     const stockResp = await fetchServer(
       "POST",
@@ -1358,10 +1511,22 @@ function App() {
       });
 
       // 4. Set enriched products
-      setProducts(enrichedProducts);
+      setProducts(enrichedProducts)
+      setCached(company, 'productsWithStock', enrichedProducts)
       return enrichedProducts;
     }       
     return products;
+  };
+
+  const makeStockReportCacheKey = (dateRange = {}) => {
+    const keyPayload = {
+      startDate: dateRange.startDate || null,
+      endDate: dateRange.endDate || null,
+      location: dateRange.location || 'all',
+      transactionType: dateRange.transactionType || 'all',
+      productId: dateRange.productId || null,
+    };
+    return `productsStockReport:${JSON.stringify(keyPayload)}`;
   };
 
   /**
@@ -1373,6 +1538,11 @@ function App() {
    */
   const getProductsStockReport = async (company, products, dateRange = {}) => {
     try {
+      const cacheKey = makeStockReportCacheKey(dateRange);
+      const cached = await getCached(company, cacheKey);
+      if (cached && cached.length) {
+        setProducts(cached);
+      }
       // Set default date range if not provided (current month to date)
       const startDate = dateRange.startDate ? new Date(dateRange.startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
       const endDate = dateRange.endDate ? new Date(dateRange.endDate) : new Date();
@@ -1783,9 +1953,8 @@ function App() {
           locationData.costOfGoodsSold = item.costOfGoodsSold || 0;
           
           locationData.transferInQty = item.transferInQty || 0;
-          locationData.transferOutQty = item.transferOutQty || 0;
-          
           locationData.transferInCost = item.transferInCost || 0;
+          locationData.transferOutQty = item.transferOutQty || 0;
           locationData.transferOutCost = item.transferOutCost || 0;
 
           // Positive adjustments
@@ -1821,7 +1990,7 @@ function App() {
       // 4. Enrich products with the calculated stock data
       const enrichedProducts = products.map(product => {
         const locationData = stockMap[product.i_d] || {};
-        
+
         // Calculate totals across all locations
         const totals = Object.values(locationData).reduce((acc, loc) => ({
           openingQuantity: (acc.openingQuantity || 0) + (loc.openingQuantity || 0),
@@ -1878,6 +2047,8 @@ function App() {
         // setAlertTimeout(3000);
       }
       setProducts(enrichedProducts)
+      const freshCacheKey = makeStockReportCacheKey(dateRange);
+      setCached(company, freshCacheKey, enrichedProducts);
       return enrichedProducts;
     } catch (error) {
       console.error('Error in getProductsStockReport:', error);
@@ -1914,6 +2085,10 @@ function App() {
   });
 
   const getAccommodations = async (company) =>{
+    const cached = await getCached(company, 'accommodations');
+    if (cached) {
+      setAccommodations(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Accommodations", 
@@ -1921,10 +2096,16 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setAccommodations(resp.record)
+      setCached(company, 'accommodations', resp.record)
     }
   }
 
   const getPurchase = async (company) =>{
+    const cached = await getCached(company, 'purchase');
+    if (cached) {
+      setPurchase(cached);
+      return;
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Purchase", 
@@ -1932,10 +2113,15 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setPurchase(resp.record)
+      setCached(company, 'purchase', resp.record)
     }
   }
 
   const getExpenses = async (company) =>{
+    const cached = await getCached(company, 'expenses');
+    if (cached) {
+      setExpenses(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Expenses", 
@@ -1943,22 +2129,31 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setExpenses(resp.record)
+      setCached(company, 'expenses', resp.record)
     }
   }
 
   const getRentals = async (company) =>{
+    const cached = await getCached(company, 'rentals');
+    if (cached) {
+      setRentals(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Rentals", 
       prop: {} 
     }, "getDocsDetails", SERVER)
-    // console.log(resp.record)
     if (resp.record){
       setRentals(resp.record)
+      setCached(company, 'rentals', resp.record)
     }
   }
 
-  const getSettings = async (company) =>{
+  const getSettings = async (company) => {
+    const cached = await getCached(company, 'settings');
+    if (cached) {
+      setSettings(cached);
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Settings", 
@@ -1966,8 +2161,9 @@ function App() {
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setSettings(resp.record)
+      setCached(company, 'settings', resp.record)
     }
-  }
+  };
 
   const getImage = async (body)=>{
     const resp = await fetchServer("POST", 
@@ -2069,7 +2265,7 @@ function App() {
           sessions, setSessions, fetchSessions, fetchAllSessions,
           salesSessions, setSalesSessions, allSalesSessions, setAllSalesSessions,
           posOrders, setPosOrders,
-          deliverySessions, setDeliverySessions, allDeliverySessions,
+          deliverySessions, setDeliverySessions, allDeliverySessions, setAllDeliverySessions,
           getPosOrders, getEmployeeName,
           isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
           tables, setTables, fetchTables,
