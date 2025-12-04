@@ -211,6 +211,7 @@ const DashView = () =>{
 
     const loadDashData = async()=>{
         if (!company) return
+
         setLoading(true)
         setDashErr('')
         try{
@@ -493,7 +494,7 @@ const DashView = () =>{
                 }
             })
 
-            setKpis({ 
+            const kpisData = { 
                 expectedSalesAmount: expectedSalesTotal,
                 salesAmount: reconciledSalesTotal, salesQty, 
                 purchasesAmount, purchasesQty, 
@@ -505,13 +506,15 @@ const DashView = () =>{
                 cogs,
                 grossProfit: (reconciledSalesTotal + accomTotal + rentalTotal) - cogs,
                 netProfit: ((reconciledSalesTotal + accomTotal + rentalTotal) - cogs) - expensesTotal
-            })
+            }
+            setKpis(kpisData)
             // Revenue mix for pie
-            setRevenueMix([
+            const revenueMixData = [
                 { name: 'Sales', value: Number(reconciledSalesTotal||0) },
                 { name: 'Accommodation', value: Number(accomTotal||0) },
                 { name: 'Rentals', value: Number(rentalTotal||0) }
-            ])
+            ]
+            setRevenueMix(revenueMixData)
             // Get the year from the selected date range
             const selectedYear = new Date(fromDate).getFullYear()
             const yearStart = new Date(selectedYear, 0, 1) // Jan 1 of selected year
@@ -599,8 +602,10 @@ const DashView = () =>{
             })
             
             setMonthlySeries(monthlyData)
-            setTopProducts(topProdArr.slice(0,10))
-            setTopLocations(topLocArr.slice(0,10))
+            const topProductsData = topProdArr.slice(0,10)
+            const topLocationsData = topLocArr.slice(0,10)
+            setTopProducts(topProductsData)
+            setTopLocations(topLocationsData)
             setRestock(locationRestockAlerts)
             // Build productLocationBreakdown (quantity based)
             const prodLocArr = topProdArr.slice(0,10).map(p=>{
@@ -687,6 +692,8 @@ const DashView = () =>{
             setTopEmployeesServices(empServicesArr)
             
             setSeries(seriesData)
+
+            
         }catch(err){
             setDashErr('Failed to load dashboard data')
         }finally{

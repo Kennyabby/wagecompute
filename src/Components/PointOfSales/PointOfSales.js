@@ -3,6 +3,19 @@ import ContextProvider from '../../Resources/ContextProvider';
 import './PointOfSales.css';
 import { MdShoppingBasket } from 'react-icons/md';
 import TransactionReports from '../Shared/TransactionReports/TransactionReports';
+import {
+  loadPosSnapshot,
+  savePosSnapshot,
+  queuePendingChange,
+  loadPendingChanges,
+  loadAllOrders,
+  loadAllTables,
+  loadAllSessionsLocal,
+  putOrder,
+  putTable,
+  putSession,
+} from '../../Resources/offlineDb';
+import { syncPendingChanges } from '../../Resources/offlineSync';
 
 const PointOfSales = () => {
     // =========================================
@@ -49,6 +62,99 @@ const PointOfSales = () => {
     useEffect(()=>{
         storePath('pos')  
     },[storePath])
+
+    // =========================================
+    // 1a. Offline snapshot hydration (read from local, then server refresh)
+    // =========================================
+    useEffect(() => {
+        if (!company || !companyRecord?.emailid) return;
+
+        let cancelled = false;
+        (async () => {
+            const snap = await loadPosSnapshot(company, companyRecord.emailid);
+            if (!snap || cancelled) return;
+
+            try {
+                const {
+                    salesSessions: snapSessions,
+                    allSessions: snapAllSessions,
+                    tables: snapTables,
+                    allSessionOrders: snapAllSessionOrders,
+                    allOrders: snapAllOrders,
+                    products: snapProducts,
+                    curSession: snapCurSession,
+                    orderTables: snapOrderTables,
+                    activeScreen: snapActiveScreen,
+                    currentOrder: snapCurrentOrder,
+                } = snap;
+
+                if (Array.isArray(snapSessions)) {
+                    setSalesSessions(snapSessions);
+                }
+                if (Array.isArray(snapAllSessions)) {
+                    setAllSalesSessions(snapAllSessions);
+                    setAllSessions(snapAllSessions)
+                }
+                if (Array.isArray(snapTables)) {
+                    setTables(snapTables);
+                }
+                if (Array.isArray(snapAllSessionOrders)) {
+                    setAllSessionOrders(snapAllSessionOrders);
+                }
+                if (Array.isArray(snapAllOrders)) {
+                    setAllOrders(snapAllOrders);
+                }
+                if (Array.isArray(snapProducts) && !products.length) {
+                    setProducts(snapProducts);
+                }
+                if (snapCurSession) {
+                    setCurrSession(snapCurSession);
+                }
+                if (Array.isArray(snapOrderTables) && !orderTables.length) {
+                    setOrderTables(snapOrderTables);
+                }
+                if (snapActiveScreen) {
+                    setActiveScreen(snapActiveScreen);
+                }
+                if (snapCurrentOrder) {
+                    setCurrentOrder(snapCurrentOrder);
+                }
+
+                // Also mirror snapshot into entity stores so Offline Debug panel sees data immediately
+                // Only write records that have the proper keyPath to avoid IndexedDB DataError
+                if (company && companyRecord?.emailid) {
+                    if (Array.isArray(snapAllSessions)) {
+                        for (const s of snapAllSessions) {
+                            if (s && s.start != null) {
+                                await putSession(company, companyRecord.emailid, s);
+                            }
+                        }
+                    }
+                    if (Array.isArray(snapTables)) {
+                        for (const t of snapTables) {
+                            if (t && t.i_d != null) {
+                                await putTable(company, companyRecord.emailid, t);
+                            }
+                        }
+                    }
+                    if (Array.isArray(snapAllOrders)) {
+                        for (const o of snapAllOrders) {
+                            if (o && o.orderNumber != null) {
+                                await putOrder(company, companyRecord.emailid, o);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                // Fail silently; server fetch will still run.
+                console.warn('POS snapshot hydrate failed', e);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [company, companyRecord?.emailid]);
 
     // Order States
     const [currentOrder, setCurrentOrder] = useState(null);
@@ -108,6 +214,7 @@ const PointOfSales = () => {
     useEffect(() => {
         handleSettingsUpdate();
     }, [settings]);
+    
     useEffect(()=>{
         loadTableData()
         if (window.localStorage.getItem('pos-wrh')){
@@ -137,9 +244,46 @@ const PointOfSales = () => {
         }
     },[wrhs])
     
+    useEffect(() => {
+        if (!company || !companyRecord?.emailid) return;
+
+        (async () => {
+            try {
+            const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+                loadAllOrders(company, companyRecord.emailid),
+                loadAllSessionsLocal(company, companyRecord.emailid),
+                loadAllTables(company, companyRecord.emailid),
+            ]);
+
+            if (Array.isArray(orders) && orders.length) {
+                setAllOrders(orders);
+                setAllSessionOrders(orders);
+            }
+            if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+                setSessions(sessionsLocal.filter(s => s.type === 'sales'));
+                setAllSalesSessions(sessionsLocal.filter(s => s.type === 'sales'))
+                setAllSessions(sessionsLocal);
+            }
+            if (Array.isArray(tablesLocal) && tablesLocal.length) {
+                setTables(tablesLocal);
+            }
+            } catch (e) {
+                console.warn('POS hydrateFromIndexedDb failed', e);
+            }
+        })();
+    }, [company, companyRecord?.emailid]);
+
     useEffect(()=>{
         if (Array.isArray(salesSessions)){
             setSessions(salesSessions)
+            const syncToIndexDB = async ()=>{
+                for (const s of salesSessions) {
+                    if (s && s.start != null) {
+                        await putSession(company, companyRecord.emailid, s);
+                    }
+                }
+            }
+            syncToIndexDB()
         }
     },[salesSessions])
     
@@ -172,7 +316,16 @@ const PointOfSales = () => {
 
     useEffect(()=>{
         setAllSessionOrders(posOrders)
+        const syncToIndexDB = async ()=>{
+            for (const o of posOrders) {
+                if (o && o.orderNumber != null) {
+                    await putOrder(company, companyRecord.emailid, o);
+                }
+            }
+        }
+        syncToIndexDB()
     },[posOrders])
+
     useEffect(()=> {
         // Fetch products
         getProducts(company)
@@ -208,6 +361,14 @@ const PointOfSales = () => {
 
     useEffect(()=>{
         if (tables.length && wrh && curSession && employees.length){
+            const syncToIndexDB = async ()=>{
+                for (const t of tables) {
+                    if (t && t.i_d != null) {
+                        await putTable(company, companyRecord.emailid, t);
+                    }
+                }
+            }
+            syncToIndexDB()
             setOrderTables((orderTables)=>{
                 const activeOrders = []
                 wrhs.forEach((warehouse)=>{
@@ -269,6 +430,39 @@ const PointOfSales = () => {
         }
     },[tables,curSession, wrh, employees])
 
+    useEffect(() => {
+        if (!company || !companyRecord?.emailid) return;
+
+        const snapshot = {
+            salesSessions,
+            allSessions,
+            tables,
+            allSessionOrders,
+            allOrders,
+            products,
+            curSession,
+            orderTables,
+            activeScreen,
+            currentOrder,
+        };
+
+        savePosSnapshot(company, companyRecord.emailid, snapshot);
+    }, [
+        company,
+        companyRecord?.emailid,
+        salesSessions,
+        allSessions,
+        allSalesSessions,
+        tables,
+        allSessionOrders,
+        allOrders,
+        products,
+        curSession,
+        orderTables,
+        activeScreen,
+        currentOrder,
+    ]);
+
     const getSessionSales = (orders) =>{
         const payPointList = Object.keys(payPoints)
         const allSales = {}
@@ -306,100 +500,266 @@ const PointOfSales = () => {
         })
         return {allSales, totalPendingSales, totalUnattendedSales, totalCancelledSales, totalCashChange}
     }
-    const createSession = async (sessionUser)=>{
-        if (wrh){
-            const newDate = new Date().getTime()
-            const newSession = {
-                employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
-                i_d: newDate,
-                type:'sales',
-                wrh: wrh,
-                start: newDate,
-                startedBy: companyRecord.emailid,
-                end: null,
-                active: true, 
-                openingCash: openingCash,
-                debtDue: 0
-            }
-            const response = await fetchServer("POST", {
-                database: company,
-                collection: "POSSessions",
-                update: {
-                    ...newSession
-                }
-            }, "createDoc", server);
+    // const createSession = async (sessionUser)=>{
+    //     if (wrh){
+    //         const newDate = new Date().getTime()
+    //         const newSession = {
+    //             employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
+    //             i_d: newDate,
+    //             type:'sales',
+    //             wrh: wrh,
+    //             start: newDate,
+    //             startedBy: companyRecord.emailid,
+    //             end: null,
+    //             active: true, 
+    //             openingCash: openingCash,
+    //             debtDue: 0
+    //         }
+    //         const response = await fetchServer("POST", {
+    //             database: company,
+    //             collection: "POSSessions",
+    //             update: {
+    //                 ...newSession
+    //             }
+    //         }, "createDoc", server);
         
-            if (response.err) {
-                setAlertState('error');
-                setAlert('Could not load session. Please check your internet connection!');
-                setAlertTimeout(3000)
-                return
-            } else {
-                setAlertState('success');
-                if (![null, undefined].includes(sessionUser)){
-                    setAlert('User Session Started Successfully!');
-                }else{
-                    setAlert('Welcome Back!');
-                }
-                setAlertTimeout(2000)
-                fetchSessions(company, "sales", companyRecord)
-                setStartSession(false)
-                setCurrSession(newSession)
-                setOpeningCash(0)
-                setAllSessions((allSessions)=>{return [...allSessions, newSession]})
-                setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, newSession]})
-                if (![null, undefined].includes(sessionUser)){
-                    if (sessionUser.profile.emailid === companyRecord.emailid){
-                        setSessions([...sessions, newSession])                    
-                    }
-                }else{
-                    if (sessions!==null){
-                        setSessions([...sessions, newSession]) 
-                    }
-                }
-                setSessionUser(null)
-                return
-            }
-        }else{
-            setAlertState('info')
-            setAlert('Please Select Your Sales Post')
-            setAlertTimeout(5000)
-            return
+    //         if (response.err) {
+    //             setAlertState('error');
+    //             setAlert('Could not load session. Please check your internet connection!');
+    //             setAlertTimeout(3000)
+    //             return
+    //         } else {
+    //             setAlertState('success');
+    //             if (![null, undefined].includes(sessionUser)){
+    //                 setAlert('User Session Started Successfully!');
+    //             }else{
+    //                 setAlert('Welcome Back!');
+    //             }
+    //             setAlertTimeout(2000)
+    //             fetchSessions(company, "sales", companyRecord)
+    //             setStartSession(false)
+    //             setCurrSession(newSession)
+    //             setOpeningCash(0)
+    //             setAllSessions((allSessions)=>{return [...allSessions, newSession]})
+    //             setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, newSession]})
+    //             if (![null, undefined].includes(sessionUser)){
+    //                 if (sessionUser.profile.emailid === companyRecord.emailid){
+    //                     setSessions([...sessions, newSession])                    
+    //                 }
+    //             }else{
+    //                 if (sessions!==null){
+    //                     setSessions([...sessions, newSession]) 
+    //                 }
+    //             }
+    //             setSessionUser(null)
+    //             return
+    //         }
+    //     }else{
+    //         setAlertState('info')
+    //         setAlert('Please Select Your Sales Post')
+    //         setAlertTimeout(5000)
+    //         return
+    //     }
+    // }
+    const createSession = async (sessionUser) => {
+        if (!wrh) {
+            setAlertState('info');
+            setAlert('Please Select Your Sales Post');
+            setAlertTimeout(5000);
+            return;
         }
-    }
 
-    const stopSession = async (session, sessionOrders)=>{
-        const {
-            allSales, totalPendingSales, totalCancelledSales, totalCashChange
-        } = getSessionSales(sessionOrders)
-        const openingCash = session.openingCash
-        let netBalance = 0
-        let unAccounted = 0
-        let allSalesAmount = 0
-        const salesDifference = {}
-        const allCountedSales = {}
-        Object.keys(payPoints).forEach((payPoint)=>{
+        const newDate = new Date().getTime();
+        const newSession = {
+            employee_id: ![null, undefined].includes(sessionUser)
+                ? sessionUser.profile.emailid
+                : companyRecord.emailid,
+            i_d: newDate,
+            type: 'sales',
+            wrh: wrh,
+            start: newDate,
+            startedBy: companyRecord.emailid,
+            end: null,
+            active: true,
+            openingCash: openingCash,
+            debtDue: 0,
+        };
 
-            if (payPoint === 'cash'){
-                var expectedCash = Number(openingCash) + Number(allSales[payPoint] || 0) - Number(totalCashChange)
-                salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - expectedCash
-                allSalesAmount += (Number(allSales[payPoint] || 0) - Number(totalCashChange))
-            }else{
-                salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - Number(allSales[payPoint] || 0)
-                allSalesAmount += Number(allSales[payPoint] || 0)
+        try {
+            // 1) Save session locally
+            if (company && companyRecord?.emailid) {
+                await putSession(company, companyRecord.emailid, newSession);
             }
 
-            allCountedSales[payPoint] = Number(countedSales[payPoint])
+            // 2) Update React state
+            setAlertState('success');
+            if (![null, undefined].includes(sessionUser)) {
+                setAlert('User Session Started Successfully!');
+            } else {
+                setAlert('Welcome Back!');
+            }
+            setAlertTimeout(2000);
+
+            setStartSession(false);
+            setCurrSession(newSession);
+            setOpeningCash(0);
+            setAllSessions((allSessions) => [...allSessions, newSession]);
+            setAllSalesSessions((allSalesSessions) => [
+                ...(allSalesSessions || []),
+                newSession,
+            ]);
+
+            if (![null, undefined].includes(sessionUser)) {
+                if (sessionUser.profile.emailid === companyRecord.emailid) {
+                    setSessions([...(sessions || []), newSession]);
+                }
+            } else {
+                if (sessions !== null) {
+                    setSessions([...(sessions || []), newSession]);
+                }
+            }
+            setSessionUser(null);
+
+            // 3) Queue session create for sync
+            if (company && companyRecord?.emailid) {
+                queuePendingChange(company, companyRecord.emailid, {
+                    entityType: 'session',
+                    op: 'create',
+                    clientId: newSession.start,
+                    payload: newSession,
+                });
+            }
+
+            return;
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Could not start session locally. Please try again.');
+            setAlertTimeout(3000);
+            return;
+        }
+    };
+
+    // const stopSession = async (session, sessionOrders)=>{
+    //     const {
+    //         allSales, totalPendingSales, totalCancelledSales, totalCashChange
+    //     } = getSessionSales(sessionOrders)
+    //     const openingCash = session.openingCash
+    //     let netBalance = 0
+    //     let unAccounted = 0
+    //     let allSalesAmount = 0
+    //     const salesDifference = {}
+    //     const allCountedSales = {}
+    //     Object.keys(payPoints).forEach((payPoint)=>{
+
+    //         if (payPoint === 'cash'){
+    //             var expectedCash = Number(openingCash) + Number(allSales[payPoint] || 0) - Number(totalCashChange)
+    //             salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - expectedCash
+    //             allSalesAmount += (Number(allSales[payPoint] || 0) - Number(totalCashChange))
+    //         }else{
+    //             salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - Number(allSales[payPoint] || 0)
+    //             allSalesAmount += Number(allSales[payPoint] || 0)
+    //         }
+
+    //         allCountedSales[payPoint] = Number(countedSales[payPoint])
             
-            if (salesDifference[payPoint] < 0){
-                netBalance += Number(salesDifference[payPoint])
-            }else{
-                unAccounted += Number(salesDifference[payPoint])
-            }
-        })
+    //         if (salesDifference[payPoint] < 0){
+    //             netBalance += Number(salesDifference[payPoint])
+    //         }else{
+    //             unAccounted += Number(salesDifference[payPoint])
+    //         }
+    //     })
 
-        netBalance += (-1 * Number(totalPendingSales || 0))
+    //     netBalance += (-1 * Number(totalPendingSales || 0))
         
+    //     const sessionUpdate = {
+    //         end: new Date().getTime(),
+    //         endedby: companyRecord.emailid,
+    //         active: false,
+    //         orders: sessionOrders,
+    //         ...allCountedSales,
+    //         totalCashChange,
+    //         totalSalesAmount: allSalesAmount,
+    //         totalPendingSales,
+    //         totalCancelledSales,
+    //         debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
+    //         unAccountedSales : unAccounted
+    //     }
+
+    //     const response = await fetchServer("POST", {
+    //         database: company,
+    //         collection: "POSSessions",
+    //         prop: [{start: session.start},{
+    //             ...sessionUpdate
+    //         }]
+    //     }, "updateOneDoc", server);
+    
+    //     if (response.err) {
+    //         setAlertState('error');
+    //         setAlert('Could not end session. Please check your internet connection!');
+    //         setAlertTimeout(3000)
+    //         return
+    //     } else {
+    //         setAlertState('success');
+    //         if (![null, undefined].includes(sessionUser)){
+    //             setAlert('User Session Ended Successfully!');
+    //         }else{
+    //             setAlert('Session Ended!');
+    //         }
+    //         setAlertTimeout(3000)
+    //         fetchSessions(company, "sales", companyRecord)
+    //         setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
+    //         setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, {...session, ...sessionUpdate}]})
+    //         fetchSessions(company, "sales", companyRecord)
+    //         setEndSession(false)
+    //         setCountedSales({})
+    //         setSessionUser(null)
+    //         setAlertTimeout(5000)
+    //         return
+    //     }
+    // }
+
+    const stopSession = async (session, sessionOrders) => {
+        const {
+            allSales,
+            totalPendingSales,
+            totalCancelledSales,
+            totalCashChange,
+        } = getSessionSales(sessionOrders);
+        const openingCash = session.openingCash;
+        let netBalance = 0;
+        let unAccounted = 0;
+        let allSalesAmount = 0;
+        const salesDifference = {};
+        const allCountedSales = {};
+
+        Object.keys(payPoints).forEach((payPoint) => {
+            if (payPoint === 'cash') {
+                const expectedCash =
+                    Number(openingCash) +
+                    Number(allSales[payPoint] || 0) -
+                    Number(totalCashChange);
+                salesDifference[payPoint] =
+                    Number(countedSales[payPoint] || 0) - expectedCash;
+                allSalesAmount +=
+                    Number(allSales[payPoint] || 0) - Number(totalCashChange);
+            } else {
+                salesDifference[payPoint] =
+                    Number(countedSales[payPoint] || 0) -
+                    Number(allSales[payPoint] || 0);
+                allSalesAmount += Number(allSales[payPoint] || 0);
+            }
+
+            allCountedSales[payPoint] = Number(countedSales[payPoint]);
+
+            if (salesDifference[payPoint] < 0) {
+                netBalance += Number(salesDifference[payPoint]);
+            } else {
+                unAccounted += Number(salesDifference[payPoint]);
+            }
+        });
+
+        netBalance += -1 * Number(totalPendingSales || 0);
+
         const sessionUpdate = {
             end: new Date().getTime(),
             endedby: companyRecord.emailid,
@@ -410,42 +770,62 @@ const PointOfSales = () => {
             totalSalesAmount: allSalesAmount,
             totalPendingSales,
             totalCancelledSales,
-            debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
-            unAccountedSales : unAccounted
-        }
+            debtDue: netBalance < 0 ? Math.abs(netBalance) : 0,
+            unAccountedSales: unAccounted,
+        };
 
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "POSSessions",
-            prop: [{start: session.start},{
-                ...sessionUpdate
-            }]
-        }, "updateOneDoc", server);
-    
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Could not end session. Please check your internet connection!');
-            setAlertTimeout(3000)
-            return
-        } else {
+        const closedSession = {
+            ...session,
+            ...sessionUpdate,
+        };
+
+        try {
+            // 1) Local update
+            if (company && companyRecord?.emailid) {
+                await putSession(company, companyRecord.emailid, closedSession);
+            }
+
+            // 2) State updates
             setAlertState('success');
-            if (![null, undefined].includes(sessionUser)){
+            if (![null, undefined].includes(sessionUser)) {
                 setAlert('User Session Ended Successfully!');
-            }else{
+            } else {
                 setAlert('Session Ended!');
             }
-            setAlertTimeout(3000)
-            fetchSessions(company, "sales", companyRecord)
-            setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
-            setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, {...session, ...sessionUpdate}]})
-            fetchSessions(company, "sales", companyRecord)
-            setEndSession(false)
-            setCountedSales({})
-            setSessionUser(null)
-            setAlertTimeout(5000)
-            return
+            setAlertTimeout(3000);
+
+            setAllSessions((allSessions) => [
+                ...allSessions,
+                closedSession,
+            ]);
+            setAllSalesSessions((allSalesSessions) => [
+                ...(allSalesSessions || []),
+                closedSession,
+            ]);
+
+            setEndSession(false);
+            setCountedSales({});
+            setSessionUser(null);
+            setAlertTimeout(5000);
+
+            // 3) Queue session update
+            if (company && companyRecord?.emailid) {
+                queuePendingChange(company, companyRecord.emailid, {
+                    entityType: 'session',
+                    op: 'update',
+                    clientId: session.start,
+                    payload: closedSession,
+                });
+            }
+
+            return;
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Could not end session locally. Please try again.');
+            setAlertTimeout(3000);
+            return;
         }
-    }
+    };
 
     const UpdateSessionState = (sessions, loadSession)=>{
         if (!loadSession && sessions?.length){            
@@ -481,7 +861,7 @@ const PointOfSales = () => {
             }
         }
     } 
-    useState(()=>{
+    useEffect(()=>{
         UpdateSessionState(sessions, loadSession)
     },[loadSession,sessions])
     // =========================================
@@ -504,6 +884,20 @@ const PointOfSales = () => {
     }
 
      const loadInitialData = async () => {
+        if (!company || !companyRecord?.emailid) return;
+
+        // 1) Load from local IndexedDB first
+        try {   
+            const localOrders = await loadAllOrders(company, companyRecord.emailid);
+            if (Array.isArray(localOrders) && localOrders.length) {
+                setAllSessionOrders(localOrders);
+                setAllOrders(localOrders.filter((order) => {
+                    return (order.sessionId === curSession?.i_d && order.handlerId === companyRecord.emailid);
+                }));
+            }
+        } catch (e) {
+            console.warn('POS: loadAllOrders failed', e);
+        }
         //abort previous request if it exists
         if (orderControllerRef.current) {
             orderControllerRef.current.abort();            
@@ -536,16 +930,12 @@ const PointOfSales = () => {
         const ordersResponse = await fetchServer("POST", {
             database: company,
             collection: "Orders"
-        }, "getDocsDetails", server);
+        }, "getDocsDetails", server, orderController.signal);
         if (!ordersResponse.err){    
             setAllSessionOrders(ordersResponse.record)        
         }
 
         if (curSession){
-            const ordersResponse = await fetchServer("POST", {
-                database: company,
-                collection: "Orders"
-            }, "getDocsDetails", server, orderController.signal);
             if(!ordersResponse.err && !ordersResponse.mess){
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
@@ -554,6 +944,12 @@ const PointOfSales = () => {
                         setAllOrders(ordersResponse.record.filter((order) =>{
                             return (order.sessionId === curSession.i_d && order.handlerId === companyRecord.emailid)
                         })) 
+                        // write-through to IndexedDB orders store (guard keyPath)
+                        for (const o of ordersResponse.record) {
+                            if (o && o.orderNumber != null) {
+                                await putOrder(company, companyRecord.emailid, o);
+                            }
+                        }
                         var ordersUpdate = ordersResponse.record
                         if (currentOrder!==null){
                             if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
@@ -632,80 +1028,254 @@ const PointOfSales = () => {
         setCurrentOrder(newOrder);
     };
     
+    // const handleTableSelect = async (table) => {
+    //     fetchTables(company)
+    //     getProducts(company)
+    //     loadInitialData()
+    //     if (!loadSession && !startSession && !endSession){
+    //         if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions'))) {
+    //             setAlertState('error');
+    //             setAlert('This table is not available. Still in use!');
+    //             setAlertTimeout(2000)
+    //             return;
+    //         }
+    //         setSelectedProduct(null)
+    //         // Fetch ALL orders for this table and session(removed status filter)
+    //         setAlertState('info');
+    //         setAlert(`Loading Table ${table.i_d} Orders...`);
+    //         setAlertTimeout(100000)
+    //         const orderFilter = { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
+    //         if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+    //             delete orderFilter.sessionId
+    //             delete orderFilter.handlerId
+    //         }
+    //         const response = await fetchServer("POST", {
+    //             database: company,
+    //             collection: "Orders",
+    //             prop: {...orderFilter}
+    //         }, "getDocsDetails", server);
+    //         if (!response.err){
+    //             if (response.record?.length > 0) {
+    //                 setCurrentTable(table)
+    //                 // Store all table orders in state
+    //                 var ordersUpdate = response.record
+    //                 var filteredOrders = response.record
+    //                 if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+    //                     filteredOrders = ordersUpdate.filter((order)=>{
+    //                         var orderDate = '01/01/1970'
+    //                         if (order.createdAt){
+    //                             orderDate = order.createdAt
+    //                         }
+    //                         return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
+    //                     })
+    //                 }
+    //                 setTableOrders(filteredOrders)
+    //                 // Set the most recent pending order as active, or create new one if none pending
+    //                 const pendingOrders = filteredOrders.filter(order => order.status === 'pending');
+    //                 const ordersNumber = pendingOrders.length
+    //                 if (ordersNumber) {
+    //                     setCurrentOrder(pendingOrders[0]);
+    //                 } else {
+    //                     createNewOrder(table);
+    //                 }
+    //                 setActiveScreen('order');
+    //                 setAlertState('info');
+    //                 setAlert('Loaded table orders...');
+    //                 setAlertTimeout(10)
+    //             } else {
+    //                 setCurrentTable(table);
+    //                 createNewOrder(table);
+    //                 setActiveScreen('order');
+    //                 setAlertState('info');
+    //                 setAlert('Loaded table orders...');
+    //                 setAlertTimeout(10)
+    //                 fetchSessions(company, "sales", companyRecord)
+    //                 fetchTables(company)
+    //                 getProducts(company)
+    //                 loadInitialData()
+    //             }
+    //         }else{
+    //             setAlertState('info')
+    //             setAlert('Slow Network. Could Not Load Table Orders!')
+    //             setAlertTimeout(3000)
+    //         }
+    //     }
+    // };
+
     const handleTableSelect = async (table) => {
-        fetchTables(company)
-        getProducts(company)
-        loadInitialData()
-        if (!loadSession && !startSession && !endSession){
-            if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions'))) {
+        if (!loadSession && !startSession && !endSession) {
+            if (
+                table.status !== 'available' &&
+                (companyRecord?.status !== 'admin' &&
+                    !companyRecord?.permissions.includes('access_pos_sessions'))
+            ) {
                 setAlertState('error');
                 setAlert('This table is not available. Still in use!');
-                setAlertTimeout(2000)
+                setAlertTimeout(2000);
                 return;
             }
-            setSelectedProduct(null)
-            // Fetch ALL orders for this table and session(removed status filter)
+
+            setSelectedProduct(null);
             setAlertState('info');
             setAlert(`Loading Table ${table.i_d} Orders...`);
-            setAlertTimeout(100000)
-            const orderFilter = { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
-            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-                delete orderFilter.sessionId
-                delete orderFilter.handlerId
-            }
-            const response = await fetchServer("POST", {
-                database: company,
-                collection: "Orders",
-                prop: {...orderFilter}
-            }, "getDocsDetails", server);
-            if (!response.err){
-                if (response.record?.length > 0) {
-                    setCurrentTable(table)
-                    // Store all table orders in state
-                    var ordersUpdate = response.record
-                    var filteredOrders = response.record
-                    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-                        filteredOrders = ordersUpdate.filter((order)=>{
-                            var orderDate = '01/01/1970'
-                            if (order.createdAt){
-                                orderDate = order.createdAt
-                            }
-                            return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
-                        })
+            setAlertTimeout(100000)            
+
+            // 1) Use locally available orders (mirrored from IndexedDB) as primary
+            const baseOrders =
+                Array.isArray(allSessionOrders) && allSessionOrders.length
+                    ? allSessionOrders
+                    : allOrders;
+
+            let localOrders = [];
+            if (Array.isArray(baseOrders)) {
+                localOrders = baseOrders.filter((order) => {
+                    if (!order) return false;
+                    if (order.tableId !== table.i_d) return false;
+                    if (order.wrh !== wrh) return false;
+
+                    // Non-admin users: enforce handler + session
+                    if (
+                        !(
+                            companyRecord?.status === 'admin' ||
+                            companyRecord?.permissions.includes('access_pos_sessions')
+                        )
+                    ) {
+                        if (order.handlerId !== companyRecord.emailid) return false;
+                        const orderDate = order.createdAt || '01/01/1970';
+                        return (
+                            getSessionEnd(new Date(orderDate).getTime()) ===
+                            getSessionEnd(curSession.start)
+                        );
                     }
-                    setTableOrders(filteredOrders)
-                    // Set the most recent pending order as active, or create new one if none pending
-                    const pendingOrders = filteredOrders.filter(order => order.status === 'pending');
-                    const ordersNumber = pendingOrders.length
-                    if (ordersNumber) {
-                        setCurrentOrder(pendingOrders[0]);
+
+                    return true;
+                });
+            }
+
+            if (localOrders.length) {
+                setCurrentTable(table);
+                setTableOrders(localOrders);
+                const pendingLocal = localOrders.filter(
+                    (order) => order.status === 'pending'
+                );
+                if (pendingLocal.length) {
+                    setCurrentOrder(pendingLocal[0]);
+                } else {
+                    createNewOrder(table);
+                }
+                setActiveScreen('order');
+                setAlertState('info');
+                setAlert('Loaded table orders from local cache...');
+                setAlertTimeout(500);
+            } else {
+                // No local orders; optimistic new order
+                createNewOrder(table);
+                setActiveScreen('order');
+                setAlertState('info');
+                setAlert('Loaded table (no local orders found)...');
+                setAlertTimeout(500);
+            }
+
+            // 2) Background refresh from server and mirror into IndexedDB
+            // setAlertState('info');
+            // setAlert(`Refreshing Table ${table.i_d} orders from server...`);
+            // setAlertTimeout(100);
+
+            const orderFilter = {
+                tableId: table.i_d,
+                sessionId: curSession.i_d,
+                wrh: wrh,
+                handlerId: companyRecord.emailid,
+            };
+            if (
+                companyRecord?.status === 'admin' ||
+                companyRecord?.permissions.includes('access_pos_sessions')
+            ) {
+                delete orderFilter.sessionId;
+                delete orderFilter.handlerId;
+            }
+
+            const response = await fetchServer(
+                'POST',
+                {
+                    database: company,
+                    collection: 'Orders',
+                    prop: { ...orderFilter },
+                },
+                'getDocsDetails',
+                server
+            );
+
+            if (!response.err) {
+                let filteredOrders = Array.isArray(response.record)
+                    ? response.record
+                    : [];
+
+                if (
+                    companyRecord?.status === 'admin' ||
+                    companyRecord?.permissions.includes('access_pos_sessions')
+                ) {
+                    filteredOrders = filteredOrders.filter((order) => {
+                        if (!order) return false;
+                        let orderDate = '01/01/1970';
+                        if (order.createdAt) {
+                            orderDate = order.createdAt;
+                        }
+                        return (
+                            getSessionEnd(new Date(orderDate).getTime()) ===
+                            getSessionEnd(curSession.start)
+                        );
+                    });
+                }
+
+                // Mirror into IndexedDB orders store
+                if (company && companyRecord?.emailid) {
+                    for (const o of filteredOrders) {
+                        if (o && o.orderNumber != null) {
+                            await putOrder(company, companyRecord.emailid, o);
+                        }
+                    }
+                }
+
+                if (!localOrders.length){
+
+                    if (filteredOrders.length) {
+                        setCurrentTable(table);
+                        setTableOrders(filteredOrders);
+                        const pendingRemote = filteredOrders.filter(
+                            (order) => order.status === 'pending'
+                        );
+                        if (pendingRemote.length) {
+                            setCurrentOrder(pendingRemote[0]);
+                        } else {
+                            createNewOrder(table);
+                        }
+                        setActiveScreen('order');
+                        setAlertState('info');
+                        setAlert('Loaded table orders from server...');
+                        setAlertTimeout(500);
                     } else {
                         createNewOrder(table);
+                        setActiveScreen('order');
+                        setAlertState('info');
+                        setAlert('No server orders; using new order...');
+                        setAlertTimeout(500);
                     }
-                    setActiveScreen('order');
-                    setAlertState('info');
-                    setAlert('Loaded table orders...');
-                    setAlertTimeout(10)
-                } else {
-                    setCurrentTable(table);
-                    createNewOrder(table);
-                    setActiveScreen('order');
-                    setAlertState('info');
-                    setAlert('Loaded table orders...');
-                    setAlertTimeout(10)
-                    fetchSessions(company, "sales", companyRecord)
-                    fetchTables(company)
-                    getProducts(company)
-                    loadInitialData()
                 }
-            }else{
-                setAlertState('info')
-                setAlert('Slow Network. Could Not Load Table Orders!')
-                setAlertTimeout(3000)
+
+            } else {
+                setAlertState('info');
+                setAlert('Slow Network. Could Not Refresh Table Orders!');
+                setAlertTimeout(3000);
             }
+
+            // 3) Optional background refresh of other entities (non-blocking for UI)
+            fetchTables(company);
+            getProducts(company);
+            loadInitialData();
         }
     };
-
+    
     const handleCreateTable = () => {
         setOrderTables((orderTables)=>{
             return [...orderTables, newTableData]
@@ -739,47 +1309,122 @@ const PointOfSales = () => {
     // =========================================
     // 5. Order Management
     // =========================================
+    // const handlePlaceOrder = async () => {
+    //     // fetchSessions(company, "sales", companyRecord)
+    //     // fetchTables(company)
+    //     // getProducts(company)
+    //     loadInitialData()
+    //     setAlertState('info')
+    //     setAlert('Placing Order...')
+    //     setAlertTimeout(1000000)
+    //     setPlacingOrder(true)
+    //     // Save the current order to database
+        
+    //     const placedOrder = {
+    //         ...currentOrder, 
+    //         status: 'pending', 
+    //         placedAt: new Date().getTime(),
+    //         delivery: 'pending'
+    //     }
+    //     // Enqueue offline change so this order can be synced later
+    //     if (company && companyRecord?.emailid) {
+    //         queuePendingChange(company, companyRecord.emailid, {
+    //             entityType: 'order',
+    //             op: 'create',
+    //             clientId: placedOrder.orderNumber,
+    //             payload: placedOrder,
+    //         });
+    //     }
+    //     const response = await fetchServer("POST", {
+    //         database: company,
+    //         collection: "Orders",
+    //         update: {...placedOrder}
+    //     }, "createDoc", server);
+    
+    //     if (response.err) {
+    //         setAlertState('error');
+    //         setAlert('Error saving order');
+    //         setAlertTimeout(3000)
+    //         setPlacingOrder(false)
+    //         return;
+    //     }
+    //     else{
+    //         // Update tableOrders state with the new order
+    //         setAlertState('success');
+    //         setAlert('Order placed successfully');
+    //         setAlertTimeout(2000)
+    //         fetchSessions(company, "sales", companyRecord)
+    //         fetchTables(company)
+    //         getProducts(company)
+    //         loadInitialData()
+    //         setCurrentOrder(placedOrder)
+    //         setPlacingOrder(false)
+    //         const activeOrder = {
+    //             tableId: currentOrder.tableId,
+    //             sessionId: currentOrder.sessionId,
+    //             handlerId: companyRecord.emailid,
+    //             status: 'pending',
+    //             delivery: 'pending',
+    //             wrh: wrh,
+    //             orderNumber: currentOrder.orderNumber,
+    //             createdAt: new Date().getTime()
+    //         }
+    //         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+    //         const resp = await fetchServer("POST", {
+    //             database: company,
+    //             collection: "Tables",
+    //             prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables || []), {...activeOrder}]}]
+    //         }, "updateOneDoc", server)
+    //         if (resp.err){
+    //             setAlertState('error');
+    //             setAlert('Error updating table');
+    //             setAlertTimeout(3000)
+    //             setPlacingOrder(false)
+    //             return
+    //         }else{
+    //             setTableOrders(prev => ([
+    //                 ...prev, placedOrder
+    //             ]));
+    //             printKitchenOrder(placedOrder)
+    //         }
+            
+           
+    //         // View Payment Modal
+    //         // setShowPaymentModal(true);
+    //     }
+        
+    // };
     const handlePlaceOrder = async () => {
         // fetchSessions(company, "sales", companyRecord)
         // fetchTables(company)
         // getProducts(company)
-        loadInitialData()
-        setAlertState('info')
-        setAlert('Placing Order...')
-        setAlertTimeout(1000000)
-        setPlacingOrder(true)
-        // Save the current order to database
-        
+        loadInitialData();
+        setAlertState('info');
+        setAlert('Placing Order...');
+        setAlertTimeout(1000000);
+        setPlacingOrder(true);
+
+        // Save the current order to database (locally, offline-first)
         const placedOrder = {
-            ...currentOrder, 
-            status: 'pending', 
+            ...currentOrder,
+            status: 'pending',
             placedAt: new Date().getTime(),
-            delivery: 'pending'
-        }
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Orders",
-            update: {...placedOrder}
-        }, "createDoc", server);
-    
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error saving order');
-            setAlertTimeout(3000)
-            setPlacingOrder(false)
-            return;
-        }
-        else{
-            // Update tableOrders state with the new order
-            setAlertState('success');
-            setAlert('Order placed successfully');
-            setAlertTimeout(2000)
-            fetchSessions(company, "sales", companyRecord)
-            fetchTables(company)
-            getProducts(company)
-            loadInitialData()
-            setCurrentOrder(placedOrder)
-            setPlacingOrder(false)
+            delivery: 'pending',
+        };
+
+        try {
+            // 1) Write order to local IndexedDB cache
+            if (company && companyRecord?.emailid) {
+                await putOrder(company, companyRecord.emailid, placedOrder);
+            }
+
+            // 2) Update React state for orders
+            setCurrentOrder(placedOrder);
+            setTableOrders((prev) => [...prev, placedOrder]);
+            setAllSessionOrders((prev) => [...prev, placedOrder]);
+            setAllOrders((prev) => [...prev, placedOrder]);
+
+            // 3) Update table's activeTables locally (no direct server write)
             const activeOrder = {
                 tableId: currentOrder.tableId,
                 sessionId: currentOrder.sessionId,
@@ -788,32 +1433,76 @@ const PointOfSales = () => {
                 delivery: 'pending',
                 wrh: wrh,
                 orderNumber: currentOrder.orderNumber,
-                createdAt: new Date().getTime()
+                createdAt: new Date().getTime(),
+            };
+
+            const prevTable = tables.find((table) => table['wrh'] === wrh);
+            if (prevTable) {
+                const updatedTable = {
+                    ...prevTable,
+                    activeTables: [
+                        ...(prevTable.activeTables || []).filter((t) => {
+                            return !(
+                                t.tableId === activeOrder.tableId &&
+                                t.sessionId === activeOrder.sessionId &&
+                                t.handlerId === activeOrder.handlerId &&
+                                t.orderNumber === activeOrder.orderNumber
+                            );
+                        }),
+                        { ...activeOrder },
+                    ],
+                };
+
+                if (company && companyRecord?.emailid) {
+                    await putTable(company, companyRecord.emailid, updatedTable);
+                }
+
+                setTables((prev) =>
+                    prev.map((t) => (t.wrh === wrh ? updatedTable : t))
+                );
+
+                // Queue table update for later sync
+                if (company && companyRecord?.emailid) {
+                    queuePendingChange(company, companyRecord.emailid, {
+                        entityType: 'table',
+                        op: 'update',
+                        clientId: updatedTable.i_d,
+                        payload: updatedTable,
+                    });
+                }
             }
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-            const resp = await fetchServer("POST", {
-                database: company,
-                collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables || []), {...activeOrder}]}]
-            }, "updateOneDoc", server)
-            if (resp.err){
-                setAlertState('error');
-                setAlert('Error updating table');
-                setAlertTimeout(3000)
-                setPlacingOrder(false)
-                return
-            }else{
-                setTableOrders(prev => ([
-                    ...prev, placedOrder
-                ]));
-                printKitchenOrder(placedOrder)
+
+            // 4) Enqueue offline change so this order can be synced later
+            if (company && companyRecord?.emailid) {
+                queuePendingChange(company, companyRecord.emailid, {
+                    entityType: 'order',
+                    op: 'create',
+                    clientId: placedOrder.orderNumber,
+                    payload: placedOrder,
+                });
             }
-            
-           
-            // View Payment Modal
+
+            // 5) Local success feedback
+            setAlertState('success');
+            setAlert('Order placed successfully');
+            setAlertTimeout(2000);
+            setPlacingOrder(false);
+
+            // Keep your existing reads (they only fetch, no writes)
+            fetchSessions(company, 'sales', companyRecord);
+            fetchTables(company);
+            getProducts(company);
+            loadInitialData();
+
+            printKitchenOrder(placedOrder);
+            // View Payment Modal?
             // setShowPaymentModal(true);
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Error saving order locally');
+            setAlertTimeout(3000);
+            setPlacingOrder(false);
         }
-        
     };
     
 
@@ -888,41 +1577,185 @@ const PointOfSales = () => {
         setShowOrdersModal(false);
     };
 
+    // // =========================================
+    // // 6. Payment Processing
+    // // =========================================
+    // const handlePayment = async () => {
+    //     fetchSessions(company, "sales", companyRecord)
+    //     fetchTables(company)
+    //     getProducts(company)
+    //     loadInitialData()
+    //     setAlertState('info');
+    //     setAlert('Processing Payment...');
+    //     setAlertTimeout(1000000)
+    //     setMakingPayment(true)
+    //     var totalPayment = 0
+    //     var totalChange = 0
+    //     var receipts = {}
+    //     var salesPosts = {}
+    //     Object.keys(paymentDetails).forEach((payPoint)=>{
+    //         totalPayment += Number(paymentDetails[payPoint].amount || 0)
+    //         totalChange += Number(paymentDetails[payPoint].change || 0)
+    //         receipts[payPoint] = paymentDetails[payPoint].receipt
+    //         salesPosts[payPoint] = paymentDetails[payPoint].salesPost
+    //     })
+
+    //     if (totalPayment < currentOrder.totalSales) {
+    //         setAlertState('error');
+    //         setAlert('Insufficient payment amount');
+    //         setAlertTimeout(3000)
+    //         setMakingPayment(false)
+    //         return;
+    //     }
+
+    //     const paymentData = {}
+    //     Object.keys(paymentDetails).forEach((payPoint)=>{
+    //         paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0)
+    //     })
+
+    //     const paymentDataUpdate = {
+    //         ...paymentData,
+    //         payedAt: new Date().getTime(),
+    //         totalPayment: totalPayment,
+    //         cashChange: Number(paymentDetails['cash'].change),
+    //         receipts,
+    //         salesPosts,
+    //         status: 'completed'
+    //     };
+
+    //     const newOrder = {
+    //         ...currentOrder,
+    //         ...paymentDataUpdate
+    //     }
+
+    //     if (company && companyRecord?.emailid) {
+    //         queuePendingChange(company, companyRecord.emailid, {
+    //             entityType: 'order',
+    //             op: 'update',
+    //             clientId: currentOrder.orderNumber,
+    //             payload: {
+    //                 orderNumber: currentOrder.orderNumber,
+    //                 ...paymentDataUpdate,
+    //             },
+    //         });
+    //     }
+    //     if (currentOrder.delivery === 'completed'){
+    //         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+    //         const resp = await fetchServer("POST", {
+    //             database: company,
+    //             collection: "Tables",
+    //             prop: [{'wrh':wrh}, {activeTables: [
+    //                 ...(prevTable.activeTables.filter((table)=>{return (
+    //                     table.tableId !== currentOrder.tableId && 
+    //                     table.sessionId !== currentOrder.sessionId &&
+    //                     table.handlerId !== companyRecord.emailid && 
+    //                     table.orderNumber !== currentOrder.orderNumber
+    //                 )}))
+    //             ]}]
+    //         }, "updateOneDoc", server)
+    //         if (resp.err){
+    //             setAlertState('error');
+    //             setAlert('Error updating table');
+    //             setAlertTimeout(3000)
+    //             return;
+    //         }
+    //     }else{
+    //         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+    //         const resp = await fetchServer("POST", {
+    //             database: company,
+    //             collection: "Tables",
+    //             prop: [{'wrh':wrh}, {activeTables: [
+    //                 ...(prevTable.activeTables.filter((table)=>{return (
+    //                     table.tableId !== currentOrder.tableId && 
+    //                     table.sessionId !== currentOrder.sessionId &&
+    //                     table.handlerId !== companyRecord.emailid && 
+    //                     table.orderNumber !== currentOrder.orderNumber
+    //                 )})),
+    //                 {...(prevTable.activeTables.find((table)=>{return (
+    //                     table.tableId === currentOrder.tableId && 
+    //                     table.sessionId === currentOrder.sessionId &&
+    //                     table.handlerId === companyRecord.emailid && 
+    //                     table.orderNumber === currentOrder.orderNumber
+    //                 )})), 
+    //                 status: 'completed'}
+    //             ]}]
+    //         }, "updateOneDoc", server)
+    //         if (resp.err){
+    //             setAlertState('error');
+    //             setAlert('Error updating table');
+    //             setAlertTimeout(3000)
+    //             return;
+    //         }
+    //     }
+
+    //     const response = await fetchServer("POST", {
+    //         database: company,
+    //         collection: "Orders",
+    //         prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
+    //     }, "updateOneDoc", server);
+
+    //     if (response.err) {
+    //         setAlertState('error');
+    //         setAlert('Error processing payment');
+    //         setMakingPayment(false)
+    //         return
+    //     } else {
+    //         fetchSessions(company, "sales", companyRecord)
+    //         fetchTables(company)
+    //         getProducts(company)
+    //         loadInitialData()
+    //         setMakingPayment(false)
+    //         setAlertState('success');
+    //         setAlert('Payment processed successfully');
+    //         setAlertTimeout(2000)
+    //         createNewOrder(currentTable);
+    //         printReceipt(newOrder);
+    //         setShowPaymentModal(false);
+    //         getPosOrders(company)
+    //         setPaymentDetails({...payPoints})
+    //         return
+    //     }
+    // };
+
     // =========================================
     // 6. Payment Processing
     // =========================================
     const handlePayment = async () => {
-        fetchSessions(company, "sales", companyRecord)
-        fetchTables(company)
-        getProducts(company)
-        loadInitialData()
+        // These reads are fine (no direct writes to Mongo)
+        fetchSessions(company, "sales", companyRecord);
+        fetchTables(company);
+        getProducts(company);
+        loadInitialData();
+
         setAlertState('info');
         setAlert('Processing Payment...');
-        setAlertTimeout(1000000)
-        setMakingPayment(true)
-        var totalPayment = 0
-        var totalChange = 0
-        var receipts = {}
-        var salesPosts = {}
-        Object.keys(paymentDetails).forEach((payPoint)=>{
-            totalPayment += Number(paymentDetails[payPoint].amount || 0)
-            totalChange += Number(paymentDetails[payPoint].change || 0)
-            receipts[payPoint] = paymentDetails[payPoint].receipt
-            salesPosts[payPoint] = paymentDetails[payPoint].salesPost
-        })
+        setAlertTimeout(1000000);
+        setMakingPayment(true);
+
+        let totalPayment = 0;
+        let totalChange = 0;
+        const receipts = {};
+        const salesPosts = {};
+
+        Object.keys(paymentDetails).forEach((payPoint) => {
+            totalPayment += Number(paymentDetails[payPoint].amount || 0);
+            totalChange += Number(paymentDetails[payPoint].change || 0);
+            receipts[payPoint] = paymentDetails[payPoint].receipt;
+            salesPosts[payPoint] = paymentDetails[payPoint].salesPost;
+        });
 
         if (totalPayment < currentOrder.totalSales) {
             setAlertState('error');
             setAlert('Insufficient payment amount');
-            setAlertTimeout(3000)
-            setMakingPayment(false)
+            setAlertTimeout(3000);
+            setMakingPayment(false);
             return;
         }
 
-        const paymentData = {}
-        Object.keys(paymentDetails).forEach((payPoint)=>{
-            paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0)
-        })
+        const paymentData = {};
+        Object.keys(paymentDetails).forEach((payPoint) => {
+            paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0);
+        });
 
         const paymentDataUpdate = {
             ...paymentData,
@@ -931,88 +1764,124 @@ const PointOfSales = () => {
             cashChange: Number(paymentDetails['cash'].change),
             receipts,
             salesPosts,
-            status: 'completed'
+            status: 'completed',
         };
 
         const newOrder = {
             ...currentOrder,
-            ...paymentDataUpdate
-        }
-        if (currentOrder.delivery === 'completed'){
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-            const resp = await fetchServer("POST", {
-                database: company,
-                collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [
-                    ...(prevTable.activeTables.filter((table)=>{return (
-                        table.tableId !== currentOrder.tableId && 
-                        table.sessionId !== currentOrder.sessionId &&
-                        table.handlerId !== companyRecord.emailid && 
-                        table.orderNumber !== currentOrder.orderNumber
-                    )}))
-                ]}]
-            }, "updateOneDoc", server)
-            if (resp.err){
-                setAlertState('error');
-                setAlert('Error updating table');
-                setAlertTimeout(3000)
-                return;
-            }
-        }else{
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-            const resp = await fetchServer("POST", {
-                database: company,
-                collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [
-                    ...(prevTable.activeTables.filter((table)=>{return (
-                        table.tableId !== currentOrder.tableId && 
-                        table.sessionId !== currentOrder.sessionId &&
-                        table.handlerId !== companyRecord.emailid && 
-                        table.orderNumber !== currentOrder.orderNumber
-                    )})),
-                    {...(prevTable.activeTables.find((table)=>{return (
-                        table.tableId === currentOrder.tableId && 
-                        table.sessionId === currentOrder.sessionId &&
-                        table.handlerId === companyRecord.emailid && 
-                        table.orderNumber === currentOrder.orderNumber
-                    )})), 
-                    status: 'completed'}
-                ]}]
-            }, "updateOneDoc", server)
-            if (resp.err){
-                setAlertState('error');
-                setAlert('Error updating table');
-                setAlertTimeout(3000)
-                return;
-            }
-        }
+            ...paymentDataUpdate,
+        };
 
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "Orders",
-            prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
-        }, "updateOneDoc", server);
+        try {
+            // 1) Update order in local IndexedDB and React state
+            if (company && companyRecord?.emailid) {
+                await putOrder(company, companyRecord.emailid, newOrder);
+            }
 
-        if (response.err) {
-            setAlertState('error');
-            setAlert('Error processing payment');
-            setMakingPayment(false)
-            return
-        } else {
-            fetchSessions(company, "sales", companyRecord)
-            fetchTables(company)
-            getProducts(company)
-            loadInitialData()
-            setMakingPayment(false)
+            setCurrentOrder(newOrder);
+            setAllSessionOrders((prev) =>
+                prev.map((o) =>
+                    o.orderNumber === newOrder.orderNumber ? newOrder : o
+                )
+            );
+            setAllOrders((prev) =>
+                prev.map((o) =>
+                    o.orderNumber === newOrder.orderNumber ? newOrder : o
+                )
+            );
+            setTableOrders((prev) =>
+                prev.map((o) =>
+                    o.orderNumber === newOrder.orderNumber ? newOrder : o
+                )
+            );
+
+            // 2) Update table activeTables locally (no direct server write)
+            const prevTable = tables.find((table) => table['wrh'] === wrh);
+            if (prevTable) {
+                let updatedActiveTables = (prevTable.activeTables || []).filter(
+                    (t) =>
+                        !(
+                            t.tableId === currentOrder.tableId &&
+                            t.sessionId === currentOrder.sessionId &&
+                            t.handlerId === companyRecord.emailid &&
+                            t.orderNumber === currentOrder.orderNumber
+                        )
+                );
+
+                if (currentOrder.delivery !== 'completed') {
+                    // Keep an active record but mark as completed
+                    const existing = (prevTable.activeTables || []).find(
+                        (t) =>
+                            t.tableId === currentOrder.tableId &&
+                            t.sessionId === currentOrder.sessionId &&
+                            t.handlerId === companyRecord.emailid &&
+                            t.orderNumber === currentOrder.orderNumber
+                    );
+                    if (existing) {
+                        updatedActiveTables.push({
+                            ...existing,
+                            status: 'completed',
+                        });
+                    }
+                }
+                // else if delivery === 'completed', remove completely
+
+                const updatedTable = {
+                    ...prevTable,
+                    activeTables: updatedActiveTables,
+                };
+
+                if (company && companyRecord?.emailid) {
+                    await putTable(company, companyRecord.emailid, updatedTable);
+                }
+
+                setTables((prev) =>
+                    prev.map((t) => (t.wrh === wrh ? updatedTable : t))
+                );
+
+                // Queue table update for sync
+                if (company && companyRecord?.emailid) {
+                    queuePendingChange(company, companyRecord.emailid, {
+                        entityType: 'table',
+                        op: 'update',
+                        clientId: updatedTable.i_d,
+                        payload: updatedTable,
+                    });
+                }
+            }
+
+            // 3) Queue order update for sync (you already had this pattern)
+            if (company && companyRecord?.emailid) {
+                queuePendingChange(company, companyRecord.emailid, {
+                    entityType: 'order',
+                    op: 'update',
+                    clientId: currentOrder.orderNumber,
+                    payload: {
+                        orderNumber: currentOrder.orderNumber,
+                        ...paymentDataUpdate,
+                    },
+                });
+            }
+
+            // 4) Local success feedback
+            setMakingPayment(false);
             setAlertState('success');
             setAlert('Payment processed successfully');
-            setAlertTimeout(2000)
+            setAlertTimeout(2000);
+
             createNewOrder(currentTable);
             printReceipt(newOrder);
             setShowPaymentModal(false);
-            getPosOrders(company)
-            setPaymentDetails({...payPoints})
-            return
+            getPosOrders(company); // read-only
+            setPaymentDetails({ ...payPoints });
+
+            return;
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Error processing payment locally');
+            setAlertTimeout(3000);
+            setMakingPayment(false);
+            return;
         }
     };
 
@@ -1792,7 +2661,7 @@ const PointOfSales = () => {
                         <div className="header-actions">
                             <button 
                                 className="action-btn"
-                                disabled={placingOrder || makingPayment || currentTable.status === 'unavailable'}
+                                disabled={placingOrder || makingPayment || currentTable?.status === 'unavailable'}
                                 onClick={() => createNewOrder(currentTable)}
                             >
                                 New Order
@@ -2146,73 +3015,275 @@ const PaymentModal = ({
         </div>
     );
 };
-const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, 
-    tables, currentOrder, setCurrentOrder, createNewOrder, curSession, employees 
+// const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, 
+//     tables, currentOrder, setCurrentOrder, createNewOrder, curSession, employees 
+// }) => {
+//     const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
+//     const [cancelling, setCancelling] = useState(false)
+//     const handleCancelOrder = async (order) => {
+//         if (order.delivery !== 'completed'){
+//             const cancelOrder = window.confirm(`Are you sure you want to Cancel Order #${order.orderNumber}?`);
+//             if (!cancelOrder) return;
+//             setCancelling(true)
+//             setAlertState('info')
+//             setAlert('Cancelling Order...')
+//             setAlertTimeout(1000000)
+//             const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
+//             const resp = await fetchServer("POST", {
+//                 database: company,
+//                 collection: "Tables",
+//                 prop: [{'wrh':wrh}, {activeTables: [
+//                     ...(prevTable.activeTables.filter((tableOrder)=>{return (
+//                         tableOrder.tableId !== order.tableId && 
+//                         tableOrder.sessionId !== order.sessionId &&
+//                         tableOrder.orderNumber !== order.orderNumber
+//                     )}))
+//                 ]}]
+//             }, "updateOneDoc", server)
+//             if (resp.err){
+//                 setAlertState('error');
+//                 setAlert('Error updating table');
+//                 setAlertTimeout(3000)
+//                 setCancelling(false)
+//                 return;
+//             }
+//             const response = await fetchServer("POST", {
+//                 database: company,
+//                 collection: "Orders",
+//                 prop: [{orderNumber: order.orderNumber}, 
+//                     {
+//                         status: 'cancelled', 
+//                         cancelledBy: companyRecord.emailid,
+//                         cancelledAt: new Date().getTime()
+//                     }
+//                 ]
+//             }, "updateOneDoc", server);
+
+//             if (company && companyRecord?.emailid) {
+//                 queuePendingChange(company, companyRecord.emailid, {
+//                     entityType: 'order',
+//                     op: 'update',
+//                     clientId: order.orderNumber,
+//                     payload: {
+//                         orderNumber: order.orderNumber,
+//                         status: 'cancelled',
+//                         cancelledBy: companyRecord.emailid,
+//                         cancelledAt: Date.now(),
+//                     },
+//                 });
+//             }
+
+//             if (response.err) {
+//                 setAlertState('error');
+//                 setAlert('Error cancelling order');
+//                 setAlertTimeout(3000);
+//                 setCancelling(false)
+//                 return
+//             } else {
+//                 setAlertState('success');
+//                 setAlert('Order cancelled successfully');
+//                 setAlertTimeout(2000);
+//                 if (currentOrder.orderNumber === order.orderNumber){
+//                     createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
+//                 }
+//                 setCancelling(false)
+//                 setShowOrdersModal(false); // Close modal after deletion
+//                 return
+//             }
+//         }else{
+//             setAlertState('error');
+//             setAlert('Please Cancel Delivery First Before Cancelling Order!');
+//             setAlertTimeout(3000)
+//             setCancelling(false)
+//             return
+//         }
+//     };
+
+//     return (
+//         <div className="modal-overlay">
+//             <div className="modal-content orders-modal">
+//                 <div className="modal-header">
+//                     <h3>All Orders</h3>
+//                     <button disabled={cancelling} onClick={() => setShowOrdersModal(false)}>×</button>
+//                 </div>
+//                 <div className="orders-list">
+//                     {tableOrders?.map(order => (
+//                         <div 
+//                             key={order.i_d}
+//                             className={`order-card ${order.status}`}
+//                         >
+//                             <div onClick={() => handleOrderSelect(order)}>
+//                                 <div>Order: #{order.orderNumber}</div>
+//                                 <div>Table: {order.tableId}</div>
+//                                 <div>Total: ₦{order.totalSales}</div>
+//                                 <div>Status: {order.status}</div>
+//                                 <div>Delivery: {(order.delivery || 'pending')}</div>
+//                                 <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
+//                                 <div>{new Date(order.createdAt).toLocaleString()}</div>
+//                             </div>
+//                             {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && */}
+//                             {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('cancel_pos_order')) &&
+//                             !['cancelled','completed'].includes(order.status) 
+//                             &&  (
+//                                 <button 
+//                                     disabled={cancelling}
+//                                     className="cancel-order-btn"
+//                                     onClick={() => handleCancelOrder(order)}
+//                                     title="Cancel Order"
+//                                 >
+//                                     🗑️
+//                                 </button>
+//                             )}
+//                         </div>
+//                     ))}
+//                 </div>
+//             </div>
+//         </div>
+//     );
+// };
+
+const OrdersModal = ({
+    tableOrders,
+    wrh,
+    handleOrderSelect,
+    setShowOrdersModal,
+    tables,
+    currentOrder,
+    setCurrentOrder,
+    createNewOrder,
+    curSession,
+    employees,
 }) => {
-    const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
-    const [cancelling, setCancelling] = useState(false)
+    const {
+        companyRecord,
+        fetchServer,
+        setAlert,
+        setAlertState,
+        setAlertTimeout,
+        server,
+        company,
+    } = useContext(ContextProvider);
+
+    const [cancelling, setCancelling] = useState(false);
+
     const handleCancelOrder = async (order) => {
-        if (order.delivery !== 'completed'){
-            const cancelOrder = window.confirm(`Are you sure you want to Cancel Order #${order.orderNumber}?`);
+        if (order.delivery !== 'completed') {
+            const cancelOrder = window.confirm(
+                `Are you sure you want to Cancel Order #${order.orderNumber}?`
+            );
             if (!cancelOrder) return;
-            setCancelling(true)
-            setAlertState('info')
-            setAlert('Cancelling Order...')
-            setAlertTimeout(1000000)
-            const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-            const resp = await fetchServer("POST", {
-                database: company,
-                collection: "Tables",
-                prop: [{'wrh':wrh}, {activeTables: [
-                    ...(prevTable.activeTables.filter((tableOrder)=>{return (
-                        tableOrder.tableId !== order.tableId && 
-                        tableOrder.sessionId !== order.sessionId &&
-                        tableOrder.orderNumber !== order.orderNumber
-                    )}))
-                ]}]
-            }, "updateOneDoc", server)
-            if (resp.err){
-                setAlertState('error');
-                setAlert('Error updating table');
-                setAlertTimeout(3000)
-                setCancelling(false)
-                return;
-            }
-            const response = await fetchServer("POST", {
-                database: company,
-                collection: "Orders",
-                prop: [{orderNumber: order.orderNumber}, 
-                    {
-                        status: 'cancelled', 
-                        cancelledBy: companyRecord.emailid,
-                        cancelledAt: new Date().getTime()
+
+            setCancelling(true);
+            setAlertState('info');
+            setAlert('Cancelling Order...');
+            setAlertTimeout(1000000);
+
+            try {
+                // 1) Build cancelled order object
+                const cancelledOrder = {
+                    ...order,
+                    status: 'cancelled',
+                    cancelledBy: companyRecord.emailid,
+                    cancelledAt: new Date().getTime(),
+                };
+
+                // 2) Update order locally (IndexedDB + React state)
+                if (company && companyRecord?.emailid) {
+                    await putOrder(company, companyRecord.emailid, cancelledOrder);
+                }
+
+                setCurrentOrder((curr) =>
+                    curr && curr.orderNumber === order.orderNumber
+                        ? cancelledOrder
+                        : curr
+                );
+                // update tables’ order list in parent
+                // (tableOrders in parent is passed down, but we can safely update
+                //  via a setter in parent; here we only have local view, so we
+                //  just close modal and rely on parent refresh)
+
+                // 3) Update table.activeTables locally
+                const prevTable = tables.find(
+                    (table) => table['wrh'] === wrh
+                );
+                if (prevTable) {
+                    const updatedTable = {
+                        ...prevTable,
+                        activeTables: (prevTable.activeTables || []).filter(
+                            (tableOrder) =>
+                                !(
+                                    tableOrder.tableId === order.tableId &&
+                                    tableOrder.sessionId === order.sessionId &&
+                                    tableOrder.orderNumber === order.orderNumber
+                                )
+                        ),
+                    };
+
+                    if (company && companyRecord?.emailid) {
+                        await putTable(
+                            company,
+                            companyRecord.emailid,
+                            updatedTable
+                        );
                     }
-                ]
-            }, "updateOneDoc", server);
-    
-            if (response.err) {
-                setAlertState('error');
-                setAlert('Error cancelling order');
-                setAlertTimeout(3000);
-                setCancelling(false)
-                return
-            } else {
+
+                    // We don’t have setTables here; parent POS already updates
+                    // tables via other flows. It is okay to rely on refresh or
+                    // on parent’s state changes. We still queue table change.
+
+                    if (company && companyRecord?.emailid) {
+                        queuePendingChange(company, companyRecord.emailid, {
+                            entityType: 'table',
+                            op: 'update',
+                            clientId: updatedTable.i_d,
+                            payload: updatedTable,
+                        });
+                    }
+                }
+
+                // 4) Queue order cancellation
+                if (company && companyRecord?.emailid) {
+                    queuePendingChange(company, companyRecord.emailid, {
+                        entityType: 'order',
+                        op: 'update',
+                        clientId: order.orderNumber,
+                        payload: {
+                            orderNumber: order.orderNumber,
+                            status: 'cancelled',
+                            cancelledBy: companyRecord.emailid,
+                            cancelledAt: Date.now(),
+                        },
+                    });
+                }
+
+                // 5) Local success
                 setAlertState('success');
                 setAlert('Order cancelled successfully');
                 setAlertTimeout(2000);
-                if (currentOrder.orderNumber === order.orderNumber){
-                    createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
+
+                if (currentOrder?.orderNumber === order.orderNumber) {
+                    createNewOrder({
+                        i_d: currentOrder.tableId,
+                        name: currentOrder.tableName,
+                    });
                 }
-                setCancelling(false)
-                setShowOrdersModal(false); // Close modal after deletion
-                return
+
+                setCancelling(false);
+                setShowOrdersModal(false);
+                return;
+            } catch (e) {
+                setAlertState('error');
+                setAlert('Error cancelling order locally');
+                setAlertTimeout(3000);
+                setCancelling(false);
+                return;
             }
-        }else{
+        } else {
             setAlertState('error');
             setAlert('Please Cancel Delivery First Before Cancelling Order!');
-            setAlertTimeout(3000)
-            setCancelling(false)
-            return
+            setAlertTimeout(3000);
+            setCancelling(false);
+            return;
         }
     };
 
@@ -2221,11 +3292,16 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
             <div className="modal-content orders-modal">
                 <div className="modal-header">
                     <h3>All Orders</h3>
-                    <button disabled={cancelling} onClick={() => setShowOrdersModal(false)}>×</button>
+                    <button
+                        disabled={cancelling}
+                        onClick={() => setShowOrdersModal(false)}
+                    >
+                        ×
+                    </button>
                 </div>
                 <div className="orders-list">
-                    {tableOrders?.map(order => (
-                        <div 
+                    {tableOrders?.map((order) => (
+                        <div
                             key={order.i_d}
                             className={`order-card ${order.status}`}
                         >
@@ -2234,23 +3310,33 @@ const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal,
                                 <div>Table: {order.tableId}</div>
                                 <div>Total: ₦{order.totalSales}</div>
                                 <div>Status: {order.status}</div>
-                                <div>Delivery: {(order.delivery || 'pending')}</div>
-                                <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
-                                <div>{new Date(order.createdAt).toLocaleString()}</div>
+                                <div>Delivery: {order.delivery || 'pending'}</div>
+                                <div>
+                                    Placed By:{' '}
+                                    {employees.find(
+                                        (emp) => emp.i_d === order.handlerId
+                                    )?.firstName || 'Admin'}
+                                </div>
+                                <div>
+                                    {new Date(order.createdAt).toLocaleString()}
+                                </div>
                             </div>
-                            {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && */}
-                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('cancel_pos_order')) &&
-                            !['cancelled','completed'].includes(order.status) 
-                            &&  (
-                                <button 
-                                    disabled={cancelling}
-                                    className="cancel-order-btn"
-                                    onClick={() => handleCancelOrder(order)}
-                                    title="Cancel Order"
-                                >
-                                    🗑️
-                                </button>
-                            )}
+                            {(companyRecord?.status === 'admin' ||
+                                companyRecord?.permissions.includes(
+                                    'cancel_pos_order'
+                                )) &&
+                                !['cancelled', 'completed'].includes(
+                                    order.status
+                                ) && (
+                                    <button
+                                        disabled={cancelling}
+                                        className="cancel-order-btn"
+                                        onClick={() => handleCancelOrder(order)}
+                                        title="Cancel Order"
+                                    >
+                                        🗑️
+                                    </button>
+                                )}
                         </div>
                     ))}
                 </div>
@@ -2267,9 +3353,16 @@ const POSDashboard = ({
     setAlertState, setAlert, setAlertTimeout, tables, wrhCategories
 }) => {
     const { fetchServer, server, company } = useContext(ContextProvider);
+
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
     const [stableSalesSessions, setStableSalesSessions] = useState([])
+
+    const [showPendingModal, setShowPendingModal] = useState(false);
+    const [pendingChanges, setPendingChanges] = useState([]);
+    const [pendingLoading, setPendingLoading] = useState(false);
+    const [pendingError, setPendingError] = useState(null);
+
     useEffect(()=>{
         var pendingSessions = allSessions.filter((session)=>{
             return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
@@ -2279,6 +3372,7 @@ const POSDashboard = ({
         // console.log(curSession)
         setPendingSessions(pendingSessions)        
     },[stableSalesSessions])
+
 
     useEffect(()=>{
         if (allSalesSessions?.length){
@@ -2312,14 +3406,48 @@ const POSDashboard = ({
         getSessionsData()
     },[allSalesSessions])
 
+    const loadPendingOfflineChanges = async () => {
+        if (!company || !companyRecord?.emailid) return;
+        setPendingLoading(true);
+        setPendingError(null);
+        try {
+            const list = await loadPendingChanges(company, companyRecord.emailid);
+            setPendingChanges(list);
+        } catch (e) {
+            setPendingError('Could not load offline changes');
+        } finally {
+            setPendingLoading(false);
+        }
+    };
+
     const showPendingSessionAlert = ()=>{
         setAlertState('error')
         setAlert('Please End All Other Sessions Before Starting A New One!')
         setAlertTimeout(3000)
     }
+
+    const handleSyncOfflinePOS = async () => {
+        if (!company || !companyRecord?.emailid) return;
+
+        setAlertState('info');
+        setAlert('Syncing offline POS changes...');
+        setAlertTimeout(10000);
+
+        try {
+            await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            setAlertState('success');
+            setAlert('Offline POS sync completed');
+            setAlertTimeout(3000);
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Offline POS sync failed. Please try again.');
+            setAlertTimeout(5000);
+        }
+    }
+
     return (
         <>
-            <div className='pos-sessions'>
+            <div className='pos-sessions'>                
                 <div className='pos-sessions-nav'>
                     <div className={'live-nav'}>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <button 
@@ -2328,7 +3456,7 @@ const POSDashboard = ({
                             style={{ marginRight: '10px' }}
                         >
                             View Reports
-                        </button>}
+                        </button>}                        
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
                             className="action-btn"
                             onClick={() => {    
@@ -2364,7 +3492,7 @@ const POSDashboard = ({
                                         return
                                     }
                                 })
-                                if((profile.permissions.includes('pos') && hasPosSalesAccess) || profile.permissions.includes('all')){                                
+                                if((profile?.permissions.includes('pos') && hasPosSalesAccess) || profile?.permissions.includes('all')){                                
                                     const {firstName, lastName} = ((profile.status === 'admin' && profile.access === 'admin')? {
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
