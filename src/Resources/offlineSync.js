@@ -57,18 +57,26 @@ async function syncOrderChange(change, company, fetchServer, server) {
   if (!payload) return;
 
   if (op === 'create') {
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'Orders',
       update: payload,
     }, 'createDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to create order');
+    }
   } else if (op === 'update') {
     if (!payload.orderNumber) return;
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'Orders',
       prop: [{ orderNumber: payload.orderNumber }, { ...payload }],
     }, 'updateOneDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to update order');
+    }
   }
 }
 
@@ -77,25 +85,37 @@ async function syncSessionChange(change, company, fetchServer, server) {
   if (!payload) return;
 
   if (op === 'create') {
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'POSSessions',
       update: payload,
     }, 'createDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to create session');
+    }
   } else if (op === 'update') {
     if (!payload.start) return;
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'POSSessions',
       prop: [{ start: payload.start }, { ...payload }],
     }, 'updateOneDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to update session');
+    }
   } else if (op === 'delete') {
     if (!payload.start) return;
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'POSSessions',
       update: { start: payload.start },
     }, 'removeDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to delete session');
+    }
   }
 }
 
@@ -105,11 +125,15 @@ async function syncInventoryChange(change, company, fetchServer, server) {
   if (op !== 'create') return;
 
   for (const txn of payload.transactions) {
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'InventoryTransactions',
       update: txn,
     }, 'createDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to create inventory transaction');
+    }
   }
 }
 
@@ -118,22 +142,34 @@ async function syncTableChange(change, company, fetchServer, server) {
   if (!payload || !payload.i_d) return;
 
   if (op === 'create') {
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'Tables',
       update: payload,
     }, 'createDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to create table');
+    }
   } else if (op === 'update') {
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'Tables',
       prop: [{ i_d: payload.i_d }, { ...payload }],
     }, 'updateOneDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to update table');
+    }
   } else if (op === 'delete') {
-    await fetchServer('POST', {
+    const resp = await fetchServer('POST', {
       database: company,
       collection: 'Tables',
       update: { i_d: payload.i_d },
     }, 'removeDoc', server);
+
+    if (resp && resp.err) {
+      throw new Error(resp.mess || 'Failed to delete table');
+    }
   }
 }
