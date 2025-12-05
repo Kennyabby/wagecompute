@@ -18,6 +18,7 @@ import {
 } from 'react-icons/fa';
 // Charts (install: npm i recharts)
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, PieChart, Pie, Cell, LabelList } from 'recharts'
+import { getAppCache, setAppCache } from '../../Resources/offlineDb';
 
 const fmt = (n)=> Number(n||0).toLocaleString()
 
@@ -26,7 +27,7 @@ const DashView = () =>{
     const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const {
         storePath,
-        fetchServer, server, company, fetchAllSessions,
+        fetchServer, server, company, companyRecord, fetchAllSessions,
         products, getProducts, getProductsStockReport,
         sales, getSales, saleFrom, saleTo,
         purchase, getPurchase,
@@ -129,6 +130,41 @@ const DashView = () =>{
         lastDeliverySessions: []
     })
 
+    // Build a cache key for the current dashboard filters
+    const makeDashCacheKey = () => {
+        if (!company) return null;
+        const db = company || 'global';
+        return [
+            'dash',
+            db,
+            fromDate,
+            toDate,
+            locationFilter || 'all',
+            productFilter || 'all',
+            employeeFilter || 'all',
+            seasonFilter || 'all',
+        ].join(':');
+    };
+
+    // Apply a cached or freshly-computed snapshot into React state
+    const applyDashSnapshot = (snap) => {
+        if (!snap) return;
+        if (snap.kpis) setKpis(snap.kpis);
+        if (Array.isArray(snap.series)) setSeries(snap.series);
+        if (Array.isArray(snap.monthlySeries)) setMonthlySeries(snap.monthlySeries);
+        if (Array.isArray(snap.revenueMix)) setRevenueMix(snap.revenueMix);
+        if (Array.isArray(snap.restock)) setRestock(snap.restock);
+        if (Array.isArray(snap.topProducts)) setTopProducts(snap.topProducts);
+        if (Array.isArray(snap.topLocations)) setTopLocations(snap.topLocations);
+        if (Array.isArray(snap.topProductsBySales)) setTopProductsBySales(snap.topProductsBySales);
+        if (Array.isArray(snap.topPurchaseItems)) setTopPurchaseItems(snap.topPurchaseItems);
+        if (Array.isArray(snap.productLocationBreakdown)) setProductLocationBreakdown(snap.productLocationBreakdown);
+        if (Array.isArray(snap.productLocationSalesBreakdown)) setProductLocationSalesBreakdown(snap.productLocationSalesBreakdown);
+        if (Array.isArray(snap.topEmployeesSales)) setTopEmployeesSales(snap.topEmployeesSales);
+        if (Array.isArray(snap.topEmployeesServices)) setTopEmployeesServices(snap.topEmployeesServices);
+        if (Array.isArray(snap.topExpenseCategories)) setTopExpenseCategories(snap.topExpenseCategories);
+    };
+
     useEffect(()=>{
         storePath('dashboard')  
     },[storePath])
@@ -214,6 +250,21 @@ const DashView = () =>{
 
         setLoading(true)
         setDashErr('')
+
+        const cacheKey = makeDashCacheKey();
+
+        // 1) Try to hydrate from IndexedDB app cache first (for snappy UI)
+        if (cacheKey) {
+            try {
+                const cached = await getAppCache(company, companyRecord?.emailid, cacheKey);
+                if (cached && cached.data) {
+                    applyDashSnapshot(cached.data);
+                }
+            } catch (e) {
+                console.warn('DashView: getAppCache failed', e);
+            }
+        }
+
         try{
             // Format dates for MongoDB query
             const formattedStartDate = new Date(fromDate).toISOString().split('T')[0];
@@ -693,7 +744,31 @@ const DashView = () =>{
             
             setSeries(seriesData)
 
-            
+            // 2) After computing everything, persist a snapshot to IndexedDB app cache
+            if (cacheKey) {
+                const snapshot = {
+                    kpis: kpisData,
+                    series: seriesData,
+                    monthlySeries: monthlyData,
+                    revenueMix: revenueMixData,
+                    restock: locationRestockAlerts,
+                    topProducts: topProductsData,
+                    topLocations: topLocationsData,
+                    topProductsBySales: topSalesProducts,
+                    topPurchaseItems: topPurchaseItemsList,
+                    productLocationBreakdown: prodLocArr,
+                    productLocationSalesBreakdown: prodSalesLocArr,
+                    topEmployeesSales: empSalesArr,
+                    topEmployeesServices: empServicesArr,
+                    topExpenseCategories: topExpenses,
+                };
+                try {
+                    await setAppCache(company, companyRecord?.emailid, cacheKey, snapshot);
+                } catch (e) {
+                    console.warn('DashView: setAppCache failed', e);
+                }
+            }
+
         }catch(err){
             setDashErr('Failed to load dashboard data')
         }finally{

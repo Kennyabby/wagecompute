@@ -285,8 +285,7 @@ const SideNav = ()=>{
                                 <div name="delivery">Order Delivery</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin') && 
-                            <div 
+                        {<div 
                                 className={'navdiv ' + (curPath==='offline-sync'?'selected':'')}
                                 onClick={(e)=>{
                                     e.stopPropagation();

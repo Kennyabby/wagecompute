@@ -17,6 +17,7 @@ import {
   putSession,
   putInventoryTransactions,
 } from '../../Resources/offlineDb';
+import { syncPendingChanges } from '../../Resources/offlineSync';
 
 const Delivery = () => {
     // =========================================
@@ -302,27 +303,33 @@ const Delivery = () => {
 
         (async () => {
             try {
-            const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-                loadAllOrders(company, companyRecord.emailid),
-                loadAllSessionsLocal(company, companyRecord.emailid),
-                loadAllTables(company, companyRecord.emailid),
-            ]);
+                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+                    loadAllOrders(company, companyRecord.emailid),
+                    loadAllSessionsLocal(company, companyRecord.emailid),
+                    loadAllTables(company, companyRecord.emailid),
+                ]);
 
-            if (Array.isArray(orders) && orders.length) {
-                setAllOrders(orders);
-                setAllSessionOrders(orders)
-                // optionally derive allSessionOrders, etc.
-            }
-            if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-                setSessions(sessionsLocal.filter(s => s.type === 'delivery'));
-                setAllDeliverySessions(sessionsLocal.filter(s => s.type === 'delivery'));
-                setAllSessions(sessionsLocal);
-            }
-            if (Array.isArray(tablesLocal) && tablesLocal.length) {
-                setTables(tablesLocal);
-            }
+                if (Array.isArray(orders) && orders.length) {
+                    setAllOrders(orders);
+                    setAllSessionOrders(orders)
+                    // optionally derive allSessionOrders, etc.
+                }
+
+                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+                    const localDeliverySessions = sessionsLocal.filter(s => s.type === 'delivery');
+                    setSessions(localDeliverySessions);
+                    setAllDeliverySessions(localDeliverySessions);
+                    setAllSessions(sessionsLocal);
+
+                    // Immediately derive curSession from locally cached delivery sessions
+                    UpdateSessionState(localDeliverySessions, false);
+                }
+
+                if (Array.isArray(tablesLocal) && tablesLocal.length) {
+                    setTables(tablesLocal);
+                }
             } catch (e) {
-            console.warn('POS hydrateFromIndexedDb failed', e);
+                console.warn('POS hydrateFromIndexedDb failed', e);
             }
         })();
     }, [company, companyRecord?.emailid]);
@@ -462,6 +469,25 @@ const Delivery = () => {
         activeScreen,
         currentOrder,
     ]);
+
+    const handleSyncOfflineDelivery = async () => {
+        if (!company || !companyRecord?.emailid) return;
+
+        setAlertState('info');
+        setAlert('Syncing offline Delivery changes...');
+        setAlertTimeout(10000);
+
+        try {
+            await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            setAlertState('success');
+            setAlert('Offline Delivery sync completed');
+            setAlertTimeout(3000);
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Offline Delivery sync failed. Please try again.');
+            setAlertTimeout(5000);
+        }
+    };
 
     const getSessionSales = (orders) =>{
         const payPointList = Object.keys(payPoints)
@@ -606,6 +632,12 @@ const Delivery = () => {
                     clientId: newSession.start,
                     payload: newSession,
                 });
+                // Immediate sync attempt – failures are fine, queue remains
+                try {
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
             }
 
             return;
@@ -695,6 +727,12 @@ const Delivery = () => {
                     clientId: session.start,
                     payload: closedSession,
                 });
+            }
+            // Immediate sync attempt – failures are fine, queue remains
+            try {
+                await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            } catch (e) {
+                // Leave pending changes in queue; 5‑minute auto-sync will retry
             }
 
             return;
@@ -1077,7 +1115,7 @@ const Delivery = () => {
             setSelectedProduct(null);
             setAlertState('info');
             setAlert(`Loading Table ${table.i_d} Orders...`);
-            setAlertTimeout(100000)            
+            setAlertTimeout(5000)            
 
             // 1) Use locally available orders (mirrored from IndexedDB) as primary
             const baseOrders =
@@ -1100,14 +1138,16 @@ const Delivery = () => {
                         )
                     ) {
                         if (order.handlerId !== companyRecord.emailid) return false;
-                        const orderDate = order.createdAt || '01/01/1970';
-                        return (
-                            getSessionEnd(new Date(orderDate).getTime()) ===
-                            getSessionEnd(curSession.start)
-                        );
+                        if (order.sessionId !== curSession.i_d) return false;
+                        
+                        return true
                     }
-
-                    return true;
+                    
+                    const orderDate = order.createdAt || '01/01/1970';
+                    return (
+                        getSessionEnd(new Date(orderDate).getTime()) ===
+                        getSessionEnd(curSession.start)
+                    );
                 });
             }
 
@@ -1475,7 +1515,7 @@ const Delivery = () => {
     const updateInventory = async (action, items, deliveryDataUpdate) => {
         setAlertState('info');
         setAlert('Updating Inventory...');
-        setAlertTimeout(1000000);
+        setAlertTimeout(5000);
         setPostCount(0);
 
         const isDeplete = action === 'deplete';
@@ -1550,11 +1590,21 @@ const Delivery = () => {
                 await putInventoryTransactions(company, companyRecord.emailid, transactions);
 
                 // 2) Queue inventory changes for sync
+                setAlertTimeout(20);
                 await queuePendingChange(company, companyRecord.emailid, {
                     entityType: 'inventory',
                     op: 'create',
                     payload: { transactions },
                 });
+                // Immediate sync attempt – failures are fine, queue remains
+                try {
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    setAlertTimeout(2000);
+                    setAlert('Inventory updated successfully');
+                    setAlertState('success');
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
             }
 
             // 3) Update local order state with deliveryDataUpdate
@@ -1811,7 +1861,7 @@ const Delivery = () => {
 
         setAlertState('info');
         setAlert('Processing Delivery...');
-        setAlertTimeout(1000000);
+        setAlertTimeout(5000);
         setPlacingOrder(true);
 
         const paymentData = {};
@@ -2037,6 +2087,7 @@ const Delivery = () => {
 
                 // Queue order update
                 if (company && companyRecord?.emailid) {
+                    setAlertTimeout(20);
                     queuePendingChange(company, companyRecord.emailid, {
                         entityType: 'order',
                         op: 'update',
@@ -2046,6 +2097,15 @@ const Delivery = () => {
                             ...deliveryDataUpdate,
                         },
                     });
+                    // Immediate sync attempt – failures are fine, queue remains
+                    try {
+                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                        setAlertTimeout(2000);
+                        setAlert('Order delivered successfully');
+                        setAlertState('success');
+                    } catch (e) {
+                        // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    }
                 }
 
                 // 3) Kick off local inventory update + queue
@@ -2107,6 +2167,7 @@ const Delivery = () => {
         printWindow.print();
         printWindow.close();
     };
+
 
     // =========================================
     // 7. UI Interaction Handlers
@@ -2497,8 +2558,15 @@ const Delivery = () => {
                                     }
                                 })                        
                             }
+                             
                             {
                                 <div className={'live-nav'}>
+                                    {<button 
+                                        className="action-btn"
+                                        onClick={handleSyncOfflineDelivery}
+                                    >
+                                        Sync()
+                                    </button>}
                                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                                         className="action-btn"
                                         onClick={() => setViewSessions(true)}
@@ -2508,6 +2576,8 @@ const Delivery = () => {
                                     <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
                                 </div>
                             }
+                            
+                           
                         </div>
                         <div className="pos-time-display">
                             <div>{currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
@@ -2701,7 +2771,7 @@ export default Delivery;
 //         setCancelling(true)
 //         setAlertState('info')
 //         setAlert('Cancelling Delivery...')
-//         setAlertTimeout(1000000)
+//         setAlertTimeout(5000)
         
 //         var orderItemsQuantity = 0
 //         var deliveredItemsQuantity = 0
@@ -2776,9 +2846,7 @@ export default Delivery;
 //         const response = await fetchServer("POST", {
 //             database: company,
 //             collection: "Orders",
-//             prop: [{orderNumber: order.orderNumber}, 
-//                 {...deliveryUpdate}
-//             ]
+//             prop: [{orderNumber: order.orderNumber}, {...deliveryUpdate}]
 //         }, "updateOneDoc", server);
 
 //         if (response.err) {
@@ -2874,7 +2942,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
         setCancelling(true);
         setAlertState('info');
         setAlert('Cancelling Delivery...');
-        setAlertTimeout(1000000);
+        setAlertTimeout(5000);
 
         let orderItemsQuantity = 0;
         let deliveredItemsQuantity = 0;
@@ -2985,6 +3053,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
 
             // 4) Queue order update for sync
             if (company && companyRecord?.emailid) {
+                setAlertTimeout(20);
                 queuePendingChange(company, companyRecord.emailid, {
                     entityType: 'order',
                     op: 'update',
@@ -2994,6 +3063,15 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                         ...deliveryUpdate,
                     },
                 });
+                // Immediate sync attempt – failures are fine, queue remains
+                try {
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    setAlertTimeout(2000);
+                    setAlert('Order cancelled successfully');
+                    setAlertState('success');
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
             }
 
             // 5) Local success + inventory rollback (already offline-first)
