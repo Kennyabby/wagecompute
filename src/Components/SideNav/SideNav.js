@@ -95,6 +95,10 @@ const SideNav = ()=>{
 
     useEffect(()=>{
         refreshOfflinePendingCount()
+        const id = setInterval(() => {
+            refreshOfflinePendingCount()
+        }, 800); // every 0.8 milliseconds
+        return () => clearInterval(id);
     },[company, companyRecord?.emailid])
 
     const handleNav = (e)=>{

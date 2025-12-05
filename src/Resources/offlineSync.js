@@ -41,6 +41,7 @@ export async function syncPendingChanges(company, userId, fetchServer, server) {
     } catch (e) {
       // Leave this change in the queue for a later retry
       results.push({ id: change.id, status: 'error', error: e?.message || String(e) });
+      throw new Error(e?.message || String(e));
     }
   }
 
