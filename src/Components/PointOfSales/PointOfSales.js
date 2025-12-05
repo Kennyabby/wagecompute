@@ -244,29 +244,36 @@ const PointOfSales = () => {
         }
     },[wrhs])
     
+    // Hydrate orders, sessions, and tables from IndexedDB on mount
     useEffect(() => {
         if (!company || !companyRecord?.emailid) return;
 
         (async () => {
             try {
-            const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-                loadAllOrders(company, companyRecord.emailid),
-                loadAllSessionsLocal(company, companyRecord.emailid),
-                loadAllTables(company, companyRecord.emailid),
-            ]);
+                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+                    loadAllOrders(company, companyRecord.emailid),
+                    loadAllSessionsLocal(company, companyRecord.emailid),
+                    loadAllTables(company, companyRecord.emailid),
+                ]);
 
-            if (Array.isArray(orders) && orders.length) {
-                setAllOrders(orders);
-                setAllSessionOrders(orders);
-            }
-            if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-                setSessions(sessionsLocal.filter(s => s.type === 'sales'));
-                setAllSalesSessions(sessionsLocal.filter(s => s.type === 'sales'))
-                setAllSessions(sessionsLocal);
-            }
-            if (Array.isArray(tablesLocal) && tablesLocal.length) {
-                setTables(tablesLocal);
-            }
+                if (Array.isArray(orders) && orders.length) {
+                    setAllOrders(orders);
+                    setAllSessionOrders(orders);
+                }
+
+                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+                    const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
+                    setSessions(localSalesSessions);
+                    setAllSalesSessions(localSalesSessions);
+                    setAllSessions(sessionsLocal);
+
+                    // Immediately derive curSession from locally cached sales sessions
+                    UpdateSessionState(localSalesSessions, false);
+                }
+
+                if (Array.isArray(tablesLocal) && tablesLocal.length) {
+                    setTables(tablesLocal);
+                }
             } catch (e) {
                 console.warn('POS hydrateFromIndexedDb failed', e);
             }
@@ -628,6 +635,12 @@ const PointOfSales = () => {
                     clientId: newSession.start,
                     payload: newSession,
                 });
+                // Immediate sync attempt – failures are fine, queue remains
+                try {
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
             }
 
             return;
@@ -816,6 +829,12 @@ const PointOfSales = () => {
                     clientId: session.start,
                     payload: closedSession,
                 });
+                // Immediate sync attempt – failures are fine, queue remains
+                try {
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
             }
 
             return;
@@ -1118,7 +1137,7 @@ const PointOfSales = () => {
             setSelectedProduct(null);
             setAlertState('info');
             setAlert(`Loading Table ${table.i_d} Orders...`);
-            setAlertTimeout(100000)            
+            setAlertTimeout(5000)            
 
             // 1) Use locally available orders (mirrored from IndexedDB) as primary
             const baseOrders =
@@ -1132,7 +1151,7 @@ const PointOfSales = () => {
                     if (!order) return false;
                     if (order.tableId !== table.i_d) return false;
                     if (order.wrh !== wrh) return false;
-
+                    
                     // Non-admin users: enforce handler + session
                     if (
                         !(
@@ -1141,14 +1160,16 @@ const PointOfSales = () => {
                         )
                     ) {
                         if (order.handlerId !== companyRecord.emailid) return false;
-                        const orderDate = order.createdAt || '01/01/1970';
-                        return (
-                            getSessionEnd(new Date(orderDate).getTime()) ===
-                            getSessionEnd(curSession.start)
-                        );
+                        if (order.sessionId !== curSession.i_d) return false;
+                        
+                        return true;
                     }
 
-                    return true;
+                    const orderDate = order.createdAt || '01/01/1970';
+                    return (
+                        getSessionEnd(new Date(orderDate).getTime()) ===
+                        getSessionEnd(curSession.start)
+                    );
                 });
             }
 
@@ -1401,7 +1422,7 @@ const PointOfSales = () => {
         loadInitialData();
         setAlertState('info');
         setAlert('Placing Order...');
-        setAlertTimeout(1000000);
+        setAlertTimeout(5000);
         setPlacingOrder(true);
 
         // Save the current order to database (locally, offline-first)
@@ -1480,13 +1501,21 @@ const PointOfSales = () => {
                     clientId: placedOrder.orderNumber,
                     payload: placedOrder,
                 });
+                // Immediate sync attempt – failures are fine, queue remains
+                setAlertTimeout(20);
+                try {
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    setAlert('Order placed successfully');
+                    setAlertState('success');
+                    setAlertTimeout(2000);
+                    setPlacingOrder(false);
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
             }
 
             // 5) Local success feedback
-            setAlertState('success');
-            setAlert('Order placed successfully');
-            setAlertTimeout(2000);
-            setPlacingOrder(false);
+            
 
             // Keep your existing reads (they only fetch, no writes)
             fetchSessions(company, 'sales', companyRecord);
@@ -1577,6 +1606,24 @@ const PointOfSales = () => {
         setShowOrdersModal(false);
     };
 
+    const handleSyncOfflinePOS = async () => {
+        if (!company || !companyRecord?.emailid) return;
+
+        setAlertState('info');
+        setAlert('Syncing...');
+        setAlertTimeout(10000);
+
+        try {
+            await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            setAlertState('success');
+            setAlert('Sync complete');
+            setAlertTimeout(3000);
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Sync failed. Please try again.');
+            setAlertTimeout(5000);
+        }
+    }
     // // =========================================
     // // 6. Payment Processing
     // // =========================================
@@ -1729,7 +1776,7 @@ const PointOfSales = () => {
 
         setAlertState('info');
         setAlert('Processing Payment...');
-        setAlertTimeout(1000000);
+        setAlertTimeout(5000);
         setMakingPayment(true);
 
         let totalPayment = 0;
@@ -1841,6 +1888,7 @@ const PointOfSales = () => {
 
                 // Queue table update for sync
                 if (company && companyRecord?.emailid) {
+                    setAlertTimeout(20);
                     queuePendingChange(company, companyRecord.emailid, {
                         entityType: 'table',
                         op: 'update',
@@ -1861,10 +1909,21 @@ const PointOfSales = () => {
                         ...paymentDataUpdate,
                     },
                 });
+
+                // Immediate sync attempt – failures are fine, queue remains
+                try {
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    setMakingPayment(false);
+                    setAlertTimeout(2000);
+                    setAlert('Payment processed successfully');
+                    setAlertState('success');
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
             }
 
             // 4) Local success feedback
-            setMakingPayment(false);
+            
             setAlertState('success');
             setAlert('Payment processed successfully');
             setAlertTimeout(2000);
@@ -2402,7 +2461,7 @@ const PointOfSales = () => {
                 {(currentOrder.status!=='cancelled' && currentOrder.status === 'pending') && <button 
                     className="place-order-btn"
                     onClick={() => setShowPaymentModal(true)}
-                    disabled={!currentOrder.totalSales || makingPayment || currentTable.status === 'unavailable'}
+                    disabled={!currentOrder.totalSales || makingPayment || currentTable?.status === 'unavailable'}
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
@@ -2493,8 +2552,20 @@ const PointOfSales = () => {
                                     }
                                 })                        
                             }
+                            
                             {
                                 <div className={'live-nav'}>
+                                    {
+                                        <div className={'live-nav'}>
+                                            {<button 
+                                                className="action-btn"
+                                                onClick={handleSyncOfflinePOS}
+                                            >
+                                                Sync()
+                                            </button>}
+                                        </div>
+                                        
+                                    }
                                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
                                         className="action-btn"
                                         onClick={() => setViewSessions(true)}
@@ -2503,7 +2574,9 @@ const PointOfSales = () => {
                                     </button>}
                                     <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
                                 </div>
+                                
                             }
+                            
                         </div>
                         <div className="pos-time-display">
                             <div>{currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
@@ -3025,9 +3098,9 @@ const PaymentModal = ({
 //             const cancelOrder = window.confirm(`Are you sure you want to Cancel Order #${order.orderNumber}?`);
 //             if (!cancelOrder) return;
 //             setCancelling(true)
-//             setAlertState('info')
-//             setAlert('Cancelling Order...')
-//             setAlertTimeout(1000000)
+//             setAlertState('info');
+//             setAlert('Cancelling Order...');
+//             setAlertTimeout(5000)
 //             const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
 //             const resp = await fetchServer("POST", {
 //                 database: company,
@@ -3037,8 +3110,8 @@ const PaymentModal = ({
 //                         tableOrder.tableId !== order.tableId && 
 //                         tableOrder.sessionId !== order.sessionId &&
 //                         tableOrder.orderNumber !== order.orderNumber
-//                     )}))
-//                 ]}]
+//                     )}))]
+//                 }]
 //             }, "updateOneDoc", server)
 //             if (resp.err){
 //                 setAlertState('error');
@@ -3066,9 +3139,11 @@ const PaymentModal = ({
 //                     clientId: order.orderNumber,
 //                     payload: {
 //                         orderNumber: order.orderNumber,
-//                         status: 'cancelled',
-//                         cancelledBy: companyRecord.emailid,
-//                         cancelledAt: Date.now(),
+//                         ...{
+//                             status: 'cancelled',
+//                             cancelledBy: companyRecord.emailid,
+//                             cancelledAt: Date.now(),
+//                         },
 //                     },
 //                 });
 //             }
@@ -3176,7 +3251,7 @@ const OrdersModal = ({
             setCancelling(true);
             setAlertState('info');
             setAlert('Cancelling Order...');
-            setAlertTimeout(1000000);
+            setAlertTimeout(5000);
 
             try {
                 // 1) Build cancelled order object
@@ -3243,6 +3318,7 @@ const OrdersModal = ({
 
                 // 4) Queue order cancellation
                 if (company && companyRecord?.emailid) {
+                    setAlertTimeout(20);
                     queuePendingChange(company, companyRecord.emailid, {
                         entityType: 'order',
                         op: 'update',
@@ -3254,6 +3330,15 @@ const OrdersModal = ({
                             cancelledAt: Date.now(),
                         },
                     });
+                    // Immediate sync attempt – failures are fine, queue remains
+                    try {
+                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                        setAlertTimeout(2000);
+                        setAlert('Order cancelled successfully');
+                        setAlertState('success');
+                    } catch (e) {
+                        // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    }
                 }
 
                 // 5) Local success
@@ -3426,25 +3511,6 @@ const POSDashboard = ({
         setAlertTimeout(3000)
     }
 
-    const handleSyncOfflinePOS = async () => {
-        if (!company || !companyRecord?.emailid) return;
-
-        setAlertState('info');
-        setAlert('Syncing offline POS changes...');
-        setAlertTimeout(10000);
-
-        try {
-            await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-            setAlertState('success');
-            setAlert('Offline POS sync completed');
-            setAlertTimeout(3000);
-        } catch (e) {
-            setAlertState('error');
-            setAlert('Offline POS sync failed. Please try again.');
-            setAlertTimeout(5000);
-        }
-    }
-
     return (
         <>
             <div className='pos-sessions'>                
@@ -3466,6 +3532,7 @@ const POSDashboard = ({
                                 setWrh(wrhAccess[0])
                                 setViewSessions(false)                                
                             }}
+                            style={{ marginRight: '10px' }}
                         >
                             POS Tables
                         </button>}

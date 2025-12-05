@@ -69,9 +69,9 @@ function openUserDb(company, userId) {
 // Generic App cache store (App.js datasets)
 // =============================
 
-export async function getAppCache(dbKey, cacheKey) {
+export async function getAppCache(company, userId, cacheKey) {
   try {
-    const db = await openUserDb(dbKey, 'app');
+    const db = await openUserDb(company, userId);
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(APP_CACHE_STORE, 'readonly');
       const store = tx.objectStore(APP_CACHE_STORE);
@@ -88,9 +88,9 @@ export async function getAppCache(dbKey, cacheKey) {
   }
 }
 
-export async function setAppCache(dbKey, cacheKey, data) {
+export async function setAppCache(company, userId, cacheKey, data) {
   try {
-    const db = await openUserDb(dbKey, 'app');
+    const db = await openUserDb(company, userId);
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(APP_CACHE_STORE, 'readwrite');
       const store = tx.objectStore(APP_CACHE_STORE);
@@ -105,9 +105,9 @@ export async function setAppCache(dbKey, cacheKey, data) {
   }
 }
 
-export async function clearAppCache(dbKey, cacheKey) {
+export async function clearAppCache(company, userId, cacheKey) {
   try {
-    const db = await openUserDb(dbKey, 'app');
+    const db = await openUserDb(company, userId);
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(APP_CACHE_STORE, 'readwrite');
       const store = tx.objectStore(APP_CACHE_STORE);
@@ -121,9 +121,9 @@ export async function clearAppCache(dbKey, cacheKey) {
   }
 }
 
-export async function loadAllAppCache(dbKey) {
+export async function loadAllAppCache(company, userId) {
   try {
-    const db = await openUserDb(dbKey, 'app');
+    const db = await openUserDb(company, userId);
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(APP_CACHE_STORE, 'readonly');
       const store = tx.objectStore(APP_CACHE_STORE);

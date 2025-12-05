@@ -48,7 +48,6 @@ const TransactionHistory = () => {
   });
 
   const [locations, setLocations] = useState([]);
-  const isInitialMount = useRef(true);
   const [summary, setSummary] = useState({
     // Quantities
     openingStock: 0,
@@ -137,23 +136,23 @@ const TransactionHistory = () => {
   const getTxCached = useCallback(async (companyKey, f) => {
     try {
       const key = makeTxCacheKey(companyKey, f);
-      const rec = await getAppCache(companyKey, key);
+      const rec = await getAppCache(companyKey, companyRecord?.emailid, key);
       if (!rec || !rec.data) return null;
       return rec.data;
     } catch (e) {
       console.warn('getTxCached failed', e);
       return null;
     }
-  }, [makeTxCacheKey]);
+  }, [makeTxCacheKey, companyRecord?.emailid]);
 
   const setTxCached = useCallback((companyKey, f, snapshot) => {
     try {
       const key = makeTxCacheKey(companyKey, f);
-      setAppCache(companyKey, key, snapshot);
+      setAppCache(companyKey, companyRecord?.emailid, key, snapshot);
     } catch (e) {
       console.warn('setTxCached failed', e);
     }
-  }, [makeTxCacheKey]);
+  }, [makeTxCacheKey, companyRecord?.emailid]);
 
   // Fetch locations from settings
   useEffect(() => {
@@ -963,6 +962,82 @@ const TransactionHistory = () => {
 
     setLoading(true);
 
+    if (products && products.length && products[0].stockSummary) {
+      const summaryData = {
+        openingStock: 0,
+        closingStock: 0,
+        purchases: 0,
+        sales: 0,
+        transfersIn: 0,
+        transfersOut: 0,
+        positiveAdjustments: 0,
+        negativeAdjustments: 0,
+        openingStockCost: 0,
+        closingStockCost: 0,
+        purchasesCost: 0,
+        salesValue: 0,
+        costOfGoodsSold: 0,
+        transfersInCost: 0,
+        transfersOutCost: 0,
+        positiveAdjustmentsCost: 0,
+        negativeAdjustmentsCost: 0,
+      };
+
+      products.forEach(product => {
+        const s = product.stockSummary || {};
+        summaryData.openingStock += s.openingQuantity || 0;
+        summaryData.purchases += s.purchasedQty || 0;
+        summaryData.sales += s.soldQty || 0;
+        summaryData.transfersIn += s.transferInQty || 0;
+        summaryData.transfersOut += s.transferOutQty || 0;
+        summaryData.positiveAdjustments += s.positiveAdjustmentQty || 0;
+        summaryData.negativeAdjustments += s.negativeAdjustmentQty || 0;
+        summaryData.closingStock += s.closingQty || 0;
+
+        summaryData.openingStockCost += s.openingCost || 0;
+        summaryData.closingStockCost += s.closingCost || 0;
+        summaryData.purchasesCost += s.purchaseCost || 0;
+        summaryData.salesValue += s.salesValue || 0;
+        summaryData.costOfGoodsSold += s.costOfGoodsSold || 0;
+        summaryData.transfersInCost += s.transferInCost || 0;
+        summaryData.transfersOutCost += s.transferOutCost || 0;
+        summaryData.positiveAdjustmentsCost += s.positiveAdjustmentCost || 0;
+        summaryData.negativeAdjustmentsCost += s.negativeAdjustmentCost || 0;
+      });
+
+      const transfersInCost = summaryData.transfersInCost || 0;
+      const transfersOutCost = summaryData.transfersOutCost || 0;
+      const positiveAdjustmentsCost = summaryData.positiveAdjustmentsCost || 0;
+      const negativeAdjustmentsCost = summaryData.negativeAdjustmentsCost || 0;
+
+      const netTransferCost = transfersInCost + transfersOutCost;
+      const netAdjustmentCost = positiveAdjustmentsCost + negativeAdjustmentsCost;
+
+      const summaryForState = {
+        openingStock: summaryData.openingStock,
+        purchases: summaryData.purchases,
+        sales: summaryData.sales,
+        transfersIn: summaryData.transfersIn,
+        transfersOut: summaryData.transfersOut,
+        positiveAdjustments: summaryData.positiveAdjustments,
+        negativeAdjustments: summaryData.negativeAdjustments,
+        closingStock: summaryData.closingStock,
+        openingStockCost: summaryData.openingStockCost || 0,
+        purchasesCost: summaryData.purchasesCost || 0,
+        salesValue: summaryData.salesValue || 0,
+        costOfGoodsSold: summaryData.costOfGoodsSold || 0,
+        transfersInCost: transfersInCost || 0,
+        transfersOutCost: transfersOutCost || 0,
+        positiveAdjustmentsCost: positiveAdjustmentsCost || 0,
+        negativeAdjustmentsCost: negativeAdjustmentsCost || 0,
+        closingStockCost: summaryData.closingStockCost || 0,
+        netTransferCost,
+        netAdjustmentCost,
+      };
+
+      setSummary(summaryForState);
+    }
+
     try {
       const cached = await getTxCached(company, filters);
       if (cached && Array.isArray(cached.transactions) && cached.summary) {
@@ -1187,31 +1262,19 @@ const TransactionHistory = () => {
     }));
   }, [transactions, getTransactionType]);
 
-  useEffect(()=>{
-    if (products.length){
-      handleApplyFilters()
-    }
-  },[company])
-  // Fetch initial data and when filters change
+  // Fetch stock summary and transactions when products are available
   useEffect(() => {
-    if (products.length){
-      if (!products[0].hasOwnProperty('stockSummary')){
-        handleApplyFilters() 
-      }else{
-        fetchTransactionHistory()
-      }
-    }
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    if (!products.length) return;
+
+    // When products are loaded but have no stockSummary yet, trigger stock report
+    if (!products[0].hasOwnProperty('stockSummary')) {
+      handleApplyFilters();
       return;
-    } 
-    
-    const timer = setTimeout(() => {
-      fetchTransactionHistory();
-    }, 300); // Small debounce to prevent rapid successive calls
-    
-    return () => clearTimeout(timer);
-  }, [company,products]);
+    }
+
+    // Once stockSummary is present for the current filters, load transactions
+    fetchTransactionHistory();
+  }, [company, products]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -1240,9 +1303,7 @@ const TransactionHistory = () => {
       ...(transactionType !== 'all' && { transactionType })
     });
 
-    // Also refresh the transaction history; this will read from cache again
-    // and then fetch fresh data to update cache + UI.
-    fetchTransactionHistory();
+    // Removed the call to fetchTransactionHistory here
   };
 
   const handleResetFilters = () => {
