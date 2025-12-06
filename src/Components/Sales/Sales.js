@@ -3041,9 +3041,14 @@ const Sales = ()=>{
                                             >
                                                 <option value=''>Select Recovery Point</option>
                                                 {Object.keys(payPoints).map((paypoint,index)=>{
-                                                    return (
-                                                        <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
-                                                    )
+                                                    if (isView){
+                                                        return <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
+                                                    }
+                                                    else if (!['moniepoint1', 'moniepoint3'].includes(paypoint)){
+                                                        return (
+                                                            <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
+                                                        )
+                                                    }
                                                 })}
                                                 <option key={'em001'} value='Employee'>EMPLOYEE</option>
                                             </select>
@@ -3254,7 +3259,12 @@ const Sales = ()=>{
                                 >
                                     <option value=''>Select Payment Point</option>
                                     {Object.keys(payPoints).map((payPoint, index)=>{
-                                        return <option key={index} value={payPoint}>{payPointAccounts[payPoint]}</option>
+                                        if (isView){ 
+                                            return <option key={index} value={payPoint}>{payPointAccounts[payPoint]}</option>
+                                        }
+                                        else if (!['moniepoint1', 'moniepoint3'].includes(payPoint)){
+                                            return <option key={index} value={payPoint}>{payPointAccounts[payPoint]}</option>
+                                        }
                                     })}
                                 </select>
                             </div>   

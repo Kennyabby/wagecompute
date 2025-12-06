@@ -3000,23 +3000,27 @@ const PaymentModal = ({
                     <button disabled={loading} onClick={() => setShowPaymentModal(false)}>×</button>
                 </div>
                 <div className="payment-methods">
-                    {Object.keys(payPoints).map(payMethod => (
-                        <button
-                            key={payMethod}
-                            className={`payment-method-btn ${method === payMethod ? 'active' : ''}`}
-                            disabled={paymentDetails['cash'].amount}
-                            onClick={() => {
-                                setMethod(payMethod)
-                                if (payMethod === 'cash'){
-                                    setCashAmount(currentOrder.totalSales - paymentSum)
-                                }else{
-                                    setCashAmount(0)
-                                }
-                            }}
-                        >
-                            {payMethod.toUpperCase()}
-                        </button>
-                    ))}
+                    {Object.keys(payPoints).map((payMethod) => {
+                        if (!['moniepoint1', 'moniepoint3'].includes(payMethod)){
+                            return (
+                                <button
+                                    key={payMethod}
+                                    className={`payment-method-btn ${method === payMethod ? 'active' : ''}`}
+                                    disabled={paymentDetails['cash'].amount}
+                                    onClick={() => {
+                                        setMethod(payMethod)
+                                        if (payMethod === 'cash'){
+                                            setCashAmount(currentOrder.totalSales - paymentSum)
+                                        }else{
+                                            setCashAmount(0)
+                                        }
+                                    }}
+                                >
+                                    {payMethod.toUpperCase()}
+                                </button>
+                            )
+                        }
+                    })}
                 </div>
                 <div className="form-group">
                     <label>Total Amount Remaining: ₦{(currentOrder.totalSales - paymentSum).toFixed(2)}</label>

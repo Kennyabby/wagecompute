@@ -1262,8 +1262,14 @@ const Accommodation = ()=>{
                                     }}
                                 >
                                     <option value=''>Select Payment Point</option>
+
                                     {Object.keys(payPoints).map((payPoint, index)=>{
-                                        return <option key={index} value={payPoint}>{payPoints[payPoint]}</option>
+                                        if (isView){
+                                            return <option key={index} value={payPoint}>{payPoints[payPoint]}</option>
+                                        }
+                                        else if (!['moniepoint1', 'moniepoint3'].includes(payPoint)){
+                                            return <option key={index} value={payPoint}>{payPoints[payPoint]}</option>
+                                        }
                                     })}
                                 </select>
                             </div>                            
