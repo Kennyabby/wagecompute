@@ -258,7 +258,7 @@ const PointOfSales = () => {
                     loadAllTables(company, companyRecord.emailid),
                 ]);
 
-                if (Array.isArray(orders) && orders.length) {
+                if (Array.isArray(orders) && orders?.length) {
                     setAllOrders(orders);
                     setAllSessionOrders(orders);
                 }
@@ -360,7 +360,7 @@ const PointOfSales = () => {
 
     useEffect(()=>{
         if (curSession!==null){
-            setAllOrders(allSessionOrders.filter((order) =>{
+            setAllOrders(allSessionOrders?.filter((order) =>{
                 if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){
                     return order
                 }                            
@@ -3546,7 +3546,7 @@ const POSDashboard = ({
                 </div>
                 <div className='pos-sessions-view'>
                     <div className='pos-sessions-list'>                        
-                        {profiles.map((profile)=>{
+                        {profiles?.map((profile)=>{
                             if (profile.status !== 'admin' || companyRecord.status === 'admin'){
                                 var hasPosSalesAccess = false
                                 const userSalesWrhAccess = { 
