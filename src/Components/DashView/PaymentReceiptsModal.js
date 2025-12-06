@@ -16,9 +16,10 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
   }, [paymentReceipts]);
 
   const payPointAccounts = {
-    'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
-    'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063', 
-    'cash':'CASH', 'Employee':'EMPLOYEE'
+      'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
+      'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063',
+      'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
+      'cash':'CASH', 'Employee':'EMPLOYEE'
   }
   // Filter state
   const [filter, setFilter] = useState({

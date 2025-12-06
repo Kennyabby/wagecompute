@@ -1076,7 +1076,7 @@ function App() {
     if (cached) {
       setPaymentReceipts(cached)
     }
-    const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4','cash']    
+    const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4', 'moniepoint5', 'moniepoint6','cash']    
     const recoveryReceipts = []
     const accommodationReceipts = []
     const posOrderReceipts = []

@@ -1,6 +1,10 @@
 import './Expenses.css'
 import { useEffect, useContext, useState} from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+// import { useInventory } from '../../Resources/InventoryContext';
+// import { useAttendance } from '../../Resources/AttendanceContext';
+// import { useApproval } from '../../Resources/ApprovalContext';
+
 import html2pdf from 'html2pdf.js';
 import { useScroll } from 'framer-motion'
 import { MdAdd } from 'react-icons/md'
@@ -15,13 +19,28 @@ const Expenses = ()=>{
         server, 
         fetchServer,
         companyRecord,
-        company, getDate, months, monthDays,
-        chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
-        employees, getEmployees, getExpenses, setExpenses, expenses, 
-        attendance, getAttendance, alert,alertState,alertTimeout,actionMessage, 
+        company, getDate,
+        alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
+        expenses, setExpenses, getExpenses,
+        chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
+        attendance, getAttendance, months, monthDays, employees, getEmployees,
         removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
+
+    // const {employees, getEmployees} = useAttendance()
+    
+    // const {
+        
+    // } = useInventory();
+
+    // const {
+        
+    // } = useAttendance();
+
+    // const {
+        
+    // } = useApproval();
     
     const [expensesStatus, setExpensesStatus] = useState('Post Expenses')
     const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
@@ -50,12 +69,14 @@ const Expenses = ()=>{
     const payPoints = [
         'moniepoint1', 'moniepoint2', 
         'moniepoint3', 'moniepoint4', 
+        'moniepoint5', 'moniepoint6', 
         'cash'
     ]
 
     const payPointAccounts = {
         'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
-        'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063', 
+        'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063',
+        'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
         'cash':'CASH', 'Employee':'EMPLOYEE'
     }
     const [fields, setFields] = useState({...defaultFields})
