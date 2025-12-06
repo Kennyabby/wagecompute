@@ -148,22 +148,22 @@ function App() {
             return;
           }
 
-          const timeLabel = new Date().toLocaleTimeString();
-          setAlertState('info');
-          setAlert(`Offline Sync by Background sync started at ${timeLabel}`);
-          setAlertTimeout(5000);
+          // const timeLabel = new Date().toLocaleTimeString();
+          // setAlertState('info');
+          // setAlert(`Offline Sync by Background sync started at ${timeLabel}`);
+          // setAlertTimeout(5000);
 
           await syncPendingChanges(company, companyRecord.emailid, fetchServer, SERVER);
 
-          const doneLabel = new Date().toLocaleTimeString();
-          setAlertState('success');
-          setAlert(`Offline Sync by Background sync completed at ${doneLabel}`);
-          setAlertTimeout(5000);
+          // const doneLabel = new Date().toLocaleTimeString();
+          // setAlertState('success');
+          // setAlert(`Offline Sync by Background sync completed at ${doneLabel}`);
+          // setAlertTimeout(5000);
         } catch (e) {
-          const failLabel = new Date().toLocaleTimeString();
-          setAlertState('error');
-          setAlert(`Offline Sync by Background sync failed at ${failLabel}`);
-          setAlertTimeout(5000);
+          // const failLabel = new Date().toLocaleTimeString();
+          // setAlertState('error');
+          // setAlert(`Offline Sync by Background sync failed at ${failLabel}`);
+          // setAlertTimeout(5000);
         }
       })();
     }, 5 * 60 * 1000); // every 5 minutes
