@@ -14,7 +14,7 @@ import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 import { syncPendingChanges } from './Resources/offlineSync';
-import { getAppCache, setAppCache, clearAppCache, putSession, putTable } from './Resources/offlineDb';
+import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPendingChanges } from './Resources/offlineDb';
 
 // const SERVER = "http://localhost:3001"
 const SERVER = "https://enterpriseserver.vercel.app"
@@ -138,27 +138,34 @@ function App() {
     if (!company || !companyRecord?.emailid) return;
 
     const id = setInterval(() => {
-      
-      if (!(company && companyRecord?.emailid)) return
+      if (!(company && companyRecord?.emailid)) return;
 
-      const timeLabel = new Date().toLocaleTimeString();
-      setAlertState('info');
-      setAlert(`Offline Sync by Background sync started at ${timeLabel}`);
-      setAlertTimeout(5000);
+      (async () => {
+        try {
+          const pending = await loadPendingChanges(company, companyRecord.emailid);
+          if (!pending || !pending.length) {
+            // Nothing to sync; skip to avoid noisy toasts
+            return;
+          }
 
-      syncPendingChanges(company, companyRecord.emailid, fetchServer, SERVER)
-        .then(() => {
+          const timeLabel = new Date().toLocaleTimeString();
+          setAlertState('info');
+          setAlert(`Offline Sync by Background sync started at ${timeLabel}`);
+          setAlertTimeout(5000);
+
+          await syncPendingChanges(company, companyRecord.emailid, fetchServer, SERVER);
+
           const doneLabel = new Date().toLocaleTimeString();
           setAlertState('success');
           setAlert(`Offline Sync by Background sync completed at ${doneLabel}`);
           setAlertTimeout(5000);
-        })
-        .catch(() => {
+        } catch (e) {
           const failLabel = new Date().toLocaleTimeString();
           setAlertState('error');
           setAlert(`Offline Sync by Background sync failed at ${failLabel}`);
           setAlertTimeout(5000);
-        });
+        }
+      })();
     }, 5 * 60 * 1000); // every 5 minutes
 
     return () => clearInterval(id);
