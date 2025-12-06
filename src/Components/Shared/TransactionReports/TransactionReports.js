@@ -27,8 +27,10 @@ const TransactionReports = ({
     const [expandedSessions, setExpandedSessions] = useState({});
     const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const payPointAccounts = {
-        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5399647958', 
-        'moniepoint3':'MP3-5536588063', 'moniepoint4':'MP4-5342270174', 'cash':'cash'
+        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
+        'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063',
+        'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
+        'cash':'CASH', 'Employee':'EMPLOYEE'
     }
     // State for filters
     const [filters, setFilters] = useState({
@@ -317,6 +319,8 @@ const TransactionReports = ({
         if (order.moniepoint2 > 0) return 'Moniepoint 2';
         if (order.moniepoint3 > 0) return 'Moniepoint 3';
         if (order.moniepoint4 > 0) return 'Moniepoint 4';
+        if (order.moniepoint5 > 0) return 'Moniepoint 5';
+        if (order.moniepoint6 > 0) return 'Moniepoint 6';
         if (order.cash > 0) return 'Cash';
         return 'N/A';
     };
@@ -582,13 +586,24 @@ const TransactionReports = ({
                                         {`MP4: ${(session.moniepoint4 || 0).toLocaleString()}`}
                                     </span>
                                     <span className="session-date">
+                                        {`MP3: ${(session.moniepoint5 || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
+                                        {`MP4: ${(session.moniepoint6 || 0).toLocaleString()}`}
+                                    </span>
+                                    <span className="session-date">
                                         {`CASH: ${(session.cash || 0).toLocaleString()}`}
                                     </span>
                                     <span className="session-date">
                                         {`CASH CHANGE: ${(session.totalCashChange || 0).toLocaleString()}`}
                                     </span>
                                     <span className="session-date">
-                                        {`TOTAL: ${(Number(session.moniepoint1 || 0) + Number(session.moniepoint2 || 0) + Number(session.moniepoint3 || 0) + Number(session.moniepoint4 || 0) + Number(session.cash || 0)).toLocaleString()}`}
+                                        {`TOTAL: ${
+                                            (Number(session.moniepoint1 || 0) + Number(session.moniepoint2 || 0) 
+                                            + Number(session.moniepoint3 || 0) + Number(session.moniepoint4 || 0) 
+                                            + Number(session.moniepoint5 || 0) + Number(session.moniepoint6 || 0) 
+                                            + Number(session.cash || 0)).toLocaleString()
+                                        }`}
                                     </span>
                                 </div>
                             </div>
