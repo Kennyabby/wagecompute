@@ -1128,21 +1128,21 @@ const Delivery = () => {
                 localOrders = baseOrders.filter((order) => {
                     if (!order) return false;
                     if (order.tableId !== table.i_d) return false;
-                    if (order.wrh !== wrh) return false;
-
-                    // Non-admin users: enforce handler + session
-                    if (
-                        !(
-                            companyRecord?.status === 'admin' ||
-                            companyRecord?.permissions.includes('access_delivery_sessions')
-                        )
-                    ) {
-                        if (order.handlerId !== companyRecord.emailid) return false;
-                        if (order.sessionId !== curSession.i_d) return false;
-                        
-                        return true
-                    }
+                    if (order.wrh !== wrh && wrh !== 'kitchen') return false;
                     
+                    // Non-admin users: enforce handler + session
+                    // if (
+                    //     !(
+                    //         companyRecord?.status === 'admin' ||
+                    //         companyRecord?.permissions.includes('access_delivery_sessions')
+                    //     )
+                    // ) {
+                    //     return (
+                    //         getSessionEnd(new Date(orderDate).getTime()) ===
+                    //         getSessionEnd(curSession.start)
+                    //     );
+                    // }
+
                     const orderDate = order.createdAt || '01/01/1970';
                     return (
                         getSessionEnd(new Date(orderDate).getTime()) ===
@@ -1181,18 +1181,8 @@ const Delivery = () => {
             // setAlertTimeout(100);
 
             const orderFilter = {
-                tableId: table.i_d,
-                sessionId: curSession.i_d,
-                wrh: wrh,
-                handlerId: companyRecord.emailid,
+                tableId: table.i_d             
             };
-            if (
-                companyRecord?.status === 'admin' ||
-                companyRecord?.permissions.includes('access_delivery_sessions')
-            ) {
-                delete orderFilter.sessionId;
-                delete orderFilter.handlerId;
-            }
 
             const response = await fetchServer(
                 'POST',
@@ -1210,22 +1200,18 @@ const Delivery = () => {
                     ? response.record
                     : [];
 
-                if (
-                    companyRecord?.status === 'admin' ||
-                    companyRecord?.permissions.includes('access_delivery_sessions')
-                ) {
-                    filteredOrders = filteredOrders.filter((order) => {
-                        if (!order) return false;
-                        let orderDate = '01/01/1970';
-                        if (order.createdAt) {
-                            orderDate = order.createdAt;
-                        }
-                        return (
-                            getSessionEnd(new Date(orderDate).getTime()) ===
-                            getSessionEnd(curSession.start)
-                        );
-                    });
-                }
+                filteredOrders = filteredOrders.filter((order) => {
+                    if (!order) return false;
+                    let orderDate = '01/01/1970';
+                    if (order.createdAt) {
+                        orderDate = order.createdAt;
+                    }
+                    return (
+                        getSessionEnd(new Date(orderDate).getTime()) ===
+                        getSessionEnd(curSession.start) &&
+                        (order.wrh === wrh || wrh === 'kitchen')
+                    );
+                });
 
                 // Mirror into IndexedDB orders store
                 if (company && companyRecord?.emailid) {
@@ -1274,6 +1260,8 @@ const Delivery = () => {
             loadInitialData();
         }
     };
+
+    
 
     const handleCreateTable = () => {
         setOrderTables((orderTables)=>{
