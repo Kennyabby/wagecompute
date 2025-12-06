@@ -138,6 +138,9 @@ function App() {
     if (!company || !companyRecord?.emailid) return;
 
     const id = setInterval(() => {
+      
+      if (!(company && companyRecord?.emailid)) return
+
       const timeLabel = new Date().toLocaleTimeString();
       setAlertState('info');
       setAlert(`Offline Sync by Background sync started at ${timeLabel}`);
