@@ -65,7 +65,69 @@ const PointOfSales = () => {
 
     // =========================================
     // 1a. Offline snapshot hydration (read from local, then server refresh)
+    // =========================================    
+
+    // Order States
+    const [currentOrder, setCurrentOrder] = useState(null);
+    const [allSessionOrders, setAllSessionOrders] = useState([])
+    const [allOrders, setAllOrders] = useState([]);
+    const [tableOrders, setTableOrders] = useState([]);
+    const [orderType, setOrderType] = useState('dine-in');
+
+    // Product States
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [activeCategory, setActiveCategory] = useState(null);
+    const [filteredProducts, setFilteredProducts] = useState([]);
+    const [quantity, setQuantity] = useState('');
+
+    // Modal States
+    const [showNewTableModal, setShowNewTableModal] = useState(false);
+    const [showOrdersModal, setShowOrdersModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [editingTable, setEditingTable] = useState(null);
+
+    // Form States
+    const [newTableData, setNewTableData] = useState({
+        name: '',
+        capacity: '',
+        status: 'available'
+    });
+    const [customerInfo, setCustomerInfo] = useState({
+        name: '',
+        phone: ''
+    });
+    const [placingOrder, setPlacingOrder] = useState(false)
+    const [makingPayment, setMakingPayment] = useState(false)
+    const [amount, setAmount] = useState('');
+    const [method, setMethod] = useState('cash');
+    const [change, setChange] = useState(0);
+    const paymentDetail = {
+        amount: '',
+        change: '',
+        receipt: '',
+    }
+    const paymentDetailClone = structuredClone({paymentDetail})
+    const [payPoints, setPayPoints] = useState({
+        'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
+        'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail},
+        'moniepoint5':{...paymentDetailClone.paymentDetail}, 'moniepoint6':{...paymentDetailClone.paymentDetail}, 
+        'cash':{...paymentDetailClone.paymentDetail}
+    })
+    
+    const [paymentDetails, setPaymentDetails] = useState({...structuredClone({payPoints}).payPoints});
+
+    // Settings States
+    const [uoms, setUoms] = useState([]);
+    const [wrhs, setWrhs] = useState([]);
+    const [wrh, setWrh] = useState('');
+    const [wrhCategories, setWrhCategories] = useState({})
     // =========================================
+    // 2. Effects and Data Loading
+    // =========================================
+    useEffect(() => {
+        handleSettingsUpdate();
+    }, [settings]);
+
     useEffect(() => {
         if (!company || !companyRecord?.emailid) return;
 
@@ -155,67 +217,6 @@ const PointOfSales = () => {
             cancelled = true;
         };
     }, [company, companyRecord?.emailid]);
-
-    // Order States
-    const [currentOrder, setCurrentOrder] = useState(null);
-    const [allSessionOrders, setAllSessionOrders] = useState([])
-    const [allOrders, setAllOrders] = useState([]);
-    const [tableOrders, setTableOrders] = useState([]);
-    const [orderType, setOrderType] = useState('dine-in');
-
-    // Product States
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [activeCategory, setActiveCategory] = useState(null);
-    const [filteredProducts, setFilteredProducts] = useState([]);
-    const [quantity, setQuantity] = useState('');
-
-    // Modal States
-    const [showNewTableModal, setShowNewTableModal] = useState(false);
-    const [showOrdersModal, setShowOrdersModal] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [editingTable, setEditingTable] = useState(null);
-
-    // Form States
-    const [newTableData, setNewTableData] = useState({
-        name: '',
-        capacity: '',
-        status: 'available'
-    });
-    const [customerInfo, setCustomerInfo] = useState({
-        name: '',
-        phone: ''
-    });
-    const [placingOrder, setPlacingOrder] = useState(false)
-    const [makingPayment, setMakingPayment] = useState(false)
-    const [amount, setAmount] = useState('');
-    const [method, setMethod] = useState('cash');
-    const [change, setChange] = useState(0);
-    const paymentDetail = {
-        amount: '',
-        change: '',
-        receipt: '',
-    }
-    const paymentDetailClone = structuredClone({paymentDetail})
-    const [payPoints, setPayPoints] = useState({
-        'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
-        'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail},
-        'moniepoint5':{...paymentDetailClone.paymentDetail}, 'moniepoint6':{...paymentDetailClone.paymentDetail}, 
-        'cash':{...paymentDetailClone.paymentDetail}
-    })
-    
-    const [paymentDetails, setPaymentDetails] = useState({...structuredClone({payPoints}).payPoints});
-
-    // Settings States
-    const [uoms, setUoms] = useState([]);
-    const [wrhs, setWrhs] = useState([]);
-    const [wrh, setWrh] = useState('');
-    const [wrhCategories, setWrhCategories] = useState({})
-    // =========================================
-    // 2. Effects and Data Loading
-    // =========================================
-    useEffect(() => {
-        handleSettingsUpdate();
-    }, [settings]);
     
     useEffect(()=>{
         loadTableData()
@@ -259,8 +260,10 @@ const PointOfSales = () => {
                 ]);
 
                 if (Array.isArray(orders) && orders?.length) {
-                    setAllOrders(orders);
-                    setAllSessionOrders(orders);
+                    if (![null, undefined] === orders){
+                        setAllOrders(orders);
+                        setAllSessionOrders(orders);
+                    }
                 }
 
                 if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
@@ -324,15 +327,17 @@ const PointOfSales = () => {
     },[window.localStorage.getItem('sessn-cmp')])
 
     useEffect(()=>{
-        setAllSessionOrders(posOrders)
-        const syncToIndexDB = async ()=>{
-            for (const o of posOrders) {
-                if (o && o.orderNumber != null) {
-                    await putOrder(company, companyRecord.emailid, o);
+        if (Array.isArray(posOrders)){
+            setAllSessionOrders(posOrders)
+            const syncToIndexDB = async ()=>{
+                for (const o of posOrders) {
+                    if (o && o.orderNumber != null) {
+                        await putOrder(company, companyRecord.emailid, o);
+                    }
                 }
             }
+            syncToIndexDB()
         }
-        syncToIndexDB()
     },[posOrders])
 
     useEffect(()=> {
@@ -954,15 +959,17 @@ const PointOfSales = () => {
             database: company,
             collection: "Orders"
         }, "getDocsDetails", server, orderController.signal);
-        if (!ordersResponse.err){    
-            setAllSessionOrders(ordersResponse.record)        
+        if (!ordersResponse.err){  
+            if (Array.isArray(ordersResponse.record)){
+                setAllSessionOrders(ordersResponse.record)        
+            }  
         }
 
         if (curSession){
             if(!ordersResponse.err && !ordersResponse.mess){
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
-                    if(ordersResponse.record?.length){
+                    if(ordersResponse.record?.length && Array.isArray(ordersResponse.record)){
                         setAllSessionOrders(ordersResponse.record)
                         setAllOrders(ordersResponse.record.filter((order) =>{
                             return (order.sessionId === curSession.i_d && order.handlerId === companyRecord.emailid)
@@ -2157,7 +2164,7 @@ const PointOfSales = () => {
     };
     const renderSessionEntry = () => {
 
-        const allUserOrders = allSessionOrders.filter((order) =>{
+        const allUserOrders = allSessionOrders?.filter((order) =>{
             if (sessionUser!==null && sessionUser?.curSession){
                 return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
             }else{
@@ -3477,7 +3484,9 @@ const POSDashboard = ({
                 collection: "Orders",
             }, "getDocsDetails", server); 
             if(!ordersResponse.err){
-                setAllSessionOrders(ordersResponse.record)
+                if (Array.isArray(ordersResponse.record)){
+                    setAllSessionOrders(ordersResponse.record)
+                }
             }
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
