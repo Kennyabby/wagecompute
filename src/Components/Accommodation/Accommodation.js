@@ -134,7 +134,7 @@ const Accommodation = ()=>{
             getCustomers(cmp_val)
             getAccommodations(cmp_val)
           }
-        },45000)
+        },120000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     

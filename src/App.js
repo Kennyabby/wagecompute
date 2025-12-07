@@ -185,7 +185,7 @@ function App() {
         getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
-    },60000)
+    },300000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
 
