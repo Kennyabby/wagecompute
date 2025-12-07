@@ -3475,7 +3475,7 @@ const POSDashboard = ({
 
 
     useEffect(()=>{
-        if (allSalesSessions?.length){
+        if (allSalesSessions?.length && Array.isArray(allSalesSessions)){            
             setStableSalesSessions(allSalesSessions)
         }
         const getSessionsData = async ()=>{
@@ -3493,7 +3493,7 @@ const POSDashboard = ({
                 collection: "POSSessions",
                 prop: {type: 'sales'}
             }, "getDocsDetails", server);             
-            if(!sessionsResponse.err){
+            if(!sessionsResponse.err && Array.isArray(sessionsResponse.record)){                
                 setStableSalesSessions(sessionsResponse.record)
             }
             // const deliverySessionsResponse = await fetchServer("POST", {
@@ -3581,7 +3581,7 @@ const POSDashboard = ({
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
                                     
-                                    const employeeSessions = stableSalesSessions.filter(session => {
+                                    const employeeSessions = stableSalesSessions?.filter(session => {
                                         return (
                                             session.employee_id === profile.emailid                                        
                                         )

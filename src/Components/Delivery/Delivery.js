@@ -838,7 +838,7 @@ const Delivery = () => {
             database: company,
             collection: "Orders"
         }, "getDocsDetails", server);
-        if (!ordersResponse.err){
+        if (!ordersResponse.err && Array.isArray(ordersResponse.record)){
             setAllSessionOrders(ordersResponse.record)        
         }
 
@@ -852,7 +852,7 @@ const Delivery = () => {
             if(!ordersResponse.err){
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
-                    if(ordersResponse?.record?.length){
+                    if(ordersResponse?.record?.length && Array.isArray(ordersResponse.record)){
                         setAllSessionOrders(ordersResponse.record)
                         setAllOrders(ordersResponse.record.filter((order) =>{
                             if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){
@@ -3197,7 +3197,7 @@ const DeliveryDashboard = ({
                 collection: "POSSessions",
                 prop: {type: 'delivery'}
             }, "getDocsDetails", server); 
-            if(!ordersResponse.err){
+            if(!ordersResponse.err && Array.isArray(ordersResponse.record)){
                 setAllSessionOrders(ordersResponse.record)
             }
             if(!sessionsResponse.err){
