@@ -72,6 +72,9 @@ const Purchase = ()=>{
             getProducts(cmp_val)
         }
         getApprovals(cmp_val)
+        getEmployees(cmp_val)
+        getPurchase(cmp_val)
+        getApprovals(cmp_val)
         if (products.length){
             if (!products[0]?.stockSummary){
                 getProductsStockReport(cmp_val, products)
@@ -88,7 +91,7 @@ const Purchase = ()=>{
             getPurchase(cmp_val)
             
           }
-        },45000)
+        },120000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp'), products])
     useEffect(()=>{

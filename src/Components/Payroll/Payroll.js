@@ -40,12 +40,13 @@ const Payroll = () =>{
 
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getEmployees(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
             getEmployees(cmp_val)
             //getAttendance(cmp_val)
           }
-        },10000)
+        },60000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 

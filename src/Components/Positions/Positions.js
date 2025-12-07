@@ -26,12 +26,14 @@ const Positions = () =>{
     },[storePath])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
+        getEmployees(cmp_val)
+        getPositions(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
             getEmployees(cmp_val)
             getPositions(cmp_val)
           }
-        },10000)
+        },120000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
