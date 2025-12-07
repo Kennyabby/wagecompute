@@ -26,6 +26,11 @@ const TransactionHistory = () => {
 
   const [transactions, setTransactions] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [duplicateCount, setDuplicateCount] = useState(0);
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState([]);
+  const [deleteTotal, setDeleteTotal] = useState(0);
+  const [deleteCompleted, setDeleteCompleted] = useState(0);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [showColumnManager, setShowColumnManager] = useState(false);
@@ -81,6 +86,93 @@ const TransactionHistory = () => {
     totalOutCost: 0,
   });
 
+  const markDuplicateTransactions = (txs = []) => {
+    if (!Array.isArray(txs) || !txs.length) {
+      return { transactions: [], duplicateCount: 0 };
+    }
+
+    const groups = new Map();
+    txs.forEach((tx) => {
+      if (!tx) return;
+      const keyParts = [
+        tx.productId || '',
+        tx.location || '',
+        tx.entryType || '',
+        tx.documentType || '',
+        tx.baseQuantity ?? '',
+        tx.postingDate || '',
+        tx.referenceNo || '',
+        tx.orderNumber || '',
+      ];
+      const key = keyParts.join('|');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(tx);
+    });
+
+    let dupCount = 0;
+    const withFlags = txs.map((tx) => {
+      const keyParts = [
+        tx.productId || '',
+        tx.location || '',
+        tx.entryType || '',
+        tx.documentType || '',
+        tx.baseQuantity ?? '',
+        tx.postingDate || '',
+        tx.referenceNo || '',
+        tx.orderNumber || '',
+      ];
+      const key = keyParts.join('|');
+      const group = groups.get(key) || [];
+      const isDuplicate = group.length > 1;
+      if (isDuplicate) dupCount += 1;
+      return { ...tx, isDuplicate };
+    });
+
+    return { transactions: withFlags, duplicateCount: dupCount };
+  };
+
+  const buildDuplicateGroups = (txs = []) => {
+    const groups = new Map();
+    txs.forEach((tx) => {
+      if (!tx) return;
+      const keyParts = [
+        tx.productId || '',
+        tx.location || '',
+        tx.entryType || '',
+        tx.documentType || '',
+        tx.baseQuantity ?? '',
+        tx.postingDate || '',
+        tx.referenceNo || '',
+        tx.orderNumber || '',
+      ];
+      const key = keyParts.join('|');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(tx);
+    });
+    return groups;
+  };
+
+  const buildTxDeleteFilter = (tx) => {
+    const filter = {
+      productId: tx.productId,
+      location: tx.location,
+      entryType: tx.entryType,
+      documentType: tx.documentType,
+      baseQuantity: tx.baseQuantity,
+      postingDate: tx.postingDate,
+    };
+
+    if (tx.referenceNo) {
+      filter.referenceNo = tx.referenceNo;
+    }
+
+    if (tx.orderNumber) {
+      filter.orderNumber = tx.orderNumber;
+    }
+
+    return filter;
+  };
+
   const applyTxSnapshot = useCallback((snap) => {
     if (!snap) return;
     const defaults = {
@@ -108,7 +200,13 @@ const TransactionHistory = () => {
       totalInCost: 0,
       totalOutCost: 0,
     };
-    setTransactions(snap.transactions || []);
+
+    const { transactions: txWithFlags, duplicateCount } = markDuplicateTransactions(
+      snap.transactions || []
+    );
+
+    setTransactions(txWithFlags);
+    setDuplicateCount(duplicateCount);
     setTotalCount(snap.totalCount || 0);
     setSummary({
       ...defaults,
@@ -272,6 +370,151 @@ const TransactionHistory = () => {
       setAlert(`Error fetching ${type} data. Please try again.`);
       setAlertTimeout(5000)
       return [];
+    }
+  };
+
+  const handleBatchDeleteSelected = async () => {
+    if (!isAdmin) return;
+    if (!company) return;
+
+    const selected = transactions.filter(
+      (tx) => tx.isDuplicate && selectedTransactionIds.includes(tx._id)
+    );
+
+    if (!selected.length) return;
+
+    const confirmDelete = window.confirm(
+      `Delete ${selected.length} selected duplicate transaction${selected.length > 1 ? 's' : ''}?`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+      setDeleteTotal(selected.length);
+      setDeleteCompleted(0);
+
+      for (const tx of selected) {
+        const resp = await fetchServer(
+          'POST',
+          {
+            database: company,
+            collection: 'InventoryTransactions',
+            update: buildTxDeleteFilter(tx),
+          },
+          'removeDoc',
+          server
+        );
+
+        if (resp && resp.err) {
+          throw new Error(resp.mess || 'Failed to delete one of the selected transactions');
+        }
+
+        setDeleteCompleted((prev) => prev + 1);
+      }
+
+      setTransactions((prev) => {
+        const remaining = prev.filter((tx) => !selectedTransactionIds.includes(tx._id));
+        const { transactions: txWithFlags, duplicateCount: newDupCount } =
+          markDuplicateTransactions(remaining);
+        setDuplicateCount(newDupCount);
+        return txWithFlags;
+      });
+
+      setSelectedTransactionIds([]);
+
+      // Refresh summary and cache from server
+      await fetchTransactionHistory();
+
+      setAlertState('success');
+      setAlert('Selected duplicate transactions deleted successfully');
+      setAlertTimeout(3000);
+    } catch (error) {
+      console.error('Batch delete failed', error);
+      setAlertState('error');
+      setAlert('Failed to delete one or more selected transactions');
+      setAlertTimeout(5000);
+    } finally {
+      setLoading(false);
+      setDeleteTotal(0);
+      setDeleteCompleted(0);
+    }
+  };
+
+  const handleAutoCleanDuplicates = async () => {
+    if (!isAdmin) return;
+    if (!company) return;
+
+    const groups = buildDuplicateGroups(transactions);
+    const toDelete = [];
+
+    groups.forEach((list) => {
+      if (!Array.isArray(list) || list.length <= 1) return;
+      const sorted = [...list].sort((a, b) => {
+        const da = new Date(a.postingDate || a.createdAt || 0).getTime();
+        const db = new Date(b.postingDate || b.createdAt || 0).getTime();
+        return da - db;
+      });
+      for (let i = 1; i < sorted.length; i += 1) {
+        toDelete.push(sorted[i]);
+      }
+    });
+
+    if (!toDelete.length) return;
+
+    const confirmDelete = window.confirm(
+      `Automatically delete ${toDelete.length} duplicate transaction${toDelete.length > 1 ? 's' : ''}, keeping one per group?`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+      setDeleteTotal(toDelete.length);
+      setDeleteCompleted(0);
+
+      for (const tx of toDelete) {
+        const resp = await fetchServer(
+          'POST',
+          {
+            database: company,
+            collection: 'InventoryTransactions',
+            update: buildTxDeleteFilter(tx),
+          },
+          'removeDoc',
+          server
+        );
+
+        if (resp && resp.err) {
+          throw new Error(resp.mess || 'Failed to delete one of the duplicate transactions');
+        }
+
+        setDeleteCompleted((prev) => prev + 1);
+      }
+
+      setTransactions((prev) => {
+        const remaining = prev.filter((tx) => !toDelete.some((d) => d._id === tx._id));
+        const { transactions: txWithFlags, duplicateCount: newDupCount } =
+          markDuplicateTransactions(remaining);
+        setDuplicateCount(newDupCount);
+        return txWithFlags;
+      });
+
+      setSelectedTransactionIds([]);
+
+      // Refresh summary and cache from server
+      await fetchTransactionHistory();
+
+      setAlertState('success');
+      setAlert('Duplicate cleanup completed successfully');
+      setAlertTimeout(3000);
+    } catch (error) {
+      console.error('Auto clean duplicates failed', error);
+      setAlertState('error');
+      setAlert('Failed to auto-clean duplicate transactions');
+      setAlertTimeout(5000);
+    } finally {
+      setLoading(false);
+      setDeleteTotal(0);
+      setDeleteCompleted(0);
     }
   };
 
@@ -959,8 +1202,7 @@ const TransactionHistory = () => {
 
   const fetchTransactionHistory = useCallback(async () => {
     if (!company) return;
-
-    setLoading(true);
+    let usedCache = false;
 
     if (products && products.length && products[0].stockSummary) {
       const summaryData = {
@@ -1042,8 +1284,9 @@ const TransactionHistory = () => {
       const cached = await getTxCached(company, filters);
       if (cached && Array.isArray(cached.transactions) && cached.summary) {
         applyTxSnapshot(cached);
-        setLoading(false);
+        usedCache = true;
 
+        // Silent background refresh when cache was used
         (async () => {
           try {
             const [openingBalance, transactionsData] = await Promise.all([
@@ -1102,11 +1345,16 @@ const TransactionHistory = () => {
               netAdjustmentCost,
             };
 
-            setTransactions(enrichedTransactions);
+            const { transactions: txWithFlags, duplicateCount } = markDuplicateTransactions(
+              enrichedTransactions
+            );
+
+            setTransactions(txWithFlags);
+            setDuplicateCount(duplicateCount);
             setTotalCount(totalCount);
             setSummary(summaryForState);
             setTxCached(company, filters, {
-              transactions: enrichedTransactions,
+              transactions: txWithFlags,
               summary: summaryForState,
               totalCount,
             });
@@ -1114,12 +1362,17 @@ const TransactionHistory = () => {
             console.warn('Background refresh of transaction history failed', e);
           }
         })();
-
-        return;
       }
     } catch (e) {
       console.warn('TransactionHistory cache lookup failed', e);
     }
+
+    // If cache was used, we already kicked off a silent background refresh
+    if (usedCache) {
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const [openingBalance, transactionsData] = await Promise.all([
@@ -1178,11 +1431,16 @@ const TransactionHistory = () => {
         netAdjustmentCost,
       };
 
-      setTransactions(enrichedTransactions);
+      const { transactions: txWithFlags, duplicateCount } = markDuplicateTransactions(
+        enrichedTransactions
+      );
+
+      setTransactions(txWithFlags);
+      setDuplicateCount(duplicateCount);
       setTotalCount(totalCount);
       setSummary(summaryForState);
       setTxCached(company, filters, {
-        transactions: enrichedTransactions,
+        transactions: txWithFlags,
         summary: summaryForState,
         totalCount,
       });
@@ -1247,8 +1505,14 @@ const TransactionHistory = () => {
   };
 
   // Prepare CSV data
+  const displayedTransactions = useMemo(() => {
+    return showDuplicatesOnly
+      ? transactions.filter((tx) => tx.isDuplicate)
+      : transactions;
+  }, [transactions, showDuplicatesOnly]);
+
   const csvData = useMemo(() => {
-    return transactions.map(tx => ({
+    return displayedTransactions.map(tx => ({
       'Date': tx.formattedDate,
       'Type': getTransactionType(tx),
       'Document #': tx.referenceNo || tx.orderNumber || 'N/A',
@@ -1260,7 +1524,97 @@ const TransactionHistory = () => {
       'Total Cost': tx.totalCost ? Math.abs(Number(tx.totalCost)) : 0,
       'Reference': tx.referenceNo || tx.orderNumber || tx.documentType || 'N/A',
     }));
-  }, [transactions, getTransactionType]);
+  }, [displayedTransactions, getTransactionType]);
+
+  const isAdmin = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report');
+
+  const toggleSelectTransaction = (id) => {
+    setSelectedTransactionIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((x) => x !== id);
+      }
+      return [...prev, id];
+    });
+  };
+
+  const toggleSelectAllVisibleDuplicates = () => {
+    setSelectedTransactionIds((prev) => {
+      const visibleDuplicateIds = displayedTransactions
+        .filter((tx) => tx.isDuplicate)
+        .map((tx) => tx._id);
+
+      const allSelected = visibleDuplicateIds.length > 0 && visibleDuplicateIds.every((id) => prev.includes(id));
+
+      if (allSelected) {
+        return prev.filter((id) => !visibleDuplicateIds.includes(id));
+      }
+
+      const merged = new Set([...prev, ...visibleDuplicateIds]);
+      return Array.from(merged);
+    });
+  };
+
+  const handleDeleteTransaction = async (tx) => {
+    if (!isAdmin) return;
+    if (!company || !tx) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete this transaction for ${tx.name || tx.productId} on ${
+        tx.postingDate || tx.createdAt || ''
+      }?`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+      setDeleteTotal(1);
+      setDeleteCompleted(0);
+
+      const resp = await fetchServer(
+        'POST',
+        {
+          database: company,
+          collection: 'InventoryTransactions',
+          update: buildTxDeleteFilter(tx),
+        },
+        'removeDoc',
+        server
+      );
+
+      if (resp && resp.err) {
+        setAlertState('error');
+        setAlert(resp.mess || 'Failed to delete transaction');
+        setAlertTimeout(5000);
+        return;
+      }
+
+      setTransactions((prev) => {
+        const next = prev.filter((t) => t._id !== tx._id);
+        const { transactions: txWithFlags, duplicateCount: newDupCount } =
+          markDuplicateTransactions(next);
+        setDuplicateCount(newDupCount);
+        return txWithFlags;
+      });
+
+      setDeleteCompleted(1);
+
+      // Refresh summary and cache from server
+      await fetchTransactionHistory();
+
+      setAlertState('success');
+      setAlert('Transaction deleted successfully');
+      setAlertTimeout(3000);
+    } catch (error) {
+      console.error('Failed to delete transaction', error);
+      setAlertState('error');
+      setAlert('Failed to delete transaction');
+      setAlertTimeout(5000);
+    } finally {
+      setLoading(false);
+      setDeleteTotal(0);
+      setDeleteCompleted(0);
+    }
+  };
 
   // Fetch stock summary and transactions when products are available
   useEffect(() => {
@@ -1286,8 +1640,6 @@ const TransactionHistory = () => {
   };
 
   const handleApplyFilters = () => {   
-
-    setLoading(true);
     const { startDate, endDate, location, productId, transactionType } = filters;
     // Format dates to ISO strings (YYYY-MM-DD)
     // This ensures compatibility with the database date format
@@ -1303,7 +1655,8 @@ const TransactionHistory = () => {
       ...(transactionType !== 'all' && { transactionType })
     });
 
-    // Removed the call to fetchTransactionHistory here
+    // Always refresh transaction history for the current filters
+    fetchTransactionHistory();
   };
 
   const handleResetFilters = () => {
@@ -1611,36 +1964,93 @@ const TransactionHistory = () => {
             <div>Avg. Cost: ₦{summary.closingStock > 0 ? formatNumber(summary.closingStockCost / summary.closingStock) : '0'}</div>
           </div>
         </div>
+
+        {/* Duplicate Transactions */}
+        <div className="summary-card clickable">
+          <div className="summary-label">Duplicate Transactions</div>
+          <div className="summary-value">{formatNumber(duplicateCount)}</div>
+          <div className="summary-subtext">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={transactions.length === 0}
+              onClick={() => setShowDuplicatesOnly((prev) => !prev)}
+            >
+              {showDuplicatesOnly ? 'Show All Transactions' : 'Show Only Duplicates'}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="transactions-table-container">
         <div className="table-header">
           <h3>Transaction History</h3>
-          {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')) &&<div className="table-actions">
-            <button 
-              onClick={exportToExcel}
-              className="btn btn-icon" 
-              title="Export to Excel"
-              disabled={transactions.length === 0}
-            >
-              <FaFileExport />
-            </button>
-            <CSVLink 
-              data={csvData}
-              filename={`transaction_history_${new Date().toISOString().slice(0, 10)}.csv`}
-              className="btn btn-icon"
-              title="Export to CSV"
-              disabled={transactions.length === 0}
-            >
-              <FaDownload />
-            </CSVLink>
-          </div>}
+          {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')) && (
+            <div className="table-actions">
+              {isAdmin && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={selectedTransactionIds.length === 0 || loading}
+                    onClick={handleBatchDeleteSelected}
+                  >
+                    Delete Selected
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-warning"
+                    disabled={duplicateCount === 0 || loading}
+                    onClick={handleAutoCleanDuplicates}
+                  >
+                    Auto Clean Duplicates
+                  </button>
+                  {deleteTotal > 0 && (
+                    <span className="delete-progress">
+                      Deleting {deleteCompleted} / {deleteTotal}
+                    </span>
+                  )}
+                </>
+              )}
+              <button
+                onClick={exportToExcel}
+                className="btn btn-icon"
+                title="Export to Excel"
+                disabled={displayedTransactions.length === 0}
+              >
+                <FaFileExport />
+              </button>
+              <CSVLink
+                data={csvData}
+                filename={`transaction_history_${new Date().toISOString().slice(0, 10)}.csv`}
+                className="btn btn-icon"
+                title="Export to CSV"
+                disabled={transactions.length === 0}
+              >
+                <FaDownload />
+              </CSVLink>
+            </div>
+          )}
         </div>
 
         <div className="table-responsive">
           <table className="transactions-table">
             <thead>
               <tr>
+                {isAdmin && (
+                  <th>
+                    <input
+                      type="checkbox"
+                      onChange={toggleSelectAllVisibleDuplicates}
+                      checked={
+                        displayedTransactions.some((tx) => tx.isDuplicate) &&
+                        displayedTransactions
+                          .filter((tx) => tx.isDuplicate)
+                          .every((tx) => selectedTransactionIds.includes(tx._id))
+                      }
+                    />
+                  </th>
+                )}
                 <th>Date</th>
                 <th>Type</th>
                 <th>Document #</th>
@@ -1651,24 +2061,36 @@ const TransactionHistory = () => {
                 <th>Unit Cost</th>
                 <th>Total Cost</th>
                 <th>Reference</th>
+                {isAdmin && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {loading && transactions.length === 0 ? (
+              {loading && displayedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="loading-row">
+                  <td colSpan="11" className="loading-row">
                     Loading transactions...
                   </td>
                 </tr>
-              ) : transactions.length === 0 ? (
+              ) : displayedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="no-data">
+                  <td colSpan="11" className="no-data">
                     {loading ? 'Loading...' : 'No transactions found for the selected filters.'}
                   </td>
                 </tr>
               ) : (
-                transactions.map((tx) => (
+                displayedTransactions.map((tx) => (
                   <tr key={tx._id} className={`tx-type-${getTransactionType(tx).toLowerCase().replace(/\s+/g, '-')}`}>
+                    {isAdmin && (
+                      <td>
+                        {tx.isDuplicate && (
+                          <input
+                            type="checkbox"
+                            checked={selectedTransactionIds.includes(tx._id)}
+                            onChange={() => toggleSelectTransaction(tx._id)}
+                          />
+                        )}
+                      </td>
+                    )}
                     <td>{formatDate(tx.postingDate)}</td>
                     <td>{getTransactionType(tx)}</td>
                     <td>{tx.referenceNo || tx.orderNumber || 'N/A'}</td>
@@ -1683,6 +2105,20 @@ const TransactionHistory = () => {
                     <td>
                       {tx.referenceNo || tx.orderNumber || tx.documentType || 'N/A'}
                     </td>
+                    {isAdmin && (
+                      <td>
+                        {tx.isDuplicate && (
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleDeleteTransaction(tx)}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
