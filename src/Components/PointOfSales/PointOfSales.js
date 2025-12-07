@@ -627,7 +627,6 @@ const PointOfSales = () => {
                     }
                     setAlertTimeout(2000);
 
-                    setStartSession(false);
                     setCurrSession(newSession);
                     setOpeningCash(0);
                     setAllSessions((allSessions) => [...allSessions, newSession]);
@@ -646,6 +645,7 @@ const PointOfSales = () => {
                         }
                     }
                     setSessionUser(null);
+                    setStartSession(false);
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, "sales", companyRecord)
                     getAllSessions(company)
@@ -1923,27 +1923,24 @@ const PointOfSales = () => {
 
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
-                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     setMakingPayment(false);
-                    setAlertTimeout(2000);
-                    setAlert('Payment processed successfully');
                     setAlertState('success');
+                    setAlert('Payment processed successfully');
+                    setAlertTimeout(2000);
+
+                    createNewOrder(currentTable);
+                    printReceipt(newOrder);
+                    setShowPaymentModal(false);
+                    setPaymentDetails({ ...payPoints });
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                    
+                    getPosOrders(company); // read-only
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
             }
 
             // 4) Local success feedback
-            
-            setAlertState('success');
-            setAlert('Payment processed successfully');
-            setAlertTimeout(2000);
-
-            createNewOrder(currentTable);
-            printReceipt(newOrder);
-            setShowPaymentModal(false);
-            getPosOrders(company); // read-only
-            setPaymentDetails({ ...payPoints });
+                        
 
             return;
         } catch (e) {
@@ -3643,7 +3640,7 @@ const POSDashboard = ({
                                                                     if (totalUnattendedSales){
                                                                         viewModal = false
                                                                         setAlertState('error')
-                                                                        setAlert('This User Have Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!')
+                                                                        setAlert('This User Have Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!', )
                                                                         setAlertTimeout(5000)
                                                                     }                                               
                                                                 }

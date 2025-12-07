@@ -32,7 +32,7 @@ const Delivery = () => {
         products, setProducts, getProducts,
         fetchTables, tables, setTables,
         fetchSessions, sessions, setSessions,
-        getSessionEnd, allSessions, setAllSessions,
+        getSessionEnd, allSessions, setAllSessions, getAllSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         deliverySessions, allDeliverySessions, setAllDeliverySessions, setDeliverySessions,
     } = useContext(ContextProvider);
@@ -347,6 +347,9 @@ const Delivery = () => {
         // Fetch prpfiles
         fetchProfiles(company)
             
+        // Fetch All sessions
+        getAllSessions(company)
+        
         // Feth Sessions
         fetchSessions(company, "delivery", companyRecord)
     },[settings, currentOrder])
@@ -603,28 +606,7 @@ const Delivery = () => {
             // 1) Local write
             if (company && companyRecord?.emailid) {
                 await putSession(company, companyRecord.emailid, newSession);
-            }
-
-            // 2) State
-            setAlertState('success');
-            if (![null, undefined].includes(sessionUser)) {
-                setAlert('User Session Started Successfully!');
-            } else {
-                setAlert('Welcome Back!');
-            }
-            setAlertTimeout(2000);
-            setStartSession(false);
-            setCurrSession(newSession);
-            setOpeningCash(0);
-            setAllSessions((allSessions) => [...allSessions, newSession]);
-            if (![null, undefined].includes(sessionUser)) {
-                if (sessionUser.profile.emailid === companyRecord.emailid) {
-                    setSessions([...(sessions || []), newSession]);
-                }
-            } else {
-                setSessions([...(sessions || []), newSession]);
-            }
-            setSessionUser(null);
+            }            
 
             // 3) Queue for sync
             if (company && companyRecord?.emailid) {
@@ -636,7 +618,29 @@ const Delivery = () => {
                 });
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
+                    // 2) State
+                    setAlertState('success');
+                    if (![null, undefined].includes(sessionUser)) {
+                        setAlert('User Session Started Successfully!');
+                    } else {
+                        setAlert('Welcome Back!');
+                    }
+                    setAlertTimeout(2000);
+                    setStartSession(false);
+                    setCurrSession(newSession);
+                    setOpeningCash(0);
+                    setAllSessions((allSessions) => [...allSessions, newSession]);
+                    if (![null, undefined].includes(sessionUser)) {
+                        if (sessionUser.profile.emailid === companyRecord.emailid) {
+                            setSessions([...(sessions || []), newSession]);
+                        }
+                    } else {
+                        setSessions([...(sessions || []), newSession]);
+                    }
+                    setSessionUser(null);
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    fetchSessions(company, "delivery", companyRecord)
+                    getAllSessions(company)
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -705,21 +709,7 @@ const Delivery = () => {
             // 1) Local update
             if (company && companyRecord?.emailid) {
                 await putSession(company, companyRecord.emailid, closedSession);
-            }
-
-            // 2) State
-            setAlertState('success');
-            if (![null, undefined].includes(sessionUser)) {
-                setAlert('User Session Ended Successfully!');
-            } else {
-                setAlert('Session Ended!');
-            }
-            setAlertTimeout(3000);
-            setEndSession(false);
-            setAllSessions((allSessions) => [...allSessions, closedSession]);
-            setCountedSales({});
-            setSessionUser(null);
-            setAlertTimeout(5000);
+            }            
 
             // 3) Queue for sync
             if (company && companyRecord?.emailid) {
@@ -732,7 +722,22 @@ const Delivery = () => {
             }
             // Immediate sync attempt – failures are fine, queue remains
             try {
+                // 2) State
+                setAlertState('success');
+                if (![null, undefined].includes(sessionUser)) {
+                    setAlert('User Session Ended Successfully!');
+                } else {
+                    setAlert('Session Ended!');
+                }
+                setAlertTimeout(3000);
+                setEndSession(false);
+                setAllSessions((allSessions) => [...allSessions, closedSession]);
+                setCountedSales({});
+                setSessionUser(null);
+                setAlertTimeout(5000);
                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                fetchSessions(company, "delivery", companyRecord)
+                getAllSessions(company)
             } catch (e) {
                 // Leave pending changes in queue; 5‑minute auto-sync will retry
             }
