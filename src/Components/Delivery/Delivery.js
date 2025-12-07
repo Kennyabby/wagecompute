@@ -1586,6 +1586,7 @@ const Delivery = () => {
                     op: 'create',
                     payload: { transactions },
                 });
+                setPlacingOrder(false)
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
@@ -1939,7 +1940,7 @@ const Delivery = () => {
                     ', '
                 )}`
             );
-            setAlertTimeout(8000);
+            setAlertTimeout(3000);
             setPlacingOrder(false);
             setCurrentOrder(posCurrentOrder);
             return;
@@ -2089,10 +2090,7 @@ const Delivery = () => {
                     });
                     // Immediate sync attempt – failures are fine, queue remains
                     try {
-                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                        setAlertTimeout(2000);
-                        setAlert('Order delivered successfully');
-                        setAlertState('success');
+                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                        
                     } catch (e) {
                         // Leave pending changes in queue; 5‑minute auto-sync will retry
                     }
