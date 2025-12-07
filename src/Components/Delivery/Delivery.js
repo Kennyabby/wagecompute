@@ -300,41 +300,6 @@ const Delivery = () => {
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
-    useEffect(() => {
-        if (!company || !companyRecord?.emailid) return;
-
-        (async () => {
-            try {
-                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-                    loadAllOrders(company, companyRecord.emailid),
-                    loadAllSessionsLocal(company, companyRecord.emailid),
-                    loadAllTables(company, companyRecord.emailid),
-                ]);
-
-                if (Array.isArray(orders) && orders.length) {
-                    setAllOrders(orders);
-                    setAllSessionOrders(orders)
-                    // optionally derive allSessionOrders, etc.
-                }
-
-                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-                    const localDeliverySessions = sessionsLocal.filter(s => s.type === 'delivery');
-                    setSessions(localDeliverySessions);
-                    setAllDeliverySessions(localDeliverySessions);
-                    setAllSessions(sessionsLocal);
-
-                    // Immediately derive curSession from locally cached delivery sessions
-                    UpdateSessionState(localDeliverySessions, false);
-                }
-
-                if (Array.isArray(tablesLocal) && tablesLocal.length) {
-                    setTables(tablesLocal);
-                }
-            } catch (e) {
-                console.warn('POS hydrateFromIndexedDb failed', e);
-            }
-        })();
-    }, [company, companyRecord?.emailid]);
     
     useEffect(()=> {
         // Fetch products
@@ -3181,7 +3146,7 @@ const DeliveryDashboard = ({
      const [pendingSessions, setPendingSessions] = useState([])
      const [showReports, setShowReports] = useState(false);
     useEffect(()=>{
-        var pendingSessions = allSessions.filter((session)=>{
+        var pendingSessions = allSessions?.filter((session)=>{
             return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
                 session.active && (getSessionEnd(new Date().getTime()) > getSessionEnd(session.start))
             )
@@ -3191,7 +3156,7 @@ const DeliveryDashboard = ({
     },[allSessions])
 
     useEffect(()=>{
-        if (allDeliverySessions?.length){
+        if (allDeliverySessions?.length && Array.isArray(allDeliverySessions)){
             setAllSessions(allDeliverySessions)
         }
         const getSessionsData = async ()=>{
