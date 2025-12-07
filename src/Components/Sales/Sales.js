@@ -237,7 +237,7 @@ const Sales = ()=>{
                 getAccommodations(cmp_val)
                 getAllSessions(cmp_val)
             }
-        },20000)
+        },120000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -3096,7 +3096,7 @@ const Sales = ()=>{
                                                 }}
                                             />
                                         </div>
-                                        {false && field.recoveryReceipt?.toLowerCase() !== 'cash' && field.recoveryPoint && <section className='imgview'>
+                                        {field.recoveryReceipt?.toLowerCase() !== 'cash' && field.recoveryPoint && <section className='imgview'>
                                
                                             <div className='acpymdt'>Upload Payment Receipt</div>
                                             
