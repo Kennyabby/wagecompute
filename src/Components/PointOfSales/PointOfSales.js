@@ -1516,11 +1516,17 @@ const PointOfSales = () => {
                 // Immediate sync attempt – failures are fine, queue remains
                 setAlertTimeout(20);
                 try {
-                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    setPlacingOrder(false);
                     setAlert('Order placed successfully');
                     setAlertState('success');
                     setAlertTimeout(2000);
-                    setPlacingOrder(false);
+                    // Keep your existing reads (they only fetch, no writes)
+                    loadInitialData();                    
+                    printKitchenOrder(placedOrder);
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    fetchSessions(company, 'sales', companyRecord);
+                    fetchTables(company);
+                    getProducts(company);
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -1529,13 +1535,6 @@ const PointOfSales = () => {
             // 5) Local success feedback
             
 
-            // Keep your existing reads (they only fetch, no writes)
-            fetchSessions(company, 'sales', companyRecord);
-            fetchTables(company);
-            getProducts(company);
-            loadInitialData();
-
-            printKitchenOrder(placedOrder);
             // View Payment Modal?
             // setShowPaymentModal(true);
         } catch (e) {

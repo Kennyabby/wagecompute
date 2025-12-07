@@ -66,6 +66,71 @@ const Delivery = () => {
     // =========================================
     // 1a. Offline snapshot hydration (read from local, then server refresh)
     // =========================================
+    
+    // Order States
+    const [currentOrder, setCurrentOrder] = useState(null);
+    const [posCurrentOrder, setPosCurrentOrder] = useState(null); 
+    const [allSessionOrders, setAllSessionOrders] = useState([])
+    const [allOrders, setAllOrders] = useState([]);
+    const [tableOrders, setTableOrders] = useState([]);
+    const [orderType, setOrderType] = useState('dine-in');
+    const [cancelling, setCancelling] = useState(false)
+    const [deliveryCompleted, setDeliveryCompleted] = useState(false)
+    
+    // Product States
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [activeCategory, setActiveCategory] = useState(null);
+    const [filteredProducts, setFilteredProducts] = useState([]);
+    const [quantity, setQuantity] = useState('');
+    const [postCount, setPostCount] = useState(0)
+    
+    // Modal States
+    const [showNewTableModal, setShowNewTableModal] = useState(false);
+    const [showOrdersModal, setShowOrdersModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [editingTable, setEditingTable] = useState(null);
+    
+    // Form States
+    const [newTableData, setNewTableData] = useState({
+        name: '',
+        capacity: '',
+        status: 'available'
+    });
+    const [customerInfo, setCustomerInfo] = useState({
+        name: '',
+        phone: ''
+    });
+    const [placingOrder, setPlacingOrder] = useState(false)
+    const [makingPayment, setMakingPayment] = useState(false)
+    const [amount, setAmount] = useState('');
+    const [method, setMethod] = useState('cash');
+    const [change, setChange] = useState(0);
+    const paymentDetail = {
+        amount: '',
+        change: '',
+        receipt: '',
+    }
+    const paymentDetailClone = structuredClone({paymentDetail})
+    const [payPoints, setPayPoints] = useState({
+        'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
+        'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail}, 
+        'moniepoint5':{...paymentDetailClone.paymentDetail}, 'moniepoint6':{...paymentDetailClone.paymentDetail}, 
+        'cash':{...paymentDetailClone.paymentDetail}
+    })
+    const [paymentDetails, setPaymentDetails] = useState({...structuredClone({payPoints}).payPoints});
+    
+    // Settings States
+    const [uoms, setUoms] = useState([]);
+    const [wrhs, setWrhs] = useState([]);
+    const [wrh, setWrh] = useState('');
+    const [wrhCategories, setWrhCategories] = useState({})
+    // =========================================
+    // 2. Effects and Data Loading
+    // =========================================
+    useEffect(() => {
+        handleSettingsUpdate();
+    }, [settings]);
+    
     useEffect(() => {
         if (!company || !companyRecord?.emailid) return;
 
@@ -132,70 +197,6 @@ const Delivery = () => {
             cancelled = true;
         };
     }, [company, companyRecord?.emailid]);
-
-    // Order States
-    const [currentOrder, setCurrentOrder] = useState(null);
-    const [posCurrentOrder, setPosCurrentOrder] = useState(null); 
-    const [allSessionOrders, setAllSessionOrders] = useState([])
-    const [allOrders, setAllOrders] = useState([]);
-    const [tableOrders, setTableOrders] = useState([]);
-    const [orderType, setOrderType] = useState('dine-in');
-    const [cancelling, setCancelling] = useState(false)
-    const [deliveryCompleted, setDeliveryCompleted] = useState(false)
-
-    // Product States
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [activeCategory, setActiveCategory] = useState(null);
-    const [filteredProducts, setFilteredProducts] = useState([]);
-    const [quantity, setQuantity] = useState('');
-    const [postCount, setPostCount] = useState(0)
-
-    // Modal States
-    const [showNewTableModal, setShowNewTableModal] = useState(false);
-    const [showOrdersModal, setShowOrdersModal] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [editingTable, setEditingTable] = useState(null);
-
-    // Form States
-    const [newTableData, setNewTableData] = useState({
-        name: '',
-        capacity: '',
-        status: 'available'
-    });
-    const [customerInfo, setCustomerInfo] = useState({
-        name: '',
-        phone: ''
-    });
-    const [placingOrder, setPlacingOrder] = useState(false)
-    const [makingPayment, setMakingPayment] = useState(false)
-    const [amount, setAmount] = useState('');
-    const [method, setMethod] = useState('cash');
-    const [change, setChange] = useState(0);
-    const paymentDetail = {
-        amount: '',
-        change: '',
-        receipt: '',
-    }
-    const paymentDetailClone = structuredClone({paymentDetail})
-    const [payPoints, setPayPoints] = useState({
-        'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
-        'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail}, 
-        'moniepoint5':{...paymentDetailClone.paymentDetail}, 'moniepoint6':{...paymentDetailClone.paymentDetail}, 
-        'cash':{...paymentDetailClone.paymentDetail}
-    })
-    const [paymentDetails, setPaymentDetails] = useState({...structuredClone({payPoints}).payPoints});
-
-    // Settings States
-    const [uoms, setUoms] = useState([]);
-    const [wrhs, setWrhs] = useState([]);
-    const [wrh, setWrh] = useState('');
-    const [wrhCategories, setWrhCategories] = useState({})
-    // =========================================
-    // 2. Effects and Data Loading
-    // =========================================
-    useEffect(() => {
-        handleSettingsUpdate();
-    }, [settings]);
     
     useEffect(()=>{
         if (wrhs.length){
