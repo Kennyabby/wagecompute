@@ -32,7 +32,7 @@ const PointOfSales = () => {
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
         salesSessions, allSalesSessions, setSalesSessions, setAllSalesSessions,
-        paymentReceipts, getPosOrders
+        paymentReceipts, getPosOrders, getAllSessions
     } = useContext(ContextProvider);
 
     // Core States
@@ -343,6 +343,9 @@ const PointOfSales = () => {
 
         // Fetch prpfiles
         fetchProfiles(company)
+
+        // Fetch all sessions
+        getAllSessions(company)
          
         // Feth Sessions
         fetchSessions(company, "sales", companyRecord)
@@ -598,36 +601,7 @@ const PointOfSales = () => {
             // 1) Save session locally
             if (company && companyRecord?.emailid) {
                 await putSession(company, companyRecord.emailid, newSession);
-            }
-
-            // 2) Update React state
-            setAlertState('success');
-            if (![null, undefined].includes(sessionUser)) {
-                setAlert('User Session Started Successfully!');
-            } else {
-                setAlert('Welcome Back!');
-            }
-            setAlertTimeout(2000);
-
-            setStartSession(false);
-            setCurrSession(newSession);
-            setOpeningCash(0);
-            setAllSessions((allSessions) => [...allSessions, newSession]);
-            setAllSalesSessions((allSalesSessions) => [
-                ...(allSalesSessions || []),
-                newSession,
-            ]);
-
-            if (![null, undefined].includes(sessionUser)) {
-                if (sessionUser.profile.emailid === companyRecord.emailid) {
-                    setSessions([...(sessions || []), newSession]);
-                }
-            } else {
-                if (sessions !== null) {
-                    setSessions([...(sessions || []), newSession]);
-                }
-            }
-            setSessionUser(null);
+            }            
 
             // 3) Queue session create for sync
             if (company && companyRecord?.emailid) {
@@ -639,7 +613,37 @@ const PointOfSales = () => {
                 });
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
+                    // 2) Update React state
+                    setAlertState('success');
+                    if (![null, undefined].includes(sessionUser)) {
+                        setAlert('User Session Started Successfully!');
+                    } else {
+                        setAlert('Welcome Back!');
+                    }
+                    setAlertTimeout(2000);
+
+                    setStartSession(false);
+                    setCurrSession(newSession);
+                    setOpeningCash(0);
+                    setAllSessions((allSessions) => [...allSessions, newSession]);
+                    setAllSalesSessions((allSalesSessions) => [
+                        ...(allSalesSessions || []),
+                        newSession,
+                    ]);
+
+                    if (![null, undefined].includes(sessionUser)) {
+                        if (sessionUser.profile.emailid === companyRecord.emailid) {
+                            setSessions([...(sessions || []), newSession]);
+                        }
+                    } else {
+                        if (sessions !== null) {
+                            setSessions([...(sessions || []), newSession]);
+                        }
+                    }
+                    setSessionUser(null);
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    fetchSessions(company, "sales", companyRecord)
+                    getAllSessions(company)
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -798,30 +802,7 @@ const PointOfSales = () => {
             // 1) Local update
             if (company && companyRecord?.emailid) {
                 await putSession(company, companyRecord.emailid, closedSession);
-            }
-
-            // 2) State updates
-            setAlertState('success');
-            if (![null, undefined].includes(sessionUser)) {
-                setAlert('User Session Ended Successfully!');
-            } else {
-                setAlert('Session Ended!');
-            }
-            setAlertTimeout(3000);
-
-            setAllSessions((allSessions) => [
-                ...allSessions,
-                closedSession,
-            ]);
-            setAllSalesSessions((allSalesSessions) => [
-                ...(allSalesSessions || []),
-                closedSession,
-            ]);
-
-            setEndSession(false);
-            setCountedSales({});
-            setSessionUser(null);
-            setAlertTimeout(5000);
+            }            
 
             // 3) Queue session update
             if (company && companyRecord?.emailid) {
@@ -833,7 +814,28 @@ const PointOfSales = () => {
                 });
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
+                    // 2) State updates
+                    setAlertState('success');
+                    if (![null, undefined].includes(sessionUser)) {
+                        setAlert('User Session Ended Successfully!');
+                    } else {
+                        setAlert('Session Ended!');
+                    }
+                    setAlertTimeout(3000);
+                    setAllSessions((allSessions) => [
+                        ...allSessions,
+                        closedSession,
+                    ]);
+                    setAllSalesSessions((allSalesSessions) => [
+                        ...(allSalesSessions || []),
+                        closedSession,
+                    ]);
+                    setCountedSales({});
+                    setEndSession(false);
+                    setSessionUser(null);
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    getAllSessions(company)
+                    fetchSessions(company, "sales", companyRecord)
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }

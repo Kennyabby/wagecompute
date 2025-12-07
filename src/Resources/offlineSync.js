@@ -57,6 +57,7 @@ async function syncOrderChange(change, company, fetchServer, server) {
 
   if (!payload) return;
 
+  delete payload._id
   if (op === 'create') {
     const resp = await fetchServer('POST', {
       database: company,
@@ -84,6 +85,8 @@ async function syncOrderChange(change, company, fetchServer, server) {
 async function syncSessionChange(change, company, fetchServer, server) {
   const { op, payload } = change;
   if (!payload) return;
+
+  delete payload._id
 
   if (op === 'create') {
     const resp = await fetchServer('POST', {
@@ -125,6 +128,7 @@ async function syncInventoryChange(change, company, fetchServer, server) {
   if (!payload || !Array.isArray(payload.transactions)) return;
   if (op !== 'create') return;
 
+  delete payload._id
   for (const txn of payload.transactions) {
     const resp = await fetchServer('POST', {
       database: company,
@@ -141,7 +145,8 @@ async function syncInventoryChange(change, company, fetchServer, server) {
 async function syncTableChange(change, company, fetchServer, server) {
   const { op, payload } = change;
   if (!payload || !payload.i_d) return;
-
+  
+  delete payload._id
   if (op === 'create') {
     const resp = await fetchServer('POST', {
       database: company,
