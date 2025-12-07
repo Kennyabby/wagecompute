@@ -1161,6 +1161,7 @@ const Delivery = () => {
                 );
                 if (pendingLocal.length) {
                     setCurrentOrder(pendingLocal[0]);
+                    setPosCurrentOrder(pendingLocal[0]);
                 } else {
                     createNewOrder(table);
                 }
@@ -1234,6 +1235,7 @@ const Delivery = () => {
                         );
                         if (pendingRemote.length) {
                             setCurrentOrder(pendingRemote[0]);
+                            setPosCurrentOrder(pendingRemote[0]);
                         } else {
                             createNewOrder(table);
                         }
@@ -1879,7 +1881,7 @@ const Delivery = () => {
 
         // Tag delivered Items
         let pendingOrderItems = posCurrentOrder.items;
-        let edittedOrderItems = currentOrder.items;
+        let edittedOrderItems = currentOrder?.items;
         let deliveredOrderItems = [];
         let itemsToDeplete = [];
 
