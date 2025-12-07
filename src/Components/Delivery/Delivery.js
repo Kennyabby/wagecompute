@@ -275,6 +275,7 @@ const Delivery = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         getProducts(cmp_val)
+        fetchTables(cmp_val)
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 // Fetch tables
