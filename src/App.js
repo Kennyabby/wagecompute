@@ -2115,18 +2115,27 @@ function App() {
   });
 
   const getAccommodations = async (company) =>{
-    const cached = await getCached(company, 'accommodations', companyRecord?.emailid);
-    if (cached) {
-      setAccommodations(cached);
-    }
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Accommodations", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setAccommodations(resp.record)
-      setCached(company, 'accommodations', resp.record, companyRecord?.emailid)
+    try {
+      const resp = await fetchServer("POST", {
+        database: company,
+        collection: "Accommodations", 
+        prop: {} 
+      }, "getDocsDetails", SERVER)
+      if (resp.record){
+        setAccommodations(resp.record)
+        setCached(company, 'accommodations', resp.record, companyRecord?.emailid)
+      }
+      if (resp.err){
+        const cached = await getCached(company, 'accommodations', companyRecord?.emailid);    
+        if (cached) {
+          setAccommodations(cached);
+        }
+      }
+    }catch (e){
+      const cached = await getCached(company, 'accommodations', companyRecord?.emailid);    
+      if (cached) {
+        setAccommodations(cached);
+      }
     }
   }
 

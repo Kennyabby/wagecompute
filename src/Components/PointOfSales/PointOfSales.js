@@ -1928,9 +1928,9 @@ const PointOfSales = () => {
                     setAlert('Payment processed successfully');
                     setAlertTimeout(2000);
 
-                    createNewOrder(currentTable);
                     printReceipt(newOrder);
                     setShowPaymentModal(false);
+                    createNewOrder(currentTable);
                     setPaymentDetails({ ...payPoints });
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                    
                     getPosOrders(company); // read-only
