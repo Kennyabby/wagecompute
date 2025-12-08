@@ -16,8 +16,8 @@ import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 import { syncPendingChanges } from './Resources/offlineSync';
 import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPendingChanges } from './Resources/offlineDb';
 
-const SERVER = "http://localhost:3001"
-// const SERVER = "https://enterpriseserver.vercel.app"
+// const SERVER = "http://localhost:3001"
+const SERVER = "https://enterpriseserver.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
 // const SERVER = "http://3.251.76.94"
@@ -349,7 +349,7 @@ function App() {
   }
 
   const getSessionEnd = (sessionStart) => {
-      const closingHour = 8
+      const closingHour = 9
       const sessionStartDate = new Date(sessionStart);
       const sessionEndDate = new Date(sessionStartDate);
 
