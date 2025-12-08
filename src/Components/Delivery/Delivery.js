@@ -197,7 +197,7 @@ const Delivery = () => {
             cancelled = true;
         };
     }, [company, companyRecord?.emailid]);
-    
+
     useEffect(()=>{
         if (wrhs.length){
             setWrhCategories((wrhCategories)=>{
@@ -1560,56 +1560,58 @@ const Delivery = () => {
                     op: 'create',
                     payload: { transactions },
                 });
-                setPlacingOrder(false)
+                setAlertTimeout(2000);
+                setAlert('Inventory updated successfully');
+                setAlertState('success');
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
+                    // 3) Update local order state with deliveryDataUpdate
+                    if (action === 'deplete') {
+                        setCurrentOrder((currentOrder) => {
+                            return { ...currentOrder, ...deliveryDataUpdate };
+                        });
+                        setTableOrders((tableOrders) => {
+                            const updated = tableOrders.map((tableOrder) =>
+                                tableOrder.orderNumber === currentOrder.orderNumber
+                                    ? { ...tableOrder, ...deliveryDataUpdate }
+                                    : tableOrder
+                            );
+                            return updated;
+                        });
+                    } else {
+                        setCurrentOrder((currentOrder) => {
+                            return { ...currentOrder, ...deliveryDataUpdate };
+                        });
+                        setTableOrders((tableOrders) => {
+                            const updated = tableOrders.map((tableOrder) =>
+                                    tableOrder.orderNumber === currentOrder.orderNumber
+                                ? { ...tableOrder, ...deliveryDataUpdate }
+                                : tableOrder
+                            );
+                            return updated;
+                        });
+                    }
+                    setPlacingOrder(false)
+                    // 4) Local success alerts (no dependence on server)
+                    if (action === 'deplete') {
+                        setAlertState('success');
+                        setAlert('Delivery processed successfully');
+                        setAlertTimeout(2000);
+                    } else {
+                        setCancelling(false);
+                        setAlertState('success');
+                        setAlert('Delivery cancelled successfully');
+                        setAlertTimeout(2000);
+                    }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    setAlertTimeout(2000);
-                    setAlert('Inventory updated successfully');
-                    setAlertState('success');
+                    fetchSessions(company, "delivery", companyRecord)
+                    fetchTables(company)
+                    loadInitialData()
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
-            }
+            }            
 
-            // 3) Update local order state with deliveryDataUpdate
-            if (action === 'deplete') {
-                setCurrentOrder((currentOrder) => {
-                    return { ...currentOrder, ...deliveryDataUpdate };
-                });
-                setTableOrders((tableOrders) => {
-                    const updated = tableOrders.map((tableOrder) =>
-                        tableOrder.orderNumber === currentOrder.orderNumber
-                            ? { ...tableOrder, ...deliveryDataUpdate }
-                            : tableOrder
-                    );
-                    return updated;
-                });
-            } else {
-                setCurrentOrder((currentOrder) => {
-                    return { ...currentOrder, ...deliveryDataUpdate };
-                });
-                setTableOrders((tableOrders) => {
-                    const updated = tableOrders.map((tableOrder) =>
-                        tableOrder.orderNumber === currentOrder.orderNumber
-                            ? { ...tableOrder, ...deliveryDataUpdate }
-                            : tableOrder
-                    );
-                    return updated;
-                });
-            }
-
-            // 4) Local success alerts (no dependence on server)
-            if (action === 'deplete') {
-                setAlertState('success');
-                setAlert('Delivery processed successfully');
-                setAlertTimeout(2000);
-            } else {
-                setCancelling(false);
-                setAlertState('success');
-                setAlert('Delivery cancelled successfully');
-                setAlertTimeout(2000);
-            }
         } catch (e) {
             setAlertState('error');
             setAlert('Error updating inventory locally');
@@ -2064,16 +2066,17 @@ const Delivery = () => {
                     });
                     // Immediate sync attempt – failures are fine, queue remains
                     try {
+                        // 3) Kick off local inventory update + queue
+                        setTimeout(() => {
+                            updateInventory('deplete', itemsToDeplete, deliveryDataUpdate);
+                        }, 500);
                         await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                        
                     } catch (e) {
                         // Leave pending changes in queue; 5‑minute auto-sync will retry
                     }
                 }
 
-                // 3) Kick off local inventory update + queue
-                setTimeout(() => {
-                    updateInventory('deplete', itemsToDeplete, deliveryDataUpdate);
-                }, 500);
+                
             } else {
                 setAlertState('error');
                 setAlert('Nothing to Post Here!');

@@ -151,6 +151,7 @@ const Sales = ()=>{
         recoveryReceipt: '',
         recoverySales: '',
         recoveryReason: '',
+        imgId: '',
         recoveryAmount: '',
         recoveryPoint: '',
         recoveryDate: '',
@@ -992,7 +993,7 @@ const Sales = ()=>{
         })
     }
     
-    const handleRecoveryFieldChange = ({index, e})=>{
+    const handleRecoveryFieldChange = ({index, e, imgId})=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value
         if (name === 'recoverySales' && value){
@@ -1032,6 +1033,11 @@ const Sales = ()=>{
             }else if (name==='recoveryTransferId'){
                 setRecoveryFields((fields)=>{
                     fields[index] = {...fields[index], [name]:value, recoveryReceipt:value?`TRANSFER TO ID:${value}`:''}
+                    return [...fields]
+                })
+            }else if (name === 'imgId'){
+                setRecoveryFields((fields)=>{
+                    fields[index] = {...fields[index], [name]:imgId}
                     return [...fields]
                 })
             }else{
@@ -1673,6 +1679,8 @@ const Sales = ()=>{
                                     recoveryAmount:field.recoveryAmount,
                                     recoveryPoint:field.recoveryPoint,
                                     recoveryDate: field.recoveryDate,
+                                    recoveryReason: field.recoveryReason,
+                                    imgId: field.imgId,
                                     recoveryEmployeeId: recoveryEmployeeId,
                                     recoveryTransferId: field.recoveryTransferId
                                 }
@@ -1738,6 +1746,8 @@ const Sales = ()=>{
                                     recoveryAmount:field.recoveryAmount,
                                     recoveryPoint:field.recoveryPoint,
                                     recoveryDate: field.recoveryDate,
+                                    recoveryReason: field.recoveryReason,
+                                    imgId: field.imgId,
                                     recoveryEmployeeId: recoveryEmployeeId,
                                     recoveryTransferId: field.recoveryTransferId
                                 }
@@ -1793,6 +1803,8 @@ const Sales = ()=>{
                     transferedFrom: recoveryEmployeeId,            
                     postingDate: field.recoveryDate,
                     debtAmount: Number(field.recoveryAmount),
+                    recoveryReason: field.recoveryReason,
+                    imgId: field.imgId
                 })
                 const updatedEmployee = {
                     ...targetEmployee[0],
@@ -2064,7 +2076,7 @@ const Sales = ()=>{
         setImageUpload(blob)
     }
 
-    const handleImageUpload = async (imageUpload)=>{
+    const handleImageUpload = async (imageUpload, index, e)=>{
         if (!imageUpload) {
             setAlertState('error')
             setAlert("Please select an image first")
@@ -2075,7 +2087,7 @@ const Sales = ()=>{
         setAlertState('info')
         setAlert('Uploading Receipt...')
         setAlertTimeout(100000)
-        const collection = 'Approvals'
+        const collection = ''
         const createdAt = curApproval.createdAt
         const res = await uploadFile(
             imageUpload, company+"/Payment Receipts", 
@@ -2089,7 +2101,8 @@ const Sales = ()=>{
             return
         }
         if (res?.downloadLink){
-            getApprovals(company)
+
+            handleRecoveryFieldChange({index, e, imgId: res.imgId})
             
             setUploadingReceipt(false)
             setAlertState('success')
@@ -2098,7 +2111,7 @@ const Sales = ()=>{
         }
     }
 
-    const handleImageDelete = async (imgId)=>{
+    const handleImageDelete = async (imgId, index, e)=>{
         setDeletingReceipt(true)
         setAlertState('info')
         setAlert('Deleting Receipt...')
@@ -2114,11 +2127,11 @@ const Sales = ()=>{
 
             const resp = await fetchServer('POST', {
                 database: company,
-                collection: 'Approvals',
+                collection: '',
                 prop: [{createdAt: curApproval.createdAt}, {...updatedApprovals}]                
             }, 'updateOneDoc', server)
             if (resp.updated){
-                getApprovals(company)
+                handleRecoveryFieldChange({index, e, imgId: null})
                 setDeletingReceipt(false)
                 setAlertState('success')
                 setAlert('Receipt Deleted Successfully!')
@@ -3122,21 +3135,23 @@ const Sales = ()=>{
                                             </div>}
                                             {(!field.imgId) && <button 
                                                 className='imgupld'
+                                                name = 'imgId'
                                                 style={{cursor: uploadingReceipt ? 'not-allowed': 'pointer'}}
                                                 disabled={uploadingReceipt}
-                                                onClick={()=>{
-                                                    handleImageUpload(imageUpload)
+                                                onClick={(e)=>{
+                                                    handleImageUpload(imageUpload, index, e)
                                                 }}
                                             > Upload</button>} 
                                             {((((companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('edit_payment_receipts')) && field.imgId) || imageUpload) && <button 
                                                 className='imgupld'
+                                                name = 'imgId'
                                                 color='red'
                                                 style={{cursor: deletingReceipt ? 'not-allowed': 'pointer'}}
                                                 disabled={deletingReceipt}
-                                                onClick={()=>{
+                                                onClick={(e)=>{
                                                     setImageUpload(null)
                                                     if (field.imgId){
-                                                        handleImageDelete(field.imgId)
+                                                        handleImageDelete(field.imgId, index, e)
                                                     }
                                                 }}
                                             > Delete</button>)
@@ -3677,10 +3692,11 @@ const Sales = ()=>{
                                     var ct2=0
                                     var ct3=0
                                     var ct4=0
+                                    var ct5=0
                                     var foundDebtReasons = []
                                     var requiredNo = recoveryFields.length
                                     recoveryFields.forEach((recoveryField)=>{
-                                        const {recoveryReason, recoveryReceipt, recoveryAmount, recoveryDate, recoveryPoint} = recoveryField
+                                        const {recoveryReason, recoveryReceipt, recoveryAmount, recoveryDate, recoveryPoint, imgId} = recoveryField
                                         if (recoveryReceipt){
                                             ct++
                                         }
@@ -3699,8 +3715,11 @@ const Sales = ()=>{
                                                 foundDebtReasons.push(recoveryReason)
                                             }
                                         }
+                                        if (imgId){
+                                            ct5++
+                                        }
                                     })
-                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo && ct4===requiredNo){
+                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo && ct4===requiredNo && ct5===requiredNo){
                                         const recoveryData = {
                                             recoveryFields,
                                             recoveryEmployeeId,
@@ -3829,6 +3848,7 @@ const Sales = ()=>{
                                             ${ct1<requiredNo?' "All Recovery Amounts Must Be Greater Than 0", ':''}\
                                             ${ct3<requiredNo?' "All Recovery Points Must Be Selected", ':''}\
                                             ${ct4<requiredNo?' "All Recovery Reasons Must Be Specified", ':''}\
+                                            ${ct5<requiredNo?' "All Recovery Images Must Be Uploaded", ':''}\
                                             ${ct2<requiredNo?' "All Recovery Dates Must Be Specified", ':''}`
                                         )
                                         setAlertTimeout(3000)                                        
