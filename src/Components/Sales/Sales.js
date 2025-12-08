@@ -3758,7 +3758,7 @@ const Sales = ()=>{
                                             ct5++
                                         }
                                     })
-                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo && ct4===requiredNo && ct5===requiredNo){
+                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo && ct4===requiredNo){
                                         const recoveryData = {
                                             recoveryFields,
                                             recoveryEmployeeId,
@@ -3887,10 +3887,10 @@ const Sales = ()=>{
                                             ${ct1<requiredNo?' "All Recovery Amounts Must Be Greater Than 0", ':''}\
                                             ${ct3<requiredNo?' "All Recovery Points Must Be Selected", ':''}\
                                             ${ct4<requiredNo?' "All Recovery Reasons Must Be Specified", ':''}\
-                                            ${ct5<requiredNo?' "All Recovery Images Must Be Uploaded", ':''}\
                                             ${ct2<requiredNo?' "All Recovery Dates Must Be Specified", ':''}`
                                         )
                                         setAlertTimeout(3000)                                        
+                                        // ${ct5<requiredNo?' "All Recovery Images Must Be Uploaded", ':''}\
                                     }
                                 }
                             }}
