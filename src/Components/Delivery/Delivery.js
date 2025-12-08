@@ -31,7 +31,7 @@ const Delivery = () => {
         profiles, fetchProfiles, getProductsWithStock,
         products, setProducts, getProducts,
         fetchTables, tables, setTables,
-        fetchSessions, sessions, setSessions,
+        fetchSessions, sessions, setSessions, posOrders, getPosOrders,
         getSessionEnd, allSessions, setAllSessions, getAllSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         deliverySessions, allDeliverySessions, setAllDeliverySessions, setDeliverySessions,
@@ -131,6 +131,12 @@ const Delivery = () => {
         handleSettingsUpdate();
     }, [settings]);
     
+    useEffect(()=>{
+        if (Array.isArray(posOrders)){
+            setAllSessionOrders(posOrders)
+        }
+    },[posOrders])
+
     useEffect(() => {
         if (!company || !companyRecord?.emailid) return;
 
@@ -291,10 +297,12 @@ const Delivery = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
+        getPosOrders(company)
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 // Fetch tables
                 loadInitialData()
+                getPosOrders(company)
                 // Fetch products
                 // getProducts(cmp_val)
             }
