@@ -152,6 +152,7 @@ const Sales = ()=>{
         recoverySales: '',
         recoveryReason: '',
         imgId: '',
+        viewLink: '',
         recoveryAmount: '',
         recoveryPoint: '',
         recoveryDate: '',
@@ -993,7 +994,7 @@ const Sales = ()=>{
         })
     }
     
-    const handleRecoveryFieldChange = ({index, e, imgId})=>{
+    const handleRecoveryFieldChange = ({index, e, res})=>{
         const name = e.target.getAttribute('name')
         const value = e.target.value
         if (name === 'recoverySales' && value){
@@ -1037,7 +1038,7 @@ const Sales = ()=>{
                 })
             }else if (name === 'imgId'){
                 setRecoveryFields((fields)=>{
-                    fields[index] = {...fields[index], [name]:imgId}
+                    fields[index] = {...fields[index], ...res}
                     return [...fields]
                 })
             }else{
@@ -1681,6 +1682,9 @@ const Sales = ()=>{
                                     recoveryDate: field.recoveryDate,
                                     recoveryReason: field.recoveryReason,
                                     imgId: field.imgId,
+                                    viewLink: field.viewLink,
+                                    downloadLink: field.downloadLink,
+                                    ...(field.receiptLastDeletedBy && {receiptLastDeletedBy: field.receiptLastDeletedBy}),
                                     recoveryEmployeeId: recoveryEmployeeId,
                                     recoveryTransferId: field.recoveryTransferId
                                 }
@@ -1748,6 +1752,9 @@ const Sales = ()=>{
                                     recoveryDate: field.recoveryDate,
                                     recoveryReason: field.recoveryReason,
                                     imgId: field.imgId,
+                                    viewLink: field.viewLink,
+                                    downloadLink: field.downloadLink,
+                                    ...(field.receiptLastDeletedBy && {receiptLastDeletedBy: field.receiptLastDeletedBy}),
                                     recoveryEmployeeId: recoveryEmployeeId,
                                     recoveryTransferId: field.recoveryTransferId
                                 }
@@ -1804,7 +1811,11 @@ const Sales = ()=>{
                     postingDate: field.recoveryDate,
                     debtAmount: Number(field.recoveryAmount),
                     recoveryReason: field.recoveryReason,
-                    imgId: field.imgId
+                    imgId: field.imgId,
+                    viewLink: field.viewLink,
+                    downloadLink: field.downloadLink,
+                    ...(field.receiptLastDeletedBy && {receiptLastDeletedBy: field.receiptLastDeletedBy}),
+
                 })
                 const updatedEmployee = {
                     ...targetEmployee[0],
@@ -2087,7 +2098,7 @@ const Sales = ()=>{
         setAlertState('info')
         setAlert('Uploading Receipt...')
         setAlertTimeout(100000)
-        const collection = ''
+        const collection = curApproval ? 'Approvals': ''
         const createdAt = curApproval?.createdAt
         const res = await uploadFile(
             imageUpload, company+"/Payment Receipts", 
@@ -2101,13 +2112,29 @@ const Sales = ()=>{
             return
         }
         if (res?.downloadLink){
-
-            handleRecoveryFieldChange({index, e, imgId: res.imgId})
-            
-            setUploadingReceipt(false)
-            setAlertState('success')
-            setAlert('Receipt Uploaded Successfully!')
-            setAlertTimeout(3000)
+            const newData = curApproval ? {
+                ...curApproval.data,
+                recoveryFields: [
+                    {...curApproval.data.recoveryFields[0], ...res}
+                ]
+            } : null
+            const resp = await fetchServer('POST', {
+                database: company,
+                collection: curApproval ? 'Approvals' : '',
+                prop: [{createdAt: curApproval?.createdAt}, {data: newData}]                
+            }, 'updateOneDoc', server)
+            if (resp.updated){
+                setUploadingReceipt(false)                
+                handleRecoveryFieldChange({index, e, res: res})
+                getApprovals(company)
+                setAlertState('success')
+                setAlert('Receipt Uploaded Successfully!')
+                setAlertTimeout(3000)
+            }
+            if (resp.err){
+                setUploadingReceipt(false)                
+            }
+            setImageUpload(null)
         }
     }
 
@@ -2124,18 +2151,29 @@ const Sales = ()=>{
                 downloadLink: null,                
                 receiptLastDeletedBy: companyRecord?.emailid
             }
+            // console.log(curApproval, curApproval ? 'yes' : 'no')
+            const newData = curApproval ? {
+                ...curApproval.data,
+                recoveryFields: [
+                    {...curApproval.data.recoveryFields[0], ...updatedApprovals}
+                ]
+            } : null
 
             const resp = await fetchServer('POST', {
                 database: company,
-                collection: '',
-                prop: [{createdAt: curApproval.createdAt}, {...updatedApprovals}]                
+                collection: curApproval ? 'Approvals' : '',
+                prop: [{createdAt: curApproval?.createdAt}, {data: newData}]                
             }, 'updateOneDoc', server)
             if (resp.updated){
-                handleRecoveryFieldChange({index, e, imgId: null})
-                setDeletingReceipt(false)
+                handleRecoveryFieldChange({index, e, res: updatedApprovals})
+                getApprovals(company)
                 setAlertState('success')
+                setDeletingReceipt(false)
                 setAlert('Receipt Deleted Successfully!')
                 setAlertTimeout(3000)
+            }
+            if (resp.err){
+                setDeletingReceipt(false)                
             }
         }else{
             setDeletingReceipt(false)
@@ -3488,7 +3526,7 @@ const Sales = ()=>{
                                         </div>
                                         {field.recoverdList !==undefined && <div 
                                             onClick={()=>{
-                                                console.log('clicked')
+                                                // console.log('clicked')
                                                 setFields((fields)=>{
                                                     const updatedFields = fields.map((field,ind)=>{
                                                         if (ind === index){

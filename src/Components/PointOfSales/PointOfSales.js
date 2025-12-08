@@ -145,9 +145,7 @@ const PointOfSales = () => {
                     allOrders: snapAllOrders,
                     products: snapProducts,
                     curSession: snapCurSession,
-                    orderTables: snapOrderTables,
-                    activeScreen: snapActiveScreen,
-                    currentOrder: snapCurrentOrder,
+                    orderTables: snapOrderTables,                    
                 } = snap;
 
                 if (Array.isArray(snapSessions)) {
@@ -174,12 +172,6 @@ const PointOfSales = () => {
                 }
                 if (Array.isArray(snapOrderTables) && !orderTables.length) {
                     setOrderTables(snapOrderTables);
-                }
-                if (snapActiveScreen) {
-                    setActiveScreen(snapActiveScreen);
-                }
-                if (snapCurrentOrder) {
-                    setCurrentOrder(snapCurrentOrder);
                 }
 
                 // Also mirror snapshot into entity stores so Offline Debug panel sees data immediately
