@@ -2088,7 +2088,7 @@ const Sales = ()=>{
         setAlert('Uploading Receipt...')
         setAlertTimeout(100000)
         const collection = ''
-        const createdAt = curApproval.createdAt
+        const createdAt = curApproval?.createdAt
         const res = await uploadFile(
             imageUpload, company+"/Payment Receipts", 
             createdAt, company, collection, server
@@ -3054,14 +3054,15 @@ const Sales = ()=>{
                                             >
                                                 <option value=''>Select Recovery Point</option>
                                                 {Object.keys(payPoints).map((paypoint,index)=>{
-                                                    if (isView){
-                                                        return <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
-                                                    }
-                                                    else if (!['moniepoint1', 'moniepoint3'].includes(paypoint)){
-                                                        return (
-                                                            <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
-                                                        )
-                                                    }
+                                                    return <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
+                                                    // if (isView){
+                                                    //     return <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
+                                                    // }
+                                                    // else if (!['moniepoint1', 'moniepoint3'].includes(paypoint)){
+                                                    //     return (
+                                                    //         <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
+                                                    //     )
+                                                    // }
                                                 })}
                                                 <option key={'em001'} value='Employee'>EMPLOYEE</option>
                                             </select>
@@ -3109,7 +3110,7 @@ const Sales = ()=>{
                                                 }}
                                             />
                                         </div>
-                                        {field.recoveryReceipt?.toLowerCase() !== 'cash' && field.recoveryPoint && <section className='imgview'>
+                                        {field.recoveryPoint && <section className='imgview'>
                                
                                             <div className='acpymdt'>Upload Payment Receipt</div>
                                             
