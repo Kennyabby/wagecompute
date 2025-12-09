@@ -159,7 +159,6 @@ const Delivery = () => {
                     setDeliverySessions(snapSessions);
                 }
                 if (Array.isArray(snapAllSessions)) {
-                    setAllSessions(snapAllSessions);
                     setAllDeliverySessions(snapAllSessions)
                 }
                 if (Array.isArray(snapTables)) {
@@ -2680,6 +2679,7 @@ const Delivery = () => {
                 setWrh={setWrh}
                 deliveryWrhAccess={deliveryWrhAccess}
                 allSessionOrders={allSessionOrders}
+                getPosOrders={getPosOrders}
                 getSessionSales={getSessionSales}
                 setAlertState={setAlertState}
                 setAlert={setAlert}
@@ -3152,7 +3152,7 @@ const DeliveryDashboard = ({
     sessions, allDeliverySessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
-    setWrh, allSessionOrders, getSessionSales, curSession,
+    setWrh, allSessionOrders, getPosOrders, getSessionSales, curSession,
     setAlertState, setAlert, setAlertTimeout, tables
 })=>{
      const {fetchServer, server, company} = useContext(ContextProvider)
@@ -3172,19 +3172,13 @@ const DeliveryDashboard = ({
         if (allDeliverySessions?.length && Array.isArray(allDeliverySessions)){
             setAllSessions(allDeliverySessions)
         }
-        const getSessionsData = async ()=>{
-            const ordersResponse = await fetchServer("POST", {
-                database: company,
-                collection: "Orders",
-            }, "getDocsDetails", server); 
+        const getSessionsData = async ()=>{            
+           getPosOrders()
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",
                 prop: {type: 'delivery'}
             }, "getDocsDetails", server); 
-            if(!ordersResponse.err && Array.isArray(ordersResponse.record)){
-                setAllSessionOrders(ordersResponse.record)
-            }
             if(!sessionsResponse.err){
                 setAllSessions(sessionsResponse.record)
             }

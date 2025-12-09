@@ -153,7 +153,6 @@ const PointOfSales = () => {
                 }
                 if (Array.isArray(snapAllSessions)) {
                     setAllSalesSessions(snapAllSessions);
-                    setAllSessions(snapAllSessions)
                 }
                 if (Array.isArray(snapTables)) {
                     setTables(snapTables);
