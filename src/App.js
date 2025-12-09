@@ -836,7 +836,7 @@ function App() {
       if (sessionsResponse.mess){
         setIsLive(false)
         // setLiveErrorMessages(sessionsResponse.mess)
-      }else{
+      }else if(Array.isArray(sessionsResponse.record)){
         const thisSessions = sessionsResponse.record.filter((session)=>{
           return session.employee_id === companyRecord?.emailid
         })
@@ -1084,7 +1084,7 @@ function App() {
 
     let paymentReceipts = []
     if (sales){
-      sales.forEach((sale)=>{
+      sales?.forEach((sale)=>{
         (sale.recoveryList || []).forEach((recovery)=>{
           if (paymentPoints.includes(recovery.recoveryPoint)){
             let dateVar = new Date(recovery.recoveryDate).toISOString().slice(0,10) 
@@ -1106,7 +1106,7 @@ function App() {
       })
     }
     if (accommodations){
-      accommodations.forEach((acc)=>{
+      accommodations?.forEach((acc)=>{
         let dateVar = new Date(acc.postingDate).toISOString().slice(0,10)
         if (paymentPoints.includes(acc.payPoint)){
           if (dateVar >= dateBoundary){
@@ -1127,7 +1127,7 @@ function App() {
     }
 
     if (posOrders && allSessions){
-      posOrders.forEach((order)=>{
+      posOrders?.forEach((order)=>{
         if (order.salesPosts){
           Object.keys(order.salesPosts).forEach((payPoint)=>{
             if (paymentPoints.includes(payPoint)){
@@ -1136,7 +1136,7 @@ function App() {
                 const location = order.salesPosts[payPoint]
                 const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]
                 const amount = Number(order[payPoint])
-                const session = allSessions.find(session => (session.start === order.sessionId))
+                const session = allSessions?.find(session => (session.start === order.sessionId))
                 const sessionApprover = session?.endedby || 'Active Session'
                 posOrderReceipts.push({
                   paymentModule: `POS Order-${location}`,
@@ -1221,7 +1221,7 @@ function App() {
 
   const getAllSessions = async (company) => {
     const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
-    if (cached) {
+    if (cached && Array.isArray(cached)) {
       setAllSessions(cached);
     }
     const resp = await fetchServer("POST", {
@@ -1229,7 +1229,7 @@ function App() {
       collection: "POSSessions", 
       prop: {} 
     }, "getDocsDetails", SERVER)
-    if (resp.record){
+    if (resp.record && Array.isArray(resp.record)){
       setAllSessions(resp.record)
       setCached(company, 'allSessions', resp.record, companyRecord?.emailid)
       return resp.record
@@ -1238,7 +1238,7 @@ function App() {
 
   const getPosOrders = async (company) => {
     const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
-    if (cached) {
+    if (cached && Array.isArray(cached)) {
       setPosOrders(cached);
     }
     const resp = await fetchServer("POST", {
@@ -1246,7 +1246,7 @@ function App() {
       collection: "Orders",
       prop: {}
     }, "getDocsDetails", SERVER)
-    if (resp.record){
+    if (resp.record && Array.isArray(resp.record)){
       setPosOrders(resp.record)
       setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
     }
