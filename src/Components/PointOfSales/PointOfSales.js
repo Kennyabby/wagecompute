@@ -1052,81 +1052,42 @@ const PointOfSales = () => {
             createdAt: new Date().getTime()
         };
         setCurrentOrder(newOrder);
-    };
-    
-    // const handleTableSelect = async (table) => {
-    //     fetchTables(company)
-    //     getProducts(company)
-    //     loadInitialData()
-    //     if (!loadSession && !startSession && !endSession){
-    //         if (table.status !== 'available' && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('access_pos_sessions'))) {
-    //             setAlertState('error');
-    //             setAlert('This table is not available. Still in use!');
-    //             setAlertTimeout(2000)
-    //             return;
-    //         }
-    //         setSelectedProduct(null)
-    //         // Fetch ALL orders for this table and session(removed status filter)
-    //         setAlertState('info');
-    //         setAlert(`Loading Table ${table.i_d} Orders...`);
-    //         setAlertTimeout(100000)
-    //         const orderFilter = { tableId: table.i_d, sessionId: curSession.i_d, wrh: wrh, handlerId: companyRecord.emailid}
-    //         if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-    //             delete orderFilter.sessionId
-    //             delete orderFilter.handlerId
-    //         }
-    //         const response = await fetchServer("POST", {
-    //             database: company,
-    //             collection: "Orders",
-    //             prop: {...orderFilter}
-    //         }, "getDocsDetails", server);
-    //         if (!response.err){
-    //             if (response.record?.length > 0) {
-    //                 setCurrentTable(table)
-    //                 // Store all table orders in state
-    //                 var ordersUpdate = response.record
-    //                 var filteredOrders = response.record
-    //                 if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-    //                     filteredOrders = ordersUpdate.filter((order)=>{
-    //                         var orderDate = '01/01/1970'
-    //                         if (order.createdAt){
-    //                             orderDate = order.createdAt
-    //                         }
-    //                         return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
-    //                     })
-    //                 }
-    //                 setTableOrders(filteredOrders)
-    //                 // Set the most recent pending order as active, or create new one if none pending
-    //                 const pendingOrders = filteredOrders.filter(order => order.status === 'pending');
-    //                 const ordersNumber = pendingOrders.length
-    //                 if (ordersNumber) {
-    //                     setCurrentOrder(pendingOrders[0]);
-    //                 } else {
-    //                     createNewOrder(table);
-    //                 }
-    //                 setActiveScreen('order');
-    //                 setAlertState('info');
-    //                 setAlert('Loaded table orders...');
-    //                 setAlertTimeout(10)
-    //             } else {
-    //                 setCurrentTable(table);
-    //                 createNewOrder(table);
-    //                 setActiveScreen('order');
-    //                 setAlertState('info');
-    //                 setAlert('Loaded table orders...');
-    //                 setAlertTimeout(10)
-    //                 fetchSessions(company, "sales", companyRecord)
-    //                 fetchTables(company)
-    //                 getProducts(company)
-    //                 loadInitialData()
-    //             }
-    //         }else{
-    //             setAlertState('info')
-    //             setAlert('Slow Network. Could Not Load Table Orders!')
-    //             setAlertTimeout(3000)
-    //         }
-    //     }
-    // };
+    };    
+
+    const switchTable = (e)=>{
+        let nextIndex
+        const {name} = e.target
+        
+        if (!placingOrder && !makingPayment && name){
+
+            getPosOrders(company)
+            fetchSessions(company, "sales", companyRecord)                        
+            let currentTableIndex = 0
+            const sortedOrderTables = orderTables.sort((a, b) => {
+                const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
+                const numB = parseInt(b.name.replace(/[^0-9]/g, ''));
+                return numA - numB;
+            })
+            
+            sortedOrderTables.forEach((orderTable, i)=>{
+                if (orderTable.i_d === currentTable.i_d){
+                    currentTableIndex = i
+                }
+            })
+
+            nextIndex = currentTableIndex
+            if (name === 'prevTable' && currentTableIndex > 0){
+                nextIndex = currentTableIndex - 1
+            }else if (name === 'nextTable' && currentTableIndex < sortedOrderTables.length - 1){
+                nextIndex = currentTableIndex + 1
+            }
+            setTableOrders([])
+            setCurrentOrder(null)
+            setPlacingOrder(false)
+            setMakingPayment(false)
+            handleTableSelect(sortedOrderTables[nextIndex])            
+        }
+    }
 
     const handleTableSelect = async (table) => {
         if (!loadSession && !startSession && !endSession) {
@@ -1136,7 +1097,7 @@ const PointOfSales = () => {
                     !companyRecord?.permissions.includes('access_pos_sessions'))
             ) {
                 setAlertState('error');
-                setAlert('This table is not available. Still in use!');
+                setAlert(`Table ${table.i_d} is not available. Still in use!`);
                 setAlertTimeout(2000);
                 return;
             }
@@ -1197,6 +1158,7 @@ const PointOfSales = () => {
                 setAlertTimeout(500);
             } else {
                 // No local orders; optimistic new order
+                setCurrentTable(table)
                 createNewOrder(table);
                 setActiveScreen('order');
                 setAlertState('info');
@@ -1268,26 +1230,26 @@ const PointOfSales = () => {
                 if (!localOrders.length){
 
                     if (filteredOrders.length) {
-                        setCurrentTable(table);
-                        setTableOrders(filteredOrders);
-                        const pendingRemote = filteredOrders.filter(
-                            (order) => order.status === 'pending'
-                        );
-                        if (pendingRemote.length) {
-                            setCurrentOrder(pendingRemote[0]);
-                        } else {
-                            createNewOrder(table);
-                        }
-                        setActiveScreen('order');
-                        setAlertState('info');
-                        setAlert('Loaded table orders from server...');
-                        setAlertTimeout(500);
+                        // setCurrentTable(table);
+                        // setTableOrders(filteredOrders);
+                        // const pendingRemote = filteredOrders.filter(
+                        //     (order) => order.status === 'pending'
+                        // );
+                        // if (pendingRemote.length) {
+                        //     setCurrentOrder(pendingRemote[0]);
+                        // } else {
+                        //     createNewOrder(table);
+                        // }
+                        // setActiveScreen('order');
+                        // setAlertState('info');
+                        // setAlert('Loaded table orders from server...');
+                        // setAlertTimeout(500);
                     } else {
-                        createNewOrder(table);
-                        setActiveScreen('order');
-                        setAlertState('info');
-                        setAlert('No server orders; using new order...');
-                        setAlertTimeout(500);
+                        // createNewOrder(table);
+                        // setActiveScreen('order');
+                        // setAlertState('info');
+                        // setAlert('No server orders; using new order...');
+                        // setAlertTimeout(500);
                     }
                 }
 
@@ -2833,6 +2795,21 @@ const PointOfSales = () => {
                                 onClick={() => setShowOrdersModal(true)}
                             >
                                 All Orders
+                            </button>
+                            <button 
+                                name="prevTable" 
+                                className='action-btn'
+                                onClick={switchTable}
+                            >
+                                {'<'}
+                            </button>
+                            <span style={{margin:"auto"}}>{'.'}</span>
+                            <button 
+                                name="nextTable" 
+                                className='action-btn'
+                                onClick={switchTable}
+                            >
+                                {'>'}
                             </button>
                             <button 
                                 className="action-btn"
