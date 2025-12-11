@@ -851,6 +851,7 @@ const Delivery = () => {
                 getProductsWithStock(company, products)
             }
     
+            getPosOrders(company)
             fetchSessions(company, "delivery", companyRecord)                        
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
@@ -2214,7 +2215,12 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
         server,
         company,
     } = useContext(ContextProvider);
-
+    const [pendingDeliveries, setPendingDeliveries] = useState([])
+    useEffect(()=>{
+        setPendingDeliveries(tableOrders.filter((tableOrder)=>{
+            return tableOrder.delivery === 'pending'
+        }))
+    },[tableOrders])
     const handleCancelDelivery = async (order) => {
         const cancelOrder = window.confirm(
             `Are you sure you want to Cancel Order Delivery #${order.orderNumber}?`
@@ -2381,7 +2387,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
     return (
         <div>
             <div className="modal-header">
-                <h3>All Orders</h3>
+                <h3>{`All Orders (${pendingDeliveries.length} Pending)`}</h3>
             </div>
             <div className="orders-list">
                 {tableOrders?.map((order) => {
