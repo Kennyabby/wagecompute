@@ -842,6 +842,44 @@ const Delivery = () => {
         setCurrentOrder(newOrder);
     };
 
+    const switchTable = (e)=>{
+        let nextIndex
+        const {name} = e.target
+        
+        if (!placingOrder && !makingPayment && name){
+            if (products.length){
+                getProductsWithStock(company, products)
+            }
+    
+            fetchSessions(company, "delivery", companyRecord)                        
+            let currentTableIndex = 0
+            const sortedOrderTables = orderTables.sort((a, b) => {
+                const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
+                const numB = parseInt(b.name.replace(/[^0-9]/g, ''));
+                return numA - numB;
+            })
+            
+            sortedOrderTables.forEach((orderTable, i)=>{
+                if (orderTable.i_d === currentTable.i_d){
+                    currentTableIndex = i
+                }
+            })
+
+            nextIndex = currentTableIndex
+            if (name === 'prevTable' && currentTableIndex > 0){
+                nextIndex = currentTableIndex - 1
+            }else if (name === 'nextTable' && currentTableIndex < sortedOrderTables.length - 1){
+                nextIndex = currentTableIndex + 1
+            }
+            setTableOrders([])
+            setCurrentOrder(null)
+            setPlacingOrder(false)
+            setMakingPayment(false)
+            setDeliveryCompleted(false)
+            handleTableSelect(sortedOrderTables[nextIndex])            
+        }
+    }
+
     const handleTableSelect = async (table) => {
         if (!loadSession && !startSession && !endSession) {
             if (
@@ -850,7 +888,7 @@ const Delivery = () => {
                     !companyRecord?.permissions.includes('access_delivery_sessions'))
             ) {
                 setAlertState('error');
-                setAlert('This table is not available. Still in use!');
+                setAlert(`Table ${table.i_d} is not available. Still in use!`);
                 setAlertTimeout(2000);
                 return;
             }
@@ -898,6 +936,7 @@ const Delivery = () => {
                 setAlertTimeout(500);
             } else {
                 // No local orders; optimistic new order
+                setCurrentTable(table);
                 createNewOrder(table);
                 setActiveScreen('order');
                 setAlertState('info');
@@ -2112,6 +2151,21 @@ const Delivery = () => {
                             }
                         </div>
                         <div className="header-actions">
+                            <button 
+                                name="prevTable" 
+                                className='action-btn'
+                                onClick={switchTable}
+                            >
+                                {'<'}
+                            </button>
+                            <span style={{margin:"auto"}}>{'.'}</span>
+                            <button 
+                                name="nextTable" 
+                                className='action-btn'
+                                onClick={switchTable}
+                            >
+                                {'>'}
+                            </button>
                             <button 
                                 className="action-btn"
                                 // disabled={makingPayment}
