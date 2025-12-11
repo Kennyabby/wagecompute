@@ -113,8 +113,8 @@ const PointOfSales = () => {
         'moniepoint5':{...paymentDetailClone.paymentDetail}, 'moniepoint6':{...paymentDetailClone.paymentDetail}, 
         'cash':{...paymentDetailClone.paymentDetail}
     })
-    
-    const [paymentDetails, setPaymentDetails] = useState({...structuredClone({payPoints}).payPoints});
+    const defaultPaymentDetails = {...structuredClone({payPoints}).payPoints}
+    const [paymentDetails, setPaymentDetails] = useState(defaultPaymentDetails);
 
     // Settings States
     const [uoms, setUoms] = useState([]);
@@ -2855,6 +2855,7 @@ const PointOfSales = () => {
                     wrh={wrh}
                     wrhCategories={wrhCategories}
                     curSession={curSession}
+                    defaultPaymentDetails={defaultPaymentDetails}
                     paymentDetails={paymentDetails}
                     setPaymentDetails={setPaymentDetails}
                     setShowPaymentModal={setShowPaymentModal}
@@ -2877,7 +2878,7 @@ export default PointOfSales;
 const PaymentModal = ({
     amount, setAmount, 
     currentOrder, companyRecord,
-    method, setMethod, wrh, curSession,
+    method, setMethod, wrh, curSession, defaultPaymentDetails,
     paymentDetails, setPaymentDetails, wrhCategories,
     setShowPaymentModal, handlePayment, allPaymentReceipts,
     payPoints, setAlertState, setAlert, setAlertTimeout,
@@ -2965,6 +2966,7 @@ const PaymentModal = ({
                 }else{
                     setLoading(true)
                     await handlePayment()
+                    setPaymentDetails(defaultPaymentDetails)
                     setLoading (false)
                 }
             }else{
