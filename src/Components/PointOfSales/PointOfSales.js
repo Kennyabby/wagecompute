@@ -343,6 +343,8 @@ const PointOfSales = () => {
 
         // Fetch all sessions
         getAllSessions(company)
+
+        getPosOrders(company)
          
         // Feth Sessions
         fetchSessions(company, "sales", companyRecord)
@@ -638,6 +640,7 @@ const PointOfSales = () => {
                     }
                     setSessionUser(null);
                     setStartSession(false);
+                    setLoading(false)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, "sales", companyRecord)
                     getAllSessions(company)
@@ -830,6 +833,7 @@ const PointOfSales = () => {
                     setCountedSales({});
                     setEndSession(false);
                     setSessionUser(null);
+                    setLoading(false)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     getAllSessions(company)
                     fetchSessions(company, "sales", companyRecord)
@@ -1514,6 +1518,7 @@ const PointOfSales = () => {
                     // Keep your existing reads (they only fetch, no writes)
                     loadInitialData();                    
                     printKitchenOrder(placedOrder);
+                    printBarOrder(placedOrder)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, 'sales', companyRecord);
                     fetchTables(company);
@@ -2004,17 +2009,92 @@ const PointOfSales = () => {
     };
     
     const printKitchenOrder = (orderData) => {
+        if (
+            orderData.items.find((item)=>{return wrhCategories['kitchen'].includes(item.category)}) 
+            && ((orderData.handlerId === companyRecord?.emailid) 
+                || companyRecord?.status === 'admin' 
+                || companyRecord?.permissions?.includes('access_pos_sessions')
+            )
+        ){
+            const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
+            const receiptContent = `
+                <div class="receipt">
+                    <h2>Kitchen Order Slip</h2>
+                    <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
+                    <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
+                    <p>Order: #${orderData.orderNumber}</p>
+                    <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
+                    <hr/>
+                        ${orderData.items.map(item => (
+                            wrhCategories['kitchen'].includes(item.category) ? `
+                                <div class="receipt-item">
+                                    <span>${item.name} x ${item.quantity}</span>
+                                    <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
+                                </div>` : ''
+                        )).join('')}
+                    <hr/>
+                    <div class="receipt-total">
+                        <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>
+                            sum + (wrhCategories['kitchen'].includes(item.category)
+                            ? Number(item.quantity) * Number(item.salesPrice) : 0)
+                        , 0)) || 0).toFixed(2)}</p>                    
+                    </div>
+                    <p>Printed For Kitchen Use Only!</p>
+                </div>
+            `;
+    
+            // Create a hidden iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+    
+            // Write your content into it
+            iframe.contentDocument.open();
+            iframe.contentDocument.write(`
+                <html>
+                    <head>
+                        <style>
+                            .receipt { font-family: monospace; width: 300px; padding: 20px; }
+                            .receipt-item { display: flex; justify-content: space-between; }
+                            .receipt-total { margin-top: 20px; }
+                        </style>
+                    </head>
+                    <body>${receiptContent}</body>
+                </html>
+            `);
+            iframe.contentDocument.close();
+    
+            // Print directly from the iframe
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+    
+            // Cleanup
+            setTimeout(() => iframe.remove(), 1000);
+        }
+    };
+    
+    const printBarOrder = (orderData) => {
+        if (
+            orderData.items.find((item)=>{return !wrhCategories['kitchen'].includes(item.category)}) 
+            && ((orderData.handlerId === companyRecord?.emailid) 
+                || companyRecord?.status === 'admin' 
+                || companyRecord?.permissions?.includes('access_pos_sessions')
+            )
+        ){}
         const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
         const receiptContent = `
             <div class="receipt">
-                <h2>Kitchen Order Slip</h2>
+                <h2>${orderData.wrh} - Order Slip For Bars</h2>
                 <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
                 <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
                 <p>Order: #${orderData.orderNumber}</p>
                 <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                 <hr/>
                     ${orderData.items.map(item => (
-                        wrhCategories['kitchen'].includes(item.category) ? `
+                        !wrhCategories['kitchen'].includes(item.category) ? `
                             <div class="receipt-item">
                                 <span>${item.name} x ${item.quantity}</span>
                                 <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
@@ -2023,11 +2103,11 @@ const PointOfSales = () => {
                 <hr/>
                 <div class="receipt-total">
                     <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>
-                        sum + (wrhCategories['kitchen'].includes(item.category)
-                        ? Number(item.quantity) * Number(item.salesPrice) : 0)
+                        sum + (!wrhCategories['kitchen'].includes(item.category)
+                        ? (wrh==='vip'? (Number(item.quantity) * Number(item.vipPrice || item.salesPrice)) : (Number(item.quantity) * Number(item.salesPrice))) : 0)
                     , 0)) || 0).toFixed(2)}</p>                    
                 </div>
-                <p>Printed For Kitchen Use Only!</p>
+                <p>Printed For ${orderData.wrh} - Bar Use Only!</p>
             </div>
         `;
 
@@ -2117,7 +2197,6 @@ const PointOfSales = () => {
                 setWrh('')
                 setLoading(true);
                 await createSession(sessionUser);
-                setLoading(false);
             }else{
                 setLoading(true);
                 await createSession();
@@ -2139,7 +2218,6 @@ const PointOfSales = () => {
                 })
                 setLoading(true);
                 await stopSession(sessionUser.curSession, allUserOrders);
-                setLoading(false);
                 setPosSalesDifference({})
             }else{
                 setAlertState('info')
@@ -2474,6 +2552,17 @@ const PointOfSales = () => {
                     disabled={!currentOrder.items.length}
                 >
                     Print Kitchen Order
+                </button>}
+                {currentOrder.items.find((item)=>{return !wrhCategories['kitchen'].includes(item.category)}) 
+                && ((currentOrder.handlerId === companyRecord?.emailid) 
+                    || companyRecord?.status === 'admin' 
+                    || companyRecord?.permissions?.includes('access_pos_sessions')
+                ) && ['pending', 'completed'].includes(currentOrder.status) && <button 
+                    className="place-order-btn"
+                    onClick={() => printBarOrder(currentOrder)}
+                    disabled={!currentOrder.items.length}
+                >
+                    Print Bar Order
                 </button>}
             </div>
             <div className="products-panel">

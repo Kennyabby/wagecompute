@@ -811,20 +811,22 @@ function App() {
   }
 
   const fetchSessions = async (company, type, companyRecord) => {
-    const cachedSalesSession = await getCached(company, 'salesSessions', companyRecord?.emailid)
-    const cachedDeliverySession = await getCached(company, 'deliverySessions', companyRecord?.emailid)
-    const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
-    const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions', companyRecord?.emailid)
-    if (type === 'sales' && cachedSalesSession){
-      setSalesSessions(cachedSalesSession)
-    }else if (type === 'delivery' && cachedDeliverySession){
-      setDeliverySessions(cachedDeliverySession)
-    }
-    if (cachedAllSalesSession){
-      setAllSalesSessions(cachedAllSalesSession)
-    }
-    if (cachedAllDeliverySession){
-      setAllDeliverySessions(cachedAllDeliverySession)
+    if (company && companyRecord?.emailid){      
+      // const cachedSalesSession = await getCached(company, 'salesSessions', companyRecord?.emailid)
+      // const cachedDeliverySession = await getCached(company, 'deliverySessions', companyRecord?.emailid)
+      // const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
+      // const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions', companyRecord?.emailid)
+      // if (type === 'sales' && cachedSalesSession){
+      //   setSalesSessions(cachedSalesSession)
+      // }else if (type === 'delivery' && cachedDeliverySession){
+      //   setDeliverySessions(cachedDeliverySession)
+      // }
+      // if (cachedAllSalesSession){
+      //   setAllSalesSessions(cachedAllSalesSession)
+      // }
+      // if (cachedAllDeliverySession){
+      //   setAllDeliverySessions(cachedAllDeliverySession)
+      // }
     }
     const sessionsResponse = await fetchServer("POST", {
       database: company,
@@ -849,8 +851,10 @@ function App() {
         }
         if (type === 'delivery'){
           setDeliverySessions(thisSessions)
+          // console.log('line 854, on Mount:',thisSessions.find(session=>session.active))
           setCached(company, 'deliverySessions', thisSessions, companyRecord?.emailid)
           setAllDeliverySessions(sessionsResponse.record)
+          // console.log('line 857, on Mount:',sessionsResponse.record.find(session=>session.active))
           setCached(company, 'allDeliverySessions', sessionsResponse.record, companyRecord?.emailid)
         }
 
@@ -1008,12 +1012,12 @@ function App() {
       })
       getChartOfAccounts(cmp_val)
       getApprovals(cmp_val)
+      getPosOrders(cmp_val)
       if (resp.record.status==='admin'){        
         window.localStorage.removeItem('lgt-vw')
         getSettings(cmp_val)
         fetchProfiles(cmp_val)
         getSales(cmp_val)
-        getPosOrders(cmp_val)
         getAccommodations(cmp_val)
         getEmployees(cmp_val)
         getDepartments(cmp_val)
@@ -1037,7 +1041,6 @@ function App() {
           }
         })
         getAccommodations(cmp_val)
-        getPosOrders(cmp_val)
         getSales(cmp_val)
         setRecoveryVal(resp.record.enableDebtRecovery)
         setEnableBlockVal(!resp.record.enableLogin)        
@@ -1221,7 +1224,7 @@ function App() {
 
   const getAllSessions = async (company) => {
     const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
-    if (cached && Array.isArray(cached)) {
+    if (cached && Array.isArray(cached) && companyRecord?.emailid) {
       setAllSessions(cached);
     }
     const resp = await fetchServer("POST", {
@@ -1238,7 +1241,7 @@ function App() {
 
   const getPosOrders = async (company) => {
     const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
-    if (cached && Array.isArray(cached)) {
+    if (cached && Array.isArray(cached) && companyRecord?.emailid) {
       setPosOrders(cached);
     }
     const resp = await fetchServer("POST", {
