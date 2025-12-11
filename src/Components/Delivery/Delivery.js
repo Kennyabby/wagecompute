@@ -131,76 +131,76 @@ const Delivery = () => {
         handleSettingsUpdate();
     }, [settings]);
     
-    // useEffect(() => {
-    //     if (!company || !companyRecord?.emailid) return;
+    useEffect(() => {
+        if (!company || !companyRecord?.emailid) return;
 
-    //     let cancelled = false;
-    //     (async () => {
-    //         const snap = await loadDeliverySnapshot(company, companyRecord.emailid);
-    //         if (!snap || cancelled) return;
+        let cancelled = false;
+        (async () => {
+            const snap = await loadDeliverySnapshot(company, companyRecord.emailid);
+            if (!snap || cancelled) return;
 
-    //         try {
-    //             const {
-    //                 deliverySessions: snapSessions,
-    //                 allSessions: snapAllSessions,
-    //                 tables: snapTables,
-    //                 allSessionOrders: snapAllSessionOrders,
-    //                 allOrders: snapAllOrders,
-    //                 products: snapProducts,
-    //                 curSession: snapCurSession,
-    //                 orderTables: snapOrderTables,
-    //             } = snap;
+            try {
+                const {
+                    // deliverySessions: snapSessions,
+                    // curSession: snapCurSession,
+                    // allOrders: snapAllOrders,
+                    // orderTables: snapOrderTables,
+                    allSessions: snapAllSessions,
+                    tables: snapTables,
+                    allSessionOrders: snapAllOrders,
+                    products: snapProducts,
+                } = snap;
 
-    //             if (Array.isArray(snapSessions)) {
-    //                 setDeliverySessions(snapSessions);
-    //             }
-    //             if (Array.isArray(snapAllSessions)) {
-    //                 setAllDeliverySessions(snapAllSessions)
-    //             }
-    //             if (Array.isArray(snapTables)) {
-    //                 setTables(snapTables);
-    //             }
-    //             if (Array.isArray(snapAllSessionOrders)) {
-    //                 // setAllSessionOrders(snapAllSessionOrders);
-    //             }
-    //             if (Array.isArray(snapProducts) && !products.length) {
-    //                 setProducts(snapProducts);
-    //             }
-    //             if (snapCurSession) {
-    //                 // setCurrSession(snapCurSession);
-    //             }
-    //             if (Array.isArray(snapOrderTables) && !orderTables.length) {
-    //                 setOrderTables(snapOrderTables);
-    //             }
+                // if (Array.isArray(snapSessions)) {
+                //     setDeliverySessions(snapSessions);
+                // }
+                // if (Array.isArray(snapAllSessions)) {
+                //     setAllDeliverySessions(snapAllSessions)
+                // }
+                // if (Array.isArray(snapTables)) {
+                //     setTables(snapTables);
+                // }
+                // if (snapCurSession) {
+                //     setCurrSession(snapCurSession);
+                // }
+                // if (Array.isArray(snapOrderTables) && !orderTables.length) {
+                //     setOrderTables(snapOrderTables);
+                // }
+                if (Array.isArray(snapAllOrders)) {
+                    setAllSessionOrders(snapAllOrders);
+                }
+                if (Array.isArray(snapProducts) && !products.length) {
+                    setProducts(snapProducts);
+                }
 
-    //             // Also mirror snapshot into entity stores so Offline Debug panel sees data immediately
-    //             if (company && companyRecord?.emailid) {
-    //                 if (Array.isArray(snapAllSessions)) {
-    //                     for (const s of snapAllSessions) {
-    //                         await putSession(company, companyRecord.emailid, s);
-    //                     }
-    //                 }
-    //                 if (Array.isArray(snapTables)) {
-    //                     for (const t of snapTables) {
-    //                         await putTable(company, companyRecord.emailid, t);
-    //                     }
-    //                 }
-    //                 if (Array.isArray(snapAllOrders)) {
-    //                     for (const o of snapAllOrders) {
-    //                         await putOrder(company, companyRecord.emailid, o);
-    //                     }
-    //                 }
-    //             }
-    //         } catch (e) {
-    //             // Fail silently; server fetch will still run.
-    //             console.warn('Delivery snapshot hydrate failed', e);
-    //         }
-    //     })();
+                // Also mirror snapshot into entity stores so Offline Debug panel sees data immediately
+                if (company && companyRecord?.emailid) {
+                    if (Array.isArray(snapAllSessions)) {
+                        for (const s of snapAllSessions) {
+                            await putSession(company, companyRecord.emailid, s);
+                        }
+                    }
+                    if (Array.isArray(snapTables)) {
+                        for (const t of snapTables) {
+                            await putTable(company, companyRecord.emailid, t);
+                        }
+                    }
+                    if (Array.isArray(snapAllOrders)) {
+                        for (const o of snapAllOrders) {
+                            await putOrder(company, companyRecord.emailid, o);
+                        }
+                    }
+                }
+            } catch (e) {
+                // Fail silently; server fetch will still run.
+                console.warn('Delivery snapshot hydrate failed', e);
+            }
+        })();
 
-    //     return () => {
-    //         cancelled = true;
-    //     };
-    // }, [company, companyRecord?.emailid]);
+        return () => {
+            cancelled = true;
+        };
+    }, [company, companyRecord?.emailid]);
     
     
     useEffect(()=>{
@@ -231,43 +231,7 @@ const Delivery = () => {
             })
         }
     },[wrhs])
-
-    // Hydrate orders, sessions, and tables from IndexedDB on mount
-    // useEffect(() => {
-    //     if (!company || !companyRecord?.emailid) return;
-
-    //     (async () => {
-    //         try {
-    //             const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-    //                 loadAllOrders(company, companyRecord.emailid),
-    //                 loadAllSessionsLocal(company, companyRecord.emailid),
-    //                 loadAllTables(company, companyRecord.emailid),
-    //             ]);
-
-    //             if (Array.isArray(orders) && orders?.length) {
-    //                 if (![null, undefined] === orders){
-    //                     // setAllSessionOrders(orders);
-    //                 }
-    //             }
-
-    //             if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-    //                 const localDeliverySessions = sessionsLocal.filter(s => s.type === 'delivery');
-    //                 setSessions(localDeliverySessions);
-    //                 setAllDeliverySessions(localDeliverySessions);
-    //                 setAllSessions(sessionsLocal);
-
-    //                 // Immediately derive curSession from locally cached sales sessions
-    //                 // UpdateSessionState(localDeliverySessions, false);
-    //             }
-
-    //             if (Array.isArray(tablesLocal) && tablesLocal.length) {
-    //                 setTables(tablesLocal);
-    //             }
-    //         } catch (e) {
-    //             console.warn('POS hydrateFromIndexedDb failed', e);
-    //         }
-    //     })();
-    // }, [company, companyRecord?.emailid]);
+    
 
     useEffect(()=>{
         if (Array.isArray(deliverySessions)){
@@ -1007,11 +971,11 @@ const Delivery = () => {
                         // setAlert('Loaded table orders from server...');
                         // setAlertTimeout(500);
                     } else {
-                        createNewOrder(table);
-                        setActiveScreen('order');
-                        setAlertState('info');
-                        setAlert('No server orders; using new order...');
-                        setAlertTimeout(500);
+                        // createNewOrder(table);
+                        // setActiveScreen('order');
+                        // setAlertState('info');
+                        // setAlert('No server orders; using new order...');
+                        // setAlertTimeout(500);
                     }
                 }
 
