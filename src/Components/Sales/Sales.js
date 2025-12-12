@@ -3545,11 +3545,11 @@ const Sales = ()=>{
                                         >{field.viewHistory? `Hide Recovery History`:'View Recovery History'}</div>}
                                         {field.viewHistory && <div>
                                             {field.recoverdList.map((reclist, index)=>{
-                                                const {recoveryAmount, recoveryPoint, recoveryTransferId, recoveryDate} = reclist
+                                                const {recoveryAmount, recoveryPoint, recoveryReceipt, recoveryTransferId, recoveryDate} = reclist
                                                 return <div key={index} className='slvwrecovery'>
                                                     <div>Date: <b>{` ${recoveryDate}\t`}</b></div>
                                                     <div>Amount: <b>{` ${'₦'+Number(recoveryAmount).toLocaleString()}`}</b></div>
-                                                    <div>{!recoveryTransferId ? 'Paid to: ':'Moved to'}<b>{` ${!recoveryTransferId? recoveryPoint.toUpperCase():''}`}</b>
+                                                    <div>{!recoveryTransferId ? 'Paid to: ':'Moved to'}<b>{` ${!recoveryTransferId? `${recoveryPoint.toUpperCase()} (${recoveryReceipt})`:''}`}</b>
                                                         <b>{recoveryTransferId && employees.filter((employee)=>{
                                                             return employee.i_d === recoveryTransferId
                                                         }).map((emp, idt)=>{
