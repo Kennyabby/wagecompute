@@ -3549,7 +3549,7 @@ const Sales = ()=>{
                                                 return <div key={index} className='slvwrecovery'>
                                                     <div>Date: <b>{` ${recoveryDate}\t`}</b></div>
                                                     <div>Amount: <b>{` ${'₦'+Number(recoveryAmount).toLocaleString()}`}</b></div>
-                                                    <div>{!recoveryTransferId ? 'Paid to: ':'Moved to'}<b>{` ${!recoveryTransferId? `${recoveryPoint.toUpperCase()} (${recoveryReceipt})`:''}`}</b>
+                                                    <div>{!recoveryTransferId ? 'Paid to: ':'Moved to'}<b>{` ${!recoveryTransferId? `${recoveryPoint.toUpperCase()} ${companyRecord?.status === 'admin' ? `(${recoveryReceipt})`: ''}`:''}`}</b>
                                                         <b>{recoveryTransferId && employees.filter((employee)=>{
                                                             return employee.i_d === recoveryTransferId
                                                         }).map((emp, idt)=>{
