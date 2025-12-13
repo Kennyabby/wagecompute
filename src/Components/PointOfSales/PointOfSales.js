@@ -138,37 +138,37 @@ const PointOfSales = () => {
 
             try {
                 const {
-                    salesSessions: snapSessions,
+                    // salesSessions: snapSessions,
+                    // allOrders: snapAllOrders,
+                    // curSession: snapCurSession,
                     allSessions: snapAllSessions,
                     tables: snapTables,
-                    allSessionOrders: snapAllSessionOrders,
-                    allOrders: snapAllOrders,
+                    allSessionOrders: snapAllOrders,
                     products: snapProducts,
-                    curSession: snapCurSession,
                     orderTables: snapOrderTables,                    
                 } = snap;
 
-                if (Array.isArray(snapSessions)) {
-                    setSalesSessions(snapSessions);
-                }
-                if (Array.isArray(snapAllSessions)) {
-                    setAllSalesSessions(snapAllSessions);
-                }
+                // if (Array.isArray(snapSessions)) {
+                //     setSalesSessions(snapSessions);
+                // }
+                // if (Array.isArray(snapAllSessions)) {
+                //     setAllSalesSessions(snapAllSessions);
+                // }
                 if (Array.isArray(snapTables)) {
                     setTables(snapTables);
                 }
-                if (Array.isArray(snapAllSessionOrders)) {
-                    setAllSessionOrders(snapAllSessionOrders);
-                }
                 if (Array.isArray(snapAllOrders)) {
-                    setAllOrders(snapAllOrders);
+                    setAllSessionOrders(snapAllOrders);
                 }
+                // if (Array.isArray(snapAllOrders)) {
+                //     setAllOrders(snapAllOrders);
+                // }
                 if (Array.isArray(snapProducts) && !products.length) {
                     setProducts(snapProducts);
                 }
-                if (snapCurSession) {
-                    setCurrSession(snapCurSession);
-                }
+                // if (snapCurSession) {
+                //     setCurrSession(snapCurSession);
+                // }
                 if (Array.isArray(snapOrderTables) && !orderTables.length) {
                     setOrderTables(snapOrderTables);
                 }
@@ -239,42 +239,42 @@ const PointOfSales = () => {
     },[wrhs])
     
     // Hydrate orders, sessions, and tables from IndexedDB on mount
-    useEffect(() => {
-        if (!company || !companyRecord?.emailid) return;
+    // useEffect(() => {
+    //     if (!company || !companyRecord?.emailid) return;
 
-        (async () => {
-            try {
-                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-                    loadAllOrders(company, companyRecord.emailid),
-                    loadAllSessionsLocal(company, companyRecord.emailid),
-                    loadAllTables(company, companyRecord.emailid),
-                ]);
+    //     (async () => {
+    //         try {
+    //             const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+    //                 loadAllOrders(company, companyRecord.emailid),
+    //                 loadAllSessionsLocal(company, companyRecord.emailid),
+    //                 loadAllTables(company, companyRecord.emailid),
+    //             ]);
 
-                if (Array.isArray(orders) && orders?.length) {
-                    if (![null, undefined] === orders){
-                        setAllOrders(orders);
-                        setAllSessionOrders(orders);
-                    }
-                }
+    //             if (Array.isArray(orders) && orders?.length) {
+    //                 if (![null, undefined] === orders){
+    //                     setAllOrders(orders);
+    //                     setAllSessionOrders(orders);
+    //                 }
+    //             }
 
-                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-                    const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
-                    setSessions(localSalesSessions);
-                    setAllSalesSessions(localSalesSessions);
-                    setAllSessions(sessionsLocal);
+    //             if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+    //                 const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
+    //                 setSessions(localSalesSessions);
+    //                 setAllSalesSessions(localSalesSessions);
+    //                 setAllSessions(sessionsLocal);
 
-                    // Immediately derive curSession from locally cached sales sessions
-                    UpdateSessionState(localSalesSessions, false);
-                }
+    //                 // Immediately derive curSession from locally cached sales sessions
+    //                 UpdateSessionState(localSalesSessions, false);
+    //             }
 
-                if (Array.isArray(tablesLocal) && tablesLocal.length) {
-                    setTables(tablesLocal);
-                }
-            } catch (e) {
-                console.warn('POS hydrateFromIndexedDb failed', e);
-            }
-        })();
-    }, [company, companyRecord?.emailid]);
+    //             if (Array.isArray(tablesLocal) && tablesLocal.length) {
+    //                 setTables(tablesLocal);
+    //             }
+    //         } catch (e) {
+    //             console.warn('POS hydrateFromIndexedDb failed', e);
+    //         }
+    //     })();
+    // }, [company, companyRecord?.emailid]);
 
     useEffect(()=>{
         if (Array.isArray(salesSessions)){
@@ -527,67 +527,7 @@ const PointOfSales = () => {
         })
         return {allSales, totalPendingSales, totalUnattendedSales, totalCancelledSales, totalCashChange}
     }
-    // const createSession = async (sessionUser)=>{
-    //     if (wrh){
-    //         const newDate = new Date().getTime()
-    //         const newSession = {
-    //             employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
-    //             i_d: newDate,
-    //             type:'sales',
-    //             wrh: wrh,
-    //             start: newDate,
-    //             startedBy: companyRecord.emailid,
-    //             end: null,
-    //             active: true, 
-    //             openingCash: openingCash,
-    //             debtDue: 0
-    //         }
-    //         const response = await fetchServer("POST", {
-    //             database: company,
-    //             collection: "POSSessions",
-    //             update: {
-    //                 ...newSession
-    //             }
-    //         }, "createDoc", server);
-        
-    //         if (response.err) {
-    //             setAlertState('error');
-    //             setAlert('Could not load session. Please check your internet connection!');
-    //             setAlertTimeout(3000)
-    //             return
-    //         } else {
-    //             setAlertState('success');
-    //             if (![null, undefined].includes(sessionUser)){
-    //                 setAlert('User Session Started Successfully!');
-    //             }else{
-    //                 setAlert('Welcome Back!');
-    //             }
-    //             setAlertTimeout(2000)
-    //             fetchSessions(company, "sales", companyRecord)
-    //             setStartSession(false)
-    //             setCurrSession(newSession)
-    //             setOpeningCash(0)
-    //             setAllSessions((allSessions)=>{return [...allSessions, newSession]})
-    //             setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, newSession]})
-    //             if (![null, undefined].includes(sessionUser)){
-    //                 if (sessionUser.profile.emailid === companyRecord.emailid){
-    //                     setSessions([...sessions, newSession])                    
-    //                 }
-    //             }else{
-    //                 if (sessions!==null){
-    //                     setSessions([...sessions, newSession]) 
-    //                 }
-    //             }
-    //             setSessionUser(null)
-    //             return
-    //         }
-    //     }else{
-    //         setAlertState('info')
-    //         setAlert('Please Select Your Sales Post')
-    //         setAlertTimeout(5000)
-    //         return
-    //     }
-    // }
+    
     const createSession = async (sessionUser) => {
         if (!wrh) {
             setAlertState('info');
@@ -673,85 +613,6 @@ const PointOfSales = () => {
             return;
         }
     };
-
-    // const stopSession = async (session, sessionOrders)=>{
-    //     const {
-    //         allSales, totalPendingSales, totalCancelledSales, totalCashChange
-    //     } = getSessionSales(sessionOrders)
-    //     const openingCash = session.openingCash
-    //     let netBalance = 0
-    //     let unAccounted = 0
-    //     let allSalesAmount = 0
-    //     const salesDifference = {}
-    //     const allCountedSales = {}
-    //     Object.keys(payPoints).forEach((payPoint)=>{
-
-    //         if (payPoint === 'cash'){
-    //             var expectedCash = Number(openingCash) + Number(allSales[payPoint] || 0) - Number(totalCashChange)
-    //             salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - expectedCash
-    //             allSalesAmount += (Number(allSales[payPoint] || 0) - Number(totalCashChange))
-    //         }else{
-    //             salesDifference[payPoint] = Number(countedSales[payPoint] || 0) - Number(allSales[payPoint] || 0)
-    //             allSalesAmount += Number(allSales[payPoint] || 0)
-    //         }
-
-    //         allCountedSales[payPoint] = Number(countedSales[payPoint])
-            
-    //         if (salesDifference[payPoint] < 0){
-    //             netBalance += Number(salesDifference[payPoint])
-    //         }else{
-    //             unAccounted += Number(salesDifference[payPoint])
-    //         }
-    //     })
-
-    //     netBalance += (-1 * Number(totalPendingSales || 0))
-        
-    //     const sessionUpdate = {
-    //         end: new Date().getTime(),
-    //         endedby: companyRecord.emailid,
-    //         active: false,
-    //         orders: sessionOrders,
-    //         ...allCountedSales,
-    //         totalCashChange,
-    //         totalSalesAmount: allSalesAmount,
-    //         totalPendingSales,
-    //         totalCancelledSales,
-    //         debtDue: (netBalance < 0) ? Math.abs(netBalance) : 0,
-    //         unAccountedSales : unAccounted
-    //     }
-
-    //     const response = await fetchServer("POST", {
-    //         database: company,
-    //         collection: "POSSessions",
-    //         prop: [{start: session.start},{
-    //             ...sessionUpdate
-    //         }]
-    //     }, "updateOneDoc", server);
-    
-    //     if (response.err) {
-    //         setAlertState('error');
-    //         setAlert('Could not end session. Please check your internet connection!');
-    //         setAlertTimeout(3000)
-    //         return
-    //     } else {
-    //         setAlertState('success');
-    //         if (![null, undefined].includes(sessionUser)){
-    //             setAlert('User Session Ended Successfully!');
-    //         }else{
-    //             setAlert('Session Ended!');
-    //         }
-    //         setAlertTimeout(3000)
-    //         fetchSessions(company, "sales", companyRecord)
-    //         setAllSessions((allSessions)=>{return [...allSessions, {...session, ...sessionUpdate}]})
-    //         setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, {...session, ...sessionUpdate}]})
-    //         fetchSessions(company, "sales", companyRecord)
-    //         setEndSession(false)
-    //         setCountedSales({})
-    //         setSessionUser(null)
-    //         setAlertTimeout(5000)
-    //         return
-    //     }
-    // }
 
     const stopSession = async (session, sessionOrders) => {
         const {
