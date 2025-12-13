@@ -160,7 +160,7 @@ const DebtReport = ({
                                                         <td className='ttrow'>{debtReport.transferedFrom}</td>
                                                         }                                                        
                                                         <td className='ttrow'>{'₦'+debtReport.debt.toLocaleString()}</td>
-                                                        <td className='ttrow'>{'₦'+debtReport.debtRecovered.toLocaleString()}</td>
+                                                        <td className='ttrow'>{'₦'+(debtReport.debtRecovered || 0).toLocaleString()}</td>
                                                         <td className='ttrow'>{'₦'+debtReport.debtOutstanding.toLocaleString()}</td>
                                                     </tr>
                                                 })}                                                                                                                                                
@@ -205,7 +205,7 @@ const DebtReport = ({
                                                     {[''].map((args, id)=>{
                                                         var sumTotalDebtRecovered = 0
                                                         reportDebts?.forEach((debtReport)=>{
-                                                            sumTotalDebtRecovered += debtReport.debtRecovered
+                                                            sumTotalDebtRecovered += (debtReport.debtRecovered || 0)
                                                         })
                                                         return <th className='theader' key={id}>{'₦'+sumTotalDebtRecovered.toLocaleString()}</th>
                                                     })}                                                                                        

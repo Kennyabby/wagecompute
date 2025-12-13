@@ -147,7 +147,7 @@ const SalesReport = ({
             newDebtUnits[saleunit] = 0
              reportSales.record.forEach((record)=>{
                  if (record.salesPoint === saleunit){
-                     newDebtUnits[saleunit] += Number(record.debt) + Number(record.shortage) - Number(record.debtRecovered)
+                     newDebtUnits[saleunit] += Number(record.debt) + Number(record.shortage) - Number(record.debtRecovered || 0)
                  }
              })               
          })
