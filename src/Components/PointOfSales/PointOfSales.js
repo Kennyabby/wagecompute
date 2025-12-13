@@ -138,37 +138,37 @@ const PointOfSales = () => {
 
             try {
                 const {
-                    // salesSessions: snapSessions,
-                    // allOrders: snapAllOrders,
-                    // curSession: snapCurSession,
+                    salesSessions: snapSessions,
                     allSessions: snapAllSessions,
                     tables: snapTables,
-                    allSessionOrders: snapAllOrders,
+                    allSessionOrders: snapAllSessionOrders,
+                    allOrders: snapAllOrders,
                     products: snapProducts,
+                    curSession: snapCurSession,
                     orderTables: snapOrderTables,                    
                 } = snap;
 
-                // if (Array.isArray(snapSessions)) {
-                //     setSalesSessions(snapSessions);
-                // }
-                // if (Array.isArray(snapAllSessions)) {
-                //     setAllSalesSessions(snapAllSessions);
-                // }
+                if (Array.isArray(snapSessions)) {
+                    setSalesSessions(snapSessions);
+                }
+                if (Array.isArray(snapAllSessions)) {
+                    setAllSalesSessions(snapAllSessions);
+                }
                 if (Array.isArray(snapTables)) {
                     setTables(snapTables);
                 }
-                if (Array.isArray(snapAllOrders)) {
-                    setAllSessionOrders(snapAllOrders);
+                if (Array.isArray(snapAllSessionOrders)) {
+                    setAllSessionOrders(snapAllSessionOrders);
                 }
-                // if (Array.isArray(snapAllOrders)) {
-                //     setAllOrders(snapAllOrders);
-                // }
+                if (Array.isArray(snapAllOrders)) {
+                    setAllOrders(snapAllOrders);
+                }
                 if (Array.isArray(snapProducts) && !products.length) {
                     setProducts(snapProducts);
                 }
-                // if (snapCurSession) {
-                //     setCurrSession(snapCurSession);
-                // }
+                if (snapCurSession) {
+                    setCurrSession(snapCurSession);
+                }
                 if (Array.isArray(snapOrderTables) && !orderTables.length) {
                     setOrderTables(snapOrderTables);
                 }
@@ -239,42 +239,42 @@ const PointOfSales = () => {
     },[wrhs])
     
     // Hydrate orders, sessions, and tables from IndexedDB on mount
-    // useEffect(() => {
-    //     if (!company || !companyRecord?.emailid) return;
+    useEffect(() => {
+        if (!company || !companyRecord?.emailid) return;
 
-    //     (async () => {
-    //         try {
-    //             const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-    //                 loadAllOrders(company, companyRecord.emailid),
-    //                 loadAllSessionsLocal(company, companyRecord.emailid),
-    //                 loadAllTables(company, companyRecord.emailid),
-    //             ]);
+        (async () => {
+            try {
+                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+                    loadAllOrders(company, companyRecord.emailid),
+                    loadAllSessionsLocal(company, companyRecord.emailid),
+                    loadAllTables(company, companyRecord.emailid),
+                ]);
 
-    //             if (Array.isArray(orders) && orders?.length) {
-    //                 if (![null, undefined] === orders){
-    //                     setAllOrders(orders);
-    //                     setAllSessionOrders(orders);
-    //                 }
-    //             }
+                if (Array.isArray(orders) && orders?.length) {
+                    if (![null, undefined] === orders){
+                        setAllOrders(orders);
+                        setAllSessionOrders(orders);
+                    }
+                }
 
-    //             if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-    //                 const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
-    //                 setSessions(localSalesSessions);
-    //                 setAllSalesSessions(localSalesSessions);
-    //                 setAllSessions(sessionsLocal);
+                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+                    const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
+                    setSessions(localSalesSessions);
+                    setAllSalesSessions(localSalesSessions);
+                    setAllSessions(sessionsLocal);
 
-    //                 // Immediately derive curSession from locally cached sales sessions
-    //                 UpdateSessionState(localSalesSessions, false);
-    //             }
+                    // Immediately derive curSession from locally cached sales sessions
+                    UpdateSessionState(localSalesSessions, false);
+                }
 
-    //             if (Array.isArray(tablesLocal) && tablesLocal.length) {
-    //                 setTables(tablesLocal);
-    //             }
-    //         } catch (e) {
-    //             console.warn('POS hydrateFromIndexedDb failed', e);
-    //         }
-    //     })();
-    // }, [company, companyRecord?.emailid]);
+                if (Array.isArray(tablesLocal) && tablesLocal.length) {
+                    setTables(tablesLocal);
+                }
+            } catch (e) {
+                console.warn('POS hydrateFromIndexedDb failed', e);
+            }
+        })();
+    }, [company, companyRecord?.emailid]);
 
     useEffect(()=>{
         if (Array.isArray(salesSessions)){
@@ -527,7 +527,67 @@ const PointOfSales = () => {
         })
         return {allSales, totalPendingSales, totalUnattendedSales, totalCancelledSales, totalCashChange}
     }
-    
+    // const createSession = async (sessionUser)=>{
+    //     if (wrh){
+    //         const newDate = new Date().getTime()
+    //         const newSession = {
+    //             employee_id: ![null, undefined].includes(sessionUser)? (sessionUser.profile).emailid : companyRecord.emailid,
+    //             i_d: newDate,
+    //             type:'sales',
+    //             wrh: wrh,
+    //             start: newDate,
+    //             startedBy: companyRecord.emailid,
+    //             end: null,
+    //             active: true, 
+    //             openingCash: openingCash,
+    //             debtDue: 0
+    //         }
+    //         const response = await fetchServer("POST", {
+    //             database: company,
+    //             collection: "POSSessions",
+    //             update: {
+    //                 ...newSession
+    //             }
+    //         }, "createDoc", server);
+        
+    //         if (response.err) {
+    //             setAlertState('error');
+    //             setAlert('Could not load session. Please check your internet connection!');
+    //             setAlertTimeout(3000)
+    //             return
+    //         } else {
+    //             setAlertState('success');
+    //             if (![null, undefined].includes(sessionUser)){
+    //                 setAlert('User Session Started Successfully!');
+    //             }else{
+    //                 setAlert('Welcome Back!');
+    //             }
+    //             setAlertTimeout(2000)
+    //             fetchSessions(company, "sales", companyRecord)
+    //             setStartSession(false)
+    //             setCurrSession(newSession)
+    //             setOpeningCash(0)
+    //             setAllSessions((allSessions)=>{return [...allSessions, newSession]})
+    //             setAllSalesSessions((allSalesSessions)=>{return [...allSalesSessions, newSession]})
+    //             if (![null, undefined].includes(sessionUser)){
+    //                 if (sessionUser.profile.emailid === companyRecord.emailid){
+    //                     setSessions([...sessions, newSession])                    
+    //                 }
+    //             }else{
+    //                 if (sessions!==null){
+    //                     setSessions([...sessions, newSession]) 
+    //                 }
+    //             }
+    //             setSessionUser(null)
+    //             return
+    //         }
+    //     }else{
+    //         setAlertState('info')
+    //         setAlert('Please Select Your Sales Post')
+    //         setAlertTimeout(5000)
+    //         return
+    //     }
+    // }
     const createSession = async (sessionUser) => {
         if (!wrh) {
             setAlertState('info');
