@@ -319,6 +319,22 @@ const PointOfSales = () => {
     },[window.localStorage.getItem('sessn-cmp')])
 
     useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')        
+        // loadInitialData()
+        getPosOrders(company)
+        const intervalId = setInterval(()=>{
+            if (cmp_val){
+                // Fetch tables
+                loadInitialData()
+                getPosOrders(company)
+                // Fetch products
+                // getProducts(cmp_val)
+            }
+        },60000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
+
+    useEffect(()=>{
         if (Array.isArray(posOrders)){
             setAllSessionOrders(posOrders)
             const syncToIndexDB = async ()=>{
