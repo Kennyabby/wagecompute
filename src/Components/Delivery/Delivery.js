@@ -29,7 +29,7 @@ const Delivery = () => {
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, deliveryWrhAccess, employees, 
         profiles, fetchProfiles, getProductsWithStock,
-        products, setProducts, getProducts,
+        products, setProducts, getProducts, getEmployeeName,
         fetchTables, tables, setTables,
         fetchSessions, sessions, setSessions, posOrders, getPosOrders,
         getSessionEnd, allSessions, setAllSessions, getAllSessions,
@@ -2006,8 +2006,11 @@ const Delivery = () => {
                            
                         </div>
                         <div className="pos-time-display">
-                            <div>{currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div>Session: {new Date(curSession?.start).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <p></p>
+                            <div>Date: {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                             <div className="time">{formatTime(currentTime)}</div>
+                            <div style={{fontWeight: 'bold'}}>User: {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}</div>
                         </div>
                         <div className="pos-tables-layout">
                             {/* <div 
