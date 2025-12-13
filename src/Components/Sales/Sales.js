@@ -2693,7 +2693,7 @@ const Sales = ()=>{
                 </div>
                 <div className='empview salesview'>
                     {isView && salesOpts==='sales' && 
-                        companyRecord.status==='admin' && 
+                        (companyRecord.status==='admin' || companyRecord?.permissions.includes('export_sales_report')) && 
                         <FaTableCells                         
                             className='slrepicon'
                             onClick={()=>{
@@ -2704,7 +2704,7 @@ const Sales = ()=>{
                         />
                     }
                     {salesOpts==='recovery' && 
-                        companyRecord.status==='admin' && 
+                        (companyRecord.status==='admin' || companyRecord?.permissions.includes('export_sales_report')) && 
                         <FaTableCells                         
                             className='slrepicon'
                             onClick={()=>{
