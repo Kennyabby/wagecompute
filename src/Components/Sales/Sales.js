@@ -1671,7 +1671,7 @@ const Sales = ()=>{
                                 new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
                                 field.recoverySales === `${recoveryEmployeeId}-${index}`                                                        
                             ){
-                                const alreadyRecovered = empDebt.debtRecovered ? empDebt.debtRecovered : 0
+                                const alreadyRecovered = empDebt.debtRecovered || 0
                                 empDebt.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
                                 totalDebtRecovered += Number(field.recoveryAmount)
                                 const recoveredList = empDebt.recoverdList !== undefined? empDebt.recoverdList: [] 
@@ -1741,7 +1741,7 @@ const Sales = ()=>{
                         var saleRecoveredList = sale.recoveryList !== undefined? sale.recoveryList : [] 
                         sale.record.forEach((record, index)=>{
                             if (record.employeeId === recoveryEmployeeId && (record.debt || record.shortage)){
-                                const alreadyRecovered = record.debtRecovered ? record.debtRecovered : 0
+                                const alreadyRecovered = record.debtRecovered || 0
                                 record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
                                 totalDebtRecovered += Number(field.recoveryAmount)
                                 const recoveredList = record.recoverdList !== undefined? record.recoverdList: [] 
@@ -1917,7 +1917,7 @@ const Sales = ()=>{
                             sale.record.forEach((record,index)=>{
                                 if (record.employeeId === employee.i_d && (Number(record.debt)+Number(record.shortage)) > 0){
                                     totalDebt +=  Number(record.debt)
-                                    totalDebtRecovered += Number(record.debtRecovered) 
+                                    totalDebtRecovered += Number(record.debtRecovered || 0) 
                                 }
                             }) 
                         }
@@ -3013,9 +3013,9 @@ const Sales = ()=>{
                                                     ){
                                                         return (
                                                             sale.record.map((record,index)=>{
-                                                                if (record.employeeId === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)) > 0){
+                                                                if (record.employeeId === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered || 0)) > 0){
                                                                     return (
-                                                                        <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered)).toLocaleString()}`}</option>
+                                                                        <option key={index} value={sale.createdAt}>{`${sale.postingDate} - ${Number(record.debtRecovered || 0) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(record.debt)+Number(record.shortage) - Number(record.debtRecovered || 0)).toLocaleString()}`}</option>
                                                                     )
                                                                     
                                                                 }
@@ -3032,7 +3032,7 @@ const Sales = ()=>{
                                                                     new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
                                                                 ){
                                                                     return (
-                                                                        <option key={index} value={`${recoveryEmployeeId}-${index}`}>{`${empDebt.postingDate} - ${Number(empDebt.debtRecovered) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)).toLocaleString()}`}</option>                                                                                                                                 
+                                                                        <option key={index} value={`${recoveryEmployeeId}-${index}`}>{`${empDebt.postingDate} - ${Number(empDebt.debtRecovered || 0) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)).toLocaleString()}`}</option>                                                                                                                                 
                                                                     )
                                                                 }
                                                             })
