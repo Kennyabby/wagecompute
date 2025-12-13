@@ -21,7 +21,11 @@ const TransactionReports = ({
     onClose,
     wrhCategories
 }) => {
-    const { company, server, fetchServer, user, paymentReceipts } = useContext(ContextProvider);
+    const { 
+        company, server, fetchServer, user, companyRecord,
+        paymentReceipts, getPosOrders, fetchSessions,
+        setAlert, setAlertState, setAlertTimeout
+    } = useContext(ContextProvider);
     const [loading, setLoading] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [expandedSessions, setExpandedSessions] = useState({});
@@ -106,12 +110,114 @@ const TransactionReports = ({
         };
     }, [sessions, orders]);
 
+    // Detect Duplicate Orders
+    const getDuplicates = (array, prop)=>{
+        const groupedByProp = array.reduce((acc, elem) => {
+            const key = elem[prop];
+
+            if (!acc[key]) {
+                acc[key] = [];
+            }
+
+            acc[key].push(elem);
+            return acc;
+        }, {}) 
+        const groupKeys = Object.keys(groupedByProp)
+        const duplicateGroups = {}
+        let duplicateCount = 0
+        groupKeys.forEach((key)=>{
+            if (groupedByProp[key].length > 1){
+                duplicateGroups[key] = groupedByProp[key]
+                duplicateCount += groupedByProp[key].length - 1
+            }
+        })
+        return {duplicates: duplicateGroups, count: duplicateCount}
+    }
+
+    const deleteDuplicates = async(duplicateGroups, type)=>{        
+        let toDelete = []
+        let toInspect = []
+        Object.keys(duplicateGroups).forEach((key)=>{
+            if (type === 'order'){
+                toInspect = []
+                let ct = 0
+                duplicateGroups[key].forEach((elem)=>{                
+                    if (elem.delivery === 'pending' && elem.status === 'pending'){
+                        toInspect.push(elem)
+                    }else{
+                        ct++
+                    }
+                })  
+                if (ct){
+                    toDelete = toDelete.concat(toInspect)
+                }else{
+                    toInspect =  []
+                }
+            }
+            if (!toInspect.length){
+                duplicateGroups[key].forEach((elem, i)=>{                
+                    if (i){
+                        toDelete.push(elem)
+                    }
+                })
+            }          
+        })
+
+        // console.log(toDelete)
+        const confirmDelete = window.confirm(
+        `Delete ${toDelete.length} duplicate ${type}${toDelete.length > 1 ? 's' : ''}?`
+        );
+        if (!confirmDelete) return;
+
+        try {
+            setAlertState('info')
+            setAlert(`Deleting duplicate ${type}${toDelete.length > 1 ? 's' : ''}`)
+            setAlertTimeout(100000)
+
+            let dct = 0
+            for (const elem of toDelete) {
+                dct++
+                const filter = {}                
+                const resp = await fetchServer(
+                    'POST',
+                    {
+                        database: company,
+                        collection: type === 'order' ? 'Orders' : 'POSSessions',
+                        update: {_id: elem._id},
+                    },
+                    'removeDoc',
+                    server
+                );
+
+                if (resp && resp.err) {
+                    throw new Error(resp.mess || 'Failed to delete one of the duplicates');
+                }
+
+                setAlertState('success')
+                setAlert(`Deleted ${dct}/${toDelete.length}`)
+                setAlertTimeout(100000)
+            }           
+
+
+            setAlertState('success');
+            setAlert('duplicates deleted successfully');
+            setAlertTimeout(2000);
+        } catch (error) {
+            console.error('Duplicate delete failed', error);
+            setAlertState('error');
+            setAlert('Failed to delete one or more duplicates');
+            setAlertTimeout(2000);
+        } finally {
+            getPosOrders(company)
+            fetchSessions(company , "sales", companyRecord)
+            fetchSessions(company , "delivery", companyRecord)
+        }
+    }
+
     // Process and filter data
-    const processedData = useMemo(() => {
-        if (!sessions || !sessions.length) return [];
-        
-        let result = [];
-        
+    const processedData = useMemo(() => {        
+        if (!sessions || !sessions.length) return [];        
+        let result = [];        
         // Process sessions with their orders
         sessions.forEach(session => {
             // Skip invalid sessions
@@ -121,10 +227,11 @@ const TransactionReports = ({
             if (!initSessionOrders.length){
                 initSessionOrders = session?.orders || []
             }
+
             const sessionOrders = initSessionOrders.filter(order => 
                order.sessionId === session.i_d
             );
-            
+
             const sessionData = {
                 ...session,
                 orders: sessionOrders,
@@ -133,8 +240,7 @@ const TransactionReports = ({
                 startDate: session.start ? new Date(session.start) : null,
                 endDate: session.end ? new Date(session.end) : null,
                 isActive: Boolean(session.active)
-            };
-            
+            };                        
             result.push(sessionData);
         });
 
@@ -546,6 +652,7 @@ const TransactionReports = ({
             const sessionTotal = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => sum + (parseFloat(order.totalSales) || 0), 0) || 0;
             const totalItems = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => sum + ((order.items || []).length || 0), 0) || 0;
             const isExpanded = expandedSessions[session.i_d];
+            const {duplicates, count} = getDuplicates(session.orders, 'orderNumber')        
             
             return (
                 <div key={session.i_d} className="session-card">
@@ -835,17 +942,20 @@ const TransactionReports = ({
     };
 
     // Calculate totals and sales breakdown
-    const { totals, salesByLocation, salesByPayPoint } = useMemo(() => {
+    const { totals, salesByLocation, salesByPayPoint, sessionDuplicates} = useMemo(() => {
         const result = {
             totals: {
                 totalSessions: 0,
                 totalOrders: 0,
                 totalSales: 0,
                 totalPayment: 0,
-                totalItems: 0
+                totalItems: 0,
+                totalOrderDuplicates: 0,
+                totalSessionDuplicates: 0
             },
             salesByLocation: {},
-            salesByPayPoint: {}
+            salesByPayPoint: {},
+            sessionDuplicates: {},
         };
 
         processedData.forEach(session => {
@@ -896,12 +1006,19 @@ const TransactionReports = ({
                 }, 0) || 0);
             }, 0) || 0;
 
+            const {count: totalDuplicateOrders} = getDuplicates(session.orders, 'orderNumber')
+            result.totals.totalOrderDuplicates += totalDuplicateOrders
+            
+            
             // Track sales by location
             // const location = session.wrh || 'Unknown';
             // result.salesByLocation[location] = (result.salesByLocation[location] || 0) + sessionSales;
-
+            
             // Track sales by pay point (assuming pay_point is a property on the session)
         });
+        const {duplicates: sessionDuplicates, count: totalDuplicateSessions} = getDuplicates(sessions, 'i_d')
+        result.totals.totalSessionDuplicates = totalDuplicateSessions
+        result.sessionDuplicates = sessionDuplicates
 
         return result;
     }, [processedData]);
@@ -1040,10 +1157,12 @@ const TransactionReports = ({
                         <div className="stat-item">
                             <span className="stat-label">Sessions</span>
                             <span className="stat-value">{totals.totalSessions}</span>
+                            <span className="stat-value" style={{fontSize: '13px'}}>Duplicates: {totals.totalSessionDuplicates}</span>
                         </div>
                         <div className="stat-item">
                             <span className="stat-label">Orders</span>
                             <span className="stat-value">{totals.totalOrders}</span>
+                            <span className="stat-value" style={{fontSize: '13px'}}>Duplicates: {totals.totalOrderDuplicates}</span>
                         </div>
                         <div className="stat-item total-amount">
                             <span className="stat-label">Total Sales</span>
@@ -1056,6 +1175,25 @@ const TransactionReports = ({
                         <div className="stat-item total-amount">
                             <span className="stat-label">Difference (P - S)</span>
                             <span className="stat-value">{formatCurrency(totals.totalPayment - totals.totalSales)}</span>
+                        </div>
+                        <div style={{display: "flex", flexDirection:"column", flexWrap:"wrap", justifyContent:"center", alignItems:"center"}}>
+                            <button 
+                                disabled={!totals.totalOrderDuplicates} 
+                                className="start-value"
+                                style={{color: "black", margin:"5px", padding:"5px", borderRadius: "5px", cursor:"pointer"}}
+                                onClick={()=>{
+                                    const {duplicates} = getDuplicates(orders, "orderNumber")
+                                    deleteDuplicates(duplicates, 'order')
+                                }}
+                            >Clean Duplicate Orders</button>
+                            <button 
+                                disabled={!totals.totalSessionDuplicates} 
+                                className="start-value"
+                                style={{color: "black", margin:"5px", padding:"5px", borderRadius: "5px", cursor:"pointer"}}
+                                onClick={()=>{
+                                    deleteDuplicates(sessionDuplicates, 'session')
+                                }}
+                            >Clean Duplicate Sessions</button>
                         </div>
                     </div>
                     
