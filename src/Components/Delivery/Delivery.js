@@ -31,7 +31,7 @@ const Delivery = () => {
         profiles, fetchProfiles, getProductsWithStock,
         products, setProducts, getProducts, getEmployeeName,
         fetchTables, tables, setTables,
-        fetchSessions, posOrders, getPosOrders,
+        fetchSessions, fetchAllSessions, posOrders, getPosOrders,
         getSessionEnd, allSessions, setAllSessions, getAllSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         deliverySessions, allDeliverySessions, setAllDeliverySessions, setDeliverySessions,
@@ -322,6 +322,7 @@ const Delivery = () => {
             
         // Fetch All sessions
         getAllSessions(company)
+        fetchAllSessions(company)
         
         // Feth Sessions
         fetchSessions(company, "delivery", companyRecord)
@@ -582,7 +583,7 @@ const Delivery = () => {
                     setSessionUser(null);
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, "delivery", companyRecord)
-                    getAllSessions(company)
+                    fetchAllSessions(company)
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -642,6 +643,7 @@ const Delivery = () => {
                 setAlertTimeout(5000);
                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 fetchSessions(company, "delivery", companyRecord)
+                fetchAllSessions(company)
                 getAllSessions(company)
             } catch (e) {
                 // Leave pending changes in queue; 5‑minute auto-sync will retry
@@ -854,6 +856,7 @@ const Delivery = () => {
     
             getPosOrders(company)
             fetchSessions(company, "delivery", companyRecord)                        
+            fetchAllSessions(company)
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
                 const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
@@ -1267,6 +1270,7 @@ const Delivery = () => {
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, "delivery", companyRecord)
+                    fetchAllSessions(company)
                     fetchTables(company)
                     loadInitialData()
                 } catch (e) {
@@ -1284,6 +1288,7 @@ const Delivery = () => {
 
     const handleOrderDelivery = async () => {
         fetchSessions(company, "delivery", companyRecord);
+        fetchAllSessions(company)
         fetchTables(company);
         if (products.length) {
             getProductsWithStock(company, products);
@@ -2177,6 +2182,7 @@ const Delivery = () => {
                                 // disabled={makingPayment}
                                 onClick={() => {
                                     fetchSessions(company, "delivery", companyRecord)
+                                    fetchAllSessions(company)
                                     fetchTables(company)
                                     if (products.length){
                                         getProductsWithStock(company, products)
@@ -2561,7 +2567,7 @@ const DeliveryDashboard = ({
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
                                     
-                                    const employeeSessions = allSessions.filter(session => {
+                                    const employeeSessions = allDeliverySessions.filter(session => {
                                         return (
                                             session.employee_id === profile.emailid                                        
                                         )
@@ -2678,7 +2684,7 @@ const DeliveryDashboard = ({
                 {showReports && (
                     <TransactionReports
                         type="delivery"
-                        sessions={allSessions}
+                        sessions={allDeliverySessions}
                         orders={allSessionOrders}
                         tables={tables}
                         employees={employees}

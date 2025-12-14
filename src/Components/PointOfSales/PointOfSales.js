@@ -28,7 +28,7 @@ const PointOfSales = () => {
         settings, getDate, posWrhAccess, employees, 
         profiles, fetchProfiles, getSessionEnd,
         products, getProducts, setProducts, getEmployeeName,
-        fetchSessions, sessions, setSessions, posOrders,
+        fetchSessions, fetchAllSessions, sessions, setSessions, posOrders,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
         salesSessions, allSalesSessions, setSalesSessions, setAllSalesSessions,
@@ -277,7 +277,7 @@ const PointOfSales = () => {
     }, [company, companyRecord?.emailid]);
 
     useEffect(()=>{
-        console.log(salesSessions)
+        // console.log(salesSessions)
         if (Array.isArray(salesSessions)){
             setSessions(salesSessions)
             const syncToIndexDB = async ()=>{
@@ -364,6 +364,7 @@ const PointOfSales = () => {
          
         // Feth Sessions
         fetchSessions(company, "sales", companyRecord)
+        fetchSessions(company)
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -659,7 +660,7 @@ const PointOfSales = () => {
                     setLoading(false)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, "sales", companyRecord)
-                    getAllSessions(company)
+                    fetchAllSessions(company)
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -774,6 +775,7 @@ const PointOfSales = () => {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     getAllSessions(company)
                     fetchSessions(company, "sales", companyRecord)
+                    fetchAllSessions(company)
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -998,7 +1000,8 @@ const PointOfSales = () => {
         if (!placingOrder && !makingPayment && name){
 
             getPosOrders(company)
-            fetchSessions(company, "sales", companyRecord)                        
+            fetchSessions(company, "sales", companyRecord)
+            fetchAllSessions(company)                        
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
                 const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
@@ -1236,91 +1239,7 @@ const PointOfSales = () => {
     // =========================================
     // 5. Order Management
     // =========================================
-    // const handlePlaceOrder = async () => {
-    //     // fetchSessions(company, "sales", companyRecord)
-    //     // fetchTables(company)
-    //     // getProducts(company)
-    //     loadInitialData()
-    //     setAlertState('info')
-    //     setAlert('Placing Order...')
-    //     setAlertTimeout(1000000)
-    //     setPlacingOrder(true)
-    //     // Save the current order to database
-        
-    //     const placedOrder = {
-    //         ...currentOrder, 
-    //         status: 'pending', 
-    //         placedAt: new Date().getTime(),
-    //         delivery: 'pending'
-    //     }
-    //     // Enqueue offline change so this order can be synced later
-    //     if (company && companyRecord?.emailid) {
-    //         queuePendingChange(company, companyRecord.emailid, {
-    //             entityType: 'order',
-    //             op: 'create',
-    //             clientId: placedOrder.orderNumber,
-    //             payload: placedOrder,
-    //         });
-    //     }
-    //     const response = await fetchServer("POST", {
-    //         database: company,
-    //         collection: "Orders",
-    //         update: {...placedOrder}
-    //     }, "createDoc", server);
     
-    //     if (response.err) {
-    //         setAlertState('error');
-    //         setAlert('Error saving order');
-    //         setAlertTimeout(3000)
-    //         setPlacingOrder(false)
-    //         return;
-    //     }
-    //     else{
-    //         // Update tableOrders state with the new order
-    //         setAlertState('success');
-    //         setAlert('Order placed successfully');
-    //         setAlertTimeout(2000)
-    //         fetchSessions(company, "sales", companyRecord)
-    //         fetchTables(company)
-    //         getProducts(company)
-    //         loadInitialData()
-    //         setCurrentOrder(placedOrder)
-    //         setPlacingOrder(false)
-    //         const activeOrder = {
-    //             tableId: currentOrder.tableId,
-    //             sessionId: currentOrder.sessionId,
-    //             handlerId: companyRecord.emailid,
-    //             status: 'pending',
-    //             delivery: 'pending',
-    //             wrh: wrh,
-    //             orderNumber: currentOrder.orderNumber,
-    //             createdAt: new Date().getTime()
-    //         }
-    //         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-    //         const resp = await fetchServer("POST", {
-    //             database: company,
-    //             collection: "Tables",
-    //             prop: [{'wrh':wrh}, {activeTables: [...(prevTable?.activeTables || []), {...activeOrder}]}]
-    //         }, "updateOneDoc", server)
-    //         if (resp.err){
-    //             setAlertState('error');
-    //             setAlert('Error updating table');
-    //             setAlertTimeout(3000)
-    //             setPlacingOrder(false)
-    //             return
-    //         }else{
-    //             setTableOrders(prev => ([
-    //                 ...prev, placedOrder
-    //             ]));
-    //             printKitchenOrder(placedOrder)
-    //         }
-            
-           
-    //         // View Payment Modal
-    //         // setShowPaymentModal(true);
-    //     }
-        
-    // };
     const handlePlaceOrder = async () => {
         // fetchSessions(company, "sales", companyRecord)
         // fetchTables(company)
@@ -1420,6 +1339,7 @@ const PointOfSales = () => {
                     printBarOrder(placedOrder)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, 'sales', companyRecord);
+                    fetchAllSessions(company)
                     fetchTables(company);
                     getProducts(company);
                 } catch (e) {
@@ -1530,145 +1450,6 @@ const PointOfSales = () => {
             setAlertTimeout(5000);
         }
     }
-    // // =========================================
-    // // 6. Payment Processing
-    // // =========================================
-    // const handlePayment = async () => {
-    //     fetchSessions(company, "sales", companyRecord)
-    //     fetchTables(company)
-    //     getProducts(company)
-    //     loadInitialData()
-    //     setAlertState('info');
-    //     setAlert('Processing Payment...');
-    //     setAlertTimeout(1000000)
-    //     setMakingPayment(true)
-    //     var totalPayment = 0
-    //     var totalChange = 0
-    //     var receipts = {}
-    //     var salesPosts = {}
-    //     Object.keys(paymentDetails).forEach((payPoint)=>{
-    //         totalPayment += Number(paymentDetails[payPoint].amount || 0)
-    //         totalChange += Number(paymentDetails[payPoint].change || 0)
-    //         receipts[payPoint] = paymentDetails[payPoint].receipt
-    //         salesPosts[payPoint] = paymentDetails[payPoint].salesPost
-    //     })
-
-    //     if (totalPayment < currentOrder.totalSales) {
-    //         setAlertState('error');
-    //         setAlert('Insufficient payment amount');
-    //         setAlertTimeout(3000)
-    //         setMakingPayment(false)
-    //         return;
-    //     }
-
-    //     const paymentData = {}
-    //     Object.keys(paymentDetails).forEach((payPoint)=>{
-    //         paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0)
-    //     })
-
-    //     const paymentDataUpdate = {
-    //         ...paymentData,
-    //         payedAt: new Date().getTime(),
-    //         totalPayment: totalPayment,
-    //         cashChange: Number(paymentDetails['cash'].change),
-    //         receipts,
-    //         salesPosts,
-    //         status: 'completed'
-    //     };
-
-    //     const newOrder = {
-    //         ...currentOrder,
-    //         ...paymentDataUpdate
-    //     }
-
-    //     if (company && companyRecord?.emailid) {
-    //         queuePendingChange(company, companyRecord.emailid, {
-    //             entityType: 'order',
-    //             op: 'update',
-    //             clientId: currentOrder.orderNumber,
-    //             payload: {
-    //                 orderNumber: currentOrder.orderNumber,
-    //                 ...paymentDataUpdate,
-    //             },
-    //         });
-    //     }
-    //     if (currentOrder.delivery === 'completed'){
-    //         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-    //         const resp = await fetchServer("POST", {
-    //             database: company,
-    //             collection: "Tables",
-    //             prop: [{'wrh':wrh}, {activeTables: [
-    //                 ...(prevTable.activeTables.filter((table)=>{return (
-    //                     table.tableId !== currentOrder.tableId && 
-    //                     table.sessionId !== currentOrder.sessionId &&
-    //                     table.handlerId !== companyRecord.emailid && 
-    //                     table.orderNumber !== currentOrder.orderNumber
-    //                 )}))
-    //             ]}]
-    //         }, "updateOneDoc", server)
-    //         if (resp.err){
-    //             setAlertState('error');
-    //             setAlert('Error updating table');
-    //             setAlertTimeout(3000)
-    //             return;
-    //         }
-    //     }else{
-    //         const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-    //         const resp = await fetchServer("POST", {
-    //             database: company,
-    //             collection: "Tables",
-    //             prop: [{'wrh':wrh}, {activeTables: [
-    //                 ...(prevTable.activeTables.filter((table)=>{return (
-    //                     table.tableId !== currentOrder.tableId && 
-    //                     table.sessionId !== currentOrder.sessionId &&
-    //                     table.handlerId !== companyRecord.emailid && 
-    //                     table.orderNumber !== currentOrder.orderNumber
-    //                 )})),
-    //                 {...(prevTable.activeTables.find((table)=>{return (
-    //                     table.tableId === currentOrder.tableId && 
-    //                     table.sessionId === currentOrder.sessionId &&
-    //                     table.handlerId === companyRecord.emailid && 
-    //                     table.orderNumber === currentOrder.orderNumber
-    //                 )})), 
-    //                 status: 'completed'}
-    //             ]}]
-    //         }, "updateOneDoc", server)
-    //         if (resp.err){
-    //             setAlertState('error');
-    //             setAlert('Error updating table');
-    //             setAlertTimeout(3000)
-    //             return;
-    //         }
-    //     }
-
-    //     const response = await fetchServer("POST", {
-    //         database: company,
-    //         collection: "Orders",
-    //         prop: [{orderNumber: currentOrder.orderNumber}, {...paymentDataUpdate}]
-    //     }, "updateOneDoc", server);
-
-    //     if (response.err) {
-    //         setAlertState('error');
-    //         setAlert('Error processing payment');
-    //         setMakingPayment(false)
-    //         return
-    //     } else {
-    //         fetchSessions(company, "sales", companyRecord)
-    //         fetchTables(company)
-    //         getProducts(company)
-    //         loadInitialData()
-    //         setMakingPayment(false)
-    //         setAlertState('success');
-    //         setAlert('Payment processed successfully');
-    //         setAlertTimeout(2000)
-    //         createNewOrder(currentTable);
-    //         printReceipt(newOrder);
-    //         setShowPaymentModal(false);
-    //         getPosOrders(company)
-    //         setPaymentDetails({...payPoints})
-    //         return
-    //     }
-    // };
 
     // =========================================
     // 6. Payment Processing
@@ -1676,6 +1457,7 @@ const PointOfSales = () => {
     const handlePayment = async () => {
         // These reads are fine (no direct writes to Mongo)
         fetchSessions(company, "sales", companyRecord);
+        fetchAllSessions(company)
         fetchTables(company);
         getProducts(company);
         loadInitialData();
