@@ -350,7 +350,7 @@ function App() {
   }
 
   const getSessionEnd = (sessionStart) => {
-      const closingHour = 9
+      const closingHour = 11
       const sessionStartDate = new Date(sessionStart);
       const sessionEndDate = new Date(sessionStartDate);
 
