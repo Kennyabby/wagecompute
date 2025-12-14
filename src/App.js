@@ -921,7 +921,7 @@ function App() {
           setAllSessions(resp1.record)            
           setCached(company, 'allSalesSessions', resp1.record, companyRecord?.emailid)                           
         }
-        
+
         const sessionsResponse = await getAllSessions(company)
         if (Array.isArray(sessionsResponse)){
             // Sort all sessions by start time (newest first)
@@ -1322,6 +1322,23 @@ function App() {
       }
       return resp
       // return {record: []}
+    }else{
+      const resp = await fetchServer("POST", {
+        database: company,
+        collection: "Orders",
+        prop: {}
+      }, "getDocsDetails", SERVER)
+      
+      if (resp.record && Array.isArray(resp.record)){
+        setPosOrders(resp.record);
+        // console.log("allOrders list:", resp.record)
+        // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
+        setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
+        const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
+        if (cached && Array.isArray(cached) && companyRecord?.emailid) {
+          setPosOrders(cached);
+        }
+      }
     }
   }
 

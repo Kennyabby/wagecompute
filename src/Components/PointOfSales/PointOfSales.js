@@ -1125,7 +1125,7 @@ const PointOfSales = () => {
             const response = await getPosOrders(company, 'tableOrders', orderFilter)
             const filteredOrders = response?.record ?? []
             if (!response.err && Array.isArray(filteredOrders)) {
-                console.log("received allOrders list:", filteredOrders)                
+                // console.log("received allOrders list:", filteredOrders)                
                 if (!localOrders.length){
                     if (filteredOrders.length) {
                         setCurrentTable(table);
