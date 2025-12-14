@@ -277,6 +277,7 @@ const PointOfSales = () => {
     }, [company, companyRecord?.emailid]);
 
     useEffect(()=>{
+        console.log(salesSessions)
         if (Array.isArray(salesSessions)){
             setSessions(salesSessions)
             const syncToIndexDB = async ()=>{
@@ -325,7 +326,6 @@ const PointOfSales = () => {
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 // Fetch tables
-                loadInitialData()
                 getPosOrders(company)
                 // Fetch products
                 // getProducts(cmp_val)
