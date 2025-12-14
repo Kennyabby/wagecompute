@@ -31,7 +31,7 @@ const Delivery = () => {
         profiles, fetchProfiles, getProductsWithStock,
         products, setProducts, getProducts, getEmployeeName,
         fetchTables, tables, setTables,
-        fetchSessions, sessions, setSessions, posOrders, getPosOrders,
+        fetchSessions, posOrders, getPosOrders,
         getSessionEnd, allSessions, setAllSessions, getAllSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         deliverySessions, allDeliverySessions, setAllDeliverySessions, setDeliverySessions,
@@ -48,6 +48,7 @@ const Delivery = () => {
     const [posSalesDifference, setPosSalesDifference] = useState({})
     const [startSession, setStartSession] = useState(false);
     const [endSession, setEndSession] = useState(false);
+    const [sessions, setSessions] = useState(null)
     const [sessionEnded, setSessionEnded] = useState(false);
     const [curSession, setCurrSession] = useState(null);
     const [sessionUser, setSessionUser] = useState(null);
@@ -662,7 +663,7 @@ const Delivery = () => {
             let lastSessionIndex = 0
             if (previousSession.length){
                 lastSessionIndex = previousSession.length - 1
-                // console.log ('line 792','previousSession:',new Date(previousSession[lastSessionIndex].start))
+                console.log ('line 792','previousSession:',new Date(previousSession[lastSessionIndex].start))
                 setCurrSession(previousSession[lastSessionIndex])
                 if(new Date().getTime() >= getSessionEnd(previousSession[lastSessionIndex].start)){                
                     // setStartSession(false)
@@ -679,7 +680,7 @@ const Delivery = () => {
                 if (sessions.length){
                     let oldSessions = sessions.sort((a, b) => a.start - b.start)
                     oldSession = oldSessions[sessions.length - 1]
-                    // console.log ('line 809','oldSession:',new Date(oldSession?.start))
+                    console.log ('line 809','oldSession:',new Date(oldSession?.start), oldSessions)
                     setCurrSession(oldSession)
                     setSessionEnded(true)
                     setOpeningCash((Number(oldSession.openingCash || 0) + Number(oldSession.cash || 0) - Number(oldSession.totalCashChange || 0)))
@@ -2121,6 +2122,7 @@ const Delivery = () => {
                 curSession={curSession}
                 sessions={sessions}
                 allDeliverySessions={allDeliverySessions}
+                setAllDeliverySessions={setAllDeliverySessions}
                 allSessions={allSessions}
                 setAllSessions={setAllSessions}
                 setAllSessionOrders={setAllSessionOrders}
@@ -2467,7 +2469,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
 };
 
 const DeliveryDashboard = ({
-    sessions, allDeliverySessions, profiles, employees, companyRecord, 
+    sessions, allDeliverySessions, setAllDeliverySessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, allSessionOrders, getPosOrders, getSessionSales, curSession,
@@ -2477,18 +2479,15 @@ const DeliveryDashboard = ({
      const [pendingSessions, setPendingSessions] = useState([])
      const [showReports, setShowReports] = useState(false);
     useEffect(()=>{
-        var pendingSessions = allSessions?.filter((session)=>{
+        var pendingSessions = allDeliverySessions?.filter((session)=>{
             return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
                 session.active && (getSessionEnd(new Date().getTime()) > getSessionEnd(session.start))
             )
         })
         setPendingSessions(pendingSessions)        
-    },[allSessions])
+    },[allDeliverySessions])
 
-    useEffect(()=>{
-        if (allDeliverySessions?.length && Array.isArray(allDeliverySessions)){
-            setAllSessions(allDeliverySessions)
-        }
+    useEffect(()=>{        
         const getSessionsData = async ()=>{            
            getPosOrders()
             const sessionsResponse = await fetchServer("POST", {
@@ -2497,11 +2496,11 @@ const DeliveryDashboard = ({
                 prop: {type: 'delivery'}
             }, "getDocsDetails", server); 
             if(!sessionsResponse.err){
-                setAllSessions(sessionsResponse.record)
+                setAllDeliverySessions(sessionsResponse.record)
             }
         }
         getSessionsData()
-    },[allDeliverySessions])
+    },[])
 
     const showPendingSessionAlert = ()=>{
         setAlertState('error')

@@ -16,8 +16,8 @@ import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 import { syncPendingChanges } from './Resources/offlineSync';
 import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPendingChanges } from './Resources/offlineDb';
 
-// const SERVER = "http://localhost:3001"
-const SERVER = "https://enterpriseserver.vercel.app"
+const SERVER = "http://localhost:3001"
+// const SERVER = "https://enterpriseserver.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
 // const SERVER = "http://3.251.76.94"
@@ -185,7 +185,7 @@ function App() {
         getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
-    },300000)
+    },15000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
 
@@ -277,19 +277,17 @@ function App() {
           }
           if (companyRecord?.permissions.includes('delivery')){
             if(companyRecord?.permissions.includes('access_delivery_sessions')){
-              getAllSessions(company)
+              fetchAllSessions(company)
             }
             fetchSessions(company , "delivery", companyRecord)
-            getPosOrders(company)
             fetchTables(company)
             Navigate('/delivery')
           }
           if (companyRecord?.permissions.includes('pos')){
             if(companyRecord?.permissions.includes('access_pos_sessions')){
-              getAllSessions(company)
+              fetchAllSessions(company)
             }
             fetchSessions(company , "sales", companyRecord)
-            getPosOrders(company)
             fetchTables(company)
             Navigate('/pos')
           }  
@@ -301,6 +299,7 @@ function App() {
           if (companyRecord?.permissions.includes('sales')){
             getAccommodations(company)
             getSales(company)
+            fetchAllSessions(company)
             fetchSessions(company , "sales", companyRecord)
             fetchSessions(company , "delivery", companyRecord)
             // getSales(company, 'first', saleFrom, saleTo, 10)
@@ -813,56 +812,52 @@ function App() {
   }
 
   const fetchSessions = async (company, type, companyRecord) => {
-    if (company && companyRecord?.emailid){      
-      // const cachedSalesSession = await getCached(company, 'salesSessions', companyRecord?.emailid)
-      // const cachedDeliverySession = await getCached(company, 'deliverySessions', companyRecord?.emailid)
-      // const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
-      // const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions', companyRecord?.emailid)
-      // if (type === 'sales' && cachedSalesSession){
-      //   setSalesSessions(cachedSalesSession)
-      // }else if (type === 'delivery' && cachedDeliverySession){
-      //   setDeliverySessions(cachedDeliverySession)
-      // }
-      // if (cachedAllSalesSession){
-      //   setAllSalesSessions(cachedAllSalesSession)
-      // }
-      // if (cachedAllDeliverySession){
-      //   setAllDeliverySessions(cachedAllDeliverySession)
-      // }
-    }
-    // console.log('fetching sessions...')
+    // if (company && companyRecord?.emailid){      
+    //   const cachedSalesSession = await getCached(company, 'salesSessions', companyRecord?.emailid)
+    //   const cachedDeliverySession = await getCached(company, 'deliverySessions', companyRecord?.emailid)
+    //   const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
+    //   const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions', companyRecord?.emailid)
+    //   if (type === 'sales' && cachedSalesSession){
+    //     setSalesSessions(cachedSalesSession)
+    //   }else if (type === 'delivery' && cachedDeliverySession){
+    //     setDeliverySessions(cachedDeliverySession)
+    //   }
+    //   if (cachedAllSalesSession){
+    //     setAllSalesSessions(cachedAllSalesSession)
+    //   }
+    //   if (cachedAllDeliverySession){
+    //     setAllDeliverySessions(cachedAllDeliverySession)
+    //   }
+    // }
+    console.log('fetching sessions for',type)
     const sessionsResponse = await fetchServer("POST", {
       database: company,
       collection: "POSSessions",
-      prop: {type:type}
+      prop: {type:type, employee_id: companyRecord.emailid}
     }, "getDocsDetails", SERVER);
 
     if(!sessionsResponse.err){
-      // console.log('no errors occured')
+      console.log('no errors occured')
       if (sessionsResponse.mess){
         setIsLive(false)
         // setLiveErrorMessages(sessionsResponse.mess)
       }else if(Array.isArray(sessionsResponse.record)){
-        // console.log('sessions fetched successfully')
+        console.log('sessions fetched successfully')
         const thisSessions = sessionsResponse.record.filter((session)=>{
           return session.employee_id === companyRecord?.emailid
         })
         // setSessions(thisSessions)
-        // console.log('setting the sessions')
+        console.log('setting the sessions for', type)
+        console.log('for',type,':', thisSessions)
         if (type === 'sales'){
-          console.log(thisSessions)
           setSalesSessions(thisSessions)
           setCached(company, 'salesSessions', thisSessions, companyRecord?.emailid)
-          setAllSalesSessions(sessionsResponse.record)
-          setCached(company, 'allSalesSessions', sessionsResponse.record, companyRecord?.emailid)
+          
         }
         if (type === 'delivery'){
           setDeliverySessions(thisSessions)
           // console.log('line 854, on Mount:',thisSessions.find(session=>session.active))
-          setCached(company, 'deliverySessions', thisSessions, companyRecord?.emailid)
-          setAllDeliverySessions(sessionsResponse.record)
-          // console.log('line 857, on Mount:',sessionsResponse.record.find(session=>session.active))
-          setCached(company, 'allDeliverySessions', sessionsResponse.record, companyRecord?.emailid)
+          setCached(company, 'deliverySessions', thisSessions, companyRecord?.emailid)         
         }
 
         // Mirror all sessions into IndexedDB sessions store for Offline Debug Panel
@@ -880,6 +875,7 @@ function App() {
       }
     }else{
       if (sessionsResponse.mess !== 'Request aborted'){
+        console.log(sessionsResponse.mess)
         setIsLive(false)
         setLiveErrorMessages('Slow Network. Check Connection')
       }
@@ -887,7 +883,7 @@ function App() {
   }
 
   // Fetch POS and delivery sessions
-  const fetchAllSessions = async (company, setState) => {
+  const fetchAllSessions = async (company, setState=null) => {
     if (!company) return;
     try {            
         const sessionsResponse = await getAllSessions(company)
@@ -923,11 +919,25 @@ function App() {
             // Get 5 most recent delivery sessions
             const lastDeliverySessions = deliverySessions.slice(0, 5);
             setAllSessions(allSessions)
-            setState({
-                activeSessions,
-                lastActiveSessions: lastActiveByLocation,
-                lastDeliverySessions
-            });
+            const deliverySess = allSessions.filter((sess)=>{
+              return sess.type === 'delivery'
+            })
+            setAllSalesSessions(deliverySess)
+            setCached(company, 'allDeliverySessions', sessionsResponse.record, companyRecord?.emailid)
+
+            const salesSess = allSessions.filter((sess)=>{
+              return sess.type === 'sales'
+            })
+            setAllSalesSessions(salesSess)
+            setCached(company, 'allSalesSessions', sessionsResponse.record, companyRecord?.emailid)
+
+            if (setState!==null){
+              setState({
+                  activeSessions,
+                  lastActiveSessions: lastActiveByLocation,
+                  lastDeliverySessions
+              });
+            }
         }
     } catch (error) {
         console.error('Error fetching sessions:', error);
@@ -1017,24 +1027,23 @@ function App() {
           ['kitchen']: (resp.record.permissions.includes('delivery_kitchen') || resp.record.permissions.includes('all')),
         }
       })
+      getAccommodations(cmp_val)
+      getSettings(cmp_val)
+      getEmployees(cmp_val)
+      getSales(cmp_val)
+      getPosOrders(cmp_val)
       getChartOfAccounts(cmp_val)
       getApprovals(cmp_val)
-      getPosOrders(cmp_val)
       if (resp.record.status==='admin'){        
         window.localStorage.removeItem('lgt-vw')
-        getSettings(cmp_val)
         fetchProfiles(cmp_val)
-        getSales(cmp_val)
-        getAccommodations(cmp_val)
-        getEmployees(cmp_val)
         getDepartments(cmp_val)
         getPositions(cmp_val)
         getCustomers(cmp_val)
-        // getSales(cmp_val, 'first', saleFrom, saleTo, 10)
         fetchTables(cmp_val)
         fetchSessions(cmp_val , "sales", resp.record)
         fetchSessions(cmp_val , "delivery", resp.record)
-        getAllSessions(cmp_val)
+        fetchAllSessions(cmp_val)
         getProducts(cmp_val)
         getRentals(cmp_val)
         getPurchase(cmp_val)
@@ -1048,11 +1057,8 @@ function App() {
           }
         })
         getAccommodations(cmp_val)
-        getSales(cmp_val)
         setRecoveryVal(resp.record.enableDebtRecovery)
         setEnableBlockVal(!resp.record.enableLogin)        
-        getSettings(cmp_val)
-        getEmployees(cmp_val)        
       }
     }
   }
