@@ -128,86 +128,86 @@ const PointOfSales = () => {
         handleSettingsUpdate();
     }, [settings]);
 
-    useEffect(() => {
-        if (!company || !companyRecord?.emailid) return;
+    // useEffect(() => {
+    //     if (!company || !companyRecord?.emailid) return;
 
-        let cancelled = false;
-        (async () => {
-            const snap = await loadPosSnapshot(company, companyRecord.emailid);
-            if (!snap || cancelled) return;
+    //     let cancelled = false;
+    //     (async () => {
+    //         const snap = await loadPosSnapshot(company, companyRecord.emailid);
+    //         if (!snap || cancelled) return;
 
-            try {
-                const {
-                    salesSessions: snapSessions,
-                    allSessions: snapAllSessions,
-                    tables: snapTables,
-                    allSessionOrders: snapAllSessionOrders,
-                    allOrders: snapAllOrders,
-                    products: snapProducts,
-                    curSession: snapCurSession,
-                    orderTables: snapOrderTables,                    
-                } = snap;
+    //         try {
+    //             const {
+    //                 salesSessions: snapSessions,
+    //                 allSessions: snapAllSessions,
+    //                 tables: snapTables,
+    //                 allSessionOrders: snapAllSessionOrders,
+    //                 allOrders: snapAllOrders,
+    //                 products: snapProducts,
+    //                 curSession: snapCurSession,
+    //                 orderTables: snapOrderTables,                    
+    //             } = snap;
 
-                // if (Array.isArray(snapSessions)) {
-                //     setSalesSessions(snapSessions);
-                // }
-                // if (Array.isArray(snapAllSessions)) {
-                //     setAllSalesSessions(snapAllSessions);
-                // }
-                if (Array.isArray(snapTables)) {
-                    setTables(snapTables);
-                }
-                if (Array.isArray(snapAllSessionOrders)) {
-                    setAllSessionOrders(snapAllSessionOrders);
-                }
-                // if (Array.isArray(snapAllOrders)) {
-                //     setAllOrders(snapAllOrders);
-                // }
-                if (Array.isArray(snapProducts) && !products.length) {
-                    setProducts(snapProducts);
-                }
-                // if (snapCurSession) {
-                //     setCurrSession(snapCurSession);
-                // }
-                if (Array.isArray(snapOrderTables) && !orderTables.length) {
-                    setOrderTables(snapOrderTables);
-                }
+    //             // if (Array.isArray(snapSessions)) {
+    //             //     setSalesSessions(snapSessions);
+    //             // }
+    //             // if (Array.isArray(snapAllSessions)) {
+    //             //     setAllSalesSessions(snapAllSessions);
+    //             // }
+    //             if (Array.isArray(snapTables)) {
+    //                 setTables(snapTables);
+    //             }
+    //             if (Array.isArray(snapAllSessionOrders)) {
+    //                 setAllSessionOrders(snapAllSessionOrders);
+    //             }
+    //             // if (Array.isArray(snapAllOrders)) {
+    //             //     setAllOrders(snapAllOrders);
+    //             // }
+    //             if (Array.isArray(snapProducts) && !products.length) {
+    //                 setProducts(snapProducts);
+    //             }
+    //             // if (snapCurSession) {
+    //             //     setCurrSession(snapCurSession);
+    //             // }
+    //             if (Array.isArray(snapOrderTables) && !orderTables.length) {
+    //                 setOrderTables(snapOrderTables);
+    //             }
 
-                // Also mirror snapshot into entity stores so Offline Debug panel sees data immediately
-                // Only write records that have the proper keyPath to avoid IndexedDB DataError
-                if (company && companyRecord?.emailid) {
-                    if (Array.isArray(snapAllSessions)) {
-                        for (const s of snapAllSessions) {
-                            if (s && s.start != null) {
-                                await putSession(company, companyRecord.emailid, s);
-                            }
-                        }
-                    }
-                    if (Array.isArray(snapTables)) {
-                        for (const t of snapTables) {
-                            if (t && t.i_d != null) {
-                                await putTable(company, companyRecord.emailid, t);
-                            }
-                        }
-                    }
-                    if (Array.isArray(snapAllOrders)) {
-                        for (const o of snapAllOrders) {
-                            if (o && o.orderNumber != null) {
-                                await putOrder(company, companyRecord.emailid, o);
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                // Fail silently; server fetch will still run.
-                console.warn('POS snapshot hydrate failed', e);
-            }
-        })();
+    //             // Also mirror snapshot into entity stores so Offline Debug panel sees data immediately
+    //             // Only write records that have the proper keyPath to avoid IndexedDB DataError
+    //             if (company && companyRecord?.emailid) {
+    //                 if (Array.isArray(snapAllSessions)) {
+    //                     for (const s of snapAllSessions) {
+    //                         if (s && s.start != null) {
+    //                             await putSession(company, companyRecord.emailid, s);
+    //                         }
+    //                     }
+    //                 }
+    //                 if (Array.isArray(snapTables)) {
+    //                     for (const t of snapTables) {
+    //                         if (t && t.i_d != null) {
+    //                             await putTable(company, companyRecord.emailid, t);
+    //                         }
+    //                     }
+    //                 }
+    //                 if (Array.isArray(snapAllOrders)) {
+    //                     for (const o of snapAllOrders) {
+    //                         if (o && o.orderNumber != null) {
+    //                             await putOrder(company, companyRecord.emailid, o);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         } catch (e) {
+    //             // Fail silently; server fetch will still run.
+    //             console.warn('POS snapshot hydrate failed', e);
+    //         }
+    //     })();
 
-        return () => {
-            cancelled = true;
-        };
-    }, [company, companyRecord?.emailid]);
+    //     return () => {
+    //         cancelled = true;
+    //     };
+    // }, [company, companyRecord?.emailid]);
     
     useEffect(()=>{
         loadTableData()
@@ -239,42 +239,42 @@ const PointOfSales = () => {
     },[wrhs])
     
     // Hydrate orders, sessions, and tables from IndexedDB on mount
-    useEffect(() => {
-        if (!company || !companyRecord?.emailid) return;
+    // useEffect(() => {
+    //     if (!company || !companyRecord?.emailid) return;
 
-        (async () => {
-            try {
-                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-                    loadAllOrders(company, companyRecord.emailid),
-                    loadAllSessionsLocal(company, companyRecord.emailid),
-                    loadAllTables(company, companyRecord.emailid),
-                ]);
+    //     (async () => {
+    //         try {
+    //             const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+    //                 loadAllOrders(company, companyRecord.emailid),
+    //                 loadAllSessionsLocal(company, companyRecord.emailid),
+    //                 loadAllTables(company, companyRecord.emailid),
+    //             ]);
 
-                if (Array.isArray(orders) && orders?.length) {
-                    if (![null, undefined] === orders){
-                        setAllOrders(orders);
-                        setAllSessionOrders(orders);
-                    }
-                }
+    //             if (Array.isArray(orders) && orders?.length) {
+    //                 if (![null, undefined] === orders){
+    //                     setAllOrders(orders);
+    //                     setAllSessionOrders(orders);
+    //                 }
+    //             }
 
-                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-                    const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
-                    setSessions(localSalesSessions);
-                    setAllSalesSessions(localSalesSessions);
-                    setAllSessions(sessionsLocal);
+    //             if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+    //                 const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
+    //                 setSessions(localSalesSessions);
+    //                 setAllSalesSessions(localSalesSessions);
+    //                 setAllSessions(sessionsLocal);
 
-                    // Immediately derive curSession from locally cached sales sessions
-                    UpdateSessionState(localSalesSessions, false);
-                }
+    //                 // Immediately derive curSession from locally cached sales sessions
+    //                 UpdateSessionState(localSalesSessions, false);
+    //             }
 
-                if (Array.isArray(tablesLocal) && tablesLocal.length) {
-                    setTables(tablesLocal);
-                }
-            } catch (e) {
-                console.warn('POS hydrateFromIndexedDb failed', e);
-            }
-        })();
-    }, [company, companyRecord?.emailid]);
+    //             if (Array.isArray(tablesLocal) && tablesLocal.length) {
+    //                 setTables(tablesLocal);
+    //             }
+    //         } catch (e) {
+    //             console.warn('POS hydrateFromIndexedDb failed', e);
+    //         }
+    //     })();
+    // }, [company, companyRecord?.emailid]);
 
     useEffect(()=>{
         // console.log(salesSessions)
@@ -293,10 +293,15 @@ const PointOfSales = () => {
     
     useEffect(()=>{
         if (tables?.length && sessions !== null){
+            // console.log('loading sessions, orders, and tables')
+            // console.log('tables:',tables)
+            // console.log('sessions:', sessions)
+            // console.log('allOrders:', allOrders.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
+            // console.log('posOrders:', posOrders)
             if (sessions.length){
-                setIsLive(true)
-                setLoadSession(false)
                 UpdateSessionState(sessions, false)
+                setIsLive(true)
+                setLoadSession(false)                
             }else{
                 setIsLive(true)
                 setLoadSession(false)
@@ -319,23 +324,23 @@ const PointOfSales = () => {
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
-    useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')        
-        // loadInitialData()
-        getPosOrders(company)
-        const intervalId = setInterval(()=>{
-            if (cmp_val){
-                // Fetch tables
-                getPosOrders(company)
-                // Fetch products
-                // getProducts(cmp_val)
-            }
-        },60000)
-        return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
+    // useEffect(()=>{
+    //     var cmp_val = window.localStorage.getItem('sessn-cmp')        
+    //     // loadInitialData()
+    //     getPosOrders(company)
+    //     const intervalId = setInterval(()=>{
+    //         if (cmp_val){
+    //             // Fetch tables
+    //             getPosOrders(company)
+    //             // Fetch products
+    //             // getProducts(cmp_val)
+    //         }
+    //     },60000)
+    //     return () => clearInterval(intervalId);
+    // },[window.localStorage.getItem('sessn-cmp')])
 
     useEffect(()=>{
-        if (Array.isArray(posOrders)){
+        if (Array.isArray(posOrders) && companyRecord.emailid){
             setAllSessionOrders(posOrders)
             const syncToIndexDB = async ()=>{
                 for (const o of posOrders) {
@@ -346,7 +351,7 @@ const PointOfSales = () => {
             }
             syncToIndexDB()
         }
-    },[posOrders])
+    },[posOrders, companyRecord?.emailid])
 
     useEffect(()=> {
         // Fetch products
@@ -850,17 +855,17 @@ const PointOfSales = () => {
         if (!company || !companyRecord?.emailid) return;
 
         // 1) Load from local IndexedDB first
-        try {   
-            const localOrders = await loadAllOrders(company, companyRecord.emailid);
-            if (Array.isArray(localOrders) && localOrders.length) {
-                setAllSessionOrders(localOrders);
-                setAllOrders(localOrders.filter((order) => {
-                    return (order.sessionId === curSession?.i_d && order.handlerId === companyRecord.emailid);
-                }));
-            }
-        } catch (e) {
-            console.warn('POS: loadAllOrders failed', e);
-        }
+        // try {   
+        //     const localOrders = await loadAllOrders(company, companyRecord.emailid);
+        //     if (Array.isArray(localOrders) && localOrders.length) {
+        //         setAllSessionOrders(localOrders);
+        //         setAllOrders(localOrders.filter((order) => {
+        //             return (order.sessionId === curSession?.i_d && order.handlerId === companyRecord.emailid);
+        //         }));
+        //     }
+        // } catch (e) {
+        //     console.warn('POS: loadAllOrders failed', e);
+        // }
         //abort previous request if it exists
         if (orderControllerRef.current) {
             // orderControllerRef.current.abort();            
@@ -905,10 +910,7 @@ const PointOfSales = () => {
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
                     if(ordersResponse.record?.length && Array.isArray(ordersResponse.record)){
-                        setAllSessionOrders(ordersResponse.record)
-                        setAllOrders(ordersResponse.record.filter((order) =>{
-                            return (order.sessionId === curSession.i_d && order.handlerId === companyRecord.emailid)
-                        })) 
+                        setAllSessionOrders(ordersResponse.record)                        
                         // write-through to IndexedDB orders store (guard keyPath)
                         for (const o of ordersResponse.record) {
                             if (o && o.orderNumber != null) {
@@ -1045,14 +1047,14 @@ const PointOfSales = () => {
             setSelectedProduct(null);
             setAlertState('info');
             setAlert(`Loading Table ${table.i_d} Orders...`);
-            setAlertTimeout(5000)            
+            setAlertTimeout(100000)            
 
-            // 1) Use locally available orders (mirrored from IndexedDB) as primary
+            // 1) Use locally available orders (mirrored from IndexedDB) as primary           
             const baseOrders =
-                Array.isArray(allSessionOrders) && allSessionOrders.length
-                    ? allSessionOrders
-                    : allOrders;
-
+                Array.isArray(allOrders) && allOrders.length
+                    ? allOrders
+                    : [];
+            
             let localOrders = [];
             if (Array.isArray(baseOrders)) {
                 localOrders = baseOrders.filter((order) => {
@@ -1114,76 +1116,41 @@ const PointOfSales = () => {
             const orderFilter = {
                 tableId: table.i_d,
                 sessionId: curSession.i_d,
+                start: curSession.start,
                 wrh: wrh,
                 handlerId: companyRecord.emailid,
+                type: 'sales'
             };
-            if (
-                companyRecord?.status === 'admin' ||
-                companyRecord?.permissions.includes('access_pos_sessions')
-            ) {
-                delete orderFilter.sessionId;
-                delete orderFilter.handlerId;
-            }
 
-            const response = await fetchServer(
-                'POST',
-                {
-                    database: company,
-                    collection: 'Orders',
-                    prop: { ...orderFilter },
-                },
-                'getDocsDetails',
-                server
-            );
-
-            if (!response.err) {
-                let filteredOrders = Array.isArray(response.record)
-                    ? response.record
-                    : [];
-
-                if (
-                    companyRecord?.status === 'admin' ||
-                    companyRecord?.permissions.includes('access_pos_sessions')
-                ) {
-                    filteredOrders = filteredOrders.filter((order) => {
-                        if (!order) return false;
-                        let orderDate = '01/01/1970';
-                        if (order.createdAt) {
-                            orderDate = order.createdAt;
-                        }
-                        return (
-                            getSessionEnd(new Date(orderDate).getTime()) ===
-                            getSessionEnd(curSession.start)
-                        );
-                    });
-                }
-
-                // Mirror into IndexedDB orders store
-                if (company && companyRecord?.emailid) {
-                    for (const o of filteredOrders) {
-                        if (o && o.orderNumber != null) {
-                            await putOrder(company, companyRecord.emailid, o);
-                        }
-                    }
-                }
-
+            const response = await getPosOrders(company, 'tableOrders', orderFilter)
+            const filteredOrders = response?.record ?? []
+            if (!response.err && Array.isArray(filteredOrders)) {
+                console.log("received allOrders list:", filteredOrders)                
                 if (!localOrders.length){
-
                     if (filteredOrders.length) {
-                        // setCurrentTable(table);
-                        // setTableOrders(filteredOrders);
-                        // const pendingRemote = filteredOrders.filter(
-                        //     (order) => order.status === 'pending'
-                        // );
-                        // if (pendingRemote.length) {
-                        //     setCurrentOrder(pendingRemote[0]);
-                        // } else {
-                        //     createNewOrder(table);
-                        // }
+                        setCurrentTable(table);
+                        setTableOrders(filteredOrders);
+                        const pendingRemote = filteredOrders.filter(
+                            (order) => order.status === 'pending'
+                        );
+                        if (pendingRemote.length) {
+                            setCurrentOrder(pendingRemote[0]);
+                        } else {
+                            createNewOrder(table);
+                        }
                         // setActiveScreen('order');
-                        // setAlertState('info');
-                        // setAlert('Loaded table orders from server...');
-                        // setAlertTimeout(500);
+                        setAlertState('info');
+                        setAlert('Loaded table orders from server...');
+                        setAlertTimeout(500);
+                        // Mirror into IndexedDB orders store
+                        getPosOrders(company, 'tableOrders', orderFilter)
+                        if (company && companyRecord?.emailid) {
+                            for (const o of filteredOrders) {
+                                if (o && o.orderNumber != null) {
+                                    await putOrder(company, companyRecord.emailid, o);
+                                }
+                            }
+                        }
                     } else {
                         // createNewOrder(table);
                         // setActiveScreen('order');
@@ -2880,134 +2847,6 @@ const PaymentModal = ({
         </div>
     );
 };
-// const OrdersModal = ({ tableOrders, wrh, handleOrderSelect, setShowOrdersModal, 
-//     tables, currentOrder, setCurrentOrder, createNewOrder, curSession, employees 
-// }) => {
-//     const { companyRecord, fetchServer, setAlert, setAlertState, setAlertTimeout, server, company } = useContext(ContextProvider);
-//     const [cancelling, setCancelling] = useState(false)
-//     const handleCancelOrder = async (order) => {
-//         if (order.delivery !== 'completed'){
-//             const cancelOrder = window.confirm(`Are you sure you want to Cancel Order #${order.orderNumber}?`);
-//             if (!cancelOrder) return;
-//             setCancelling(true)
-//             setAlertState('info');
-//             setAlert('Cancelling Order...');
-//             setAlertTimeout(5000)
-//             const prevTable = tables.find((table)=>{return table['wrh'] === wrh})
-//             const resp = await fetchServer("POST", {
-//                 database: company,
-//                 collection: "Tables",
-//                 prop: [{'wrh':wrh}, {activeTables: [
-//                     ...(prevTable.activeTables.filter((tableOrder)=>{return (
-//                         tableOrder.tableId !== order.tableId && 
-//                         tableOrder.sessionId !== order.sessionId &&
-//                         tableOrder.orderNumber !== order.orderNumber
-//                     )}))]
-//                 }]
-//             }, "updateOneDoc", server)
-//             if (resp.err){
-//                 setAlertState('error');
-//                 setAlert('Error updating table');
-//                 setAlertTimeout(3000)
-//                 setCancelling(false)
-//                 return;
-//             }
-//             const response = await fetchServer("POST", {
-//                 database: company,
-//                 collection: "Orders",
-//                 prop: [{orderNumber: order.orderNumber}, 
-//                     {
-//                         status: 'cancelled', 
-//                         cancelledBy: companyRecord.emailid,
-//                         cancelledAt: new Date().getTime()
-//                     }
-//                 ]
-//             }, "updateOneDoc", server);
-
-//             if (company && companyRecord?.emailid) {
-//                 queuePendingChange(company, companyRecord.emailid, {
-//                     entityType: 'order',
-//                     op: 'update',
-//                     clientId: order.orderNumber,
-//                     payload: {
-//                         orderNumber: order.orderNumber,
-//                         ...{
-//                             status: 'cancelled',
-//                             cancelledBy: companyRecord.emailid,
-//                             cancelledAt: Date.now(),
-//                         },
-//                     },
-//                 });
-//             }
-
-//             if (response.err) {
-//                 setAlertState('error');
-//                 setAlert('Error cancelling order');
-//                 setAlertTimeout(3000);
-//                 setCancelling(false)
-//                 return
-//             } else {
-//                 setAlertState('success');
-//                 setAlert('Order cancelled successfully');
-//                 setAlertTimeout(2000);
-//                 if (currentOrder.orderNumber === order.orderNumber){
-//                     createNewOrder({ i_d: currentOrder.tableId, name: currentOrder.tableName });
-//                 }
-//                 setCancelling(false)
-//                 setShowOrdersModal(false); // Close modal after deletion
-//                 return
-//             }
-//         }else{
-//             setAlertState('error');
-//             setAlert('Please Cancel Delivery First Before Cancelling Order!');
-//             setAlertTimeout(3000)
-//             setCancelling(false)
-//             return
-//         }
-//     };
-
-//     return (
-//         <div className="modal-overlay">
-//             <div className="modal-content orders-modal">
-//                 <div className="modal-header">
-//                     <h3>All Orders</h3>
-//                     <button disabled={cancelling} onClick={() => setShowOrdersModal(false)}>×</button>
-//                 </div>
-//                 <div className="orders-list">
-//                     {tableOrders?.map(order => (
-//                         <div 
-//                             key={order.i_d}
-//                             className={`order-card ${order.status}`}
-//                         >
-//                             <div onClick={() => handleOrderSelect(order)}>
-//                                 <div>Order: #{order.orderNumber}</div>
-//                                 <div>Table: {order.tableId}</div>
-//                                 <div>Total: ₦{order.totalSales}</div>
-//                                 <div>Status: {order.status}</div>
-//                                 <div>Delivery: {(order.delivery || 'pending')}</div>
-//                                 <div>Placed By: {employees.find((emp)=>{return emp.i_d === order.handlerId})?.firstName || 'Admin'}</div>
-//                                 <div>{new Date(order.createdAt).toLocaleString()}</div>
-//                             </div>
-//                             {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && */}
-//                             {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('cancel_pos_order')) &&
-//                             !['cancelled','completed'].includes(order.status) 
-//                             &&  (
-//                                 <button 
-//                                     disabled={cancelling}
-//                                     className="cancel-order-btn"
-//                                     onClick={() => handleCancelOrder(order)}
-//                                     title="Cancel Order"
-//                                 >
-//                                     🗑️
-//                                 </button>
-//                             )}
-//                         </div>
-//                     ))}
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// };
 
 const OrdersModal = ({
     tableOrders,

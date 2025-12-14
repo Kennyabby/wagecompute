@@ -365,6 +365,23 @@ function App() {
       return sessionEndDate.getTime();
   };
 
+  const getSessionStart = (timestamp) => {
+      const closingHour = 11;
+      const date = new Date(timestamp);
+
+      // Candidate session start at 11:00 AM same day
+      const sessionStart = new Date(date);
+      sessionStart.setHours(closingHour, 0, 0, 0);
+
+      // If timestamp is BEFORE today's 11am,
+      // then the session started at 11am the PREVIOUS day
+      if (date.getTime() < sessionStart.getTime()) {
+          sessionStart.setDate(sessionStart.getDate() - 1);
+      }
+
+      return sessionStart.getTime();
+  };
+
   const shuffleList = (array) => {
     var currentIndex = array.length,
       randomIndex,
@@ -812,23 +829,7 @@ function App() {
   }
 
   const fetchSessions = async (company, type, companyRecord) => {
-    // if (company && companyRecord?.emailid){      
-    //   const cachedSalesSession = await getCached(company, 'salesSessions', companyRecord?.emailid)
-    //   const cachedDeliverySession = await getCached(company, 'deliverySessions', companyRecord?.emailid)
-    //   const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
-    //   const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions', companyRecord?.emailid)
-    //   if (type === 'sales' && cachedSalesSession){
-    //     setSalesSessions(cachedSalesSession)
-    //   }else if (type === 'delivery' && cachedDeliverySession){
-    //     setDeliverySessions(cachedDeliverySession)
-    //   }
-    //   if (cachedAllSalesSession){
-    //     setAllSalesSessions(cachedAllSalesSession)
-    //   }
-    //   if (cachedAllDeliverySession){
-    //     setAllDeliverySessions(cachedAllDeliverySession)
-    //   }
-    // }
+    
     // console.log('fetching sessions for',type)
     if (company && companyRecord?.emailid){
       const sessionsResponse = await fetchServer("POST", {
@@ -888,8 +889,40 @@ function App() {
   const fetchAllSessions = async (company, setState=null) => {
     if (!company) return;
     try {            
+        if (company && companyRecord?.emailid){      
+          const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
+          const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions', companyRecord?.emailid)             
+          if (cachedAllSalesSession){
+            setAllSalesSessions(cachedAllSalesSession)
+          }
+          if (cachedAllDeliverySession){
+            setAllDeliverySessions(cachedAllDeliverySession)
+          }
+        }
+        const resp = await fetchServer("POST", {
+          database: company,
+          collection: "POSSessions", 
+          prop: {type:'delivery'} 
+        }, "getDocsDetails", SERVER)
+        if (resp.record && Array.isArray(resp.record)){
+          // console.log('fetched deliveries')
+          setAllDeliverySessions(resp.record)
+          setCached(company, 'allDeliverySessions', resp.record, companyRecord?.emailid)                            
+        }
+        
+        const resp1 = await fetchServer("POST", {
+          database: company,
+          collection: "POSSessions", 
+          prop: {type:'sales'} 
+        }, "getDocsDetails", SERVER)
+        if (resp1.record && Array.isArray(resp1.record)){
+          // console.log('fetched sales')
+          setAllSalesSessions(resp1.record)
+          setAllSessions(resp1.record)            
+          setCached(company, 'allSalesSessions', resp1.record, companyRecord?.emailid)                           
+        }
+        
         const sessionsResponse = await getAllSessions(company)
-
         if (Array.isArray(sessionsResponse)){
             // Sort all sessions by start time (newest first)
             const allSessions = sessionsResponse.sort((a, b) => new Date(b.start) - new Date(a.start));
@@ -920,19 +953,9 @@ function App() {
 
             // Get 5 most recent delivery sessions
             const lastDeliverySessions = deliverySessions.slice(0, 5);
-            setAllSessions(allSessions)
-            const deliverySess = allSessions.filter((sess)=>{
-              return sess.type === 'delivery'
-            })
-            setAllSalesSessions(deliverySess)
-            setCached(company, 'allDeliverySessions', sessionsResponse.record, companyRecord?.emailid)
-
-            const salesSess = allSessions.filter((sess)=>{
-              return sess.type === 'sales'
-            })
-            setAllSalesSessions(salesSess)
-            setCached(company, 'allSalesSessions', sessionsResponse.record, companyRecord?.emailid)
-
+            setAllSessions(allSessions)            
+                      
+           
             if (setState!==null){
               setState({
                   activeSessions,
@@ -1254,19 +1277,51 @@ function App() {
     }
   }
 
-  const getPosOrders = async (company) => {
+  const getPosOrders = async (company, option, filter) => {
     const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
     if (cached && Array.isArray(cached) && companyRecord?.emailid) {
       setPosOrders(cached);
     }
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "Orders",
-      prop: {}
-    }, "getDocsDetails", SERVER)
-    if (resp.record && Array.isArray(resp.record)){
-      setPosOrders(resp.record)
-      setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
+    let prop = {}
+    let filterDate = new Date('01/01/1970').getTime()
+    if (filter?.start){
+      filterDate = filter.start
+    }
+    const sessionStart = getSessionStart(filterDate)
+    const sessionEnd = getSessionEnd(filterDate)
+    const isPosAdmin = companyRecord?.status === 'admin' ||
+      companyRecord?.permissions.includes('access_pos_sessions')
+    const isDeliveryAdmin = companyRecord?.status === 'admin' ||
+      companyRecord?.permissions.includes('access_delivery_sessions')
+    switch (option){
+      case 'tableOrders':
+        prop = {
+          ...(!isPosAdmin && filter.type === 'sales' && {sessionId: filter.sessionId}),          
+          tableId: filter.tableId,
+          ...(!isPosAdmin && filter.type === 'sales' && {handlerId: filter.handlerId}),
+          ...((filter.type === 'sales' || (filter.type === 'delivery' && filter.wrh!=='kitchen')) && {wrh: filter.wrh}),
+          ...(((isPosAdmin && filter.type === 'sales') || filter.type === 'delivery') && {createdAt: {$gte: sessionStart, $lte: sessionEnd}})
+        }
+    }
+    if (option){
+      // console.log('fetching pos orders with...', prop)
+      const resp = await fetchServer("POST", {
+        database: company,
+        collection: "Orders",
+        prop: {...prop}
+      }, "getDocsDetails", SERVER)
+      
+      if (resp.record && Array.isArray(resp.record)){
+        // console.log("allOrders list:", resp.record)
+        // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
+        setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
+        const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
+        if (cached && Array.isArray(cached) && companyRecord?.emailid) {
+          setPosOrders(cached);
+        }
+      }
+      return resp
+      // return {record: []}
     }
   }
 

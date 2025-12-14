@@ -30,7 +30,7 @@ const Delivery = () => {
         settings, getDate, deliveryWrhAccess, employees, 
         profiles, fetchProfiles, getProductsWithStock,
         products, setProducts, getProducts, getEmployeeName,
-        fetchTables, tables, setTables,
+        fetchTables, tables, setTables, setCached, setPosOrders,
         fetchSessions, fetchAllSessions, posOrders, getPosOrders,
         getSessionEnd, allSessions, setAllSessions, getAllSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
@@ -665,7 +665,7 @@ const Delivery = () => {
             let lastSessionIndex = 0
             if (previousSession.length){
                 lastSessionIndex = previousSession.length - 1
-                console.log ('line 792','previousSession:',new Date(previousSession[lastSessionIndex].start))
+                // console.log ('line 792','previousSession:',new Date(previousSession[lastSessionIndex].start))
                 setCurrSession(previousSession[lastSessionIndex])
                 if(new Date().getTime() >= getSessionEnd(previousSession[lastSessionIndex].start)){                
                     // setStartSession(false)
@@ -901,13 +901,12 @@ const Delivery = () => {
             setSelectedProduct(null);
             setAlertState('info');
             setAlert(`Loading Table ${table.i_d} Orders...`);
-            setAlertTimeout(5000)            
+            setAlertTimeout(100000)            
 
             // 1) Use locally available orders (mirrored from IndexedDB) as primary
             const baseOrders =
-                Array.isArray(allSessionOrders) && allSessionOrders.length
-                    ? allSessionOrders
-                    : allOrders;            
+                Array.isArray(allOrders) && allOrders.length
+                    ? allOrders : []           
             let localOrders = [];
             if (Array.isArray(baseOrders)) {
                 localOrders = baseOrders.filter((order) => {
@@ -955,65 +954,44 @@ const Delivery = () => {
             // setAlertTimeout(100);
 
             const orderFilter = {
-                tableId: table.i_d             
+                tableId: table.i_d,
+                start: curSession.start,
+                type: 'delivery',             
+                wrh: wrh,
             };
 
-            const response = await fetchServer(
-                'POST',
-                {
-                    database: company,
-                    collection: 'Orders',
-                    prop: { ...orderFilter },
-                },
-                'getDocsDetails',
-                server
-            );
-
-            if (!response.err) {
-                let filteredOrders = Array.isArray(response.record)
-                    ? response.record
-                    : [];
-
-                filteredOrders = filteredOrders.filter((order) => {
-                    if (!order) return false;
-                    let orderDate = '01/01/1970';
-                    if (order.createdAt) {
-                        orderDate = order.createdAt;
-                    }
-                    return (
-                        getSessionEnd(new Date(orderDate).getTime()) ===
-                        getSessionEnd(curSession.start) &&
-                        (order.wrh === wrh || wrh === 'kitchen')
-                    );
-                });
-
-                // Mirror into IndexedDB orders store
-                if (company && companyRecord?.emailid) {
-                    for (const o of filteredOrders) {
-                        if (o && o.orderNumber != null) {
-                            await putOrder(company, companyRecord.emailid, o);
-                        }
-                    }
-                }
-
+            const response = await getPosOrders(company, 'tableOrders', orderFilter)
+            const filteredOrders = response?.record ?? []
+            if (!response.err && Array.isArray(filteredOrders)) {                                
                 if (!localOrders.length){
-
                     if (filteredOrders.length) {
-                        // setCurrentTable(table);
-                        // setTableOrders(filteredOrders);
-                        // const pendingRemote = filteredOrders.filter(
-                        //     (order) => order.status === 'pending'
-                        // );
-                        // if (pendingRemote.length) {
-                        //     setCurrentOrder(pendingRemote[0]);
-                        //     setPosCurrentOrder(pendingRemote[0]);
-                        // } else {
-                        //     createNewOrder(table);
-                        // }
-                        // setActiveScreen('order');
-                        // setAlertState('info');
-                        // setAlert('Loaded table orders from server...');
-                        // setAlertTimeout(500);
+                        console.log(table?.i_d, filteredOrders[0]?.tableId)
+                        if (table?.i_d === filteredOrders[0]?.tableId){
+                            setCurrentTable(table);
+                            setTableOrders(filteredOrders);
+                            const pendingRemote = filteredOrders.filter(
+                                (order) => order.status === 'pending'
+                            );
+                            if (pendingRemote.length) {
+                                setCurrentOrder(pendingRemote[0]);
+                                setPosCurrentOrder(pendingRemote[0]);
+                            } else {
+                                createNewOrder(table);
+                            }
+                            // setActiveScreen('order');
+                            setAlertState('info');
+                            setAlert('Loaded table orders from server...');
+                            setAlertTimeout(500);
+                            // Mirror into IndexedDB orders store
+                            getPosOrders(company, 'tableOrders', orderFilter)
+                            if (company && companyRecord?.emailid) {
+                                for (const o of filteredOrders) {
+                                    if (o && o.orderNumber != null) {
+                                        await putOrder(company, companyRecord.emailid, o);
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         // createNewOrder(table);
                         // setActiveScreen('order');
