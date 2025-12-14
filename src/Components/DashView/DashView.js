@@ -992,6 +992,7 @@ const DashView = () =>{
             Object.keys(p.locationStock||{}).forEach(l=>{ if (l) set.add(l) })
         })
         // from transactional modules
+        // console.log(sales)
         ;(sales||[]).forEach(s=>{ if (s.location) set.add(s.location) })
         ;(accommodations||[]).forEach(a=>{ if (a.location) set.add(a.location) })
         ;(rentals||[]).forEach(r=>{ if (r.location) set.add(r.location) })

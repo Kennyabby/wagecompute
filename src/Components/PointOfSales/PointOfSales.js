@@ -148,27 +148,27 @@ const PointOfSales = () => {
                     orderTables: snapOrderTables,                    
                 } = snap;
 
-                if (Array.isArray(snapSessions)) {
-                    setSalesSessions(snapSessions);
-                }
-                if (Array.isArray(snapAllSessions)) {
-                    setAllSalesSessions(snapAllSessions);
-                }
+                // if (Array.isArray(snapSessions)) {
+                //     setSalesSessions(snapSessions);
+                // }
+                // if (Array.isArray(snapAllSessions)) {
+                //     setAllSalesSessions(snapAllSessions);
+                // }
                 if (Array.isArray(snapTables)) {
                     setTables(snapTables);
                 }
                 if (Array.isArray(snapAllSessionOrders)) {
                     setAllSessionOrders(snapAllSessionOrders);
                 }
-                if (Array.isArray(snapAllOrders)) {
-                    setAllOrders(snapAllOrders);
-                }
+                // if (Array.isArray(snapAllOrders)) {
+                //     setAllOrders(snapAllOrders);
+                // }
                 if (Array.isArray(snapProducts) && !products.length) {
                     setProducts(snapProducts);
                 }
-                if (snapCurSession) {
-                    setCurrSession(snapCurSession);
-                }
+                // if (snapCurSession) {
+                //     setCurrSession(snapCurSession);
+                // }
                 if (Array.isArray(snapOrderTables) && !orderTables.length) {
                     setOrderTables(snapOrderTables);
                 }
@@ -861,7 +861,7 @@ const PointOfSales = () => {
         }
         //abort previous request if it exists
         if (orderControllerRef.current) {
-            orderControllerRef.current.abort();            
+            // orderControllerRef.current.abort();            
         }
         // if (productControllerRef.current) {
         //     productControllerRef.current.abort();
