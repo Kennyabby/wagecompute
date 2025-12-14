@@ -280,6 +280,7 @@ function App() {
               getAllSessions(company)
             }
             fetchSessions(company , "delivery", companyRecord)
+            getPosOrders(company)
             fetchTables(company)
             Navigate('/delivery')
           }
@@ -288,6 +289,7 @@ function App() {
               getAllSessions(company)
             }
             fetchSessions(company , "sales", companyRecord)
+            getPosOrders(company)
             fetchTables(company)
             Navigate('/pos')
           }  
@@ -828,6 +830,7 @@ function App() {
       //   setAllDeliverySessions(cachedAllDeliverySession)
       // }
     }
+    // console.log('fetching sessions...')
     const sessionsResponse = await fetchServer("POST", {
       database: company,
       collection: "POSSessions",
@@ -835,15 +838,19 @@ function App() {
     }, "getDocsDetails", SERVER);
 
     if(!sessionsResponse.err){
+      // console.log('no errors occured')
       if (sessionsResponse.mess){
         setIsLive(false)
         // setLiveErrorMessages(sessionsResponse.mess)
       }else if(Array.isArray(sessionsResponse.record)){
+        // console.log('sessions fetched successfully')
         const thisSessions = sessionsResponse.record.filter((session)=>{
           return session.employee_id === companyRecord?.emailid
         })
         // setSessions(thisSessions)
+        // console.log('setting the sessions')
         if (type === 'sales'){
+          console.log(thisSessions)
           setSalesSessions(thisSessions)
           setCached(company, 'salesSessions', thisSessions, companyRecord?.emailid)
           setAllSalesSessions(sessionsResponse.record)
