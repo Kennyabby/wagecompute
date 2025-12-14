@@ -829,55 +829,57 @@ function App() {
     //     setAllDeliverySessions(cachedAllDeliverySession)
     //   }
     // }
-    console.log('fetching sessions for',type)
-    const sessionsResponse = await fetchServer("POST", {
-      database: company,
-      collection: "POSSessions",
-      prop: {type:type, employee_id: companyRecord.emailid}
-    }, "getDocsDetails", SERVER);
-
-    if(!sessionsResponse.err){
-      console.log('no errors occured')
-      if (sessionsResponse.mess){
-        setIsLive(false)
-        // setLiveErrorMessages(sessionsResponse.mess)
-      }else if(Array.isArray(sessionsResponse.record)){
-        console.log('sessions fetched successfully')
-        const thisSessions = sessionsResponse.record.filter((session)=>{
-          return session.employee_id === companyRecord?.emailid
-        })
-        // setSessions(thisSessions)
-        console.log('setting the sessions for', type)
-        console.log('for',type,':', thisSessions)
-        if (type === 'sales'){
-          setSalesSessions(thisSessions)
-          setCached(company, 'salesSessions', thisSessions, companyRecord?.emailid)
-          
-        }
-        if (type === 'delivery'){
-          setDeliverySessions(thisSessions)
-          // console.log('line 854, on Mount:',thisSessions.find(session=>session.active))
-          setCached(company, 'deliverySessions', thisSessions, companyRecord?.emailid)         
-        }
-
-        // Mirror all sessions into IndexedDB sessions store for Offline Debug Panel
-        try {
-          if (company && companyRecord?.emailid && Array.isArray(sessionsResponse.record)) {
-            for (const s of sessionsResponse.record) {
-              if (s && s.start != null) {
-                await putSession(company, companyRecord.emailid, s);
+    // console.log('fetching sessions for',type)
+    if (company && companyRecord?.emailid){
+      const sessionsResponse = await fetchServer("POST", {
+        database: company,
+        collection: "POSSessions",
+        prop: {type:type, employee_id: companyRecord.emailid}
+      }, "getDocsDetails", SERVER);
+  
+      if(!sessionsResponse.err){
+        // console.log('no errors occured')
+        if (sessionsResponse.mess){
+          setIsLive(false)
+          // setLiveErrorMessages(sessionsResponse.mess)
+        }else if(Array.isArray(sessionsResponse.record)){
+          // console.log('sessions fetched successfully')
+          const thisSessions = sessionsResponse.record.filter((session)=>{
+            return session.employee_id === companyRecord?.emailid
+          })
+          // setSessions(thisSessions)
+          // console.log('setting the sessions for', type)
+          // console.log('for',type,':', thisSessions)
+          if (type === 'sales'){
+            setSalesSessions(thisSessions)
+            setCached(company, 'salesSessions', thisSessions, companyRecord?.emailid)
+            
+          }
+          if (type === 'delivery'){
+            setDeliverySessions(thisSessions)
+            // console.log('line 854, on Mount:',thisSessions.find(session=>session.active))
+            setCached(company, 'deliverySessions', thisSessions, companyRecord?.emailid)         
+          }
+  
+          // Mirror all sessions into IndexedDB sessions store for Offline Debug Panel
+          try {
+            if (company && companyRecord?.emailid && Array.isArray(sessionsResponse.record)) {
+              for (const s of sessionsResponse.record) {
+                if (s && s.start != null) {
+                  await putSession(company, companyRecord.emailid, s);
+                }
               }
             }
+          } catch (e) {
+            console.warn('fetchSessions: putSession failed', e);
           }
-        } catch (e) {
-          console.warn('fetchSessions: putSession failed', e);
         }
-      }
-    }else{
-      if (sessionsResponse.mess !== 'Request aborted'){
-        console.log(sessionsResponse.mess)
-        setIsLive(false)
-        setLiveErrorMessages('Slow Network. Check Connection')
+      }else{
+        if (sessionsResponse.mess !== 'Request aborted'){
+          console.log(sessionsResponse.mess)
+          setIsLive(false)
+          setLiveErrorMessages('Slow Network. Check Connection')
+        }
       }
     }
   }
