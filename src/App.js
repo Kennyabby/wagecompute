@@ -845,9 +845,7 @@ function App() {
           // setLiveErrorMessages(sessionsResponse.mess)
         }else if(Array.isArray(sessionsResponse.record)){
           // console.log('sessions fetched successfully')
-          const thisSessions = sessionsResponse.record.filter((session)=>{
-            return session.employee_id === companyRecord?.emailid
-          })
+          const thisSessions = sessionsResponse.record
           // setSessions(thisSessions)
           // console.log('setting the sessions for', type)
           // console.log('for',type,':', thisSessions)
@@ -899,13 +897,14 @@ function App() {
             setAllDeliverySessions(cachedAllDeliverySession)
           }
         }
+
         const resp = await fetchServer("POST", {
           database: company,
           collection: "POSSessions", 
           prop: {type:'delivery'} 
         }, "getDocsDetails", SERVER)
         if (resp.record && Array.isArray(resp.record)){
-          // console.log('fetched deliveries')
+          // console.log('fetched deliveries', resp.record)
           setAllDeliverySessions(resp.record)
           setCached(company, 'allDeliverySessions', resp.record, companyRecord?.emailid)                            
         }
@@ -915,8 +914,9 @@ function App() {
           collection: "POSSessions", 
           prop: {type:'sales'} 
         }, "getDocsDetails", SERVER)
+
         if (resp1.record && Array.isArray(resp1.record)){
-          // console.log('fetched sales')
+          // console.log('fetched sales', resp1.record)
           setAllSalesSessions(resp1.record)
           setAllSessions(resp1.record)            
           setCached(company, 'allSalesSessions', resp1.record, companyRecord?.emailid)                           
@@ -1098,8 +1098,8 @@ function App() {
       if (resps.err) {
           console.log(resps.mess)
           setViewAccess('405')
-      } else {
-          if (!resps.mess){
+      } else {          
+          if (!resps.mess && Array.isArray(resps.record)){
             setViewAccess(resps.record[0].pauseDB)
             if (resps.record[0].pauseDB){
               window.localStorage.removeItem('ps-vw')
@@ -1113,230 +1113,238 @@ function App() {
   }
 
   const obtainPaymentReceipts = async ()=>{
-    const cached = await getCached(company, 'paymentReceipts', companyRecord?.emailid)
-    if (cached) {
-      setPaymentReceipts(cached)
-    }
-    const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4', 'moniepoint5', 'moniepoint6','cash']    
-    const recoveryReceipts = []
-    const accommodationReceipts = []
-    const posOrderReceipts = []
-    const dateBoundary = new Date('2025-07-01').toISOString().slice(0,10)
-
-    let paymentReceipts = []
-    if (sales){
-      sales?.forEach((sale)=>{
-        (sale.recoveryList || []).forEach((recovery)=>{
-          if (paymentPoints.includes(recovery.recoveryPoint)){
-            let dateVar = new Date(recovery.recoveryDate).toISOString().slice(0,10) 
+    if (company && companyRecord?.emailid){      
+      const cached = await getCached(company, 'paymentReceipts', companyRecord?.emailid)
+      if (cached) {
+        setPaymentReceipts(cached)
+      }
+      const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4', 'moniepoint5', 'moniepoint6','cash']    
+      const recoveryReceipts = []
+      const accommodationReceipts = []
+      const posOrderReceipts = []
+      const dateBoundary = new Date('2025-07-01').toISOString().slice(0,10)
+  
+      let paymentReceipts = []
+      if (sales){
+        sales?.forEach((sale)=>{
+          (sale.recoveryList || []).forEach((recovery)=>{
+            if (paymentPoints.includes(recovery.recoveryPoint)){
+              let dateVar = new Date(recovery.recoveryDate).toISOString().slice(0,10) 
+              if (dateVar >= dateBoundary){
+                recoveryReceipts.push({
+                  paymentModule: 'recovery',
+                  paymentPoint: recovery.recoveryPoint,
+                  paymentAmount: Number(recovery.recoveryAmount),
+                  paymentReceipt: Number(recovery.recoveryReceipt) || recovery.recoveryReceipt,
+                  paymentFor: `For ${sale.postingDate} Debt`,
+                  paymentDate: recovery.recoveryDate,
+                  paymentHandler: recovery.recoveryEmployeeId,
+                  paymentModuleRef: sale.createdAt,
+                  paymentApprover: 'Default'
+                })
+              }
+            }
+          })
+        })
+      }
+      if (accommodations){
+        accommodations?.forEach((acc)=>{
+          let dateVar = new Date(acc.postingDate).toISOString().slice(0,10)
+          if (paymentPoints.includes(acc.payPoint)){
             if (dateVar >= dateBoundary){
-              recoveryReceipts.push({
-                paymentModule: 'recovery',
-                paymentPoint: recovery.recoveryPoint,
-                paymentAmount: Number(recovery.recoveryAmount),
-                paymentReceipt: Number(recovery.recoveryReceipt) || recovery.recoveryReceipt,
-                paymentFor: `For ${sale.postingDate} Debt`,
-                paymentDate: recovery.recoveryDate,
-                paymentHandler: recovery.recoveryEmployeeId,
-                paymentModuleRef: sale.createdAt,
+              accommodationReceipts.push({
+                paymentModule: 'accommodation',
+                paymentPoint: acc.payPoint,
+                paymentAmount: Number(acc.paymentAmount),
+                paymentReceipt: Number(acc.paymentReceipt) || acc.paymentReceipt,
+                paymentFor: `For Room ${acc.roomNo}`,
+                paymentDate: acc.postingDate,
+                paymentHandler: acc.employeeId,
+                paymentModuleRef: acc.createdAt,
                 paymentApprover: 'Default'
               })
             }
           }
         })
-      })
-    }
-    if (accommodations){
-      accommodations?.forEach((acc)=>{
-        let dateVar = new Date(acc.postingDate).toISOString().slice(0,10)
-        if (paymentPoints.includes(acc.payPoint)){
-          if (dateVar >= dateBoundary){
-            accommodationReceipts.push({
-              paymentModule: 'accommodation',
-              paymentPoint: acc.payPoint,
-              paymentAmount: Number(acc.paymentAmount),
-              paymentReceipt: Number(acc.paymentReceipt) || acc.paymentReceipt,
-              paymentFor: `For Room ${acc.roomNo}`,
-              paymentDate: acc.postingDate,
-              paymentHandler: acc.employeeId,
-              paymentModuleRef: acc.createdAt,
-              paymentApprover: 'Default'
-            })
-          }
-        }
-      })
-    }
-
-    if (posOrders && allSessions){
-      posOrders?.forEach((order)=>{
-        if (order.salesPosts){
-          Object.keys(order.salesPosts).forEach((payPoint)=>{
-            if (paymentPoints.includes(payPoint)){
-              let dateVar = new Date(order.createdAt).toISOString().split('T')[0]
-              if(dateVar >= dateBoundary) {
-                const location = order.salesPosts[payPoint]
-                const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]
-                const amount = Number(order[payPoint])
-                const session = allSessions?.find(session => (session.start === order.sessionId))
-                const sessionApprover = session?.endedby || 'Active Session'
-                posOrderReceipts.push({
-                  paymentModule: `POS Order-${location}`,
-                  paymentPoint: payPoint,
-                  paymentAmount: amount,
-                  paymentReceipt: Number(receiptNo) || receiptNo,
-                  paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
-                  paymentTable: order.tableId,
-                  paymentOrder: order.orderNumber,
-                  paymentDate: dateVar,
-                  paymentHandler: order.handlerId,
-                  paymentModuleRef: order.createdAt,
-                  paymentApprover: sessionApprover
-                })
+      }
+  
+      if (posOrders && allSessions){
+        posOrders?.forEach((order)=>{
+          if (order.salesPosts){
+            Object.keys(order.salesPosts).forEach((payPoint)=>{
+              if (paymentPoints.includes(payPoint)){
+                let dateVar = new Date(order.createdAt).toISOString().split('T')[0]
+                if(dateVar >= dateBoundary) {
+                  const location = order.salesPosts[payPoint]
+                  const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]
+                  const amount = Number(order[payPoint])
+                  const session = allSessions?.find(session => (session.start === order.sessionId))
+                  const sessionApprover = session?.endedby || 'Active Session'
+                  posOrderReceipts.push({
+                    paymentModule: `POS Order-${location}`,
+                    paymentPoint: payPoint,
+                    paymentAmount: amount,
+                    paymentReceipt: Number(receiptNo) || receiptNo,
+                    paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
+                    paymentTable: order.tableId,
+                    paymentOrder: order.orderNumber,
+                    paymentDate: dateVar,
+                    paymentHandler: order.handlerId,
+                    paymentModuleRef: order.createdAt,
+                    paymentApprover: sessionApprover
+                  })
+                }
               }
-            }
-          })
-        } 
-      })
+            })
+          } 
+        })
+      }
+  
+      paymentReceipts = [
+        ...recoveryReceipts, 
+        ...accommodationReceipts, 
+        ...posOrderReceipts
+      ]
+      setPaymentReceipts(paymentReceipts)
+      setCached(company, 'paymentReceipts', paymentReceipts, companyRecord?.emailid)
     }
-
-    paymentReceipts = [
-      ...recoveryReceipts, 
-      ...accommodationReceipts, 
-      ...posOrderReceipts
-    ]
-    setPaymentReceipts(paymentReceipts)
-    setCached(company, 'paymentReceipts', paymentReceipts, companyRecord?.emailid)
   }
   
   const fetchProfiles = async (company) => {
-    const cached = await getCached(company, 'profiles', companyRecord?.emailid);
-    if (cached) {
-      setProfiles(cached);
-    }
-    const resps = await fetchServer("POST", {
-        database: company,
-        collection: "Profile",
-        prop: {'verified': true}
-    }, "getDocsDetails", SERVER)
-    if (resps.err) {
-        console.log(resps.mess)
-    } else {
-        setProfiles(resps.record)
-        setCached(company, 'profiles', resps.record, companyRecord?.emailid)
+    if (company && companyRecord?.emailid){
+      const cached = await getCached(company, 'profiles', companyRecord?.emailid);
+      if (cached && Array.isArray(cached)) {
+        setProfiles(cached);
+      }
+      const resps = await fetchServer("POST", {
+          database: company,
+          collection: "Profile",
+          prop: {'verified': true}
+      }, "getDocsDetails", SERVER)
+      if (resps.err) {
+          console.log(resps.mess)
+      } else if(Array.isArray(resps.record)){
+          setProfiles(resps.record)
+          setCached(company, 'profiles', resps.record, companyRecord?.emailid)
+      }
     }
   }
   
   const fetchDBProfiles = async (company) => {
-    const cached = await getCached(company, 'dbProfiles', companyRecord?.emailid);
-    if (cached) {
-      setDBProfiles(cached);
-    }
-    const resps = await fetchServer("POST", {
-        database: genDb,
-        collection: "Profiles",
-        prop: {'db': company}
-    }, "getDocsDetails", SERVER)
-    if (resps.err) {
-        console.log(resps.mess)
-    } else {
-        setDBProfiles(resps.record)
-        setCached(company, 'dbProfiles', resps.record, companyRecord?.emailid)
+    if (company && companyRecord?.emailid){
+      const cached = await getCached(company, 'dbProfiles', companyRecord?.emailid);
+      if (cached && Array.isArray(cached)) {
+        setDBProfiles(cached);
+      }
+      const resps = await fetchServer("POST", {
+          database: genDb,
+          collection: "Profiles",
+          prop: {'db': company}
+      }, "getDocsDetails", SERVER)
+      if (resps.err) {
+          console.log(resps.mess)
+      } else if(Array.isArray(resps.record)){
+          setDBProfiles(resps.record)
+          setCached(company, 'dbProfiles', resps.record, companyRecord?.emailid)
+      }
     }
   }
 
   const getChartOfAccounts = async (company) => {
-    const cached = await getCached(company, 'chartOfAccounts', companyRecord?.emailid);
-    if (cached) {
-      setChartOfAccounts(cached);
-    }
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "ChartOfAccounts", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setChartOfAccounts(resp.record)
-      setCached(company, 'chartOfAccounts', resp.record, companyRecord?.emailid)
+    if (company && companyRecord?.emailid){
+      const cached = await getCached(company, 'chartOfAccounts', companyRecord?.emailid);
+      if (cached && Array.isArray(cached)) {
+        setChartOfAccounts(cached);
+      }
+      const resp = await fetchServer("POST", {
+        database: company,
+        collection: "ChartOfAccounts", 
+        prop: {} 
+      }, "getDocsDetails", SERVER)
+      if (Array.isArray(resp.record)){
+        setChartOfAccounts(resp.record)
+        setCached(company, 'chartOfAccounts', resp.record, companyRecord?.emailid)
+      }
     }
   };
 
   const getAllSessions = async (company) => {
-    const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
-    if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-      setAllSessions(cached);
-    }
-    const resp = await fetchServer("POST", {
-      database: company,
-      collection: "POSSessions", 
-      prop: {} 
-    }, "getDocsDetails", SERVER)
-    if (resp.record && Array.isArray(resp.record)){
-      setAllSessions(resp.record)
-      setCached(company, 'allSessions', resp.record, companyRecord?.emailid)
-      return resp.record
+    if (company && companyRecord?.emailId){
+      const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
+      if (cached && Array.isArray(cached) && companyRecord?.emailid) {
+        setAllSessions(cached);
+      }
+      const resp = await fetchServer("POST", {
+        database: company,
+        collection: "POSSessions", 
+        prop: {} 
+      }, "getDocsDetails", SERVER)
+      if (resp.record && Array.isArray(resp.record)){
+        setAllSessions(resp.record)
+        setCached(company, 'allSessions', resp.record, companyRecord?.emailid)
+        return resp.record
+      }
     }
   }
 
   const getPosOrders = async (company, option, filter) => {
-    const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
-    if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-      setPosOrders(cached);
-    }
-    let prop = {}
-    let filterDate = new Date('01/01/1970').getTime()
-    if (filter?.start){
-      filterDate = filter.start
-    }
-    const sessionStart = getSessionStart(filterDate)
-    const sessionEnd = getSessionEnd(filterDate)
-    const isPosAdmin = companyRecord?.status === 'admin' ||
-      companyRecord?.permissions.includes('access_pos_sessions')
-    const isDeliveryAdmin = companyRecord?.status === 'admin' ||
-      companyRecord?.permissions.includes('access_delivery_sessions')
-    switch (option){
-      case 'tableOrders':
-        prop = {
-          ...(!isPosAdmin && filter.type === 'sales' && {sessionId: filter.sessionId}),          
-          tableId: filter.tableId,
-          ...(!isPosAdmin && filter.type === 'sales' && {handlerId: filter.handlerId}),
-          ...((filter.type === 'sales' || (filter.type === 'delivery' && filter.wrh!=='kitchen')) && {wrh: filter.wrh}),
-          ...(((isPosAdmin && filter.type === 'sales') || filter.type === 'delivery') && {createdAt: {$gte: sessionStart, $lte: sessionEnd}})
-        }
-    }
-    if (option){
-      // console.log('fetching pos orders with...', prop)
-      const resp = await fetchServer("POST", {
-        database: company,
-        collection: "Orders",
-        prop: {...prop}
-      }, "getDocsDetails", SERVER)
-      
-      if (resp.record && Array.isArray(resp.record)){
-        // console.log("allOrders list:", resp.record)
-        // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
-        setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
-        const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
-        if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-          setPosOrders(cached);
-        }
+    if (company && companyRecord?.emailid){
+      const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
+      if (cached && Array.isArray(cached) && companyRecord?.emailid) {
+        setPosOrders(cached);
       }
-      return resp
-      // return {record: []}
-    }else{
-      const resp = await fetchServer("POST", {
-        database: company,
-        collection: "Orders",
-        prop: {}
-      }, "getDocsDetails", SERVER)
-      
-      if (resp.record && Array.isArray(resp.record)){
-        setPosOrders(resp.record);
-        // console.log("allOrders list:", resp.record)
-        // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
-        setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
-        const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
-        if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-          setPosOrders(cached);
+      let prop = {}
+      let filterDate = new Date('01/01/1970').getTime()
+      if (filter?.start){
+        filterDate = filter.start
+      }
+      const sessionStart = getSessionStart(filterDate)
+      const sessionEnd = getSessionEnd(filterDate)
+      const isPosAdmin = companyRecord?.status === 'admin' ||
+        companyRecord?.permissions.includes('access_pos_sessions')
+      const isDeliveryAdmin = companyRecord?.status === 'admin' ||
+        companyRecord?.permissions.includes('access_delivery_sessions')
+      switch (option){
+        case 'tableOrders':
+          prop = {
+            ...(!isPosAdmin && filter.type === 'sales' && {sessionId: filter.sessionId}),          
+            tableId: filter.tableId,
+            ...(!isPosAdmin && filter.type === 'sales' && {handlerId: filter.handlerId}),
+            ...((filter.type === 'sales' || (filter.type === 'delivery' && filter.wrh!=='kitchen')) && {wrh: filter.wrh}),
+            ...(((isPosAdmin && filter.type === 'sales') || filter.type === 'delivery') && {createdAt: {$gte: sessionStart, $lte: sessionEnd}})
+          }
+      }
+      if (option){
+        // console.log('fetching pos orders with...', prop)
+        const resp = await fetchServer("POST", {
+          database: company,
+          collection: "Orders",
+          prop: {...prop}
+        }, "getDocsDetails", SERVER)
+        
+        if (resp.record && Array.isArray(resp.record)){
+          // console.log("allOrders list:", resp.record)
+          // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
+          setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
+          const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
+          if (cached && Array.isArray(cached) && companyRecord?.emailid) {
+            setPosOrders(cached);
+          }
+        }
+        return resp
+        // return {record: []}
+      }else{
+        const resp = await fetchServer("POST", {
+          database: company,
+          collection: "Orders",
+          prop: {}
+        }, "getDocsDetails", SERVER)
+        
+        if (resp.record && Array.isArray(resp.record)){
+          setPosOrders(resp.record);
+          // console.log("allOrders list:", resp.record)
+          // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
+          setCached(company, 'posOrders', resp.record, companyRecord?.emailid)          
         }
       }
     }
