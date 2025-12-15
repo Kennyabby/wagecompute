@@ -198,12 +198,49 @@ const Delivery = () => {
             }
         })();
 
+        
         return () => {
             cancelled = true;
         };
     }, [company, companyRecord?.emailid]);
     
-    
+    // Hydrate orders, sessions, and tables from IndexedDB on mount
+    useEffect(() => {
+        if (!company || !companyRecord?.emailid) return;
+
+        (async () => {
+            try {
+                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+                    loadAllOrders(company, companyRecord.emailid),
+                    loadAllSessionsLocal(company, companyRecord.emailid),
+                    loadAllTables(company, companyRecord.emailid),
+                ]);
+
+                if (Array.isArray(orders) && orders?.length) {
+                    setAllSessionOrders(orders);
+                }
+
+                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+                    const localDeliverySessions = sessionsLocal.filter(s => s.type === 'delivery');
+                    setAllDeliverySessions(localDeliverySessions);
+                    setAllSessions(localDeliverySessions);
+
+                    const localCurDeliverySessions = localDeliverySessions.filter(s => s.employee_id === companyRecord?.emailid)
+                    setDeliverySessions(localCurDeliverySessions);                    
+
+                    // Immediately derive curSession from locally cached sales sessions
+                    // UpdateSessionState(localSalesSessions, false);
+                }
+
+                if (Array.isArray(tablesLocal) && tablesLocal.length) {
+                    setTables(tablesLocal);
+                }
+            } catch (e) {
+                console.warn('POS hydrateFromIndexedDb failed', e);
+            }
+        })();
+    }, [company, companyRecord?.emailid]);
+
     useEffect(()=>{
         loadTableData()
         if (window.localStorage.getItem('pos-wrh')){
@@ -965,6 +1002,7 @@ const Delivery = () => {
             if (!response.err && Array.isArray(filteredOrders)) {                                
                 if (!localOrders.length){
                     if (filteredOrders.length) {
+                        // console.log('my table', currentTable)
                         // console.log(table?.i_d, filteredOrders[0]?.tableId)
                         if (table?.i_d === filteredOrders[0]?.tableId){
                             setCurrentTable(table);
@@ -978,19 +1016,19 @@ const Delivery = () => {
                             } else {
                                 createNewOrder(table);
                             }
+                            if (company && companyRecord?.emailid) {
+                                for (const o of filteredOrders) {
+                                    if (o && o.orderNumber !== null) {
+                                        await putOrder(company, companyRecord.emailid, o);
+                                    }
+                                }
+                            }
                             // setActiveScreen('order');
                             setAlertState('info');
                             setAlert('Loaded table orders from server...');
                             setAlertTimeout(500);
                             // Mirror into IndexedDB orders store
-                            getPosOrders(company, 'tableOrders', orderFilter)
-                            if (company && companyRecord?.emailid) {
-                                for (const o of filteredOrders) {
-                                    if (o && o.orderNumber != null) {
-                                        await putOrder(company, companyRecord.emailid, o);
-                                    }
-                                }
-                            }
+                            getPosOrders(company, 'tableOrders', orderFilter)                            
                         }
                     } else {
                         // createNewOrder(table);
