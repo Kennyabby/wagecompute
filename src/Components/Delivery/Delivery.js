@@ -682,7 +682,7 @@ const Delivery = () => {
                 if (sessions.length){
                     let oldSessions = sessions.sort((a, b) => a.start - b.start)
                     oldSession = oldSessions[sessions.length - 1]
-                    console.log ('line 809','oldSession:',new Date(oldSession?.start), oldSessions)
+                    // console.log ('line 809','oldSession:',new Date(oldSession?.start), oldSessions)
                     setCurrSession(oldSession)
                     setSessionEnded(true)
                     setOpeningCash((Number(oldSession.openingCash || 0) + Number(oldSession.cash || 0) - Number(oldSession.totalCashChange || 0)))
@@ -965,7 +965,7 @@ const Delivery = () => {
             if (!response.err && Array.isArray(filteredOrders)) {                                
                 if (!localOrders.length){
                     if (filteredOrders.length) {
-                        console.log(table?.i_d, filteredOrders[0]?.tableId)
+                        // console.log(table?.i_d, filteredOrders[0]?.tableId)
                         if (table?.i_d === filteredOrders[0]?.tableId){
                             setCurrentTable(table);
                             setTableOrders(filteredOrders);
