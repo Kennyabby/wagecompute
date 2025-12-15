@@ -128,86 +128,87 @@ const PointOfSales = () => {
         handleSettingsUpdate();
     }, [settings]);
 
-    useEffect(() => {
-        if (!company || !companyRecord?.emailid) return;
+    // useEffect(() => {
+    //     if (!company || !companyRecord?.emailid) return;
 
-        let cancelled = false;
-        (async () => {
-            const snap = await loadPosSnapshot(company, companyRecord.emailid);
-            if (!snap || cancelled) return;
+    //     let cancelled = false;
+    //     (async () => {
+    //         const snap = await loadPosSnapshot(company, companyRecord.emailid);
+    //         if (!snap || cancelled) return;
 
-            try {
-                const {
-                    salesSessions: snapSessions,
-                    allSessions: snapAllSessions,
-                    tables: snapTables,
-                    allSessionOrders: snapAllSessionOrders,
-                    allOrders: snapAllOrders,
-                    products: snapProducts,
-                    curSession: snapCurSession,
-                    orderTables: snapOrderTables,                    
-                } = snap;
+    //         try {
+    //             const {
+    //                 salesSessions: snapSessions,
+    //                 allSessions: snapAllSessions,
+    //                 tables: snapTables,
+    //                 allSessionOrders: snapAllSessionOrders,
+    //                 allOrders: snapAllOrders,
+    //                 products: snapProducts,
+    //                 curSession: snapCurSession,
+    //                 orderTables: snapOrderTables,                    
+    //             } = snap;
 
-                // if (Array.isArray(snapSessions)) {
-                //     setSalesSessions(snapSessions);
-                // }
-                // if (Array.isArray(snapAllSessions)) {
-                //     setAllSalesSessions(snapAllSessions);
-                // }
-                if (Array.isArray(snapTables)) {
-                    setTables(snapTables);
-                }
-                if (Array.isArray(snapAllSessionOrders)) {
-                    setAllSessionOrders(snapAllSessionOrders);
-                }
-                // if (Array.isArray(snapAllOrders)) {
-                //     setAllOrders(snapAllOrders);
-                // }
-                if (Array.isArray(snapProducts) && !products.length) {
-                    setProducts(snapProducts);
-                }
-                // if (snapCurSession) {
-                //     setCurrSession(snapCurSession);
-                // }
-                if (Array.isArray(snapOrderTables) && !orderTables.length) {
-                    setOrderTables(snapOrderTables);
-                }
+    //             // if (Array.isArray(snapSessions)) {
+    //             //     setSalesSessions(snapSessions);
+    //             // }
 
-                // Also mirror snapshot into entity stores so Offline Debug panel sees data immediately
-                // Only write records that have the proper keyPath to avoid IndexedDB DataError
-                if (company && companyRecord?.emailid) {
-                    if (Array.isArray(snapAllSessions)) {
-                        for (const s of snapAllSessions) {
-                            if (s && s.start != null) {
-                                await putSession(company, companyRecord.emailid, s);
-                            }
-                        }
-                    }
-                    if (Array.isArray(snapTables)) {
-                        for (const t of snapTables) {
-                            if (t && t.i_d != null) {
-                                await putTable(company, companyRecord.emailid, t);
-                            }
-                        }
-                    }
-                    if (Array.isArray(snapAllOrders)) {
-                        for (const o of snapAllOrders) {
-                            if (o && o.orderNumber != null) {
-                                await putOrder(company, companyRecord.emailid, o);
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                // Fail silently; server fetch will still run.
-                console.warn('POS snapshot hydrate failed', e);
-            }
-        })();
+    //             // if (Array.isArray(snapAllSessions)) {
+    //             //     setAllSalesSessions(snapAllSessions);
+    //             // }
+    //             // if (Array.isArray(snapTables)) {
+    //             //     setTables(snapTables);
+    //             // }
+    //             // if (Array.isArray(snapAllSessionOrders)) {
+    //             //     setAllSessionOrders(snapAllSessionOrders);
+    //             // }
+    //             // if (Array.isArray(snapAllOrders)) {
+    //             //     setAllOrders(snapAllOrders);
+    //             // }
+    //             // if (Array.isArray(snapProducts) && !products.length) {
+    //             //     setProducts(snapProducts);
+    //             // }
+    //             // if (snapCurSession) {
+    //             //     setCurrSession(snapCurSession);
+    //             // }
+    //             // if (Array.isArray(snapOrderTables) && !orderTables.length) {
+    //             //     setOrderTables(snapOrderTables);
+    //             // }
 
-        return () => {
-            cancelled = true;
-        };
-    }, [company, companyRecord?.emailid]);
+    //             // Also mirror snapshot into entity stores so Offline Debug panel sees data immediately
+    //             // Only write records that have the proper keyPath to avoid IndexedDB DataError
+    //             // if (company && companyRecord?.emailid) {
+    //             //     if (Array.isArray(snapAllSessions)) {
+    //             //         for (const s of snapAllSessions) {
+    //             //             if (s && s.start != null) {
+    //             //                 await putSession(company, companyRecord.emailid, s);
+    //             //             }
+    //             //         }
+    //             //     }
+    //             //     if (Array.isArray(snapTables)) {
+    //             //         for (const t of snapTables) {
+    //             //             if (t && t.i_d != null) {
+    //             //                 await putTable(company, companyRecord.emailid, t);
+    //             //             }
+    //             //         }
+    //             //     }
+    //             //     if (Array.isArray(snapAllOrders)) {
+    //             //         for (const o of snapAllOrders) {
+    //             //             if (o && o.orderNumber != null) {
+    //             //                 await putOrder(company, companyRecord.emailid, o);
+    //             //             }
+    //             //         }
+    //             //     }
+    //             // }
+    //         // } catch (e) {
+    //         //     // Fail silently; server fetch will still run.
+    //         //     console.warn('POS snapshot hydrate failed', e);
+    //         // }
+    //     })();
+
+    //     return () => {
+    //         cancelled = true;
+    //     };
+    // }, [company, companyRecord?.emailid]);
     
     useEffect(()=>{
         loadTableData()
@@ -239,42 +240,42 @@ const PointOfSales = () => {
     },[wrhs])
     
     // Hydrate orders, sessions, and tables from IndexedDB on mount
-    useEffect(() => {
-        if (!company || !companyRecord?.emailid) return;
+    // useEffect(() => {
+    //     if (!company || !companyRecord?.emailid) return;
 
-        (async () => {
-            try {
-                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-                    loadAllOrders(company, companyRecord.emailid),
-                    loadAllSessionsLocal(company, companyRecord.emailid),
-                    loadAllTables(company, companyRecord.emailid),
-                ]);
+    //     (async () => {
+    //         try {
+    //             const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+    //                 loadAllOrders(company, companyRecord.emailid),
+    //                 loadAllSessionsLocal(company, companyRecord.emailid),
+    //                 loadAllTables(company, companyRecord.emailid),
+    //             ]);
 
-                if (Array.isArray(orders) && orders?.length) {
-                    if (![null, undefined] === orders){
-                        setAllOrders(orders);
-                        setAllSessionOrders(orders);
-                    }
-                }
+    //             if (Array.isArray(orders) && orders?.length) {
+    //                 if (![null, undefined] === orders){
+    //                     setAllOrders(orders);
+    //                     setAllSessionOrders(orders);
+    //                 }
+    //             }
 
-                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-                    const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
-                    setSessions(localSalesSessions);
-                    setAllSalesSessions(localSalesSessions);
-                    setAllSessions(sessionsLocal);
+    //             if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+    //                 const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
+    //                 setSessions(localSalesSessions);
+    //                 setAllSalesSessions(localSalesSessions);
+    //                 setAllSessions(sessionsLocal);
 
-                    // Immediately derive curSession from locally cached sales sessions
-                    UpdateSessionState(localSalesSessions, false);
-                }
+    //                 // Immediately derive curSession from locally cached sales sessions
+    //                 UpdateSessionState(localSalesSessions, false);
+    //             }
 
-                if (Array.isArray(tablesLocal) && tablesLocal.length) {
-                    setTables(tablesLocal);
-                }
-            } catch (e) {
-                console.warn('POS hydrateFromIndexedDb failed', e);
-            }
-        })();
-    }, [company, companyRecord?.emailid]);
+    //             if (Array.isArray(tablesLocal) && tablesLocal.length) {
+    //                 setTables(tablesLocal);
+    //             }
+    //         } catch (e) {
+    //             console.warn('POS hydrateFromIndexedDb failed', e);
+    //         }
+    //     })();
+    // }, [company, companyRecord?.emailid]);
 
     useEffect(()=>{
         // console.log(salesSessions)
@@ -324,20 +325,20 @@ const PointOfSales = () => {
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
-    // useEffect(()=>{
-    //     var cmp_val = window.localStorage.getItem('sessn-cmp')        
-    //     // loadInitialData()
-    //     getPosOrders(company)
-    //     const intervalId = setInterval(()=>{
-    //         if (cmp_val){
-    //             // Fetch tables
-    //             getPosOrders(company)
-    //             // Fetch products
-    //             // getProducts(cmp_val)
-    //         }
-    //     },60000)
-    //     return () => clearInterval(intervalId);
-    // },[window.localStorage.getItem('sessn-cmp')])
+    useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')        
+        // loadInitialData()
+        getPosOrders(company)
+        const intervalId = setInterval(()=>{
+            if (cmp_val){
+                // Fetch tables
+                getPosOrders(company)
+                // Fetch products
+                // getProducts(cmp_val)
+            }
+        },60000)
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
 
     useEffect(()=>{
         if (Array.isArray(posOrders) && companyRecord.emailid){
