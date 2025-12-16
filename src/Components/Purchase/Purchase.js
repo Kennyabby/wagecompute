@@ -71,10 +71,10 @@ const Purchase = ()=>{
         if(!products.length){
             getProducts(cmp_val)
         }
-        getApprovals(cmp_val)
-        getEmployees(cmp_val)
-        getPurchase(cmp_val)
-        getApprovals(cmp_val)
+        getApprovals(cmp_val, companyRecord)
+        getEmployees(cmp_val, companyRecord)
+        getPurchase(cmp_val, companyRecord)
+        getApprovals(cmp_val, companyRecord)
         if (products.length){
             if (!products[0]?.stockSummary){
                 getProductsStockReport(cmp_val, products)
@@ -86,9 +86,9 @@ const Purchase = ()=>{
                     getProductsWithStock(cmp_val, products)
                     getProductsStockReport(cmp_val, products)
             }
-            getApprovals(cmp_val)
-            getEmployees(cmp_val)
-            getPurchase(cmp_val)
+            getApprovals(cmp_val, companyRecord)
+            getEmployees(cmp_val, companyRecord)
+            getPurchase(cmp_val, companyRecord)
             
           }
         },120000)

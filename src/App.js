@@ -114,6 +114,7 @@ function App() {
   const [expenses, setExpenses] = useState([])
   const [rentals, setRentals] = useState([])
   const [company, setCompany] = useState(null)
+  const [loadedCurPath, setLoadedCurPath] = useState('')
   const [path, setPath] = useState('')
   const pathList = ['','login','profile','dashboard', 
     'employees','departments','positions','attendance','payroll','pos','delivery','sales','inventory','accommodations','purchase','expenses','reports','settings','test']
@@ -174,8 +175,8 @@ function App() {
   useEffect(()=>{
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     getViewAccess(hostDb)
-    getSettings(cmp_val)
-    getChartOfAccounts(cmp_val)
+    getSettings(cmp_val, companyRecord)
+    getChartOfAccounts(cmp_val, companyRecord)
     const intervalId = setInterval(()=>{
       if (cmp_val){
         setReloadCount((prevCount)=>{
@@ -240,6 +241,40 @@ function App() {
     }
   },[settings,changingSettings])
 
+  // On Fist Mount
+  useEffect(()=>{
+    if (company && companyRecord?.emailid && loadedCurPath){
+      getSettings(company)
+      getApprovals(company)
+      getEmployees(company)
+      getChartOfAccounts(company)
+      getAccommodations(company)
+      getSales(company)
+      getPosOrders({company: company, companyRecord: companyRecord})
+      if (companyRecord.status==='admin'){        
+        window.localStorage.removeItem('lgt-vw')
+        fetchProfiles(company)
+        getDepartments(company)
+        getPositions(company)
+        getCustomers(company)
+        fetchTables(company)
+        fetchSessions(company , "sales", companyRecord)
+        fetchSessions(company , "delivery", companyRecord)
+        fetchAllSessions({company: company, companyRecord: companyRecord})
+        //here
+        getProducts(company)
+        getRentals(company)
+        getPurchase(company)
+        getExpenses(company)
+        getAttendance(company)
+        Navigate('/' + loadedCurPath)
+        setTimeout(() => {
+          setLoadedCurPath('')
+        }, 500);
+      }
+    }
+  },[company, companyRecord, loadedCurPath])
+
   useEffect(()=>{
     if (companyRecord?.status !== 'admin'){
       if (enableBlockVal){
@@ -269,24 +304,26 @@ function App() {
             Navigate('/expenses')
           }
           if (companyRecord?.permissions.includes('inventory') ||
-            companyRecord?.permissions.includes('pos') ||
-            companyRecord?.permissions.includes('delivery')
+          companyRecord?.permissions.includes('pos') ||
+          companyRecord?.permissions.includes('delivery')
           ){            
             getProducts(company)
             Navigate('/inventory')
           }
           if (companyRecord?.permissions.includes('delivery')){
             if(companyRecord?.permissions.includes('access_delivery_sessions')){
-              fetchAllSessions(company)
+              fetchAllSessions({company, companyRecord})
             }
+            fetchProfiles(company)
             fetchSessions(company , "delivery", companyRecord)
             fetchTables(company)
             Navigate('/delivery')
           }
           if (companyRecord?.permissions.includes('pos')){
             if(companyRecord?.permissions.includes('access_pos_sessions')){
-              fetchAllSessions(company)
+              fetchAllSessions({company, companyRecord})
             }
+            fetchProfiles(company)
             fetchSessions(company , "sales", companyRecord)
             fetchTables(company)
             Navigate('/pos')
@@ -299,7 +336,7 @@ function App() {
           if (companyRecord?.permissions.includes('sales')){
             getAccommodations(company)
             getSales(company)
-            fetchAllSessions(company)
+            fetchAllSessions({company, companyRecord})
             fetchSessions(company , "sales", companyRecord)
             fetchSessions(company , "delivery", companyRecord)
             // getSales(company, 'first', saleFrom, saleTo, 10)
@@ -566,7 +603,7 @@ function App() {
             ...approvalState
         })
         if (resp.completed){
-            getApprovals(company)
+            getApprovals(company, companyRecord)
             setAlertState('success')
             setAlert('Approval Updated!')
             setAlertTimeout(5000)
@@ -641,7 +678,7 @@ function App() {
                 setAlertState('success')
                 setAlert('Approval Request Sent Successfully!')
                 setAlertTimeout(5000)
-                getApprovals(company)
+                getApprovals(company, companyRecord)
                 setCurApproval(approvalData)
                 return  true
             }else{
@@ -884,7 +921,7 @@ function App() {
   }
 
   // Fetch POS and delivery sessions
-  const fetchAllSessions = async (company, setState=null) => {
+  const fetchAllSessions = async ({company, setState, companyRecord}) => {
     if (!company) return;
     try {            
         if (company && companyRecord?.emailid){      
@@ -1052,39 +1089,16 @@ function App() {
           ['kitchen']: (resp.record.permissions.includes('delivery_kitchen') || resp.record.permissions.includes('all')),
         }
       })
-      getAccommodations(cmp_val)
-      getSettings(cmp_val)
-      getEmployees(cmp_val)
-      getSales(cmp_val)
-      getPosOrders(cmp_val)
-      getChartOfAccounts(cmp_val)
-      getApprovals(cmp_val)
-      if (resp.record.status==='admin'){        
-        window.localStorage.removeItem('lgt-vw')
-        fetchProfiles(cmp_val)
-        getDepartments(cmp_val)
-        getPositions(cmp_val)
-        getCustomers(cmp_val)
-        fetchTables(cmp_val)
-        fetchSessions(cmp_val , "sales", resp.record)
-        fetchSessions(cmp_val , "delivery", resp.record)
-        fetchAllSessions(cmp_val)
-        getProducts(cmp_val)
-        getRentals(cmp_val)
-        getPurchase(cmp_val)
-        getExpenses(cmp_val)
-        getAttendance(cmp_val)
-        Navigate('/'+currPath)
-      }else{
+      if (resp.record.status!=='admin'){
         setEditAccess((editAccess)=>{
           return {...editAccess, 
             employees: resp.record.permissions.includes('edit_employees')
           }
         })
-        getAccommodations(cmp_val)
         setRecoveryVal(resp.record.enableDebtRecovery)
         setEnableBlockVal(!resp.record.enableLogin)        
       }
+      setLoadedCurPath(currPath)
     }
   }
 
@@ -1252,8 +1266,10 @@ function App() {
 
   const getChartOfAccounts = async (company) => {
     if (company && companyRecord?.emailid){
+      console.log('getting chart of accounts...')
       const cached = await getCached(company, 'chartOfAccounts', companyRecord?.emailid);
       if (cached && Array.isArray(cached)) {
+        console.log('cached:',cached)
         setChartOfAccounts(cached);
       }
       const resp = await fetchServer("POST", {
@@ -1287,7 +1303,7 @@ function App() {
     }
   }
 
-  const getPosOrders = async (company, option, filter) => {
+  const getPosOrders = async ({company, option, filter, companyRecord}) => {
     if (company && companyRecord?.emailid){
       const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
       if (cached && Array.isArray(cached) && companyRecord?.emailid) {

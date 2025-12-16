@@ -224,20 +224,20 @@ const Sales = ()=>{
     
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
-        getApprovals(cmp_val)
-        getAllSessions(cmp_val)
-        getSales(cmp_val)
-        getEmployees(cmp_val)
-        getRentals(cmp_val)
-        getAccommodations(cmp_val)
+        getApprovals(cmp_val, companyRecord)
+        getAllSessions(cmp_val, companyRecord)
+        getSales(cmp_val, companyRecord)
+        getEmployees(cmp_val, companyRecord)
+        getRentals(cmp_val, companyRecord)
+        getAccommodations(cmp_val, companyRecord)
         const intervalId = setInterval(()=>{
             if (cmp_val){
-                getApprovals(cmp_val)
-                getSales(cmp_val)
-                getEmployees(cmp_val)
-                getRentals(cmp_val)
-                getAccommodations(cmp_val)
-                getAllSessions(cmp_val)
+                getApprovals(cmp_val, companyRecord)
+                getSales(cmp_val, companyRecord)
+                getEmployees(cmp_val, companyRecord)
+                getRentals(cmp_val, companyRecord)
+                getAccommodations(cmp_val, companyRecord)
+                getAllSessions(cmp_val, companyRecord)
             }
         },120000)
         return () => clearInterval(intervalId);
@@ -1421,7 +1421,7 @@ const Sales = ()=>{
             }else{
                 setSales(newSales)
                 setCurApproval(null)
-                getApprovals(company)                
+                getApprovals(company, companyRecord)                
                 setKitchenRecords([])
                 setCurSale(newSale)
                 setCurSaleDate(newSale.postingDate)
@@ -2025,7 +2025,7 @@ const Sales = ()=>{
             setIsView(true)
             setRentalFields({...newRental})
             getRentals(company)
-            getApprovals(company)
+            getApprovals(company, companyRecord)
             setAlertState('success')
             setAlert('Rentals Posted Successfully!')
             setAlertTimeout(5000)
@@ -2126,7 +2126,7 @@ const Sales = ()=>{
             if (resp.updated){
                 setUploadingReceipt(false)                
                 handleRecoveryFieldChange({index, e, res: res})
-                getApprovals(company)
+                getApprovals(company, companyRecord)
                 setAlertState('success')
                 setAlert('Receipt Uploaded Successfully!')
                 setAlertTimeout(3000)
@@ -2166,7 +2166,7 @@ const Sales = ()=>{
             }, 'updateOneDoc', server)
             if (resp.updated){
                 handleRecoveryFieldChange({index, e, res: updatedApprovals})
-                getApprovals(company)
+                getApprovals(company, companyRecord)
                 setAlertState('success')
                 setDeletingReceipt(false)
                 setAlert('Receipt Deleted Successfully!')

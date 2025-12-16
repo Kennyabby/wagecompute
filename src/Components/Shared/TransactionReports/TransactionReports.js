@@ -208,7 +208,7 @@ const TransactionReports = ({
             setAlert('Failed to delete one or more duplicates');
             setAlertTimeout(2000);
         } finally {
-            getPosOrders(company)
+            getPosOrders({company})
             fetchSessions(company , "sales", companyRecord)
             fetchSessions(company , "delivery", companyRecord)
         }

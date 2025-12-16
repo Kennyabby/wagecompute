@@ -4,7 +4,7 @@ import ContextProvider from '../../../../Resources/ContextProvider'
 
 const Measures = ({setPopModal})=>{
     
-    const {server, fetchServer, company,
+    const {server, fetchServer, company, companyRecord,
         settings, getSettings,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
@@ -62,7 +62,7 @@ const Measures = ({setPopModal})=>{
                 setNewEntry(false)
                 setFields({...defaultFields})
                 setUoms(newUoms)
-                getSettings(company)
+                getSettings(company, companyRecord)
             }
         }else{
             setAlertState('error')
