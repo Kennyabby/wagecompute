@@ -17,7 +17,8 @@ import { syncPendingChanges } from './Resources/offlineSync';
 import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPendingChanges } from './Resources/offlineDb';
 
 // const SERVER = "http://localhost:3001"
-const SERVER = "https://enterpriseserver.vercel.app"
+const SERVER = "https://enterpriseserver.up.railway.app"
+// const SERVER = "https://enterpriseserver.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
 // const SERVER = "http://3.251.76.94"
@@ -1266,10 +1267,8 @@ function App() {
 
   const getChartOfAccounts = async (company) => {
     if (company && companyRecord?.emailid){
-      console.log('getting chart of accounts...')
       const cached = await getCached(company, 'chartOfAccounts', companyRecord?.emailid);
       if (cached && Array.isArray(cached)) {
-        console.log('cached:',cached)
         setChartOfAccounts(cached);
       }
       const resp = await fetchServer("POST", {
