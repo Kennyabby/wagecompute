@@ -39,14 +39,14 @@ const Attendance = () =>{
     },[storePath])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
-        getApprovals(cmp_val)
-        getEmployees(cmp_val)
-        getAttendance(cmp_val)
+        getApprovals(cmp_val, companyRecord)
+        getEmployees(cmp_val, companyRecord)
+        getAttendance(cmp_val, companyRecord)
         const intervalId = setInterval(()=>{
           if (cmp_val){
-            getApprovals(cmp_val)
-            getEmployees(cmp_val)
-            getAttendance(cmp_val)
+            getApprovals(cmp_val, companyRecord)
+            getEmployees(cmp_val, companyRecord)
+            getAttendance(cmp_val, companyRecord)
           }
         },120000)
         return () => clearInterval(intervalId);
@@ -190,8 +190,8 @@ const Attendance = () =>{
                 createdAt: approvalData.createdAt,
                 postingDate: approvalData.postingDate                                                 
             })
-            getAttendance(company)
-            getApprovals(company)
+            getAttendance(company, companyRecord)
+            getApprovals(company, companyRecord)
             setCurApproval(null)
             setAlertState('success')
             setAlert('Attendance Loaded Successfully!')

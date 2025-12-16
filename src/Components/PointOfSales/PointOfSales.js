@@ -322,11 +322,11 @@ const PointOfSales = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
-        getPosOrders(company)
+        getPosOrders({company})
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 // Fetch tables
-                getPosOrders(company)
+                getPosOrders({company})
                 // Fetch products
                 // getProducts(cmp_val)
             }
@@ -360,7 +360,7 @@ const PointOfSales = () => {
         // Fetch all sessions
         getAllSessions(company)
 
-        getPosOrders(company)
+        getPosOrders({company})
          
         // Feth Sessions
         fetchSessions(company, "sales", companyRecord)
@@ -600,7 +600,7 @@ const PointOfSales = () => {
                     setLoading(false)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, "sales", companyRecord)
-                    fetchAllSessions(company)
+                    fetchAllSessions({company})
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -715,7 +715,7 @@ const PointOfSales = () => {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     getAllSessions(company)
                     fetchSessions(company, "sales", companyRecord)
-                    fetchAllSessions(company)
+                    fetchAllSessions({company})
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -936,9 +936,9 @@ const PointOfSales = () => {
         
         if (!placingOrder && !makingPayment && name){
 
-            getPosOrders(company)
+            getPosOrders({company})
             fetchSessions(company, "sales", companyRecord)
-            fetchAllSessions(company)                        
+            fetchAllSessions({company})                        
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
                 const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
@@ -1057,7 +1057,7 @@ const PointOfSales = () => {
                 type: 'sales'
             };
 
-            const response = await getPosOrders(company, 'tableOrders', orderFilter)
+            const response = await getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
             const filteredOrders = response?.record ?? []
             if (!response.err && Array.isArray(filteredOrders)) {
                 // console.log("received allOrders list:", filteredOrders)                
@@ -1086,7 +1086,7 @@ const PointOfSales = () => {
                             setAlert('Loaded table orders from server...');
                             setAlertTimeout(500);
                             // Mirror into IndexedDB orders store
-                            getPosOrders(company, 'tableOrders', orderFilter)
+                            getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
                         }
                     } else {
                         // createNewOrder(table);
@@ -1243,7 +1243,7 @@ const PointOfSales = () => {
                     printBarOrder(placedOrder)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, 'sales', companyRecord);
-                    fetchAllSessions(company)
+                    fetchAllSessions({company})
                     fetchTables(company);
                     getProducts(company);
                 } catch (e) {
@@ -1361,7 +1361,7 @@ const PointOfSales = () => {
     const handlePayment = async () => {
         // These reads are fine (no direct writes to Mongo)
         fetchSessions(company, "sales", companyRecord);
-        fetchAllSessions(company)
+        fetchAllSessions({company})
         fetchTables(company);
         getProducts(company);
         loadInitialData();
@@ -1514,7 +1514,7 @@ const PointOfSales = () => {
                     createNewOrder(currentTable);
                     setPaymentDetails({ ...payPoints });
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                    
-                    getPosOrders(company); // read-only
+                    getPosOrders({company}); // read-only
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }

@@ -28,6 +28,7 @@
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5"
   },
+  "proxy": "https://enterpriseserver.vercel.app",
   "scripts": {
     "start": "react-scripts start",
     "build": "set \"GENERATE_SOURCEMAP=false\" && react-scripts build",

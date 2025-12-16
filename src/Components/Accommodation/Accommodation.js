@@ -123,16 +123,16 @@ const Accommodation = ()=>{
 
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
-        getApprovals(cmp_val)
-        getEmployees(cmp_val)
-        getCustomers(cmp_val)
-        getAccommodations(cmp_val)
+        getApprovals(cmp_val, companyRecord)
+        getEmployees(cmp_val, companyRecord)
+        getCustomers(cmp_val, companyRecord)
+        getAccommodations(cmp_val, companyRecord)
         const intervalId = setInterval(()=>{
           if (cmp_val){
-            getApprovals(cmp_val)
-            getEmployees(cmp_val)
-            getCustomers(cmp_val)
-            getAccommodations(cmp_val)
+            getApprovals(cmp_val, companyRecord)
+            getEmployees(cmp_val, companyRecord)
+            getCustomers(cmp_val, companyRecord)
+            getAccommodations(cmp_val, companyRecord)
           }
         },120000)
         return () => clearInterval(intervalId);

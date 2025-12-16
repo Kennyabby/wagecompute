@@ -41,10 +41,10 @@ const Settings = () => {
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (cmp_val) {
-            getSettings(cmp_val)
-            getEmployees(cmp_val)
-            fetchProfiles(cmp_val)
-            fetchDBProfiles(cmp_val)
+            getSettings(cmp_val, companyRecord)
+            getEmployees(cmp_val, companyRecord)
+            fetchProfiles(cmp_val, companyRecord)
+            fetchDBProfiles(cmp_val, companyRecord)
         }
     }, [])
     
@@ -323,7 +323,7 @@ const Settings = () => {
                     console.log(resps.mess)
                 } else {
                     setWriteStatus('Add')
-                    getSettings(company)
+                    getSettings(company, companyRecord)
                 }
             } else {
                 const resps = await fetchServer("POST", {
@@ -334,7 +334,7 @@ const Settings = () => {
                 if (resps.err) {
                     console.log(resps.mess)
                 } else {
-                    getSettings(company)
+                    getSettings(company, companyRecord)
                 }
             }
         }
@@ -357,7 +357,7 @@ const Settings = () => {
             setChangingSettings(false)
         } else {
             setSaveStatus('Saved')
-            getSettings(company)
+            getSettings(company, companyRecord)
             setColname('')
             setWriteStatus('Add')
             setChangingSettings(false)

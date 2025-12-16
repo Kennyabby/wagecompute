@@ -318,12 +318,12 @@ const Delivery = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
-        getPosOrders(company)
+        getPosOrders({company})
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 // Fetch tables
                 loadInitialData()
-                getPosOrders(company)
+                getPosOrders({company})
                 // Fetch products
                 // getProducts(cmp_val)
             }
@@ -359,7 +359,7 @@ const Delivery = () => {
             
         // Fetch All sessions
         getAllSessions(company)
-        fetchAllSessions(company)
+        fetchAllSessions({company})
         
         // Feth Sessions
         fetchSessions(company, "delivery", companyRecord)
@@ -620,7 +620,7 @@ const Delivery = () => {
                     setSessionUser(null);
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, "delivery", companyRecord)
-                    fetchAllSessions(company)
+                    fetchAllSessions({company})
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -680,7 +680,7 @@ const Delivery = () => {
                 setAlertTimeout(5000);
                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 fetchSessions(company, "delivery", companyRecord)
-                fetchAllSessions(company)
+                fetchAllSessions({company})
                 getAllSessions(company)
             } catch (e) {
                 // Leave pending changes in queue; 5‑minute auto-sync will retry
@@ -891,9 +891,9 @@ const Delivery = () => {
                 getProductsWithStock(company, products)
             }
     
-            getPosOrders(company)
+            getPosOrders({company})
             fetchSessions(company, "delivery", companyRecord)                        
-            fetchAllSessions(company)
+            fetchAllSessions({company})
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
                 const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
@@ -997,7 +997,7 @@ const Delivery = () => {
                 wrh: wrh,
             };
 
-            const response = await getPosOrders(company, 'tableOrders', orderFilter)
+            const response = await getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
             const filteredOrders = response?.record ?? []
             if (!response.err && Array.isArray(filteredOrders)) {                                
                 if (!localOrders.length){
@@ -1028,7 +1028,7 @@ const Delivery = () => {
                             setAlert('Loaded table orders from server...');
                             setAlertTimeout(500);
                             // Mirror into IndexedDB orders store
-                            getPosOrders(company, 'tableOrders', orderFilter)                            
+                            getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
                         }
                     } else {
                         // createNewOrder(table);
@@ -1286,7 +1286,7 @@ const Delivery = () => {
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessions(company, "delivery", companyRecord)
-                    fetchAllSessions(company)
+                    fetchAllSessions({company})
                     fetchTables(company)
                     loadInitialData()
                 } catch (e) {
@@ -1304,7 +1304,7 @@ const Delivery = () => {
 
     const handleOrderDelivery = async () => {
         fetchSessions(company, "delivery", companyRecord);
-        fetchAllSessions(company)
+        fetchAllSessions({company})
         fetchTables(company);
         if (products.length) {
             getProductsWithStock(company, products);
@@ -2198,7 +2198,7 @@ const Delivery = () => {
                                 // disabled={makingPayment}
                                 onClick={() => {
                                     fetchSessions(company, "delivery", companyRecord)
-                                    fetchAllSessions(company)
+                                    fetchAllSessions({company})
                                     fetchTables(company)
                                     if (products.length){
                                         getProductsWithStock(company, products)
@@ -2511,7 +2511,7 @@ const DeliveryDashboard = ({
 
     useEffect(()=>{        
         const getSessionsData = async ()=>{            
-           getPosOrders()
+            getPosOrders({company})
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",
