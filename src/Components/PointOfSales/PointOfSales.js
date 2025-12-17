@@ -315,7 +315,7 @@ const PointOfSales = () => {
               // Fetch products
               // getProducts(cmp_val)
             }
-        },20000)
+        },30000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -330,7 +330,7 @@ const PointOfSales = () => {
                 // Fetch products
                 // getProducts(cmp_val)
             }
-        },60000)
+        },120000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
