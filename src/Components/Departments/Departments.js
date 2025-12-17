@@ -33,7 +33,7 @@ const Departments = () =>{
             getEmployees(cmp_val)
             getDepartments(cmp_val)           
           }
-        },120000)
+        },300000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{

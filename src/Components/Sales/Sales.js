@@ -239,7 +239,7 @@ const Sales = ()=>{
                 getAccommodations(cmp_val, companyRecord)
                 getAllSessions(cmp_val, companyRecord)
             }
-        },120000)
+        },300000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 

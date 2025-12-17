@@ -33,7 +33,7 @@ const Positions = () =>{
             getEmployees(cmp_val)
             getPositions(cmp_val)
           }
-        },120000)
+        },300000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{

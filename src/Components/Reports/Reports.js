@@ -33,7 +33,7 @@ const Reports = ()=>{
             getExpenses(cmp_val)
             // getAttendance(cmp_val)
           }
-        },120000)
+        },300000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))

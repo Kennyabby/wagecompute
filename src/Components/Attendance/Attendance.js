@@ -48,7 +48,7 @@ const Attendance = () =>{
             getEmployees(cmp_val, companyRecord)
             getAttendance(cmp_val, companyRecord)
           }
-        },120000)
+        },300000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
