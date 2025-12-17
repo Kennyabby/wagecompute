@@ -190,6 +190,18 @@ function App() {
     },300000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
+  
+  useEffect(()=>{
+    var cmp_val = window.localStorage.getItem('sessn-cmp')  
+    const intervalId = setInterval(()=>{
+      if (cmp_val && companyRecord?.emailid){
+        setReloadCount((prevCount)=>{
+          return prevCount + 1
+        })        
+      }
+    },5000)
+    return () => clearInterval(intervalId);
+  },[window.localStorage.getItem('sessn-cmp'), companyRecord])
 
   useEffect(()=>{
     if(settings?.length){
@@ -936,14 +948,14 @@ function App() {
           }
         }
 
-        const sessionDays = 10 * 24 * 60 * 60 * 1000
-        const allowedDays = Date.now() - sessionDays
+        const sessionDays = 20 * 24 * 60 * 60 * 1000
+        const allowedFromDays = Date.now() - sessionDays
         const resp = await fetchServer("POST", {
           database: company,
           collection: "POSSessions", 
           prop: {
             type:'delivery',
-            start: {$gte: allowedDays}
+            start: {$gte: allowedFromDays}
           } 
         }, "getDocsDetails", SERVER)
         if (resp.record && Array.isArray(resp.record)){
@@ -957,7 +969,7 @@ function App() {
           collection: "POSSessions", 
           prop: {
             type:'sales',
-            start: {$gte: allowedDays}
+            start: {$gte: allowedFromDays}
           } 
         }, "getDocsDetails", SERVER)
 
