@@ -318,12 +318,12 @@ const Delivery = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
-        getPosOrders({company})
+        getPosOrders({company, companyRecord})
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 // Fetch tables
                 loadInitialData()
-                getPosOrders({company})
+                getPosOrders({company, companyRecord})
                 // Fetch products
                 // getProducts(cmp_val)
             }
@@ -891,7 +891,7 @@ const Delivery = () => {
                 getProductsWithStock(company, products)
             }
     
-            getPosOrders({company})
+            getPosOrders({company, companyRecord})
             fetchSessions(company, "delivery", companyRecord)                        
             fetchAllSessions({company})
             let currentTableIndex = 0
@@ -2511,7 +2511,7 @@ const DeliveryDashboard = ({
 
     useEffect(()=>{        
         const getSessionsData = async ()=>{            
-            getPosOrders({company})
+            getPosOrders({company, companyRecord})
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",

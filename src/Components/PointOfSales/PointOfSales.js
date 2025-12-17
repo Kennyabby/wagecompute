@@ -322,11 +322,11 @@ const PointOfSales = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
-        getPosOrders({company})
+        getPosOrders({company, companyRecord})
         const intervalId = setInterval(()=>{
             if (cmp_val){
                 // Fetch tables
-                getPosOrders({company})
+                getPosOrders({company, companyRecord})
                 // Fetch products
                 // getProducts(cmp_val)
             }
@@ -360,7 +360,7 @@ const PointOfSales = () => {
         // Fetch all sessions
         getAllSessions(company)
 
-        getPosOrders({company})
+        getPosOrders({company, companyRecord})
          
         // Feth Sessions
         fetchSessions(company, "sales", companyRecord)
@@ -936,7 +936,7 @@ const PointOfSales = () => {
         
         if (!placingOrder && !makingPayment && name){
 
-            getPosOrders({company})
+            getPosOrders({company, companyRecord})
             fetchSessions(company, "sales", companyRecord)
             fetchAllSessions({company})                        
             let currentTableIndex = 0
@@ -1514,7 +1514,7 @@ const PointOfSales = () => {
                     createNewOrder(currentTable);
                     setPaymentDetails({ ...payPoints });
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                    
-                    getPosOrders({company}); // read-only
+                    getPosOrders({company, companyRecord}); // read-only
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
