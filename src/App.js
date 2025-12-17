@@ -18,7 +18,6 @@ import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPend
 
 // const SERVER = "http://localhost:3001"
 const SERVER = "https://enterpriseserver.up.railway.app"
-// const SERVER = "https://enterpriseserver.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
 // const SERVER = "http://3.251.76.94"
@@ -187,7 +186,7 @@ function App() {
         getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
-    },15000)
+    },120000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
 
