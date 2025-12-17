@@ -1005,17 +1005,17 @@ const Delivery = () => {
                         // console.log('my table', currentTable)
                         // console.log(table?.i_d, filteredOrders[0]?.tableId)
                         if (table?.i_d === filteredOrders[0]?.tableId){
-                            setCurrentTable(table);
-                            setTableOrders(filteredOrders);
-                            const pendingRemote = filteredOrders.filter(
-                                (order) => order.status === 'pending'
-                            );
-                            if (pendingRemote.length) {
-                                setCurrentOrder(pendingRemote[0]);
-                                setPosCurrentOrder(pendingRemote[0]);
-                            } else {
-                                createNewOrder(table);
-                            }
+                            // setCurrentTable(table);
+                            // setTableOrders(filteredOrders);
+                            // const pendingRemote = filteredOrders.filter(
+                            //     (order) => order.status === 'pending'
+                            // );
+                            // if (pendingRemote.length) {
+                            //     setCurrentOrder(pendingRemote[0]);
+                            //     setPosCurrentOrder(pendingRemote[0]);
+                            // } else {
+                            //     createNewOrder(table);
+                            // }
                             if (company && companyRecord?.emailid) {
                                 for (const o of filteredOrders) {
                                     if (o && o.orderNumber !== null) {
