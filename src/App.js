@@ -17,7 +17,8 @@ import { syncPendingChanges } from './Resources/offlineSync';
 import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPendingChanges } from './Resources/offlineDb';
 
 // const SERVER = "http://localhost:3001"
-const SERVER = "https://enterpriseserver.up.railway.app"
+// const SERVER = "https://enterpriseserver.up.railway.app"
+const SERVER = "https://enterpriseserver-1.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
 // const SERVER = "http://3.251.76.94"
@@ -935,10 +936,15 @@ function App() {
           }
         }
 
+        const sessionDays = 10 * 24 * 60 * 60 * 1000
+        const allowedDays = Date.now() - sessionDays
         const resp = await fetchServer("POST", {
           database: company,
           collection: "POSSessions", 
-          prop: {type:'delivery'} 
+          prop: {
+            type:'delivery',
+            start: {$gte: allowedDays}
+          } 
         }, "getDocsDetails", SERVER)
         if (resp.record && Array.isArray(resp.record)){
           // console.log('fetched deliveries', resp.record)
@@ -949,7 +955,10 @@ function App() {
         const resp1 = await fetchServer("POST", {
           database: company,
           collection: "POSSessions", 
-          prop: {type:'sales'} 
+          prop: {
+            type:'sales',
+            start: {$gte: allowedDays}
+          } 
         }, "getDocsDetails", SERVER)
 
         if (resp1.record && Array.isArray(resp1.record)){
