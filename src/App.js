@@ -1444,7 +1444,7 @@ function App() {
     }
   }
 
-  const getSales = async (company, type=null, fromDate=null, toDate=null, limit=null) =>{
+  const getSales = async (company) =>{
     
     var defaultEndPoint = 'getDocsDetails'
     
@@ -1454,87 +1454,22 @@ function App() {
       prop: {} 
     }
 
-    const salesFromDate = new Date(fromDate)
-    const salesToDate = new Date(toDate)
-    if (type !== null){
-      if (fromDate){
-        body.fromDate = new Date(fromDate).getTime()
-      }
-      if (toDate){
-        body.toDate = new Date(toDate).getTime()
-      }
-      body.limit = limit
-      if (type === 'first' || nextSales === null){
-        salesFromDate.setDate(salesFromDate.getDate() - 1)
-        salesToDate.setDate(salesToDate.getDate() + 3)
-        body.fromDate = salesFromDate.getTime()
-        body.toDate = salesToDate.getTime()
-        defaultEndPoint = 'getDocsDetailsFirst'
-      }else{
-        defaultEndPoint = 'getDocsDetailsNext'
-      }
+    const cached = await getCached(company, 'sales', companyRecord?.emailid);
+    if (cached) {
+      setSales(cached);
     }
-
-    // For the simple, non-paginated case, allow cache to short-circuit
-    if (!type) {
-      const cached = await getCached(company, 'sales', companyRecord?.emailid);
-      if (cached) {
-        setSales(cached);
-      } else {
-      }
+    const resp = await fetchServer("POST", {
+      ...body
+    }, defaultEndPoint, SERVER)
+    
+    if (resp.record){
+      setSales(resp.record)
+      try {
+        setCached(company, 'sales', resp.record, companyRecord?.emailid)
+      } catch (e) {}
     }
-
-    // console.log('sales Load Count is:', salesLoadCount)
-    if (!salesLoadCount){
-      setSalesLoadCount((prevCount)=>{
-        return prevCount + 1
-      })
-      // console.log('fetching sales...')
-      const resp = await fetchServer("POST", {
-       ...body
-      }, defaultEndPoint, SERVER)
-      if (resp.record){
-        setSalesLoadCount(0)
-        // console.log('got sales record response. Resetting Sales Load Count!')
-        // console.log('sales fetch type is :', type)
-        if (!type){
-          setSales(resp.record)
-          try {
-            setCached(company, 'sales', resp.record, companyRecord?.emailid)
-          } catch (e) {}
-        }else{
-          const salesResp = resp.record
-          // console.log('checking if response is empty:', salesResp)
-          if (salesResp.length){
-            // console.log('response is not empty')
-            // console.log(salesResp[salesResp.length -1].createdAt, nextSales[nextSales.length -1]?.createdAt)
-            // console.log('conditioning with this variables->','nextSales:', nextSales, 'salesResp:', salesResp)
-            if (nextSales === null || salesResp[salesResp.length -1].createdAt !== nextSales[nextSales.length -1]?.createdAt){
-              // console.log('setting next sales')
-              setNextSales(resp.record)
-              // console.log(resp.record)
-              if (type==='next' && nextSales !== null){
-                // console.log('type is next, so appending to sales Record!')
-                setSales((sales)=>{
-                  return [...sales, ...resp.record]
-                })
-              }else{
-                // console.log('type is first, so resetting sales Record to this!')
-                setSales(resp.record)
-              } 
-            }else{
-              // console.log('sales record is same as next sales record. Not setting next sales!')
-              // console.log('nextSales:', nextSales[nextSales.length -1].createdAt, 'salesResp:', salesResp[salesResp.length -1].createdAt)
-              setNextSales(null)
-            }
-          }
-        }
-      }
-      if (resp.err){
-        setSalesLoadCount(0)
-      }
-    }else{
-      // console.log('not fetching sales. Another sales fetch is in progress!')
+    if (resp.err){
+      setSalesLoadCount(0)
     }
   }
 
