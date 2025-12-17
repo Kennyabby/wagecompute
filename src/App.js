@@ -326,6 +326,7 @@ function App() {
           if (companyRecord?.permissions.includes('delivery')){
             if(companyRecord?.permissions.includes('access_delivery_sessions')){
               fetchAllSessions({company, companyRecord})
+              getPosOrders({company: company, companyRecord: companyRecord})
             }
             fetchProfiles(company)
             fetchSessions(company , "delivery", companyRecord)
@@ -335,6 +336,7 @@ function App() {
           if (companyRecord?.permissions.includes('pos')){
             if(companyRecord?.permissions.includes('access_pos_sessions')){
               fetchAllSessions({company, companyRecord})
+              getPosOrders({company: company, companyRecord: companyRecord})
             }
             fetchProfiles(company)
             fetchSessions(company , "sales", companyRecord)
@@ -1369,10 +1371,12 @@ function App() {
         return resp
         // return {record: []}
       }else{
+        const orderDays = 20 * 24 * 60 * 60 * 1000
+        const allowedFromDays = Date.now() - orderDays
         const resp = await fetchServer("POST", {
           database: company,
           collection: "Orders",
-          prop: {}
+          prop: {createdAt: {$gte: allowedFromDays}}
         }, "getDocsDetails", SERVER)
         
         if (resp.record && Array.isArray(resp.record)){
