@@ -186,7 +186,7 @@ function App() {
         getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
-    },120000)
+    },300000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
 
@@ -1461,7 +1461,7 @@ function App() {
     const resp = await fetchServer("POST", {
       ...body
     }, defaultEndPoint, SERVER)
-    
+
     if (resp.record){
       setSales(resp.record)
       try {

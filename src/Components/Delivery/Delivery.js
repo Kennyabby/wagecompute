@@ -327,7 +327,7 @@ const Delivery = () => {
                 // Fetch products
                 // getProducts(cmp_val)
             }
-        },120000)
+        },300000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 

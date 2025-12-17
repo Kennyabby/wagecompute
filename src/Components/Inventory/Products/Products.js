@@ -144,7 +144,7 @@ const Products = ({
               if (cmp_val){
                 getProductsWithStock(cmp_val, products)
               }
-            },120000)
+            },300000)
             return () => clearInterval(intervalRef.current);
         }else{
             if(intervalRef.current){
