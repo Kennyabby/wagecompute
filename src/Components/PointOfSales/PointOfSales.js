@@ -315,7 +315,7 @@ const PointOfSales = () => {
               // Fetch products
               // getProducts(cmp_val)
             }
-        },300000)
+        },1200000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -330,7 +330,7 @@ const PointOfSales = () => {
                 // Fetch products
                 // getProducts(cmp_val)
             }
-        },300000)
+        },1200000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -359,12 +359,12 @@ const PointOfSales = () => {
 
         // Fetch all sessions
         getAllSessions(company)
+        fetchAllSessions({company})
 
         getPosOrders({company, companyRecord})
          
         // Feth Sessions
         fetchSessions(company, "sales", companyRecord)
-        fetchSessions(company)
     },[settings, currentOrder])
 
     useEffect(()=>{
@@ -1340,18 +1340,39 @@ const PointOfSales = () => {
         if (!company || !companyRecord?.emailid) return;
 
         setAlertState('info');
-        setAlert('Syncing...');
+        setAlert('Syncing offline POS changes...');
         setAlertTimeout(10000);
+
 
         try {
             await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+
+            fetchTables(company)
+            
+            // Feth Sessions
+            fetchSessions(company, "sales", companyRecord)
+            
+            getPosOrders({company, companyRecord})
+            
+            // Fetch products
+            getProducts(company)
+
+            // Fetch prpfiles
+            fetchProfiles(company)
+            
+            // Fetch all sessions
+            fetchAllSessions({company})
+            getAllSessions(company)
+            
+            loadInitialData()
+            
             setAlertState('success');
-            setAlert('Sync complete');
+            setAlert('Offline POS Sync complete');
             setAlertTimeout(3000);
         } catch (e) {
             setAlertState('error');
-            setAlert('Sync failed. Please try again.');
-            setAlertTimeout(5000);
+            setAlert('Offline POS Sync failed. Please try again.');
+            setAlertTimeout(3000);
         }
     }
 

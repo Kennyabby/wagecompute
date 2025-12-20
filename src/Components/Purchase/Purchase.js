@@ -91,7 +91,7 @@ const Purchase = ()=>{
             getPurchase(cmp_val, companyRecord)
             
           }
-        },300000)
+        },1200000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp'), products])
     useEffect(()=>{
