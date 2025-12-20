@@ -113,7 +113,7 @@ const Expenses = ()=>{
             getExpenses(cmp_val)
             getAttendance(cmp_val)
           }
-        },300000)
+        },1200000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 

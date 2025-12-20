@@ -262,7 +262,7 @@ const Stock = ({
                         startDate: dateRange.startDate,
                         endDate: dateRange.endDate
                     });
-                }, 300000);
+                }, 1200000);
             }
             return () => {
                 if (intervalRef.current) {

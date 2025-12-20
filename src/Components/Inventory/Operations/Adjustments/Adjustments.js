@@ -61,7 +61,7 @@ const Adjustments = ({
             if (cmp_val) {
                 intervalRef.current = setInterval(() => {
                     getProductsWithStock(cmp_val, products)
-                }, 300000);
+                }, 1200000);
             }
         
             return () => {

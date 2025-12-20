@@ -187,7 +187,7 @@ function App() {
         getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
-    },300000)
+    },1200000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
   
@@ -199,7 +199,7 @@ function App() {
           return prevCount + 1
         })        
       }
-    },5000)
+    },3000)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp'), companyRecord])
 

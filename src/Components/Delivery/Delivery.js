@@ -3,6 +3,7 @@ import './Delivery.css'
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import '../PointOfSales/PointOfSales.css'
+import html2pdf from 'html2pdf.js';
 import { MdShoppingBasket } from 'react-icons/md';
 import TransactionReports from '../Shared/TransactionReports/TransactionReports';
 import {
@@ -46,6 +47,10 @@ const Delivery = () => {
     const [openingCash, setOpeningCash] = useState(0);
     const [countedSales, setCountedSales] = useState({})
     const [posSalesDifference, setPosSalesDifference] = useState({})
+    const [countedStockList, setCountedStockList] = useState([])
+    const [productAdd, setProductAdd] = useState(false)
+    const [addingProducts, setAddingProducts] = useState(false)
+    const [isProductView, setIsProductView] = useState(false)
     const [startSession, setStartSession] = useState(false);
     const [endSession, setEndSession] = useState(false);
     const [sessions, setSessions] = useState(null)
@@ -311,7 +316,7 @@ const Delivery = () => {
                 // Fetch products
                 // getProducts(cmp_val)
             }
-        },60000)
+        },120000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -327,7 +332,7 @@ const Delivery = () => {
                 // Fetch products
                 // getProducts(cmp_val)
             }
-        },300000)
+        },1200000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -519,13 +524,34 @@ const Delivery = () => {
 
         try {
             await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+
+            fetchTables(company)
+            
+            // Feth Sessions
+            fetchSessions(company, "delivery", companyRecord)
+            
+            getPosOrders({company, companyRecord})
+            
+            // Fetch products
+            getProducts(company)
+            
+            // Fetch prpfiles
+            fetchProfiles(company)
+            
+            // Fetch all sessions
+            fetchAllSessions({company})
+            getAllSessions(company)
+            
+            
+            loadInitialData()
+
             setAlertState('success');
             setAlert('Offline Delivery sync completed');
             setAlertTimeout(3000);
         } catch (e) {
             setAlertState('error');
             setAlert('Offline Delivery sync failed. Please try again.');
-            setAlertTimeout(5000);
+            setAlertTimeout(3000);
         }
     };
 
@@ -1574,6 +1600,26 @@ const Delivery = () => {
         }
     };
 
+    const compareStock = async (countedStockList, wrh) =>{
+        const stocksDifference = [];
+        for (const entry of countedStockList) {
+            const product = products.find((p) => p.i_d === entry.i_d);
+            if (product) {
+                let countBaseQuantity = 0;
+                const { cost, quantity } =
+                    product.locationStock?.[wrh] || { cost: 0, quantity: 0 };
+                countBaseQuantity = Number(quantity || 0);
+                const stockDiff = {
+                    qtyDifference: Number(entry.countedQuantity) - countBaseQuantity,
+                    costDifference: cost * (Number(entry.countedQuantity) - countBaseQuantity),
+                    salesDifference: (Number(entry.countedQuantity) - countBaseQuantity) * (wrh === 'vip' ? Number(entry.vipPrice || entry.salesPrice || 0) : Number(entry.salesPrice || 0))
+                }
+                stocksDifference.push(stockDiff);                
+            }
+        }
+        return stocksDifference;
+    }
+
     const printReceipt = (orderData) => {
         const receiptContent = `
             <div class="receipt">
@@ -2117,6 +2163,7 @@ const Delivery = () => {
         </div>
     );
 
+
     // =========================================
     // 10. Utility Functions
     // =========================================
@@ -2160,6 +2207,7 @@ const Delivery = () => {
                 deliveryWrhAccess={deliveryWrhAccess}
                 allSessionOrders={allSessionOrders}
                 getPosOrders={getPosOrders}
+                setProductAdd = {setProductAdd}
                 getSessionSales={getSessionSales}
                 setAlertState={setAlertState}
                 setAlert={setAlert}
@@ -2220,7 +2268,24 @@ const Delivery = () => {
                 <div className="pos-content">
                     {renderScreen()}
                 </div>
-                {showNewTableModal && <TableModal />}                
+                {showNewTableModal && <TableModal />}    
+                {productAdd && <AddProduct
+                    companyRecord={companyRecord}
+                    products={products}
+                    productAdd={productAdd}
+                    setProductAdd={setProductAdd}
+                    uoms={uoms}
+                    categories={categories}
+                    wrhs = {wrhs}
+                    isProductView={isProductView} 
+                    setIsProductView={setIsProductView}
+                    compareStock={compareStock}
+                    countedStockList={countedStockList}
+                    setCountedStockList={setCountedStockList} 
+                    getDate={getDate}
+                    addingProducts={addingProducts}
+                    setAddingProducts={setAddingProducts} 
+                />}            
             </div>
             }
         </div>
@@ -2490,12 +2555,318 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
     );
 };
 
+const AddProduct = ({
+    products, productAdd, setProductAdd, categories, uoms, wrhs, isProductView, wrh,
+    setIsProductView, compareStock, countedStockList, setCountedStockList, curSale,
+    getDate, companyRecord, addingProducts, setAddingProducts, setPostedProducts,  
+})=>{    
+    const [category, setCategory] = useState('all')
+    const [wrh1, setWrh1] = useState(isProductView ? Object.keys(countedStockList)[0] : 'open bar1' )
+    const [totalSalesAmount, setTotalSalesAmount] = useState(0)
+    const [totalAmount, setTotalAmount] = useState(0)
+    const targetRef = useRef(null)
+
+    const printToPDF = () => {
+        const element = targetRef.current;
+        const options = {
+            margin:       0.1,
+            filename:     `PRODUCT DETAILS.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+        };
+        html2pdf().set(options).from(element).save();
+    };
+
+    const resetSalesEntries = ()=>{
+        const allEntries = {}
+        const wrhEntries = [...products].map((product, index)=>{
+            const uom1 = uoms.filter((uom)=>{
+                return uom.code === product.purchaseUom
+            })      
+
+            const purchaseWrh = wrhs.find((warehouse)=>{
+                return warehouse.purchase
+            })
+            const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+            let cummulativeUnitCostPrice = 0            
+            cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+
+            return {                
+                productId : product.i_d,
+                index: index,
+                name: product.name,
+                category: product.category,
+                countedQuantity: '',
+                baseQuantity: 0,
+                salesUom: product.salesUom,
+                baseUom: uom1[0]?.base,
+                // costPrice: cummulativeUnitCostPrice,
+                costPrice: Number(product.costPrice),
+                salesPrice: product.salesPrice,
+                vipPrice: product.vipPrice,
+                totalSales: '',
+            }
+        })
+
+        
+        wrhs.forEach((wh)=>{
+            if (!wh.purchase){
+                allEntries[wh.name] = [...wrhEntries]
+            }
+        })
+        setCountedStockList(allEntries)
+    }
+
+    // const setApprovalEntries = (approval)=>{        
+    //     const allEntries = {}
+    //     const wrhEntries = [...products].map((product, index)=>{
+    //         const uom1 = uoms.filter((uom)=>{
+    //             return uom.code === product.purchaseUom
+    //         })      
+
+    //         const purchaseWrh = wrhs.find((warehouse)=>{
+    //             return warehouse.purchase
+    //         })
+    //         const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
+    //         let cummulativeUnitCostPrice = 0            
+    //         cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+
+    //         return {                
+    //             productId : product.i_d,
+    //             index: index,
+    //             name: product.name,
+    //             category: product.category,
+    //             countedQuantity: '',
+    //             baseQuantity: 0,
+    //             salesUom: product.salesUom,
+    //             baseUom: uom1[0]?.base,
+    //             // costPrice: cummulativeUnitCostPrice,
+    //             costPrice: Number(product.costPrice),
+    //             salesPrice: product.salesPrice,
+    //             vipPrice: product.vipPrice,
+    //             totalSales: '',
+    //             entryType: 'Sales',
+    //             documentType: 'Shipment'
+    //         }
+    //     })
+
+    //     wrhs.forEach((wrh)=>{
+    //         if (!wrh.purchase){
+    //             if (approval.data[wrh.name]){
+    //                 allEntries[wrh.name] = approval.data[wrh.name]
+    //             }else{
+    //                 if (approval.data[wrh.name]?.length && approval.message){
+    //                     allEntries[wrh.name] = approval.data[wrh.name]                        
+    //                 }else{
+    //                     allEntries[wrh.name] = [...wrhEntries]
+    //                 }
+    //             }
+    //         }
+    //     })
+    //     setCountedStockList(allEntries)
+    // }
+
+    useEffect(()=>{
+        setAddingProducts(false)
+        if (!isProductView){
+            if ( localStorage.getItem(`sales-${curSale?.createdAt}`)){
+                setCountedStockList(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`))) 
+            }else {
+                resetSalesEntries() 
+            }
+        }
+    },[]) 
+
+    const handleSalesUdpate = (e, index)=>{
+        const name = e.target.getAttribute('name')
+        const value = e.target.value
+        if (name){
+            if (name === 'quantity'){
+                const uom2 = uoms.filter((uom)=>{
+                    return uom.code === countedStockList[wrh1][index].salesUom
+                })
+                const originalEntries = structuredClone({countedStockList})
+                var updatedWrh = [...countedStockList[wrh1]]
+                updatedWrh[index][name] = Number(value)
+                updatedWrh[index].baseQuantity = Number(value) * Number(uom2[0]?.multiple)                
+                if (wrh1 === 'vip'){
+                    updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * (Number(updatedWrh[index].vipPrice) || Number(updatedWrh[index].salesPrice))
+                }else if (wrh1 === 'kitchen'){
+                    updatedWrh[index].totalVipSales = updatedWrh[index].baseQuantity * (Number(updatedWrh[index].vipPrice) || Number(updatedWrh[index].salesPrice))
+                    updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
+                }
+                else{
+                    updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
+                }
+                setCountedStockList({...(originalEntries.countedStockList), [wrh1]: updatedWrh})
+            }else{
+                const originalEntries = structuredClone({countedStockList})
+                var updatedWrh = [...countedStockList[wrh1]]
+                updatedWrh[index][name] = Number(value)
+                setCountedStockList({...(originalEntries.countedStockList), [wrh1]: updatedWrh})                
+            }
+        }
+    }
+
+    return (
+        <>
+            <div className='addproduct' style={{zIndex: 10000000}}>
+                <div className='add-products' ref={targetRef}>
+                    <div className='slprwh-cover' onClick={(e)=>{
+                        const name = e.target.getAttribute('name')
+                        if (name){
+                            setCategory('all')
+                            setWrh1(name)
+                        }
+                    }}>
+                        {
+                            wrhs.map((wh, id)=>{
+                                if (!wh.purchase){
+                                    if (isProductView){
+                                        return Object.keys(countedStockList).includes(wh.name) && <div key={id} className={'slprwh ' + (wrh1 === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
+                                    }else{
+                                        return <div key={id} className={'slprwh ' + (wrh1 === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
+                                    }
+                                }
+                            })                        
+                        }
+                        <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
+                        {(!isProductView) && <div
+                            className='slprwh-print'
+                            onClick={()=>{
+                                resetSalesEntries()
+                            }}
+                        >Reset</div>}
+                        {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('export_sales_report')) && isProductView && <div
+                            className='slprwh-print'
+                            onClick={()=>{
+                                printToPDF()
+                            }}
+                        >Print Product</div>}
+                    </div>
+                    <div>
+                        <select 
+                            className='slprfl'
+                            type='text'
+                            name='category'
+                            value={category}
+                            onChange={(e)=>{setCategory(e.target.value)}}
+                        >
+                            <option value={'all'}>Filter Products</option>
+                            {categories.map((cat, id)=>{
+                                return (wrhs.find((wh)=>{return wh.name === wrh1})?.productCategories?.includes(cat.code) && <option key={id} value={cat.code}>{cat.name}</option>)
+                            })}
+                        </select>
+                    </div>
+                    <div className='add-products-title slprwh-add'>Product Sales Details</div>
+                    <div className='add-products-content'>
+                        <div className='add-products-content-title'>
+                            <div>Product Name</div>
+                            <div>Product ID</div>
+                            <div>Sales Quantity</div>
+                            <div>Sales UOM</div>
+                            <div>{
+                                `
+                                    Total Sales Amount
+                                    ${(companyRecord.status==='admin' || true) ? 
+                                        (`(${countedStockList[wrh1]?.reduce((sum, entry) => sum + Math.abs(Number(entry.totalSales)), 0).toLocaleString()})`)
+                                        : ''
+                                    }
+                                ` 
+                            }</div>
+                        </div>
+                        {Object.keys(countedStockList).length === 0 && isProductView && <div className='load-products'><span>Loading Sales Products...</span></div>}
+                        {countedStockList[wrh1]?.filter((flent)=>{
+                            if (flent.salesPrice || flent.vipPrice){
+                                if (category === 'all'){
+                                    if (wrhs.find((wh)=>{return wh.name === wrh1})?.productCategories?.includes(flent.category)){
+                                        return flent
+                                    }
+                                }else{
+                                    return flent.category === category
+                                }
+                            }
+                        }).sort((a,b) => {
+                            const numA = parseInt(a.productId.replace("PD", ""), 10);
+                            const numB = parseInt(b.productId.replace("PD", ""), 10);
+                            return numA - numB;
+                        }).map((entry, index)=>{
+                            return (
+                                <div key={index} className='add-products-content-entry'>
+                                    <div>{entry.name}</div>
+                                    <div>{entry.productId}</div>
+                                    <div>
+                                        <input 
+                                            type='number'
+                                            name='quantity'
+                                            value={isProductView? Math.abs(Number(entry.quantity)) : entry.quantity}
+                                            onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
+                                            disabled={isProductView}
+                                        />
+                                    </div>
+                                    <div>
+                                        <select 
+                                            name='salesUom'
+                                            value={entry.salesUom}
+                                            onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
+                                            disabled={isProductView}
+                                        >
+                                            {uoms.map((uom, idx)=>{
+                                                return (
+                                                    <option key={idx} value={uom.code}>{uom.name}</option>
+                                                )
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <select 
+                                            name='totalSales'
+                                            type='number'
+                                            value={isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}
+                                            disabled = {wrh1!=='kitchen' || !entry.quantity || isProductView}
+                                            onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
+                                        >
+                                            <option value = {isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}>{isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}</option>
+                                            <option value = {isProductView? Math.abs(Number(entry.totalVipSales)) : entry.totalVipSales}>{isProductView? Math.abs(Number(entry.totalVipSales)) : entry.totalVipSales}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                    <div className='add-products-button'>
+                        {!isProductView && <div 
+                            className='add-products-button-add'
+                            style={{cursor: addingProducts? 'not-allowed':'pointer'}}
+                            onClick={()=>{
+                                if (!addingProducts){
+                                    setAddingProducts(true)                                    
+                                    compareStock()                                    
+                                }
+                            }}
+                        >{'Save'}</div>}
+                        <div 
+                            className='add-products-button-cancel'
+                            onClick={()=>{
+                                setIsProductView(false)
+                                setProductAdd(false)                                
+                                setCountedStockList({})
+                            }}
+                        >{isProductView?'Close':'Cancel'}</div>
+                    </div>
+                </div>
+            </div>
+        </>
+    )
+}
+
 const DeliveryDashboard = ({
     sessions, allDeliverySessions, setAllDeliverySessions, profiles, employees, companyRecord, 
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, allSessionOrders, getPosOrders, getSessionSales, curSession,
-    setAlertState, setAlert, setAlertTimeout, tables
+    setAlertState, setAlert, setAlertTimeout, tables, setProductAdd
 })=>{
      const {fetchServer, server, company} = useContext(ContextProvider)
      const [pendingSessions, setPendingSessions] = useState([])
@@ -2536,16 +2907,14 @@ const DeliveryDashboard = ({
                     <div className={'live-nav'}>
                         {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                             className="action-btn"
-                            onClick={() => setShowReports(true)}
+                            onClick={() => setProductAdd(true)}
                             style={{ marginRight: '10px' }}
                         >
-                            View Reports
+                            Reconcile Inventory
                         </button>} */}
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                             className="action-btn"
-                            onClick={() => {    
-                                
-                                  
+                            onClick={() => {   
                                 var wrhAccess = Object.keys(deliveryWrhAccess).filter((wrh)=>{
                                     return deliveryWrhAccess[wrh]
                                 })
@@ -2561,6 +2930,7 @@ const DeliveryDashboard = ({
                         </span>                        
                     </div>
                 </div>
+                
                 <div className='pos-sessions-view'>
                     <div className='pos-sessions-list'>                        
                         {profiles?.map((profile)=>{

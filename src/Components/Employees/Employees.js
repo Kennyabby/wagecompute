@@ -67,7 +67,7 @@ const Employees = () =>{
           if (cmp_val){
             getEmployees(cmp_val)
           }
-        },300000)
+        },1200000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{
