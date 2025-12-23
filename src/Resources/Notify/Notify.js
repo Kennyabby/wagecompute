@@ -4,7 +4,7 @@ import ContextProvider from '../ContextProvider';
 const Notify = ({
     notifyMessage,notifyState,
     timeout,
-    action,actionMessage
+    action,actionMessage, cancel
 })=>{
     const timeoutRef = useRef(null)
     const {
@@ -59,19 +59,19 @@ const Notify = ({
                     {actionMessage && <div className='notifyactn'>
                         <div 
                             className='notifycl'
+                            aria-disabled={actionMessage}
                             onClick={()=>{
+                                cancel()
                                 setAlert('')
                                 setAlertState(null)
-                                setActionMessage('')
+                                setActionMessage('')                                
                             }}
                         >Cancel</div>
                         <div 
                             className='notifyacp'
+                            aria-disabled={actionMessage}
                             onClick={()=>{
-                                action()
-                                setAlert('')
-                                setAlertState(null)
-                                setActionMessage('')
+                                takeAction()
                             }}
                         >{actionMessage}</div>
                     </div>}

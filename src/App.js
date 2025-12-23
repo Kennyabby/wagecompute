@@ -950,7 +950,7 @@ function App() {
           }
         }
 
-        const sessionDays = 20 * 24 * 60 * 60 * 1000
+        const sessionDays = 31 * 24 * 60 * 60 * 1000
         const allowedFromDays = Date.now() - sessionDays
         const resp = await fetchServer("POST", {
           database: company,
@@ -1371,7 +1371,7 @@ function App() {
         return resp
         // return {record: []}
       }else{
-        const orderDays = 20 * 24 * 60 * 60 * 1000
+        const orderDays = 31 * 24 * 60 * 60 * 1000
         const allowedFromDays = Date.now() - orderDays
         const resp = await fetchServer("POST", {
           database: company,

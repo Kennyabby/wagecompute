@@ -6,6 +6,7 @@ import '../PointOfSales/PointOfSales.css'
 import html2pdf from 'html2pdf.js';
 import { MdShoppingBasket } from 'react-icons/md';
 import TransactionReports from '../Shared/TransactionReports/TransactionReports';
+import Notify from '../../Resources/Notify/Notify';
 import {
   loadDeliverySnapshot,
   saveDeliverySnapshot,
@@ -27,7 +28,8 @@ const Delivery = () => {
     const { 
         storePath,
         fetchServer, server, company, companyRecord,
-        setAlert, setAlertState, setAlertTimeout,
+        setAlert, setAlertState, setAlertTimeout, setActionMessage,
+        alert, alertState, alertTimeout, actionMessage,
         settings, getDate, deliveryWrhAccess, employees, 
         profiles, fetchProfiles, getProductsWithStock,
         products, setProducts, getProducts, getEmployeeName,
@@ -1584,8 +1586,6 @@ const Delivery = () => {
                         // Leave pending changes in queue; 5‑minute auto-sync will retry
                     }
                 }
-
-                
             } else {
                 setAlertState('error');
                 setAlert('Nothing to Post Here!');
@@ -1600,24 +1600,66 @@ const Delivery = () => {
         }
     };
 
-    const compareStock = async (countedStockList, wrh) =>{
-        const stocksDifference = [];
-        for (const entry of countedStockList) {
-            const product = products.find((p) => p.i_d === entry.i_d);
-            if (product) {
-                let countBaseQuantity = 0;
-                const { cost, quantity } =
-                    product.locationStock?.[wrh] || { cost: 0, quantity: 0 };
-                countBaseQuantity = Number(quantity || 0);
-                const stockDiff = {
-                    qtyDifference: Number(entry.countedQuantity) - countBaseQuantity,
-                    costDifference: cost * (Number(entry.countedQuantity) - countBaseQuantity),
-                    salesDifference: (Number(entry.countedQuantity) - countBaseQuantity) * (wrh === 'vip' ? Number(entry.vipPrice || entry.salesPrice || 0) : Number(entry.salesPrice || 0))
-                }
-                stocksDifference.push(stockDiff);                
+    const compareStock = async (countedStockList) =>{
+        let stocksDifference = {};
+        let stocksPositiveDifference = {};
+        stocksPositiveDifference['count'] = 0
+        let differenceSummary = {};  
+        Object.keys(countedStockList).forEach((entryWrh)=>{
+            stocksDifference[entryWrh] = []
+            stocksPositiveDifference[entryWrh] = []
+            differenceSummary[entryWrh] = {
+                totalBaseQuantity: 0,
+                totalCountedQuantity: 0,
+                totalQtyDifference: 0,
+                totalCostDifference: 0,
+                totalSalesDifference: 0
             }
-        }
-        return stocksDifference;
+            for (const entry of countedStockList[entryWrh]) {
+                const product = products.find((p) => p.i_d === entry.productId);
+                if (
+                    product 
+                    && wrhs.find((wh)=>{return wh.name === entryWrh})?.productCategories?.includes(product.category)
+                ) {
+                    let countBaseQuantity = 0;
+                    const { cost, quantity } =
+                        product.locationStock?.[entryWrh] || { cost: 0, quantity: 0 };
+                    countBaseQuantity = Number(quantity || 0);
+                    const salesPrice = (entryWrh === 'vip' ? Number(entry.vipPrice || entry.salesPrice || 0) : Number(entry.salesPrice || 0))
+                    const qtyDifference = Number(entry.countedQuantity) - countBaseQuantity                    
+                    const costDifference = entry.costPrice * qtyDifference
+                    const salesDifference = qtyDifference * salesPrice
+                    const stockDiff = {
+                        productId: entry.productId,
+                        name: entry.name,                        
+                        wrh: entryWrh,
+                        salesPrice: salesPrice,
+                        costPrice: entry.costPrice,
+                        vipPrice: entry.vipPrice,
+                        salesUom: entry.salesUom,
+                        baseUom: entry.baseUom,
+                        countedQuantity: entry.countedQuantity,
+                        baseQuantity: countBaseQuantity,
+                        qtyDifference,
+                        costDifference,
+                        salesDifference
+                    }
+                    stocksDifference[entryWrh].push(stockDiff);                    
+                    if (qtyDifference > 0){
+                        stocksPositiveDifference[entryWrh].push(stockDiff)
+                        stocksPositiveDifference['count'] += 1
+                    }
+                    differenceSummary[entryWrh].totalBaseQuantity += Number(countBaseQuantity) 
+                    differenceSummary[entryWrh].totalCountedQuantity += Number(entry.countedQuantity)               
+                    differenceSummary[entryWrh].totalQtyDifference += qtyDifference
+                    differenceSummary[entryWrh].totalCostDifference += costDifference
+                    differenceSummary[entryWrh].totalSalesDifference += salesDifference
+                }
+            }
+        })
+        // console.log('Stock Difference:',stocksDifference)
+        // console.log('Difference Summary:',differenceSummary)
+        return {stocksPositiveDifference, stocksDifference, differenceSummary};
     }
 
     const printReceipt = (orderData) => {
@@ -2182,6 +2224,32 @@ const Delivery = () => {
     return (
         <div className="pos-container" ref={posContainerRef}>
             {(loadSession || startSession || endSession) && renderSessionEntry()}
+            {productAdd && <AddProduct
+                companyRecord={companyRecord}
+                products={products}
+                productAdd={productAdd}
+                setProductAdd={setProductAdd}
+                uoms={uoms}
+                categories={categories}
+                wrhs = {wrhs}
+                isProductView={isProductView} 
+                setIsProductView={setIsProductView}
+                compareStock={compareStock}
+                countedStockList={countedStockList}
+                setCountedStockList={setCountedStockList} 
+                curSession={curSession}
+                getDate={getDate}
+                addingProducts={addingProducts}
+                setAddingProducts={setAddingProducts} 
+                setAlert={setAlert}
+                setAlertState={setAlertState}
+                setAlertTimeout={setAlertTimeout}
+                setActionMessage={setActionMessage}
+                alert={alert}
+                alertState={alertState}
+                alertTimeout={alertTimeout}
+                actionMessage={actionMessage}
+            />}
             {viewSesions ? 
             <DeliveryDashboard
                 setViewSessions={setViewSessions}
@@ -2268,24 +2336,7 @@ const Delivery = () => {
                 <div className="pos-content">
                     {renderScreen()}
                 </div>
-                {showNewTableModal && <TableModal />}    
-                {productAdd && <AddProduct
-                    companyRecord={companyRecord}
-                    products={products}
-                    productAdd={productAdd}
-                    setProductAdd={setProductAdd}
-                    uoms={uoms}
-                    categories={categories}
-                    wrhs = {wrhs}
-                    isProductView={isProductView} 
-                    setIsProductView={setIsProductView}
-                    compareStock={compareStock}
-                    countedStockList={countedStockList}
-                    setCountedStockList={setCountedStockList} 
-                    getDate={getDate}
-                    addingProducts={addingProducts}
-                    setAddingProducts={setAddingProducts} 
-                />}            
+                {showNewTableModal && <TableModal />}                                
             </div>
             }
         </div>
@@ -2557,13 +2608,15 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
 
 const AddProduct = ({
     products, productAdd, setProductAdd, categories, uoms, wrhs, isProductView, wrh,
-    setIsProductView, compareStock, countedStockList, setCountedStockList, curSale,
-    getDate, companyRecord, addingProducts, setAddingProducts, setPostedProducts,  
+    setIsProductView, compareStock, countedStockList, setCountedStockList, curSession,
+    getDate, companyRecord, addingProducts, setAddingProducts, setPostedProducts, 
+    setAlertState, setAlert, setAlertTimeout, setActionMessage, alert, alertState, alertTimeout, actionMessage
 })=>{    
     const [category, setCategory] = useState('all')
     const [wrh1, setWrh1] = useState(isProductView ? Object.keys(countedStockList)[0] : 'open bar1' )
     const [totalSalesAmount, setTotalSalesAmount] = useState(0)
     const [totalAmount, setTotalAmount] = useState(0)
+    const [countResult, setCountResult] = useState({})
     const targetRef = useRef(null)
 
     const printToPDF = () => {
@@ -2670,8 +2723,8 @@ const AddProduct = ({
     useEffect(()=>{
         setAddingProducts(false)
         if (!isProductView){
-            if ( localStorage.getItem(`sales-${curSale?.createdAt}`)){
-                setCountedStockList(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`))) 
+            if ( localStorage.getItem(`sales-${curSession?.start}`)){
+                setCountedStockList(JSON.parse(localStorage.getItem(`sales-${curSession.start}`))) 
             }else {
                 resetSalesEntries() 
             }
@@ -2682,7 +2735,7 @@ const AddProduct = ({
         const name = e.target.getAttribute('name')
         const value = e.target.value
         if (name){
-            if (name === 'quantity'){
+            if (name === 'countedQuantity'){
                 const uom2 = uoms.filter((uom)=>{
                     return uom.code === countedStockList[wrh1][index].salesUom
                 })
@@ -2709,9 +2762,35 @@ const AddProduct = ({
         }
     }
 
+    const saveStockSDifference = async ()=>{
+        setAlert('info')
+        setAlert('Applying Sales Shortage...')
+        setAlertTimeout(2000)
+        console.log('count result:', countResult)
+        setIsProductView(false)
+        setProductAdd(false)      
+        setAddingProducts(false)                          
+        resetSalesEntries()
+        setActionMessage('')
+    }
+
     return (
-        <>
-            <div className='addproduct' style={{zIndex: 10000000}}>
+        <>            
+            <div className='reconcileproduct'>
+                {actionMessage && <Notify        
+                    notifyMessage={alert}
+                    notifyState = {alertState}
+                    timeout = {alertTimeout}
+                    actionMessage={actionMessage}
+                    cancel={()=>{
+                        setAddingProducts(false)                            
+                        setCountResult({})
+                    }}
+                    action={()=>{
+                        setActionMessage('')
+                        saveStockSDifference()
+                    }}
+                />} 
                 <div className='add-products' ref={targetRef}>
                     <div className='slprwh-cover' onClick={(e)=>{
                         const name = e.target.getAttribute('name')
@@ -2799,8 +2878,9 @@ const AddProduct = ({
                                     <div>
                                         <input 
                                             type='number'
-                                            name='quantity'
-                                            value={isProductView? Math.abs(Number(entry.quantity)) : entry.quantity}
+                                            name='countedQuantity'
+                                            placeholder={entry.name}
+                                            value={isProductView? Math.abs(Number(entry.countedQuantity)) : entry.countedQuantity}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
                                             disabled={isProductView}
                                         />
@@ -2810,7 +2890,7 @@ const AddProduct = ({
                                             name='salesUom'
                                             value={entry.salesUom}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
-                                            disabled={isProductView}
+                                            disabled={true}
                                         >
                                             {uoms.map((uom, idx)=>{
                                                 return (
@@ -2824,7 +2904,7 @@ const AddProduct = ({
                                             name='totalSales'
                                             type='number'
                                             value={isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}
-                                            disabled = {wrh1!=='kitchen' || !entry.quantity || isProductView}
+                                            disabled = {true}
                                             onChange={(e)=>{handleSalesUdpate(e, entry.index)}}
                                         >
                                             <option value = {isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}>{isProductView? Math.abs(Number(entry.totalSales)) : entry.totalSales}</option>
@@ -2839,10 +2919,22 @@ const AddProduct = ({
                         {!isProductView && <div 
                             className='add-products-button-add'
                             style={{cursor: addingProducts? 'not-allowed':'pointer'}}
-                            onClick={()=>{
+                            onClick={async()=>{
                                 if (!addingProducts){
                                     setAddingProducts(true)                                    
-                                    compareStock()                                    
+                                    const result = await compareStock(countedStockList)          
+                                    const {stocksPositiveDifference, stocksDifference, differenceSummary} =  result                                     
+                                    if (stocksPositiveDifference.count){
+                                        setAlertState('error')
+                                        setAlert('Positive Stock Differences Found.! Make Sure No Purchases or Transfers are Pending. Resolve The Descrepancies Before Proceeding!')
+                                        setAlertTimeout(5000)
+                                    }else{
+                                        setCountResult(result)
+                                        setAlertState('info')
+                                        setActionMessage('Accept')                                        
+                                        setAlert('Your Stock Count is less than current Inventory. Accept the difference as Sales Shortage, to be applied to the responsible employee IDs')
+                                        setAlertTimeout(15000)
+                                    }
                                 }
                             }}
                         >{'Save'}</div>}
@@ -2953,7 +3045,7 @@ const DeliveryDashboard = ({
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
                                     
-                                    const employeeSessions = allDeliverySessions.filter(session => {
+                                    const employeeSessions = allDeliverySessions?.filter(session => {
                                         return (
                                             session.employee_id === profile.emailid                                        
                                         )
