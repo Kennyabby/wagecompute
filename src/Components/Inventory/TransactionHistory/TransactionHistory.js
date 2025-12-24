@@ -93,7 +93,7 @@ const TransactionHistory = () => {
 
     const groups = new Map();
     txs.forEach((tx) => {
-      if (!tx) return;
+      if (tx?.entryType !== 'Sales') return;
       const keyParts = [
         tx.productId || '',
         tx.location || '',
@@ -1280,92 +1280,92 @@ const TransactionHistory = () => {
       setSummary(summaryForState);
     }
 
-    try {
-      const cached = await getTxCached(company, filters);
-      if (cached && Array.isArray(cached.transactions) && cached.summary) {
-        applyTxSnapshot(cached);
-        usedCache = true;
+    // try {
+    //   const cached = await getTxCached(company, filters);
+    //   if (cached && Array.isArray(cached.transactions) && cached.summary) {
+    //     applyTxSnapshot(cached);
+    //     usedCache = true;
 
-        // Silent background refresh when cache was used
-        (async () => {
-          try {
-            const [openingBalance, transactionsData] = await Promise.all([
-              getOpeningBalance(filters.startDate, filters.location, filters.productId),
-              fetchTransactionsData(filters.startDate, filters.endDate, filters)
-            ]);
+    //     // Silent background refresh when cache was used
+    //     (async () => {
+    //       try {
+    //         const [openingBalance, transactionsData] = await Promise.all([
+    //           getOpeningBalance(filters.startDate, filters.location, filters.productId),
+    //           fetchTransactionsData(filters.startDate, filters.endDate, filters)
+    //         ]);
 
-            const { transactions: fetchedTransactions, totalCount, summaryData } = transactionsData;
+    //         const { transactions: fetchedTransactions, totalCount, summaryData } = transactionsData;
 
-            const transfersInCost = (summaryData.transfersInCost || 0);
-            const transfersOutCost = (summaryData.transfersOutCost || 0);
-            const positiveAdjustmentsCost = (summaryData.positiveAdjustmentsCost || 0);
-            const negativeAdjustmentsCost = (summaryData.negativeAdjustmentsCost || 0);
+    //         const transfersInCost = (summaryData.transfersInCost || 0);
+    //         const transfersOutCost = (summaryData.transfersOutCost || 0);
+    //         const positiveAdjustmentsCost = (summaryData.positiveAdjustmentsCost || 0);
+    //         const negativeAdjustmentsCost = (summaryData.negativeAdjustmentsCost || 0);
 
-            const netTransferCost = transfersInCost + transfersOutCost;
-            const netAdjustmentCost = positiveAdjustmentsCost + negativeAdjustmentsCost;
+    //         const netTransferCost = transfersInCost + transfersOutCost;
+    //         const netAdjustmentCost = positiveAdjustmentsCost + negativeAdjustmentsCost;
 
-            let runningBalance = summaryData.closingStock;
-            const enrichedTransactions = (fetchedTransactions || []).map(tx => {
-              const quantity = Number(tx.baseQuantity) || 0;
-              runningBalance -= quantity;
+    //         let runningBalance = summaryData.closingStock;
+    //         const enrichedTransactions = (fetchedTransactions || []).map(tx => {
+    //           const quantity = Number(tx.baseQuantity) || 0;
+    //           runningBalance -= quantity;
 
-              return {
-                ...tx,
-                quantity,
-                runningBalance,
-                reference: getTransactionReference(tx),
-                formattedDate: formatDateString(tx.postingDate) || formatTransactionDate(tx.createdAt),
-                formattedQuantity: quantity > 0 ? `+${quantity}` : quantity.toString(),
-                formattedCost: tx.costPrice ? `₦${Number(tx.costPrice).toLocaleString()}` : 'N/A',
-                formattedTotalCost: tx.totalCost ? `₦${Math.abs(Number(tx.totalCost)).toLocaleString()}` : 'N/A',
-                formattedBalance: runningBalance,
-                documentNumber: tx.referenceNo || tx.orderNumber || 'N/A'
-              };
-            });
+    //           return {
+    //             ...tx,
+    //             quantity,
+    //             runningBalance,
+    //             reference: getTransactionReference(tx),
+    //             formattedDate: formatDateString(tx.postingDate) || formatTransactionDate(tx.createdAt),
+    //             formattedQuantity: quantity > 0 ? `+${quantity}` : quantity.toString(),
+    //             formattedCost: tx.costPrice ? `₦${Number(tx.costPrice).toLocaleString()}` : 'N/A',
+    //             formattedTotalCost: tx.totalCost ? `₦${Math.abs(Number(tx.totalCost)).toLocaleString()}` : 'N/A',
+    //             formattedBalance: runningBalance,
+    //             documentNumber: tx.referenceNo || tx.orderNumber || 'N/A'
+    //           };
+    //         });
 
-            const summaryForState = {
-              openingStock: summaryData.openingStock,
-              purchases: summaryData.purchases,
-              sales: summaryData.sales,
-              transfersIn: summaryData.transfersIn,
-              transfersOut: summaryData.transfersOut,
-              positiveAdjustments: summaryData.positiveAdjustments,
-              negativeAdjustments: summaryData.negativeAdjustments,
-              closingStock: summaryData.closingStock,
-              openingStockCost: summaryData.openingStockCost || 0,
-              purchasesCost: summaryData.purchasesCost || 0,
-              salesValue: summaryData.salesValue || 0,
-              costOfGoodsSold: summaryData.costOfGoodsSold || 0,
-              transfersInCost: transfersInCost || 0,
-              transfersOutCost: transfersOutCost || 0,
-              positiveAdjustmentsCost: positiveAdjustmentsCost || 0,
-              negativeAdjustmentsCost: negativeAdjustmentsCost || 0,
-              closingStockCost: summaryData.closingStockCost || 0,
-              netTransferCost,
-              netAdjustmentCost,
-            };
+    //         const summaryForState = {
+    //           openingStock: summaryData.openingStock,
+    //           purchases: summaryData.purchases,
+    //           sales: summaryData.sales,
+    //           transfersIn: summaryData.transfersIn,
+    //           transfersOut: summaryData.transfersOut,
+    //           positiveAdjustments: summaryData.positiveAdjustments,
+    //           negativeAdjustments: summaryData.negativeAdjustments,
+    //           closingStock: summaryData.closingStock,
+    //           openingStockCost: summaryData.openingStockCost || 0,
+    //           purchasesCost: summaryData.purchasesCost || 0,
+    //           salesValue: summaryData.salesValue || 0,
+    //           costOfGoodsSold: summaryData.costOfGoodsSold || 0,
+    //           transfersInCost: transfersInCost || 0,
+    //           transfersOutCost: transfersOutCost || 0,
+    //           positiveAdjustmentsCost: positiveAdjustmentsCost || 0,
+    //           negativeAdjustmentsCost: negativeAdjustmentsCost || 0,
+    //           closingStockCost: summaryData.closingStockCost || 0,
+    //           netTransferCost,
+    //           netAdjustmentCost,
+    //         };
 
-            const { transactions: txWithFlags, duplicateCount } = markDuplicateTransactions(
-              enrichedTransactions
-            );
+    //         const { transactions: txWithFlags, duplicateCount } = markDuplicateTransactions(
+    //           enrichedTransactions
+    //         );
 
-            setTransactions(txWithFlags);
-            setDuplicateCount(duplicateCount);
-            setTotalCount(totalCount);
-            setSummary(summaryForState);
-            setTxCached(company, filters, {
-              transactions: txWithFlags,
-              summary: summaryForState,
-              totalCount,
-            });
-          } catch (e) {
-            console.warn('Background refresh of transaction history failed', e);
-          }
-        })();
-      }
-    } catch (e) {
-      console.warn('TransactionHistory cache lookup failed', e);
-    }
+    //         setTransactions(txWithFlags);
+    //         setDuplicateCount(duplicateCount);
+    //         setTotalCount(totalCount);
+    //         setSummary(summaryForState);
+    //         setTxCached(company, filters, {
+    //           transactions: txWithFlags,
+    //           summary: summaryForState,
+    //           totalCount,
+    //         });
+    //       } catch (e) {
+    //         console.warn('Background refresh of transaction history failed', e);
+    //       }
+    //     })();
+    //   }
+    // } catch (e) {
+    //   console.warn('TransactionHistory cache lookup failed', e);
+    // }
 
     // If cache was used, we already kicked off a silent background refresh
     if (usedCache) {
@@ -1439,11 +1439,11 @@ const TransactionHistory = () => {
       setDuplicateCount(duplicateCount);
       setTotalCount(totalCount);
       setSummary(summaryForState);
-      setTxCached(company, filters, {
-        transactions: txWithFlags,
-        summary: summaryForState,
-        totalCount,
-      });
+      // setTxCached(company, filters, {
+      //   transactions: txWithFlags,
+      //   summary: summaryForState,
+      //   totalCount,
+      // });
 
     } catch (error) {
       console.log(error);
@@ -1458,9 +1458,9 @@ const TransactionHistory = () => {
     filters,
     getOpeningBalance,
     fetchTransactionsData,
-    getTxCached,
-    setTxCached,
-    applyTxSnapshot,
+    // getTxCached,
+    // setTxCached,
+    // applyTxSnapshot,
   ]);
 
   
@@ -1624,10 +1624,9 @@ const TransactionHistory = () => {
     if (!products[0].hasOwnProperty('stockSummary')) {
       handleApplyFilters();
       return;
+    }else{
+      fetchTransactionHistory()
     }
-
-    // Once stockSummary is present for the current filters, load transactions
-    fetchTransactionHistory();
   }, [company, products]);
 
   const handleFilterChange = (e) => {
