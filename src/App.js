@@ -2215,7 +2215,6 @@ function App() {
     const cached = await getCached(company, 'purchase', companyRecord?.emailid);
     if (cached) {
       setPurchase(cached);
-      return;
     }
     const resp = await fetchServer("POST", {
       database: company,

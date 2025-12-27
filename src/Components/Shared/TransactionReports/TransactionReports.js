@@ -693,10 +693,10 @@ const TransactionReports = ({
                                         {`MP4: ${(session.moniepoint4 || 0).toLocaleString()}`}
                                     </span>
                                     <span className="session-date">
-                                        {`MP3: ${(session.moniepoint5 || 0).toLocaleString()}`}
+                                        {`MP5: ${(session.moniepoint5 || 0).toLocaleString()}`}
                                     </span>
                                     <span className="session-date">
-                                        {`MP4: ${(session.moniepoint6 || 0).toLocaleString()}`}
+                                        {`MP6: ${(session.moniepoint6 || 0).toLocaleString()}`}
                                     </span>
                                     <span className="session-date">
                                         {`CASH: ${(session.cash || 0).toLocaleString()}`}
