@@ -1306,20 +1306,25 @@ function App() {
   };
 
   const getAllSessions = async (company) => {
-    if (company && companyRecord?.emailId){
-      const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
-      if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-        setAllSessions(cached);
-      }
-      const resp = await fetchServer("POST", {
-        database: company,
-        collection: "POSSessions", 
-        prop: {} 
-      }, "getDocsDetails", SERVER)
-      if (resp.record && Array.isArray(resp.record)){
-        setAllSessions(resp.record)
-        setCached(company, 'allSessions', resp.record, companyRecord?.emailid)
-        return resp.record
+    if (company && companyRecord?.emailid){
+      try {
+        const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
+        if (cached && Array.isArray(cached) && companyRecord?.emailid) {
+          setAllSessions(cached);
+        }
+        const resp = await fetchServer("POST", {
+          database: company,
+          collection: "POSSessions", 
+          prop: {} 
+        }, "getDocsDetails", SERVER)
+        if (resp.record && Array.isArray(resp.record)){
+          setAllSessions(resp.record)
+          setCached(company, 'allSessions', resp.record, companyRecord?.emailid)
+          return resp.record
+        }
+      } catch (e) {
+        console.error('getAllSessions failed', e)
+        return []
       }
     }
   }

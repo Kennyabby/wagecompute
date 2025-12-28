@@ -11,6 +11,7 @@ import {
   loadDeliverySnapshot,
   saveDeliverySnapshot,
   queuePendingChange,
+    loadPendingChanges,
   loadAllOrders,
   loadAllTables,
   loadAllSessionsLocal,
@@ -282,10 +283,16 @@ const Delivery = () => {
         if (Array.isArray(deliverySessions)){
             setSessions(deliverySessions)
             const syncToIndexDB = async ()=>{
-                for (const s of deliverySessions) {
-                    if (s && s.start != null) {
-                        await putSession(company, companyRecord.emailid, s);
+                try {
+                    const pending = await loadPendingChanges(company, companyRecord.emailid);
+                    const pendingSessionIds = new Set(pending.filter(c=>c.entityType==='session').map(c=>(c.clientId || c.payload?.start)).filter(Boolean));
+                    for (const s of deliverySessions) {
+                        if (s && s.start != null && !pendingSessionIds.has(s.start)) {
+                            await putSession(company, companyRecord.emailid, s);
+                        }
                     }
+                } catch (e) {
+                    console.warn('Delivery: sync sessions to IndexedDB failed', e);
                 }
             }
             syncToIndexDB()
@@ -407,10 +414,16 @@ const Delivery = () => {
     useEffect(()=>{
         if (tables.length && wrh && curSession && employees.length){
             const syncToIndexDB = async ()=>{
-                for (const t of tables) {
-                    if (t && t.i_d != null) {
-                        await putTable(company, companyRecord.emailid, t);
+                try {
+                    const pending = await loadPendingChanges(company, companyRecord.emailid);
+                    const pendingTableIds = new Set(pending.filter(c=>c.entityType==='table').map(c=>(c.clientId || c.payload?.i_d)).filter(Boolean));
+                    for (const t of tables) {
+                        if (t && t.i_d != null && !pendingTableIds.has(t.i_d)) {
+                            await putTable(company, companyRecord.emailid, t);
+                        }
                     }
+                } catch (e) {
+                    console.warn('Delivery: sync tables to IndexedDB failed', e);
                 }
             }
             syncToIndexDB()
@@ -525,34 +538,40 @@ const Delivery = () => {
         setAlertTimeout(10000);
 
         try {
-            await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server)
 
-            fetchTables(company)
-            
-            // Feth Sessions
-            fetchSessions(company, "delivery", companyRecord)
-            
-            getPosOrders({company, companyRecord})
-            
-            // Fetch products
-            getProducts(company)
-            
-            // Fetch prpfiles
-            fetchProfiles(company)
-            
-            // Fetch all sessions
-            fetchAllSessions({company})
-            getAllSessions(company)
-            
-            
-            loadInitialData()
+            // Refresh related data; await but ignore individual failures
+            await Promise.all([
+                fetchTables(company),
+                fetchSessions(company, "delivery", companyRecord),
+                getPosOrders({company, companyRecord}),
+                getProducts(company),
+                fetchProfiles(company),
+                fetchAllSessions({company}),
+                getAllSessions(company),
+            ]).catch(()=>{});
 
-            setAlertState('success');
-            setAlert('Offline Delivery sync completed');
-            setAlertTimeout(3000);
+            await loadInitialData();
+
+            if (Array.isArray(results)) {
+                const failed = results.filter(r => r.status === 'error');
+                if (failed.length) {
+                    setAlertState('error');
+                    setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                    setAlertTimeout(5000);
+                } else {
+                    setAlertState('success');
+                    setAlert('Offline Delivery Sync complete');
+                    setAlertTimeout(3000);
+                }
+            } else {
+                setAlertState('success');
+                setAlert('Offline Delivery Sync complete');
+                setAlertTimeout(3000);
+            }
         } catch (e) {
             setAlertState('error');
-            setAlert('Offline Delivery sync failed. Please try again.');
+            setAlert('Offline Delivery Sync failed. Please try again.');
             setAlertTimeout(3000);
         }
     };
@@ -797,69 +816,85 @@ const Delivery = () => {
         // Store the controllers in refs
         orderControllerRef.current = orderController;
 
-        const ordersResponse = await fetchServer("POST", {
-            database: company,
-            collection: "Orders"
-        }, "getDocsDetails", server);
-        if (!ordersResponse.err && Array.isArray(ordersResponse.record)){
-            setAllSessionOrders(ordersResponse.record)        
+        // Local-first: show locally persisted orders immediately
+        let localOrders = [];
+        try {
+            localOrders = await loadAllOrders(company, companyRecord.emailid);
+            if (Array.isArray(localOrders) && localOrders.length) {
+                setAllSessionOrders(localOrders);
+            }
+        } catch (e) {
+            console.warn('Delivery: loadAllOrders failed', e);
         }
 
-        // Fetch Orders
+        // Fetch Orders from server and merge with local pending changes
         if (curSession){
             const ordersResponse = await fetchServer("POST", {
                 database: company,
                 collection: "Orders"
             }, "getDocsDetails", server, orderController.signal);
-            
+
             if(!ordersResponse.err){
                 setIsLive(true)
-                if (![null,undefined].includes(ordersResponse.record)){
-                    if(ordersResponse?.record?.length && Array.isArray(ordersResponse.record)){
-                        setAllSessionOrders(ordersResponse.record)
-                        setAllOrders(ordersResponse.record.filter((order, i) =>{
-                            if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){                               
-                                return order
-                            }                            
-                        })) 
-                        // write-through to IndexedDB orders store (guard keyPath)
-                        try {
-                            for (const o of ordersResponse.record) {
-                                if (o && o.orderNumber != null) {
-                                    await putOrder(company, companyRecord.emailid, o);
+                if (Array.isArray(ordersResponse.record) && ordersResponse.record.length){
+                    try {
+                        const pending = await loadPendingChanges(company, companyRecord.emailid);
+                        const pendingOrderNums = new Set(pending.filter(c=>c.entityType==='order').map(c=>(c.clientId || c.payload?.orderNumber)).filter(Boolean));
+                        const serverOrders = ordersResponse.record || [];
+                        const map = {};
+                        for (const s of serverOrders) {
+                            if (s && s.orderNumber) map[s.orderNumber] = s;
+                        }
+                        for (const l of localOrders) {
+                            if (l && l.orderNumber) {
+                                if (pendingOrderNums.has(l.orderNumber)) {
+                                    map[l.orderNumber] = l;
+                                } else {
+                                    map[l.orderNumber] = map[l.orderNumber] || l;
                                 }
                             }
-                        } catch (e) {
-                            console.warn('Delivery: putOrder in loadInitialData failed', e);
                         }
-                        setPlacingOrder(false)
-                        var ordersUpdate = ordersResponse.record
-                        if (currentOrder!==null){
-                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
-                                setTableOrders(ordersUpdate.filter((order)=>{
-                                    var orderDate = '01/01/1970'
-                                    if (order.createdAt){
-                                        orderDate = order.createdAt
-                                    }
-                                    if (
-                                        order.tableId === currentTable.i_d
-                                        && (order.wrh === wrh || wrh === 'kitchen') 
-                                    ){
-                                        // Check if the order is from the current session
-                                        return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
-                                    }
-                                }))
-                            }else{
-                                const myTableOrders = ordersUpdate.filter((order) =>{                                    
-                                    return order.tableId === currentTable.i_d
-                                    && order.wrh === wrh
-                                    && getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.i_d)                                    
-                                })
-                                setTableOrders(myTableOrders)
+                        const merged = Object.values(map);
+                        setAllSessionOrders(merged);
+
+                        // write-through server orders to IndexedDB, but skip pending ones
+                        for (const o of serverOrders) {
+                            if (o && o.orderNumber != null && !pendingOrderNums.has(o.orderNumber)) {
+                                await putOrder(company, companyRecord.emailid, o);
                             }
                         }
+                    } catch (e) {
+                        console.warn('Delivery: merging server orders failed', e);
+                        setAllSessionOrders(ordersResponse.record);
                     }
-                }                
+
+                    setAllOrders(ordersResponse.record.filter((order) => getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)));
+                    setPlacingOrder(false);
+                    var ordersUpdate = ordersResponse.record
+                    if (currentOrder!==null){
+                        if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')){
+                            setTableOrders(ordersUpdate.filter((order)=>{
+                                var orderDate = '01/01/1970'
+                                if (order.createdAt){
+                                    orderDate = order.createdAt
+                                }
+                                if (
+                                    order.tableId === currentTable.i_d
+                                    && (order.wrh === wrh || wrh === 'kitchen') 
+                                ){
+                                    return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
+                                }
+                            }))
+                        }else{
+                            const myTableOrders = ordersUpdate.filter((order) =>{                                    
+                                return order.tableId === currentTable.i_d
+                                && order.wrh === wrh
+                                && getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.i_d)                                    
+                            })
+                            setTableOrders(myTableOrders)
+                        }
+                    }
+                }
             }else{
                 if (ordersResponse.mess !== 'Request aborted'){
                     setIsLive(false)
