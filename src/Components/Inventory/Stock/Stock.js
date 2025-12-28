@@ -4,6 +4,7 @@ import { generatePDF, generateExcel } from '../../../utils/exportUtils';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import ContextProvider from '../../../Resources/ContextProvider';
+import { syncPendingChanges } from '../../../Resources/offlineSync';
 import './Stock.css';
 
 const Stock = ({ 
@@ -92,6 +93,17 @@ const Stock = ({
     const [isLoading, setIsLoading] = useState(false);
     const [showColumnManager, setShowColumnManager] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const refreshStockData = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        try{
+            await Promise.all([
+                getWarehouses(),
+                getCategories(),
+                getProductsStockReport(cmp_val, products, { startDate: dateRange.startDate, endDate: dateRange.endDate })
+            ]);
+        }catch(e){}
+    }
     const [availableColumns, setAvailableColumns] = useState([
         // Basic Info (always visible)
         { id: 'i_d', name: 'Product ID', category: 'basic', visible: true, required: true },
@@ -815,6 +827,43 @@ const Stock = ({
                             <line x1="9" y1="15" x2="21" y2="15"></line>
                         </svg>
                         Manage Columns
+                    </button>
+                    <button 
+                        className="action-btn"
+                        onClick={async ()=>{
+                            if (!company || !companyRecord?.emailid) return;
+                            setIsSyncing(true);
+                            setAlertState('info');
+                            setAlert('Syncing offline Inventory changes...');
+                            setAlertTimeout(10000);
+                            try{
+                                const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                                await refreshStockData();
+                                if (Array.isArray(results)){
+                                    const failed = results.filter(r => r.status === 'error');
+                                    if (failed.length){
+                                        setAlertState('error');
+                                        setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                                        setAlertTimeout(5000);
+                                    } else {
+                                        setAlertState('success');
+                                        setAlert('Offline Inventory Sync complete');
+                                        setAlertTimeout(3000);
+                                    }
+                                } else {
+                                    setAlertState('success');
+                                    setAlert('Offline Inventory Sync complete');
+                                    setAlertTimeout(3000);
+                                }
+                            }catch(e){
+                                setAlertState('error');
+                                setAlert('Offline Inventory Sync failed. Please try again.');
+                                setAlertTimeout(3000);
+                            }finally{setIsSyncing(false)}
+                        }}
+                        disabled={isSyncing}
+                    >
+                        {isSyncing ? 'Syncing...' : 'Sync()'}
                     </button>
                 </div>
                 <div className='filter-header'>

@@ -43,6 +43,7 @@ const Delivery = () => {
 
     // Core States
     const [loading, setLoading] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [activeScreen, setActiveScreen] = useState('home');
     const [orderTables, setOrderTables] = useState([]);
     const [currentTable, setCurrentTable] = useState(null)
@@ -314,34 +315,40 @@ const Delivery = () => {
         }
     },[tables, sessions])
     
+    const refreshDeliveryTables = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return;
+        try{
+            await fetchTables(cmp_val)
+        }catch(e){}
+    }
+
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         getProducts(cmp_val)
         fetchTables(cmp_val)
-        const intervalId = setInterval(()=>{
-            if (cmp_val){
-                // Fetch tables
-                fetchTables(cmp_val)
-                // Fetch products
-                // getProducts(cmp_val)
-            }
-        },120000)
+        const intervalId = setInterval(()=>{ refreshDeliveryTables(); },120000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+
+    const refreshDeliveryData = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return;
+        try{
+            await Promise.all([
+                loadInitialData(),
+                getPosOrders({company, companyRecord}),
+            ])
+        }catch(e){}
+    }
 
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
         getPosOrders({company, companyRecord})
-        const intervalId = setInterval(()=>{
-            if (cmp_val){
-                // Fetch tables
-                loadInitialData()
-                getPosOrders({company, companyRecord})
-                // Fetch products
-                // getProducts(cmp_val)
-            }
-        },1200000)
+        const intervalId = setInterval(()=>{ refreshDeliveryData(); },1200000)
+        // run once
+        refreshDeliveryData();
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -532,7 +539,7 @@ const Delivery = () => {
 
     const handleSyncOfflineDelivery = async () => {
         if (!company || !companyRecord?.emailid) return;
-
+        setIsSyncing(true);
         setAlertState('info');
         setAlert('Syncing offline Delivery changes...');
         setAlertTimeout(10000);
@@ -540,11 +547,11 @@ const Delivery = () => {
         try {
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server)
 
-            // Refresh related data; await but ignore individual failures
+            // Refresh related data via shared refresh function
             await Promise.all([
-                fetchTables(company),
+                refreshDeliveryTables(),
+                refreshDeliveryData(),
                 fetchSessions(company, "delivery", companyRecord),
-                getPosOrders({company, companyRecord}),
                 getProducts(company),
                 fetchProfiles(company),
                 fetchAllSessions({company}),
@@ -573,6 +580,8 @@ const Delivery = () => {
             setAlertState('error');
             setAlert('Offline Delivery Sync failed. Please try again.');
             setAlertTimeout(3000);
+        } finally {
+            setIsSyncing(false);
         }
     };
 
@@ -2135,8 +2144,9 @@ const Delivery = () => {
                                     {<button 
                                         className="action-btn"
                                         onClick={handleSyncOfflineDelivery}
+                                        disabled={isSyncing}
                                     >
-                                        Sync()
+                                        {isSyncing ? 'Syncing...' : 'Sync()'}
                                     </button>}
                                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                                         className="action-btn"

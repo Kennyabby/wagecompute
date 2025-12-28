@@ -1,6 +1,7 @@
 import './Purchase.css'
 import { useEffect, useContext, useState, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import { syncPendingChanges } from '../../Resources/offlineSync';
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
 import { useScroll } from 'framer-motion'
@@ -40,6 +41,7 @@ const Purchase = ()=>{
     const [wrhs, setWrhs] = useState([])
     const [postAction, setPostAction] = useState('postpurchase')
     const [productPurchased, setProductPurchased] = useState([])
+    const [isSyncing, setIsSyncing] = useState(false);
     // const [purchaseWrh, setPurchaseWrh] = useState('')
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
     const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
@@ -66,6 +68,22 @@ const Purchase = ()=>{
     useEffect(()=>{
         storePath('purchase')  
     },[storePath])
+    const refreshPurchaseData = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return;
+        try{
+            const tasks = [];
+            if (products.length){
+                tasks.push(getProductsWithStock(cmp_val, products));
+                tasks.push(getProductsStockReport(cmp_val, products));
+            }
+            tasks.push(getApprovals(cmp_val, companyRecord));
+            tasks.push(getEmployees(cmp_val, companyRecord));
+            tasks.push(getPurchase(cmp_val, companyRecord));
+            await Promise.all(tasks);
+        }catch(e){ }
+    }
+
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         if(!products.length){
@@ -80,20 +98,46 @@ const Purchase = ()=>{
                 getProductsStockReport(cmp_val, products)
             }
         }
-        const intervalId = setInterval(()=>{
-            if (cmp_val){
-                if (products.length){
-                    getProductsWithStock(cmp_val, products)
-                    getProductsStockReport(cmp_val, products)
-            }
-            getApprovals(cmp_val, companyRecord)
-            getEmployees(cmp_val, companyRecord)
-            getPurchase(cmp_val, companyRecord)
-            
-          }
-        },1200000)
+        const intervalId = setInterval(()=>{ refreshPurchaseData(); },1200000)
+        // run once
+        refreshPurchaseData();
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp'), products])
+
+    const handleSyncOfflinePurchase = async () => {
+        if (!company || !companyRecord?.emailid) return;
+        setIsSyncing(true);
+        setAlertState('info');
+        setAlert('Syncing offline Purchase changes...');
+        setAlertTimeout(10000);
+        try{
+            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            await refreshPurchaseData();
+
+            if (Array.isArray(results)){
+                const failed = results.filter(r => r.status === 'error');
+                if (failed.length){
+                    setAlertState('error');
+                    setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                    setAlertTimeout(5000);
+                } else {
+                    setAlertState('success');
+                    setAlert('Offline Purchase Sync complete');
+                    setAlertTimeout(3000);
+                }
+            } else {
+                setAlertState('success');
+                setAlert('Offline Purchase Sync complete');
+                setAlertTimeout(3000);
+            }
+        }catch(e){
+            setAlertState('error');
+            setAlert('Offline Purchase Sync failed. Please try again.');
+            setAlertTimeout(3000);
+        }finally{
+            setIsSyncing(false);
+        }
+    }
     useEffect(()=>{
         if (settings.length){  
             const uomSetFilt = settings.filter((setting)=>{
@@ -616,6 +660,7 @@ const Purchase = ()=>{
                             setIsApprover(false)
                         }}
                     />}
+                    
                     <div className='payeeinpcov'>
                         <div className='inpcov formpad'>
                             <div>Date From</div>
@@ -645,6 +690,9 @@ const Purchase = ()=>{
                                 }}
                             />
                         </div>
+                    </div>
+                    <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                        <button className="action-btn" onClick={handleSyncOfflinePurchase} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
                     {[...purchaseApprovals, ...purchase].filter((purfltr)=>{
                         if (purfltr.postingDate >= saleFrom && purfltr.postingDate <= saleTo){

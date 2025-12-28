@@ -2,6 +2,7 @@ import './Adjustments.css'
 
 import { useState, useEffect, useRef, useContext } from "react";
 import ContextProvider from '../../../../Resources/ContextProvider';
+import { syncPendingChanges } from '../../../../Resources/offlineSync';
 
 const Adjustments = ({
     setIsOnView, isNewEntry, setIsNewView,
@@ -45,11 +46,21 @@ const Adjustments = ({
         {name: 'Difference Cost', reference:'differenceCost', show:false},])
 
     const [adjustmentEntries, setAdjustmentEntries] = useState([])
+    const [isSyncing, setIsSyncing] = useState(false)
+
+    const refreshAdjustmentsData = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return;
+        try{
+            await getProductsWithStock(cmp_val, products)
+        }catch(e){}
+    }
 
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');        
         getProductsWithStock(cmp_val, products)
-    },[])
+    },[products])
+    
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');        
         if (!isNewEntry){            
@@ -80,6 +91,41 @@ const Adjustments = ({
             }
         }
     }, [window.localStorage.getItem('sessn-cmp'), isNewEntry]);
+
+    const handleSyncOfflineAdjustments = async () => {
+        if (!company || !companyRecord?.emailid) return;
+        setIsSyncing(true);
+        setAlertState('info');
+        setAlert('Syncing offline Adjustments changes...');
+        setAlertTimeout(10000);
+        try{
+            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            const cmp_val = window.localStorage.getItem('sessn-cmp');
+            await Promise.all([
+                getProductsWithStock(cmp_val, products)
+            ]).catch(()=>{});
+            if (Array.isArray(results)){
+                const failed = results.filter(r => r.status === 'error');
+                if (failed.length){
+                    setAlertState('error');
+                    setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                    setAlertTimeout(5000);
+                } else {
+                    setAlertState('success');
+                    setAlert('Offline Adjustments Sync complete');
+                    setAlertTimeout(3000);
+                }
+            } else {
+                setAlertState('success');
+                setAlert('Offline Adjustments Sync complete');
+                setAlertTimeout(3000);
+            }
+        }catch(e){
+            setAlertState('error');
+            setAlert('Offline Adjustments Sync failed. Please try again.');
+            setAlertTimeout(3000);
+        }finally{setIsSyncing(false)}
+    }
     
 
     useEffect(()=>{
@@ -229,6 +275,9 @@ const Adjustments = ({
     return (
         <>
             <div className='adjustments'>
+                <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                    <button className="action-btn" onClick={handleSyncOfflineAdjustments} disabled={isSyncing}>{isSyncing? 'Syncing...' : 'Sync()'}</button>
+                </div>
                 <div className='adj-left'>                    
                     <div className='adj-title'>Warehouses</div>                    
                     <div className='adj-list' onClick={(e)=>{

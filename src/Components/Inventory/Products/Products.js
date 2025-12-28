@@ -2,6 +2,7 @@ import './Products.css'
 
 import { useState, useEffect, useRef, useContext } from "react";
 import ContextProvider from '../../../Resources/ContextProvider';
+import { syncPendingChanges } from '../../../Resources/offlineSync';
 
 const Products = ({
     isNewProduct, isProductView,
@@ -20,6 +21,7 @@ const Products = ({
     } = useContext(ContextProvider)
     const loadRef = useRef(null)
     const intervalRef = useRef(null)
+        const [isSyncing, setIsSyncing] = useState(false)
     const [wrhs, setWrhs] = useState([])
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
@@ -136,15 +138,19 @@ const Products = ({
         }
     }
 
+    const refreshProductsData = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return;
+        try{ await getProductsWithStock(cmp_val, products); }catch(e){}
+    }
+
     useEffect(()=>{
         getProducts(cmp_val)
         if (!curProduct){
             var cmp_val = window.localStorage.getItem('sessn-cmp')
-            intervalRef.current = setInterval(()=>{
-              if (cmp_val){
-                getProductsWithStock(cmp_val, products)
-              }
-            },1200000)
+            intervalRef.current = setInterval(()=>{ refreshProductsData(); },1200000)
+            // run once
+            refreshProductsData();
             return () => clearInterval(intervalRef.current);
         }else{
             if(intervalRef.current){
@@ -152,6 +158,42 @@ const Products = ({
             }
         }
     },[window.localStorage.getItem('sessn-cmp'), curProduct])
+    
+    const handleSyncOfflineProducts = async () => {
+        if (!company || !companyRecord?.emailid) return;
+        setIsSyncing(true);
+        setAlertState('info');
+        setAlert('Syncing offline Products changes...');
+        setAlertTimeout(10000);
+        try{
+            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            // reuse periodic refresh function
+            await getProducts(window.localStorage.getItem('sessn-cmp'))
+            await refreshProductsData();
+            if (Array.isArray(results)){
+                const failed = results.filter(r => r.status === 'error');
+                if (failed.length){
+                    setAlertState('error');
+                    setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                    setAlertTimeout(5000);
+                } else {
+                    setAlertState('success');
+                    setAlert('Offline Products Sync complete');
+                    setAlertTimeout(3000);
+                }
+            } else {
+                setAlertState('success');
+                setAlert('Offline Products Sync complete');
+                setAlertTimeout(3000);
+            }
+        }catch(e){
+            setAlertState('error');
+            setAlert('Offline Products Sync failed. Please try again.');
+            setAlertTimeout(3000);
+        }finally{
+            setIsSyncing(false);
+        }
+    }
 
     useEffect(()=>{
         if(!isProductView && delCount===null){
