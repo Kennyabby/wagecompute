@@ -1628,7 +1628,7 @@ const Sales = ()=>{
     const deleteSales = async (sale)=>{
         const today = new Date()
         let postDate = new Date(sale.postingDate).toISOString().slice(0, 10)
-        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)){
+        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10) && !companyRecord?.access === 'admin'){
             setAlertState('error')
             setAlert('Cannot reverse sales after more than 1 day')
             setAlertTimeout(3000)
