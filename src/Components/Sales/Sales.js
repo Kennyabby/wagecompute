@@ -13,6 +13,7 @@ import RentalReceipt from './RentalReceipt/RentalReceipt';
 import { uploadFile, updateFile, getFileUrl, deleteFile, createFolder } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 import DebtReport from './DebtReport/DebtReport';
 import Notify from '../../Resources/Notify/Notify';
+import { syncPendingChanges } from '../../Resources/offlineSync';
 import { MdAdd } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
@@ -182,6 +183,7 @@ const Sales = ()=>{
         ...defaultRentalFields
     })
     const [isView, setIsView] = useState(false)
+    const [isSyncing, setIsSyncing] = useState(false)
 
     const [postingRecovery, setPostingRecovery] = useState(false)
     // useEffect(()=>{
@@ -222,26 +224,59 @@ const Sales = ()=>{
         storePath('sales')  
     },[storePath])
     
-    useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')
-        getApprovals(cmp_val, companyRecord)
-        getAllSessions(cmp_val, companyRecord)
-        getSales(cmp_val, companyRecord)
-        getEmployees(cmp_val, companyRecord)
-        getRentals(cmp_val, companyRecord)
-        getAccommodations(cmp_val, companyRecord)
-        const intervalId = setInterval(()=>{
-            if (cmp_val){
-                getApprovals(cmp_val, companyRecord)
-                getSales(cmp_val, companyRecord)
-                getEmployees(cmp_val, companyRecord)
-                getRentals(cmp_val, companyRecord)
-                getAccommodations(cmp_val, companyRecord)
-                getAllSessions(cmp_val, companyRecord)
-            }
-        },1200000)
+    useEffect(()=>{        
+        refreshSalesData();
+        const intervalId = setInterval(()=>{ refreshSalesData(); },1200000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+    
+    const refreshSalesData = async () => {
+        var cmp_val = window.localStorage.getItem('sessn-cmp')        
+        if (!cmp_val) return;
+        try{
+            await Promise.all([
+                getApprovals(cmp_val, companyRecord),
+                getAllSessions(cmp_val, companyRecord),
+                getSales(cmp_val, companyRecord),
+                getEmployees(cmp_val, companyRecord),
+                getRentals(cmp_val, companyRecord),
+                getAccommodations(cmp_val, companyRecord),
+            ]);
+        }catch(e){}
+    }
+    const handleSyncOfflineSales = async () => {
+        if (!company || !companyRecord?.emailid) return;
+        setIsSyncing(true);
+        setAlertState('info');
+        setAlert('Syncing offline Sales changes...');
+        setAlertTimeout(10000);
+        try{
+            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            await refreshSalesData();
+            if (Array.isArray(results)){
+                const failed = results.filter(r => r.status === 'error');
+                if (failed.length){
+                    setAlertState('error');
+                    setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                    setAlertTimeout(5000);
+                } else {
+                    setAlertState('success');
+                    setAlert('Offline Sales Sync complete');
+                    setAlertTimeout(3000);
+                }
+            } else {
+                setAlertState('success');
+                setAlert('Offline Sales Sync complete');
+                setAlertTimeout(3000);
+            }
+        }catch(e){
+            setAlertState('error');
+            setAlert('Offline Sales Sync failed. Please try again.');
+            setAlertTimeout(3000);
+        }finally{
+            setIsSyncing(false);
+        }
+    }
 
 
     useEffect(()=>{
@@ -2218,6 +2253,7 @@ const Sales = ()=>{
                     fromDate = {saleFrom}
                     toDate = {saleTo}
                 />}    
+                
                 {showDebtReport && <DebtReport
                     reportDebts = {calculateDebtReport()}
                     multiple={recoveryEmployeeId===''}
@@ -2308,6 +2344,9 @@ const Sales = ()=>{
                             />
                         </div>
                     </div>     
+                    <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                        <button className="action-btn" onClick={handleSyncOfflineSales} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                    </div>
                     <div className='emptypecov' 
                         onClick={handleSalesOpts1}
                     >

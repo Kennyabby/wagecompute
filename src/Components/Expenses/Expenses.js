@@ -1,5 +1,6 @@
 import './Expenses.css'
 import { useEffect, useContext, useState} from 'react'
+import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 // import { useInventory } from '../../Resources/InventoryContext';
 // import { useAttendance } from '../../Resources/AttendanceContext';
@@ -48,6 +49,7 @@ const Expenses = ()=>{
     const [deleteCount, setDeleteCount] = useState(0)
     const [isView, setIsView] = useState(false)
     const [showReport, setShowReport] = useState(false)
+    const [isSyncing, setIsSyncing] = useState(false)
     const [expenseFrom, setExpenseFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
     const [expenseTo, setExpenseTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [reportExpense, setReportExpense] = useState(null)
@@ -116,6 +118,42 @@ const Expenses = ()=>{
         },1200000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
+
+    const handleSyncOfflineExpenses = async () => {
+        if (!company || !companyRecord?.emailid) return;
+        setIsSyncing(true);
+        setAlertState('info');
+        setAlert('Syncing offline Expenses changes...');
+        setAlertTimeout(10000);
+        try{
+            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            const cmp_val = window.localStorage.getItem('sessn-cmp');
+            if (cmp_val) await getExpenses(cmp_val);
+
+            if (Array.isArray(results)){
+                const failed = results.filter(r => r.status === 'error');
+                if (failed.length){
+                    setAlertState('error');
+                    setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                    setAlertTimeout(5000);
+                } else {
+                    setAlertState('success');
+                    setAlert('Offline Expenses Sync complete');
+                    setAlertTimeout(3000);
+                }
+            } else {
+                setAlertState('success');
+                setAlert('Offline Expenses Sync complete');
+                setAlertTimeout(3000);
+            }
+        }catch(e){
+            setAlertState('error');
+            setAlert('Offline Expenses Sync failed. Please try again.');
+            setAlertTimeout(3000);
+        }finally{
+            setIsSyncing(false);
+        }
+    }
 
     useEffect(()=>{
         if (companyRecord.status!=='admin'){
@@ -399,6 +437,9 @@ const Expenses = ()=>{
                                 }}
                             />
                         </div>
+                    </div>
+                    <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                        <button className="action-btn" onClick={handleSyncOfflineExpenses} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
                     {companyRecord.status==='admin' && <div className='inpcov fltinpcov'>
                         <select 

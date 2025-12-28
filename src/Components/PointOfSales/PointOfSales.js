@@ -38,6 +38,27 @@ const PointOfSales = () => {
     // Core States
     
     const [loading, setLoading] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const refreshPOSData = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return;
+        try{
+            await Promise.all([
+                fetchTables(cmp_val),
+            ]);
+        }catch(e){}
+    }
+
+    const refreshPOSData2 = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return;
+        try{
+            await Promise.all([
+                getPosOrders({company, companyRecord}),
+            ]);
+        }catch(e){}
+    }
     const [activeScreen, setActiveScreen] = useState('home');
     const [orderTables, setOrderTables] = useState([]);
     const [currentTable, setCurrentTable] = useState(null)
@@ -314,14 +335,9 @@ const PointOfSales = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         fetchTables(cmp_val)
-        const intervalId = setInterval(()=>{
-            if (cmp_val){
-              // Fetch tables
-              fetchTables(cmp_val)
-              // Fetch products
-              // getProducts(cmp_val)
-            }
-        },1200000)
+        const intervalId = setInterval(()=>{ refreshPOSData(); },1200000)
+        // run once
+        refreshPOSData();
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -329,14 +345,9 @@ const PointOfSales = () => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
         getPosOrders({company, companyRecord})
-        const intervalId = setInterval(()=>{
-            if (cmp_val){
-                // Fetch tables
-                getPosOrders({company, companyRecord})
-                // Fetch products
-                // getProducts(cmp_val)
-            }
-        },1200000)
+        const intervalId = setInterval(()=>{ refreshPOSData2(); },1200000)
+        // run once
+        refreshPOSData2();
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -1412,19 +1423,21 @@ const PointOfSales = () => {
     const handleSyncOfflinePOS = async () => {
         if (!company || !companyRecord?.emailid) return;
 
+        setIsSyncing(true);
         setAlertState('info');
         setAlert('Syncing offline POS changes...');
         setAlertTimeout(10000);
 
-
         try {
+
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
 
-            // Refresh related data regardless, but determine final alert from sync results
+            // Refresh related data by reusing periodic refresh functions
             await Promise.all([
-                fetchTables(company),
+                // reuse POS table refresh
+                (async ()=>{ await refreshPOSData(); })(),
+                (async ()=>{ await refreshPOSData2(); })(),
                 fetchSessions(company, "sales", companyRecord),
-                getPosOrders({company, companyRecord}),
                 getProducts(company),
                 fetchProfiles(company),
                 fetchAllSessions({company}),
@@ -1453,6 +1466,8 @@ const PointOfSales = () => {
             setAlertState('error');
             setAlert('Offline POS Sync failed. Please try again.');
             setAlertTimeout(3000);
+        } finally {
+            setIsSyncing(false);
         }
     }
 
@@ -2334,8 +2349,9 @@ const PointOfSales = () => {
                                             {<button 
                                                 className="action-btn"
                                                 onClick={handleSyncOfflinePOS}
+                                                disabled={isSyncing}
                                             >
-                                                Sync()
+                                                {isSyncing ? 'Syncing...' : 'Sync()'}
                                             </button>}
                                         </div>
                                         

@@ -1,6 +1,7 @@
 import './Reports.css'
 
 import { useState, useEffect, useContext, useRef } from 'react'
+import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 import html2pdf from 'html2pdf.js';
 
@@ -38,6 +39,7 @@ const Reports = ()=>{
     },[window.localStorage.getItem('sessn-cmp')])
     const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))
     const [filterTo, setFilterTo] = useState(new Date(Date.now()).toISOString().slice(0,10))
+    const [isSyncing, setIsSyncing] = useState(false)
     const reports = ['PROFIT OR LOSS', 'TRIAL BALANCE', 'BALANCE SHEET']
     const [curReport, setCurReport] = useState({
         title:reports[0], 
@@ -92,6 +94,48 @@ const Reports = ()=>{
 
     const getBalanceSheet = (filterFrom, filterTo)=>{
         return getAlldata(filterFrom, filterTo)
+    }
+
+    const handleSyncOfflineReports = async () => {
+        if (!company || !companyRecord?.emailid) return;
+        setIsSyncing(true);
+        setAlertState('info');
+        setAlert('Syncing offline Report changes...');
+        setAlertTimeout(10000);
+        try{
+            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            const cmp_val = window.localStorage.getItem('sessn-cmp');
+            if (cmp_val){
+                await Promise.all([
+                    getSales(cmp_val),
+                    getRentals(cmp_val),
+                    getPurchase(cmp_val),
+                    getExpenses(cmp_val)
+                ])
+            }
+            if (Array.isArray(results)){
+                const failed = results.filter(r => r.status === 'error');
+                if (failed.length){
+                    setAlertState('error');
+                    setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                    setAlertTimeout(5000);
+                } else {
+                    setAlertState('success');
+                    setAlert('Offline Reports Sync complete');
+                    setAlertTimeout(3000);
+                }
+            } else {
+                setAlertState('success');
+                setAlert('Offline Reports Sync complete');
+                setAlertTimeout(3000);
+            }
+        }catch(e){
+            setAlertState('error');
+            setAlert('Offline Reports Sync failed. Please try again.');
+            setAlertTimeout(3000);
+        }finally{
+            setIsSyncing(false);
+        }
     }
 
     const getTrialBalance = (filterFrom, filterTo)=>{
@@ -503,12 +547,15 @@ const Reports = ()=>{
                                 />
                             </div>
                         </div>
-                        <div 
-                            className='print-report'
-                            onClick={printToPDF}
-                        >
-                            Print Report
-                        </div>
+                            <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                                <button className="action-btn" onClick={handleSyncOfflineReports} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                            </div>
+                            <div 
+                                className='print-report'
+                                onClick={printToPDF}
+                            >
+                                Print Report
+                            </div>
                     </div>
                 </div>
             </div>

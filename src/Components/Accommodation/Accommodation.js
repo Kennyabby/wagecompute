@@ -2,6 +2,7 @@ import './Accommodation.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal'
 import heic2any from "heic2any";
 import { useState, useEffect, useContext, use } from 'react'
+import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import AccommodationReceipt from './AccommodationReport/AccommodationReceipt';
@@ -114,6 +115,7 @@ const Accommodation = ()=>{
         ...defaultCustomerFields
     })
     const [isView, setIsView] = useState(false)
+    const [isSyncing, setIsSyncing] = useState(false)
     const [imageUpload, setImageUpload] = useState(null)
     const [uploadingReceipt, setUploadingReceipt] = useState(false)
     const [deletingReceipt, setDeletingReceipt] = useState(false)
@@ -169,6 +171,41 @@ const Accommodation = ()=>{
             setIsView(true)
         }
     },[curAccommodation, curApproval])
+
+    const handleSyncOfflineAccommodation = async () => {
+        if (!company || !companyRecord?.emailid) return;
+        setIsSyncing(true);
+        setAlertState('info');
+        setAlert('Syncing offline Accommodation changes...');
+        setAlertTimeout(10000);
+        try{
+            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+            const cmp_val = window.localStorage.getItem('sessn-cmp');
+            if (cmp_val) await getAccommodations(cmp_val);
+            if (Array.isArray(results)){
+                const failed = results.filter(r => r.status === 'error');
+                if (failed.length){
+                    setAlertState('error');
+                    setAlert(`${failed.length} change(s) failed to sync; retry later.`);
+                    setAlertTimeout(5000);
+                } else {
+                    setAlertState('success');
+                    setAlert('Offline Accommodation Sync complete');
+                    setAlertTimeout(3000);
+                }
+            } else {
+                setAlertState('success');
+                setAlert('Offline Accommodation Sync complete');
+                setAlertTimeout(3000);
+            }
+        }catch(e){
+            setAlertState('error');
+            setAlert('Offline Accommodation Sync failed. Please try again.');
+            setAlertTimeout(3000);
+        }finally{
+            setIsSyncing(false);
+        }
+    }
 
     useEffect(()=>{
         const pendings = accommodations.filter((accommodation)=>{ return accommodation.paymentStatus === 'Make Payment' && accommodation.createdAt !== (curAccommodation ? curAccommodation.createdAt : 0)})
@@ -856,6 +893,9 @@ const Accommodation = ()=>{
                             />
                         </div>
                     </div>     
+                    <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                        <button className="action-btn" onClick={handleSyncOfflineAccommodation} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                    </div>
                     <div className='emptypecov' 
                         onClick={handleSalesOpts1}
                     >
