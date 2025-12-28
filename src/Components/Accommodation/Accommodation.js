@@ -543,7 +543,7 @@ const Accommodation = ()=>{
     const deleteAccommodation = async (accommodation)=>{
         const today = new Date()
         let postDate = new Date(accommodation.postingDate).toISOString().slice(0, 10)
-        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)){
+        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)  && !companyRecord?.access === 'admin'){
             setAlertState('error')
             setAlert('Cannot delete accommodation after more than 1 day')
             setAlertTimeout(3000)
