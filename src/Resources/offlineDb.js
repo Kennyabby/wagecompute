@@ -246,9 +246,21 @@ export function loadAllOrders(company, userId) {
 
 export function putOrder(company, userId, order) {
   return withStore(company, userId, ORDERS_STORE, 'readwrite', (store, resolve, reject) => {
-    const req = store.put(order);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error || new Error('Failed to write order'));
+    try {
+      const req = store.put(order);
+      req.onsuccess = () => {
+        // small debug log - can be removed after diagnosis
+        try { console.debug('offlineDb:putOrder success', (order && order.orderNumber) || null); } catch(e){}
+        resolve();
+      };
+      req.onerror = (e) => {
+        console.warn('offlineDb:putOrder failed', { company, userId, order, error: req.error || e });
+        reject(req.error || new Error('Failed to write order'));
+      };
+    } catch (e) {
+      console.error('offlineDb:putOrder threw', { company, userId, order, error: e });
+      reject(e);
+    }
   });
 }
 
@@ -272,9 +284,20 @@ export function loadAllSessionsLocal(company, userId) {
 
 export function putSession(company, userId, session) {
   return withStore(company, userId, SESSIONS_STORE, 'readwrite', (store, resolve, reject) => {
-    const req = store.put(session);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error || new Error('Failed to write session'));
+    try {
+      const req = store.put(session);
+      req.onsuccess = () => {
+        try { console.debug('offlineDb:putSession success', (session && session.start) || null); } catch(e){}
+        resolve();
+      };
+      req.onerror = (e) => {
+        console.warn('offlineDb:putSession failed', { company, userId, session, error: req.error || e });
+        reject(req.error || new Error('Failed to write session'));
+      };
+    } catch (e) {
+      console.error('offlineDb:putSession threw', { company, userId, session, error: e });
+      reject(e);
+    }
   });
 }
 
@@ -294,9 +317,20 @@ export function putTable(company, userId, table) {
       resolve();
       return;
     }
-    const req = store.put(table);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error || new Error('Failed to write table'));
+    try {
+      const req = store.put(table);
+      req.onsuccess = () => {
+        try { console.debug('offlineDb:putTable success', table.i_d); } catch(e){}
+        resolve();
+      };
+      req.onerror = (e) => {
+        console.warn('offlineDb:putTable failed', { company, userId, table, error: req.error || e });
+        reject(req.error || new Error('Failed to write table'));
+      };
+    } catch (e) {
+      console.error('offlineDb:putTable threw', { company, userId, table, error: e });
+      reject(e);
+    }
   });
 }
 

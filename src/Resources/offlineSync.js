@@ -128,11 +128,12 @@ async function syncInventoryChange(change, company, fetchServer, server) {
   if (!payload || !Array.isArray(payload.transactions)) return;
   if (op !== 'create') return;
 
-  for (const txn of payload.transactions) {
-    const txnPayload = removeId(txn);
-    const resp = await fetchServer('POST', { database: company, collection: 'InventoryTransactions', update: txnPayload }, 'createDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to create inventory transaction');
-  }
+  // Batch send all transactions in one request to reduce roundtrips
+  const txnPayloads = payload.transactions.map(txn => removeId(txn));
+  if (!txnPayloads.length) return;
+
+  const resp = await fetchServer('POST', { database: company, collection: 'InventoryTransactions', update: txnPayloads }, 'createManyDocs', server);
+  if (resp?.err) throw new Error(resp.mess || 'Failed to create inventory transactions (batch)');
 }
 
 async function syncTableChange(change, company, fetchServer, server) {
