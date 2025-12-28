@@ -244,6 +244,7 @@ const Sales = ()=>{
             ]);
         }catch(e){}
     }
+
     const handleSyncOfflineSales = async () => {
         if (!company || !companyRecord?.emailid) return;
         setIsSyncing(true);
@@ -283,11 +284,15 @@ const Sales = ()=>{
         const ftrsales = sales.sort((a,b) =>{return new Date(b.postingDate).getTime() > new Date(a.postingDate)})
         const pendings = ftrsales.slice(1,20).filter((sl)=>{
             let unAccountedSalesDebt = 0
+            let countedSalesDebt = 0
             const record = sl.record
             record.forEach((rec)=>{
                 unAccountedSalesDebt += Number(rec.unAccountedSales || 0)         
+                if (rec.isDebtSales){
+                    countedSalesDebt += 1
+                }
             })
-            return ((!sl.productsRef && unAccountedSalesDebt >=200) && sl.postingDate < postingDate)
+            return ((!sl.productsRef && unAccountedSalesDebt >= 200 && countedSalesDebt) && sl.postingDate < postingDate)
         })
         setPendingSales(pendings)
     },[sales, postingDate])
@@ -2473,14 +2478,18 @@ const Sales = ()=>{
                             } = sale 
 
                             let unAccountedSalesDebt = 0
+                            let countedSalesDebt = 0
                             record.forEach((rec)=>{
                                 unAccountedSalesDebt += Number(rec.unAccountedSales || 0)
+                                if (rec.isDebtSales){
+                                    countedSalesDebt += 1
+                                }
                             //    if (Number(rec.debt || 0) === Number(rec.unAccountedSales || 0)){
                             //     }
                             })
                             let adjProductsRef = productsRef ? productsRef : null
                             
-                            if (Math.round(unAccountedSalesDebt) < 200){
+                            if (Math.round(unAccountedSalesDebt) < 200 && countedSalesDebt === 0){
                                 adjProductsRef = 'auto-generated'
                                 sale.productsRef = 'auto-generated'                                
                             }
