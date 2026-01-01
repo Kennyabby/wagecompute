@@ -27,7 +27,7 @@ const Delivery = () => {
     // 1. Context and State Management
     // =========================================
     const { 
-        storePath,
+        storePath, intervalPeriod,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         alert, alertState, alertTimeout, actionMessage,
@@ -325,9 +325,8 @@ const Delivery = () => {
 
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
-        getProducts(cmp_val)
         fetchTables(cmp_val)
-        const intervalId = setInterval(()=>{ refreshDeliveryTables(); },120000)
+        const intervalId = setInterval(()=>{ refreshDeliveryTables(); },300000)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -336,6 +335,7 @@ const Delivery = () => {
         if (!cmp_val) return;
         try{
             await Promise.all([
+                getProducts(cmp_val),
                 loadInitialData(),
                 getPosOrders({company, companyRecord}),
             ])
@@ -346,7 +346,7 @@ const Delivery = () => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
         getPosOrders({company, companyRecord})
-        const intervalId = setInterval(()=>{ refreshDeliveryData(); },1200000)
+        const intervalId = setInterval(()=>{ refreshDeliveryData(); },intervalPeriod)
         // run once
         refreshDeliveryData();
         return () => clearInterval(intervalId);
@@ -1118,9 +1118,9 @@ const Delivery = () => {
             }
 
             // 3) Optional background refresh of other entities (non-blocking for UI)
-            fetchTables(company);
-            getProducts(company);
-            loadInitialData();
+            // fetchTables(company);
+            // getProducts(company);
+            // loadInitialData();
         }
     };
 
@@ -1357,10 +1357,10 @@ const Delivery = () => {
                         setAlertTimeout(2000);
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    fetchSessions(company, "delivery", companyRecord)
-                    fetchAllSessions({company})
-                    fetchTables(company)
-                    loadInitialData()
+                    // fetchSessions(company, "delivery", companyRecord)
+                    // fetchAllSessions({company})
+                    // fetchTables(company)
+                    // loadInitialData()
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -1375,12 +1375,12 @@ const Delivery = () => {
     };
 
     const handleOrderDelivery = async () => {
-        fetchSessions(company, "delivery", companyRecord);
-        fetchAllSessions({company})
-        fetchTables(company);
-        if (products.length) {
-            getProductsWithStock(company, products);
-        }
+        // fetchSessions(company, "delivery", companyRecord);
+        // fetchAllSessions({company})
+        // fetchTables(company);
+        // if (products.length) {
+        //     getProductsWithStock(company, products);
+        // }
 
         setAlertState('info');
         setAlert('Processing Delivery...');
@@ -2358,8 +2358,8 @@ const Delivery = () => {
                                 className="action-btn"
                                 // disabled={makingPayment}
                                 onClick={() => {
-                                    fetchSessions(company, "delivery", companyRecord)
-                                    fetchAllSessions({company})
+                                    // fetchSessions(company, "delivery", companyRecord)
+                                    // fetchAllSessions({company})
                                     fetchTables(company)
                                     if (products.length){
                                         getProductsWithStock(company, products)

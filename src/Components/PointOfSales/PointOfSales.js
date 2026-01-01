@@ -22,7 +22,7 @@ const PointOfSales = () => {
     // 1. Context and State Management
     // =========================================
     const { 
-        storePath,
+        storePath, intervalPeriod,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, posWrhAccess, employees, 
@@ -335,7 +335,7 @@ const PointOfSales = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         fetchTables(cmp_val)
-        const intervalId = setInterval(()=>{ refreshPOSData(); },1200000)
+        const intervalId = setInterval(()=>{ refreshPOSData(); },300000)
         // run once
         refreshPOSData();
         return () => clearInterval(intervalId);
@@ -345,7 +345,7 @@ const PointOfSales = () => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
         getPosOrders({company, companyRecord})
-        const intervalId = setInterval(()=>{ refreshPOSData2(); },1200000)
+        const intervalId = setInterval(()=>{ refreshPOSData2(); },intervalPeriod)
         // run once
         refreshPOSData2();
         return () => clearInterval(intervalId);
@@ -1188,9 +1188,9 @@ const PointOfSales = () => {
             }
 
             // 3) Optional background refresh of other entities (non-blocking for UI)
-            fetchTables(company);
-            getProducts(company);
-            loadInitialData();
+            // fetchTables(company);
+            // getProducts(company);
+            // loadInitialData();
         }
     };
     
@@ -1326,10 +1326,10 @@ const PointOfSales = () => {
                     printKitchenOrder(placedOrder);
                     printBarOrder(placedOrder)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    fetchSessions(company, 'sales', companyRecord);
-                    fetchAllSessions({company})
-                    fetchTables(company);
-                    getProducts(company);
+                    // fetchSessions(company, 'sales', companyRecord);
+                    // fetchAllSessions({company})
+                    // fetchTables(company);
+                    // getProducts(company);
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -1476,11 +1476,11 @@ const PointOfSales = () => {
     // =========================================
     const handlePayment = async () => {
         // These reads are fine (no direct writes to Mongo)
-        fetchSessions(company, "sales", companyRecord);
-        fetchAllSessions({company})
-        fetchTables(company);
-        getProducts(company);
-        loadInitialData();
+        // fetchSessions(company, "sales", companyRecord);
+        // fetchAllSessions({company})
+        // fetchTables(company);
+        // getProducts(company);
+        // loadInitialData();
 
         setAlertState('info');
         setAlert('Processing Payment...');

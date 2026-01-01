@@ -7,7 +7,7 @@ import html2pdf from 'html2pdf.js';
 
 const Reports = ()=>{
     const { storePath,
-        server, 
+        server, intervalPeriod,
         fetchServer,
         companyRecord,
         company, getDate, years, monthDays,
@@ -34,7 +34,7 @@ const Reports = ()=>{
             getExpenses(cmp_val)
             // getAttendance(cmp_val)
           }
-        },1200000)
+        },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))

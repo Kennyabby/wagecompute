@@ -18,7 +18,7 @@ import { MdDelete } from "react-icons/md";
 const Accommodation = ()=>{
     const {storePath, 
         fetchServer, 
-        server, 
+        server, intervalPeriod,
         companyRecord, 
         company, recoveryVal, allowBacklogs,
         employees, getEmployees,
@@ -136,7 +136,7 @@ const Accommodation = ()=>{
             getCustomers(cmp_val, companyRecord)
             getAccommodations(cmp_val, companyRecord)
           }
-        },1200000)
+        },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     

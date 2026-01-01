@@ -9,7 +9,7 @@ import Barcode from 'react-barcode';
 const Payroll = () =>{
     const {storePath,
         server, fetchServer,
-        getDate,
+        getDate, intervalPeriod,
         company, companyRecord,
         monthDays,months, years,
         employees, getEmployees, sales,
@@ -46,7 +46,7 @@ const Payroll = () =>{
             getEmployees(cmp_val)
             //getAttendance(cmp_val)
           }
-        },1200000)
+        },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 

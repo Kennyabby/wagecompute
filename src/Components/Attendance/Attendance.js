@@ -11,7 +11,7 @@ const csvConfig = mkConfig({ useKeysAsHeaders: true });
 
 const Attendance = () =>{
     const {storePath,
-        server, fetchServer,
+        server, fetchServer, intervalPeriod,
         months, monthDays,years,
         company, companyRecord, getDate,
         attendance, setAttendance, getAttendance, getEmployees,
@@ -48,7 +48,7 @@ const Attendance = () =>{
             getEmployees(cmp_val, companyRecord)
             getAttendance(cmp_val, companyRecord)
           }
-        },1200000)
+        },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
