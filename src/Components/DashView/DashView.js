@@ -224,6 +224,12 @@ const DashView = () =>{
                     productId: productFilter
                 })
             }
+        }
+    },[company, products, fromDate, toDate, locationFilter, productFilter, seasonFilter])
+
+    useEffect(()=>{
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (cmp_val && company){
             if (!purchase?.length){
                 getPurchase(cmp_val)
             }
@@ -243,7 +249,7 @@ const DashView = () =>{
                 getEmployees(cmp_val)
             }
         }
-    },[company, products, fromDate, toDate, locationFilter, productFilter, seasonFilter])
+    },[window.localStorage.getItem('sessn-cmp')])
 
     const loadDashData = async()=>{
         if (!company) return
