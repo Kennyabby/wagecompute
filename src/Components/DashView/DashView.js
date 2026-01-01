@@ -199,7 +199,7 @@ const DashView = () =>{
     }
 
     useEffect(()=>{
-        if (products.length){
+        if (company && products.length){
             getProductsStockReport(company, products, {
                 startDate: fromDate,
                 endDate: toDate,

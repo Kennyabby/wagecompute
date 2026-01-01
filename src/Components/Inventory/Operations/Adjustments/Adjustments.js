@@ -58,7 +58,11 @@ const Adjustments = ({
 
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');        
-        getProductsWithStock(cmp_val, products)
+        if (products.length){
+            if (!products[0]?.stockSummary){
+                getProductsWithStock(cmp_val, products)
+            }
+        }
     },[products])
     
     useEffect(() => {
