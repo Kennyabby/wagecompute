@@ -85,25 +85,29 @@ const Purchase = ()=>{
     }
 
     useEffect(()=>{
+        var cmp_val = window.localStorage.getItem('sessn-cmp')        
+        getApprovals(cmp_val, companyRecord)
+        getEmployees(cmp_val, companyRecord)
+        getPurchase(cmp_val, companyRecord)
+        getApprovals(cmp_val, companyRecord)        
+        const intervalId = setInterval(()=>{ refreshPurchaseData(); },intervalPeriod)
+        // run once
+        refreshPurchaseData();
+        return () => clearInterval(intervalId);
+    },[window.localStorage.getItem('sessn-cmp')])
+
+    useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         if(!products.length){
             getProducts(cmp_val)
         }
-        getApprovals(cmp_val, companyRecord)
-        getEmployees(cmp_val, companyRecord)
-        getPurchase(cmp_val, companyRecord)
-        getApprovals(cmp_val, companyRecord)
         if (products.length){
             if (!products[0]?.stockSummary){
                 getProductsStockReport(cmp_val, products)
             }
         }
-        const intervalId = setInterval(()=>{ refreshPurchaseData(); },intervalPeriod)
-        // run once
-        refreshPurchaseData();
-        return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp'), products])
-
+    },[products])
+    
     const handleSyncOfflinePurchase = async () => {
         if (!company || !companyRecord?.emailid) return;
         setIsSyncing(true);
