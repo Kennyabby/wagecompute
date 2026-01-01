@@ -401,15 +401,10 @@ const PointOfSales = () => {
         // Fetch prpfiles
         fetchProfiles(company)
 
-        // Fetch all sessions
-        getAllSessions(company)
-        fetchAllSessions({company})
+        fetchAllSessions({company, companyRecord})
 
-        getPosOrders({company, companyRecord})
-         
-        // Feth Sessions
-        fetchSessions(company, "sales", companyRecord)
-    },[settings, currentOrder])
+        getPosOrders({company, companyRecord})    
+    },[settings])
 
     useEffect(()=>{
         if (posContainerRef.current){
@@ -649,8 +644,7 @@ const PointOfSales = () => {
                     setStartSession(false);
                     setLoading(false)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    fetchSessions(company, "sales", companyRecord)
-                    fetchAllSessions({company})
+                    fetchAllSessions({company, companyRecord})
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -762,10 +756,8 @@ const PointOfSales = () => {
                     setEndSession(false);
                     setSessionUser(null);
                     setLoading(false)
-                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    getAllSessions(company)
-                    fetchSessions(company, "sales", companyRecord)
-                    fetchAllSessions({company})
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                    
+                    fetchAllSessions({company, companyRecord})
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -1019,10 +1011,9 @@ const PointOfSales = () => {
         const {name} = e.target
         
         if (!placingOrder && !makingPayment && name){
-
-            getPosOrders({company, companyRecord})
-            fetchSessions(company, "sales", companyRecord)
-            fetchAllSessions({company})                        
+            // getPosOrders({company, companyRecord})
+            // fetchSessions(company, "sales", companyRecord)
+            // fetchAllSessions({company})                        
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
                 const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
@@ -1437,10 +1428,9 @@ const PointOfSales = () => {
                 // reuse POS table refresh
                 (async ()=>{ await refreshPOSData(); })(),
                 (async ()=>{ await refreshPOSData2(); })(),
-                fetchSessions(company, "sales", companyRecord),
                 getProducts(company),
                 fetchProfiles(company),
-                fetchAllSessions({company}),
+                fetchAllSessions({company, companyRecord}),
                 getAllSessions(company),
             ]).catch(()=>{});
 
