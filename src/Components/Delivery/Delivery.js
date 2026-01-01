@@ -379,12 +379,9 @@ const Delivery = () => {
         fetchProfiles(company)
             
         // Fetch All sessions
-        getAllSessions(company)
-        fetchAllSessions({company})
-        
-        // Feth Sessions
-        fetchSessions(company, "delivery", companyRecord)
-    },[settings, currentOrder])
+        fetchAllSessions({company, companyRecord})
+    },[settings])
+    
 
     useEffect(()=>{
         if (posContainerRef.current){
@@ -554,8 +551,7 @@ const Delivery = () => {
                 fetchSessions(company, "delivery", companyRecord),
                 getProducts(company),
                 fetchProfiles(company),
-                fetchAllSessions({company}),
-                getAllSessions(company),
+                fetchAllSessions({company, companyRecord}),
             ]).catch(()=>{});
 
             await loadInitialData();
@@ -675,8 +671,7 @@ const Delivery = () => {
                     }
                     setSessionUser(null);
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    fetchSessions(company, "delivery", companyRecord)
-                    fetchAllSessions({company})
+                    fetchAllSessions({company, companyRecord})
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -735,9 +730,7 @@ const Delivery = () => {
                 setSessionUser(null);
                 setAlertTimeout(5000);
                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                fetchSessions(company, "delivery", companyRecord)
-                fetchAllSessions({company})
-                getAllSessions(company)
+                fetchAllSessions({company, companyRecord})
             } catch (e) {
                 // Leave pending changes in queue; 5‑minute auto-sync will retry
             }
@@ -964,8 +957,7 @@ const Delivery = () => {
             }
     
             getPosOrders({company, companyRecord})
-            fetchSessions(company, "delivery", companyRecord)                        
-            fetchAllSessions({company})
+            fetchAllSessions({company, companyRecord})
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
                 const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
@@ -2360,10 +2352,10 @@ const Delivery = () => {
                                 onClick={() => {
                                     // fetchSessions(company, "delivery", companyRecord)
                                     // fetchAllSessions({company})
+                                    // if (products.length){
+                                    //     getProductsWithStock(company, products)
+                                    // }
                                     fetchTables(company)
-                                    if (products.length){
-                                        getProductsWithStock(company, products)
-                                    }
                                     setTableOrders([])
                                     setActiveScreen('home')
                                     setCurrentTable(null)
