@@ -13,7 +13,7 @@ import PurchaseReport from './PurchaseReport/PurchaseReport'
 const Purchase = ()=>{
 
     const { storePath,
-        server, 
+        server, intervalPeriod,
         fetchServer,
         companyRecord, allowBacklogs,
         company, getDate, products, getProducts, setProducts, getProductsWithStock,
@@ -98,7 +98,7 @@ const Purchase = ()=>{
                 getProductsStockReport(cmp_val, products)
             }
         }
-        const intervalId = setInterval(()=>{ refreshPurchaseData(); },1200000)
+        const intervalId = setInterval(()=>{ refreshPurchaseData(); },intervalPeriod)
         // run once
         refreshPurchaseData();
         return () => clearInterval(intervalId);

@@ -16,7 +16,7 @@ const Positions = () =>{
     })
     const {storePath, 
             fetchServer, 
-            server,
+            server, intervalPeriod,
             company,
             employees, getEmployees,
             positions, setPositions, getPositions
@@ -33,7 +33,7 @@ const Positions = () =>{
             getEmployees(cmp_val)
             getPositions(cmp_val)
           }
-        },1200000)
+        },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{

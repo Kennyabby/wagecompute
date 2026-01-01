@@ -15,7 +15,7 @@ const Departments = () =>{
         description:''
     })
     const {storePath, 
-        fetchServer, 
+        fetchServer, intervalPeriod,
         server, 
         company,
         employees,getEmployees,
@@ -33,7 +33,7 @@ const Departments = () =>{
             getEmployees(cmp_val)
             getDepartments(cmp_val)           
           }
-        },1200000)
+        },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{

@@ -18,7 +18,7 @@ const Expenses = ()=>{
 
     const { storePath,
         server, 
-        fetchServer,
+        fetchServer, intervalPeriod,
         companyRecord,
         company, getDate,
         alert,alertState,alertTimeout,actionMessage, 
@@ -115,7 +115,7 @@ const Expenses = ()=>{
             getExpenses(cmp_val)
             getAttendance(cmp_val)
           }
-        },1200000)
+        },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 

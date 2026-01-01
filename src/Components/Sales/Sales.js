@@ -23,7 +23,7 @@ import { BsPass } from 'react-icons/bs';
 const Sales = ()=>{
     const {storePath, 
         fetchServer, 
-        server, 
+        server, intervalPeriod,
         companyRecord, 
         company, recoveryVal, allowBacklogs,
         employees, setEmployees, getEmployees, 
@@ -226,7 +226,7 @@ const Sales = ()=>{
     
     useEffect(()=>{        
         refreshSalesData();
-        const intervalId = setInterval(()=>{ refreshSalesData(); },1200000)
+        const intervalId = setInterval(()=>{ refreshSalesData(); },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     

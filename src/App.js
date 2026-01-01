@@ -13,12 +13,13 @@ import Notify from './Resources/Notify/Notify';
 import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
+import createSSE from './Resources/ClientServerAPIConn/sseClient'
 import { syncPendingChanges } from './Resources/offlineSync';
 import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPendingChanges } from './Resources/offlineDb';
 
-// const SERVER = "http://localhost:3001"
+const SERVER = "http://localhost:3001"
 // const SERVER = "https://enterpriseserver.up.railway.app"
-const SERVER = "https://enterpriseserver-1.vercel.app"
+// const SERVER = "https://enterpriseserver-1.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
 // const SERVER = "http://3.251.76.94"
@@ -117,6 +118,71 @@ function App() {
   const [company, setCompany] = useState(null)
   const [loadedCurPath, setLoadedCurPath] = useState('')
   const [path, setPath] = useState('')
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [isSSEConnected, setIsSSEConnected] = useState(false)
+  const [isInitialSyncDone, setIsInitialSyncDone] = useState(false)
+
+  const intervalPeriod = 3600000; // 60 minutes
+  // Guarded fetchServer: when SSE is connected and initial sync done,
+  // serve getDocsDetails requests from in-memory state/cache to avoid redundant network calls.
+  const guardedFetchServer = async (method, body, endpoint, serverParam, signal) => {
+    // Only intercept read calls when SSE is active and initial sync completed
+    try{
+      if (endpoint === 'getDocsDetails' && isSSEConnected && isInitialSyncDone) {
+        const collRaw = body && (body.collection || body.collectionName || '')
+        const coll = String(collRaw || '').trim();
+
+        // mapping from server collection name -> { cacheKey, getter }
+        const collectionMap = {
+          'Orders': { cacheKey: 'posOrders', getter: () => posOrders },
+          'POSSessions': { cacheKey: 'allSessions', getter: () => allSessions },
+          'Products': { cacheKey: 'products', getter: () => products },
+          'Sales': { cacheKey: 'sales', getter: () => sales },
+          'Purchase': { cacheKey: 'purchase', getter: () => purchase },
+          'Expenses': { cacheKey: 'expenses', getter: () => expenses },
+          'Accommodations': { cacheKey: 'accommodations', getter: () => accommodations },
+          'Tables': { cacheKey: 'tables', getter: () => tables },
+        };
+
+        // find mapping case-insensitively
+        const mapKey = Object.keys(collectionMap).find(k => k.toLowerCase() === (coll || '').toLowerCase());
+        if (mapKey){
+          try{
+            const rec = collectionMap[mapKey].getter() || [];
+            // if in-memory empty, try app cache
+            if ((!rec || (Array.isArray(rec) && rec.length === 0)) && collectionMap[mapKey].cacheKey){
+              const cached = await getCached(company, collectionMap[mapKey].cacheKey, companyRecord?.emailid).catch(()=>null);
+              if (cached) return { err: false, record: cached };
+            }
+            return { err: false, record: rec };
+          }catch(e){/* fallthrough to cache/fetch */}
+        }
+
+        // If no direct mapping, try several cache key variants (collection name variants)
+        const candidates = [];
+        if (coll) candidates.push(coll);
+        const lower = coll.toLowerCase();
+        if (lower && !candidates.includes(lower)) candidates.push(lower);
+        const lcFirst = coll.charAt(0).toLowerCase() + coll.slice(1);
+        if (lcFirst && !candidates.includes(lcFirst)) candidates.push(lcFirst);
+        // common custom mappings
+        if (coll.toLowerCase() === 'orders' && !candidates.includes('posOrders')) candidates.push('posOrders');
+
+        for (const key of candidates){
+          try{
+            const cached = await getCached(company, key, companyRecord?.emailid).catch(()=>null);
+            if (cached) return { err: false, record: cached };
+          }catch(e){}
+        }
+        // As a last-ditch, attempt to return an empty array rather than hitting the network for huge queries
+        return { err: false, record: [] };
+      }
+    }catch(e){
+      console.warn('guardedFetchServer error', e)
+    }
+    // default: call original fetchServer
+    return await fetchServer(method, body, endpoint, serverParam, signal)
+  }
   const pathList = ['','login','profile','dashboard', 
     'employees','departments','positions','attendance','payroll','pos','delivery','sales','inventory','accommodations','purchase','expenses','reports','settings','test']
   const dashList = ['dashboard', 
@@ -174,20 +240,346 @@ function App() {
   }, [company, companyRecord?.emailid]);
 
   useEffect(()=>{
+    // subscribe to server-sent events for realtime updates
+    let es = null
+    try{
+      es = createSSE(SERVER, async (payload)=>{
+        // payload: { database, collection, op, data }
+        if (!payload || payload.database !== company) return;
+        const coll = payload.collection
+        try{
+          switch(coll){
+            case 'Orders':
+              // apply server-sent orders into IndexedDB with conflict-aware logic
+              if (Array.isArray(payload.data)){
+                import('./Resources/offlineDb').then(async ({putOrder, loadPendingChanges, markPendingChangeSynced})=>{
+                  try{
+                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(()=>[]);
+                    for (const o of payload.data){
+                      try{
+                        const match = pending.find(p=> p.entityType==='order' && ((p.clientId && p.clientId === o.orderNumber) || (p.payload && p.payload.orderNumber === o.orderNumber)));
+                        if (match){
+                          // If this was a local create that was synced, apply and remove pending
+                          if (match.op === 'create'){
+                            await putOrder(company, companyRecord?.emailid, o).catch(()=>{});
+                            await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
+                          }else{
+                            // skip applying server update when there is a pending local change
+                            console.debug('SSE: skipping server order update due to pending local change', o.orderNumber)
+                          }
+                        }else{
+                          await putOrder(company, companyRecord?.emailid, o).catch(()=>{});
+                        }
+                      }catch(e){console.warn('SSE: failed applying order', e)}
+                    }
+
+                    // update in-memory cache/state without doing a full server refresh
+                    try{
+                      const existing = Array.isArray(posOrders) ? [...posOrders] : [];
+                      const map = {};
+                      existing.forEach(co=>{ if (co && co.orderNumber) map[co.orderNumber] = co });
+                      payload.data.forEach(o=>{ if (o && o.orderNumber) map[o.orderNumber] = o });
+                      const merged = Object.values(map);
+                      setPosOrders(merged);
+                      setCached(company, 'posOrders', merged, companyRecord?.emailid);
+                    }catch(e){/* ignore cache update failures */}
+                  }catch(e){
+                    console.error('SSE Orders apply error', e)
+                  }
+                })
+              }else if (payload.data && typeof payload.data === 'object'){
+                import('./Resources/offlineDb').then(async ({putOrder, loadPendingChanges, markPendingChangeSynced})=>{
+                  try{
+                    const o = payload.data;
+                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(()=>[]);
+                    const match = pending.find(p=> p.entityType==='order' && ((p.clientId && p.clientId === o.orderNumber) || (p.payload && p.payload.orderNumber === o.orderNumber)));
+                    if (match){
+                      if (match.op === 'create'){
+                        await putOrder(company, companyRecord?.emailid, o).catch(()=>{});
+                        await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
+                      }else{
+                        console.debug('SSE: skipping server order update due to pending local change', o.orderNumber)
+                      }
+                    }else{
+                      await putOrder(company, companyRecord?.emailid, o).catch(()=>{});
+                    }
+
+                    // update state/cache
+                    try{
+                      const existing = Array.isArray(posOrders) ? [...posOrders] : [];
+                      const map = {};
+                      existing.forEach(co=>{ if (co && co.orderNumber) map[co.orderNumber] = co });
+                      if (o && o.orderNumber) map[o.orderNumber] = o;
+                      const merged = Object.values(map);
+                      setPosOrders(merged);
+                      setCached(company, 'posOrders', merged, companyRecord?.emailid);
+                    }catch(e){}
+                  }catch(e){console.error('SSE Orders apply error', e)}
+                })
+              }
+              break;
+            case 'POSSessions':
+              // apply server-sent POS sessions into IndexedDB with conflict-aware logic
+              if (Array.isArray(payload.data)){
+                import('./Resources/offlineDb').then(async ({putSession, loadPendingChanges, markPendingChangeSynced})=>{
+                  try{
+                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(()=>[]);
+                    for (const s of payload.data){
+                      try{
+                        const match = pending.find(p=> p.entityType==='session' && ((p.clientId && p.clientId === s.start) || (p.payload && p.payload.start === s.start)));
+                        if (match){
+                          if (match.op === 'create'){
+                            await putSession(company, companyRecord?.emailid, s).catch(()=>{});
+                            await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
+                          }else{
+                            console.debug('SSE: skipping server session update due to pending local change', s.start)
+                          }
+                        }else{
+                          await putSession(company, companyRecord?.emailid, s).catch(()=>{});
+                        }
+                      }catch(e){console.warn('SSE: failed applying session', e)}
+                    }
+
+                    // merge into in-memory session caches (allSessions and sales/delivery subsets)
+                    try{
+                      const existing = Array.isArray(allSessions) ? [...allSessions] : [];
+                      const map = {};
+                      existing.forEach(ss=>{ if (ss && ss.start != null) map[ss.start] = ss });
+                      payload.data.forEach(ss=>{ if (ss && ss.start != null) map[ss.start] = ss });
+                      const merged = Object.values(map);
+                      setAllSessions(merged);
+                      setCached(company, 'allSessions', merged, companyRecord?.emailid);
+
+                      // derive sales/delivery session lists
+                      const salesList = merged.filter(m=> m.type === 'sales');
+                      const deliveryList = merged.filter(m=> m.type === 'delivery');
+                      setAllSalesSessions(salesList);
+                      setSalesSessions(salesList.filter(s=> s.employee_id === companyRecord?.emailid));
+                      setDeliverySessions(deliveryList);
+                    }catch(e){}
+                  }catch(e){
+                    console.error('SSE POSSessions apply error', e)
+                  }
+                })
+              }else if (payload.data && typeof payload.data === 'object'){
+                import('./Resources/offlineDb').then(async ({putSession, loadPendingChanges, markPendingChangeSynced})=>{
+                  try{
+                    const s = payload.data;
+                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(()=>[]);
+                    const match = pending.find(p=> p.entityType==='session' && ((p.clientId && p.clientId === s.start) || (p.payload && p.payload.start === s.start)));
+                    if (match){
+                      if (match.op === 'create'){
+                        await putSession(company, companyRecord?.emailid, s).catch(()=>{});
+                        await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
+                      }else{
+                        console.debug('SSE: skipping server session update due to pending local change', s.start)
+                      }
+                    }else{
+                      await putSession(company, companyRecord?.emailid, s).catch(()=>{});
+                    }
+
+                    try{
+                      const existing = Array.isArray(allSessions) ? [...allSessions] : [];
+                      const map = {};
+                      existing.forEach(ss=>{ if (ss && ss.start != null) map[ss.start] = ss });
+                      if (s && s.start != null) map[s.start] = s;
+                      const merged = Object.values(map);
+                      setAllSessions(merged);
+                      setCached(company, 'allSessions', merged, companyRecord?.emailid);
+                    }catch(e){}
+                  }catch(e){console.error('SSE POSSessions apply error', e)}
+                })
+              }
+              break;
+            case 'Products':
+              try{
+                if (Array.isArray(payload.data)){
+                  const existing = Array.isArray(products) ? [...products] : [];
+                  const map = {};
+                  existing.forEach(p=>{ if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
+                  payload.data.forEach(p=>{ if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
+                  const merged = Object.values(map);
+                  setProducts(merged);
+                  setCached(company, 'products', merged, companyRecord?.emailid);
+                }else if (payload.data && typeof payload.data === 'object'){
+                  const p = payload.data;
+                  const existing = Array.isArray(products) ? [...products] : [];
+                  const map = {};
+                  existing.forEach(pp=>{ if (pp && (pp._id || pp.i_d)) map[pp._id || pp.i_d] = pp });
+                  map[p._id || p.i_d] = p;
+                  const merged = Object.values(map);
+                  setProducts(merged);
+                  setCached(company, 'products', merged, companyRecord?.emailid);
+                }
+              }catch(e){
+                console.error('SSE Products apply error', e);
+                setReloadCount(c=>c+1)
+              }
+              break;
+            case 'Sales':
+              try{
+                if (Array.isArray(payload.data)){
+                  const existing = Array.isArray(sales) ? [...sales] : [];
+                  const map = {};
+                  existing.forEach(s=>{ if (s && (s._id || s.i_d)) map[s._id || s.i_d] = s });
+                  payload.data.forEach(s=>{ if (s && (s._id || s.i_d)) map[s._id || s.i_d] = s });
+                  const merged = Object.values(map);
+                  setSales(merged);
+                  setCached(company, 'sales', merged, companyRecord?.emailid);
+                }else if (payload.data && typeof payload.data === 'object'){
+                  const item = payload.data;
+                  const existing = Array.isArray(sales) ? [...sales] : [];
+                  const map = {};
+                  existing.forEach(s=>{ if (s && (s._id || s.i_d)) map[s._id || s.i_d] = s });
+                  map[item._id || item.i_d] = item;
+                  const merged = Object.values(map);
+                  setSales(merged);
+                  setCached(company, 'sales', merged, companyRecord?.emailid);
+                }
+              }catch(e){
+                console.error('SSE Sales apply error', e);
+                setReloadCount(c=>c+1)
+              }
+              break;
+            case 'Purchase':
+              try{
+                if (Array.isArray(payload.data)){
+                  const existing = Array.isArray(purchase) ? [...purchase] : [];
+                  const map = {};
+                  existing.forEach(p=>{ if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
+                  payload.data.forEach(p=>{ if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
+                  const merged = Object.values(map);
+                  setPurchase(merged);
+                  setCached(company, 'purchase', merged, companyRecord?.emailid);
+                }else if (payload.data && typeof payload.data === 'object'){
+                  const it = payload.data;
+                  const existing = Array.isArray(purchase) ? [...purchase] : [];
+                  const map = {};
+                  existing.forEach(p=>{ if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
+                  map[it._id || it.i_d] = it;
+                  const merged = Object.values(map);
+                  setPurchase(merged);
+                  setCached(company, 'purchase', merged, companyRecord?.emailid);
+                }
+              }catch(e){
+                console.error('SSE Purchase apply error', e);
+                setReloadCount(c=>c+1)
+              }
+              break;
+            case 'Expenses':
+              try{
+                if (Array.isArray(payload.data)){
+                  const existing = Array.isArray(expenses) ? [...expenses] : [];
+                  const map = {};
+                  existing.forEach(x=>{ if (x && (x._id || x.i_d)) map[x._id || x.i_d] = x });
+                  payload.data.forEach(x=>{ if (x && (x._id || x.i_d)) map[x._id || x.i_d] = x });
+                  const merged = Object.values(map);
+                  setExpenses(merged);
+                  setCached(company, 'expenses', merged, companyRecord?.emailid);
+                }else if (payload.data && typeof payload.data === 'object'){
+                  const it = payload.data;
+                  const existing = Array.isArray(expenses) ? [...expenses] : [];
+                  const map = {};
+                  existing.forEach(x=>{ if (x && (x._id || x.i_d)) map[x._id || x.i_d] = x });
+                  map[it._id || it.i_d] = it;
+                  const merged = Object.values(map);
+                  setExpenses(merged);
+                  setCached(company, 'expenses', merged, companyRecord?.emailid);
+                }
+              }catch(e){
+                console.error('SSE Expenses apply error', e);
+                setReloadCount(c=>c+1)
+              }
+              break;
+            case 'Accommodations':
+              try{
+                if (Array.isArray(payload.data)){
+                  const existing = Array.isArray(accommodations) ? [...accommodations] : [];
+                  const map = {};
+                  existing.forEach(a=>{ if (a && (a._id || a.i_d)) map[a._id || a.i_d] = a });
+                  payload.data.forEach(a=>{ if (a && (a._id || a.i_d)) map[a._id || a.i_d] = a });
+                  const merged = Object.values(map);
+                  setAccommodations(merged);
+                  setCached(company, 'accommodations', merged, companyRecord?.emailid);
+                }else if (payload.data && typeof payload.data === 'object'){
+                  const it = payload.data;
+                  const existing = Array.isArray(accommodations) ? [...accommodations] : [];
+                  const map = {};
+                  existing.forEach(a=>{ if (a && (a._id || a.i_d)) map[a._id || a.i_d] = a });
+                  map[it._id || it.i_d] = it;
+                  const merged = Object.values(map);
+                  setAccommodations(merged);
+                  setCached(company, 'accommodations', merged, companyRecord?.emailid);
+                }
+              }catch(e){
+                console.error('SSE Accommodations apply error', e);
+                setReloadCount(c=>c+1)
+              }
+              break;
+            case 'InventoryTransactions':
+              // apply inventory transactions into IndexedDB with conflict-aware logic
+              if (Array.isArray(payload.data)){
+                import('./Resources/offlineDb').then(async ({putInventoryTransactions, loadPendingChanges})=>{
+                  try{
+                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(()=>[]);
+                    const pendingInvIds = new Set(pending.filter(p=> p.entityType==='inventory' && (p.clientId || p.payload?.id)).map(p=> p.clientId || p.payload?.id).filter(Boolean));
+                    const toApply = payload.data.filter(txn=> {
+                      const id = txn.id || txn._id || txn.i_d;
+                      return !(id && pendingInvIds.has(id));
+                    });
+                    if (toApply.length){
+                      await putInventoryTransactions(company, companyRecord?.emailid, toApply).catch(()=>{});
+                    }
+                  }catch(e){console.error('SSE InventoryTransactions apply error', e)}
+                  // recompute lightweight stock view (best-effort)
+                  try{ getProductsWithStock(company, products) }catch(e){}
+                })
+              }else if (payload.data && typeof payload.data === 'object'){
+                import('./Resources/offlineDb').then(async ({putInventoryTransactions, loadPendingChanges})=>{
+                  try{
+                    const txn = payload.data;
+                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(()=>[]);
+                    const pendingInvIds = new Set(pending.filter(p=> p.entityType==='inventory' && (p.clientId || p.payload?.id)).map(p=> p.clientId || p.payload?.id).filter(Boolean));
+                    const id = txn.id || txn._id || txn.i_d;
+                    if (!id || !pendingInvIds.has(id)){
+                      await putInventoryTransactions(company, companyRecord?.emailid, [txn]).catch(()=>{});
+                    }
+                  }catch(e){console.error('SSE InventoryTransactions apply error', e)}
+                  try{ getProductsWithStock(company, products) }catch(e){}
+                })
+              }
+              break;
+            default:
+              // fallback: trigger a reload count so dependent hooks refresh
+              setReloadCount((c)=>c+1)
+          }
+        }catch(e){
+          console.error('SSE handler error', e)
+        }
+      }, (err)=>{
+        console.warn('SSE error', err)
+        setIsSSEConnected(false)
+      })
+      if (es){
+        es.onopen = ()=>{ setIsSSEConnected(true) }
+      }
+    }catch(e){
+      console.warn('Could not create SSE', e)
+    }
+    return ()=>{ if (es) { try{ es.close() }catch(e){} setIsSSEConnected(false) } }
+  }, [company, companyRecord])
+  useEffect(()=>{
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     getViewAccess(hostDb)
     getSettings(cmp_val, companyRecord)
     getChartOfAccounts(cmp_val, companyRecord)
     const intervalId = setInterval(()=>{
       if (cmp_val){
-        setReloadCount((prevCount)=>{
-          return prevCount + 1
-        })
         getSettings(cmp_val)
         getChartOfAccounts(cmp_val)
         getViewAccess(hostDb)
       }
-    },1200000)
+    },intervalPeriod)
     return () => clearInterval(intervalId);
   },[window.localStorage.getItem('sessn-cmp')])
   
@@ -254,37 +646,62 @@ function App() {
     }
   },[settings,changingSettings])
 
-  // On Fist Mount
+  // On First Mount: hydrate quickly, subscribe to SSE (above), flush local pending changes, then fetch authoritative data
   useEffect(()=>{
     if (company && companyRecord?.emailid && loadedCurPath){
-      getSettings(company)
-      getApprovals(company)
-      getEmployees(company)
-      getChartOfAccounts(company)
-      getAccommodations(company)
-      getSales(company)
-      getPosOrders({company: company, companyRecord: companyRecord})
-      if (companyRecord.status==='admin'){        
-        window.localStorage.removeItem('lgt-vw')
-        fetchProfiles(company)
-        getDepartments(company)
-        getPositions(company)
-        getCustomers(company)
-        fetchTables(company)
-        fetchSessions(company , "sales", companyRecord)
-        fetchSessions(company , "delivery", companyRecord)
-        fetchAllSessions({company: company, companyRecord: companyRecord})
-        //here
-        getProducts(company)
-        getRentals(company)
-        getPurchase(company)
-        getExpenses(company)
-        getAttendance(company)
-        Navigate('/' + loadedCurPath)
-        setTimeout(() => {
-          setLoadedCurPath('')
-        }, 500);
-      }
+      (async ()=>{
+        try{
+          // quick hydrate from cached getters so UI shows something fast
+          try{
+            getProducts(company)
+            getPosOrders({company: company, companyRecord: companyRecord})
+            getAllSessions(company)
+            getChartOfAccounts(company)
+          }catch(e){}
+
+          setIsHydrated(true)
+
+          // Flush any pending local changes to the server before pulling authoritative state
+          try{
+            await syncPendingChanges(company, companyRecord?.emailid, fetchServer, SERVER)
+          }catch(e){
+            console.warn('Initial syncPendingChanges failed', e)
+          }
+
+          // Now fetch authoritative datasets (retain original ordering/logic)
+          try{
+            getSettings(company)
+            getApprovals(company)
+            getEmployees(company)
+            getChartOfAccounts(company)
+            getAccommodations(company)
+            getSales(company)
+            getPosOrders({company: company, companyRecord: companyRecord})
+            if (companyRecord.status==='admin'){
+              window.localStorage.removeItem('lgt-vw')
+              fetchProfiles(company)
+              getDepartments(company)
+              getPositions(company)
+              getCustomers(company)
+              fetchTables(company)
+              fetchSessions(company , "sales", companyRecord)
+              fetchSessions(company , "delivery", companyRecord)
+              fetchAllSessions({company: company, companyRecord: companyRecord})
+              getProducts(company)
+              getRentals(company)
+              getPurchase(company)
+              getExpenses(company)
+              getAttendance(company)
+              Navigate('/' + loadedCurPath)
+              setTimeout(() => { setLoadedCurPath('') }, 500);
+            }
+          }catch(e){ console.warn('Initial authoritative fetch failed', e) }
+
+          setIsInitialSyncDone(true)
+        }catch(e){
+          console.error('Initial mount sequence failed', e)
+        }
+      })()
     }
   },[company, companyRecord, loadedCurPath])
 
@@ -2359,8 +2776,8 @@ function App() {
   return (
     <>
         <ContextProvider.Provider value={{
-          fetchServer,
-          server:SERVER, viewAccess,
+          fetchServer: guardedFetchServer,
+          server:SERVER, viewAccess, intervalPeriod,
           genDb,
           pauseView, setPauseView,
           loginMessage, setLoginMessage,

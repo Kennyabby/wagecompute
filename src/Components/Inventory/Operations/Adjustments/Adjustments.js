@@ -11,7 +11,7 @@ const Adjustments = ({
     isImportClicked, setIsImportValue,
 })=>{
     const {
-        server, fetchServer, generateSeries,
+        server, fetchServer, generateSeries, intervalPeriod,
         setAlert, setAlertState, setAlertTimeout, getProductsWithStock,
         products, company, companyRecord, setProducts, getProducts,
         settings, exportFile, importFile, 
@@ -72,7 +72,7 @@ const Adjustments = ({
             if (cmp_val) {
                 intervalRef.current = setInterval(() => {
                     getProductsWithStock(cmp_val, products)
-                }, 1200000);
+                }, intervalPeriod);
             }
         
             return () => {

@@ -20,7 +20,7 @@ const Stock = ({
 }) => {
     const {
         server, fetchServer, getProducts, getProductsWithStock, getProductsStockReport,
-        setAlert, setAlertState, setAlertTimeout,
+        setAlert, setAlertState, setAlertTimeout, intervalPeriod,
         products, setProducts, settings, company, companyRecord,
     } = useContext(ContextProvider);
     const intervalRef = useRef(null);
@@ -274,7 +274,7 @@ const Stock = ({
                         startDate: dateRange.startDate,
                         endDate: dateRange.endDate
                     });
-                }, 1200000);
+                }, intervalPeriod);
             }
             return () => {
                 if (intervalRef.current) {

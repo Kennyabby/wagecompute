@@ -859,7 +859,7 @@ const DashView = () =>{
             fetchAllSessions({company, setState: (prop)=>{
                 setPosSessions({...prop})
             }});
-        }, 20 * 60 * 1000);
+        }, 60 * 60 * 1000);
         return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fromDate, toDate, locationFilter, productFilter, employeeFilter, company, products, sales, accommodations, rentals])

@@ -7,7 +7,7 @@ import { useContext } from 'react'
 const Employees = () =>{
     const {storePath, 
         fetchServer, 
-        server, 
+        server, intervalPeriod,
         company, companyRecord,
         departments,
         positions, editAccess,
@@ -67,7 +67,7 @@ const Employees = () =>{
           if (cmp_val){
             getEmployees(cmp_val)
           }
-        },1200000)
+        },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
     useEffect(()=>{

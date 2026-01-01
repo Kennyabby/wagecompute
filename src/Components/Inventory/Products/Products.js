@@ -5,7 +5,7 @@ import ContextProvider from '../../../Resources/ContextProvider';
 import { syncPendingChanges } from '../../../Resources/offlineSync';
 
 const Products = ({
-    isNewProduct, isProductView,
+    isNewProduct, isProductView, 
     setIsOnView, setIsNewView,
     clickedLabel, isSaveClicked, setIsSaveValue,
     isDeleteClicked, setIsDeleteValue,
@@ -13,7 +13,7 @@ const Products = ({
     productView, setCurProduct, curProduct
 })=>{     
     const {
-        server, fetchServer, generateSeries,
+        server, fetchServer, generateSeries, intervalPeriod,
         setAlert, setAlertState, setAlertTimeout,
         products, company, setProducts, getProducts,
         getProductsWithStock,
@@ -148,7 +148,7 @@ const Products = ({
         getProducts(cmp_val)
         if (!curProduct){
             var cmp_val = window.localStorage.getItem('sessn-cmp')
-            intervalRef.current = setInterval(()=>{ refreshProductsData(); },1200000)
+            intervalRef.current = setInterval(()=>{ refreshProductsData(); },intervalPeriod)
             // run once
             refreshProductsData();
             return () => clearInterval(intervalRef.current);
