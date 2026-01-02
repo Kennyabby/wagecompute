@@ -237,10 +237,10 @@ const Sales = ()=>{
             await Promise.all([
                 getApprovals(cmp_val, companyRecord),
                 fetchAllSessions({company: cmp_val, companyRecord}),
-                getSales(cmp_val, companyRecord),
-                getEmployees(cmp_val, companyRecord),
-                getRentals(cmp_val, companyRecord),
-                getAccommodations(cmp_val, companyRecord),
+                getSales(cmp_val),
+                getEmployees(cmp_val),
+                getRentals(cmp_val),
+                getAccommodations(cmp_val),
             ]);
         }catch(e){}
     }

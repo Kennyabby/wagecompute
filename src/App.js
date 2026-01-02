@@ -1369,28 +1369,34 @@ function App() {
 
         const sessionDays = 31 * 24 * 60 * 60 * 1000
         const allowedFromDays = Date.now() - sessionDays
-        const resp = await fetchServer("POST", {
-          database: company,
-          collection: "POSSessions", 
-          prop: {
-            type:'delivery',
-            start: {$gte: allowedFromDays}
-          } 
-        }, "getDocsDetails", SERVER)
+
+        const {resp, resp1, sessionsResponse} = await Promise.all([
+          await fetchServer("POST", {
+            database: company,
+            collection: "POSSessions", 
+            prop: {
+              type:'delivery',
+              start: {$gte: allowedFromDays}
+            } 
+          }, "getDocsDetails", SERVER),
+
+          await fetchServer("POST", {
+            database: company,
+            collection: "POSSessions", 
+            prop: {
+              type:'sales',
+              start: {$gte: allowedFromDays}
+            } 
+          }, "getDocsDetails", SERVER),
+
+          getAllSessions(company)
+        ])
+        
         if (resp.record && Array.isArray(resp.record)){
           // console.log('fetched deliveries', resp.record)
           setAllDeliverySessions(resp.record)
           setCached(company, 'allDeliverySessions', resp.record, companyRecord?.emailid)                            
-        }
-        
-        const resp1 = await fetchServer("POST", {
-          database: company,
-          collection: "POSSessions", 
-          prop: {
-            type:'sales',
-            start: {$gte: allowedFromDays}
-          } 
-        }, "getDocsDetails", SERVER)
+        }  
 
         if (resp1.record && Array.isArray(resp1.record)){
           // console.log('fetched sales', resp1.record)
@@ -1399,7 +1405,6 @@ function App() {
           setCached(company, 'allSalesSessions', resp1.record, companyRecord?.emailid)                           
         }
 
-        const sessionsResponse = await getAllSessions(company)
         if (Array.isArray(sessionsResponse)){
             // Sort all sessions by start time (newest first)
             const allSessions = sessionsResponse.sort((a, b) => new Date(b.start) - new Date(a.start));
@@ -1627,7 +1632,7 @@ function App() {
           if (order.salesPosts){
             Object.keys(order.salesPosts).forEach((payPoint)=>{
               if (paymentPoints.includes(payPoint)){
-                let dateVar = new Date(order.createdAt).toISOString().split('T')[0]
+                let dateVar = new Date(order.createdAt).toISOString().slice(0,10)
                 if(dateVar >= dateBoundary) {
                   const location = order.salesPosts[payPoint]
                   const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]

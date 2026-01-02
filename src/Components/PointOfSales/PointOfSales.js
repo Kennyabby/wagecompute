@@ -337,17 +337,17 @@ const PointOfSales = () => {
         fetchTables(cmp_val)
         const intervalId = setInterval(()=>{ refreshPOSData(); },300000)
         // run once
-        refreshPOSData();
+        // refreshPOSData();
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
-        getPosOrders({company, companyRecord})
+        // getPosOrders({company, companyRecord})
         const intervalId = setInterval(()=>{ refreshPOSData2(); },intervalPeriod)
         // run once
-        refreshPOSData2();
+        // refreshPOSData2();
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 

@@ -21,11 +21,7 @@ const Reports = ()=>{
         storePath('reports')  
     },[storePath])
     useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')
-        getSales(cmp_val)
-        getRentals(cmp_val)
-        getPurchase(cmp_val)
-        getExpenses(cmp_val)
+        var cmp_val = window.localStorage.getItem('sessn-cmp')     
         const intervalId = setInterval(()=>{
           if (cmp_val){
             getSales(cmp_val)
@@ -107,10 +103,10 @@ const Reports = ()=>{
             const cmp_val = window.localStorage.getItem('sessn-cmp');
             if (cmp_val){
                 await Promise.all([
-                    getSales(cmp_val),
-                    getRentals(cmp_val),
-                    getPurchase(cmp_val),
-                    getExpenses(cmp_val)
+                    getSales(cmp_val, 'all'),
+                    getRentals(cmp_val, 'all'),
+                    getPurchase(cmp_val, 'all'),
+                    getExpenses(cmp_val, 'all')
                 ])
             }
             if (Array.isArray(results)){

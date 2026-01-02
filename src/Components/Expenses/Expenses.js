@@ -106,9 +106,9 @@ const Expenses = ()=>{
 
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
-        getEmployees(cmp_val)
-        getExpenses(cmp_val)
-        getAttendance(cmp_val)
+        // getEmployees(cmp_val)
+        // getExpenses(cmp_val)
+        // getAttendance(cmp_val)
         const intervalId = setInterval(()=>{
           if (cmp_val){
             getEmployees(cmp_val)
@@ -128,7 +128,13 @@ const Expenses = ()=>{
         try{
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             const cmp_val = window.localStorage.getItem('sessn-cmp');
-            if (cmp_val) await getExpenses(cmp_val);
+            if (cmp_val) {
+                await Promise.all([
+                    getExpenses(cmp_val),
+                    getEmployees(cmp_val),
+                    getAttendance(cmp_val)
+                ]).catch(()=>{});
+            };
 
             if (Array.isArray(results)){
                 const failed = results.filter(r => r.status === 'error');

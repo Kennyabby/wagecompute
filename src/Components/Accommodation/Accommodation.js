@@ -126,7 +126,7 @@ const Accommodation = ()=>{
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getApprovals(cmp_val, companyRecord)
-        getEmployees(cmp_val, companyRecord)
+        // getEmployees(cmp_val, companyRecord)
         getCustomers(cmp_val, companyRecord)
         getAccommodations(cmp_val, companyRecord)
         const intervalId = setInterval(()=>{
@@ -181,7 +181,14 @@ const Accommodation = ()=>{
         try{
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             const cmp_val = window.localStorage.getItem('sessn-cmp');
-            if (cmp_val) await getAccommodations(cmp_val);
+            if (cmp_val) {
+                await Promise.all([
+                    getApprovals(cmp_val, companyRecord),
+                    getEmployees(cmp_val, companyRecord),
+                    getCustomers(cmp_val, companyRecord),
+                    getAccommodations(cmp_val),
+                ])
+            };
             if (Array.isArray(results)){
                 const failed = results.filter(r => r.status === 'error');
                 if (failed.length){

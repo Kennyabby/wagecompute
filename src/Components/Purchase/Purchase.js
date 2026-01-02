@@ -75,7 +75,6 @@ const Purchase = ()=>{
             const tasks = [];
             if (products.length){
                 tasks.push(getProductsWithStock(cmp_val, products));
-                tasks.push(getProductsStockReport(cmp_val, products));
             }
             tasks.push(getApprovals(cmp_val, companyRecord));
             tasks.push(getEmployees(cmp_val, companyRecord));
@@ -85,11 +84,7 @@ const Purchase = ()=>{
     }
 
     useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')        
-        getApprovals(cmp_val, companyRecord)
-        getEmployees(cmp_val, companyRecord)
-        getPurchase(cmp_val, companyRecord)
-        getApprovals(cmp_val, companyRecord)        
+        var cmp_val = window.localStorage.getItem('sessn-cmp')                      
         const intervalId = setInterval(()=>{ refreshPurchaseData(); },intervalPeriod)
         // run once
         refreshPurchaseData();
@@ -100,14 +95,9 @@ const Purchase = ()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         if(!products.length){
             getProducts(cmp_val)
-        }
-        if (products.length){
-            if (!products[0]?.stockSummary){
-                getProductsStockReport(cmp_val, products)
-            }
-        }
+        }        
     },[products])
-    
+
     const handleSyncOfflinePurchase = async () => {
         if (!company || !companyRecord?.emailid) return;
         setIsSyncing(true);
@@ -142,6 +132,7 @@ const Purchase = ()=>{
             setIsSyncing(false);
         }
     }
+    
     useEffect(()=>{
         if (settings.length){  
             const uomSetFilt = settings.filter((setting)=>{

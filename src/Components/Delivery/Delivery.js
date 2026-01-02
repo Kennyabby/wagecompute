@@ -345,10 +345,10 @@ const Delivery = () => {
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')        
         // loadInitialData()
-        getPosOrders({company, companyRecord})
+        // getPosOrders({company, companyRecord})
         const intervalId = setInterval(()=>{ refreshDeliveryData(); },intervalPeriod)
         // run once
-        refreshDeliveryData();
+        // refreshDeliveryData();
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
 
@@ -549,12 +549,10 @@ const Delivery = () => {
                 refreshDeliveryTables(),
                 refreshDeliveryData(),
                 fetchSessions(company, "delivery", companyRecord),
-                getProducts(company),
+                (products.length && getProductsWithStock(company, products)),                 
                 fetchProfiles(company),
                 fetchAllSessions({company, companyRecord}),
             ]).catch(()=>{});
-
-            await loadInitialData();
 
             if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
