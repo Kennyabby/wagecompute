@@ -231,22 +231,22 @@ const DashView = () =>{
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (cmp_val && company){
             if (!purchase?.length){
-                getPurchase(cmp_val)
+                getPurchase(cmp_val, 'all')
             }
             if (!expenses?.length){
-                getExpenses(cmp_val)
+                getExpenses(cmp_val, 'all')
             }
             if (!sales?.length){
-                getSales(cmp_val)
+                getSales(cmp_val, 'all')
             }
             if (!accommodations?.length){
-                getAccommodations(cmp_val)
+                getAccommodations(cmp_val, 'all')
             }
             if (!rentals?.length){
-                getRentals(cmp_val)
+                getRentals(cmp_val, 'all')
             }
             if (!employees?.length){
-                getEmployees(cmp_val)
+                getEmployees(cmp_val, 'all')
             }
         }
     },[window.localStorage.getItem('sessn-cmp')])

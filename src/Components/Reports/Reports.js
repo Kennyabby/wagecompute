@@ -22,12 +22,16 @@ const Reports = ()=>{
     },[storePath])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')     
+        getSales(cmp_val, 'all')
+        getRentals(cmp_val, 'all')
+        getPurchase(cmp_val, 'all')
+        getExpenses(cmp_val, 'all')
         const intervalId = setInterval(()=>{
           if (cmp_val){
-            getSales(cmp_val)
-            getRentals(cmp_val)
-            getPurchase(cmp_val)
-            getExpenses(cmp_val)
+            getSales(cmp_val, 'all')
+            getRentals(cmp_val, 'all')
+            getPurchase(cmp_val, 'all')
+            getExpenses(cmp_val,'all')
             // getAttendance(cmp_val)
           }
         },intervalPeriod)
