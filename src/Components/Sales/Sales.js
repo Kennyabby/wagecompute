@@ -28,7 +28,7 @@ const Sales = ()=>{
         company, recoveryVal, allowBacklogs,
         employees, setEmployees, getEmployees, 
         sales, setSales, getSales, months,
-        allSessions, getAllSessions, getSessionEnd,
+        allSessions, getAllSessions, getSessionEnd, fetchAllSessions,
         accommodations, getAccommodations,
         rentals, setRentals, getRentals, 
         products, setProducts, getProducts, getProductsWithStock,
@@ -236,7 +236,7 @@ const Sales = ()=>{
         try{
             await Promise.all([
                 getApprovals(cmp_val, companyRecord),
-                getAllSessions(cmp_val, companyRecord),
+                fetchAllSessions({company: cmp_val, companyRecord}),
                 getSales(cmp_val, companyRecord),
                 getEmployees(cmp_val, companyRecord),
                 getRentals(cmp_val, companyRecord),

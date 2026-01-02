@@ -1430,8 +1430,7 @@ const PointOfSales = () => {
                 (async ()=>{ await refreshPOSData2(); })(),
                 getProducts(company),
                 fetchProfiles(company),
-                fetchAllSessions({company, companyRecord}),
-                getAllSessions(company),
+                fetchAllSessions({company, companyRecord}),                
             ]).catch(()=>{});
 
             await loadInitialData();
@@ -1974,7 +1973,7 @@ const PointOfSales = () => {
                                 <h2>Start Session {
                                     [''].map((args)=>{
                                         const userProfile = employees.find((employee)=>{return (employee.i_d === ((sessionUser === null) ? curSession?.employee_id : sessionUser.profile.emailid))})
-                                        return (userProfile ? <span>{`(${userProfile.firstName})`}</span> : <span>{(curSession === null) ? '' : `(Admin)`}</span>)
+                                        return (userProfile ? <span key={userProfile.i_d}>{`(${userProfile.firstName})`}</span> : <span>{(curSession === null) ? '' : `(Admin)`}</span>)
                                     })
                                 }</h2>
                                 {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_sessions')) && 
