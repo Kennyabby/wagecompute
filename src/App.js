@@ -1734,10 +1734,14 @@ function App() {
         if (cached && Array.isArray(cached) && companyRecord?.emailid) {
           setAllSessions(cached);
         }
+        const sessionDays = 100 * 24 * 60 * 60 * 1000
+        const allowedFromDays = Date.now() - sessionDays
         const resp = await fetchServer("POST", {
           database: company,
           collection: "POSSessions", 
-          prop: {} 
+          prop: {
+            start: {$gte: allowedFromDays}
+          } 
         }, "getDocsDetails", SERVER)
         if (resp.record && Array.isArray(resp.record)){
           setAllSessions(resp.record)
