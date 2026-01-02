@@ -134,8 +134,8 @@ function App() {
 
         // mapping from server collection name -> { cacheKey, getter }
         const collectionMap = {
-          'Orders': { cacheKey: 'posOrders', getter: () => posOrders },
-          'POSSessions': { cacheKey: 'allSessions', getter: () => allSessions },
+          // 'Orders': { cacheKey: 'posOrders', getter: () => posOrders },
+          // 'POSSessions': { cacheKey: 'allSessions', getter: () => allSessions },
           'Products': { cacheKey: 'products', getter: () => products },
           'Sales': { cacheKey: 'sales', getter: () => sales },
           'Purchase': { cacheKey: 'purchase', getter: () => purchase },
@@ -175,7 +175,8 @@ function App() {
           }catch(e){}
         }
         // As a last-ditch, attempt to return an empty array rather than hitting the network for huge queries
-        return { err: false, record: [] };
+        // return { err: false, record: [] };
+        return await fetchServer(method, body, endpoint, serverParam, signal)
       }
     }catch(e){
       console.warn('guardedFetchServer error', e)
