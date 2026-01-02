@@ -1393,13 +1393,13 @@ function App() {
           getAllSessions(company)
         ])
         
-        if (resp.record && Array.isArray(resp.record)){
+        if (resp?.record && Array.isArray(resp.record)){
           // console.log('fetched deliveries', resp.record)
           setAllDeliverySessions(resp.record)
           setCached(company, 'allDeliverySessions', resp.record, companyRecord?.emailid)                            
         }  
 
-        if (resp1.record && Array.isArray(resp1.record)){
+        if (resp1?.record && Array.isArray(resp1.record)){
           // console.log('fetched sales', resp1.record)
           setAllSalesSessions(resp1.record)
           setAllSessions(resp1.record)            
@@ -1744,7 +1744,7 @@ function App() {
             start: {$gte: allowedFromDays}
           } 
         }, "getDocsDetails", SERVER)
-        if (resp.record && Array.isArray(resp.record)){
+        if (resp?.record && Array.isArray(resp?.record)){
           setAllSessions(resp.record)
           setCached(company, 'allSessions', resp.record, companyRecord?.emailid)
           return resp.record
