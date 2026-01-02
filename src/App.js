@@ -1734,7 +1734,7 @@ function App() {
         if (cached && Array.isArray(cached) && companyRecord?.emailid) {
           setAllSessions(cached);
         }
-        const sessionDays = 100 * 24 * 60 * 60 * 1000
+        const sessionDays = 60 * 24 * 60 * 60 * 1000
         const allowedFromDays = Date.now() - sessionDays
         const resp = await fetchServer("POST", {
           database: company,
@@ -1900,14 +1900,15 @@ function App() {
     }
   }
 
-  const getSales = async (company) =>{
+  const getSales = async (company, scope) =>{
     
     var defaultEndPoint = 'getDocsDetails'
-    
+    const salesDays = 60 * 24 * 60 * 60 * 1000
+    const allowedFromDays = Date.now() - salesDays
     const body = {
       database: company,
       collection: "Sales", 
-      prop: {} 
+      ...(scope==='all' ? {prop: {}} : {prop: {createdAt: {$gte: allowedFromDays}}}) 
     }
 
     const cached = await getCached(company, 'sales', companyRecord?.emailid);
@@ -2617,12 +2618,14 @@ function App() {
     averageCost: 0
   });
 
-  const getAccommodations = async (company) =>{
+  const getAccommodations = async (company, scope) =>{
     try {
+      const accommodationDays = 60 * 24 * 60 * 60 * 1000
+      const allowedFromDays = Date.now() - accommodationDays
       const resp = await fetchServer("POST", {
         database: company,
         collection: "Accommodations", 
-        prop: {} 
+        ...(scope==='all' ? {prop: {}} : {prop: {createdAt: {$gte: allowedFromDays}}})         
       }, "getDocsDetails", SERVER)
       if (resp.record){
         setAccommodations(resp.record)
@@ -2642,15 +2645,17 @@ function App() {
     }
   }
 
-  const getPurchase = async (company) =>{
+  const getPurchase = async (company, scope) =>{
     const cached = await getCached(company, 'purchase', companyRecord?.emailid);
     if (cached) {
       setPurchase(cached);
     }
+    const purchaseDays = 60 * 24 * 60 * 60 * 1000
+    const allowedFromDays = Date.now() - purchaseDays   
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Purchase", 
-      prop: {} 
+      ...(scope==='all' ? {prop: {}} : {prop: {createdAt: {$gte: allowedFromDays}}}) 
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setPurchase(resp.record)
@@ -2658,15 +2663,17 @@ function App() {
     }
   }
 
-  const getExpenses = async (company) =>{
+  const getExpenses = async (company, scope) =>{
     const cached = await getCached(company, 'expenses', companyRecord?.emailid);
     if (cached) {
       setExpenses(cached);
     }
+    const expensesDays = 60 * 24 * 60 * 60 * 1000
+    const allowedFromDays = Date.now() - expensesDays    
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Expenses", 
-      prop: {} 
+      ...(scope==='all' ? {prop: {}} : {prop: {createdAt: {$gte: allowedFromDays}}}) 
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setExpenses(resp.record)
@@ -2674,15 +2681,21 @@ function App() {
     }
   }
 
-  const getRentals = async (company) =>{
+  const getRentals = async (company, scope) =>{
     const cached = await getCached(company, 'rentals', companyRecord?.emailid);
     if (cached) {
       setRentals(cached);
     }
+    const rentalDays = 60 * 24 * 60 * 60 * 1000
+    const allowedFromDays = Date.now() - rentalDays
+    const body = {
+      database: company,
+      collection: "Sales", 
+    }
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Rentals", 
-      prop: {} 
+      ...(scope==='all' ? {prop: {}} : {prop: {createdAt: {$gte: allowedFromDays}}}) 
     }, "getDocsDetails", SERVER)
     if (resp.record){
       setRentals(resp.record)
