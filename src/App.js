@@ -17,8 +17,8 @@ import createSSE from './Resources/ClientServerAPIConn/sseClient'
 import { syncPendingChanges } from './Resources/offlineSync';
 import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPendingChanges } from './Resources/offlineDb';
 
-// const SERVER = "http://localhost:3001"
-const SERVER = "https://enterpriseserver.up.railway.app"
+const SERVER = "http://localhost:3001"
+// const SERVER = "https://enterpriseserver.up.railway.app"
 // const SERVER = "https://enterpriseserver-1.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
@@ -1729,32 +1729,68 @@ function App() {
   };
 
   const getAllSessions = async (company) => {
-    if (company && companyRecord?.emailid){
-      try {
-        const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
-        if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-          setAllSessions(cached);
-        }
-        const sessionDays = 60 * 24 * 60 * 60 * 1000
-        const allowedFromDays = Date.now() - sessionDays
-        const resp = await fetchServer("POST", {
-          database: company,
-          collection: "POSSessions", 
-          prop: {
-            start: {$gte: allowedFromDays}
-          } 
-        }, "getDocsDetails", SERVER)
-        if (resp?.record && Array.isArray(resp?.record)){
-          setAllSessions(resp.record)
-          setCached(company, 'allSessions', resp.record, companyRecord?.emailid)
-          return resp.record
-        }
-      } catch (e) {
-        console.error('getAllSessions failed', e)
-        return []
+    if (!company || !companyRecord?.emailid) return [];
+
+    try {
+      // Check cache first
+      const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
+      if (cached && Array.isArray(cached)) {
+        setAllSessions(cached);
       }
+
+      const totalDays = 35;       // total lookback period
+      const batchDays = 7;        // fetch 7 days per batch
+      const now = Date.now();
+      const startDate = now - totalDays * 24 * 60 * 60 * 1000;
+
+      // Generate all batch ranges
+      const batches = [];
+      for (let from = startDate; from < now; from += batchDays * 24 * 60 * 60 * 1000) {
+        const to = Math.min(from + batchDays * 24 * 60 * 60 * 1000, now);
+        batches.push({ from, to });
+      }
+
+      // Fetch all batches in parallel
+      const batchPromises = batches.map(({ from, to }) =>
+        fetchServer("POST", {
+          database: company,
+          collection: "POSSessions",
+          prop: { start: { $gte: from, $lt: to } }
+        }, "getDocsDetails", SERVER)
+          .then(resp => (resp?.record && Array.isArray(resp.record)) ? resp.record : [])
+          .catch(e => {
+            console.error(`Batch fetch failed [${new Date(from).toISOString()} - ${new Date(to).toISOString()}]`, e);
+            return [];
+          })
+      );
+
+      // Wait for all batch fetches to complete
+      const batchResults = await Promise.all(batchPromises);
+
+      // Flatten into a single array
+      let allSessions = batchResults.flat();
+
+      // Safety check
+      if (allSessions.length > 1000000) {
+        console.warn("⚠️ getAllSessions: too many records, truncating to 1,000,000");
+        allSessions = allSessions.slice(0, 1000000);
+      }
+
+      // Save to state and cache
+      if (allSessions.length) {
+        setAllSessions(allSessions);
+        setCached(company, 'allSessions', allSessions, companyRecord?.emailid);
+      }
+
+      return allSessions;
+
+    } catch (e) {
+      console.error('getAllSessions failed', e);
+      return [];
     }
-  }
+  };
+
+
 
   const getPosOrders = async ({company, option, filter, companyRecord}) => {
     if (company && companyRecord?.emailid){
@@ -2698,8 +2734,8 @@ function App() {
       collection: "Rentals", 
       ...(scope==='all' ? {prop: {}} : {prop: {createdAt: {$gte: allowedFromDays}}}) 
     }, "getDocsDetails", SERVER)
-    if (resp.record){
-      setRentals(resp.record)
+    if (resp?.record){
+      setRentals(resp?.record)
       setCached(company, 'rentals', resp.record, companyRecord?.emailid)
     }
   }
