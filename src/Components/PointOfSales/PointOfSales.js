@@ -3138,19 +3138,27 @@ const POSDashboard = ({
             setStableSalesSessions(allSalesSessions)
         }
         const getSessionsData = async ()=>{
+            const orderDays = 31 * 24 * 60 * 60 * 1000
+            const allowedFromDays = Date.now() - orderDays
             const ordersResponse = await fetchServer("POST", {
                 database: company,
                 collection: "Orders",
+                prop: {createdAt: {$gte: allowedFromDays}}
             }, "getDocsDetails", server); 
             if(!ordersResponse.err){
                 if (Array.isArray(ordersResponse.record)){
                     setAllSessionOrders(ordersResponse.record)
                 }
             }
+            const sessionDays = 31 * 24 * 60 * 60 * 1000
+            const allowedFromDays1 = Date.now() - sessionDays
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",
-                prop: {type: 'sales'}
+                prop: {
+                    type:'sales',
+                    start: {$gte: allowedFromDays1}
+                } 
             }, "getDocsDetails", server);             
             if(!sessionsResponse.err && Array.isArray(sessionsResponse.record)){                
                 setStableSalesSessions(sessionsResponse.record)
@@ -3275,9 +3283,14 @@ const POSDashboard = ({
                                                                     setAlertState('info')
                                                                     setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
                                                                     setAlertTimeout(3000)     
+                                                                    const orderDays = 31 * 24 * 60 * 60 * 1000
+                                                                    const allowedFromDays = Date.now() - orderDays
                                                                     const ordersResponse = await fetchServer("POST", {
                                                                         database: company,
                                                                         collection: "Orders",
+                                                                        prop: {
+                                                                            ceatedAt: {$gte: allowedFromDays}
+                                                                        } 
                                                                     }, "getDocsDetails", server); 
                                                                     if (ordersResponse.err){
                                                                         setAlertState('error')
