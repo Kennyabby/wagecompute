@@ -61,10 +61,10 @@ const Notify = ({
                             className='notifycl'
                             aria-disabled={actionMessage}
                             onClick={()=>{
-                                cancel()
                                 setAlert('')
                                 setAlertState(null)
                                 setActionMessage('')                                
+                                cancel()
                             }}
                         >Cancel</div>
                         <div 
