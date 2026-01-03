@@ -196,8 +196,10 @@ function App() {
       'JANUARY':31,'FEBRUARY':28,'MARCH':31,'APRIL':30,'MAY':31,'JUNE':30,'JULY':31,
       'AUGUST':31,'SEPTEMBER':30,'OCTOBER':31,'NOVEMBER':30,'DECEMBER':31
   }
-  const years = ['2030','2029','2028','2027','2026','2025','2024','2023',
+  const years = ['2040','2039','2038','2037','2036','2035','2034','2033','2032','2031','2030','2029','2028','2027','2026','2025','2024','2023',
       '2022','2021','2020']
+
+  const initialYear = '2025'
 
   const [hostDb, setHostDb] = useState('The_Plantain_Planet')
   const genDb = 'WCDatabase'
@@ -2898,7 +2900,7 @@ function App() {
           alert, alertState, alertTimeout, actionMessage, 
           setAction, setActionMessage,
           storePath,
-          months, monthDays, years,
+          months, monthDays, years, initialYear,
           path,
           dashList, 
           loadPage,
