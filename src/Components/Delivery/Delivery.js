@@ -726,7 +726,7 @@ const Delivery = () => {
                 setAllSessions((allSessions) => [...allSessions, closedSession]);
                 setCountedSales({});
                 setSessionUser(null);
-                setAlertTimeout(5000);
+                setLoadSession(false);
                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 fetchAllSessions({company, companyRecord})
             } catch (e) {
@@ -1811,8 +1811,7 @@ const Delivery = () => {
                     return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
                 })
                 setLoading(true);
-                await stopSession(sessionUser.curSession, salesShortages);
-                setLoading(false);
+                await stopSession(sessionUser.curSession, salesShortages);                
                 setPosSalesDifference({})
             }else{
                 setAlertState('info')
