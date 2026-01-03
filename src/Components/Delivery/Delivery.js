@@ -3009,10 +3009,15 @@ const DeliveryDashboard = ({
     useEffect(()=>{        
         const getSessionsData = async ()=>{            
             getPosOrders({company, companyRecord})
+            const sessionDays = 31 * 24 * 60 * 60 * 1000
+            const allowedFromDays = Date.now() - sessionDays
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",
-                prop: {type: 'delivery'}
+                prop: {
+                    type:'delivery',
+                    start: {$gte: allowedFromDays}
+                } 
             }, "getDocsDetails", server); 
             if(!sessionsResponse.err){
                 setAllDeliverySessions(sessionsResponse.record)
@@ -3113,10 +3118,15 @@ const DeliveryDashboard = ({
                                                                     viewModal = false
                                                                     setAlertState('info')
                                                                     setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
-                                                                    setAlertTimeout(3000)     
+                                                                    setAlertTimeout(3000)  
+                                                                    const orderDays = 31 * 24 * 60 * 60 * 1000
+                                                                    const allowedFromDays = Date.now() - orderDays
                                                                     const ordersResponse = await fetchServer("POST", {
                                                                         database: company,
                                                                         collection: "Orders",
+                                                                        prop: {
+                                                                            ceatedAt: {$gte: allowedFromDays}
+                                                                        } 
                                                                     }, "getDocsDetails", server); 
                                                                     if (ordersResponse.err){
                                                                         setAlertState('error')
