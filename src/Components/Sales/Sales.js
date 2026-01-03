@@ -27,7 +27,7 @@ const Sales = ()=>{
         companyRecord, 
         company, recoveryVal, allowBacklogs,
         employees, setEmployees, getEmployees, 
-        sales, setSales, getSales, months,
+        sales, setSales, getSales, months, years, initialYear,
         allSessions, getAllSessions, getSessionEnd, fetchAllSessions,
         accommodations, getAccommodations,
         rentals, setRentals, getRentals, 
@@ -106,6 +106,7 @@ const Sales = ()=>{
     const [wrhs, setWrhs] = useState([])
     const [salesEntries, setSalesEntries] = useState({})
     const [recoveryMonth, setRecoveryMonth] = useState(months[new Date(Date.now()).getMonth()])
+    const [recoveryYear, setRecoveryYear] = useState(new Date(Date.now()).getFullYear())
     const [addTotalSales, setAddTotalSales] = useState('')
     const [deleteCount, setDeleteCount] = useState(0)
     const [salesOpts, setSalesOpts] = useState('sales')
@@ -1561,6 +1562,7 @@ const Sales = ()=>{
             setPostingDate(approval.postingDate)
             setRecoveryEmployeeId(approval.data.recoveryEmployeeId)
             setRecoveryMonth(approval.data.recoveryMonth)
+            setRecoveryYear(approval.data.recoveryYear || initialYear)
             setRecoveryFields([...approval.data.recoveryFields])
             if (approval.message){
                 setIsView(false)
@@ -1708,7 +1710,7 @@ const Sales = ()=>{
                         employee.employeeDebtList?.forEach((empDebt,index)=>{
                             if (                                                        
                                 months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                                new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
+                                String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear &&
                                 field.recoverySales === `${recoveryEmployeeId}-${index}`                                                        
                             ){
                                 const alreadyRecovered = empDebt.debtRecovered || 0
@@ -1774,7 +1776,7 @@ const Sales = ()=>{
                 sales.forEach((sale,index)=>{
                     if (                                                        
                         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                        new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear() &&
+                        String(new Date(sale.postingDate).getFullYear()) === recoveryYear &&
                         Number(field.recoverySales) === sale.createdAt                                               
                     ){
                         var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
@@ -1952,7 +1954,7 @@ const Sales = ()=>{
                     {sales.forEach((sale)=>{
                         if (                                                        
                             months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                            new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                            String(new Date(sale.postingDate).getFullYear()) === recoveryYear                                                        
                         ){                                                
                             sale.record.forEach((record,index)=>{
                                 if (record.employeeId === employee.i_d && (Number(record.debt)+Number(record.shortage)) > 0){
@@ -1965,7 +1967,7 @@ const Sales = ()=>{
                     employee.employeeDebtList?.forEach((empDebt,index)=>{
                         if (                                                        
                             months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                            new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                            String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear                                                        
                         ){
                             totalDebt += Number(empDebt.debtAmount)
                             totalDebtRecovered += empDebt.debtRecovered ? Number(empDebt.debtRecovered) : 0                               
@@ -1979,7 +1981,7 @@ const Sales = ()=>{
                     {sales.forEach((sale)=>{
                         if (                                                        
                             months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                            new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                            String(new Date(sale.postingDate).getFullYear()) === recoveryYear                                                        
                         ){                                                
                             sale.record.forEach((record,index)=>{
                                 if (employee.i_d === record.employeeId && employee.i_d === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage)) > 0){                                    
@@ -1998,7 +2000,7 @@ const Sales = ()=>{
                         employee.employeeDebtList?.sort((a,b)=>{return b.postingDate - a.postingDate}).forEach((empDebt,index)=>{
                             if (                                                        
                                 months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                                new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                                String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear                                                        
                             ){
                                 const empDebtDoc = {}
                                 empDebtDoc.postingDate = empDebt.postingDate
@@ -2267,6 +2269,7 @@ const Sales = ()=>{
                     }}              
                     recoveryEmployeeId={recoveryEmployeeId}
                     recoveryMonth={recoveryMonth}
+                    recoveryYear={recoveryYear}
                 />}                    
                 {showReceipt && <RentalReceipt
                     rentalSale = {curRent}
@@ -3054,10 +3057,10 @@ const Sales = ()=>{
                                                 }}
                                             >
                                                 <option value=''>Select Recovery Debts</option>
-                                                {sales.map((sale)=>{
+                                                {sales.map((sale)=>{                                                    
                                                     if (                                                        
                                                         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                                                        new Date(sale.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                                                        String(new Date(sale.postingDate).getFullYear()) === recoveryYear                                                        
                                                     ){
                                                         return (
                                                             sale.record.map((record,index)=>{
@@ -3077,7 +3080,7 @@ const Sales = ()=>{
                                                             employee.employeeDebtList?.map((empDebt,index)=>{
                                                                 if (                                                        
                                                                     months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                                                                    new Date(empDebt.postingDate).getFullYear() === new Date(Date.now()).getFullYear()                                                        
+                                                                    String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear
                                                                 ){
                                                                     return (
                                                                         <option key={index} value={`${recoveryEmployeeId}-${index}`}>{`${empDebt.postingDate} - ${Number(empDebt.debtRecovered || 0) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)).toLocaleString()}`}</option>                                                                                                                                 
@@ -3656,22 +3659,22 @@ const Sales = ()=>{
                                 }}
                             />
                         </div>}  
-                        {salesOpts === 'recovery' && <div className='inpcov salesinpcov'>
+                        {salesOpts === 'recovery' && <div className='inpcov salesinpcov' style={{display: 'flex'}}>
                             <select 
                                 className='forminp'
                                 name='recoveryMonth'
                                 type='text'
                                 value={recoveryMonth}
-                                disabled={isView}
+                                disabled={isView || !recoveryYear}
                                 onChange={(e)=>{
                                     const month = e.target.value
                                     const today = new Date()
-                                    if (months.indexOf(month) <= today.getMonth()){
+                                    if (months.indexOf(month) <= today.getMonth() || Number(recoveryYear) < (today.getFullYear())){
                                         setRecoveryMonth(month)
                                         if (months.indexOf(month) < today.getMonth()){
                                             setAlertState('info')
                                             setAlert('Are you sure? You have selected a previous month!')
-                                            setAlertTimeout(3000)
+                                            setAlertTimeout(2000)
                                         }
                                     }else{
                                         setAlertState('error')
@@ -3684,6 +3687,36 @@ const Sales = ()=>{
                                 {months.map((month,index)=>{
                                     return (
                                         <option key={index}>{month}</option>
+                                    )
+                                })}
+                            </select>
+                            <select 
+                                className='forminp'
+                                name='recoveryYear'
+                                type='text'
+                                value={recoveryYear}
+                                disabled={isView}
+                                onChange={(e)=>{
+                                    const year = e.target.value
+                                    const today = new Date()
+                                    if ( year <= today.getFullYear()){
+                                        setRecoveryYear(year)
+                                        if (year < today.getFullYear()){
+                                            setAlertState('info')
+                                            setAlert('Are you sure? You have selected a previous year!')
+                                            setAlertTimeout(2000)
+                                        }
+                                    }else{
+                                        setAlertState('error')
+                                        setAlert('You cannot set the recovery year in the future!')
+                                        setAlertTimeout(5000)
+                                    }
+                                }}
+                            >
+                                <option value=''>Select Recovery Year</option>
+                                {years.map((year,index)=>{
+                                    return (
+                                        <option key={index}>{year}</option>
                                     )
                                 })}
                             </select>
