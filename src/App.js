@@ -65,6 +65,7 @@ function App() {
   const [sessions, setSessions] = useState(null);
   const [tables, setTables] = useState([]);
   const [posOrders, setPosOrders] = useState([]);
+  const [allPosOrders, setAllPosOrders] = useState([])
   const [deliverySessions, setDeliverySessions] = useState(null)
   const [salesSessions, setSalesSessions] = useState(null)
   const [allSalesSessions, setAllSalesSessions] = useState(null)
@@ -284,6 +285,7 @@ function App() {
                       payload.data.forEach(o=>{ if (o && o.orderNumber) map[o.orderNumber] = o });
                       const merged = Object.values(map);
                       setPosOrders(merged);
+                      setAllPosOrders(merged)
                       setCached(company, 'posOrders', merged, companyRecord?.emailid);
                     }catch(e){/* ignore cache update failures */}
                   }catch(e){
@@ -315,6 +317,7 @@ function App() {
                       if (o && o.orderNumber) map[o.orderNumber] = o;
                       const merged = Object.values(map);
                       setPosOrders(merged);
+                      setAllPosOrders(merged)
                       setCached(company, 'posOrders', merged, companyRecord?.emailid);
                     }catch(e){}
                   }catch(e){console.error('SSE Orders apply error', e)}
@@ -571,6 +574,7 @@ function App() {
     }
     return ()=>{ if (es) { try{ es.close() }catch(e){} setIsSSEConnected(false) } }
   }, [company, companyRecord])
+
   useEffect(()=>{
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     getViewAccess(hostDb)
@@ -673,10 +677,8 @@ function App() {
 
           // Now fetch authoritative datasets (retain original ordering/logic)
           try{
-            getSettings(company)
             getApprovals(company)
             getEmployees(company)
-            getChartOfAccounts(company)
             getAccommodations(company)
             getSales(company)
             getPosOrders({company: company, companyRecord: companyRecord})
@@ -714,6 +716,15 @@ function App() {
         logout()
       }else{
         if (!reloadCount){
+          const hasDeliveryAccess = companyRecord?.permissions.includes('delivery')
+          const hasPosAccess = companyRecord?.permissions.includes('pos')
+          const hasEmployeeAccess = companyRecord?.permissions.includes('employees')
+          const hasSalesAccess = companyRecord?.permissions.includes('sales')
+          const hasAccomAccess = companyRecord?.permissions.includes('accommodations')
+          const hasAttendanceAccess = companyRecord?.permissions.includes('attendance')
+          const hasPurchaseAccess = companyRecord?.permissions.includes('purchase')
+          const hasExpensesAccess = companyRecord?.permissions.includes('expenses')
+          const hasInventoryAccess = companyRecord?.permissions.includes('inventory')
           if (companyRecord?.permissions.includes('employees')){
             getEmployees(company)
             getDepartments(company)
@@ -754,13 +765,15 @@ function App() {
             Navigate('/delivery')
           }
           if (companyRecord?.permissions.includes('pos')){
-            if(companyRecord?.permissions.includes('access_pos_sessions')){
+            if(companyRecord?.permissions.includes('access_pos_sessions') && !hasDeliveryAccess){
               fetchAllSessions({company, companyRecord})
               getPosOrders({company: company, companyRecord: companyRecord})
             }
-            fetchProfiles(company)
+            if (!hasDeliveryAccess){
+              fetchProfiles(company)
+              fetchTables(company)
+            }
             fetchSessions(company , "sales", companyRecord)
-            fetchTables(company)
             Navigate('/pos')
           }  
           if (companyRecord?.permissions.includes('accommodations')){
@@ -769,13 +782,20 @@ function App() {
             Navigate('/accommodations')
           }        
           if (companyRecord?.permissions.includes('sales')){
-            getAccommodations(company)
+            if (!hasAccomAccess){
+              getAccommodations(company)
+            }
             getSales(company)
-            fetchAllSessions({company, companyRecord})
-            fetchSessions(company , "sales", companyRecord)
-            fetchSessions(company , "delivery", companyRecord)
+            getRentals(company)            
+            if (!hasDeliveryAccess && !hasPosAccess){
+              fetchAllSessions({company, companyRecord})
+            }
+            if (!hasPosAccess){
+              fetchSessions(company , "sales", companyRecord)
+            }if (!hasDeliveryAccess){
+              fetchSessions(company , "delivery", companyRecord)
+            }
             // getSales(company, 'first', saleFrom, saleTo, 10)
-            getRentals(company)
             window.localStorage.removeItem('lgt-vw')
             Navigate('/sales')
           }
@@ -1630,8 +1650,8 @@ function App() {
         })
       }
   
-      if (posOrders.length && allSessions.length){
-        posOrders?.forEach((order)=>{
+      if (allPosOrders.length && allSessions.length){
+        allPosOrders?.forEach((order)=>{
           if (order.salesPosts){
             Object.keys(order.salesPosts).forEach((payPoint)=>{
               if (paymentPoints.includes(payPoint)){
@@ -1798,7 +1818,7 @@ function App() {
     if (company && companyRecord?.emailid){
       const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
       if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-        setPosOrders(cached);
+        // setPosOrders(cached);
       }
       let prop = {}
       let filterDate = new Date('01/01/1970').getTime()
@@ -1830,13 +1850,13 @@ function App() {
         }, "getDocsDetails", SERVER)
         
         if (resp.record && Array.isArray(resp.record)){
+          setPosOrders(resp.record);
           // console.log("allOrders list:", resp.record)
           // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
           setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
-          const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
-          if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-            setPosOrders(cached);
-          }
+          // const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
+          // if (cached && Array.isArray(cached) && companyRecord?.emailid) {
+          // }
         }
         return resp
         // return {record: []}
@@ -1851,6 +1871,7 @@ function App() {
         
         if (resp.record && Array.isArray(resp.record)){
           setPosOrders(resp.record);
+          setAllPosOrders(resp.record)
           // console.log("allOrders list:", resp.record)
           // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
           setCached(company, 'posOrders', resp.record, companyRecord?.emailid)          
