@@ -34,6 +34,44 @@ const Settings = () => {
         enableDebtRecovery: false
     })
 
+    const modulePermissions = [
+        ...dashList
+    ]
+    const salesPostsPermissions = [
+        'pos_open bar1','pos_open bar2','pos_vip','pos_kitchen'
+    ]
+    const deliveryPostsPermissions = [
+        'delivery_open bar1','delivery_open bar2','delivery_vip','delivery_kitchen'
+    ]
+    const editDeletePermissions = [
+        'edit_employees', 'enable_employee_debt_recovery', 'edit_product_details', 
+        'add_expense_category', 'cancel_pos_order', 'override_pos_receipts', 
+        'edit_payment_receipts', 'cancel_delivery_order', 'override_accomodation', 
+        'view_all_accommodation', 'allow_group_payment'
+    ]
+    const posAdminPermissions = [
+        'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent',
+        'override_open bar1', 'override_open bar2', 'override_vip', 'override_kitchen'
+    ]
+    const postingPermissions = [
+        'allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products', 
+        'allow_recovery_posts', 'allow_rental_posts' , 'allow_accommodation_posts', 
+        'allow_purchase_posts', 'allow_expense_posts', 'allow_payment_posts'
+    ]
+    const approvalPermissions = [
+        'approve_postsales','approve_postaddSalesProduct','approve_postrentals',
+        'approve_postrecovery','approve_postaccommodation', 'approve_postpurchase', 
+        'approve_postexpense', 'approve_postpayment'
+    
+    ]
+    const importExportPermissions = [
+        'imports', 'export_inventory_report', 'export_sales_report', 
+        'export_pos_report', 'export_purchase_report', 'export_expense_report', 
+        'adjustments'
+    ]
+    const stockTransferPermissions = [
+        'internal_transfer'
+    ]
     useEffect(() => {
         storePath('settings')
     }, [storePath])
@@ -435,7 +473,7 @@ const Settings = () => {
                                     <div className='inpcov formpad'>
                                         <div>Module Permissions</div>
                                         <div className='permissions'>
-                                            {dashList.map((permission, index) => (
+                                            {modulePermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -449,7 +487,7 @@ const Settings = () => {
                                         </div>
                                         <div>Sales Posts Permissions</div>
                                         <div className='permissions'>
-                                            {['pos_open bar1','pos_open bar2','pos_vip','pos_kitchen'].map((permission, index) => (
+                                            {salesPostsPermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -463,7 +501,7 @@ const Settings = () => {
                                         </div>
                                         <div>Delivery Posts Permissions</div>
                                         <div className='permissions'>
-                                            {['delivery_open bar1','delivery_open bar2','delivery_vip','delivery_kitchen'].map((permission, index) => (
+                                            {deliveryPostsPermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -480,7 +518,7 @@ const Settings = () => {
                                         <br/>
                                         <div>Edit / Delete Permissions</div>
                                         <div className='permissions'>
-                                            {['edit_employees', 'enable_employee_debt_recovery', 'edit_product_details', 'add_expense_category', 'cancel_pos_order', 'override_pos_receipts', 'edit_payment_receipts', 'cancel_delivery_order', 'override_accomodation', 'view_all_accommodation', 'allow_group_payment'].map((permission, index) => (
+                                            {editDeletePermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -494,7 +532,7 @@ const Settings = () => {
                                         </div>
                                         <div>POS Admin Permissions</div>
                                         <div className='permissions'>
-                                            {['access_pos_sessions', 'access_pos_deliveries', 'override_open bar1', 'override_open bar2', 'override_vip', 'override_kitchen'].map((permission, index) => (
+                                            {posAdminPermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -508,7 +546,7 @@ const Settings = () => {
                                         </div>
                                         <div>Posting Permissions</div>
                                         <div className='permissions'>
-                                            {['allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products', 'allow_recovery_posts', 'allow_rental_posts' , 'allow_accommodation_posts', 'allow_purchase_posts', 'allow_expense_posts', 'allow_payment_posts'].map((permission, index) => (
+                                            {postingPermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -522,7 +560,7 @@ const Settings = () => {
                                         </div>
                                         <div>Approval Permissions</div>
                                         <div className='permissions'>
-                                            {['approve_postsales','approve_postaddSalesProduct','approve_postrentals','approve_postrecovery','approve_postaccommodation', 'approve_postpurchase', 'approve_postexpense', 'approve_postpayment'].map((permission, index) => (
+                                            {approvalPermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -536,7 +574,7 @@ const Settings = () => {
                                         </div>
                                         <div> Import/Export Permissions</div>
                                         <div className='permissions'>
-                                            {['imports', 'export_inventory_report', 'export_sales_report', 'export_pos_report', 'export_purchase_report', 'export_expense_report', 'adjustments'].map((permission, index) => (
+                                            {importExportPermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'
@@ -550,7 +588,7 @@ const Settings = () => {
                                         </div>
                                         <div> Stock transfer Permissions</div>
                                         <div className='permissions'>
-                                            {['internal_transfer'].map((permission, index) => (
+                                            {stockTransferPermissions.map((permission, index) => (
                                                 <label key={index} className='permission-label'>
                                                     <input
                                                         type='checkbox'

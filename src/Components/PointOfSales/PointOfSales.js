@@ -80,6 +80,8 @@ const PointOfSales = () => {
     const tableControllerRef = useRef(null)
     const productControllerRef = useRef(null)
     const [tableFetchCount, setTableFetchCount] = useState(0)
+    const [hasPosAgentPermissions, setHasPosAgentPermissions] = useState(false)
+    const [curPosHandler, setCurPosHandler] = useState('')
     useEffect(()=>{
         storePath('pos')  
     },[storePath])
@@ -149,6 +151,8 @@ const PointOfSales = () => {
     useEffect(() => {
         handleSettingsUpdate();
     }, [settings]);
+
+    
 
     // useEffect(() => {
     //     if (!company || !companyRecord?.emailid) return;
@@ -235,9 +239,11 @@ const PointOfSales = () => {
     // Hydrate orders, sessions, and tables from IndexedDB on mount
     useEffect(() => {
         if (!company || !companyRecord?.emailid) return;
-
+        
         (async () => {
             try {
+                const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
+                setHasPosAgentPermissions(isPosAgent)
                 const [orders, sessionsLocal, tablesLocal] = await Promise.all([
                     loadAllOrders(company, companyRecord.emailid),
                     loadAllSessionsLocal(company, companyRecord.emailid),
@@ -469,7 +475,7 @@ const PointOfSales = () => {
                             getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)                            
                         ){                            
                             if (                                
-                                activeOrder.handlerId === companyRecord.emailid
+                                activeOrder.handlerId === (curPosHandler || companyRecord.emailid)
                             ){
                                 tableUser = employees.find(employee => employee.i_d === activeOrder.handlerId)
                                 myTableOrders.push(activeOrder)
@@ -503,7 +509,7 @@ const PointOfSales = () => {
                 return [...orderTables]
             })
         }
-    },[tables,curSession, wrh, employees])
+    },[tables,curSession, wrh, employees, curPosHandler])
 
     // useEffect(() => {
     //     if (!company || !companyRecord?.emailid) return;
@@ -830,7 +836,7 @@ const PointOfSales = () => {
         setOrderTables(orderTables)
     }
 
-     const loadInitialData = async () => {
+    const loadInitialData = async () => {
         if (!company || !companyRecord?.emailid) return;
 
         // 1) Load from local IndexedDB first (local-first UX)
@@ -841,7 +847,7 @@ const PointOfSales = () => {
                 setAllSessionOrders(localOrders);
                 if (curSession) {
                     setAllOrders(localOrders.filter((order) => {
-                        return (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start) && order.handlerId === companyRecord.emailid);
+                        return (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start) && order.handlerId === (curPosHandler || companyRecord.emailid));
                     }));
                 }
             }
@@ -951,7 +957,7 @@ const PointOfSales = () => {
                                     order.tableId === currentTable.i_d
                                     && order.wrh === wrh &&
                                     getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.i_d) &&
-                                    order.handlerId === companyRecord.emailid
+                                    order.handlerId === (curPosHandler || companyRecord.emailid)
                                 )
                                 setTableOrders(myTableOrders)
                             }
@@ -996,7 +1002,8 @@ const PointOfSales = () => {
         const newOrder = {
             orderNumber: generateOrderNumber(),
             tableId: table.i_d,
-            handlerId: companyRecord.emailid,
+            handlerId: curPosHandler || companyRecord.emailid,
+            agent: companyRecord.emailid,
             wrh:wrh,
             sessionId: curSession.i_d,
             tableName: table.name,
@@ -1051,7 +1058,7 @@ const PointOfSales = () => {
                     !companyRecord?.permissions.includes('access_pos_sessions'))
             ) {
                 setAlertState('error');
-                setAlert(`Table ${table.i_d} is not available. Still in use!`);
+                setAlert(`Table ${table.i_d} is not available. Still in use by ${table.tableUser.firstName} ${table.tableUser.lastName}!`);
                 setAlertTimeout(2000);
                 return;
             }
@@ -1081,7 +1088,7 @@ const PointOfSales = () => {
                             companyRecord?.permissions.includes('access_pos_sessions')
                         )
                     ) {
-                        if (order.handlerId !== companyRecord.emailid) return false;
+                        if (order.handlerId !== (curPosHandler || companyRecord.emailid)) return false;
                         if (order.sessionId !== curSession.i_d) return false;
                         
                         return true;
@@ -1130,13 +1137,14 @@ const PointOfSales = () => {
                 sessionId: curSession.i_d,
                 start: curSession.start,
                 wrh: wrh,
-                handlerId: companyRecord.emailid,
+                handlerId: (curPosHandler || companyRecord.emailid),
                 type: 'sales'
             };
 
             const response = await getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
             const filteredOrders = response?.record ?? []
             if (!response.err && Array.isArray(filteredOrders)) {
+                setIsLive(true)
                 // console.log("received allOrders list:", filteredOrders)                
                 if (!localOrders.length){
                     if (filteredOrders.length) {
@@ -1255,7 +1263,8 @@ const PointOfSales = () => {
             const activeOrder = {
                 tableId: currentOrder.tableId,
                 sessionId: currentOrder.sessionId,
-                handlerId: companyRecord.emailid,
+                handlerId: (curPosHandler || companyRecord.emailid),
+                agent: companyRecord.emailid,
                 status: 'pending',
                 delivery: 'pending',
                 wrh: wrh,
@@ -1549,7 +1558,7 @@ const PointOfSales = () => {
                         !(
                             t.tableId === currentOrder.tableId &&
                             t.sessionId === currentOrder.sessionId &&
-                            t.handlerId === companyRecord.emailid &&
+                            t.handlerId === (curPosHandler || companyRecord.emailid) &&
                             t.orderNumber === currentOrder.orderNumber
                         )
                 );
@@ -1560,7 +1569,7 @@ const PointOfSales = () => {
                         (t) =>
                             t.tableId === currentOrder.tableId &&
                             t.sessionId === currentOrder.sessionId &&
-                            t.handlerId === companyRecord.emailid &&
+                            t.handlerId === (curPosHandler || companyRecord.emailid) &&
                             t.orderNumber === currentOrder.orderNumber
                     );
                     if (existing) {
@@ -1703,7 +1712,7 @@ const PointOfSales = () => {
     const printKitchenOrder = (orderData) => {
         if (
             orderData.items.find((item)=>{return wrhCategories['kitchen'].includes(item.category)}) 
-            && ((orderData.handlerId === companyRecord?.emailid) 
+            && ((orderData.handlerId === (curPosHandler || companyRecord.emailid)) 
                 || companyRecord?.status === 'admin' 
                 || companyRecord?.permissions?.includes('access_pos_sessions')
             )
@@ -1771,7 +1780,7 @@ const PointOfSales = () => {
     const printBarOrder = (orderData) => {
         if (
             orderData.items.find((item)=>{return !wrhCategories['kitchen'].includes(item.category)}) 
-            && ((orderData.handlerId === companyRecord?.emailid) 
+            && ((orderData.handlerId === (curPosHandler || companyRecord.emailid)) 
                 || companyRecord?.status === 'admin' 
                 || companyRecord?.permissions?.includes('access_pos_sessions')
             )
@@ -1940,7 +1949,7 @@ const PointOfSales = () => {
             if (sessionUser!==null && sessionUser?.curSession){
                 return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
             }else{
-                return ((order.sessionId === curSession?.i_d) && (order.handlerId === companyRecord.emailid))
+                return ((order.sessionId === curSession?.i_d) && (order.handlerId === companyRecord?.emailid))
             }
         })        
 
@@ -2249,7 +2258,7 @@ const PointOfSales = () => {
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
                 {currentOrder.items.find((item)=>{return wrhCategories['kitchen'].includes(item.category)}) 
-                && ((currentOrder.handlerId === companyRecord?.emailid) 
+                && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid)) 
                     || companyRecord?.status === 'admin' 
                     || companyRecord?.permissions?.includes('access_pos_sessions')
                 ) && ['pending', 'completed'].includes(currentOrder.status) && <button 
@@ -2260,7 +2269,7 @@ const PointOfSales = () => {
                     Print Kitchen Order
                 </button>}
                 {currentOrder.items.find((item)=>{return !wrhCategories['kitchen'].includes(item.category)}) 
-                && ((currentOrder.handlerId === companyRecord?.emailid) 
+                && ((currentOrder.handlerId ===(curPosHandler || companyRecord.emailid)) 
                     || companyRecord?.status === 'admin' 
                     || companyRecord?.permissions?.includes('access_pos_sessions')
                 ) && ['pending', 'completed'].includes(currentOrder.status) && <button 
@@ -2396,8 +2405,34 @@ const PointOfSales = () => {
                             <div>Session: {new Date(curSession?.start).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                             <p></p>
                             <div>Date: {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                            <div className="time">{formatTime(currentTime)}</div>
-                            <div style={{fontWeight: 'bold'}}>User: {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}</div>
+                            <div className="time">{formatTime(currentTime)}</div>                            
+                            {hasPosAgentPermissions ? 
+                                <div style={{fontWeight: 'bold'}}>Handler: 
+                                    <select
+                                        className='forminp'
+                                        name='email'
+                                        type='text'
+                                        placeholder='Select POS Handler'
+                                        value={curPosHandler}
+                                        onChange={(e)=>{setCurPosHandler(e.target.value)}}
+                                    >
+                                        <option value={''}>
+                                            {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}
+                                        </option>
+                                        {employees.map((employee, index)=>{
+                                            const profile = profiles.find((profile)=>{return profile.emailid === employee.i_d})
+                                            if (!employee.dismissalDate && !(employee.i_d === companyRecord?.emailid) && profile?.permissions?.includes(`pos_${wrh}`)){
+                                                return (
+                                                    <option key={index} value={employee.i_d}>
+                                                        {employee.firstName} {employee.lastName} {`(${employee.i_d})`}
+                                                    </option>
+                                                )
+                                            }
+                                        })}
+                                    </select>
+                                </div>
+                                :<div style={{fontWeight: 'bold'}}>Handler: {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}</div>
+                            }
                         </div>
                         <div className="pos-tables-layout">
                             <div 
