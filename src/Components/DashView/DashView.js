@@ -859,12 +859,12 @@ const DashView = () =>{
         loadDashData();
         fetchAllSessions({company, setState: (prop)=>{
             setPosSessions({...prop})
-        }});
+        }, companyRecord});
         // Refresh sessions every 5 minutes
         const interval = setInterval(()=>{
             fetchAllSessions({company, setState: (prop)=>{
                 setPosSessions({...prop})
-            }});
+            }, companyRecord});
         }, 60 * 60 * 1000);
         return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps

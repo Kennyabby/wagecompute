@@ -98,6 +98,7 @@ const PointOfSales = () => {
     // Product States
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [activeCategory, setActiveCategory] = useState(null);
+    const [activeChar, setActiveChar] = useState(null);
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [quantity, setQuantity] = useState('');
 
@@ -281,7 +282,8 @@ const PointOfSales = () => {
 
     useEffect(() => {
         handleCategoryFilter();
-    }, [activeCategory, products]);
+    }, [activeCategory, activeChar, products]);
+       
 
     useEffect(()=>{
         if (wrhs.length){
@@ -1862,8 +1864,22 @@ const PointOfSales = () => {
     };
 
     const handleCategoryFilter = () => {
-        if (activeCategory) {
-            const filtered = products.filter(product => product.category === activeCategory);
+        if (activeCategory && activeChar) {            
+            const filtered = products.filter((product) => {
+                const productName = product.name.toLowerCase()[0]
+                return (
+                    product.category === activeCategory && productName === activeChar.toLowerCase()
+                )
+            });
+            setFilteredProducts(filtered);
+        } else if (activeCategory) {
+            const filtered = products.filter((product) => product.category === activeCategory);
+            setFilteredProducts(filtered);
+        } else if (activeChar) {
+            const filtered = products.filter((product) => {
+                const productName = product.name.toLowerCase()[0]
+                return productName === activeChar.toLowerCase()
+            });
             setFilteredProducts(filtered);
         } else {
             setFilteredProducts(products);
@@ -2272,6 +2288,25 @@ const PointOfSales = () => {
                             {category.name}
                         </button>
                     ))}
+                </div>
+                <div className='categories-bar'>
+                    <button 
+                        className={`category-btn ${!activeChar ? 'active' : ''}`}
+                        onClick={() => setActiveChar(null)}
+                    >
+                        All
+                    </button>
+                    {['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'].map((char)=>{
+                        return (
+                            <button 
+                                key={char}
+                                className={`category-btn ${activeChar === char ? 'active' : ''}`}
+                                onClick={() => setActiveChar(char)}
+                            >
+                                {char}
+                            </button>
+                        )
+                    })}
                 </div>
                 <div className="products-grid">
                     {filteredProducts.map(product => (
