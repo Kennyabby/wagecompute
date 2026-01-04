@@ -1357,7 +1357,7 @@ function App() {
 
   // Fetch POS and delivery sessions
   const fetchAllSessions = async ({company, setState, companyRecord}) => {
-    if (!company) return;
+    if (!company || !companyRecord) return;
     try {            
         if (company && companyRecord?.emailid){      
           const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
@@ -1587,7 +1587,7 @@ function App() {
       const dateBoundary = new Date('2025-07-01').toISOString().slice(0,10)
   
       let paymentReceipts = []
-      if (sales){
+      if (sales.length){
         sales?.forEach((sale)=>{
           (sale.recoveryList || []).forEach((recovery)=>{
             if (paymentPoints.includes(recovery.recoveryPoint)){
@@ -1609,7 +1609,7 @@ function App() {
           })
         })
       }
-      if (accommodations){
+      if (accommodations.length){
         accommodations?.forEach((acc)=>{
           let dateVar = new Date(acc.postingDate).toISOString().slice(0,10)
           if (paymentPoints.includes(acc.payPoint)){
@@ -1630,7 +1630,7 @@ function App() {
         })
       }
   
-      if (posOrders && allSessions){
+      if (posOrders.length && allSessions.length){
         posOrders?.forEach((order)=>{
           if (order.salesPosts){
             Object.keys(order.salesPosts).forEach((payPoint)=>{
