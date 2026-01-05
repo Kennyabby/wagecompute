@@ -1312,6 +1312,127 @@ const PointOfSales = () => {
             if (company && companyRecord?.emailid) {
                 queuePendingChange(company, companyRecord.emailid, {
                     entityType: 'order',
+                    op: 'update',
+                    clientId: placedOrder.orderNumber,
+                    payload: placedOrder,
+                });
+                // Immediate sync attempt – failures are fine, queue remains
+                setAlertTimeout(20);
+                try {
+                    setPlacingOrder(false);
+                    setAlert('Order editted successfully');
+                    setAlertState('success');
+                    setAlertTimeout(2000);
+                    // Keep your existing reads (they only fetch, no writes)
+                    loadInitialData();                    
+                    printKitchenOrder(placedOrder);
+                    printBarOrder(placedOrder)
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    // fetchSessions(company, 'sales', companyRecord);
+                    // fetchAllSessions({company})
+                    // fetchTables(company);
+                    // getProducts(company);
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
+            }
+
+            // 5) Local success feedback
+            
+
+            // View Payment Modal?
+            // setShowPaymentModal(true);
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Error editting order locally');
+            setAlertTimeout(3000);
+            setPlacingOrder(false);
+        }
+    };
+    
+    const handleEditOrder = async () => {
+        // fetchSessions(company, "sales", companyRecord)
+        // fetchTables(company)
+        // getProducts(company)
+        loadInitialData();
+        setAlertState('info');
+        setAlert('Editting Order...');
+        setAlertTimeout(5000);
+        setPlacingOrder(true);
+
+        // Save the current order to database (locally, offline-first)
+        const placedOrder = {
+            ...currentOrder,
+            status: 'pending',
+            editedAt: new Date().getTime(),
+            delivery: 'pending', 
+        };
+
+        try {
+            // 1) Write order to local IndexedDB cache
+            if (company && companyRecord?.emailid) {
+                await putOrder(company, companyRecord.emailid, placedOrder);
+            }
+
+            // 2) Update React state for orders
+            setCurrentOrder(placedOrder);
+            setTableOrders((prev) => [...prev, placedOrder]);
+            setAllSessionOrders((prev) => [...prev, placedOrder]);
+            setAllOrders((prev) => [...prev, placedOrder]);
+
+            // 3) Update table's activeTables locally (no direct server write)
+            const activeOrder = {
+                tableId: currentOrder.tableId,
+                sessionId: currentOrder.sessionId,
+                handlerId: (curPosHandler || companyRecord.emailid),
+                agent: companyRecord.emailid,
+                status: 'pending',
+                delivery: 'pending',
+                wrh: wrh,
+                orderNumber: currentOrder.orderNumber,
+                editedAt: new Date().getTime(),
+            };
+
+            const prevTable = tables.find((table) => table['wrh'] === wrh);
+            if (prevTable) {
+                const updatedTable = {
+                    ...prevTable,
+                    activeTables: [
+                        ...(prevTable.activeTables || []).filter((t) => {
+                            return !(
+                                t.tableId === activeOrder.tableId &&
+                                t.sessionId === activeOrder.sessionId &&
+                                t.handlerId === activeOrder.handlerId &&
+                                t.orderNumber === activeOrder.orderNumber
+                            );
+                        }),
+                        { ...activeOrder },
+                    ],
+                };
+
+                if (company && companyRecord?.emailid) {
+                    await putTable(company, companyRecord.emailid, updatedTable);
+                }
+
+                setTables((prev) =>
+                    prev.map((t) => (t.wrh === wrh ? updatedTable : t))
+                );
+
+                // Queue table update for later sync
+                if (company && companyRecord?.emailid) {
+                    queuePendingChange(company, companyRecord.emailid, {
+                        entityType: 'table',
+                        op: 'update',
+                        clientId: updatedTable.i_d,
+                        payload: updatedTable,
+                    });
+                }
+            }
+
+            // 4) Enqueue offline change so this order can be synced later
+            if (company && companyRecord?.emailid) {
+                queuePendingChange(company, companyRecord.emailid, {
+                    entityType: 'order',
                     op: 'create',
                     clientId: placedOrder.orderNumber,
                     payload: placedOrder,
@@ -1897,7 +2018,7 @@ const PointOfSales = () => {
 
     // Update the click handler in the products grid to only select the product
     const handleProductClick = (product) => {
-        if (!sessionEnded){
+        if (!sessionEnded && ['new','edit'].includes(currentOrder.status)){
             setSelectedProduct(product);
             setQuantity(''); // Reset quantity when new product is selected
         }
@@ -2233,9 +2354,12 @@ const PointOfSales = () => {
                             <span>{item.name}</span>
                             <span>{item.quantity}</span>
                             <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>
-                            {currentOrder.status==='new' && <button 
+                            {['new', 'edit'].includes(currentOrder.status) && <button 
                                 className="remove-btn"
-                                onClick={() => handleRemoveItem(item.i_d)}
+                                onClick={() => {
+                                    if (currentOrder.status === 'edit' && !hasPosAgentPermissions){return}
+                                    handleRemoveItem(item.i_d)
+                                }}
                             >
                                 ×
                             </button>}
@@ -2243,9 +2367,15 @@ const PointOfSales = () => {
                     ))}
                 </div>
                 {selectedProduct && renderKeypad()}
-                {(currentOrder.status!=='cancelled' && currentOrder.status === 'new') && <button 
+                {(currentOrder.status!=='cancelled' && ['new', 'edit'].includes(currentOrder.status)) && <button 
                     className="place-order-btn"
-                    onClick={() => handlePlaceOrder()}
+                    onClick={() => {
+                        if (currentOrder.status === 'new'){
+                            handlePlaceOrder()
+                        }else if (currentOrder.status === 'edit'){
+                            handleEditOrder()
+                        }
+                    }}
                     disabled={!currentOrder.items.length || placingOrder || sessionEnded || !curSession.active || curSession.wrh !== wrh}
                 >
                     Place Order (₦{currentOrder.totalSales?.toFixed(2)})
@@ -3208,7 +3338,7 @@ const POSDashboard = ({
             setStableSalesSessions(allSalesSessions)
         }
         const getSessionsData = async ()=>{
-            const orderDays = 31 * 24 * 60 * 60 * 1000
+            const orderDays = 50 * 24 * 60 * 60 * 1000
             const allowedFromDays = Date.now() - orderDays
             const ordersResponse = await fetchServer("POST", {
                 database: company,
@@ -3220,7 +3350,7 @@ const POSDashboard = ({
                     setAllSessionOrders(ordersResponse.record)
                 }
             }
-            const sessionDays = 31 * 24 * 60 * 60 * 1000
+            const sessionDays = 50 * 24 * 60 * 60 * 1000
             const allowedFromDays1 = Date.now() - sessionDays
             const sessionsResponse = await fetchServer("POST", {
                 database: company,

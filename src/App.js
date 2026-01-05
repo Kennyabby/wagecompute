@@ -1390,7 +1390,7 @@ function App() {
           }
         }
 
-        const sessionDays = 31 * 24 * 60 * 60 * 1000
+        const sessionDays = 50 * 24 * 60 * 60 * 1000
         const allowedFromDays = Date.now() - sessionDays
 
         const {resp, resp1, sessionsResponse} = await Promise.all([
@@ -1861,7 +1861,7 @@ function App() {
         return resp
         // return {record: []}
       }else{
-        const orderDays = 31 * 24 * 60 * 60 * 1000
+        const orderDays = 50 * 24 * 60 * 60 * 1000
         const allowedFromDays = Date.now() - orderDays
         const resp = await fetchServer("POST", {
           database: company,
