@@ -325,6 +325,26 @@ const PointOfSales = () => {
             syncToIndexDB()
         }
     },[salesSessions])
+
+    useEffect(()=>{
+        // console.log(salesSessions)
+        if (Array.isArray(allSalesSessions)){            
+            const syncToIndexDB = async ()=>{
+                try {
+                    const pending = await loadPendingChanges(company, companyRecord.emailid);
+                    const pendingSessionIds = new Set(pending.filter(c=>c.entityType==='session').map(c=>(c.clientId || c.payload?.start)).filter(Boolean));
+                    for (const s of allSalesSessions) {
+                        if (s && s.start != null && !pendingSessionIds.has(s.start)) {
+                            await putSession(company, companyRecord.emailid, s);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('POS: sync sessions to IndexedDB failed', e);
+                }
+            }
+            syncToIndexDB()
+        }
+    },[allSalesSessions])
     
     useEffect(()=>{
         if (tables?.length && sessions !== null){            
@@ -3362,6 +3382,20 @@ const POSDashboard = ({
             }, "getDocsDetails", server);             
             if(!sessionsResponse.err && Array.isArray(sessionsResponse.record)){                
                 setStableSalesSessions(sessionsResponse.record)
+                const syncToIndexDB = async ()=>{
+                    try {
+                        const pending = await loadPendingChanges(company, companyRecord.emailid);
+                        const pendingSessionIds = new Set(pending.filter(c=>c.entityType==='session').map(c=>(c.clientId || c.payload?.start)).filter(Boolean));
+                        for (const s of allSalesSessions) {
+                            if (s && s.start != null && !pendingSessionIds.has(s.start)) {
+                                await putSession(company, companyRecord.emailid, s);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('POS: sync sessions to IndexedDB failed', e);
+                    }
+                }
+                syncToIndexDB()
             }
             // const deliverySessionsResponse = await fetchServer("POST", {
             //     database: company,
