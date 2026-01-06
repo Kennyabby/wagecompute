@@ -15,7 +15,21 @@ import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
 import createSSE from './Resources/ClientServerAPIConn/sseClient'
 import { syncPendingChanges } from './Resources/offlineSync';
-import { getAppCache, setAppCache, clearAppCache, putSession, putTable, loadPendingChanges } from './Resources/offlineDb';
+import {
+  getAppCache, 
+  setAppCache, 
+  clearAppCache, 
+  loadPosSnapshot,
+  savePosSnapshot,
+  queuePendingChange,
+  loadPendingChanges,
+  loadAllOrders,
+  loadAllTables,
+  loadAllSessionsLocal,
+  putOrder,
+  putTable,
+  putSession,
+} from './Resources/offlineDb';
 
 // const SERVER = "http://localhost:3001"
 const SERVER = "https://enterpriseserver.up.railway.app"
@@ -660,9 +674,10 @@ function App() {
         try{
           // quick hydrate from cached getters so UI shows something fast
           try{
+            getApprovals(company)
+            mergeAndPersistSessions()
+            mergeAndPersistOrders()
             getProducts(company)
-            getPosOrders({company: company, companyRecord: companyRecord})
-            getAllSessions(company)
             getChartOfAccounts(company)
           }catch(e){}
 
@@ -677,13 +692,12 @@ function App() {
 
           // Now fetch authoritative datasets (retain original ordering/logic)
           try{
-            getApprovals(company)
-            getEmployees(company)
-            getAccommodations(company)
-            getSales(company)
-            getPosOrders({company: company, companyRecord: companyRecord})
             if (companyRecord.status==='admin'){
               window.localStorage.removeItem('lgt-vw')
+              getEmployees(company)
+              getAccommodations(company)
+              getSales(company)
+              getPosOrders({company: company, companyRecord: companyRecord})
               fetchProfiles(company)
               getDepartments(company)
               getPositions(company)
@@ -765,7 +779,7 @@ function App() {
             Navigate('/delivery')
           }
           if (companyRecord?.permissions.includes('pos')){
-            if(companyRecord?.permissions.includes('access_pos_sessions') && !hasDeliveryAccess){
+            if(companyRecord?.permissions.includes('access_pos_sessions')){
               fetchAllSessions({company, companyRecord})
               getPosOrders({company: company, companyRecord: companyRecord})
             }
@@ -1380,14 +1394,14 @@ function App() {
     if (!company || !companyRecord) return;
     try {            
         if (company && companyRecord?.emailid){      
-          const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
-          const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions', companyRecord?.emailid)             
-          if (cachedAllSalesSession){
-            setAllSalesSessions(cachedAllSalesSession)
-          }
-          if (cachedAllDeliverySession){
-            setAllDeliverySessions(cachedAllDeliverySession)
-          }
+          // const cachedAllSalesSession = await getCached(company, 'allSalesSessions', companyRecord?.emailid)
+          // const cachedAllDeliverySession = await getCached(company, 'allDeliverySessions', companyRecord?.emailid)             
+          // if (cachedAllSalesSession){
+          //   setAllSalesSessions(cachedAllSalesSession)
+          // }
+          // if (cachedAllDeliverySession){
+          //   setAllDeliverySessions(cachedAllDeliverySession)
+          // }
         }
 
         const sessionDays = 50 * 24 * 60 * 60 * 1000
@@ -1412,20 +1426,28 @@ function App() {
             } 
           }, "getDocsDetails", SERVER),
 
-          getAllSessions(company)
+          await getAllSessions(company)
         ])
         
         if (resp?.record && Array.isArray(resp.record)){
           // console.log('fetched deliveries', resp.record)
-          setAllDeliverySessions(resp.record)
-          setCached(company, 'allDeliverySessions', resp.record, companyRecord?.emailid)                            
+          // setAllDeliverySessions(resp.record)
+          // setCached(company, 'allDeliverySessions', resp.record, companyRecord?.emailid)                            
+          // for (const s of resp.record) {
+          //   await putSession(company, companyRecord?.emailid, s).catch(()=>{});
+          // }
+          mergeAndPersistSessions(resp.record)
         }  
 
         if (resp1?.record && Array.isArray(resp1.record)){
           // console.log('fetched sales', resp1.record)
-          setAllSalesSessions(resp1.record)
-          setAllSessions(resp1.record)            
-          setCached(company, 'allSalesSessions', resp1.record, companyRecord?.emailid)                           
+          // setAllSalesSessions(resp1.record)
+          // setAllSessions(resp1.record)            
+          // setCached(company, 'allSalesSessions', resp1.record, companyRecord?.emailid)                           
+          // for (const s of resp1.record) {
+          //   await putSession(company, companyRecord?.emailid, s).catch(()=>{});
+          // }
+          mergeAndPersistSessions(resp1.record)
         }
 
         if (Array.isArray(sessionsResponse)){
@@ -1750,15 +1772,96 @@ function App() {
     }
   };
 
+  const mergeAndPersistOrders = async (orders) => {
+    try {
+        const pending = await loadPendingChanges(company, companyRecord.emailid);
+        const pendingOrders = pending.filter(c=>c.entityType==='order').map(c=>c.payload).filter(Boolean);
+        const pendingOrderNums = new Set(pendingOrders.map(o=>o.orderNumber));
+
+        const localOrders = await loadAllOrders(company, companyRecord.emailid).catch(()=>[]);
+        const localMap = {};
+        for (const l of localOrders) if (l && l.orderNumber) localMap[l.orderNumber] = l;
+
+        const serverOrders = orders || [];
+        const map = {};
+        // start with server
+        for (const s of serverOrders) if (s && s.orderNumber) map[s.orderNumber] = s;
+        // override with local stored orders (but not pending creates which are authoritative)
+        for (const [k,v] of Object.entries(localMap)) {
+            if (!pendingOrderNums.has(k)) map[k] = map[k] || v;
+        }
+        // finally apply pending orders (create/update) to override server
+        for (const p of pendingOrders) if (p && p.orderNumber) map[p.orderNumber] = p;
+
+        const merged = Object.values(map);
+        setPosOrders(merged);
+        setAllPosOrders(merged)
+        // persist server orders to IndexedDB except those that are pending locally
+        for (const o of serverOrders) {
+            if (o && o.orderNumber != null && !pendingOrderNums.has(o.orderNumber)) {
+                await putOrder(company, companyRecord.emailid, o);
+            }
+        }
+    } catch (e) {
+        console.warn('POS Orders: mergeAndPersist failed', e);
+        if (orders.length){
+          setPosOrders(orders);
+          setAllPosOrders(orders)
+        }
+    }
+  };
+
+  const mergeAndPersistSessions = async (sessions) => {
+    if (!company || !companyRecord?.emailid) return
+    try {
+        const pending = await loadPendingChanges(company, companyRecord.emailid);
+        const pendingSessions = pending.filter(c=>c.entityType==='session').map(c=>c.payload).filter(Boolean);
+        const pendingSessionNums = new Set(pendingSessions.map(o=>o.orderNumber));
+
+        const localSessions = await loadAllSessionsLocal(company, companyRecord.emailid).catch(()=>[]);
+        const localMap = {};
+        for (const l of localSessions) if (l && l.start) localMap[l.start] = l;
+
+        const serverSessions = sessions || [];
+        const map = {};
+        // start with server
+        for (const s of serverSessions) if (s && s.start) map[s.start] = s;
+        // override with local stored orders (but not pending creates which are authoritative)
+        for (const [k,v] of Object.entries(localMap)) {
+            if (!pendingSessionNums.has(k)) map[k] = map[k] || v;
+        }
+        // finally apply pending orders (create/update) to override server
+        for (const p of pendingSessions) if (p && p.start) map[p.start] = p;
+
+        const merged = Object.values(map);
+        setAllSessions(merged);
+        setAllSalesSessions(merged.filter(sess => sess.type === 'sales'))
+        setAllDeliverySessions(merged.filter(sess => sess.type === 'delivery'))
+        // persist server orders to IndexedDB except those that are pending locally
+        for (const o of serverSessions) {
+            if (o && o.start != null && !pendingSessionNums.has(o.start)) {
+                await putSession(company, companyRecord.emailid, o);
+            }
+        }
+    } catch (e) {
+        console.warn('POS Sessions: mergeAndPersist failed', e);
+        if (sessions.length){
+          setAllSessions(sessions);
+          setAllSalesSessions(sessions.filter(sess => sess.type === 'sales'))
+          setAllDeliverySessions(sessions.filter(sess => sess.type === 'delivery'))
+        }
+    }
+  };
+
   const getAllSessions = async (company) => {
     if (!company || !companyRecord?.emailid) return [];
 
     try {
       // Check cache first
-      const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
-      if (cached && Array.isArray(cached)) {
-        setAllSessions(cached);
-      }
+      // const cached = await getCached(company, 'allSessions', companyRecord?.emailid);
+      // if (cached && Array.isArray(cached)) {
+      //   setAllSessions(cached);
+      // }
 
       const totalDays = 35;       // total lookback period
       const batchDays = 7;        // fetch 7 days per batch
@@ -1773,13 +1876,30 @@ function App() {
       }
 
       // Fetch all batches in parallel
+      const results = []
       const batchPromises = batches.map(({ from, to }) =>
         fetchServer("POST", {
           database: company,
           collection: "POSSessions",
           prop: { start: { $gte: from, $lt: to } }
         }, "getDocsDetails", SERVER)
-          .then(resp => (resp?.record && Array.isArray(resp.record)) ? resp.record : [])
+          .then(async(resp) => {
+            if (resp.record && Array.isArray(resp.record)){
+              results.push(resp.record)
+              mergeAndPersistSessions(results)
+              return (              
+                resp.record
+              )
+            }
+            else if (resp.err || resp.mess){
+              mergeAndPersistSessions(results)
+              return []
+            }
+            else{
+              return []
+            }
+
+          })
           .catch(e => {
             console.error(`Batch fetch failed [${new Date(from).toISOString()} - ${new Date(to).toISOString()}]`, e);
             return [];
@@ -1800,8 +1920,12 @@ function App() {
 
       // Save to state and cache
       if (allSessions.length) {
-        setAllSessions(allSessions);
-        setCached(company, 'allSessions', allSessions, companyRecord?.emailid);
+        mergeAndPersistSessions(allSessions)
+        // setAllSessions(allSessions);
+        // setCached(company, 'allSessions', allSessions, companyRecord?.emailid);
+        // for (const s of allSessions) {
+        //   await putSession(company, companyRecord?.emailid, s).catch(()=>{});
+        // }
       }
 
       return allSessions;
@@ -1816,10 +1940,10 @@ function App() {
 
   const getPosOrders = async ({company, option, filter, companyRecord}) => {
     if (company && companyRecord?.emailid){
-      const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
-      if (cached && Array.isArray(cached) && companyRecord?.emailid) {
-        // setPosOrders(cached);
-      }
+      // const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
+      // if (cached && Array.isArray(cached) && companyRecord?.emailid) {
+      //   setPosOrders(cached);
+      // }
       let prop = {}
       let filterDate = new Date('01/01/1970').getTime()
       if (filter?.start){
@@ -1850,10 +1974,10 @@ function App() {
         }, "getDocsDetails", SERVER)
         
         if (resp.record && Array.isArray(resp.record)){
-          setPosOrders(resp.record);
+          mergeAndPersistOrders(resp.record);
           // console.log("allOrders list:", resp.record)
           // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
-          setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
+          // setCached(company, 'posOrders', resp.record, companyRecord?.emailid)
           // const cached = await getCached(company, 'posOrders', companyRecord?.emailid);
           // if (cached && Array.isArray(cached) && companyRecord?.emailid) {
           // }
@@ -1870,11 +1994,10 @@ function App() {
         }, "getDocsDetails", SERVER)
         
         if (resp.record && Array.isArray(resp.record)){
-          setPosOrders(resp.record);
-          setAllPosOrders(resp.record)
+          mergeAndPersistOrders(resp.record);          
           // console.log("allOrders list:", resp.record)
           // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
-          setCached(company, 'posOrders', resp.record, companyRecord?.emailid)          
+          // setCached(company, 'posOrders', resp.record, companyRecord?.emailid)          
         }
       }
     }
@@ -2881,6 +3004,7 @@ function App() {
           posOrders, setPosOrders,
           deliverySessions, setDeliverySessions, allDeliverySessions, setAllDeliverySessions,
           getPosOrders, getEmployeeName,
+          mergeAndPersistOrders, mergeAndPersistSessions,
           isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
           tables, setTables, fetchTables,
 
