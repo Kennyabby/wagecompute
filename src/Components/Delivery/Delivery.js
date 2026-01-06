@@ -11,7 +11,7 @@ import {
   loadDeliverySnapshot,
   saveDeliverySnapshot,
   queuePendingChange,
-    loadPendingChanges,
+  loadPendingChanges,
   loadAllOrders,
   loadAllTables,
   loadAllSessionsLocal,
@@ -39,6 +39,7 @@ const Delivery = () => {
         getSessionEnd, allSessions, setAllSessions, getAllSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         deliverySessions, allDeliverySessions, setAllDeliverySessions, setDeliverySessions,
+        mergeAndPersistOrders, mergeAndPersistSessions,
     } = useContext(ContextProvider);
 
     // Core States
@@ -356,14 +357,14 @@ const Delivery = () => {
         if (Array.isArray(posOrders) && posOrders.length){
             setAllSessionOrders(posOrders)
             // console.log('line 334 ', new Date(posOrders[0].sessionId))
-            const syncToIndexDB = async ()=>{
-                for (const o of posOrders) {
-                    if (o && o.orderNumber != null) {
-                        await putOrder(company, companyRecord.emailid, o);
-                    }
-                }
-            }
-            syncToIndexDB()
+            // const syncToIndexDB = async ()=>{
+            //     for (const o of posOrders) {
+            //         if (o && o.orderNumber != null) {
+            //             await putOrder(company, companyRecord.emailid, o);
+            //         }
+            //     }
+            // }
+            // syncToIndexDB()
         }
     },[posOrders])
 
@@ -659,7 +660,7 @@ const Delivery = () => {
                     setStartSession(false);
                     setCurrSession(newSession);
                     setOpeningCash(0);
-                    setAllSessions((allSessions) => [...allSessions, newSession]);
+                    mergeAndPersistSessions([newSession])
                     if (![null, undefined].includes(sessionUser)) {
                         if (sessionUser.profile.emailid === companyRecord.emailid) {
                             setSessions([...(sessions || []), newSession]);
@@ -722,13 +723,12 @@ const Delivery = () => {
                     setAlert('Session Ended!');
                 }
                 setAlertTimeout(3000);
-                setEndSession(false);
-                setAllSessions((allSessions) => [...allSessions, closedSession]);
+                mergeAndPersistSessions([closedSession])
                 setCountedSales({});
+                setEndSession(false);
                 setSessionUser(null);
                 setLoadSession(false);
                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                fetchAllSessions({company, companyRecord})
             } catch (e) {
                 // Leave pending changes in queue; 5‑minute auto-sync will retry
             }
@@ -1574,6 +1574,7 @@ const Delivery = () => {
                     await putOrder(company, companyRecord.emailid, updatedOrder);
                 }
 
+
                 setCurrentOrder(updatedOrder);
                 setPosCurrentOrder(updatedOrder);
                 setTableOrders((tableOrders) =>
@@ -1583,20 +1584,21 @@ const Delivery = () => {
                             : o
                     )
                 );
-                setAllSessionOrders((allSessionOrders) =>
-                    allSessionOrders.map((o) =>
-                        o.orderNumber === updatedOrder.orderNumber
-                            ? updatedOrder
-                            : o
-                    )
-                );
-                setAllOrders((allOrders) =>
-                    allOrders.map((o) =>
-                        o.orderNumber === updatedOrder.orderNumber
-                            ? updatedOrder
-                            : o
-                    )
-                );
+                mergeAndPersistOrders(updatedOrder)
+                // setAllSessionOrders((allSessionOrders) =>
+                //     allSessionOrders.map((o) =>
+                //         o.orderNumber === updatedOrder.orderNumber
+                //             ? updatedOrder
+                //             : o
+                //     )
+                // );
+                // setAllOrders((allOrders) =>
+                //     allOrders.map((o) =>
+                //         o.orderNumber === updatedOrder.orderNumber
+                //             ? updatedOrder
+                //             : o
+                //     )
+                // );
 
                 // Queue order update
                 if (company && companyRecord?.emailid) {
@@ -2293,6 +2295,8 @@ const Delivery = () => {
                 sessions={sessions}
                 allDeliverySessions={allDeliverySessions}
                 setAllDeliverySessions={setAllDeliverySessions}
+                mergeAndPersistOrders={mergeAndPersistOrders}
+                mergeAndPersistSessions={mergeAndPersistSessions}
                 allSessions={allSessions}
                 setAllSessions={setAllSessions}
                 setAllSessionOrders={setAllSessionOrders}
@@ -2992,7 +2996,7 @@ const DeliveryDashboard = ({
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, allSessionOrders, getPosOrders, getSessionSales, curSession,
-    setAlertState, setAlert, setAlertTimeout, tables, setProductAdd
+    setAlertState, setAlert, setAlertTimeout, tables, setProductAdd, mergeAndPersistOrders, mergeAndPersistSessions,
 })=>{
      const {fetchServer, server, company} = useContext(ContextProvider)
      const [pendingSessions, setPendingSessions] = useState([])
@@ -3009,7 +3013,7 @@ const DeliveryDashboard = ({
     useEffect(()=>{        
         const getSessionsData = async ()=>{            
             getPosOrders({company, companyRecord})
-            const sessionDays = 31 * 24 * 60 * 60 * 1000
+            const sessionDays = 50 * 24 * 60 * 60 * 1000
             const allowedFromDays = Date.now() - sessionDays
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
@@ -3019,8 +3023,8 @@ const DeliveryDashboard = ({
                     start: {$gte: allowedFromDays}
                 } 
             }, "getDocsDetails", server); 
-            if(!sessionsResponse.err){
-                setAllDeliverySessions(sessionsResponse.record)
+            if(!sessionsResponse?.err && Array.isArray(sessionsResponse?.record)){
+                mergeAndPersistSessions(sessionsResponse.record)
             }
         }
         getSessionsData()
@@ -3135,7 +3139,7 @@ const DeliveryDashboard = ({
                                                                         return           
                                                                     }else{
                                                                         if (![null, undefined].includes(ordersResponse.record)){
-                                                                            setAllSessionOrders(ordersResponse.record)
+                                                                            mergeAndPersistOrders(ordersResponse.record)
                                                                             setAlertState('info')
                                                                             setAlert('Orders Calculated. Please proceed with the ending of user session!')
                                                                             setAlertTimeout(3000)

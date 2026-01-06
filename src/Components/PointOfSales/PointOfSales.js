@@ -32,7 +32,7 @@ const PointOfSales = () => {
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
         salesSessions, allSalesSessions, setSalesSessions, setAllSalesSessions,
-        paymentReceipts, getPosOrders, getAllSessions
+        paymentReceipts, getPosOrders, getAllSessions, mergeAndPersistOrders, mergeAndPersistSessions
     } = useContext(ContextProvider);
 
     // Core States
@@ -237,43 +237,43 @@ const PointOfSales = () => {
     // }, [company, companyRecord?.emailid]);
     
     // Hydrate orders, sessions, and tables from IndexedDB on mount
-    useEffect(() => {
-        if (!company || !companyRecord?.emailid) return;
+    // useEffect(() => {
+    //     if (!company || !companyRecord?.emailid) return;
         
-        (async () => {
-            try {
-                const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
-                setHasPosAgentPermissions(isPosAgent)
-                const [orders, sessionsLocal, tablesLocal] = await Promise.all([
-                    loadAllOrders(company, companyRecord.emailid),
-                    loadAllSessionsLocal(company, companyRecord.emailid),
-                    loadAllTables(company, companyRecord.emailid),
-                ]);
+    //     (async () => {
+    //         try {
+    //             const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
+    //             setHasPosAgentPermissions(isPosAgent)
+    //             const [orders, sessionsLocal, tablesLocal] = await Promise.all([
+    //                 loadAllOrders(company, companyRecord.emailid),
+    //                 loadAllSessionsLocal(company, companyRecord.emailid),
+    //                 loadAllTables(company, companyRecord.emailid),
+    //             ]);
 
-                if (Array.isArray(orders) && orders?.length) {
-                    setAllSessionOrders(orders);
-                }
+    //             if (Array.isArray(orders) && orders?.length) {
+    //                 setAllSessionOrders(orders);
+    //             }
 
-                if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
-                    const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
-                    setAllSalesSessions(localSalesSessions);
-                    setAllSessions(localSalesSessions);
+    //             if (Array.isArray(sessionsLocal) && sessionsLocal.length) {
+    //                 const localSalesSessions = sessionsLocal.filter(s => s.type === 'sales');
+    //                 // setAllSalesSessions(localSalesSessions);
+    //                 setAllSessions(localSalesSessions);
 
-                    const localCurSalesSessions = localSalesSessions.filter(s => s.employee_id === companyRecord?.emailid)
-                    setSalesSessions(localCurSalesSessions);                    
+    //                 const localCurSalesSessions = localSalesSessions.filter(s => s.employee_id === companyRecord?.emailid)
+    //                 setSalesSessions(localCurSalesSessions);                    
 
-                    // Immediately derive curSession from locally cached sales sessions
-                    // UpdateSessionState(localSalesSessions, false);
-                }
+    //                 // Immediately derive curSession from locally cached sales sessions
+    //                 // UpdateSessionState(localSalesSessions, false);
+    //             }
 
-                if (Array.isArray(tablesLocal) && tablesLocal.length) {
-                    setTables(tablesLocal);
-                }
-            } catch (e) {
-                console.warn('POS hydrateFromIndexedDb failed', e);
-            }
-        })();
-    }, [company, companyRecord?.emailid]);
+    //             if (Array.isArray(tablesLocal) && tablesLocal.length) {
+    //                 setTables(tablesLocal);
+    //             }
+    //         } catch (e) {
+    //             console.warn('POS hydrateFromIndexedDb failed', e);
+    //         }
+    //     })();
+    // }, [company, companyRecord?.emailid]);
 
     useEffect(()=>{
         loadTableData()
@@ -326,25 +326,25 @@ const PointOfSales = () => {
         }
     },[salesSessions])
 
-    useEffect(()=>{
-        // console.log(salesSessions)
-        if (Array.isArray(allSalesSessions)){            
-            const syncToIndexDB = async ()=>{
-                try {
-                    const pending = await loadPendingChanges(company, companyRecord.emailid);
-                    const pendingSessionIds = new Set(pending.filter(c=>c.entityType==='session').map(c=>(c.clientId || c.payload?.start)).filter(Boolean));
-                    for (const s of allSalesSessions) {
-                        if (s && s.start != null && !pendingSessionIds.has(s.start)) {
-                            await putSession(company, companyRecord.emailid, s);
-                        }
-                    }
-                } catch (e) {
-                    console.warn('POS: sync sessions to IndexedDB failed', e);
-                }
-            }
-            syncToIndexDB()
-        }
-    },[allSalesSessions])
+    // useEffect(()=>{
+    //     console.log('all sales sessions',allSalesSessions)
+    //     if (Array.isArray(allSalesSessions)){            
+    //         const syncToIndexDB = async ()=>{
+    //             try {
+    //                 const pending = await loadPendingChanges(company, companyRecord.emailid);
+    //                 const pendingSessionIds = new Set(pending.filter(c=>c.entityType==='session').map(c=>(c.clientId || c.payload?.start)).filter(Boolean));
+    //                 for (const s of allSalesSessions) {
+    //                     if (s && s.start != null && !pendingSessionIds.has(s.start)) {
+    //                         await putSession(company, companyRecord.emailid, s);
+    //                     }
+    //                 }
+    //             } catch (e) {
+    //                 console.warn('POS: sync sessions to IndexedDB failed', e);
+    //             }
+    //         }
+    //         syncToIndexDB()
+    //     }
+    // },[allSalesSessions])
     
     useEffect(()=>{
         if (tables?.length && sessions !== null){            
@@ -381,42 +381,42 @@ const PointOfSales = () => {
 
     useEffect(()=>{
         if (Array.isArray(posOrders) && companyRecord.emailid){
-            const mergeAndPersist = async () => {
-                try {
-                    const pending = await loadPendingChanges(company, companyRecord.emailid);
-                    const pendingOrders = pending.filter(c=>c.entityType==='order').map(c=>c.payload).filter(Boolean);
-                    const pendingOrderNums = new Set(pendingOrders.map(o=>o.orderNumber));
+            setAllSessionOrders(posOrders);
+            // const mergeAndPersist = async () => {
+            //     try {
+            //         const pending = await loadPendingChanges(company, companyRecord.emailid);
+            //         const pendingOrders = pending.filter(c=>c.entityType==='order').map(c=>c.payload).filter(Boolean);
+            //         const pendingOrderNums = new Set(pendingOrders.map(o=>o.orderNumber));
 
-                    const localOrders = await loadAllOrders(company, companyRecord.emailid).catch(()=>[]);
-                    const localMap = {};
-                    for (const l of localOrders) if (l && l.orderNumber) localMap[l.orderNumber] = l;
+            //         const localOrders = await loadAllOrders(company, companyRecord.emailid).catch(()=>[]);
+            //         const localMap = {};
+            //         for (const l of localOrders) if (l && l.orderNumber) localMap[l.orderNumber] = l;
 
-                    const serverOrders = posOrders || [];
-                    const map = {};
-                    // start with server
-                    for (const s of serverOrders) if (s && s.orderNumber) map[s.orderNumber] = s;
-                    // override with local stored orders (but not pending creates which are authoritative)
-                    for (const [k,v] of Object.entries(localMap)) {
-                        if (!pendingOrderNums.has(k)) map[k] = map[k] || v;
-                    }
-                    // finally apply pending orders (create/update) to override server
-                    for (const p of pendingOrders) if (p && p.orderNumber) map[p.orderNumber] = p;
+            //         const serverOrders = posOrders || [];
+            //         const map = {};
+            //         // start with server
+            //         for (const s of serverOrders) if (s && s.orderNumber) map[s.orderNumber] = s;
+            //         // override with local stored orders (but not pending creates which are authoritative)
+            //         for (const [k,v] of Object.entries(localMap)) {
+            //             if (!pendingOrderNums.has(k)) map[k] = map[k] || v;
+            //         }
+            //         // finally apply pending orders (create/update) to override server
+            //         for (const p of pendingOrders) if (p && p.orderNumber) map[p.orderNumber] = p;
 
-                    const merged = Object.values(map);
-                    setAllSessionOrders(merged);
+            //         const merged = Object.values(map);
 
-                    // persist server orders to IndexedDB except those that are pending locally
-                    for (const o of serverOrders) {
-                        if (o && o.orderNumber != null && !pendingOrderNums.has(o.orderNumber)) {
-                            await putOrder(company, companyRecord.emailid, o);
-                        }
-                    }
-                } catch (e) {
-                    console.warn('POS: mergeAndPersist failed', e);
-                    setAllSessionOrders(posOrders);
-                }
-            };
-            mergeAndPersist();
+            //         // persist server orders to IndexedDB except those that are pending locally
+            //         for (const o of serverOrders) {
+            //             if (o && o.orderNumber != null && !pendingOrderNums.has(o.orderNumber)) {
+            //                 await putOrder(company, companyRecord.emailid, o);
+            //             }
+            //         }
+            //     } catch (e) {
+            //         console.warn('POS: mergeAndPersist failed', e);
+            //         setAllSessionOrders(posOrders);
+            //     }
+            // };
+            // mergeAndPersist();
         }
     },[posOrders, companyRecord?.emailid])
 
@@ -650,15 +650,9 @@ const PointOfSales = () => {
                         setAlert('Welcome Back!');
                     }
                     setAlertTimeout(2000);
-
                     setCurrSession(newSession);
                     setOpeningCash(0);
-                    setAllSessions((allSessions) => [...allSessions, newSession]);
-                    setAllSalesSessions((allSalesSessions) => [
-                        ...(allSalesSessions || []),
-                        newSession,
-                    ]);
-
+                    mergeAndPersistSessions([newSession])
                     if (![null, undefined].includes(sessionUser)) {
                         if (sessionUser.profile.emailid === companyRecord.emailid) {
                             setSessions([...(sessions || []), newSession]);
@@ -772,20 +766,12 @@ const PointOfSales = () => {
                         setAlert('Session Ended!');
                     }
                     setAlertTimeout(3000);
-                    setAllSessions((allSessions) => [
-                        ...allSessions,
-                        closedSession,
-                    ]);
-                    setAllSalesSessions((allSalesSessions) => [
-                        ...(allSalesSessions || []),
-                        closedSession,
-                    ]);
+                    mergeAndPersistSessions([closedSession])
                     setCountedSales({});
                     setEndSession(false);
                     setSessionUser(null);
                     setLoading(false)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                    
-                    fetchAllSessions({company, companyRecord})
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -1039,10 +1025,7 @@ const PointOfSales = () => {
         let nextIndex
         const {name} = e.target
         
-        if (!placingOrder && !makingPayment && name){
-            // getPosOrders({company, companyRecord})
-            // fetchSessions(company, "sales", companyRecord)
-            // fetchAllSessions({company})                        
+        if (!placingOrder && !makingPayment && name){                     
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
                 const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
@@ -1179,19 +1162,17 @@ const PointOfSales = () => {
                             // } else {
                             //     createNewOrder(table);
                             // }
-                            if (company && companyRecord?.emailid) {
-                                for (const o of filteredOrders) {
-                                    if (o && o.orderNumber !== null) {
-                                        await putOrder(company, companyRecord.emailid, o);
-                                    }
-                                }
-                            }
+                            // if (company && companyRecord?.emailid) {
+                            //     for (const o of filteredOrders) {
+                            //         if (o && o.orderNumber !== null) {
+                            //             await putOrder(company, companyRecord.emailid, o);
+                            //         }
+                            //     }
+                            // }
                             // setActiveScreen('order');
-                            setAlertState('info');
-                            setAlert('Loaded table orders from server...');
-                            setAlertTimeout(500);
-                            // Mirror into IndexedDB orders store
-                            getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
+                            // setAlertState('info');
+                            // setAlert('Loaded table orders from server...');
+                            // setAlertTimeout(500);
                         }
                     } else {
                         // createNewOrder(table);
@@ -1276,8 +1257,7 @@ const PointOfSales = () => {
             // 2) Update React state for orders
             setCurrentOrder(placedOrder);
             setTableOrders((prev) => [...prev, placedOrder]);
-            setAllSessionOrders((prev) => [...prev, placedOrder]);
-            setAllOrders((prev) => [...prev, placedOrder]);
+            mergeAndPersistOrders([placedOrder])
 
             // 3) Update table's activeTables locally (no direct server write)
             const activeOrder = {
@@ -1397,8 +1377,7 @@ const PointOfSales = () => {
             // 2) Update React state for orders
             setCurrentOrder(placedOrder);
             setTableOrders((prev) => [...prev, placedOrder]);
-            setAllSessionOrders((prev) => [...prev, placedOrder]);
-            setAllOrders((prev) => [...prev, placedOrder]);
+            mergeAndPersistOrders([placedOrder])
 
             // 3) Update table's activeTables locally (no direct server write)
             const activeOrder = {
@@ -1671,20 +1650,11 @@ const PointOfSales = () => {
         try {
             // 1) Update order in local IndexedDB and React state
             if (company && companyRecord?.emailid) {
-                await putOrder(company, companyRecord.emailid, newOrder);
+                mergeAndPersistOrders([newOrder]);
             }
 
             setCurrentOrder(newOrder);
-            setAllSessionOrders((prev) =>
-                prev.map((o) =>
-                    o.orderNumber === newOrder.orderNumber ? newOrder : o
-                )
-            );
-            setAllOrders((prev) =>
-                prev.map((o) =>
-                    o.orderNumber === newOrder.orderNumber ? newOrder : o
-                )
-            );
+            
             setTableOrders((prev) =>
                 prev.map((o) =>
                     o.orderNumber === newOrder.orderNumber ? newOrder : o
@@ -2697,6 +2667,9 @@ const PointOfSales = () => {
                 curSession={curSession}
                 sessions={sessions}
                 allSalesSessions={allSalesSessions}
+                setAllSalesSessions = {setAllSalesSessions}
+                mergeAndPersistOrders = {mergeAndPersistOrders}
+                mergeAndPersistSessions = {mergeAndPersistSessions}
                 allSessions={allSessions}
                 setAllSessions={setAllSessions}
                 deliverySessions={deliverySessions}
@@ -3325,8 +3298,8 @@ const OrdersModal = ({
 };
 
 const POSDashboard = ({
-    sessions, allSalesSessions, profiles, employees, companyRecord, 
-    isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
+    sessions, allSalesSessions, setAllSalesSessions, profiles, employees, companyRecord, 
+    isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, mergeAndPersistOrders, mergeAndPersistSessions,
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
     setAlertState, setAlert, setAlertTimeout, tables, wrhCategories
@@ -3367,9 +3340,15 @@ const POSDashboard = ({
             }, "getDocsDetails", server); 
             if(!ordersResponse.err){
                 if (Array.isArray(ordersResponse.record)){
-                    setAllSessionOrders(ordersResponse.record)
+                    mergeAndPersistOrders(ordersResponse.record)
                 }
             }
+        }
+        getSessionsData()
+    },[allSalesSessions])
+
+    useEffect(() => {
+        (async()=>{
             const sessionDays = 50 * 24 * 60 * 60 * 1000
             const allowedFromDays1 = Date.now() - sessionDays
             const sessionsResponse = await fetchServer("POST", {
@@ -3382,32 +3361,10 @@ const POSDashboard = ({
             }, "getDocsDetails", server);             
             if(!sessionsResponse.err && Array.isArray(sessionsResponse.record)){                
                 setStableSalesSessions(sessionsResponse.record)
-                const syncToIndexDB = async ()=>{
-                    try {
-                        const pending = await loadPendingChanges(company, companyRecord.emailid);
-                        const pendingSessionIds = new Set(pending.filter(c=>c.entityType==='session').map(c=>(c.clientId || c.payload?.start)).filter(Boolean));
-                        for (const s of allSalesSessions) {
-                            if (s && s.start != null && !pendingSessionIds.has(s.start)) {
-                                await putSession(company, companyRecord.emailid, s);
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('POS: sync sessions to IndexedDB failed', e);
-                    }
-                }
-                syncToIndexDB()
+                mergeAndPersistSessions(sessionsResponse.record)                
             }
-            // const deliverySessionsResponse = await fetchServer("POST", {
-            //     database: company,
-            //     collection: "POSSessions",
-            //     prop: {type: 'delivery'}
-            // }, "getDocsDetails", server);             
-            // if(!deliverySessionsResponse.err){
-            //     setDeliverySessions(deliverySessionsResponse.record)
-            // }
-        }
-        getSessionsData()
-    },[allSalesSessions])
+        })()
+    },[])
 
     const loadPendingOfflineChanges = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -3533,7 +3490,7 @@ const POSDashboard = ({
                                                                         return           
                                                                     }else{
                                                                         if (![null, undefined].includes(ordersResponse.record)){
-                                                                            setAllSessionOrders(ordersResponse.record)
+                                                                            mergeAndPersistOrders(ordersResponse.record)
                                                                             setAlertState('info')
                                                                             setAlert('Orders Calculated. Please proceed with the ending of user session!')
                                                                             setAlertTimeout(3000)
