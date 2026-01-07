@@ -381,7 +381,7 @@ const PointOfSales = () => {
 
     useEffect(()=>{
         if (Array.isArray(posOrders) && companyRecord?.emailid){
-            console.log(companyRecord.emailid)
+            // console.log(companyRecord.emailid)
             setAllSessionOrders(posOrders);
             // const mergeAndPersist = async () => {
             //     try {
@@ -2551,7 +2551,7 @@ const PointOfSales = () => {
                                             }
                                         })}
                                     </select>
-                                </div>
+                                </div> 
                                 :<div style={{fontWeight: 'bold'}}>Handler: {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}</div>
                             }
                         </div>
