@@ -1063,6 +1063,7 @@ const Delivery = () => {
             const filteredOrders = response?.record ?? []
             if (!response.err && Array.isArray(filteredOrders)) {                                
                 if (!localOrders.length){
+                    setIsLive(true)
                     if (filteredOrders.length) {
                         // console.log('my table', currentTable)
                         // console.log(table?.i_d, filteredOrders[0]?.tableId)
@@ -1078,19 +1079,19 @@ const Delivery = () => {
                             // } else {
                             //     createNewOrder(table);
                             // }
-                            if (company && companyRecord?.emailid) {
-                                for (const o of filteredOrders) {
-                                    if (o && o.orderNumber !== null) {
-                                        await putOrder(company, companyRecord.emailid, o);
-                                    }
-                                }
-                            }
+                            // if (company && companyRecord?.emailid) {
+                            //     for (const o of filteredOrders) {
+                            //         if (o && o.orderNumber !== null) {
+                            //             await putOrder(company, companyRecord.emailid, o);
+                            //         }
+                            //     }
+                            // }
                             // setActiveScreen('order');
-                            setAlertState('info');
-                            setAlert('Loaded table orders from server...');
-                            setAlertTimeout(500);
+                            // setAlertState('info');
+                            // setAlert('Loaded table orders from server...');
+                            // setAlertTimeout(500);
                             // Mirror into IndexedDB orders store
-                            getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
+                            // getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
                         }
                     } else {
                         // createNewOrder(table);
