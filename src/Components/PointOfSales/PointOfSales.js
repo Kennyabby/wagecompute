@@ -1670,7 +1670,7 @@ const PointOfSales = () => {
                         !(
                             t.tableId === currentOrder.tableId &&
                             t.sessionId === currentOrder.sessionId &&
-                            t.handlerId === (curPosHandler || companyRecord.emailid) &&
+                            t.handlerId === currentOrder.handlerId &&
                             t.orderNumber === currentOrder.orderNumber
                         )
                 );
@@ -1681,7 +1681,7 @@ const PointOfSales = () => {
                         (t) =>
                             t.tableId === currentOrder.tableId &&
                             t.sessionId === currentOrder.sessionId &&
-                            t.handlerId === (curPosHandler || companyRecord.emailid) &&
+                            t.handlerId === currentOrder.handlerId &&
                             t.orderNumber === currentOrder.orderNumber
                     );
                     if (existing) {
