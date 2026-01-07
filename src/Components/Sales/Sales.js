@@ -253,8 +253,8 @@ const Sales = ()=>{
         setAlert('Syncing offline Sales changes...');
         setAlertTimeout(10000);
         try{
-            const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-            await refreshSalesData();
+            const results = await await refreshSalesData();
+            
             if (Array.isArray(results)){
                 const failed = results.filter(r => r.status === 'error');
                 if (failed.length){

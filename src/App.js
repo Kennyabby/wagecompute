@@ -674,6 +674,7 @@ function App() {
         try{
           // quick hydrate from cached getters so UI shows something fast
           try{
+            getEmployees(company)
             getApprovals(company)
             mergeAndPersistSessions()
             mergeAndPersistOrders()
@@ -1974,6 +1975,7 @@ function App() {
         }, "getDocsDetails", SERVER)
         
         if (resp.record && Array.isArray(resp.record)){
+          console.log('table Response: ',resp.record)
           mergeAndPersistOrders(resp.record);
           // console.log("allOrders list:", resp.record)
           // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))

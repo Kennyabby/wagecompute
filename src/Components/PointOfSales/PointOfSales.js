@@ -380,7 +380,8 @@ const PointOfSales = () => {
     },[window.localStorage.getItem('sessn-cmp')])
 
     useEffect(()=>{
-        if (Array.isArray(posOrders) && companyRecord.emailid){
+        if (Array.isArray(posOrders) && companyRecord?.emailid){
+            console.log(companyRecord.emailid)
             setAllSessionOrders(posOrders);
             // const mergeAndPersist = async () => {
             //     try {
