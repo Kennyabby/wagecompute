@@ -1313,7 +1313,7 @@ const PointOfSales = () => {
             if (company && companyRecord?.emailid) {
                 queuePendingChange(company, companyRecord.emailid, {
                     entityType: 'order',
-                    op: 'update',
+                    op: 'create',
                     clientId: placedOrder.orderNumber,
                     payload: placedOrder,
                 });
@@ -1321,14 +1321,14 @@ const PointOfSales = () => {
                 setAlertTimeout(20);
                 try {
                     setPlacingOrder(false);
-                    setAlert('Order editted successfully');
+                    setAlert('Order placed successfully');
                     setAlertState('success');
                     setAlertTimeout(2000);
                     // Keep your existing reads (they only fetch, no writes)
-                    loadInitialData();                    
                     printKitchenOrder(placedOrder);
                     printBarOrder(placedOrder)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    loadInitialData();                    
                     // fetchSessions(company, 'sales', companyRecord);
                     // fetchAllSessions({company})
                     // fetchTables(company);
@@ -1433,7 +1433,7 @@ const PointOfSales = () => {
             if (company && companyRecord?.emailid) {
                 queuePendingChange(company, companyRecord.emailid, {
                     entityType: 'order',
-                    op: 'create',
+                    op: 'update',
                     clientId: placedOrder.orderNumber,
                     payload: placedOrder,
                 });
@@ -1441,7 +1441,7 @@ const PointOfSales = () => {
                 setAlertTimeout(20);
                 try {
                     setPlacingOrder(false);
-                    setAlert('Order placed successfully');
+                    setAlert('Order editted successfully');
                     setAlertState('success');
                     setAlertTimeout(2000);
                     // Keep your existing reads (they only fetch, no writes)
@@ -1465,7 +1465,7 @@ const PointOfSales = () => {
             // setShowPaymentModal(true);
         } catch (e) {
             setAlertState('error');
-            setAlert('Error saving order locally');
+            setAlert('Error editting order locally');
             setAlertTimeout(3000);
             setPlacingOrder(false);
         }
