@@ -1518,14 +1518,14 @@ const Delivery = () => {
                 } else if (deliveryDataUpdate.delivery === 'completed') {
                     setDeliveryCompleted(true);
                     newActiveTables = [
-                        ...newActiveTables.filter(
+                        ...(newActiveTables.filter(
                             (table) =>
                                 !(
                                     table.tableId === currentOrder.tableId &&
                                     table.sessionId === currentOrder.sessionId &&
                                     table.orderNumber === currentOrder.orderNumber
                                 )
-                        ),
+                        )),
                         {
                             ...(newActiveTables.find(
                                 (table) =>
