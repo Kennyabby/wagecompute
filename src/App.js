@@ -280,7 +280,7 @@ function App() {
                           // If this was a local create that was synced, apply and remove pending
                           if (match.op === 'create'){
                             await putOrder(company, companyRecord?.emailid, o).catch(()=>{});
-                            await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
+                            // await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
                           }else{
                             // skip applying server update when there is a pending local change
                             console.debug('SSE: skipping server order update due to pending local change', o.orderNumber)
@@ -315,7 +315,7 @@ function App() {
                     if (match){
                       if (match.op === 'create'){
                         await putOrder(company, companyRecord?.emailid, o).catch(()=>{});
-                        await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
+                        // await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
                       }else{
                         console.debug('SSE: skipping server order update due to pending local change', o.orderNumber)
                       }
@@ -350,7 +350,7 @@ function App() {
                         if (match){
                           if (match.op === 'create'){
                             await putSession(company, companyRecord?.emailid, s).catch(()=>{});
-                            await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
+                            // await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
                           }else{
                             console.debug('SSE: skipping server session update due to pending local change', s.start)
                           }
@@ -390,7 +390,7 @@ function App() {
                     if (match){
                       if (match.op === 'create'){
                         await putSession(company, companyRecord?.emailid, s).catch(()=>{});
-                        await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
+                        // await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
                       }else{
                         console.debug('SSE: skipping server session update due to pending local change', s.start)
                       }
