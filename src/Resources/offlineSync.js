@@ -1,19 +1,18 @@
 // offlineSync.js
-// Bulletproof offline pendingChanges sync
+// STRICT offline → online sync with server acknowledgment
 
 import { loadPendingChanges, markPendingChangeSynced } from './offlineDb';
 
 /**
  * Sync all pendingChanges for a given company + user.
- *
- * @param {string} company      - MongoDB database / company name
- * @param {string} userId       - Typically companyRecord.emailid
- * @param {Function} fetchServer - The existing fetchServer function from ContextProvider
- * @param {string} server       - The SERVER base URL from ContextProvider
- * @param {number} [retries=3]  - Number of retries for each change
- * @returns {Promise<Array<{id: string, status: 'ok' | 'error', error?: string}>>}
  */
-export async function syncPendingChanges(company, userId, fetchServer, server, retries = 3) {
+export async function syncPendingChanges(
+  company,
+  userId,
+  fetchServer,
+  server,
+  retries = 3
+) {
   const changes = await loadPendingChanges(company, userId);
   const results = [];
 
@@ -25,13 +24,20 @@ export async function syncPendingChanges(company, userId, fetchServer, server, r
     while (attempt < retries && !synced) {
       try {
         await processChange(change, company, fetchServer, server);
-        await markPendingChangeSynced(company, userId, change.id); // only mark after success
+
+        // ✅ mark ONLY after server confirms success
+        await markPendingChangeSynced(company, userId, change.id);
+
         results.push({ id: change.id, status: 'ok' });
         synced = true;
       } catch (err) {
         attempt++;
         lastError = err;
-        console.warn(`[Offline Sync] Attempt ${attempt} failed for change ${change.id}:`, err.message || err);
+
+        console.warn(
+          `[OfflineSync] ${change.entityType}:${change.op} failed (attempt ${attempt})`,
+          err.message || err
+        );
 
         if (attempt < retries) {
           await delay(500 * Math.pow(2, attempt)); // exponential backoff
@@ -40,116 +46,225 @@ export async function syncPendingChanges(company, userId, fetchServer, server, r
     }
 
     if (!synced) {
-      results.push({ id: change.id, status: 'error', error: lastError?.message || String(lastError) });
+      results.push({
+        id: change.id,
+        status: 'error',
+        error: lastError?.message || String(lastError)
+      });
     }
   }
 
   return results;
 }
 
-// =============================
-// Utility: delay for backoff
-// =============================
+// =====================================================
+// Utilities
+// =====================================================
+
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// =============================
-// Process individual change
-// =============================
-async function processChange(change, company, fetchServer, server) {
-  switch (change.entityType) {
-    case 'order':
-      await syncOrderChange(change, company, fetchServer, server);
-      break;
-    case 'session':
-      await syncSessionChange(change, company, fetchServer, server);
-      break;
-    case 'inventory':
-      await syncInventoryChange(change, company, fetchServer, server);
-      break;
-    case 'table':
-      await syncTableChange(change, company, fetchServer, server);
-      break;
-    default:
-      console.warn(`[Offline Sync] Unknown entityType: ${change.entityType}`);
-  }
-}
-
-// =============================
-// Helpers
-// =============================
-function removeId(payload) {
+function stripId(payload) {
   if (!payload) return payload;
-  const { _id, ...rest } = payload; // remove _id safely
+  const { _id, ...rest } = payload;
   return rest;
 }
 
-// =============================
-// Individual sync handlers
-// =============================
-async function syncOrderChange(change, company, fetchServer, server) {
-  const { op, payload } = change;
-  if (!payload) return;
-
-  if (op === 'create') {
-    const resp = await fetchServer('POST', { database: company, collection: 'Orders', update: payload }, 'createDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to create order');
-  } else if (op === 'update') {
-    if (!payload.orderNumber) throw new Error('Missing orderNumber for update');
-    const updatePayload = removeId(payload);
-    const resp = await fetchServer('POST', { database: company, collection: 'Orders', prop: [{ orderNumber: payload.orderNumber }, updatePayload] }, 'updateOneDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to update order');
+function assertCreate(resp) {
+  if (!resp || resp.isDelivered !== true) {
+    throw new Error('Create not acknowledged by server');
   }
 }
 
-async function syncSessionChange(change, company, fetchServer, server) {
-  const { op, payload } = change;
-  if (!payload) return;
-
-  const updatePayload = removeId(payload);
-
-  if (op === 'create') {
-    const resp = await fetchServer('POST', { database: company, collection: 'POSSessions', update: payload }, 'createDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to create session');
-  } else if (op === 'update') {
-    if (!payload.start) throw new Error('Missing start for session update');
-    const resp = await fetchServer('POST', { database: company, collection: 'POSSessions', prop: [{ start: payload.start }, updatePayload] }, 'updateOneDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to update session');
-  } else if (op === 'delete') {
-    if (!payload.start) throw new Error('Missing start for session delete');
-    const resp = await fetchServer('POST', { database: company, collection: 'POSSessions', update: { start: payload.start } }, 'removeDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to delete session');
+function assertUpdate(resp) {
+  if (!resp || resp.updated !== true) {
+    throw new Error('Update not applied on server');
   }
 }
 
-async function syncInventoryChange(change, company, fetchServer, server) {
-  const { op, payload } = change;
-  if (!payload || !Array.isArray(payload.transactions)) return;
-  if (op !== 'create') return;
-
-  // Batch send all transactions in one request to reduce roundtrips
-  const txnPayloads = payload.transactions.map(txn => removeId(txn));
-  if (!txnPayloads.length) return;
-
-  const resp = await fetchServer('POST', { database: company, collection: 'InventoryTransactions', update: txnPayloads }, 'createManyDocs', server);
-  if (resp?.err) throw new Error(resp.mess || 'Failed to create inventory transactions (batch)');
+function assertDelete(resp) {
+  if (!resp || resp.isRemoved !== true) {
+    throw new Error('Delete not applied on server');
+  }
 }
 
-async function syncTableChange(change, company, fetchServer, server) {
-  const { op, payload } = change;
-  if (!payload || !payload.i_d) return;
+// =====================================================
+// Dispatcher
+// =====================================================
 
-  const updatePayload = removeId(payload);
+async function processChange(change, company, fetchServer, server) {
+  switch (change.entityType) {
+    case 'order':
+      return syncOrder(change, company, fetchServer, server);
+    case 'session':
+      return syncSession(change, company, fetchServer, server);
+    case 'inventory':
+      return syncInventory(change, company, fetchServer, server);
+    case 'table':
+      return syncTable(change, company, fetchServer, server);
+    default:
+      throw new Error(`Unknown entityType: ${change.entityType}`);
+  }
+}
+
+// =====================================================
+// ORDER
+// =====================================================
+
+async function syncOrder(change, company, fetchServer, server) {
+  const { op, payload } = change;
+  if (!payload) throw new Error('Missing order payload');
 
   if (op === 'create') {
-    const resp = await fetchServer('POST', { database: company, collection: 'Tables', update: payload }, 'createDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to create table');
-  } else if (op === 'update') {
-    const resp = await fetchServer('POST', { database: company, collection: 'Tables', prop: [{ i_d: payload.i_d }, updatePayload] }, 'updateOneDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to update table');
-  } else if (op === 'delete') {
-    const resp = await fetchServer('POST', { database: company, collection: 'Tables', update: { i_d: payload.i_d } }, 'removeDoc', server);
-    if (resp?.err) throw new Error(resp.mess || 'Failed to delete table');
+    const resp = await fetchServer(
+      'POST',
+      { database: company, collection: 'Orders', update: payload },
+      'createDoc',
+      server
+    );
+    assertCreate(resp);
+  }
+
+  if (op === 'update') {
+    if (!payload.orderNumber) {
+      throw new Error('Missing orderNumber for order update');
+    }
+
+    const resp = await fetchServer(
+      'POST',
+      {
+        database: company,
+        collection: 'Orders',
+        prop: [{ orderNumber: payload.orderNumber }, stripId(payload)]
+      },
+      'updateOneDoc',
+      server
+    );
+    assertUpdate(resp);
+  }
+}
+
+// =====================================================
+// POS SESSION
+// =====================================================
+
+async function syncSession(change, company, fetchServer, server) {
+  const { op, payload } = change;
+  if (!payload) throw new Error('Missing session payload');
+
+  if (op === 'create') {
+    const resp = await fetchServer(
+      'POST',
+      { database: company, collection: 'POSSessions', update: payload },
+      'createDoc',
+      server
+    );
+    assertCreate(resp);
+  }
+
+  if (op === 'update') {
+    if (!payload.start) {
+      throw new Error('Missing start for session update');
+    }
+
+    const resp = await fetchServer(
+      'POST',
+      {
+        database: company,
+        collection: 'POSSessions',
+        prop: [{ start: payload.start }, stripId(payload)]
+      },
+      'updateOneDoc',
+      server
+    );
+    assertUpdate(resp);
+  }
+
+  if (op === 'delete') {
+    const resp = await fetchServer(
+      'POST',
+      {
+        database: company,
+        collection: 'POSSessions',
+        update: { start: payload.start }
+      },
+      'removeDoc',
+      server
+    );
+    assertDelete(resp);
+  }
+}
+
+// =====================================================
+// INVENTORY (BATCH SAFE)
+// =====================================================
+
+async function syncInventory(change, company, fetchServer, server) {
+  const { payload } = change;
+  if (!payload?.transactions?.length) return;
+
+  const docs = payload.transactions.map(stripId);
+
+  const resp = await fetchServer(
+    'POST',
+    {
+      database: company,
+      collection: 'InventoryTransactions',
+      update: docs
+    },
+    'createManyDocs',
+    server
+  );
+
+  if (!resp || resp.isDelivered !== true) {
+    throw new Error('Inventory batch not fully delivered');
+  }
+}
+
+// =====================================================
+// TABLE
+// =====================================================
+
+async function syncTable(change, company, fetchServer, server) {
+  const { op, payload } = change;
+  if (!payload?.i_d) throw new Error('Missing table i_d');
+
+  if (op === 'create') {
+    const resp = await fetchServer(
+      'POST',
+      { database: company, collection: 'Tables', update: payload },
+      'createDoc',
+      server
+    );
+    assertCreate(resp);
+  }
+
+  if (op === 'update') {
+    const resp = await fetchServer(
+      'POST',
+      {
+        database: company,
+        collection: 'Tables',
+        prop: [{ i_d: payload.i_d }, stripId(payload)]
+      },
+      'updateOneDoc',
+      server
+    );
+    assertUpdate(resp);
+  }
+
+  if (op === 'delete') {
+    const resp = await fetchServer(
+      'POST',
+      {
+        database: company,
+        collection: 'Tables',
+        update: { i_d: payload.i_d }
+      },
+      'removeDoc',
+      server
+    );
+    assertDelete(resp);
   }
 }
