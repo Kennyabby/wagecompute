@@ -31,8 +31,8 @@ import {
   putSession,
 } from './Resources/offlineDb';
 
-// const SERVER = "http://localhost:3001"
-const SERVER = "https://enterpriseserver.up.railway.app"
+const SERVER = "http://localhost:3001"
+// const SERVER = "https://enterpriseserver.up.railway.app"
 // const SERVER = "https://enterpriseserver-1.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
