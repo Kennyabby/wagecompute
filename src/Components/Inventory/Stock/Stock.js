@@ -268,7 +268,11 @@ const Stock = ({
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
-            if (cmp_val) {
+            if (cmp_val && products.length) {
+                getProductsStockReport(cmp_val, products, {
+                    startDate: dateRange.startDate,
+                    endDate: dateRange.endDate
+                });
                 intervalRef.current = setInterval(() => {
                     getProductsStockReport(cmp_val, products, {
                         startDate: dateRange.startDate,
@@ -288,6 +292,14 @@ const Stock = ({
         }
     }, [window.localStorage.getItem('sessn-cmp'), isTransferClicked, dateRange]);
 
+    // useEffect(() => {
+    //     if (products){
+    //         getProductsStockReport(cmp_val, products, {
+    //             startDate: dateRange.startDate,
+    //             endDate: dateRange.endDate
+    //         });
+    //     }
+    // }, []);
     useEffect(() => {
         if (settings.length) {
             const wrhSetFilt = settings.filter(setting => setting.name === 'warehouses');
@@ -318,12 +330,14 @@ const Stock = ({
     useEffect(() => {
         if (isTransferClicked){
             resetCount();
-            setAvailableColumns(prevColumns => 
-                prevColumns.map(column => ({
+            setAvailableColumns((prevColumns) => {
+                const columns = prevColumns.map(column => ({
                     ...column,
                     visible: column.visible || ['quantityToTransfer', 'transferCost'].includes(column.id)
-                }))
-            )
+                }))                
+                // console.log('availableColumns', columns.filter(col => col.visible))
+                return columns;       
+            })
         }
     },[isTransferClicked]);
     

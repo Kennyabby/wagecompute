@@ -263,7 +263,7 @@ function App() {
     try{
       es = createSSE(SERVER, async (payload)=>{
         // payload: { database, collection, op, data }
-        if (!payload || payload.database !== company) return;
+        if (!company || !companyRecord.emailid || !payload || payload.database !== company) return;
         const coll = payload.collection
         try{
           switch(coll){
@@ -1678,7 +1678,10 @@ function App() {
           if (order.salesPosts){
             Object.keys(order.salesPosts).forEach((payPoint)=>{
               if (paymentPoints.includes(payPoint)){
-                let dateVar = new Date(order.createdAt).toISOString().slice(0,10)
+                // if (!order.createdAt){
+                //   console.log(order, order.createdAt)
+                // }
+                let dateVar = order.createdAt ? new Date(order.createdAt).toISOString().slice(0,10) : dateBoundary
                 if(dateVar >= dateBoundary) {
                   const location = order.salesPosts[payPoint]
                   const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]
@@ -2144,6 +2147,9 @@ function App() {
   };
 
   const getProductsWithStock = async (company, products) => {
+    if (!company || !companyRecord?.emailid) {
+      return products;
+    }
     const cached = await getCached(company, 'productsWithStock', companyRecord?.emailid);
     if (cached && cached.length) {
       setProducts(cached);
@@ -2256,6 +2262,9 @@ function App() {
    * @returns {Promise<Array>} - Array of products with detailed stock information
    */
   const getProductsStockReport = async (company, products, dateRange = {}) => {
+    if (!company || !companyRecord?.emailid) {
+      return products;
+    }
     try {
       const cacheKey = makeStockReportCacheKey(dateRange);
       const cached = await getCached(company, cacheKey, companyRecord?.emailid);
