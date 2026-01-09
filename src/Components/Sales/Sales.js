@@ -1630,7 +1630,7 @@ const Sales = ()=>{
     const deleteSales = async (sale)=>{
         const today = new Date()
         let postDate = new Date(sale.postingDate).toISOString().slice(0, 10)
-        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10) && !companyRecord?.access === 'admin'){
+        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10) && (!companyRecord?.access === 'admin' || !companyRecord?.permissions.includes('edit_ended_sessions'))){
             setAlertState('error')
             setAlert('Cannot reverse sales after more than 1 day')
             setAlertTimeout(3000)
@@ -2555,7 +2555,7 @@ const Sales = ()=>{
                                             </div>
                                         }
                                     </div>
-                                    {(companyRecord.status==='admin' && !saleEmployee) && <div 
+                                    {((companyRecord?.status==='admin' || companyRecord?.permissions.includes('edit_ended_sessions')) && !saleEmployee) && <div 
                                         className='edit'
                                         name='delete'         
                                         style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
