@@ -3310,6 +3310,8 @@ const POSDashboard = ({
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
     const [stableSalesSessions, setStableSalesSessions] = useState([])
+    const [filteredSessions, setFilteredSessions] = useState([])
+    const [sessionsState, setSessionsState] = useEffect('general')
 
     const [showPendingModal, setShowPendingModal] = useState(false);
     const [pendingChanges, setPendingChanges] = useState([]);
@@ -3317,14 +3319,18 @@ const POSDashboard = ({
     const [pendingError, setPendingError] = useState(null);
 
     useEffect(()=>{
-        var pendingSessions = allSessions.filter((session)=>{
-            return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
-                session.active && (getSessionEnd(new Date().getTime()) > getSessionEnd(session.start))
-            )
-        })
-        // console.log(curSession)
-        setPendingSessions(pendingSessions)        
-    },[stableSalesSessions])
+        if (!filteredSessions.length){
+            var pendingSessions = allSessions.filter((session)=>{
+                return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
+                    session.active && (getSessionEnd(new Date().getTime()) > getSessionEnd(session.start))
+                )
+            })
+            // console.log(curSession)
+            setPendingSessions(pendingSessions)        
+        }else{
+            setPendingSessions([])
+        }
+    },[stableSalesSessions, filteredSessions])
 
 
     useEffect(()=>{
@@ -3392,6 +3398,22 @@ const POSDashboard = ({
             <div className='pos-sessions'>                
                 <div className='pos-sessions-nav'>
                     <div className={'live-nav'}>
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expot_pos_report')) && <select 
+                            className="action-btn"
+                            value={sessionsState}
+                            onClick={(e) => {
+                                const val = e.target.value
+                                setSessionsState(val)
+                                if(val === 'general'){
+                                    setFilteredSessions([])
+                                }
+                            }}
+                            style={{ marginRight: '10px' }}
+                            disabled={!companyRecord?.status === 'admin' || !companyRecord?.permissions.includes('edit_ended_sessions')}
+                        >
+                            <option value={'general'}>General</option>
+                            <option value={'edit'}>Edit</option>
+                        </select>}                        
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <button 
                             className="action-btn"
                             onClick={() => setShowReports(true)}
@@ -3440,7 +3462,7 @@ const POSDashboard = ({
                                         firstName: 'Admin', lastName: ''
                                     } : employees.find(employee => {return employee.i_d === profile.emailid}))
                                     
-                                    const employeeSessions = stableSalesSessions?.filter(session => {
+                                    const employeeSessions = (filteredSessions || stableSalesSessions)?.filter(session => {
                                         return (
                                             session.employee_id === profile.emailid                                        
                                         )
@@ -3544,8 +3566,16 @@ const POSDashboard = ({
                                                                             if (pendingSessions.length){
                                                                                 showPendingSessionAlert()
                                                                             }else{
-                                                                                setWrh('')
-                                                                                setStartSession(true)
+                                                                                if (filteredSessions.length){
+                                                                                    setSessionUser({
+                                                                                        profile: profile,
+                                                                                        curSession: employeeSession
+                                                                                    })
+                                                                                    setEndSession(true)
+                                                                                }else{
+                                                                                    setWrh('')
+                                                                                    setStartSession(true)
+                                                                                }
                                                                             }
                                                                         }else{
                                                                             setSessionUser({
@@ -3563,7 +3593,7 @@ const POSDashboard = ({
                                                             setAlertTimeout(3000)
                                                         }
                                                     }}
-                                                >{sessionLive? 'End Session' : ([null, undefined].includes(employeeSession) ? 'Start Session' : (employeeSession.end ? 'Start Session' : 'End Session'))}</div>
+                                                >{sessionLive? 'End Session' : ([null, undefined].includes(employeeSession) ? 'Start Session' : (employeeSession.end ? (filteredSessions.length ? 'End Session': 'Start Session') : 'End Session'))}</div>
                                             </div>
                                         </div>
                                     )
@@ -3576,6 +3606,11 @@ const POSDashboard = ({
                     <TransactionReports
                         type="sales"
                         sessions={stableSalesSessions}
+                        setFilteredSessions={(processedData)=>{
+                            if (sessionsState === 'edit'){
+                                setFilteredSessions(processedData)
+                            }
+                        }}
                         orders={allSessionOrders}
                         tables={tables}
                         employees={employees}

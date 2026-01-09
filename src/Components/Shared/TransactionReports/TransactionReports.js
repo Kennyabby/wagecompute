@@ -15,11 +15,12 @@ import './TransactionReports.css';
 const TransactionReports = ({ 
     type = 'sales', // 'sales' or 'delivery'
     sessions = [],
+    setFilteredSessions,
     orders = [],
     tables = [],
     employees = [],
     onClose,
-    wrhCategories
+    wrhCategories,
 }) => {
     const { 
         company, server, fetchServer, user, companyRecord,
@@ -338,6 +339,7 @@ const TransactionReports = ({
             })
         }));
 
+        setFilteredSessions(result)
         return result;
     }, [sessions, orders, filters]);
 

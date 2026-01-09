@@ -51,7 +51,7 @@ const Settings = () => {
     ]
     const posAdminPermissions = [
         'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent',
-        'override_open bar1', 'override_open bar2', 'override_vip', 'override_kitchen'
+        'edit_ended_sessions', 'override_open bar1', 'override_open bar2', 'override_vip', 'override_kitchen'
     ]
     const postingPermissions = [
         'allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products', 
