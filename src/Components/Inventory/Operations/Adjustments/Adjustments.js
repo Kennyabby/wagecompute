@@ -3,6 +3,7 @@ import './Adjustments.css'
 import { useState, useEffect, useRef, useContext } from "react";
 import ContextProvider from '../../../../Resources/ContextProvider';
 import { syncPendingChanges } from '../../../../Resources/offlineSync';
+import { PiPackage } from 'react-icons/pi';
 
 const Adjustments = ({
     setIsOnView, isNewEntry, setIsNewView,
@@ -73,9 +74,10 @@ const Adjustments = ({
                 clearInterval(intervalRef.current);
             }
         
-            if (cmp_val) {
+            if (cmp_val && products.length) {
+                // refreshAdjustmentsData()
                 intervalRef.current = setInterval(() => {
-                    getProductsWithStock(cmp_val, products)
+                    refreshAdjustmentsData()
                 }, intervalPeriod);
             }
         
@@ -105,6 +107,7 @@ const Adjustments = ({
         try{
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             const cmp_val = window.localStorage.getItem('sessn-cmp');
+            if (!products) return
             await Promise.all([
                 getProductsWithStock(cmp_val, products)
             ]).catch(()=>{});
