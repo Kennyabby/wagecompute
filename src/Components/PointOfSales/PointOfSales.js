@@ -1445,10 +1445,10 @@ const PointOfSales = () => {
                     setAlertState('success');
                     setAlertTimeout(2000);
                     // Keep your existing reads (they only fetch, no writes)
-                    loadInitialData();                    
                     printKitchenOrder(placedOrder);
                     printBarOrder(placedOrder)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    loadInitialData();                    
                     // fetchSessions(company, 'sales', companyRecord);
                     // fetchAllSessions({company})
                     // fetchTables(company);
@@ -1536,7 +1536,7 @@ const PointOfSales = () => {
         return items.reduce((sum, item) => sum + (item.salesPrice * item.quantity), 0);
     };
 
-    const handleOrderSelect = (order) => {
+    const handleOrderSelect = (order, status) => {
         setSelectedProduct(null)
         setCurrentOrder(order);
         setActiveScreen('order');
@@ -1782,9 +1782,13 @@ const PointOfSales = () => {
                     <p>Subtotal: ₦${(Number(orderData.totalSales || 0) * 0.925).toFixed(2)}</p>
                     <p>Tax: ₦${(Number(orderData.totalSales || 0) * 0.075).toFixed(2)}</p>
                     <p>Total: ₦${(Number(orderData.totalSales || 0) * 1).toFixed(2)}</p>
-                    <p>Paid: ₦${orderData.totalPayment}</p>
+                    ${Object.keys(orderData.salesPosts).map(payPoint => `
+                        <p>${payPoint}(${payPoint === 'cash' ? 'cash' : orderData.receipts[payPoint]}): ₦${orderData[payPoint]}</p>                    
+                    `).join('')}
                     ${orderData.cashChange ? `<p>{Change: ₦${orderData.cashChange}}</p>`: ''}
+                    <p>Paid: ₦${orderData.totalPayment}</p>
                 </div>
+
                 <p>Thank you for your business!</p>
             </div>
         `;
@@ -2056,7 +2060,7 @@ const PointOfSales = () => {
         }
     };
     const renderSessionEntry = () => {
-
+        // console.log('all orders:', allSessionOrders.length)
         const allUserOrders = allSessionOrders?.filter((order) =>{
             if (sessionUser!==null && sessionUser?.curSession){
                 return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
@@ -2064,7 +2068,7 @@ const PointOfSales = () => {
                 return ((order.sessionId === curSession?.i_d) && (order.handlerId === companyRecord?.emailid))
             }
         })        
-
+        // console.log('user orders:', allUserOrders.length)
         const {
             allSales, totalPendingSales,
             totalCancelledSales, totalCashChange
@@ -2348,7 +2352,6 @@ const PointOfSales = () => {
                             {['new', 'edit'].includes(currentOrder.status) && <button 
                                 className="remove-btn"
                                 onClick={() => {
-                                    if (currentOrder.status === 'edit' && !hasPosAgentPermissions){return}
                                     handleRemoveItem(item.i_d)
                                 }}
                             >
@@ -2369,7 +2372,7 @@ const PointOfSales = () => {
                     }}
                     disabled={!currentOrder.items.length || placingOrder || sessionEnded || !curSession.active || curSession.wrh !== wrh}
                 >
-                    Place Order (₦{currentOrder.totalSales?.toFixed(2)})
+                    {currentOrder.status === 'new' ? `Place Order` : 'Edit Order'} (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
                 {(currentOrder.status!=='cancelled' && currentOrder.status === 'pending') && <button 
                     className="place-order-btn"
@@ -3276,6 +3279,34 @@ const OrdersModal = ({
                             </div>
                             {(companyRecord?.status === 'admin' ||
                                 companyRecord?.permissions.includes(
+                                    'edit_pos_order'
+                                )) &&
+                                !['cancelled', 'completed'].includes(
+                                    order.status
+                                ) && (
+                                    <button
+                                        className="edit-order-btn"
+                                        onClick={() => {
+                                            const orderToEdit =  {
+                                                ...order,
+                                                status: 'edit'
+                                            }
+                                            if (order.delivery !== 'completed'){
+                                                handleOrderSelect(orderToEdit)
+                                            }else{
+                                                setAlertState('error');
+                                                setAlert('Please Cancel Delivery First Before Editting Order!');
+                                                setAlertTimeout(3000);
+                                            }
+                                        }}
+                                        title="Edit Order"
+                                    >
+                                        Edit
+                                    </button>
+                                )
+                            }
+                            {(companyRecord?.status === 'admin' ||
+                                companyRecord?.permissions.includes(
                                     'cancel_pos_order'
                                 )) &&
                                 !['cancelled', 'completed'].includes(
@@ -3289,7 +3320,8 @@ const OrdersModal = ({
                                     >
                                         🗑️
                                     </button>
-                                )}
+                                )
+                            }
                         </div>
                     ))}
                 </div>
