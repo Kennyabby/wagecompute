@@ -242,8 +242,8 @@ const PointOfSales = () => {
         
     //     (async () => {
     //         try {
-    //             const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
-    //             setHasPosAgentPermissions(isPosAgent)
+                // const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
+                // setHasPosAgentPermissions(isPosAgent)
     //             const [orders, sessionsLocal, tablesLocal] = await Promise.all([
     //                 loadAllOrders(company, companyRecord.emailid),
     //                 loadAllSessionsLocal(company, companyRecord.emailid),
@@ -275,6 +275,13 @@ const PointOfSales = () => {
     //     })();
     // }, [company, companyRecord?.emailid]);
 
+    useEffect(()=>{
+        if (company && companyRecord){
+            const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
+            setHasPosAgentPermissions(isPosAgent)
+        }
+    },[company, companyRecord])
+    
     useEffect(()=>{
         loadTableData()
         if (window.localStorage.getItem('pos-wrh')){
