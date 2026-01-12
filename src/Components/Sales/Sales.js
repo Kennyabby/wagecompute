@@ -156,6 +156,7 @@ const Sales = ()=>{
         imgId: '',
         viewLink: '',
         recoveryAmount: '',
+        recoveryLocation: '',
         recoveryPoint: '',
         recoveryDate: '',
         recoveryTransferId:''
@@ -1711,16 +1712,18 @@ const Sales = ()=>{
                             if (                                                        
                                 months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
                                 String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear &&
-                                field.recoverySales === `${recoveryEmployeeId}-${index}`                                                        
+                                (empDebt.recoveryLocation ? (empDebt.recoveryLocation === field.recoveryLocation) : true) &&
+                                field.recoverySales === `${recoveryEmployeeId}-${index}`                                                      
                             ){
                                 const alreadyRecovered = empDebt.debtRecovered || 0
                                 empDebt.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
                                 totalDebtRecovered += Number(field.recoveryAmount)
                                 const recoveredList = empDebt.recoverdList !== undefined? empDebt.recoverdList: [] 
                                 const recoveryDetails ={
-                                    recoveryReceipt:field.recoveryReceipt,
-                                    recoveryAmount:field.recoveryAmount,
-                                    recoveryPoint:field.recoveryPoint,
+                                    recoveryReceipt: field.recoveryReceipt,
+                                    recoveryAmount: field.recoveryAmount,
+                                    recoveryPoint: field.recoveryPoint,
+                                    recoveryLocation: field.recoveryLocation,
                                     recoveryDate: field.recoveryDate,
                                     recoveryReason: field.recoveryReason,
                                     imgId: field.imgId,
@@ -1782,7 +1785,10 @@ const Sales = ()=>{
                         var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
                         var saleRecoveredList = sale.recoveryList !== undefined? sale.recoveryList : [] 
                         sale.record.forEach((record, index)=>{
-                            if (record.employeeId === recoveryEmployeeId && (record.debt || record.shortage)){
+                            if (record.employeeId === recoveryEmployeeId && 
+                                (record.debt || record.shortage) && 
+                                record.salesPoint === field.recoveryLocation
+                            ){
                                 const alreadyRecovered = record.debtRecovered || 0
                                 record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
                                 totalDebtRecovered += Number(field.recoveryAmount)
@@ -1791,6 +1797,7 @@ const Sales = ()=>{
                                     recoveryReceipt:field.recoveryReceipt,
                                     recoveryAmount:field.recoveryAmount,
                                     recoveryPoint:field.recoveryPoint,
+                                    recoveryLocation: field.recoveryLocation,
                                     recoveryDate: field.recoveryDate,
                                     recoveryReason: field.recoveryReason,
                                     imgId: field.imgId,
@@ -3143,17 +3150,33 @@ const Sales = ()=>{
                                             >
                                                 <option value=''>Select Recovery Point</option>
                                                 {Object.keys(payPoints).map((paypoint,index)=>{
-                                                    return <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
-                                                    // if (isView){
-                                                    //     return <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
-                                                    // }
-                                                    // else if (!['moniepoint1', 'moniepoint3'].includes(paypoint)){
-                                                    //     return (
-                                                    //         <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
-                                                    //     )
-                                                    // }
+                                                    return <option key={index} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>                                                   
                                                 })}
                                                 <option key={'em001'} value='Employee'>EMPLOYEE</option>
+                                            </select>
+                                        </div>
+                                        <div className='inpcov'>
+                                            <div>Recovery Location</div>
+                                            <select 
+                                                className='forminp'
+                                                name='recoveryLocation'
+                                                type='text'
+                                                disabled={isView}
+                                                value={field.recoveryLocation}
+                                                onChange={(e)=>{
+                                                    handleRecoveryFieldChange({index, e})
+                                                }}
+                                            >
+                                                <option value=''>Select Recovery Location</option>
+                                                {Object.keys(salesUnits).filter((fltslunit)=>{
+                                                    
+                                                    return fltslunit
+                                                }).map((saleUnit, index1)=>{
+                                                    
+                                                    return (
+                                                        <option key={index1} value={saleUnit}>{saleUnit.toUpperCase()}</option>
+                                                    )
+                                                })}
                                             </select>
                                         </div>
                                         {field.recoveryPoint === 'Employee' &&
@@ -3813,10 +3836,11 @@ const Sales = ()=>{
                                     var ct3=0
                                     var ct4=0
                                     var ct5=0
+                                    var ct6=0
                                     var foundDebtReasons = []
                                     var requiredNo = recoveryFields.length
                                     recoveryFields.forEach((recoveryField)=>{
-                                        const {recoveryReason, recoveryReceipt, recoveryAmount, recoveryDate, recoveryPoint, imgId} = recoveryField
+                                        const {recoveryReason, recoveryReceipt, recoveryAmount, recoveryDate, recoveryPoint, recoveryLocation, imgId} = recoveryField
                                         if (recoveryReceipt){
                                             ct++
                                         }
@@ -3838,8 +3862,11 @@ const Sales = ()=>{
                                         if (imgId){
                                             ct5++
                                         }
+                                        if (recoveryLocation){
+                                            ct6++
+                                        }
                                     })
-                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo && ct4===requiredNo){
+                                    if (ct===requiredNo && ct1===requiredNo && ct2===requiredNo && ct3===requiredNo && ct4===requiredNo && ct6===requiredNo){
                                         const recoveryData = {
                                             recoveryFields,
                                             recoveryEmployeeId,
@@ -3967,6 +3994,7 @@ const Sales = ()=>{
                                             `${ct<requiredNo?' "All Receipt Numbers Must Be Entered", ':''}\
                                             ${ct1<requiredNo?' "All Recovery Amounts Must Be Greater Than 0", ':''}\
                                             ${ct3<requiredNo?' "All Recovery Points Must Be Selected", ':''}\
+                                            ${ct6<requiredNo?' "All Recovery Locations Must Be Selected", ':''}\
                                             ${ct4<requiredNo?' "All Recovery Reasons Must Be Specified", ':''}\
                                             ${ct2<requiredNo?' "All Recovery Dates Must Be Specified", ':''}`
                                         )
