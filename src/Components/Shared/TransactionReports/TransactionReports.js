@@ -42,6 +42,7 @@ const TransactionReports = ({
         startDate: new Date(new Date().setHours(0, 0, 0, 0)),
         endDate: new Date(new Date().setHours(23, 59, 59, 999)),
         sessionId: '',
+        handlerId: '',
         wrh: '',
         employee_id: '',
         table_name: '',
@@ -103,6 +104,7 @@ const TransactionReports = ({
             locations: locations.filter(Boolean).sort(),
             categories,
             deliveryPersons,
+            handlers: Array.from(employeeIds),
             tableNames,
             statuses: statuses.length ? statuses : ['pending', 'completed', 'cancelled'],
             deliveryStatuses: deliveryStatuses.length ? deliveryStatuses : ['pending', 'compeleted', 'cancelled'],
@@ -282,7 +284,7 @@ const TransactionReports = ({
                     return false;
                 }
             }
-            
+        
             return true;
         });
 
@@ -332,6 +334,12 @@ const TransactionReports = ({
                 // Delivered by filter - case-insensitive partial match
                 if (filters.lastDeliveredBy && 
                     !order.lastDeliveredBy?.toLowerCase().includes(filters.lastDeliveredBy.toLowerCase())) {
+                    return false;
+                }
+
+                // Placecd by filter - case-insensitive partial match
+                if (filters.handlerId && 
+                    !order.handlerId?.toLowerCase().includes(filters.handlerId.toLowerCase())) {
                     return false;
                 }
                 
@@ -541,6 +549,26 @@ const TransactionReports = ({
                                 >
                                     <option value="">All Employees</option>
                                     {filterOptions.employeeIds.map(empId => {
+                                        const emp = employees.find(e => e.i_d === empId);
+                                        return emp ? (
+                                            <option key={emp.i_d} value={emp.i_d}>
+                                                {`${emp.firstName || ''} ${emp.lastName || ''} (${emp.i_d})`.trim() || `Employee ${emp.i_d}`}
+                                            </option>
+                                        ) : null;
+                                    })}
+                                </select>
+                            </div>
+                        )}
+                        {filterOptions.employeeIds.length > 0 && (
+                            <div className="filter-group">
+                                <label>Placed By</label>
+                                <select 
+                                    value={filters.handlerId}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, handlerId: e.target.value }))}
+                                    className="filter-select"
+                                >
+                                    <option value="">All Handlers</option>
+                                    {filterOptions.handlers.map(empId => {
                                         const emp = employees.find(e => e.i_d === empId);
                                         return emp ? (
                                             <option key={emp.i_d} value={emp.i_d}>
