@@ -1783,7 +1783,7 @@ const Sales = ()=>{
                         Number(field.recoverySales) === sale.createdAt                                               
                     ){
                         var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
-                        var saleRecoveredList = sale.recoveryList !== undefined? sale.recoveryList : [] 
+                        var saleRecoveredList = sale.recoveryList? sale.recoveryList : [] 
                         sale.record.forEach((record, index)=>{
                             if (record.employeeId === recoveryEmployeeId && 
                                 (record.debt || record.shortage) && 

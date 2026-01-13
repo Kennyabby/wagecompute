@@ -794,7 +794,7 @@ const PointOfSales = () => {
         }
     };
 
-    const UpdateSessionState = (sessions, loadSession)=>{
+    const UpdateSessionState = (sessions, loadSession, sId)=>{
         if (!loadSession && sessions?.length){            
             const previousSession = sessions.filter((session)=> session.active)            
             let lastSessionIndex = 0
@@ -828,13 +828,14 @@ const PointOfSales = () => {
             }
         }
     } 
+
     useEffect(()=>{
         UpdateSessionState(sessions, loadSession)
     },[loadSession,sessions])
+
     // =========================================
     // 3. Data Loading Functions
     // =========================================
-
     const loadTableData = () =>{
         let orderTables = []
         for (let i=0; i<30; i++){
@@ -2070,7 +2071,7 @@ const PointOfSales = () => {
         // console.log('all orders:', allSessionOrders.length)
         const allUserOrders = allSessionOrders?.filter((order) =>{
             if (sessionUser!==null && sessionUser?.curSession){
-                return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
+                return ((getSessionEnd(order.sessionId) === getSessionEnd((sessionUser.curSession).i_d)) && (order.handlerId === (sessionUser.profile).emailid))
             }else{
                 return ((order.sessionId === curSession?.i_d) && (order.handlerId === companyRecord?.emailid))
             }
