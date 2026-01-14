@@ -749,11 +749,31 @@ const Settings = () => {
                         </div>
                     </div>
                 )
-            case 'sales':
+            case 'general':
                 return (
-                    <div className='sales-settings'>
-                        <div className='formtitle'>Sales Settings</div>
-                        {/* Add sales settings form here */}
+                    <div className='general-settings'>
+                        <div className='sidebar'>
+                            <div className='sidebar-header'>
+                                <button className='add-profile-btn' onClick={addProfile}>Add Profile</button>
+                            </div>
+                            <div className='profile-list'>
+                                {profiles.map((profile, index) => (
+                                    <div key={index} className={'profile-item ' + (selectedEmployee?.emailid === profile.emailid ? 'profile-item-active':'')} onClick={() => handleProfileSelect(profile)}>
+                                        {employees.map((employee)=>{
+                                            if (employee.i_d === profile.emailid){
+                                                return <>{employee.firstName} {employee.lastName}</>
+                                            }
+                                        })}
+                                        {profile.status === 'admin' && <>Super Admin</>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className='general-details'>
+                            <div className='formtitle'>General Settings</div>
+                            {/* Add sales settings form here */}
+                                
+                        </div>
                     </div>
                 )
             default:
@@ -775,8 +795,8 @@ const Settings = () => {
             {saveStatus && <div className='save-status'>{saveStatus}</div>}
             <div className='settings-nav'>
                 <div className={`settings-nav-item ${currentView === 'employees' ? 'active' : ''}`} onClick={() => setCurrentView('employees')}>Employees</div>
+                <div className={`settings-nav-item ${currentView === 'general' ? 'active' : ''}`} onClick={() => setCurrentView('general')}>General</div>
                 <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>Payroll</div>
-                <div className={`settings-nav-item ${currentView === 'sales' ? 'active' : ''}`} onClick={() => setCurrentView('sales')}>Sales</div>
             </div>
             {renderView()}
         </div>

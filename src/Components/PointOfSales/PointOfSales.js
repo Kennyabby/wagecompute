@@ -838,11 +838,11 @@ const PointOfSales = () => {
     // =========================================
     const loadTableData = () =>{
         let orderTables = []
-        for (let i=0; i<30; i++){
+        for (let i=0; i<100; i++){
             const orderTable = {}
             orderTable.i_d = i+1
             orderTable.name = `Table ${i+1}`
-            orderTable.capacity = 5
+            orderTable.capacity = 50
             orderTable.status = 'available'
             orderTable.activeOrders = 0
             orderTable.createdAt = Date.now()
