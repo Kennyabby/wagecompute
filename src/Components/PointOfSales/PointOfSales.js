@@ -1791,7 +1791,7 @@ const PointOfSales = () => {
                     <p>Tax: ₦${(Number(orderData.totalSales || 0) * 0.075).toFixed(2)}</p>
                     <p>Total: ₦${(Number(orderData.totalSales || 0) * 1).toFixed(2)}</p>
                     ${Object.keys(orderData.salesPosts).map(payPoint => `
-                        <p>${payPoint}(${payPoint === 'cash' ? 'cash' : orderData.receipts[payPoint]}): ₦${orderData[payPoint]}</p>                    
+                        ${orderData[payPoint] ? `<p>${payPoint}(${payPoint === 'cash' ? 'cash' : orderData.receipts[payPoint]}): ₦${orderData[payPoint]}</p>` : ''}                    
                     `).join('')}
                     ${orderData.cashChange ? `<p>{Change: ₦${orderData.cashChange}}</p>`: ''}
                     <p>Paid: ₦${orderData.totalPayment}</p>
