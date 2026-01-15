@@ -1959,7 +1959,7 @@ const PointOfSales = () => {
                         ? (wrh==='vip'? (Number(item.quantity) * Number(item.vipPrice || item.salesPrice)) : (Number(item.quantity) * Number(item.salesPrice))) : 0)
                     , 0)) || 0).toFixed(2)}</p>                    
                 </div>
-                <p>Printed For ${orderData.wrh} - Bar Use Only!</p>
+                <p>Printed For ${orderData.wrh} Use Only!</p>
             </div>
         `;
 
