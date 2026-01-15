@@ -1853,7 +1853,7 @@ const PointOfSales = () => {
     
     const printKitchenOrder = (orderData) => {
         if (
-            orderData.items.find((item)=>{return wrhCategories['kitchen'].includes(item.category)}) 
+            orderData.items.find((item)=>{return wrhCategories['kitchen']?.includes(item.category)}) 
             && ((orderData.handlerId === (curPosHandler || companyRecord.emailid)) 
                 || companyRecord?.status === 'admin' 
                 || companyRecord?.permissions?.includes('access_pos_sessions')
@@ -1869,7 +1869,7 @@ const PointOfSales = () => {
                     <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                     <hr/>
                         ${orderData.items.map(item => (
-                            wrhCategories['kitchen'].includes(item.category) ? `
+                            wrhCategories['kitchen']?.includes(item.category) ? `
                                 <div class="receipt-item">
                                     <span>${item.name} x ${item.quantity}</span>
                                     <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
@@ -1878,7 +1878,7 @@ const PointOfSales = () => {
                     <hr/>
                     <div class="receipt-total">
                         <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>
-                            sum + (wrhCategories['kitchen'].includes(item.category)
+                            sum + (wrhCategories['kitchen']?.includes(item.category)
                             ? Number(item.quantity) * Number(item.salesPrice) : 0)
                         , 0)) || 0).toFixed(2)}</p>                    
                     </div>
@@ -1921,7 +1921,7 @@ const PointOfSales = () => {
     
     const printBarOrder = (orderData) => {
         if (
-            orderData.items.find((item)=>{return !wrhCategories['kitchen'].includes(item.category)}) 
+            orderData.items.find((item)=>{return !wrhCategories['kitchen']?.includes(item.category)}) 
             && ((orderData.handlerId === (curPosHandler || companyRecord.emailid)) 
                 || companyRecord?.status === 'admin' 
                 || companyRecord?.permissions?.includes('access_pos_sessions')
@@ -1937,7 +1937,7 @@ const PointOfSales = () => {
                 <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                 <hr/>
                     ${orderData.items.map(item => (
-                        !wrhCategories['kitchen'].includes(item.category) ? `
+                        !wrhCategories['kitchen']?.includes(item.category) ? `
                             <div class="receipt-item">
                                 <span>${item.name} x ${item.quantity}</span>
                                 <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
@@ -1946,7 +1946,7 @@ const PointOfSales = () => {
                 <hr/>
                 <div class="receipt-total">
                     <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>
-                        sum + (!wrhCategories['kitchen'].includes(item.category)
+                        sum + (!wrhCategories['kitchen']?.includes(item.category)
                         ? (wrh==='vip'? (Number(item.quantity) * Number(item.vipPrice || item.salesPrice)) : (Number(item.quantity) * Number(item.salesPrice))) : 0)
                     , 0)) || 0).toFixed(2)}</p>                    
                 </div>
@@ -2409,7 +2409,7 @@ const PointOfSales = () => {
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
-                {currentOrder.items.find((item)=>{return wrhCategories['kitchen'].includes(item.category)}) 
+                {currentOrder.items.find((item)=>{return wrhCategories['kitchen']?.includes(item.category)}) 
                 && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid)) 
                     || companyRecord?.status === 'admin' 
                     || companyRecord?.permissions?.includes('access_pos_sessions')
@@ -2421,7 +2421,7 @@ const PointOfSales = () => {
                 >
                     Print Kitchen Order
                 </button>}
-                {currentOrder.items.find((item)=>{return !wrhCategories['kitchen'].includes(item.category)}) 
+                {currentOrder.items.find((item)=>{return !wrhCategories['kitchen']?.includes(item.category)}) 
                 && ((currentOrder.handlerId ===(curPosHandler || companyRecord.emailid)) 
                     || companyRecord?.status === 'admin' 
                     || companyRecord?.permissions?.includes('access_pos_sessions')
@@ -2958,7 +2958,7 @@ const PaymentModal = ({
         currentOrder.items.forEach((item)=>{
             if (wrhCategories[wrh].includes(item.category)){
                 bc++
-            }else if (wrhCategories['kitchen'].includes(item.category)){
+            }else if (wrhCategories['kitchen']?.includes(item.category)){
                 kc++
             }
         })
