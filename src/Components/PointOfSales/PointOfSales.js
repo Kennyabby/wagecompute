@@ -104,6 +104,7 @@ const PointOfSales = () => {
     const [activeChar, setActiveChar] = useState(null);
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [quantity, setQuantity] = useState('');
+    const [productSearch, setProductSearch] = useState('')
 
     // Modal States
     const [showNewTableModal, setShowNewTableModal] = useState(false);
@@ -294,7 +295,7 @@ const PointOfSales = () => {
 
     useEffect(() => {
         handleCategoryFilter();
-    }, [activeCategory, activeChar, products]);
+    }, [activeCategory, activeChar, productSearch, products]);
        
 
     useEffect(()=>{
@@ -2018,22 +2019,40 @@ const PointOfSales = () => {
         if (activeCategory && activeChar) {            
             const filtered = products.filter((product) => {
                 const productName = product.name.toLowerCase()[0]
-                return (
-                    product.category === activeCategory && productName === activeChar.toLowerCase()
-                )
+                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())                
+                if (!productSearch){
+                    return (
+                        product.category === activeCategory && productName === activeChar.toLowerCase()
+                    )
+                }else{
+                    return (
+                        product.category === activeCategory && productName === activeChar.toLowerCase() && foundProduct
+                    )
+                }
             });
             setFilteredProducts(filtered);
         } else if (activeCategory) {
-            const filtered = products.filter((product) => product.category === activeCategory);
+            const filtered = products.filter((product) =>{ 
+                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())                
+                return product.category === activeCategory && foundProduct
+            });
             setFilteredProducts(filtered);
         } else if (activeChar) {
             const filtered = products.filter((product) => {
                 const productName = product.name.toLowerCase()[0]
-                return productName === activeChar.toLowerCase()
+                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())                
+                return productName === activeChar.toLowerCase() && foundProduct
             });
             setFilteredProducts(filtered);
-        } else {
+        } else if (productSearch){
+            const filtered = products.filter((product) => {
+                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())                
+                return foundProduct
+            });
+            setFilteredProducts(filtered);
+        }else{
             setFilteredProducts(products);
+
         }
     };
 
@@ -2436,6 +2455,7 @@ const PointOfSales = () => {
             </div>
             <div className="products-panel">
                 <div className="categories-bar">
+                    <input className='product-finder' placeholder='Enter ID / Barcode' value={productSearch} onChange={(e)=>{setProductSearch(e.target.value)}}/>
                     <button 
                         className={`category-btn ${!activeCategory ? 'active' : ''}`}
                         onClick={() => setActiveCategory(null)}
