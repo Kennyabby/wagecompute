@@ -19,7 +19,7 @@ const Expenses = ()=>{
     const { storePath,
         server, 
         fetchServer, intervalPeriod,
-        companyRecord,
+        companyRecord, paymentMethods,
         company, getDate,
         alert,alertState,alertTimeout,actionMessage, 
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
@@ -68,12 +68,7 @@ const Expenses = ()=>{
         expensesVendor:'',
         expensesDescription:'',
     }
-    const payPoints = [
-        'moniepoint1', 'moniepoint2', 
-        'moniepoint3', 'moniepoint4', 
-        'moniepoint5', 'moniepoint6', 
-        'cash'
-    ]
+    const [payPoints, setPayPoints] = useState([])
 
     const payPointAccounts = {
         'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
@@ -88,6 +83,11 @@ const Expenses = ()=>{
     useEffect(()=>{
         storePath('expenses')  
     },[storePath])
+
+    useEffect(()=>{
+        const payPoints = paymentMethods.map((pay)=>pay.name)
+        setPayPoints(payPoints)
+    },[paymentMethods])
 
     useEffect(()=>{
         const expenseLedger = chartOfAccounts.find((acc)=>{

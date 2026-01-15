@@ -718,12 +718,12 @@ const Products = ({
                             <select 
                                 className='otherInp'
                                 name='salesUom'
-                                value={productFields.salesUom}
+                                value={productFields.salesUom.toLowerCase()}
                                 disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                             >
                                 {uoms.map((uom, id)=>{
                                     return (
-                                        <option key={id} value={uom.code}>{uom.name}</option>
+                                        <option key={id} value={uom.code.toLowerCase()}>{uom.name}</option>
                                     )
                                 })}
                             </select>
@@ -733,12 +733,12 @@ const Products = ({
                             <select 
                                 className='otherInp'
                                 name='purchaseUom'
-                                value={productFields.purchaseUom}
+                                value={productFields.purchaseUom.toLowerCase()}
                                 disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                             >
                                 {uoms.map((uom, id)=>{
                                     return (
-                                        <option key={id} value={uom.code}>{uom.name}</option>
+                                        <option key={id} value={uom.code.toLowerCase()}>{uom.name}</option>
                                     )
                                 })}
                             </select>
