@@ -14,7 +14,7 @@ const Products = ({
 })=>{     
     const {
         server, fetchServer, generateSeries, intervalPeriod,
-        setAlert, setAlertState, setAlertTimeout,
+        setAlert, setAlertState, setAlertTimeout, posSettings,
         products, company, setProducts, getProducts,
         getProductsWithStock,
         settings, exportFile, importFile, companyRecord
@@ -25,6 +25,7 @@ const Products = ({
     const [wrhs, setWrhs] = useState([])
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
+    const [curPosSettings, setCurPosSettings] = useState([])
     const [purchaseWrh, setPurchaseWrh] = useState('')
     const [defaultProductType, setDefaultProductType] = useState('goods')
     const [selectedProducts, setSelectedProducts] = useState([])
@@ -144,6 +145,10 @@ const Products = ({
         try{ await getProductsWithStock(cmp_val, products); }catch(e){}
     }
 
+    useEffect(()=>{
+        const curPosSet = posSettings?.posSettings?.find((sett)=>sett.active)
+        setCurPosSettings(curPosSet)
+    },[posSettings])
     useEffect(()=>{
         getProducts(cmp_val)
         if (!curProduct){
@@ -307,13 +312,13 @@ const Products = ({
                 }else{
                     setAlertState('error')
                     setAlert('No product selected for deletion. Select a product and try again!')
-                    setAlertTimeout(5000)
+                    setAlertTimeout(3000)
                     setIsDeleteValue(false)
                 }
             }else{
                 setAlertState('info')
                 setAlert('You are about to delete this product. Please Delete again if you are sure!')
-                setAlertTimeout(5000)
+                setAlertTimeout(2000)
                 deleteProduct(productFields.i_d,productFields.createdAt)
             }
         }
@@ -333,7 +338,7 @@ const Products = ({
                 if (nameCount!==productData.length){
                     setAlertState('error')
                     setAlert('No empty name field allowed. Kindly make sure the "name" column has all its rows filled!')
-                    setAlertTimeout(7000)   
+                    setAlertTimeout(3000)   
                     setImportCount(null)
                     return                 
                 }
@@ -349,7 +354,7 @@ const Products = ({
             }else{
                 setAlertState('success')
                 setAlert('All Products Imported Successfully!')
-                setAlertTimeout(5000)
+                setAlertTimeout(2000)
                 setImportCount(null)
                 getProducts(company)
                 setIsOnView(false)
@@ -429,7 +434,7 @@ const Products = ({
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
-                setAlertTimeout(5000)
+                setAlertTimeout(3000)
                 setIsSaveValue(false)
                 if (productData.length){
                     setIsOnView(clickedLabel)
@@ -457,7 +462,7 @@ const Products = ({
                     setProductFields({...newProduct})
                     setAlertState('success')
                     setAlert(`Updated [${productFields.i_d}] Successfully!`)
-                    setAlertTimeout(5000)
+                    setAlertTimeout(2000)
                     setIsSaveValue(false)
                     // getProducts(company)
                     return
@@ -474,7 +479,7 @@ const Products = ({
         }else{
             setAlertState('error')
             setAlert('Product name is not defined!')
-            setAlertTimeout(5000)
+            setAlertTimeout(2000)
             setIsSaveValue(false)
         }
     }
@@ -494,7 +499,7 @@ const Products = ({
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
-                setAlertTimeout(5000)
+                setAlertTimeout(3000)
                 setIsDeleteValue(false)
                 return;
             }else{
@@ -504,7 +509,7 @@ const Products = ({
                     setCurProduct(null)
                     setAlertState('success')
                     setAlert(`Product [${productId}] Deleted Successfully!`)
-                    setAlertTimeout(8000)
+                    setAlertTimeout(2000)
                     setDeleteCount(0)
                     setIsDeleteValue(false)
                     getProducts(company)
@@ -515,7 +520,7 @@ const Products = ({
                     if (delCount >= selectedProducts.length - 1){
                         setAlertState('success')
                         setAlert(`${delCount+1} products deleted successfully!`)
-                        setAlertTimeout(8000)
+                        setAlertTimeout(2000)
                         setIsDeleteValue(false)
                         getProducts(company)
                         setTimeout(()=>{
@@ -664,7 +669,7 @@ const Products = ({
                                 value={productFields.salesPrice}
                             />
                         </div>
-                        <div className='otherInpCov'>
+                        {curPosSettings?.type === 'restaurant' && <div className='otherInpCov'>
                             <label>VIP price (₦)</label>
                             <input 
                                 className='otherInp'
@@ -674,7 +679,7 @@ const Products = ({
                                 disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                                 value={productFields.vipPrice !== undefined ? productFields.vipPrice: ''}
                             />
-                        </div>
+                        </div>}
                         {defaultProductType === 'goods' && <div className='otherInpCov'>
                             <label>Cost price (₦)</label>
                             <input 
