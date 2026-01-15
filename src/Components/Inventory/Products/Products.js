@@ -40,6 +40,7 @@ const Products = ({
     const [defaultProductFields, setDefaultProductFields] = useState({
         i_d: generateSeries('PD', products, 'i_d'),
         name: '',
+        barcode: '',
         salesPrice: '',
         vipPrice: '',
         costPrice: '',
@@ -53,6 +54,7 @@ const Products = ({
     })
     const productExportFormat = {
         name: '',
+        barcode: '',
         salesPrice: '',
         vipPrice: '',
         costPrice: '',
@@ -66,6 +68,7 @@ const Products = ({
     }
     const [headersMap, setHeadersMap] = useState({
         name: 'name',
+        barcode: 'barcode',
         salesPrice: 'salesPrice',
         costPrice: 'costPrice',
         category: 'category',
@@ -723,7 +726,7 @@ const Products = ({
                             >
                                 {uoms.map((uom, id)=>{
                                     return (
-                                        <option key={id} value={uom.code.toLowerCase()}>{uom.name}</option>
+                                        <option key={id} value={uom.code}>{uom.name}</option>
                                     )
                                 })}
                             </select>
@@ -738,7 +741,7 @@ const Products = ({
                             >
                                 {uoms.map((uom, id)=>{
                                     return (
-                                        <option key={id} value={uom.code.toLowerCase()}>{uom.name}</option>
+                                        <option key={id} value={uom.code}>{uom.name}</option>
                                     )
                                 })}
                             </select>
@@ -795,6 +798,17 @@ const Products = ({
                                 disabled={true}
                                 placeholder='#000001'
                                 value={productFields.i_d}
+                            />
+                        </div>
+                        <div className='otherInpCov'>
+                            <label>Barcode</label>
+                            <input 
+                                className='otherInp'
+                                type='text'
+                                name='barcode'
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
+                                placeholder='#000001'
+                                value={productFields.barcode}
                             />
                         </div>
                     </div>
