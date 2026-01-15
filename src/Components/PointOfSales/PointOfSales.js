@@ -1086,14 +1086,14 @@ const PointOfSales = () => {
                     !companyRecord?.permissions.includes('access_pos_sessions'))
             ) {
                 setAlertState('error');
-                setAlert(`Table ${table.i_d} is not available. Still in use by ${table.tableUser.firstName} ${table.tableUser.lastName}!`);
+                setAlert(`Table ${table.name} is not available. Still in use by ${table.tableUser.firstName} ${table.tableUser.lastName}!`);
                 setAlertTimeout(2000);
                 return;
             }
 
             setSelectedProduct(null);
             setAlertState('info');
-            setAlert(`Loading Table ${table.i_d} Orders...`);
+            setAlert(`Loading ${table.name} Orders...`);
             setAlertTimeout(100000)            
 
             // 1) Use locally available orders (mirrored from IndexedDB) as primary           
