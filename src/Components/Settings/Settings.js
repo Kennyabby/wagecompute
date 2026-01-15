@@ -88,7 +88,7 @@ const Settings = () => {
         'view_all_accommodation', 'allow_group_payment'
     ]
     const posAdminPermissions = [
-        'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent',
+        'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent', 
         'edit_ended_sessions', 'override_open bar1', 'override_open bar2', 'override_vip', 'override_kitchen'
     ]
     const postingPermissions = [
@@ -267,7 +267,7 @@ const Settings = () => {
         })
     }
 
-    const saveSetings = async () => {
+    const saveSettings = async () => {
         setSaveStatus('Saving...')
         switch (currentSetting.name) {
             case 'warehouses':
@@ -280,7 +280,7 @@ const Settings = () => {
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "Settings",
-                        update: [{name: 'warehouses'}, {
+                        prop: [{name: 'warehouses'}, {
                             ...currentSetting,
                             warehouses: [...wrhs, newWarehouse]
                         }]
@@ -325,7 +325,7 @@ const Settings = () => {
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "Settings",
-                        update: [{ name: 'uom' }, { ...currentSetting, mearsures: [...uoms, curPropSet] }]
+                        prop: [{ name: 'uom' }, { ...currentSetting, mearsures: [...uoms, curPropSet] }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
                         console.log(resps.mess)                        
@@ -372,7 +372,7 @@ const Settings = () => {
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "Settings",
-                        update: [{ name: 'product_categories' }, { ...currentSetting, categories: [...categories, curPropSet] }]
+                        prop: [{ name: 'product_categories' }, { ...currentSetting, categories: [...categories, curPropSet] }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
                         console.log(resps.mess)                        
@@ -419,7 +419,7 @@ const Settings = () => {
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "Settings",
-                        update: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: [...paymentMethods, curPropSet] }]    
+                        prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: [...paymentMethods, curPropSet] }]    
                     }, "updateOneDoc", server)
                     if (resps.err) {
                         console.log(resps.mess)                        
@@ -1174,8 +1174,8 @@ const Settings = () => {
                                                 setSelectedCategories(propSet.productCategories || [])
                                                 setSelectedPaymentMethods(propSet.paymentMethods || [])
                                             }
-                                            setCurPropSet(propSet)
                                             setPropState('view')                                            
+                                            setCurPropSet(propSet)
                                         }}
                                     >{propSet.name}</div>
                                 })}
@@ -1363,7 +1363,7 @@ const Settings = () => {
                                     />
                                 </div>}
                                 {<div style={{display:'flex'}}>
-                                    {<div className='savebtn' onClick={saveSetings}>Save</div>}
+                                    {<div className='savebtn' onClick={saveSettings}>Save</div>}
                                     {companyRecord?.access==='admin' && propState!=='new' && <div className='deletebtn' onClick={deleteSettingsProp}>Delete</div>}
                                 </div>}
                                 {/* {settingGroups.map((set)=>{
