@@ -39,7 +39,7 @@ const Inventory = ()=>{
     const [isImportValue, setIsImportValue] = useState(false)
     const [isTransferValue, setIsTransferValue] = useState(false)
     const [settingsDrop, setSettingsDrop] = useState(false)
-    const [productView,setProductView] = useState('card')
+    const [productView,setProductView] = useState('list')
     const [curProduct, setCurProduct] = useState(null)
     const [dropLabel, setDropLabel] = useState(null)
     const dropMenu = {
