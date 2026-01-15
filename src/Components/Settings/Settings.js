@@ -60,7 +60,7 @@ const Settings = () => {
         i_d: '',
         name: '',
         type: '',
-        account: '',
+        account: ''
     }
     const defaultPosSettings = {
         name: '',
@@ -1259,8 +1259,8 @@ const Settings = () => {
                                         className='forminp'
                                         name='i_d'
                                         placeholder={`Enter Id`}
-                                        value={curPropSet.i_d}
-                                        onchange={handlePropSetChange}
+                                        value={curPropSet?.i_d}
+                                        onChange={handlePropSetChange}
                                     />
                                 </div>}
                                 {['uom','product_categories',''].includes(currentSetting.name) && <div className='inpcov formpad'>
