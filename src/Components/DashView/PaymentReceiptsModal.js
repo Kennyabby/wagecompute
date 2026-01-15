@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useMemo, useContext, useEffect } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import { FaTimes, FaFilter, FaReceipt } from 'react-icons/fa';
 import { exportReceiptsTableToPDF } from './pdfUtils';
 import { generateExcel } from '../../utils/exportUtils';
 
 const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
-  const { employees } = useContext(ContextProvider);
+  const { employees, paymentMethods } = useContext(ContextProvider);
   // Get earliest date boundary
   const earliestDate = useMemo(() => {
     if (!paymentReceipts.length) return '';
@@ -15,12 +15,18 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     }, null)?.toISOString().slice(0, 10);
   }, [paymentReceipts]);
 
-  const payPointAccounts = {
-      'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
-      'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063',
-      'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
-      'cash':'CASH', 'Employee':'EMPLOYEE'
-  }
+  const [payPointAccounts, setPayPointAccounts] = useState({});
+  useEffect(()=>{
+      const payPoints = paymentMethods.reduce((obj, method)=>{
+          if (method.name !== 'cash'){
+              obj[method.name] = `${method.i_d}-${method.account}`
+          }else{
+              obj[method.name] = `${method.i_d}`
+          }
+          return obj
+      },{})
+      setPayPointAccounts({...payPoints, 'Employee': 'EMPLOYEE' })
+  },[paymentMethods])
   // Filter state
   const [filter, setFilter] = useState({
     from: earliestDate,

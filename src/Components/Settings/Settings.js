@@ -20,12 +20,54 @@ const Settings = () => {
     const [showPass, setShowPass] = useState(false)
     const [saveStatus, setSaveStatus] = useState('')
     const [currentView, setCurrentView] = useState('employees')
+    const [uoms, setUoms] = useState([])
+    const [categories, setCategories] = useState([])
+    const [wrhs, setWrhs] = useState([])
+    const [paymentMethods, setPaymentMethods] = useState([])
+    const [settingGroups, setSettingGroups] = useState([])
+    const [selectedCategories, setSelectedCategories] = useState([])
+    const [selectedPaymentMethods, setSelectedPaymentMethods] = useState([])
     const [selectedEmployee, setSelectedEmployee] = useState(null)
+    const [currentSetting, setCurrentSetting] = useState(null)
+    const [propState, setPropState] = useState('new')
+    const [curPropSet, setCurPropSet] = useState(null)
     const [currentProfiles, setCurrentProfiles] = useState([])
     const [deleteCount, setDeleteCount] = useState(0)
     const [accessValue, setAccessValue] = useState('')
     const magicWord = 'oh ye server. deny all '
     const activationWord = 'oh ye server. allow all into your world '
+    
+    const defaultWarehouse = {
+        name: '',
+        purchase: false,
+        productCategories: [],
+        paymentMethods: []
+    }
+    const defaultUom = {
+        code: '',
+        name: '',
+        base: '',
+        multiple: '',
+        type: ''
+    }
+    const defaultCategories = {
+        name: '',
+        code: '',
+        type: ''
+    }
+    const defaultPaymentMethods = {
+        i_d: '',
+        name: '',
+        type: '',
+        account: '',
+    }
+    const defaultPosSettings = {
+        name: '',
+        type: '',
+        size: '',
+        capacity: '',
+        active: false
+    }
     const [loginDetails, setLoginDetails] = useState({
         email: '',
         password: '',
@@ -37,12 +79,8 @@ const Settings = () => {
     const modulePermissions = [
         ...dashList
     ]
-    const salesPostsPermissions = [
-        'pos_open bar1','pos_open bar2','pos_vip','pos_kitchen'
-    ]
-    const deliveryPostsPermissions = [
-        'delivery_open bar1','delivery_open bar2','delivery_vip','delivery_kitchen'
-    ]
+    const [salesPostsPermissions, setSalesPostsPermissions] = useState([])
+    const [deliveryPostsPermissions, setDeliveryPostsPermissions] = useState([])
     const editDeletePermissions = [
         'edit_employees', 'enable_employee_debt_recovery', 'edit_product_details', 
         'add_expense_category', 'edit_pos_order', 'cancel_pos_order', 'override_pos_receipts', 
@@ -75,6 +113,76 @@ const Settings = () => {
     useEffect(() => {
         storePath('settings')
     }, [storePath])
+
+    useEffect(()=>{
+        if (settings.length){  
+            const groups = settings.filter((setting)=>{
+                if (setting.name){
+                    switch (setting.name) {
+                        case 'uom':
+                            setting.desc = 'Product UOM'
+                            setting.prop = 'mearsures'
+                            return setting.desc
+                        case 'product_categories':
+                            setting.desc = 'Product Categories'
+                            setting.prop = 'categories'
+                            return setting.desc
+                        case 'warehouses':
+                            setting.desc = 'Warehouses'
+                            setting.prop = 'warehouses'
+                            setCurPropSet(defaultWarehouse)
+                            setCurrentSetting(setting)
+                            return setting.desc
+                        case 'paymentMethods': 
+                            setting.desc = 'Payment Methods'
+                            setting.prop = 'paymentMethods'
+                            return setting.desc
+                        case 'posSettings':
+                            setting.desc = 'POS Settings'
+                            setting.prop = 'posSettings'
+                        default:                            
+                            return setting.desc
+                    }                
+                }
+            })
+            setSettingGroups(groups)
+
+            const uomSetFilt = settings.filter((setting)=>{
+                return setting.name === 'uom'
+            })
+            delete uomSetFilt[0]?._id
+            setUoms(uomSetFilt[0]?.name?[...uomSetFilt[0].mearsures]:[])
+
+            const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
+            delete catSetFilt[0]?._id;
+            setCategories(catSetFilt[0]?.name ? [...catSetFilt[0].categories] : []);
+
+            const wrhSetFilt = settings.filter((setting)=>{
+                return setting.name === 'warehouses'
+            })
+            delete wrhSetFilt[0]?._id
+            setWrhs(wrhSetFilt[0]?.name ? [...wrhSetFilt[0].warehouses] : [])
+            
+            const paySetFilt = settings.filter((setting)=>{
+                return setting.name === 'paymentMethods'
+            })
+            delete paySetFilt[0]?._id
+            setPaymentMethods(paySetFilt[0]?.name ? [...paySetFilt[0].paymentMethods] : [])
+        }  
+    },[settings])
+
+    useEffect(()=>{
+        let salesPostsPerms = []
+        let deliveryPostsPerms = []
+        if (wrhs.length){
+            wrhs.forEach((wrh)=>{
+                salesPostsPerms.push(`pos_${wrh.name}`)
+                deliveryPostsPerms.push(`delivery_${wrh.name}`)
+            })
+        }
+        setSalesPostsPermissions(salesPostsPerms)
+        setDeliveryPostsPermissions(deliveryPostsPerms)
+    },[wrhs])
 
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
@@ -124,6 +232,295 @@ const Settings = () => {
         }
     }
 
+    const resetToDefault = (setting) => {
+        setPropState('new')
+        setSelectedCategories([])
+        setSelectedPaymentMethods([])
+        setCurPropSet(null)
+        switch (setting.name) {
+            case 'warehouses':                                
+                setCurPropSet(defaultWarehouse)
+                break
+            case 'uom':
+                setCurPropSet({...defaultUom})
+                break
+            case 'product_categories':
+                setCurPropSet(defaultCategories)
+                break
+            case 'paymentMethods':
+                setCurPropSet(defaultPaymentMethods)
+                break
+            case 'posSettings':
+                setCurPropSet(defaultPosSettings)
+        }
+    }
+    const handleSettingSelect = (setting) => {
+        resetToDefault(setting)
+        if (currentSetting?.name !== setting.name){
+            setCurrentSetting(setting)
+        }
+    }
+    const handlePropSetChange = (e) => {
+        const {name, type, value, checked} = e.target
+        setCurPropSet((curPropSet)=>{
+            return {...curPropSet, [name]: type === 'checkbox' ? checked : value}
+        })
+    }
+
+    const saveSetings = async () => {
+        setSaveStatus('Saving...')
+        switch (currentSetting.name) {
+            case 'warehouses':
+                if (propState === 'new') {
+                    const newWarehouse = {
+                        ...curPropSet,
+                        productCategories: selectedCategories,
+                        paymentMethods: selectedPaymentMethods
+                    }
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        update: [{name: 'warehouses'}, {
+                            ...currentSetting,
+                            warehouses: [...wrhs, newWarehouse]
+                        }]
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)
+                    } else {
+                        getSettings(company, companyRecord)
+                    }
+                } else {
+                    const updatedWarehouses = wrhs.map((wrh) => {
+                        if (wrh.name === curPropSet.name) {
+                            return {
+                                ...curPropSet,
+                                productCategories: selectedCategories,
+                                paymentMethods: selectedPaymentMethods
+                            }
+                        }
+                        return wrh
+                    })
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        prop: [{ name: 'warehouses' }, { ...currentSetting, warehouses: updatedWarehouses }]
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)                        
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    } else {
+                        getSettings(company, companyRecord)                        
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                }
+            case 'uom':
+                if (propState === 'new') {
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        update: [{ name: 'uom' }, { ...currentSetting, mearsures: [...uoms, curPropSet] }]
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)                        
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    } else {
+                        getSettings(company, companyRecord)                        
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                } else {
+                    const updatedUoms = uoms.map((uom) => {
+                        if (uom.code === curPropSet.code) {
+                            return curPropSet
+                        }
+                        return uom
+                    }) 
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        prop: [{ name: 'uom' }, { ...currentSetting, mearsures: updatedUoms }]
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)                        
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    } else {
+                        getSettings(company, companyRecord)                        
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                }
+                break
+            case 'product_categories':
+                if (propState === 'new') {
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        update: [{ name: 'product_categories' }, { ...currentSetting, categories: [...categories, curPropSet] }]
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)                        
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    } else {
+                        getSettings(company, companyRecord)                        
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                } else {
+                    const updatedCategories = categories.map((category) => {
+                        if (category.code === curPropSet.code) {
+                            return curPropSet
+                        }
+                        return category
+                    })
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        prop: [{ name: 'product_categories' }, { ...currentSetting, categories: updatedCategories }]
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)                        
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    } else {
+                        getSettings(company, companyRecord)                        
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                }
+                break
+            case 'paymentMethods':
+                if (propState === 'new') {
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        update: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: [...paymentMethods, curPropSet] }]    
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)                        
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    } else {
+                        getSettings(company, companyRecord)                        
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                } else {
+                    const updatedPaymentMethods = paymentMethods.map((method) => {
+                        if (method.i_d === curPropSet.i_d) {
+                            return curPropSet
+                        }
+                        return method
+                    })
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: updatedPaymentMethods }]
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)                        
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    } else {
+                        getSettings(company, companyRecord)                        
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                }
+                break            
+        }
+    }
+
+    const deleteSettingsProp = async () => {
+        switch (currentSetting.name) {
+            case 'warehouses':
+                const filteredWarehouses = wrhs.filter((wrh) => wrh.name !== curPropSet.name)
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Settings",
+                    prop: [{ name: 'warehouses' }, { ...currentSetting, warehouses: filteredWarehouses }]
+                }, "updateOneDoc", server)
+                if (resps.err) {
+                    console.log(resps.mess)
+                } else {                    
+                    getSettings(company, companyRecord)
+                }
+                break
+            case 'uom':
+                const filteredUoms = uoms.filter((uom) => uom.code !== curPropSet.code)
+                const resps1 = await fetchServer("POST", {
+                    database: company,
+                    collection: "Settings",
+                    prop: [{ name: 'uom' }, { ...currentSetting, mearsures: filteredUoms }]
+                }, "updateOneDoc", server)
+                if (resps1.err) {
+                    console.log(resps1.mess)
+                } else {
+                    getSettings(company, companyRecord)
+                }
+                break
+            case 'product_categories':
+                const filteredCategories = categories.filter((category) => category.code !== curPropSet.code)
+                const resps2 = await fetchServer("POST", {
+                    database: company,
+                    collection: "Settings",
+                    prop: [{ name: 'product_categories' }, { ...currentSetting, categories: filteredCategories }]
+                }, "updateOneDoc", server)
+                if (resps2.err) {
+                    console.log(resps2.mess)
+                } else {
+                    getSettings(company, companyRecord)
+                }
+                break
+            case 'paymentMethods':
+                const filteredPaymentMethods = paymentMethods.filter((method) => method.i_d !== curPropSet.i_d)
+                const resps3 = await fetchServer("POST", {
+                    database: company,
+                    collection: "Settings",
+                    prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: filteredPaymentMethods }]
+                }, "updateOneDoc", server)
+                if (resps3.err) {
+                    console.log(resps3.mess)
+                } else {
+                    getSettings(company, companyRecord)
+                }
+                break
+        }
+    }
+    
     const handleProfileSelect = (profile) => {
         setShowPass(false)
         setDeleteCount(0)
@@ -404,7 +801,7 @@ const Settings = () => {
 
     const renderView = () => {
         switch (currentView) {
-            case 'employees':
+            case 'employees':   
                 return (
                     <div className='employee-settings'>
                         <div className='sidebar'>
@@ -753,26 +1150,232 @@ const Settings = () => {
                 return (
                     <div className='general-settings'>
                         <div className='sidebar'>
-                            <div className='sidebar-header'>
-                                <button className='add-profile-btn' onClick={addProfile}>Add Profile</button>
-                            </div>
+                            <div className='formtitle'>General Settings</div>
                             <div className='profile-list'>
-                                {profiles.map((profile, index) => (
-                                    <div key={index} className={'profile-item ' + (selectedEmployee?.emailid === profile.emailid ? 'profile-item-active':'')} onClick={() => handleProfileSelect(profile)}>
-                                        {employees.map((employee)=>{
-                                            if (employee.i_d === profile.emailid){
-                                                return <>{employee.firstName} {employee.lastName}</>
-                                            }
-                                        })}
-                                        {profile.status === 'admin' && <>Super Admin</>}
+                                {settingGroups.map((setting, index) => (
+                                    <div key={index} className={'profile-item ' + (currentSetting?.name === setting.name ? 'profile-item-active':'')} onClick={() => handleSettingSelect(setting)}>
+                                        {setting.desc}
                                     </div>
                                 ))}
                             </div>
                         </div>
                         <div className='general-details'>
-                            <div className='formtitle'>General Settings</div>
-                            {/* Add sales settings form here */}
-                                
+                            {currentSetting[currentSetting.prop]?.length ? <div className='general-body'>
+                                {!['posSettings'].includes(currentSetting.name) && <div 
+                                    className='general-propSet-add' 
+                                    onClick={()=>{resetToDefault(currentSetting)}}
+                                >Add +</div>}
+                                {currentSetting[currentSetting.prop].map((propSet, id)=>{
+                                    return <div 
+                                        className= {`general-propSet ${curPropSet?.name === propSet.name ? 'active-propSet':''}`}
+                                        key={id}
+                                        onClick={()=>{
+                                            if (currentSetting.name==='warehouses'){
+                                                setSelectedCategories(propSet.productCategories || [])
+                                                setSelectedPaymentMethods(propSet.paymentMethods || [])
+                                            }
+                                            setCurPropSet(propSet)
+                                            setPropState('view')                                            
+                                        }}
+                                    >{propSet.name}</div>
+                                })}
+                            </div> 
+                            : <div>
+                                'No settings available for this group.'
+                            </div>}
+                            {<div>
+                                {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>ID</label>
+                                    <input
+                                        className='forminp'
+                                        name='i_d'
+                                        placeholder={`Enter Id`}
+                                        value={curPropSet.i_d}
+                                        onchange={handlePropSetChange}
+                                    />
+                                </div>}
+                                {['uom','product_categories',''].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>Code</label>
+                                    <input
+                                        className='forminp'
+                                        name='code'
+                                        placeholder={`Enter Code`}
+                                        value={curPropSet?.code}
+                                        onChange={handlePropSetChange}
+                                    />
+                                </div>}
+                                <div className='inpcov formpad'>
+                                    <label>Name</label>
+                                    <input
+                                        className='forminp'
+                                        name='name'
+                                        placeholder={`Enter Name`}
+                                        value={curPropSet.name}
+                                        onChange={handlePropSetChange}
+                                    />
+                                </div>
+                                {['warehouses'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <div>Purchase Location</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='purchase'
+                                            checked={curPropSet.purchase}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <div>Active</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='active'
+                                            checked={curPropSet.active}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['warehouses'].includes(currentSetting.name) && <>
+                                    <div> Product Categories</div>
+                                    <div className='permissions'>
+                                        {categories.map((cat, index) => (
+                                            <label key={index}  className='permission-label'>
+                                                <input
+                                                    type='checkbox'
+                                                    value={cat.code}
+                                                    checked={selectedCategories.includes(cat.code)}
+                                                    onChange={()=>{setSelectedCategories((prev)=>{
+                                                        if (prev.includes(cat.code)){
+                                                            return prev.filter((c)=>c!==cat.code)
+                                                        } else {
+                                                            return [...prev, cat.code]
+                                                        }
+                                                    })}}
+                                                />
+                                                <span className='permission-text'>{cat.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </>}
+                                {['warehouses'].includes(currentSetting.name) && <>
+                                    <div> Payment Methods</div>
+                                    <div className='permissions'>
+                                        {paymentMethods.map((pay, index) => (
+                                            <label key={index} className='permission-label'>
+                                                <input
+                                                    type='checkbox'
+                                                    value={pay.name}
+                                                    checked={selectedPaymentMethods.includes(pay.name)}
+                                                    onChange={()=>{setSelectedPaymentMethods((prev)=>{
+                                                        if (prev.includes(pay.name)){
+                                                            return prev.filter((p)=>p!==pay.name)
+                                                        } else {
+                                                            return [...prev, pay.name]
+                                                        }
+                                                    })}}
+                                                />
+                                                <span className='permission-text'>{pay.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </>}
+                                {['uom'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>Base</label>
+                                    <select
+                                        className='forminp'
+                                        name='base'
+                                        placeholder={`Select Base`}
+                                        value={curPropSet.base}
+                                        onChange={handlePropSetChange}
+                                    >
+                                        <option value={''}>Select Base</option>
+                                        {currentSetting?.bases?.map((base, index)=>{
+                                            return (
+                                                <option key={index} value={base}>
+                                                    {base}
+                                                </option>
+                                            )
+                                        })}
+                                    </select>
+                                </div>}
+                                {['uom'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>Multiple</label>
+                                    <input
+                                        className='forminp'
+                                        name='multiple'                                        
+                                        placeholder={`Enter Name`}
+                                        value={curPropSet.multiple}
+                                        onChange={handlePropSetChange}
+                                    />
+                                </div>}
+                                {['uom','product_categories','paymentMethods','posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>Type</label>
+                                    <select
+                                        className='forminp'
+                                        name='type'
+                                        placeholder={`Select Type`}
+                                        value={curPropSet.type}
+                                        onChange={handlePropSetChange}
+                                    >
+                                        <option value={''}>Select Type</option>
+                                        {currentSetting?.types?.map((type, index)=>{
+                                            return (
+                                                <option key={index} value={type}>
+                                                    {type}
+                                                </option>
+                                            )
+                                        })}
+                                    </select>
+                                </div>}
+                                {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>Account</label>
+                                    <input
+                                        className='forminp'
+                                        name='account'                                        
+                                        placeholder={`Enter Account No`}
+                                        value={curPropSet.account}
+                                        onChange={handlePropSetChange}
+                                    />
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>Size</label>
+                                    <input
+                                        className='forminp'
+                                        name='size'
+                                        type='number'                                        
+                                        placeholder={`Enter Size`}
+                                        value={curPropSet.size}
+                                        onChange={handlePropSetChange}
+                                    />
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>Capacity</label>
+                                    <input
+                                        className='forminp'
+                                        name='capacity'  
+                                        type='number'                                      
+                                        placeholder={`Enter Capacity`}
+                                        value={curPropSet.capacity}
+                                        onChange={handlePropSetChange}
+                                    />
+                                </div>}
+                                {<div style={{display:'flex'}}>
+                                    {<div className='savebtn' onClick={saveSetings}>Save</div>}
+                                    {companyRecord?.access==='admin' && propState!=='new' && <div className='deletebtn' onClick={deleteSettingsProp}>Delete</div>}
+                                </div>}
+                                {/* {settingGroups.map((set)=>{
+                                    if (currentSetting?.name === set.name){
+                                        return (
+                                            <div>
+                                                
+                                            </div>
+                                        )
+                                    }
+                                    })} */}
+                            </div>}
                         </div>
                     </div>
                 )
@@ -780,7 +1383,6 @@ const Settings = () => {
                 return null
         }
     }
-    
     
     return (
         <div className='settings' onClick={handleSecretAccess}>

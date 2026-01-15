@@ -110,6 +110,9 @@ function App() {
   const [reloadCount, setReloadCount] = useState(0)
   const [settings, setSettings] = useState([])
   const [colSettings, setColSettings] = useState({})
+  const [posSettings, setPosSettings] = useState({})
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [wrhs, setWrhs] = useState([])
   const [recoveryVal, setRecoveryVal] = useState(false)
   const [accommodationVal, setAccommodationVal] = useState(false)
   const [enableBlockVal, setEnableBlockVal] = useState(false)
@@ -637,23 +640,7 @@ function App() {
               return {...editAccess, 
                 employees: (resp.record.permissions.includes('edit_employees') || resp.record.permissions.includes('all'))
               }
-            })
-            setPosWrhAccess((posWrhAccess)=>{
-              return {...posWrhAccess, 
-                ['open bar1']: (resp.record.permissions.includes('pos_open bar1') || resp.record.permissions.includes('all')),
-                ['open bar2']: (resp.record.permissions.includes('pos_open bar2') || resp.record.permissions.includes('all')),
-                ['vip']: (resp.record.permissions.includes('pos_vip') || resp.record.permissions.includes('all')),
-                ['kitchen']: (resp.record.permissions.includes('pos_kitchen') || resp.record.permissions.includes('all')),
-              }
-            })
-            setDeliveryWrhAccess((deliveryWrhAccess)=>{
-              return {...deliveryWrhAccess, 
-                ['open bar1']: (resp.record.permissions.includes('delivery_open bar1') || resp.record.permissions.includes('all')),
-                ['open bar2']: (resp.record.permissions.includes('delivery_open bar2') || resp.record.permissions.includes('all')),
-                ['vip']: (resp.record.permissions.includes('delivery_vip') || resp.record.permissions.includes('all')),
-                ['kitchen']: (resp.record.permissions.includes('delivery_kitchen') || resp.record.permissions.includes('all')),
-              }
-            })
+            })            
           }
         }
       }
@@ -664,9 +651,47 @@ function App() {
       })
       delete colSetFilt[0]?._id
       setColSettings(colSetFilt[0]?colSetFilt[0]:{})
+      
+      const posSetFilt = settings.filter((setting)=>{
+        return setting.name === 'posSettings'
+      })
+      delete posSetFilt[0]?._id
+      setPosSettings(posSetFilt[0]?posSetFilt[0]:{})
+
+      const paySetFilt = settings.filter((setting)=>{
+                return setting.name === 'paymentMethods'
+      })
+      delete paySetFilt[0]?._id
+      setPaymentMethods(paySetFilt[0]?.name ? [...paySetFilt[0].paymentMethods] : [])
+
+      const wrhSetFilt = settings.filter((setting)=>{
+          return setting.name === 'warehouses'
+      })
+      delete wrhSetFilt[0]?._id
+      setWrhs(wrhSetFilt[0]?.name ? [...wrhSetFilt[0].warehouses] : [])
     }
   },[settings,changingSettings])
 
+  useEffect(()=>{
+    if (wrhs.length && companyRecord?.emailid){
+      let wrhsPosObj = {}
+      let wrhsDeliveryObj = {}
+      wrhs.forEach((wrh)=>{
+        if (!wrh.purchase){
+          wrhsPosObj[wrh.name] = (companyRecord.permissions.includes(`pos_${wrh.name}`) || companyRecord.permissions.includes('all'))
+          wrhsDeliveryObj[wrh.name] = (companyRecord.permissions.includes(`delivery_${wrh.name}`) || companyRecord.permissions.includes('all'))
+        }
+      })
+      console.log('WRH ACCESS OBJ', wrhsPosObj, wrhsDeliveryObj)
+      setPosWrhAccess((posWrhAccess)=>{
+        return {...posWrhAccess, ...wrhsPosObj}
+      })
+      setDeliveryWrhAccess((deliveryWrhAccess)=>{
+        return {...deliveryWrhAccess, 
+          ...wrhsDeliveryObj}
+      })
+    }
+  },[companyRecord, wrhs])
   // On First Mount: hydrate quickly, subscribe to SSE (above), flush local pending changes, then fetch authoritative data
   useEffect(()=>{
     if (company && companyRecord?.emailid && loadedCurPath){
@@ -1564,22 +1589,19 @@ function App() {
       setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
           resp.record.permissions.includes('all')
       )
-      setPosWrhAccess((posWrhAccess)=>{
-        return {...posWrhAccess, 
-          ['open bar1']: (resp.record.permissions.includes('pos_open bar1') || resp.record.permissions.includes('all')),
-          ['open bar2']: (resp.record.permissions.includes('pos_open bar2') || resp.record.permissions.includes('all')),
-          ['vip']: (resp.record.permissions.includes('pos_vip') || resp.record.permissions.includes('all')),
-          ['kitchen']: (resp.record.permissions.includes('pos_kitchen') || resp.record.permissions.includes('all')),
-        }
-      })
-      setDeliveryWrhAccess((deliveryWrhAccess)=>{
-        return {...deliveryWrhAccess, 
-          ['open bar1']: (resp.record.permissions.includes('delivery_open bar1') || resp.record.permissions.includes('all')),
-          ['open bar2']: (resp.record.permissions.includes('delivery_open bar2') || resp.record.permissions.includes('all')),
-          ['vip']: (resp.record.permissions.includes('delivery_vip') || resp.record.permissions.includes('all')),
-          ['kitchen']: (resp.record.permissions.includes('delivery_kitchen') || resp.record.permissions.includes('all')),
-        }
-      })
+      // let wrhsPosObj = {}
+      // let wrhsDeliveryObj = {}
+      // wrhs.forEach((wrh)=>{
+      //   wrhsPosObj[wrh.name] = (resp.record.permissions.includes(`pos_${wrh.name}`) || resp.record.permissions.includes('all'))
+      //   wrhsDeliveryObj[wrh.name] = (resp.record.permissions.includes(`delivery_${wrh.name}`) || resp.record.permissions.includes('all'))
+      // })
+      // setPosWrhAccess((posWrhAccess)=>{
+      //   return {...posWrhAccess, ...wrhsPosObj}
+      // })
+      // setDeliveryWrhAccess((deliveryWrhAccess)=>{
+      //   return {...deliveryWrhAccess, 
+      //     ...wrhsDeliveryObj}
+      // })      
       if (resp.record.status!=='admin'){
         setEditAccess((editAccess)=>{
           return {...editAccess, 
@@ -1623,7 +1645,7 @@ function App() {
       if (cached) {
         setPaymentReceipts(cached)
       }
-      const paymentPoints = ['moniepoint1', 'moniepoint2', 'moniepoint3', 'moniepoint4', 'moniepoint5', 'moniepoint6','cash']    
+      const paymentPoints = paymentMethods.map((method)=>method.name)
       const recoveryReceipts = []
       const accommodationReceipts = []
       const posOrderReceipts = []
@@ -2100,14 +2122,14 @@ function App() {
     }
 
     const cached = await getCached(company, 'sales', companyRecord?.emailid);
-    if (cached) {
+    if (cached && Array.isArray(cached)) {
       setSales(cached);
     }
     const resp = await fetchServer("POST", {
       ...body
     }, defaultEndPoint, SERVER)
 
-    if (resp.record){
+    if (resp.record && Array.isArray(resp.record)){
       setSales(resp.record)
       try {
         setCached(company, 'sales', resp.record, companyRecord?.emailid)
@@ -3043,6 +3065,9 @@ function App() {
           
           settings, setSettings, getSettings,
           colSettings, setColSettings,
+          posSettings, setPosSettings,
+          paymentMethods, setPaymentMethods,
+          wrhs, setWrhs,
           recoveryVal, setRecoveryVal,
           accommodationVal, setAccommodationVal,
           allowBacklogs, setAllowBacklogs,
