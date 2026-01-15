@@ -24,6 +24,7 @@ const Settings = () => {
     const [categories, setCategories] = useState([])
     const [wrhs, setWrhs] = useState([])
     const [paymentMethods, setPaymentMethods] = useState([])
+    const [posSettings, setPosSettings] = useState([])
     const [settingGroups, setSettingGroups] = useState([])
     const [selectedCategories, setSelectedCategories] = useState([])
     const [selectedPaymentMethods, setSelectedPaymentMethods] = useState([])
@@ -168,6 +169,12 @@ const Settings = () => {
             })
             delete paySetFilt[0]?._id
             setPaymentMethods(paySetFilt[0]?.name ? [...paySetFilt[0].paymentMethods] : [])
+            
+            const posSetFilt = settings.filter((setting)=>{
+                return setting.name === 'posSettings'
+            })
+            delete posSetFilt[0]?._id
+            setPosSettings(paySetFilt[0]?.name ? [...paySetFilt[0].posSettings] : [])
         }  
     },[settings])
 
@@ -320,6 +327,7 @@ const Settings = () => {
                         },3000)
                     }
                 }
+                break
             case 'uom':
                 if (propState === 'new') {
                     const resps = await fetchServer("POST", {
@@ -460,11 +468,40 @@ const Settings = () => {
                         },3000)
                     }
                 }
-                break            
+                break 
+            case "posSetting":
+                if (propState === 'view'){
+                    const updatedPosSetting = posSettings.map((pos) => {
+                        if (pos.name === curPropSet.name) {
+                            return curPropSet
+                        }
+                        return pos
+                    })
+                    const resps = await fetchServer("POST", {
+                        database: company,
+                        collection: "Settings",
+                        prop: [{ name: 'posSettings' }, { ...currentSetting, posSettings: updatedPosSetting}]
+                    }, "updateOneDoc", server)
+                    if (resps.err) {
+                        console.log(resps.mess)                        
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    } else {
+                        getSettings(company, companyRecord)                        
+                        setSaveStatus('Saved')
+                        setTimeout(()=>{
+                            setSaveStatus('')
+                        },3000)
+                    }
+                }    
+                break 
         }
     }
 
     const deleteSettingsProp = async () => {
+        setSaveStatus('Removing...')
         switch (currentSetting.name) {
             case 'warehouses':
                 const filteredWarehouses = wrhs.filter((wrh) => wrh.name !== curPropSet.name)
@@ -474,9 +511,17 @@ const Settings = () => {
                     prop: [{ name: 'warehouses' }, { ...currentSetting, warehouses: filteredWarehouses }]
                 }, "updateOneDoc", server)
                 if (resps.err) {
-                    console.log(resps.mess)
-                } else {                    
-                    getSettings(company, companyRecord)
+                    console.log(resps.mess)                        
+                    setSaveStatus('Error Deleting Settings')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
+                } else {
+                    getSettings(company, companyRecord)                        
+                    setSaveStatus('Deleted')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
                 }
                 break
             case 'uom':
@@ -487,9 +532,17 @@ const Settings = () => {
                     prop: [{ name: 'uom' }, { ...currentSetting, mearsures: filteredUoms }]
                 }, "updateOneDoc", server)
                 if (resps1.err) {
-                    console.log(resps1.mess)
+                    console.log(resps1.mess)                        
+                    setSaveStatus('Error Deleting Settings')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
                 } else {
-                    getSettings(company, companyRecord)
+                    getSettings(company, companyRecord)                        
+                    setSaveStatus('Deleted')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
                 }
                 break
             case 'product_categories':
@@ -500,9 +553,17 @@ const Settings = () => {
                     prop: [{ name: 'product_categories' }, { ...currentSetting, categories: filteredCategories }]
                 }, "updateOneDoc", server)
                 if (resps2.err) {
-                    console.log(resps2.mess)
+                    console.log(resps2.mess)                        
+                    setSaveStatus('Error Deleting Settings')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
                 } else {
-                    getSettings(company, companyRecord)
+                    getSettings(company, companyRecord)                        
+                    setSaveStatus('Deleted')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
                 }
                 break
             case 'paymentMethods':
@@ -513,9 +574,17 @@ const Settings = () => {
                     prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: filteredPaymentMethods }]
                 }, "updateOneDoc", server)
                 if (resps3.err) {
-                    console.log(resps3.mess)
+                    console.log(resps3.mess)                        
+                    setSaveStatus('Error Deleting Settings')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
                 } else {
-                    getSettings(company, companyRecord)
+                    getSettings(company, companyRecord)                        
+                    setSaveStatus('Deleted')
+                    setTimeout(()=>{
+                        setSaveStatus('')
+                    },3000)
                 }
                 break
         }
@@ -1246,6 +1315,7 @@ const Settings = () => {
                                                 <input
                                                     type='checkbox'
                                                     value={cat.code}
+                                                    name='productCategories'
                                                     checked={selectedCategories.includes(cat.code)}
                                                     onChange={()=>{setSelectedCategories((prev)=>{
                                                         if (prev.includes(cat.code)){
@@ -1267,6 +1337,7 @@ const Settings = () => {
                                             <label key={index} className='permission-label'>
                                                 <input
                                                     type='checkbox'
+                                                    name='paymentMethods'
                                                     value={pay.name}
                                                     checked={selectedPaymentMethods.includes(pay.name)}
                                                     onChange={()=>{setSelectedPaymentMethods((prev)=>{
