@@ -875,14 +875,14 @@ const PointOfSales = () => {
         let localOrders = [];
         try {
             localOrders = await loadAllOrders(company, companyRecord.emailid);
-            if (Array.isArray(localOrders) && localOrders.length) {
-                setAllSessionOrders(localOrders);
-                if (curSession) {
-                    setAllOrders(localOrders.filter((order) => {
-                        return (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start) && order.handlerId === (curPosHandler || companyRecord.emailid));
-                    }));
-                }
-            }
+            // if (Array.isArray(localOrders) && localOrders.length) {
+            //     setAllSessionOrders(localOrders);
+            //     if (curSession) {
+            //         setAllOrders(localOrders.filter((order) => {
+            //             return (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start) && order.handlerId === (curPosHandler || companyRecord.emailid));
+            //         }));
+            //     }
+            // }
         } catch (e) {
             console.warn('POS: loadAllOrders failed', e);
         }
@@ -914,39 +914,44 @@ const PointOfSales = () => {
         // tableControllerRef.current = tableController;
         // sessionControllerRef.current = sessionController;
         
-
+        const orderDays = 50 * 24 * 60 * 60 * 1000
+        const allowedFromDays = Date.now() - orderDays
         const ordersResponse = await fetchServer("POST", {
             database: company,
-            collection: "Orders"
+            collection: "Orders",
+            prop: {
+                createdAt: {$gte: allowedFromDays}
+            }
         }, "getDocsDetails", server, orderController.signal);
         if (!ordersResponse.err){  
             if (Array.isArray(ordersResponse.record)){
+                mergeAndPersistOrders(ordersResponse.record)
                 // Merge server results with local pending changes: prefer local pending
-                try {
-                    const pending = await loadPendingChanges(company, companyRecord.emailid);
-                    const pendingOrderNums = new Set(pending.filter(c=>c.entityType==='order').map(c=>(c.clientId || c.payload?.orderNumber)).filter(Boolean));
-                    const serverOrders = ordersResponse.record || [];
-                    const map = {};
-                    // add server orders first
-                    for (const s of serverOrders) {
-                        if (s && s.orderNumber) map[s.orderNumber] = s;
-                    }
-                    // merge local orders (prefer local when pending)
-                    for (const l of localOrders) {
-                        if (l && l.orderNumber) {
-                            if (pendingOrderNums.has(l.orderNumber)) {
-                                map[l.orderNumber] = l;
-                            } else {
-                                map[l.orderNumber] = map[l.orderNumber] || l;
-                            }
-                        }
-                    }
-                    const merged = Object.values(map);
-                    setAllSessionOrders(merged);
-                } catch (e) {
-                    // fallback to server data
-                    setAllSessionOrders(ordersResponse.record);
-                }
+                // try {
+                //     const pending = await loadPendingChanges(company, companyRecord.emailid);
+                //     const pendingOrderNums = new Set(pending.filter(c=>c.entityType==='order').map(c=>(c.clientId || c.payload?.orderNumber)).filter(Boolean));
+                //     const serverOrders = ordersResponse.record || [];
+                //     const map = {};
+                //     // add server orders first
+                //     for (const s of serverOrders) {
+                //         if (s && s.orderNumber) map[s.orderNumber] = s;
+                //     }
+                //     // merge local orders (prefer local when pending)
+                //     for (const l of localOrders) {
+                //         if (l && l.orderNumber) {
+                //             if (pendingOrderNums.has(l.orderNumber)) {
+                //                 map[l.orderNumber] = l;
+                //             } else {
+                //                 map[l.orderNumber] = map[l.orderNumber] || l;
+                //             }
+                //         }
+                //     }
+                //     const merged = Object.values(map);
+                //     setAllSessionOrders(merged);
+                // } catch (e) {
+                //     // fallback to server data
+                //     setAllSessionOrders(ordersResponse.record);
+                // }
             }  
         }
 
@@ -955,19 +960,19 @@ const PointOfSales = () => {
                 setIsLive(true)
                 if (![null,undefined].includes(ordersResponse.record)){
                     if(ordersResponse.record?.length && Array.isArray(ordersResponse.record)){
-                        setAllSessionOrders(ordersResponse.record)                        
+                        // setAllSessionOrders(ordersResponse.record)                        
                         // write-through to IndexedDB orders store (guard keyPath)
-                        try {
-                            const pending = await loadPendingChanges(company, companyRecord.emailid);
-                            const pendingOrderNums = new Set(pending.filter(c=>c.entityType==='order').map(c=>(c.clientId || c.payload?.orderNumber)).filter(Boolean));
-                            for (const o of ordersResponse.record) {
-                                if (o && o.orderNumber != null && !pendingOrderNums.has(o.orderNumber)) {
-                                    await putOrder(company, companyRecord.emailid, o);
-                                }
-                            }
-                        } catch (e) {
-                            console.warn('POS: putOrder merge failed', e);
-                        }
+                        // try {
+                        //     const pending = await loadPendingChanges(company, companyRecord.emailid);
+                        //     const pendingOrderNums = new Set(pending.filter(c=>c.entityType==='order').map(c=>(c.clientId || c.payload?.orderNumber)).filter(Boolean));
+                        //     for (const o of ordersResponse.record) {
+                        //         if (o && o.orderNumber != null && !pendingOrderNums.has(o.orderNumber)) {
+                        //             await putOrder(company, companyRecord.emailid, o);
+                        //         }
+                        //     }
+                        // } catch (e) {
+                        //     console.warn('POS: putOrder merge failed', e);
+                        // }
                         var ordersUpdate = ordersResponse.record
                         if (currentOrder!==null){
                             if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
@@ -1350,8 +1355,10 @@ const PointOfSales = () => {
                     setAlertState('success');
                     setAlertTimeout(2000);
                     // Keep your existing reads (they only fetch, no writes)
-                    printKitchenOrder(placedOrder);
-                    printBarOrder(placedOrder)
+                    if (curPosSettings?.type === 'restaurant'){
+                        printKitchenOrder(placedOrder);
+                        printBarOrder(placedOrder)
+                    }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     loadInitialData();                    
                     // fetchSessions(company, 'sales', companyRecord);
@@ -1790,10 +1797,11 @@ const PointOfSales = () => {
 
     const printReceipt = (orderData) => {
         const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
+        const table = orderTables.find((table)=>{return table.i_d === orderData.tableId})
         const receiptContent = `
             <div class="receipt">
                 <h2>${companyRecord.name} Payment Receipt</h2>
-                <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
+                <p>From: ${table?.name || ''} (${orderData.wrh})</p>
                 <p>Order: #${orderData.orderNumber}</p>
                 <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
                 <p>Date: ${new Date().toLocaleString()}</p>
@@ -2105,15 +2113,13 @@ const PointOfSales = () => {
         }
     };
     const renderSessionEntry = () => {
-        // console.log('all orders:', allSessionOrders.length)
         const allUserOrders = allSessionOrders?.filter((order) =>{
             if (sessionUser!==null && sessionUser?.curSession){
                 return ((getSessionEnd(order.sessionId) === getSessionEnd((sessionUser.curSession).i_d)) && (order.handlerId === (sessionUser.profile).emailid))
             }else{
-                return ((order.sessionId === curSession?.i_d) && (order.handlerId === companyRecord?.emailid))
+                return ((getSessionEnd(order.sessionId) === getSessionEnd(curSession?.i_d)) && (order.handlerId === companyRecord?.emailid))
             }
         })        
-        // console.log('user orders:', allUserOrders.length)
         const {
             allSales, totalPendingSales,
             totalCancelledSales, totalCashChange
@@ -3401,9 +3407,10 @@ const POSDashboard = ({
     const [pendingError, setPendingError] = useState(null);
 
     useEffect(()=>{
+        const isAdminUser = companyRecord?.access === 'admin'
         if (!Array.isArray(filteredSessions)){
             var pendingSessions = allSessions.filter((session)=>{
-                return (session.employee_id !== 'theplantainplanet22@gmail.com' && 
+                return (session.employee_id !== (isAdminUser ? companyRecord?.emailid : 'theplantainplanet22@gmail.com') && 
                     session.active && (getSessionEnd(new Date().getTime()) > getSessionEnd(session.start))
                 )
             })
@@ -3419,21 +3426,21 @@ const POSDashboard = ({
         if (allSalesSessions?.length && Array.isArray(allSalesSessions)){            
             setStableSalesSessions(allSalesSessions)
         }
-        const getSessionsData = async ()=>{
-            const orderDays = 50 * 24 * 60 * 60 * 1000
-            const allowedFromDays = Date.now() - orderDays
-            const ordersResponse = await fetchServer("POST", {
-                database: company,
-                collection: "Orders",
-                prop: {createdAt: {$gte: allowedFromDays}}
-            }, "getDocsDetails", server); 
-            if(!ordersResponse.err){
-                if (Array.isArray(ordersResponse.record)){
-                    mergeAndPersistOrders(ordersResponse.record)
-                }
-            }
-        }
-        getSessionsData()
+        // const getSessionsData = async ()=>{
+        //     const orderDays = 50 * 24 * 60 * 60 * 1000
+        //     const allowedFromDays = Date.now() - orderDays
+        //     const ordersResponse = await fetchServer("POST", {
+        //         database: company,
+        //         collection: "Orders",
+        //         prop: {createdAt: {$gte: allowedFromDays}}
+        //     }, "getDocsDetails", server); 
+        //     if(!ordersResponse.err){
+        //         if (Array.isArray(ordersResponse.record)){
+        //             mergeAndPersistOrders(ordersResponse.record)
+        //         }
+        //     }
+        // }
+        // getSessionsData()
     },[allSalesSessions])
 
     useEffect(() => {
@@ -3581,13 +3588,13 @@ const POSDashboard = ({
                                                                     setAlertState('info')
                                                                     setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
                                                                     setAlertTimeout(3000)     
-                                                                    const orderDays = 31 * 24 * 60 * 60 * 1000
+                                                                    const orderDays = 50 * 24 * 60 * 60 * 1000
                                                                     const allowedFromDays = Date.now() - orderDays
                                                                     const ordersResponse = await fetchServer("POST", {
                                                                         database: company,
                                                                         collection: "Orders",
                                                                         prop: {
-                                                                            ceatedAt: {$gte: allowedFromDays}
+                                                                            createdAt: {$gte: allowedFromDays}
                                                                         } 
                                                                     }, "getDocsDetails", server); 
                                                                     if (ordersResponse.err){
@@ -3596,7 +3603,7 @@ const POSDashboard = ({
                                                                         setAlertTimeout(3000)
                                                                         return           
                                                                     }else{
-                                                                        if (![null, undefined].includes(ordersResponse.record)){
+                                                                        if (Array.isArray(ordersResponse.record)){
                                                                             mergeAndPersistOrders(ordersResponse.record)
                                                                             setAlertState('info')
                                                                             setAlert('Orders Calculated. Please proceed with the ending of user session!')
@@ -3613,7 +3620,7 @@ const POSDashboard = ({
                                                                     if (totalUnattendedSales){
                                                                         viewModal = false
                                                                         setAlertState('error')
-                                                                        setAlert('This User Have Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!', )
+                                                                        setAlert('This User Has Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!', )
                                                                         setAlertTimeout(5000)
                                                                     }                                               
                                                                 }

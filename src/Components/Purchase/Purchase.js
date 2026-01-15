@@ -13,7 +13,7 @@ import PurchaseReport from './PurchaseReport/PurchaseReport'
 const Purchase = ()=>{
 
     const { storePath,
-        server, intervalPeriod,
+        server, intervalPeriod, posSettings,
         fetchServer,
         companyRecord, allowBacklogs,
         company, getDate, products, getProducts, setProducts, getProductsWithStock,
@@ -60,7 +60,7 @@ const Purchase = ()=>{
         purchaseVendor:'',
     }
     const [fields, setFields] = useState({...defaultFields})
-    const departments = ['Bar', 'Kitchen']
+    const [departments, setDepartments] =  useState([])
     // const purchaseCategory = ['ASSORTED DRINKS', 'ASSORTED PROTEIN', 'INGREDIENTS', 'SWALLOW', 'CEREALS']
     const unitsofmeasurements = [
         'PORTIONS', 'PACKETS', 'CRATES','CARTONS','PACKS'
@@ -68,6 +68,14 @@ const Purchase = ()=>{
     useEffect(()=>{
         storePath('purchase')  
     },[storePath])
+    useEffect(()=>{
+        const curPosSettings = posSettings?.posSettings?.find((setting)=>setting.active)
+        if (curPosSettings.type === 'restaurant'){
+            setDepartments(['Bar', 'Kitchen'])
+        }else{
+            setDepartments(['Purchase'])
+        }
+    },[posSettings])
     const refreshPurchaseData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
@@ -1023,7 +1031,7 @@ const AddProduct = ({
             })
             setPurchaseEntries(fltProducts.map((product, index)=>{
                 const uom1 = uoms.filter((uom)=>{
-                    return uom.code === product.purchaseUom
+                    return uom.code === product.purchaseUom.toLowerCase()
                 })                
                 return {                
                     productId : product.i_d,
@@ -1031,7 +1039,7 @@ const AddProduct = ({
                     name: product.name,
                     quantity: '',
                     baseQuantity: 0,
-                    purchaseUom: product.purchaseUom,
+                    purchaseUom: product.purchaseUom.toLowerCase(),
                     baseUom: uom1[0]?.base,
                     totalCost: '',
                     entryType: 'Purchase',
