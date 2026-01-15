@@ -262,7 +262,7 @@ const Adjustments = ({
             console.log(resps.mess)
             setAlertState('info')
             setAlert(resps.mess+`. Could not post for product [${i_d}]`)
-            setAlertTimeout(5000)
+            setAlertTimeout(3000)
             setIsSaveValue(false)
             setIsOnView(clickedLabel)
             return
@@ -273,7 +273,7 @@ const Adjustments = ({
             if (count === length){
                 setAlertState('success')
                 setAlert(`Adjustments Posted Successfully!`)
-                setAlertTimeout(5000)                    
+                setAlertTimeout(2000)                    
             }
         }
         setIsSaveValue(false)

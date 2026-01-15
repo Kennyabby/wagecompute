@@ -1469,8 +1469,10 @@ const PointOfSales = () => {
                     setAlertState('success');
                     setAlertTimeout(2000);
                     // Keep your existing reads (they only fetch, no writes)
-                    printKitchenOrder(placedOrder);
-                    printBarOrder(placedOrder)
+                    if (curPosSettings?.type === 'restaurant'){
+                        printKitchenOrder(placedOrder);
+                        printBarOrder(placedOrder)
+                    }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     loadInitialData();                    
                     // fetchSessions(company, 'sales', companyRecord);
@@ -2411,7 +2413,8 @@ const PointOfSales = () => {
                 && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid)) 
                     || companyRecord?.status === 'admin' 
                     || companyRecord?.permissions?.includes('access_pos_sessions')
-                ) && ['pending', 'completed'].includes(currentOrder.status) && <button 
+                ) && ['pending', 'completed'].includes(currentOrder.status) 
+                && curPosSettings?.type === 'restaurant' && <button 
                     className="place-order-btn"
                     onClick={() => printKitchenOrder(currentOrder)}
                     disabled={!currentOrder.items.length}
@@ -2422,7 +2425,8 @@ const PointOfSales = () => {
                 && ((currentOrder.handlerId ===(curPosHandler || companyRecord.emailid)) 
                     || companyRecord?.status === 'admin' 
                     || companyRecord?.permissions?.includes('access_pos_sessions')
-                ) && ['pending', 'completed'].includes(currentOrder.status) && <button 
+                ) && ['pending', 'completed'].includes(currentOrder.status) 
+                && curPosSettings?.type === 'restaurant' && <button 
                     className="place-order-btn"
                     onClick={() => printBarOrder(currentOrder)}
                     disabled={!currentOrder.items.length}

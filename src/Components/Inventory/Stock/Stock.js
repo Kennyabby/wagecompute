@@ -53,7 +53,7 @@ const Stock = ({
             console.error('Error fetching warehouses:', error);
             setAlertState('error');
             setAlert('Failed to load warehouses');
-            setAlertTimeout(5000);
+            setAlertTimeout(2000);
         }
     };
 
@@ -81,7 +81,7 @@ const Stock = ({
             console.error('Error fetching categories:', error);
             setAlertState('error');
             setAlert('Failed to load categories');
-            setAlertTimeout(5000);
+            setAlertTimeout(2000);
         }
     };
     const [wrhs, setWrhs] = useState([]);
@@ -374,7 +374,7 @@ const Stock = ({
                     console.error('Error fetching data:', error);
                     setAlertState('error');
                     setAlert('Failed to load inventory data');
-                    setAlertTimeout(5000);
+                    setAlertTimeout(2000);
                 } finally {
                     setIsLoading(false);
                 }
@@ -400,7 +400,7 @@ const Stock = ({
                     console.error('Error updating stock data:', error);
                     setAlertState('error');
                     setAlert('Failed to update inventory data');
-                    setAlertTimeout(5000);
+                    setAlertTimeout(2000);
                 } finally {
                     setIsLoading(false);
                 }
@@ -456,7 +456,7 @@ const Stock = ({
             if (insufficientProducts.length > 0) {
                 setAlertState('error');
                 setAlert(`Insufficient quantity in the selected warehouse for the following products: ${insufficientProducts.join(', ')}`);
-                setAlertTimeout(8000);
+                setAlertTimeout(3000);
                 setIsSaveValue(false)
                 return;
             }
@@ -512,7 +512,7 @@ const Stock = ({
                     if (resps.error) {
                         setAlertState('info');
                         setAlert(resps.message);
-                        setAlertTimeout(5000);
+                        setAlertTimeout(3000);
                         setIsOnView(false);
                         setIsSaveValue(false);
                         setIsTransferValue(false);                        
@@ -530,7 +530,7 @@ const Stock = ({
             if (countSuccess === validEntries.length) {
                 setAlertState('success');
                 setAlert('All Products Transfered Successful!');
-                setAlertTimeout(5000);
+                setAlertTimeout(2000);
                 setIsOnView(false);
                 setIsSaveValue(false);
                 setIsTransferValue(false);                        
@@ -545,7 +545,7 @@ const Stock = ({
         } else {
             setAlertState('error');
             setAlert('Please fill all fields!');
-            setAlertTimeout(5000);
+            setAlertTimeout(2000);
             setIsSaveValue(false);
         }
     };
@@ -716,7 +716,7 @@ const Stock = ({
             console.error('Error generating PDF:', error);
             setAlertState('error');
             setAlert('Failed to generate PDF. Please try again.');
-            setAlertTimeout(5000);
+            setAlertTimeout(2000);
         } finally {
             setIsExporting(false);
         }
@@ -787,7 +787,7 @@ const Stock = ({
             console.error('Error generating Excel:', error);
             setAlertState('error');
             setAlert('Failed to generate Excel. Please try again.');
-            setAlertTimeout(5000);
+            setAlertTimeout(2000);
         } finally {
             setIsExporting(false);
         }

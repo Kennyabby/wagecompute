@@ -682,7 +682,7 @@ function App() {
           wrhsDeliveryObj[wrh.name] = (companyRecord.permissions.includes(`delivery_${wrh.name}`) || companyRecord.permissions.includes('all'))
         }
       })
-      console.log('WRH ACCESS OBJ', wrhsPosObj, wrhsDeliveryObj)
+      // console.log('WRH ACCESS OBJ', wrhsPosObj, wrhsDeliveryObj)
       setPosWrhAccess((posWrhAccess)=>{
         return {...posWrhAccess, ...wrhsPosObj}
       })

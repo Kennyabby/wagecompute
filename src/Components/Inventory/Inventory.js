@@ -321,6 +321,7 @@ const Inventory = ()=>{
                                             {(!isImportValue && !isTransferValue)  && 
                                                 <IoIosSettings 
                                                 className='pr-icon' 
+                                                title='More'
                                                 onClick={()=>{                                                    
                                                     setSettingsDrop(!settingsDrop)
                                                 }}
@@ -351,6 +352,7 @@ const Inventory = ()=>{
                                     </div>}  
                                     {isNewView && 
                                         <FaCloudArrowUp 
+                                            title='Save Record'
                                             name={clickedLabel}
                                             onClick={handleSaveAction} 
                                             className='pr-icon'
