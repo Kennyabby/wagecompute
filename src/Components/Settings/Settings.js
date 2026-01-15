@@ -174,7 +174,7 @@ const Settings = () => {
                 return setting.name === 'posSettings'
             })
             delete posSetFilt[0]?._id
-            setPosSettings(paySetFilt[0]?.name ? [...paySetFilt[0].posSettings] : [])
+            setPosSettings(posSetFilt[0]?.name ? [...posSetFilt[0].posSettings] : [])
         }  
     },[settings])
 
