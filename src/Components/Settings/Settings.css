@@ -367,3 +367,40 @@ input:checked + .slider:before {
     float: right;
     padding: 20px;
 }
+.general-settings{
+    display: flex;
+}
+.general-details {
+    width: 70%;
+    float: right;
+    padding: 20px;
+}
+.general-body {
+    width: 90%;
+    margin: auto;
+    justify-content: left;
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+}
+.general-propSet-add {
+    padding: 3px 10px;
+    margin: 5px;
+    width: max-content;
+    border-radius: 5px;
+    background: rgb(102, 202, 139);
+    color: rgb(239, 231, 231);
+    border: solid #1e8a23 2px;
+    cursor: pointer;
+}
+.general-propSet {
+    padding: 5px 10px;
+    margin: 5px;
+    width: max-content;
+    border-radius: 5px;
+    background: rgb(230, 224, 224);
+    cursor: pointer;
+}
+.active-propSet{
+    border: solid #45a049 2px;
+}

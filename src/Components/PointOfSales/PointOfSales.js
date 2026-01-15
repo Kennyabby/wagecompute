@@ -22,7 +22,7 @@ const PointOfSales = () => {
     // 1. Context and State Management
     // =========================================
     const { 
-        storePath, intervalPeriod,
+        storePath, intervalPeriod, posSettings,paymentMethods,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
         settings, getDate, posWrhAccess, employees, 
@@ -59,6 +59,7 @@ const PointOfSales = () => {
             ]);
         }catch(e){}
     }
+    const [curPosSettings, setCurPosSettings] = useState({});
     const [activeScreen, setActiveScreen] = useState('home');
     const [orderTables, setOrderTables] = useState([]);
     const [currentTable, setCurrentTable] = useState(null)
@@ -131,12 +132,10 @@ const PointOfSales = () => {
         receipt: '',
     }
     const paymentDetailClone = structuredClone({paymentDetail})
-    const [payPoints, setPayPoints] = useState({
-        'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
-        'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail},
-        'moniepoint5':{...paymentDetailClone.paymentDetail}, 'moniepoint6':{...paymentDetailClone.paymentDetail}, 
-        'cash':{...paymentDetailClone.paymentDetail}
-    })
+    const [payPoints, setPayPoints] = useState(paymentMethods.reduce((acc, method) => {
+        acc[method.name] = {...paymentDetailClone.paymentDetail};
+        return acc;
+    }, {}));
     const defaultPaymentDetails = {...structuredClone({payPoints}).payPoints}
     const [paymentDetails, setPaymentDetails] = useState(defaultPaymentDetails);
 
@@ -429,6 +428,8 @@ const PointOfSales = () => {
     },[posOrders, companyRecord?.emailid])
 
     useEffect(()=> {
+        const curPosSettings = posSettings?.posSettings?.find((setting) => setting.active)
+        setCurPosSettings(curPosSettings || {})
         // Fetch products
         getProducts(company)
 
@@ -836,19 +837,34 @@ const PointOfSales = () => {
     // =========================================
     // 3. Data Loading Functions
     // =========================================
-    const loadTableData = () =>{
-        let orderTables = []
-        for (let i=0; i<100; i++){
-            const orderTable = {}
-            orderTable.i_d = i+1
-            orderTable.name = `Table ${i+1}`
-            orderTable.capacity = 50
-            orderTable.status = 'available'
-            orderTable.activeOrders = 0
-            orderTable.createdAt = Date.now()
-            orderTables.push(orderTable)
+    const loadTableData = () =>{        
+        if (curPosSettings?.type === 'restaurant'){
+            let orderTables = []
+            for (let i=0; i<(Number(curPosSettings.size || 30)); i++){
+                const orderTable = {}
+                orderTable.i_d = i+1
+                orderTable.name = `Table ${i+1}`
+                orderTable.capacity = Number(curPosSettings?.capacity || 10)
+                orderTable.status = 'available'
+                orderTable.activeOrders = 0
+                orderTable.createdAt = Date.now()
+                orderTables.push(orderTable)
+            }
+            setOrderTables(orderTables)
+        }else{
+            let orderTables = []
+            for (let i=0; i<(Number(curPosSettings?.size || 1)); i++){
+                const orderTable = {}
+                orderTable.i_d = i+1
+                orderTable.name = `Shop ${i+1}`
+                orderTable.capacity = curPosSettings?.capacity || 1000
+                orderTable.status = 'available'
+                orderTable.activeOrders = 0
+                orderTable.createdAt = Date.now()
+                orderTables.push(orderTable)
+            }
+            setOrderTables(orderTables)
         }
-        setOrderTables(orderTables)
     }
 
     const loadInitialData = async () => {
@@ -2084,12 +2100,14 @@ const PointOfSales = () => {
 
         var posSalesAccess = []
         if (sessionUser!==null){
-            const userSalesWrhAccess = { 
-                ['open bar1']: ((sessionUser.profile).permissions.includes('pos_open bar1') || (sessionUser.profile).permissions.includes('all')),
-                ['open bar2']: ((sessionUser.profile).permissions.includes('pos_open bar2') || (sessionUser.profile).permissions.includes('all')),
-                ['vip']: ((sessionUser.profile).permissions.includes('pos_vip') || (sessionUser.profile).permissions.includes('all')),
-                ['kitchen']: ((sessionUser.profile).permissions.includes('pos_kitchen') || (sessionUser.profile).permissions.includes('all')),
-            }
+            let wrhsPosObj = {}
+            let wrhsDeliveryObj = {}
+            wrhs.forEach((wrh)=>{
+              if (wrh.purchase) return
+              wrhsPosObj[wrh.name] = ((sessionUser.profile).permissions.includes(`pos_${wrh.name}`) || (sessionUser.profile).permissions.includes('all'))
+              wrhsDeliveryObj[wrh.name] = ((sessionUser.profile).permissions.includes(`delivery_${wrh.name}`) || (sessionUser.profile).permissions.includes('all'))
+            })
+            const userSalesWrhAccess = {...wrhsPosObj}
             Object.keys(userSalesWrhAccess).forEach((wrh)=>{
                 if (userSalesWrhAccess[wrh]){
                     posSalesAccess.push(wrh)
@@ -2567,13 +2585,13 @@ const PointOfSales = () => {
                             }
                         </div>
                         <div className="pos-tables-layout">
-                            <div 
+                            {curPosSettings?.type === 'restaurant' && <div 
                                 className="add-table-box"
                                 onClick={handleAddTableClick}
                             >
                                 <div className="plus-icon">+</div>
                                 <div className="add-text">Add Table</div>
-                            </div>
+                            </div>}
                             {[...orderTables]
                                 .sort((a, b) => {
                                     const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
@@ -3345,7 +3363,7 @@ const POSDashboard = ({
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
     setAlertState, setAlert, setAlertTimeout, tables, wrhCategories
 }) => {
-    const { fetchServer, server, company } = useContext(ContextProvider);
+    const { fetchServer, server, company, wrhs} = useContext(ContextProvider);
 
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
@@ -3485,12 +3503,14 @@ const POSDashboard = ({
                         {profiles?.map((profile)=>{
                             if (profile.status !== 'admin' || companyRecord.status === 'admin'){
                                 var hasPosSalesAccess = false
-                                const userSalesWrhAccess = { 
-                                    ['open bar1']: (profile.permissions.includes('pos_open bar1') || profile.permissions.includes('all')),
-                                    ['open bar2']: (profile.permissions.includes('pos_open bar2') || profile.permissions.includes('all')),
-                                    ['vip']: (profile.permissions.includes('pos_vip') || profile.permissions.includes('all')),
-                                    ['kitchen']: (profile.permissions.includes('pos_kitchen') || profile.permissions.includes('all')),
-                                }
+                                let wrhsPosObj = {}
+                                let wrhsDeliveryObj = {}
+                                wrhs.forEach((wrh)=>{
+                                    if (wrh.purchase) return
+                                    wrhsPosObj[wrh.name] = (profile.permissions.includes(`pos_${wrh.name}`) || profile.permissions.includes('all'))
+                                    wrhsDeliveryObj[wrh.name] = (profile.permissions.includes(`delivery_${wrh.name}`) || profile.permissions.includes('all'))
+                                })
+                                const userSalesWrhAccess = {...wrhsPosObj}
                                 Object.keys(userSalesWrhAccess).forEach((wrh)=>{
                                     if (userSalesWrhAccess[wrh]){
                                         hasPosSalesAccess = true

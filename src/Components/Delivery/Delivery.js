@@ -27,7 +27,7 @@ const Delivery = () => {
     // 1. Context and State Management
     // =========================================
     const { 
-        storePath, intervalPeriod,
+        storePath, intervalPeriod, posSettings, paymentMethods,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         alert, alertState, alertTimeout, actionMessage,
@@ -122,12 +122,10 @@ const Delivery = () => {
         receipt: '',
     }
     const paymentDetailClone = structuredClone({paymentDetail})
-    const [payPoints, setPayPoints] = useState({
-        'moniepoint1':{...paymentDetailClone.paymentDetail}, 'moniepoint2':{...paymentDetailClone.paymentDetail}, 
-        'moniepoint3':{...paymentDetailClone.paymentDetail}, 'moniepoint4':{...paymentDetailClone.paymentDetail}, 
-        'moniepoint5':{...paymentDetailClone.paymentDetail}, 'moniepoint6':{...paymentDetailClone.paymentDetail}, 
-        'cash':{...paymentDetailClone.paymentDetail}
-    })
+    const [payPoints, setPayPoints] = useState(paymentMethods.reduce((acc, method) => {
+        acc[method.name] = {...paymentDetailClone.paymentDetail};
+        return acc;
+    }, {}));
     const [paymentDetails, setPaymentDetails] = useState({...structuredClone({payPoints}).payPoints});
     
     // Settings States
@@ -791,18 +789,34 @@ const Delivery = () => {
     // =========================================
 
     const loadTableData = () =>{
-        let orderTables = []
-        for (let i=0; i<100; i++){
-            const orderTable = {}
-            orderTable.i_d = i+1
-            orderTable.name = `Table ${i+1}`
-            orderTable.capacity = 50
-            orderTable.status = 'available'
-            orderTable.activeOrders = 0
-            orderTable.createdAt = Date.now()
-            orderTables.push(orderTable)
+        const curPosSettings = posSettings?.posSettings?.find((setting) => setting.active)
+        if (curPosSettings?.type === 'restaurant'){
+            let orderTables = []
+            for (let i=0; i<(Number(curPosSettings.size || 30)); i++){
+                const orderTable = {}
+                orderTable.i_d = i+1
+                orderTable.name = `Table ${i+1}`
+                orderTable.capacity = Number(curPosSettings?.capacity || 10)
+                orderTable.status = 'available'
+                orderTable.activeOrders = 0
+                orderTable.createdAt = Date.now()
+                orderTables.push(orderTable)
+            }
+            setOrderTables(orderTables)
+        }else{
+            let orderTables = []
+            for (let i=0; i<(Number(curPosSettings?.size || 1)); i++){
+                const orderTable = {}
+                orderTable.i_d = i+1
+                orderTable.name = `Shop ${i+1}`
+                orderTable.capacity = curPosSettings?.capacity || 1000
+                orderTable.status = 'available'
+                orderTable.activeOrders = 0
+                orderTable.createdAt = Date.now()
+                orderTables.push(orderTable)
+            }
+            setOrderTables(orderTables)
         }
-        setOrderTables(orderTables)
     }
 
      const loadInitialData = async () => {

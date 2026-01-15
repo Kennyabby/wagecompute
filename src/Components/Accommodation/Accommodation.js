@@ -17,7 +17,7 @@ import { MdDelete } from "react-icons/md";
 
 const Accommodation = ()=>{
     const {storePath, 
-        fetchServer, 
+        fetchServer, paymentMethods,
         server, intervalPeriod,
         companyRecord, 
         company, recoveryVal, allowBacklogs,
@@ -57,6 +57,7 @@ const Accommodation = ()=>{
     const [selectedUnPaidAccommodations, setSelectedUnPaidAccommodations] = useState([])
     const [curSelectedUnPaidAccommodation, setCurSelectedUnPaidAccommodation] = useState('')
     const [curPaymentAmount, setCurPaymentAmount] = useState(0)    
+    const [payPoints, setPayPoints] = useState({})
     const rooms = {
         '1':{
             price: 15000
@@ -101,14 +102,7 @@ const Accommodation = ()=>{
         paymentAmount: 0,
         payPoint: '',
         paymentReceipt:''
-    }
-
-    const payPoints = {
-        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
-        'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063',
-        'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
-        'cash':'CASH', 'Employee':'EMPLOYEE'
-    } 
+    }    
 
     const [accommodationFields, setAccommodationFields] = useState({...defaultAccommodationFields})
     const [customerFields, setCustomerFields] = useState({
@@ -123,6 +117,17 @@ const Accommodation = ()=>{
         storePath('accommodations')  
     },[storePath])
 
+    useEffect(()=>{
+        const payPoints = paymentMethods.reduce((obj, method)=>{
+            if (method.name !== 'cash'){
+                obj[method.name] = `${method.i_d}-${method.account}`
+            }else{
+                obj[method.name] = `${method.i_d}`
+            }
+            return obj
+        },{})
+        setPayPoints({...payPoints, 'Employee': 'EMPLOYEE' })
+    },[paymentMethods])
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getApprovals(cmp_val, companyRecord)
