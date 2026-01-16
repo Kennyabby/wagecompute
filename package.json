@@ -7,6 +7,7 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "@types/react-datepicker": "^7.0.0",
+    "cross-env": "^10.1.0",
     "export-to-csv": "^1.4.0",
     "formdata": "^0.10.4",
     "formdata-polyfill": "^4.0.10",
