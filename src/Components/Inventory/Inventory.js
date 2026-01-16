@@ -320,12 +320,13 @@ const Inventory = ()=>{
                                     {<div className='pr-settings'>                                            
                                             {(!isImportValue && !isTransferValue)  && 
                                                 <IoIosSettings 
-                                                className='pr-icon' 
-                                                title='More'
-                                                onClick={()=>{                                                    
-                                                    setSettingsDrop(!settingsDrop)
-                                                }}
-                                            />}                              
+                                                    className='pr-icon' 
+                                                    title='More'
+                                                    onClick={()=>{                                                    
+                                                        setSettingsDrop(!settingsDrop)
+                                                    }}
+                                                />
+                                            }                              
                                             {settingsDrop && 
                                                 <div className='settingsDrop' onClick={handleSettingAction}>
                                                     {settingsMenu[clickedLabel]?.map((menu, id)=>{
@@ -337,7 +338,7 @@ const Inventory = ()=>{
                                                             if (menu.status === 'other'){
                                                                 if (productView === 'list'){
                                                                     return (
-                                                                        (menu.name === 'delete' || menu.name === 'import record') && <span key={id} name={menu.name}>{menu.name}</span>
+                                                                        (menu.name === 'delete' || menu.name === 'import record' || menu.name === 'internal transfer') && <span key={id} name={menu.name}>{menu.name}</span>
                                                                     )
                                                                 }else{
                                                                     return (
