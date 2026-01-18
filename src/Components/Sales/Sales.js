@@ -1986,7 +1986,6 @@ const Sales = ()=>{
                     debtReportList = debtReportList.concat(debtDoc)
                 }else{
                     {sales.forEach((sale)=>{
-                        console.log((new Date(sale.postingDate).getFullYear()), String(recoveryYear))
                         if (                                                        
                             months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
                             String(new Date(sale.postingDate).getFullYear()) === String(recoveryYear)                                                        
