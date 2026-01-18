@@ -559,7 +559,7 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
     useEffect(()=>{
         var empDebtAmount = ""
         curEmployee.employeeDebtList?.forEach((empDebt)=>{
-            if (att.month === months[new Date(empDebt.postingDate).getMonth()]){
+            if (att.month === months[new Date(empDebt.postingDate).getMonth()] && String(att.year) === String(new Date(empDebt.postingDate).getFullYear())){
                 empDebtAmount = Number(empDebtAmount) + Number(empDebt.debtAmount) - Number(empDebt.debtRecovered || 0)
             }
         })
@@ -568,7 +568,7 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
         sales.forEach((sale)=>{
             sale.record.forEach((record)=>{
                 if (record.employeeId === curEmployee.i_d){
-                    if (att.month === months[new Date(sale.postingDate).getMonth()]){
+                    if (att.month === months[new Date(sale.postingDate).getMonth()] && String(att.year) === String(new Date(sale.postingDate).getFullYear())){
                         var thisDebt = Number(record.debt) - Number(record.debtRecovered || 0)
                         saleDebt = Number(saleDebt) + Number(thisDebt>0?thisDebt:0) 
                         saleShortage = Number(saleShortage)+Number(record.shortage) + (Number(thisDebt) < 0 ? thisDebt : 0)                        
@@ -577,6 +577,7 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
             })
         })
         if ((Number(saleDebt)+Number(empDebtAmount))>0){
+            // console.log('Sale Debt:', saleDebt, 'Emp Debt:', empDebtAmount)
             setSubDebtDue(Number(saleDebt)+Number(empDebtAmount))
         }
         if (saleShortage){
