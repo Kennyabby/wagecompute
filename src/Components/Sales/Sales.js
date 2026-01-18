@@ -3067,7 +3067,7 @@ const Sales = ()=>{
                                                 {sales.map((sale)=>{                                                    
                                                     if (                                                        
                                                         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                                                        String(new Date(sale.postingDate).getFullYear()) === recoveryYear                                                        
+                                                        String(new Date(sale.postingDate).getFullYear()) === String(recoveryYear)
                                                     ){
                                                         return (
                                                             sale.record.map((record,index)=>{
