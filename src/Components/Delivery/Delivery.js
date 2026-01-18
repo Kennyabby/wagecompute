@@ -2388,7 +2388,7 @@ const Delivery = () => {
                             }
                         </div>
                         <div className="header-actions">
-                            <button 
+                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('place_multiple_deliveries')) & <button 
                                 className="action-btn"
                                 // disabled={makingPayment}
                                 onClick={() => {                                    
@@ -2396,7 +2396,7 @@ const Delivery = () => {
                                 }}
                             >
                                 Post All Deliveries
-                            </button>
+                            </button>}
                             <button 
                                 name="prevTable" 
                                 className='action-btn'
