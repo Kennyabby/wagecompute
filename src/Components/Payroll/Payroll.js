@@ -557,9 +557,10 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
       
     },[att,curEmployee])
     useEffect(()=>{
-        var empDebtAmount = ""
+        let empDebtAmount = ""
         curEmployee.employeeDebtList?.forEach((empDebt)=>{
             if (att.month === months[new Date(empDebt.postingDate).getMonth()] && String(att.year) === String(new Date(empDebt.postingDate).getFullYear())){
+                console.log(String(att.year), String(new Date(empDebt.postingDate).getFullYear()), empDebt.debtAmount, empDebt.debtRecovered)
                 empDebtAmount = Number(empDebtAmount) + Number(empDebt.debtAmount) - Number(empDebt.debtRecovered || 0)
             }
         })
@@ -577,8 +578,9 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
             })
         })
         if ((Number(saleDebt)+Number(empDebtAmount))>0){
-            // console.log('Sale Debt:', saleDebt, 'Emp Debt:', empDebtAmount)
             setSubDebtDue(Number(saleDebt)+Number(empDebtAmount))
+        }else{
+            setSubDebtDue('')
         }
         if (saleShortage){
             setSubShortages(saleShortage)
@@ -619,7 +621,7 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
         }
         
     },[att, prevAtt, curEmployee])
-
+    
     return (
         <>
             <div className='pyrl'>
