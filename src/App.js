@@ -882,7 +882,10 @@ function App() {
   }
 
   const getSessionEnd = (sessionStart) => {
-      const closingHour = 11
+      const curPosSetting = posSettings?.posSettings?.find((sett)=>{
+        return sett.active
+      })
+      const closingHour = Number(curPosSetting?.sessHour || 11)
       const sessionStartDate = new Date(sessionStart);
       const sessionEndDate = new Date(sessionStartDate);
 
@@ -898,20 +901,23 @@ function App() {
   };
 
   const getSessionStart = (timestamp) => {
-      const closingHour = 11;
-      const date = new Date(timestamp);
+    const curPosSetting = posSettings?.posSettings?.find((sett)=>{
+        return sett.active
+    })
+    const closingHour = Number(curPosSetting?.sessHour || 11)
+    const date = new Date(timestamp);
 
-      // Candidate session start at 11:00 AM same day
-      const sessionStart = new Date(date);
-      sessionStart.setHours(closingHour, 0, 0, 0);
+    // Candidate session start at 11:00 AM same day
+    const sessionStart = new Date(date);
+    sessionStart.setHours(closingHour, 0, 0, 0);
 
-      // If timestamp is BEFORE today's 11am,
-      // then the session started at 11am the PREVIOUS day
-      if (date.getTime() < sessionStart.getTime()) {
-          sessionStart.setDate(sessionStart.getDate() - 1);
-      }
+    // If timestamp is BEFORE today's 11am,
+    // then the session started at 11am the PREVIOUS day
+    if (date.getTime() < sessionStart.getTime()) {
+        sessionStart.setDate(sessionStart.getDate() - 1);
+    }
 
-      return sessionStart.getTime();
+    return sessionStart.getTime();
   };
 
   const shuffleList = (array) => {

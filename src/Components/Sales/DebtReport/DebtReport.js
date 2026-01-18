@@ -7,6 +7,7 @@ import html2pdf from 'html2pdf.js';
 const DebtReport = ({
     reportDebts, multiple,
     recoveryMonth,
+    recoveryYear,
     setShowDebtReport,
     recoveryEmployeeId
 })=>{
@@ -66,14 +67,14 @@ const DebtReport = ({
               useCORS: true
            }
         },
-        filename: `DEBT REPORT - ${recoveryMonth}.pdf`
+        filename: `DEBT REPORT - ${recoveryMonth}, ${recoveryYear}.pdf`
     };
 
     const printToPDF = () => {
         const element = targetRef.current;
         const options = {
             margin:       0.1,
-            filename:     `DEBT REPORT - ${recoveryMonth}.pdf`,
+            filename:     `DEBT REPORT - ${recoveryMonth}, ${recoveryYear}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
@@ -103,7 +104,7 @@ const DebtReport = ({
                                                 <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p>
                                                 {/* <p className='billfrompayee'>{`SALES FROM `}<b>{`${getDate(fromDate)}`}</b>{` TO `}<b>{`${getDate(toDate)}`}</b></p> */}
-                                                <p className='billfrompayee'><b>{'DEBT AND RECOVERY REPORT FOR THE MONTH - ' + recoveryMonth}</b></p>
+                                                <p className='billfrompayee'><b>{'DEBT AND RECOVERY REPORT FOR THE MONTH - ' + recoveryMonth + ', ' + String(recoveryYear)}</b></p>
                                             </div>
                                        </div>
                                     </div>

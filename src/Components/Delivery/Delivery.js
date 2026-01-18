@@ -31,7 +31,7 @@ const Delivery = () => {
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         alert, alertState, alertTimeout, actionMessage,
-        settings, getDate, deliveryWrhAccess, employees, 
+        settings, getDate, deliveryWrhAccess, employees,
         profiles, fetchProfiles, getProductsWithStock,
         products, setProducts, getProducts, getEmployeeName,
         fetchTables, tables, setTables, setCached, setPosOrders,
@@ -617,14 +617,15 @@ const Delivery = () => {
             return;
         }
 
+        const deliveryDate = new Date().getTime()
         const newSession = {
             employee_id: ![null, undefined].includes(sessionUser)
                 ? sessionUser.profile.emailid
                 : companyRecord.emailid,
-            i_d: new Date().getTime(),
+            i_d: deliveryDate,
             type: 'delivery',
             wrh: wrh,
-            start: new Date().getTime(),
+            start: deliveryDate,
             startedBy: companyRecord.emailid,
             end: null,
             active: true,
@@ -1006,14 +1007,14 @@ const Delivery = () => {
                     !companyRecord?.permissions.includes('access_delivery_sessions'))
             ) {
                 setAlertState('error');
-                setAlert(`Table ${table.i_d} is not available. Still in use!`);
+                setAlert(`Table ${table.name} is not available. Still in use!`);
                 setAlertTimeout(2000);
                 return;
             }
 
             setSelectedProduct(null);
             setAlertState('info');
-            setAlert(`Loading Table ${table.i_d} Orders...`);
+            setAlert(`Loading ${table.name} Orders...`);
             setAlertTimeout(100000)            
 
             // 1) Use locally available orders (mirrored from IndexedDB) as primary
@@ -1049,7 +1050,7 @@ const Delivery = () => {
                 }
                 setActiveScreen('order');
                 setAlertState('info');
-                setAlert('Loaded table orders from local cache...');
+                setAlert('Loaded orders from local cache...');
                 setAlertTimeout(500);
             } else {
                 // No local orders; optimistic new order
@@ -1057,7 +1058,7 @@ const Delivery = () => {
                 createNewOrder(table);
                 setActiveScreen('order');
                 setAlertState('info');
-                setAlert('Loaded table (no local orders found)...');
+                setAlert('Loaded orders (no local orders found)...');
                 setAlertTimeout(500);
             }
 
@@ -1118,7 +1119,7 @@ const Delivery = () => {
 
             } else {
                 setAlertState('info');
-                setAlert('Slow Network. Could Not Refresh Table Orders!');
+                setAlert('Slow Network. Could Not Refresh Orders!');
                 setAlertTimeout(3000);
             }
 
@@ -1234,11 +1235,13 @@ const Delivery = () => {
     // 6. Delivery Processing
     // =========================================
 
-    const updateInventory = async (action, items, deliveryDataUpdate) => {
-        setAlertState('info');
-        setAlert('Updating Inventory...');
-        setAlertTimeout(5000);
-        setPostCount(0);
+    const updateInventory = async (action, items, deliveryDataUpdate, currentOrder, count) => {
+        if (!count){
+            setAlertState('info');
+            setAlert('Updating Inventory...');
+            setAlertTimeout(5000);
+            setPostCount(0);
+        }
 
         const isDeplete = action === 'deplete';
         const createdAt = new Date().getTime();
@@ -1318,8 +1321,8 @@ const Delivery = () => {
                     op: 'create',
                     payload: { transactions },
                 });
-                setAlert('Inventory updated successfully');
                 setAlertState('success');
+                setAlert((count || 0) + 1, 'Order(s) Inventory updated successfully');
                 setAlertTimeout(2000);
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
@@ -1352,9 +1355,15 @@ const Delivery = () => {
                     setPlacingOrder(false) 
                     // 4) Local success alerts (no dependence on server)
                     if (action === 'deplete') {
-                        setAlertState('success');
-                        setAlert('Delivery processed successfully');
-                        setAlertTimeout(2000);
+                        if (!count){
+                            setAlertState('success');
+                            setAlert('Delivery processed successfully');
+                            setAlertTimeout(2000);
+                        }else if (count === tableOrders.length - 1){
+                            setAlertState('success');
+                            setAlert('All Deliveries processed successfully');
+                            setAlertTimeout(2000);
+                        }
                     } else {
                         setCancelling(false);
                         setAlertState('success');
@@ -1379,17 +1388,42 @@ const Delivery = () => {
         }
     };
 
-    const handleOrderDelivery = async () => {
+    const postAllDeliveries = async () => {
+        if (tableOrders.length){
+            let count = 0
+            for (const order of tableOrders){
+                let totalItems = 0;
+                    let deliveredQuantity = 0;
+                    const deliveredItems = order.items.filter((item) => {
+                        if (wrhCategories[wrh].includes(item.category)) {
+                            totalItems += Number(item.quantity);
+                            deliveredQuantity += Number(
+                                item.deliveredQuantity || 0
+                            );
+                            return Number(item.deliveredQuantity || 0) > 0;
+                        }
+                        return false;
+                    });
+                if (order.delivery === 'pending' && deliveredQuantity < totalItems){
+                    await handleOrderDelivery(order, order, count)
+                    count += 1
+                }
+            }
+        }
+    }
+
+    const handleOrderDelivery = async (currentOrder, posCurrentOrder, count) => {
         // fetchSessions(company, "delivery", companyRecord);
         // fetchAllSessions({company})
         // fetchTables(company);
         // if (products.length) {
         //     getProductsWithStock(company, products);
         // }
-
-        setAlertState('info');
-        setAlert('Processing Delivery...');
-        setAlertTimeout(10000);
+        if (!count){
+            setAlertState('info');
+            setAlert('Processing Delivery...');
+            setAlertTimeout(10000);
+        }
         setPlacingOrder(true);
 
         const paymentData = {};
@@ -1630,9 +1664,9 @@ const Delivery = () => {
                     try {
                         // 3) Kick off local inventory update + queue
                         setTimeout(() => {
-                            updateInventory('deplete', itemsToDeplete, deliveryDataUpdate);
+                            updateInventory('deplete', itemsToDeplete, deliveryDataUpdate, currentOrder, count);
                         }, 500);
-                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                        
+                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                                                
                     } catch (e) {
                         // Leave pending changes in queue; 5‑minute auto-sync will retry
                     }
@@ -1654,7 +1688,9 @@ const Delivery = () => {
     const compareStock = async (countedStockList) =>{
         let stocksDifference = {};
         let stocksPositiveDifference = {};
+        let stocksNegativeDifference = {};
         stocksPositiveDifference['count'] = 0
+        stocksNegativeDifference['count'] = 0
         let differenceSummary = {};  
         Object.keys(countedStockList).forEach((entryWrh)=>{
             stocksDifference[entryWrh] = []
@@ -1677,7 +1713,7 @@ const Delivery = () => {
                         product.locationStock?.[entryWrh] || { cost: 0, quantity: 0 };
                     countBaseQuantity = Number(quantity || 0);
                     const salesPrice = (entryWrh === 'vip' ? Number(entry.vipPrice || entry.salesPrice || 0) : Number(entry.salesPrice || 0))
-                    const qtyDifference = Number(entry.countedQuantity) - countBaseQuantity                    
+                    const qtyDifference = Number(entry.countedQuantity) - (countBaseQuantity> 0 ? countBaseQuantity: 0)
                     const costDifference = entry.costPrice * qtyDifference
                     const salesDifference = qtyDifference * salesPrice
                     const stockDiff = {
@@ -1689,7 +1725,7 @@ const Delivery = () => {
                         vipPrice: entry.vipPrice,
                         salesUom: entry.salesUom,
                         baseUom: entry.baseUom,
-                        countedQuantity: entry.countedQuantity,
+                        countedQuantity: Number(entry.countedQuantity || 0),
                         baseQuantity: countBaseQuantity,
                         qtyDifference,
                         costDifference,
@@ -1699,6 +1735,8 @@ const Delivery = () => {
                     if (qtyDifference > 0){
                         stocksPositiveDifference[entryWrh].push(stockDiff)
                         stocksPositiveDifference['count'] += 1
+                    }else if (qtyDifference < 0){
+                        stocksNegativeDifference['count'] += 1
                     }
                     differenceSummary[entryWrh].totalBaseQuantity += Number(countBaseQuantity) 
                     differenceSummary[entryWrh].totalCountedQuantity += Number(entry.countedQuantity)               
@@ -1710,7 +1748,7 @@ const Delivery = () => {
         })
         // console.log('Stock Difference:',stocksDifference)
         // console.log('Difference Summary:',differenceSummary)
-        return {stocksPositiveDifference, stocksDifference, differenceSummary};
+        return {stocksPositiveDifference, stocksNegativeDifference, stocksDifference, differenceSummary};
     }
 
     const printReceipt = (orderData) => {
@@ -1842,12 +1880,14 @@ const Delivery = () => {
     const renderSessionEntry = () => {
         var posDeliveryAccess = []
         if (sessionUser!==null){
-            const userDeliveryWrhAccess = { 
-                ['open bar1']: ((sessionUser.profile).permissions.includes('delivery_open bar1') || (sessionUser.profile).permissions.includes('all')),
-                ['open bar2']: ((sessionUser.profile).permissions.includes('delivery_open bar2') || (sessionUser.profile).permissions.includes('all')),
-                ['vip']: ((sessionUser.profile).permissions.includes('delivery_vip') || (sessionUser.profile).permissions.includes('all')),
-                ['kitchen']: ((sessionUser.profile).permissions.includes('delivery_kitchen') || (sessionUser.profile).permissions.includes('all')),
-            }
+            let wrhsPosObj = {}
+            let wrhsDeliveryObj = {}
+            wrhs.forEach((wrh)=>{
+              if (wrh.purchase) return
+              wrhsPosObj[wrh.name] = ((sessionUser.profile).permissions.includes(`pos_${wrh.name}`) || (sessionUser.profile).permissions.includes('all'))
+              wrhsDeliveryObj[wrh.name] = ((sessionUser.profile).permissions.includes(`delivery_${wrh.name}`) || (sessionUser.profile).permissions.includes('all'))
+            })
+            const userDeliveryWrhAccess = {...wrhsDeliveryObj}
             Object.keys(userDeliveryWrhAccess).forEach((wrh)=>{
                 if (userDeliveryWrhAccess[wrh]){
                     posDeliveryAccess.push(wrh)
@@ -2073,7 +2113,7 @@ const Delivery = () => {
                             }
                         })
                         if (deliveredQuantity < totalItems){
-                            handleOrderDelivery()
+                            handleOrderDelivery(currentOrder, posCurrentOrder)
                         }else{
                             setAlertState('error')
                             setAlert('Nothing to Post. You Have Completed Your Delivery!')
@@ -2324,6 +2364,7 @@ const Delivery = () => {
                 liveErrorMessages={liveErrorMessages}
                 sessionEnded={sessionEnded}
                 getSessionEnd = {getSessionEnd}
+                wrhs={wrhs}
                 setWrh={setWrh}
                 deliveryWrhAccess={deliveryWrhAccess}
                 allSessionOrders={allSessionOrders}
@@ -2348,6 +2389,15 @@ const Delivery = () => {
                         </div>
                         <div className="header-actions">
                             <button 
+                                className="action-btn"
+                                // disabled={makingPayment}
+                                onClick={() => {                                    
+                                    postAllDeliveries()
+                                }}
+                            >
+                                Post All Deliveries
+                            </button>
+                            <button 
                                 name="prevTable" 
                                 className='action-btn'
                                 onClick={switchTable}
@@ -2365,12 +2415,7 @@ const Delivery = () => {
                             <button 
                                 className="action-btn"
                                 // disabled={makingPayment}
-                                onClick={() => {
-                                    // fetchSessions(company, "delivery", companyRecord)
-                                    // fetchAllSessions({company})
-                                    // if (products.length){
-                                    //     getProductsWithStock(company, products)
-                                    // }
+                                onClick={() => {                                    
                                     fetchTables(company)
                                     setTableOrders([])
                                     setActiveScreen('home')
@@ -2565,7 +2610,8 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                 updateInventory(
                     'cancel',
                     itemsToCancel.deliveredItems,
-                    deliveryUpdate
+                    deliveryUpdate,
+                    currentOrder
                 );
             }, 1000);
 
@@ -2666,7 +2712,7 @@ const AddProduct = ({
     setAlertState, setAlert, setAlertTimeout, setActionMessage, alert, alertState, alertTimeout, actionMessage
 })=>{    
     const [category, setCategory] = useState('all')
-    const [wrh1, setWrh1] = useState(isProductView ? Object.keys(countedStockList)[0] : 'open bar1' )
+    const [wrh1, setWrh1] = useState(isProductView ? Object.keys(countedStockList)[0] : wrhs[0]?.name || 'open bar1' )
     const [totalSalesAmount, setTotalSalesAmount] = useState(0)
     const [totalAmount, setTotalAmount] = useState(0)
     const [countResult, setCountResult] = useState({})
@@ -2815,11 +2861,11 @@ const AddProduct = ({
         }
     }
 
-    const saveStockSDifference = async ()=>{
+    const saveStocksDifference = async (result)=>{
         setAlert('info')
-        setAlert('Applying Sales Shortage...')
+        setAlert('Calculating Shortages...')
         setAlertTimeout(2000)
-        console.log('count result:', countResult)
+        console.log('count result:', result || countResult)
         setIsProductView(false)
         setProductAdd(false)      
         setAddingProducts(false)                          
@@ -2841,7 +2887,7 @@ const AddProduct = ({
                     }}
                     action={()=>{
                         setActionMessage('')
-                        saveStockSDifference()
+                        saveStocksDifference()
                     }}
                 />} 
                 <div className='add-products' ref={targetRef}>
@@ -2863,7 +2909,7 @@ const AddProduct = ({
                                 }
                             })                        
                         }
-                        <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div>
+                        {/* <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div> */}
                         {(!isProductView) && <div
                             className='slprwh-print'
                             onClick={()=>{
@@ -2891,7 +2937,7 @@ const AddProduct = ({
                             })}
                         </select>
                     </div>
-                    <div className='add-products-title slprwh-add'>Product Sales Details</div>
+                    <div className='add-products-title slprwh-add'>Enter Counted Closing Stock</div>
                     <div className='add-products-content'>
                         <div className='add-products-content-title'>
                             <div>Product Name</div>
@@ -2976,17 +3022,19 @@ const AddProduct = ({
                                 if (!addingProducts){
                                     setAddingProducts(true)                                    
                                     const result = await compareStock(countedStockList)          
-                                    const {stocksPositiveDifference, stocksDifference, differenceSummary} =  result                                     
+                                    setCountResult(result)
+                                    const {stocksPositiveDifference, stocksNegativeDifference, stocksDifference, differenceSummary} =  result                                     
                                     if (stocksPositiveDifference.count){
                                         setAlertState('error')
                                         setAlert('Positive Stock Differences Found.! Make Sure No Purchases or Transfers are Pending. Resolve The Descrepancies Before Proceeding!')
                                         setAlertTimeout(5000)
-                                    }else{
-                                        setCountResult(result)
+                                    }else if (stocksNegativeDifference.count) {
                                         setAlertState('info')
                                         setActionMessage('Accept')                                        
                                         setAlert('Your Stock Count is less than current Inventory. Accept the difference as Sales Shortage, to be applied to the responsible employee IDs')
                                         setAlertTimeout(15000)
+                                    }else{
+                                        saveStocksDifference(result)
                                     }
                                 }
                             }}
@@ -3008,7 +3056,7 @@ const AddProduct = ({
 
 const DeliveryDashboard = ({
     sessions, allDeliverySessions, setAllDeliverySessions, profiles, employees, companyRecord, 
-    isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession,
+    isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, wrhs,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
     setWrh, allSessionOrders, getPosOrders, getSessionSales, curSession,
     setAlertState, setAlert, setAlertTimeout, tables, setProductAdd, mergeAndPersistOrders, mergeAndPersistSessions,
@@ -3055,13 +3103,13 @@ const DeliveryDashboard = ({
             <div className='pos-sessions'>
                 <div className='pos-sessions-nav'>
                     <div className={'live-nav'}>
-                        {/* {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reconcile_inventory')) && <button 
                             className="action-btn"
                             onClick={() => setProductAdd(true)}
                             style={{ marginRight: '10px' }}
                         >
                             Reconcile Inventory
-                        </button>} */}
+                        </button>}
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button 
                             className="action-btn"
                             onClick={() => {   
@@ -3086,12 +3134,14 @@ const DeliveryDashboard = ({
                         {profiles?.map((profile)=>{
                             if (profile.status !== 'admin' || companyRecord.status === 'admin'){
                                 var hasPosDeliveryAccess = false
-                                const userDeliveryWrhAccess = { 
-                                    ['open bar1']: (profile.permissions.includes('delivery_open bar1') || profile.permissions.includes('all')),
-                                    ['open bar2']: (profile.permissions.includes('delivery_open bar2') || profile.permissions.includes('all')),
-                                    ['vip']: (profile.permissions.includes('delivery_vip') || profile.permissions.includes('all')),
-                                    ['kitchen']: (profile.permissions.includes('delivery_kitchen') || profile.permissions.includes('all')),
-                                }
+                                let wrhsPosObj = {}
+                                let wrhsDeliveryObj = {}
+                                wrhs.forEach((wrh)=>{
+                                    if (wrh.purchase) return
+                                    wrhsPosObj[wrh.name] = (profile.permissions.includes(`pos_${wrh.name}`) || profile.permissions.includes('all'))
+                                    wrhsDeliveryObj[wrh.name] = (profile.permissions.includes(`delivery_${wrh.name}`) || profile.permissions.includes('all'))
+                                })
+                                const userDeliveryWrhAccess = {...wrhsDeliveryObj}
                                 Object.keys(userDeliveryWrhAccess).forEach((wrh)=>{
                                     if (userDeliveryWrhAccess[wrh]){
                                         hasPosDeliveryAccess = true
@@ -3115,10 +3165,12 @@ const DeliveryDashboard = ({
                                         if ([null, undefined].includes(employeeSession)){
                                             employeeSession = employeeSessions[employeeSessions.length-1]
                                         }
+                                        
                                         if ((new Date().getTime()) >= getSessionEnd(employeeSession.start) || employeeSession.end){
                                             sessionLive = false
                                         }else{
                                             sessionLive = true
+                                            
                                         }
                                     }
                                     return (

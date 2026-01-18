@@ -67,7 +67,8 @@ const Settings = () => {
         type: '',
         size: '',
         capacity: '',
-        active: false
+        active: false,
+        sessHour: ''
     }
     const [loginDetails, setLoginDetails] = useState({
         email: '',
@@ -77,20 +78,18 @@ const Settings = () => {
         enableDebtRecovery: false
     })
 
+    const [sessionPeriods, setSessionPeriods] = useState([])
     const modulePermissions = [
         ...dashList
     ]
     const [salesPostsPermissions, setSalesPostsPermissions] = useState([])
     const [deliveryPostsPermissions, setDeliveryPostsPermissions] = useState([])
+    const [posAdminPermissions, setPosAdminPermissions] = useState([])
     const editDeletePermissions = [
         'edit_employees', 'enable_employee_debt_recovery', 'edit_product_details', 
         'add_expense_category', 'edit_pos_order', 'cancel_pos_order', 'override_pos_receipts', 
         'edit_payment_receipts', 'cancel_delivery_order', 'override_accomodation', 
         'view_all_accommodation', 'allow_group_payment'
-    ]
-    const posAdminPermissions = [
-        'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent', 
-        'edit_ended_sessions', 'override_open bar1', 'override_open bar2', 'override_vip', 'override_kitchen'
     ]
     const postingPermissions = [
         'allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products', 
@@ -181,17 +180,29 @@ const Settings = () => {
     useEffect(()=>{
         let salesPostsPerms = []
         let deliveryPostsPerms = []
+        let overridePerms = []
         if (wrhs.length){
             wrhs.forEach((wrh)=>{
                 salesPostsPerms.push(`pos_${wrh.name}`)
                 deliveryPostsPerms.push(`delivery_${wrh.name}`)
+                overridePerms.push(`override_${wrh.name}`)
             })
         }
         setSalesPostsPermissions(salesPostsPerms)
         setDeliveryPostsPermissions(deliveryPostsPerms)
+        setPosAdminPermissions([
+            'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent', 'reconcile_inventory',
+            'edit_ended_sessions', ...overridePerms])
     },[wrhs])
 
     useEffect(() => {
+        const periods = []
+        for (let i=0 ; i<24; i++){
+            const hour = `${i}`
+            periods.push(hour)
+        }
+        setSessionPeriods(periods)
+
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (cmp_val) {
             getSettings(cmp_val, companyRecord)
@@ -1432,6 +1443,21 @@ const Settings = () => {
                                         value={curPropSet.capacity}
                                         onChange={handlePropSetChange}
                                     />
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <label>Session-End Hour (Automatic)</label>
+                                    <select
+                                        className='forminp'
+                                        name='sessHour'                                      
+                                        placeholder={`Select Session-End Hour`}
+                                        value={curPropSet.sessHour}
+                                        onChange={handlePropSetChange}
+                                    >
+                                        <option>Select Session-End Hour</option>
+                                        {sessionPeriods.map((hour, id)=>{
+                                            return <option key={id} value={hour}>{hour}</option>
+                                        })}
+                                    </select>
                                 </div>}
                                 {<div style={{display:'flex'}}>
                                     {<div className='savebtn' onClick={saveSettings}>Save</div>}
