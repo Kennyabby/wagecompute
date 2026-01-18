@@ -22,7 +22,7 @@ import { BsPass } from 'react-icons/bs';
 
 const Sales = ()=>{
     const {storePath, 
-        fetchServer, 
+        fetchServer, paymentMethods,
         server, intervalPeriod,
         companyRecord, 
         company, recoveryVal, allowBacklogs,
@@ -1629,14 +1629,14 @@ const Sales = ()=>{
     }
 
     const deleteSales = async (sale)=>{
-        const today = new Date()
-        let postDate = new Date(sale.postingDate).toISOString().slice(0, 10)
-        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10) && (!companyRecord?.access === 'admin' || !companyRecord?.permissions.includes('edit_ended_sessions'))){
-            setAlertState('error')
-            setAlert('Cannot reverse sales after more than 1 day')
-            setAlertTimeout(3000)
-            return
-        }
+        // const today = new Date()
+        // let postDate = new Date(sale.postingDate).toISOString().slice(0, 10)
+        // if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10) && (!companyRecord?.access === 'admin' || !companyRecord?.permissions.includes('edit_ended_sessions'))){
+        //     setAlertState('error')
+        //     setAlert('Cannot reverse sales after more than 1 day')
+        //     setAlertTimeout(3000)
+        //     return
+        // }
 
         if (deleteCount === sale.createdAt) {
             setAlertState('info')
@@ -1961,7 +1961,7 @@ const Sales = ()=>{
                     {sales.forEach((sale)=>{
                         if (                                                        
                             months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                            String(new Date(sale.postingDate).getFullYear()) === recoveryYear                                                        
+                            String(new Date(sale.postingDate).getFullYear()) === String(recoveryYear)                                                        
                         ){                                                
                             sale.record.forEach((record,index)=>{
                                 if (record.employeeId === employee.i_d && (Number(record.debt)+Number(record.shortage)) > 0){
@@ -1974,7 +1974,7 @@ const Sales = ()=>{
                     employee.employeeDebtList?.forEach((empDebt,index)=>{
                         if (                                                        
                             months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                            String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear                                                        
+                            String(new Date(empDebt.postingDate).getFullYear()) === String(recoveryYear)                                                        
                         ){
                             totalDebt += Number(empDebt.debtAmount)
                             totalDebtRecovered += empDebt.debtRecovered ? Number(empDebt.debtRecovered) : 0                               
@@ -1986,9 +1986,10 @@ const Sales = ()=>{
                     debtReportList = debtReportList.concat(debtDoc)
                 }else{
                     {sales.forEach((sale)=>{
+                        console.log((new Date(sale.postingDate).getFullYear()), String(recoveryYear))
                         if (                                                        
                             months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                            String(new Date(sale.postingDate).getFullYear()) === recoveryYear                                                        
+                            String(new Date(sale.postingDate).getFullYear()) === String(recoveryYear)                                                        
                         ){                                                
                             sale.record.forEach((record,index)=>{
                                 if (employee.i_d === record.employeeId && employee.i_d === recoveryEmployeeId && (Number(record.debt)+Number(record.shortage)) > 0){                                    

@@ -634,7 +634,7 @@ const PointOfSales = () => {
             active: true,
             openingCash: openingCash,
             debtDue: 0,
-        };
+        };        
 
         try {
             // 1) Save session locally
@@ -680,15 +680,75 @@ const PointOfSales = () => {
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
-            }
-
-            return;
+            }            
+            
         } catch (e) {
             setAlertState('error');
             setAlert('Could not start session locally. Please try again.');
             setAlertTimeout(3000);
             return;
         }
+
+        if (curPosSettings?.type === 'shop'){            
+            const deliveryDate = new Date().getTime()
+            const newSession = {
+                employee_id: ![null, undefined].includes(sessionUser)
+                    ? sessionUser.profile.emailid
+                    : companyRecord.emailid,
+                i_d: deliveryDate,
+                type: 'delivery',
+                wrh: wrh,
+                start: deliveryDate,
+                startedBy: companyRecord.emailid,
+                end: null,
+                active: true,
+                shortage: 0,
+            };
+    
+            try {
+                // 1) Local write
+                if (company && companyRecord?.emailid) {
+                    await putSession(company, companyRecord.emailid, newSession);
+                }            
+    
+                // 3) Queue for sync
+                if (company && companyRecord?.emailid) {
+                    queuePendingChange(company, companyRecord.emailid, {
+                        entityType: 'session',
+                        op: 'create',
+                        clientId: newSession.start,
+                        payload: newSession,
+                    });
+                    // Immediate sync attempt – failures are fine, queue remains
+                    try {
+                        // 2) State
+                        setAlertState('success');
+                        if (![null, undefined].includes(sessionUser)) {
+                            setAlert('User Delivery Session Started Successfully!');
+                        }
+
+                        setAlertTimeout(2000);
+                        setStartSession(false);
+                        setOpeningCash(0);
+                        mergeAndPersistSessions([newSession])
+                        setSessionUser(null);
+                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                        fetchAllSessions({company, companyRecord})
+                    } catch (e) {
+                        // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    }
+                }
+                return;
+            } catch (e) {
+                setAlertState('error');
+                setAlert('Could not start delivery session locally.');
+                setAlertTimeout(3000);
+                return;
+            }
+        }else{
+            return
+        }
+
     };
 
     const stopSession = async (session, sessionOrders) => {
@@ -1092,7 +1152,7 @@ const PointOfSales = () => {
                     !companyRecord?.permissions.includes('access_pos_sessions'))
             ) {
                 setAlertState('error');
-                setAlert(`Table ${table.name} is not available. Still in use by ${table.tableUser.firstName} ${table.tableUser.lastName}!`);
+                setAlert(`${table.name} is not available. Still in use by ${table.tableUser.firstName} ${table.tableUser.lastName}!`);
                 setAlertTimeout(2000);
                 return;
             }
@@ -1149,7 +1209,7 @@ const PointOfSales = () => {
                 }
                 setActiveScreen('order');
                 setAlertState('info');
-                setAlert('Loaded table orders from local cache...');
+                setAlert('Loaded orders from local cache...');
                 setAlertTimeout(500);
             } else {
                 // No local orders; optimistic new order
@@ -1157,7 +1217,7 @@ const PointOfSales = () => {
                 createNewOrder(table);
                 setActiveScreen('order');
                 setAlertState('info');
-                setAlert('Loaded table (no local orders found)...');
+                setAlert('Loaded orders (no local orders found)...');
                 setAlertTimeout(500);
             }
 
@@ -1216,7 +1276,7 @@ const PointOfSales = () => {
 
             } else {
                 setAlertState('info');
-                setAlert('Slow Network. Could Not Refresh Table Orders!');
+                setAlert('Slow Network. Could Not Refresh Orders!');
                 setAlertTimeout(3000);
             }
 
