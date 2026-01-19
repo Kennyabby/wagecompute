@@ -288,8 +288,7 @@ const Purchase = ()=>{
     const handleProductPurchase = ()=>{
         const updateInventory = async ()=>{
             if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
-                fields.purchaseUOM && fields.purchaseHandler && fields.purchaseDepartment &&
-                fields.itemCategory
+                fields.purchaseUOM && fields.purchaseHandler && fields.purchaseDepartment
             ){                   
                 let validEntries = purchaseEntries.filter((entry)=>{
                     const {baseQuantity, totalCost} = entry
@@ -623,6 +622,9 @@ const Purchase = ()=>{
                 {productAdd && <AddProduct
                     products = {products}
                     category = {fields.itemCategory}
+                    purchaseDate = {purchaseDate}
+                    fields={fields}
+                    setFields={setFields}
                     curPurchase = {curPurchase}
                     setProductAdd = {setProductAdd}
                     uoms = {uoms}
@@ -934,7 +936,7 @@ const Purchase = ()=>{
                                 type='number'
                                 placeholder='Purchase Amount'
                                 value={fields.purchaseAmount}
-                                disabled={isView}
+                                disabled={true}
                             />
                         </div>
                         {(fields.productsRef || fields.purchaseUOM === 'units') ? 
@@ -950,21 +952,20 @@ const Purchase = ()=>{
                         (<div 
                             className='prd-link'
                             onClick={()=>{
-                                if (fields.purchaseAmount && fields.itemCategory){
+                                // setIsProductView(false)
+                                // setProductAdd(true)
+                                if (fields.purchaseVendor){
                                     setIsProductView(false)
                                     setProductAdd(true)
-                                }else{
+                                }
+                                else{
                                     setAlertState('error')
-                                    if (!fields.itemCategory){
-                                        setAlert('Please Select Item Category!')
-                                    }else{
-                                        setAlert('Please Enter Purchase Amount First!')
-                                    }
-                                    setAlertTimeout(5000)
+                                    setAlert('Please select Vendor before linking products!')
+                                    setAlertTimeout(1000)
                                 }
                             }}
                         >
-                            Link Products
+                            Add Products
                         </div>)}
                     </div>
                     {(!isView || curApproval) && <div className='purchasebuttom'>
@@ -1008,16 +1009,19 @@ const Purchase = ()=>{
 export default Purchase
 
 const AddProduct = ({
-    products, category, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
-    handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord, curApproval
+    products, category, purchaseDate, fields, setFields, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
+    handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord, curApproval,
 })=>{    
+    const [productSearch, setProductSearch] = useState('')
+    const [nullFieldsCount, setNullFieldsCount] = useState(0)
+    const [isProductEdit, setIsProductEdit] = useState(false)
     const targetRef = useRef(null)
-    const { getDate } = useContext(ContextProvider)
+    const { getDate, setAlertState, setAlert, setAlertTimeout} = useContext(ContextProvider)
     const printToPDF = () => {
         const element = targetRef.current;
         const options = {
             margin:       0.1,
-            filename:     `${curApproval? '(APPROVALS) ': ''}PRODUCT PURCHASE DETAILS ${getDate(curPurchase?.purchaseDate || curPurchase?.postingDate || curApproval.postingDate)}.pdf`,
+            filename:     `${curApproval? '(APPROVALS) ': ''}PRODUCT PURCHASE DETAILS ${getDate(curPurchase?.purchaseDate || curPurchase?.postingDate || curApproval?.postingDate || purchaseDate)}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
@@ -1026,9 +1030,33 @@ const AddProduct = ({
     };
     useEffect(()=>{
         if (!isProductView){
-            const fltProducts = products.filter((product)=>{
-                return product.category === category.toLowerCase()
-            })
+            let  fltProducts = []
+            if (category){
+                fltProducts = products.filter((product)=>{
+                    return product.category === category.toLowerCase()                
+                })
+            }else{
+                fltProducts = products.filter((product)=>{
+                    return product.category
+                }).map((product)=>{
+                    if (isProductEdit){
+                        const originalEntry = purchaseEntries.find((entry)=>{
+                            return entry.productId === product.i_d
+                        })                        
+                        if (!originalEntry){
+                            product.productId = product.i_d
+                            // console.log('Adding Product:', product.name)
+                            return product
+                        }else{
+                            originalEntry.i_d = originalEntry.productId
+                            // console.log('Keeping Original Entry for Product:', originalEntry.name)
+                            return originalEntry
+                        }
+                    }else{
+                        return product
+                    }
+                })
+            }
             setPurchaseEntries(fltProducts.map((product, index)=>{
                 const uom1 = uoms.filter((uom)=>{
                     return uom.code === product.purchaseUom.toLowerCase()
@@ -1051,42 +1079,88 @@ const AddProduct = ({
     useEffect(()=>{
         // console.log(products)
     },[products])
+    useEffect(()=>{
+        if (!isProductView){
+            let ct = 0
+            const fieldsAmount = purchaseEntries.reduce((acc, entry)=>{
+                if ((!entry.totalCost && entry.quantity) || (!entry.quantity && entry.totalCost)){
+                    ct += 1
+                }
+                return acc + (Number(entry.totalCost) || 0)
+            },0)
+            setFields((fields)=>{
+                return {...fields, purchaseAmount: fieldsAmount}
+            })
+            setNullFieldsCount(ct)
+        }
+    },[purchaseEntries])
+
     const handlePurchaseUdpate = (e, index)=>{
-        const name = e.target.getAttribute('name')
-        const value = e.target.value
+        const {name, id, value} = e.target
+        
         if (name){
             if (name === 'quantity'){
                 const uom2 = uoms.filter((uom)=>{
                     return uom.code === purchaseEntries[index].purchaseUom
                 })
                 // console.log(uom)
-                setPurchaseEntries((entries)=>{
-                    entries[index][name] = Number(value)
-                    entries[index].baseQuantity = Number(value) * Number(uom2[0]?.multiple)
-                    return [...entries]
+                setPurchaseEntries((entries)=>{                    
+                    const entry = entries.find((entry)=>{return entry.productId === id})
+                    const otherEntries = entries.filter((entry)=>{return entry.productId !== id})
+                    entry[name] = Number(value)
+                    entry.baseQuantity = Number(value) * Number(uom2[0]?.multiple)
+                    return [...otherEntries, entry].sort((a,b) => {
+                        const numA = parseInt(a.productId.replace("PD", ""), 10);
+                        const numB = parseInt(b.productId.replace("PD", ""), 10);
+                        return numA - numB;
+                    })
                 })
             }else{
                 setPurchaseEntries((entries)=>{
-                    entries[index][name] = value
-                    return [...entries]
+                    const entry = entries.find((entry)=>{return entry.productId === id})
+                    const otherEntries = entries.filter((entry)=>{return entry.productId !== id})
+                    entry[name] = value
+                    return [...otherEntries, entry].sort((a,b) => {
+                        const numA = parseInt(a.productId.replace("PD", ""), 10);
+                        const numB = parseInt(b.productId.replace("PD", ""), 10);
+                        return numA - numB;
+                    })
                 })
             }
         }
     }
+    
     return (
         <>
             <div className='addproduct'>
                 <div className='add-products'>
                     <div className='add-products-title'>
                         <label>Product Purchase Details</label>
-                        {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('export_purchase_report')) && isProductView && <div
+                        {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('export_purchase_report')) && <div
                             className='slprwh-print'
                             onClick={()=>{
                                 printToPDF()
                             }}
                         >Print Product</div>}
                     </div>
+                    <div> 
+                        <input
+                            placeholder='Search Product'
+                            style={{
+                                padding: '5px', borderRadius:'5px', 
+                                outline: 'none', fontSize:'12px'
+                            }}
+                            onChange={(e)=>{setProductSearch(e.target.value)}}
+                        />
+                    </div>
                     <div className='add-products-content' ref={targetRef}>
+                        <div className='add-products-content-title' style={{display:'flex', width:'fit-content'}}>{`${companyRecord?.name.toUpperCase()} (PURCHASE ORDER)`}</div>
+                        <div style={{display:'block', width:'fit-content', marginRight:'auto', marginLeft:'0px'}}>
+                            <label style={{width: 'fit-content', textAlign:'left'}}>{`Vendor: ${fields.purchaseVendor}`}</label>
+                            <p></p>
+                            <label>{`Order Date: ${purchaseDate}`}</label>
+                            <p></p>
+                        </div>
                         <div className='add-products-content-title'>
                             <div>Product Name</div>
                             <div>Product ID</div>
@@ -1098,13 +1172,27 @@ const AddProduct = ({
                             }
                             <div>Purchase Quantity</div>
                             <div>Purchase UOM</div>
-                            <div>Purchase Amount</div>
+                            <div>{`Purchase Amount (${(fields.purchaseAmount || 0).toLocaleString()})`}</div>
                         </div>
                         {purchaseEntries.length === 0 && isProductView && <div className='load-products'><span>Loading Purchase Products...</span></div>}
                         {purchaseEntries.sort((a,b) => {
                             const numA = parseInt(a.productId.replace("PD", ""), 10);
                             const numB = parseInt(b.productId.replace("PD", ""), 10);
                             return numA - numB;
+                        }).filter((purflt)=>{
+                            let showEntry = true
+                            if (isProductView){
+                                if (!purflt.quantity && !purflt.totalCost){
+                                    showEntry = false
+                                }
+                            }else(
+                                showEntry = true
+                            )
+                            if (showEntry){
+                                if (productSearch === ''){
+                                    return purflt
+                                }else return (purflt.name.toLowerCase().includes(productSearch.toLowerCase()) || purflt.productId.toLowerCase().includes(productSearch.toLowerCase()))
+                            }
                         }).map((entry, index)=>{
                             let currentStock = (products.find((p)=>{return p.i_d === entry.productId}))?.stockSummary?.closingQty
                             return (
@@ -1121,6 +1209,7 @@ const AddProduct = ({
                                         <input 
                                             type='number'
                                             name='quantity'
+                                            id={entry.productId}
                                             value={entry.quantity}
                                             onChange={(e)=>{handlePurchaseUdpate(e, index)}}
                                             disabled={isProductView}
@@ -1129,6 +1218,7 @@ const AddProduct = ({
                                     <div>
                                         <select 
                                             name='purchaseUom'
+                                            id={entry.productId}
                                             value={entry.purchaseUom}
                                             onChange={(e)=>{handlePurchaseUdpate(e, index)}}
                                             disabled={isProductView || true}
@@ -1144,6 +1234,7 @@ const AddProduct = ({
                                         <input 
                                             name='totalCost'
                                             type='number'
+                                            id={entry.productId}
                                             value={entry.totalCost}
                                             disabled={entry.baseQuantity === 0 || isProductView}
                                             onChange={(e)=>{handlePurchaseUdpate(e, index)}}
@@ -1156,8 +1247,28 @@ const AddProduct = ({
                     <div className='add-products-button'>
                         {!isProductView && <div 
                             className='add-products-button-add'
-                            onClick={handleProductPurchase}
+                            onClick={
+                                ()=>{
+                                    if (nullFieldsCount === 0){
+                                        handleProductPurchase()
+                                    }else{
+                                        setAlertState('error')
+                                        setAlert('Please Make Sure Both Quantity and Amount fields are filled before proceeding!')
+                                        setAlertTimeout(1000)
+                                    }
+                                }
+                            }
                         >{curPurchase===null ? 'Add' : 'Save'}</div>}
+                        {isProductView && curPurchase === null && <div 
+                            className='add-products-button-add'
+                            onClick={()=>{
+                                setIsProductEdit(true)
+                                setFields((fields)=>{
+                                    return {...fields, purchaseUOM: ''}
+                                })
+                                setIsProductView(false)
+                            }}
+                        >{'Edit'}</div>}
                         <div 
                             className='add-products-button-cancel'
                             onClick={()=>{
