@@ -2968,6 +2968,20 @@ const PointOfSales = () => {
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
+                {(currentOrder.status!=='cancelled' && currentOrder.status === 'pending') 
+                && (
+                    currentOrder.items.filter((item)=>{
+                        if (wrhCategories[wrh].includes(item.category)){
+                            return Number(item?.deliveredQuantity || 0) > 0
+                        }
+                    }).length < currentOrder.items.reduce((sum, item)=>{return sum + Number(item.quantity)},0)
+                ) && curPosSettings?.type === 'shop' && <button 
+                    className="place-order-btn"
+                    onClick={() => setShowPaymentModal(true)}
+                    disabled={!currentOrder.totalSales || makingPayment || currentTable?.status === 'unavailable'}
+                >
+                    Place Delivery
+                </button>}
                 {currentOrder.items.find((item)=>{return wrhCategories['kitchen']?.includes(item.category)}) 
                 && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid)) 
                     || companyRecord?.status === 'admin' 
