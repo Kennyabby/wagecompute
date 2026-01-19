@@ -87,7 +87,7 @@ const Settings = () => {
     const [posAdminPermissions, setPosAdminPermissions] = useState([])
     const editDeletePermissions = [
         'edit_employees', 'enable_employee_debt_recovery', 'edit_product_details', 
-        'add_expense_category', 'edit_pos_order', 'cancel_pos_order', 'override_pos_receipts', 
+        'add_expense_category', 'edit_pos_order', 'cancel_pos_order', 'remove_pos_items', 'override_pos_receipts', 
         'edit_payment_receipts', 'cancel_delivery_order', 'override_accomodation', 
         'view_all_accommodation', 'allow_group_payment'
     ]
