@@ -1158,7 +1158,7 @@ const AddProduct = ({
                         <div style={{display:'block', width:'fit-content', marginRight:'auto', marginLeft:'0px'}}>
                             <label style={{width: 'fit-content', textAlign:'left'}}>{`Vendor: ${fields.purchaseVendor}`}</label>
                             <p></p>
-                            <label>{`Order Date: ${purchaseDate}`}</label>
+                            <label>{`Order Date: ${purchaseDate|| fields.postingDate}`}</label>
                             <p></p>
                         </div>
                         <div className='add-products-content-title'>
