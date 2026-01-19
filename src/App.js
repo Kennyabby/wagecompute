@@ -998,6 +998,10 @@ function App() {
           'theplantainplanet22@gmail.com': {
             rank: 1,
             sections: ['all']
+          },
+          'admin@hypercityng.com': {
+            rank: 1,
+            sections: ['all']
           }
         },
       },
@@ -1015,6 +1019,10 @@ function App() {
             sections: ['all']
           }, 
           'theplantainplanet22@gmail.com': {
+            rank: 1,
+            sections: ['all']
+          },
+          'admin@hypercityng.com': {
             rank: 1,
             sections: ['all']
           }
@@ -1036,6 +1044,10 @@ function App() {
           'theplantainplanet22@gmail.com': {
             rank: 1,
             sections: ['all']
+          },
+          'admin@hypercityng.com': {
+            rank: 1,
+            sections: ['all']
           }
         },
       },
@@ -1050,6 +1062,10 @@ function App() {
           }, 
           'theplantainplanet22@gmail.com': {
             rank: 0,
+            sections: ['all']
+          },
+          'admin@hypercityng.com': {
+            rank: 1,
             sections: ['all']
           }
         },
