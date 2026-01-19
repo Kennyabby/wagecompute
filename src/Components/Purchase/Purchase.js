@@ -125,12 +125,12 @@ const Purchase = ()=>{
                 } else {
                     setAlertState('success');
                     setAlert('Offline Purchase Sync complete');
-                    setAlertTimeout(3000);
+                    setAlertTimeout(1000);
                 }
             } else {
                 setAlertState('success');
                 setAlert('Offline Purchase Sync complete');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
             }
         }catch(e){
             setAlertState('error');
@@ -381,7 +381,7 @@ const Purchase = ()=>{
                                                 
                                                 setAlertState('success');
                                                 setAlert('Products Linked Successfully!');
-                                                setAlertTimeout(3000);
+                                                setAlertTimeout(1000);
                                                 setFields((fields)=>{
                                                     return {...fields, productsRef: createdAt}
                                                 })
@@ -519,7 +519,7 @@ const Purchase = ()=>{
                 setFields({...newPurchase})
                 setAlertState('success')
                 setAlert('Purchase Record Posted Successfully!')
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 getPurchase(company)
                 const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
                 const transactions = await getPurchaseProducts(company, newPurchase)
@@ -574,7 +574,7 @@ const Purchase = ()=>{
                 setFields({...defaultFields})
                 setAlertState('success')
                 setAlert('Purchase Record Deleted Successfully!')
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 setDeleteCount(0)
                 getPurchase(company)
             }        
@@ -761,7 +761,7 @@ const Purchase = ()=>{
                                             if(resp.completed){
                                                 setAlertState('success')
                                                 setAlert('Deleted Approval Data Successfully!')
-                                                setAlertTimeout(3000)
+                                                setAlertTimeout(1000)
                                                 setCurPurchase(null)
                                                 setCurApproval(null)
                                             }
