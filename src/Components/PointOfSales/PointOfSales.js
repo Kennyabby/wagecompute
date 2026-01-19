@@ -2594,7 +2594,7 @@ const PointOfSales = () => {
 
     // Update the click handler in the products grid to only select the product
     const handleProductClick = (product) => {
-        if (!sessionEnded && ['new','edit'].includes(currentOrder.status)){
+        if (!sessionEnded && ['new','edit'].includes(currentOrder.status) && product?.salesPrice){
             setSelectedProduct(product);
             setQuantity(''); // Reset quantity when new product is selected
         }
