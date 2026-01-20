@@ -2977,7 +2977,24 @@ const PointOfSales = () => {
                     }).length < currentOrder.items.reduce((sum, item)=>{return sum + Number(item.quantity)},0)
                 ) && curPosSettings?.type === 'shop' && <button 
                     className="place-order-btn"
-                    onClick={() => setShowPaymentModal(true)}
+                    onClick={() => {
+                        var totalItems = 0
+                        var deliveredQuantity = 0
+                        const deliveredItems = currentOrder.items.filter((item)=>{
+                            if (wrhCategories[wrh].includes(item.category)){
+                                totalItems += Number(item.quantity)
+                                deliveredQuantity += Number(item?.deliveredQuantity || 0)
+                                return Number(item?.deliveredQuantity || 0) > 0
+                            }
+                        })
+                        if (deliveredQuantity < totalItems){
+                            handleOrderDelivery(currentOrder, posCurrentOrder)
+                        }else{
+                            setAlertState('error')
+                            setAlert('Nothing to Post. You Have Completed Your Delivery!')
+                            setAlertTimeout(3000)
+                        }
+                    }}
                     disabled={!currentOrder.totalSales || makingPayment || currentTable?.status === 'unavailable'}
                 >
                     Place Delivery
