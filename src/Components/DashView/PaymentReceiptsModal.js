@@ -158,7 +158,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                 return {
                     ...receipt,
                     paymentPoint: payPointAccounts[receipt.paymentPoint] || receipt.paymentPoint,
-                    paymentHandler: (`${employee.i_d} (${employee?.firstName||''} ${employee?.lastName||''}) ${employee?.name||employee?.fullName||''}`).trim() || receipt.paymentHandler,
+                    paymentHandler: (`${employee?.i_d} (${employee?.firstName||''} ${employee?.lastName||''}) ${employee?.name||employee?.fullName||''}`).trim() || receipt.paymentHandler,
                     paymentApprover: approver ? ((`${approver.i_d} (${approver?.firstName||''} ${approver?.lastName||''}) ${approver?.name||approver?.fullName||''}`).trim()) : receipt.paymentApprover,
                 }
              });

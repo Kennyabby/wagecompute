@@ -3870,7 +3870,8 @@ const Sales = ()=>{
                                         const recoveryData = {
                                             recoveryFields,
                                             recoveryEmployeeId,
-                                            recoveryMonth
+                                            recoveryMonth,
+                                            recoveryYear
                                         }
                                         
                                         let foundVoidReceipt = false
