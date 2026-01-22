@@ -1711,7 +1711,7 @@ const Sales = ()=>{
                         employee.employeeDebtList?.forEach((empDebt,index)=>{
                             if (                                                        
                                 months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                                String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear &&
+                                String(new Date(empDebt.postingDate).getFullYear()) === String(recoveryYear) &&
                                 (empDebt.recoveryLocation ? (empDebt.recoveryLocation === field.recoveryLocation) : true) &&
                                 field.recoverySales === `${recoveryEmployeeId}-${index}`                                                      
                             ){
@@ -1775,13 +1775,15 @@ const Sales = ()=>{
                     result = true
                 }
             }else{
+                console.log('Updating Sale Record for Recovery', recoveryMonth, recoveryYear)
                 var updtSale = {}
                 sales.forEach((sale,index)=>{
                     if (                                                        
                         months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                        String(new Date(sale.postingDate).getFullYear()) === recoveryYear &&
+                        String(new Date(sale.postingDate).getFullYear()) === String(recoveryYear) &&
                         Number(field.recoverySales) === sale.createdAt                                               
                     ){
+                        console.log('Found Sale for Recovery Update')
                         var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
                         var saleRecoveredList = sale.recoveryList? sale.recoveryList : [] 
                         sale.record.forEach((record, index)=>{
@@ -2007,7 +2009,7 @@ const Sales = ()=>{
                         employee.employeeDebtList?.sort((a,b)=>{return b.postingDate - a.postingDate}).forEach((empDebt,index)=>{
                             if (                                                        
                                 months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                                String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear                                                        
+                                String(new Date(empDebt.postingDate).getFullYear()) === String(recoveryYear)                                                        
                             ){
                                 const empDebtDoc = {}
                                 empDebtDoc.postingDate = empDebt.postingDate
@@ -3087,7 +3089,7 @@ const Sales = ()=>{
                                                             employee.employeeDebtList?.map((empDebt,index)=>{
                                                                 if (                                                        
                                                                     months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                                                                    String(new Date(empDebt.postingDate).getFullYear()) === recoveryYear
+                                                                    String(new Date(empDebt.postingDate).getFullYear()) === String(recoveryYear)
                                                                 ){
                                                                     return (
                                                                         <option key={index} value={`${recoveryEmployeeId}-${index}`}>{`${empDebt.postingDate} - ${Number(empDebt.debtRecovered || 0) > 0 ? 'Remaining Debt': 'Debt' }: ${'₦'+ (Number(empDebt.debtAmount) - Number(empDebt.debtRecovered?empDebt.debtRecovered:0)).toLocaleString()}`}</option>                                                                                                                                 

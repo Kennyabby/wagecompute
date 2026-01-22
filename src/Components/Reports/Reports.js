@@ -17,21 +17,74 @@ const Reports = ()=>{
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
 
+    const [cogsMap, setCogsMap] = useState({}) // { 'YYYY-MM-DD': amount }
+
     useEffect(()=>{
         storePath('reports')  
     },[storePath])
     useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')     
-        getSales(cmp_val, 'all')
-        getRentals(cmp_val, 'all')
-        getPurchase(cmp_val, 'all')
-        getExpenses(cmp_val, 'all')
-        const intervalId = setInterval(()=>{
-          if (cmp_val){
+        // fetch COGS mapping for current overall range
+        (async ()=>{
+            var cmp_val = window.localStorage.getItem('sessn-cmp')     
             getSales(cmp_val, 'all')
             getRentals(cmp_val, 'all')
             getPurchase(cmp_val, 'all')
-            getExpenses(cmp_val,'all')
+            getExpenses(cmp_val, 'all')
+            try{
+                const formattedStart = new Date(filterFrom).toISOString().split('T')[0]
+                const formattedEnd = new Date(filterTo).toISOString().split('T')[0]
+                const q = {
+                    database: cmp_val,
+                    collection: 'InventoryTransactions',
+                    prop: [
+                        { $match: { postingDate: { $gte: formattedStart, $lte: formattedEnd }, entryType: 'Sales' } },
+                        { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [ { $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' } ] } } } }
+                    ]
+                }
+                const resp = await fetchServer('POST', q, 'aggregateDocs', server)
+                const map = {}
+                if (resp && resp.record){
+                    resp.record.forEach(r => {
+                        if (r._id) map[r._id] = r.cogs || 0
+                    })
+                }
+                setCogsMap(map)
+            }catch(e){
+                console.warn('fetch COGS failed', e)
+            }
+        })()
+        const intervalId = setInterval(()=>{
+          var cmp_val = window.localStorage.getItem('sessn-cmp')     
+          if (cmp_val){
+              // refresh cogs map periodically
+              (async ()=>{
+                getSales(cmp_val, 'all')
+                getRentals(cmp_val, 'all')
+                getPurchase(cmp_val, 'all')
+                getExpenses(cmp_val,'all')
+                try{
+                    const formattedStart = new Date(filterFrom).toISOString().split('T')[0]
+                    const formattedEnd = new Date(filterTo).toISOString().split('T')[0]
+                    const q = {
+                        database: cmp_val,
+                        collection: 'InventoryTransactions',
+                        prop: [
+                            { $match: { postingDate: { $gte: formattedStart, $lte: formattedEnd }, entryType: 'Sales' } },
+                            { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [ { $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' } ] } } } }
+                        ]
+                    }
+                    const resp = await fetchServer('POST', q, 'aggregateDocs', server)
+                    const map = {}
+                    if (resp && resp.record){
+                        resp.record.forEach(r => {
+                            if (r._id) map[r._id] = r.cogs || 0
+                        })
+                    }
+                    setCogsMap(map)
+                }catch(e){
+                    console.warn('refresh COGS failed', e)
+                }
+            })()
             // getAttendance(cmp_val)
           }
         },intervalPeriod)
@@ -56,7 +109,7 @@ const Reports = ()=>{
                     title:name,
                     data:getPandLdata(filterFrom, filterTo),
                     description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
-                    columns: ['Month','Sales Income','Purchases', 'Gross Profit', 'Other Income', 'Admin Expenses', 'Net Profit']
+                    columns: ['Month','Sales Income','COGS', 'Gross Profit', 'Other Income', 'Admin Expenses', 'Net Profit']
                 })
             }else if (name==='TRIAL BALANCE'){
                 setCurReport({
@@ -90,7 +143,7 @@ const Reports = ()=>{
                 return {...curReport, data:getBalanceSheet(filterFrom,filterTo)}
             })
         }
-    },[filterFrom,filterTo, expenses, sales, rentals, purchase])
+    },[filterFrom,filterTo, expenses, sales, rentals, purchase, cogsMap])
 
     const getBalanceSheet = (filterFrom, filterTo)=>{
         return getAlldata(filterFrom, filterTo)
@@ -176,17 +229,26 @@ const Reports = ()=>{
         const monthlyRentalData = getMonthWiseReport(rentalData)
 
         var purchaseData = []
-        purchase.forEach((pur)=>{
-            const {postingDate, purchaseAmount} = pur
-            if (filterFrom <= postingDate && filterTo >= postingDate){                
-                var reportPurchase = {}
-                reportPurchase.postingDate = postingDate
-                reportPurchase.docType = 'purchase'
-                reportPurchase.purchaseAmount = Number(purchaseAmount)
-    
-                purchaseData = purchaseData.concat(reportPurchase)
-            }
-        })
+        // Prefer COGS (cost of goods sold) aggregated from InventoryTransactions for Sales
+        if (cogsMap && Object.keys(cogsMap).length){
+            Object.keys(cogsMap).forEach(d => {
+                if (filterFrom <= d && filterTo >= d){
+                    purchaseData.push({ postingDate: d, docType: 'purchase', purchaseAmount: Math.abs(Number(cogsMap[d] || 0)) })
+                }
+            })
+        } else {
+            purchase.forEach((pur)=>{
+                const {postingDate, purchaseAmount} = pur
+                if (filterFrom <= postingDate && filterTo >= postingDate){                
+                    var reportPurchase = {}
+                    reportPurchase.postingDate = postingDate
+                    reportPurchase.docType = 'purchase'
+                    reportPurchase.purchaseAmount = Number(purchaseAmount)
+        
+                    purchaseData = purchaseData.concat(reportPurchase)
+                }
+            })
+        }
         const monthlyPurchaseData = getMonthWiseReport(purchaseData)
 
         var expenseData = []

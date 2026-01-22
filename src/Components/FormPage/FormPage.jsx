@@ -36,17 +36,17 @@ const FormPage = ()=>{
     const [focusedEmployee, setFocusedEmployee] = useState(null)
     const [exportData, setExportData] =  useState([])
     const [holidays, setHolidays] = useState([
-        { "value": "2025-01-01", "desc": "New Year's Day" },
-        { "value": "2025-04-18", "desc": "Good Friday" },
-        { "value": "2025-04-21", "desc": "Easter Monday" },
-        { "value": "2025-05-01", "desc": "Workers' Day" },
-        { "value": "2025-06-12", "desc": "Democracy Day" },
-        { "value": "2025-10-01", "desc": "Independence Day" },
-        { "value": "2025-12-25", "desc": "Christmas Day" },
-        { "value": "2025-12-26", "desc": "Boxing Day" },
-        { "value": "2025-03-29", "desc": "Eid al-Fitr (Tentative Date)" },
-        { "value": "2025-03-30", "desc": "Eid al-Fitr (Tentative Date)" },
-        { "value": "2025-03-31", "desc": "Eid al-Fitr (Tentative Date)" },
+        { "value": "2026-01-01", "desc": "New Year's Day" },
+        { "value": "2026-04-18", "desc": "Good Friday" },
+        { "value": "2026-04-21", "desc": "Easter Monday" },
+        { "value": "2026-05-01", "desc": "Workers' Day" },
+        { "value": "2026-06-12", "desc": "Democracy Day" },
+        { "value": "2026-10-01", "desc": "Independence Day" },
+        { "value": "2026-12-25", "desc": "Christmas Day" },
+        { "value": "2026-12-26", "desc": "Boxing Day" },
+        { "value": "2026-03-29", "desc": "Eid al-Fitr (Tentative Date)" },
+        { "value": "2026-03-30", "desc": "Eid al-Fitr (Tentative Date)" },
+        { "value": "2026-03-31", "desc": "Eid al-Fitr (Tentative Date)" },
     ])
     const [excludeEmployees, setExcludeEmployees] = useState([])
     const [dateexcludeEmployees, setDateExcludeEmployees] = useState([])
