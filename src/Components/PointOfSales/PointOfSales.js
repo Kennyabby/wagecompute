@@ -2626,7 +2626,7 @@ const PointOfSales = () => {
         if (sessionUser !== null) {            
             if (allSessionOrders.length){
                 const allUserOrders = allSessionOrders.filter((order) =>{
-                    return ((order.sessionId === (sessionUser.curSession).i_d) && (order.handlerId === (sessionUser.profile).emailid))
+                    return ((getSessionEnd(order.sessionId) === getSessionEnd((sessionUser.curSession).i_d)) && (order.handlerId === (sessionUser.profile).emailid))
                 })
                 setLoading(true);
                 await stopSession(sessionUser.curSession, allUserOrders);
@@ -4177,7 +4177,7 @@ const POSDashboard = ({
                                                                     }                                              
                                                                 }else{
                                                                     const allUserOrders = allSessionOrders.filter((order) =>{
-                                                                        return ((order.sessionId === employeeSession.i_d) && (order.handlerId === profile.emailid))                                                        
+                                                                        return ((getSessionEnd(order.sessionId) === getSessionEnd(employeeSession.i_d)) && (order.handlerId === profile.emailid))                                                        
                                                                     })
                                                                     const {
                                                                         totalUnattendedSales

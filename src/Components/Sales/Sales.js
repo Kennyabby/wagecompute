@@ -577,7 +577,7 @@ const Sales = ()=>{
                             sessionOrders.forEach((sessionOrder)=>{
                                 if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
                                     && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales || session.totalPendingSales) && session.end && (sessionOrder.status === 'completed' || session.totalPendingSales)
-                                    && sessionOrder.delivery === 'completed' && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
+                                    && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
                                 ){
                                     
                                     const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
