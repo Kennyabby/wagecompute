@@ -1775,7 +1775,6 @@ const Sales = ()=>{
                     result = true
                 }
             }else{
-                console.log('Updating Sale Record for Recovery', recoveryMonth, recoveryYear)
                 var updtSale = {}
                 sales.forEach((sale,index)=>{
                     if (                                                        
@@ -1783,7 +1782,6 @@ const Sales = ()=>{
                         String(new Date(sale.postingDate).getFullYear()) === String(recoveryYear) &&
                         Number(field.recoverySales) === sale.createdAt                                               
                     ){
-                        console.log('Found Sale for Recovery Update')
                         var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
                         var saleRecoveredList = sale.recoveryList? sale.recoveryList : [] 
                         sale.record.forEach((record, index)=>{
