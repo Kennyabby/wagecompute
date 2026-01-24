@@ -2170,7 +2170,7 @@ function App() {
     const knownFields = [
       "_id", "i_d", "name", "salesPrice", "costPrice", "category",
       "purchaseVat", "salesVat", "salesUom", "purchaseUom",
-      "buyTo", "createdAt", "type", "vipPrice"
+      "buyTo", "createdAt", "type", "vipPrice", "imgId", "viewLink", "downloadLink"
     ];
 
     // Build a projection object like { _id: 1, i_d: 1, name: 1, ... }

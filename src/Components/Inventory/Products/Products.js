@@ -235,7 +235,11 @@ const Products = ({
             const {cost, quantity} = curProduct.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
             let cummulativeUnitCostPrice = 0            
             cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0            
+            // console.log(curProduct)
             setProductFields({
+                // imgId: '',
+                // viewLink: '',
+                // downloadLink: '',
                 ...curProduct, 
                 // costPrice: cummulativeUnitCostPrice
             })
@@ -447,6 +451,7 @@ const Products = ({
                     ...res,
                     imageLastUploadedBy: companyRecord?.emailid,
                 }));
+                setImageUpload(null)
                 setUploadingImage(false);
                 setAlertState('success');
                 setAlert('Product image uploaded successfully');
@@ -785,7 +790,7 @@ const Products = ({
                                         />
                                     </div>
                                 )}
-                                {!productFields.imgId && (
+                                {imageUpload && (
                                     <button
                                         className='imgupld'
                                         style={{ cursor: uploadingImage ? 'not-allowed' : 'pointer' }}
