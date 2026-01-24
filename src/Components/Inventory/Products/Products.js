@@ -3,6 +3,8 @@ import './Products.css'
 import { useState, useEffect, useRef, useContext } from "react";
 import ContextProvider from '../../../Resources/ContextProvider';
 import { syncPendingChanges } from '../../../Resources/offlineSync';
+import heic2any from "heic2any";
+import { uploadFile, deleteFile } from '../../../Resources/ClientServerAPIConn/API/fileCrudApi';
 
 const Products = ({
     isNewProduct, isProductView, 
@@ -21,7 +23,7 @@ const Products = ({
     } = useContext(ContextProvider)
     const loadRef = useRef(null)
     const intervalRef = useRef(null)
-        const [isSyncing, setIsSyncing] = useState(false)
+    const [isSyncing, setIsSyncing] = useState(false)
     const [wrhs, setWrhs] = useState([])
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
@@ -90,6 +92,10 @@ const Products = ({
         purchaseCost: 0
     })
     const [monthLoading, setMonthLoading] = useState(false)
+    const [isQrModalOpen, setIsQrModalOpen] = useState(false)
+    const [imageUpload, setImageUpload] = useState(null)
+    const [uploadingImage, setUploadingImage] = useState(false)
+    const [deletingImage, setDeletingImage] = useState(false)
 
     const getMonthRange = (ym) => {
         if (!ym) return {from: null, to: null}
@@ -377,6 +383,123 @@ const Products = ({
         }
     }
 
+    const handleProductImageSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        let blob = file;
+
+        if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
+            try {
+                const converted = await heic2any({
+                    blob: file,
+                    toType: "image/jpeg",
+                    quality: 0.9,
+                });
+                blob = converted;
+            } catch (err) {
+                setAlertState('error');
+                setAlert(`Image conversion failed: ${err}`);
+                setAlertTimeout(3000);
+                return;
+            }
+        }
+
+        setImageUpload(blob);
+    };
+
+    const handleProductImageUpload = async () => {
+        if (!imageUpload) {
+            setAlertState('error');
+            setAlert('Please select an image first');
+            setAlertTimeout(3000);
+            return;
+        }
+        if (!company || !productFields?.createdAt) {
+            setAlertState('error');
+            setAlert('Product has no createdAt; please save the product first.');
+            setAlertTimeout(3000);
+            return;
+        }
+
+        try {
+            setUploadingImage(true);
+            setAlertState('info');
+            setAlert('Uploading product image...');
+            setAlertTimeout(100000);
+
+            const collection = 'Products';
+            const createdAt = productFields.createdAt;
+            const folderPath = company + '/Product Images';
+
+            const res = await uploadFile(imageUpload, folderPath, createdAt, company, collection, server);
+            if (res.mess) {
+                setUploadingImage(false);
+                setAlertState('error');
+                setAlert(res.mess);
+                setAlertTimeout(3000);
+                return;
+            }
+
+            if (res?.downloadLink || res?.viewLink || res?.imgId) {
+                setCurProduct((cur) => cur ? { ...cur, ...res } : cur);
+                setProductFields((fields) => ({
+                    ...fields,
+                    ...res,
+                    imageLastUploadedBy: companyRecord?.emailid,
+                }));
+                setUploadingImage(false);
+                setAlertState('success');
+                setAlert('Product image uploaded successfully');
+                setAlertTimeout(3000);
+                getProducts(company);
+            }
+        } catch (err) {
+            setUploadingImage(false);
+            setAlertState('error');
+            setAlert('Failed to upload product image');
+            setAlertTimeout(3000);
+        }
+    };
+
+    const handleProductImageDelete = async (imgId) => {
+        if (!imgId) {
+            setImageUpload(null);
+            return;
+        }
+        try {
+            setDeletingImage(true);
+            setAlertState('info');
+            setAlert('Deleting product image...');
+            setAlertTimeout(100000);
+
+            const res = await deleteFile(imgId, server);
+            if (res.success) {
+                const cleared = {
+                    imgId: null,
+                    viewLink: null,
+                    downloadLink: null,
+                    imageLastDeletedBy: companyRecord?.emailid,
+                };
+                setCurProduct((cur) => cur ? { ...cur, ...cleared } : cur);
+                setProductFields((fields) => ({ ...fields, ...cleared }));
+                setAlertState('success');
+                setAlert('Product image deleted successfully');
+                setAlertTimeout(3000);
+                getProducts(company);
+            } else {
+                setAlertState('error');
+                setAlert('Failed to delete product image');
+                setAlertTimeout(3000);
+            }
+        } catch (err) {
+            setAlertState('error');
+            setAlert('Failed to delete product image');
+            setAlertTimeout(3000);
+        } finally {
+            setDeletingImage(false);
+        }
+    };
+
     const addProduct = async (productFields)=>{
         if (productFields.name){
             if (!productData.length){
@@ -551,9 +674,43 @@ const Products = ({
         }
     }
 
+    // Base URL for the public Plantain Planet menu used in QR codes.
+    // Edit this single value if the FeastWebsite domain changes.
+    // const QR_MENU_BASE_URL = "https://plantainplanetng.vercel.app";
+    const QR_MENU_BASE_URL = "http://localhost:5000";
+
+    const normalMenuUrl = `${QR_MENU_BASE_URL}/menu?inStockOnly=true&priceType=normal`;
+    const vipMenuUrl = `${QR_MENU_BASE_URL}/menu?inStockOnly=true&priceType=vip`;
+
+    const buildQrSrc = (url) => {
+        const encoded = encodeURIComponent(url);
+        return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`;
+    }
+
     return (
         <>
             <div className='pr-products'>
+                {companyRecord?.status === 'admin' && !isImportClicked && !isNewProduct && productView === 'list' && (
+                    <div style={{ marginBottom: 12, padding: 12, border: '1px solid #ddd', borderRadius: 4, background: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                        <div style={{ fontWeight: 600 }}>Customer Menu QR Codes</div>
+                        <button
+                            type='button'
+                            onClick={() => setIsQrModalOpen(true)}
+                            style={{
+                                padding: '6px 12px',
+                                borderRadius: 4,
+                                border: 'none',
+                                background: '#007bff',
+                                color: '#fff',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            View QR Codes
+                        </button>
+                    </div>
+                )}
                 {!isImportClicked && isNewProduct && <div className='pr-product' onChange={handleProductFieldChange}>
                     <div className='pr-left'>
                         <div className='nameInpCov'>
@@ -592,7 +749,68 @@ const Products = ({
                                         checked={defaultProductType === 'services'}
                                     />
                                 </div>
-                            </div>
+                            </div>                            
+                        </div>
+                        <div className='otherInpCov'>
+                            <label>Product Image</label>
+                            <section className='imgview'>
+                                {(productFields.imgId || imageUpload) && (
+                                    <a
+                                        href={productFields?.viewLink || ''}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <img
+                                            className='imgtag'
+                                            src={
+                                                (productFields?.imgId
+                                                    ? `https://drive.google.com/thumbnail?id=${productFields.imgId}&sz=w600`
+                                                    : '') ||
+                                                (imageUpload ? URL.createObjectURL(imageUpload) : '')
+                                            }
+                                            alt='product'
+                                        />
+                                    </a>
+                                )}
+                                {!imageUpload && !productFields.imgId && (
+                                    <div className='inpcov'>
+                                        <div>Upload Product Image</div>
+                                        <input
+                                            className='forminp'
+                                            name='imgId'
+                                            type='file'
+                                            accept='image/*'
+                                            capture='environment'
+                                            onChange={handleProductImageSelect}
+                                        />
+                                    </div>
+                                )}
+                                {!productFields.imgId && (
+                                    <button
+                                        className='imgupld'
+                                        style={{ cursor: uploadingImage ? 'not-allowed' : 'pointer' }}
+                                        disabled={uploadingImage}
+                                        onClick={handleProductImageUpload}
+                                    >
+                                        Upload
+                                    </button>
+                                )}
+                                {((companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('edit_product_details')) && (productFields.imgId || imageUpload)) && (
+                                    <button
+                                        className='imgupld'
+                                        style={{ cursor: deletingImage ? 'not-allowed' : 'pointer', marginLeft: 8 }}
+                                        disabled={deletingImage}
+                                        onClick={() => {
+                                            setImageUpload(null);
+                                            if (productFields.imgId) {
+                                                handleProductImageDelete(productFields.imgId);
+                                            }
+                                        }}
+                                    >
+                                        Delete
+                                    </button>
+                                )}
+                            </section>
                         </div>
                         <div className='pr-details'>
                             <div className='stock-cov'>
@@ -811,6 +1029,7 @@ const Products = ({
                                 value={productFields.barcode}
                             />
                         </div>
+                        
                     </div>
                 </div>}
                 {!isImportClicked && !isNewProduct && productView === 'card' && <div className='pr-all-products'>
@@ -999,6 +1218,80 @@ const Products = ({
 
                     </div>
                 </div>}
+                {isQrModalOpen && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.45)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 9999
+                        }}
+                        onClick={() => setIsQrModalOpen(false)}
+                    >
+                        <div
+                            style={{
+                                background: '#fff',
+                                padding: 20,
+                                borderRadius: 8,
+                                maxWidth: 480,
+                                width: '90%',
+                                boxShadow: '0 10px 30px rgba(0,0,0,0.25)'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <div style={{ fontWeight: 600 }}>Plantain Planet Customer Menu QR Codes</div>
+                                <button
+                                    type='button'
+                                    onClick={() => setIsQrModalOpen(false)}
+                                    style={{
+                                        border: 'none',
+                                        background: 'transparent',
+                                        fontSize: 18,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+                                    <span style={{ fontSize: 12, fontWeight: 600 }}>Normal Prices</span>
+                                    <img
+                                        src={buildQrSrc(normalMenuUrl)}
+                                        alt='Normal Menu QR'
+                                        style={{ width: 140, height: 140, borderRadius: 4, border: '1px solid #ddd' }}
+                                    />
+                                    <a
+                                        href={buildQrSrc(normalMenuUrl)}
+                                        download='plantainplanet-menu-normal.png'
+                                        style={{ color: '#007bff', textDecoration: 'underline', fontSize: 12 }}
+                                    >
+                                        Download Normal Menu QR
+                                    </a>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+                                    <span style={{ fontSize: 12, fontWeight: 600 }}>VIP Prices</span>
+                                    <img
+                                        src={buildQrSrc(vipMenuUrl)}
+                                        alt='VIP Menu QR'
+                                        style={{ width: 140, height: 140, borderRadius: 4, border: '1px solid #ddd' }}
+                                    />
+                                    <a
+                                        href={buildQrSrc(vipMenuUrl)}
+                                        download='plantainplanet-menu-vip.png'
+                                        style={{ color: '#007bff', textDecoration: 'underline', fontSize: 12 }}
+                                    >
+                                        Download VIP Menu QR
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div> 
         </>
     )
