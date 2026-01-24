@@ -900,6 +900,18 @@ const PointOfSales = () => {
         UpdateSessionState(sessions, loadSession)
     },[loadSession,sessions])
 
+    // Helper to derive a product image URL (same pattern as Products/Accommodation)
+    const getProductImageUrl = (product) => {
+        if (!product) return null;
+        if (product.imgId) {
+            return `https://drive.google.com/thumbnail?id=${product.imgId}&sz=w600`;
+        }
+        if (product.downloadLink || product.viewLink) {
+            return product.downloadLink || product.viewLink;
+        }
+        return null;
+    };
+
     // =========================================
     // 3. Data Loading Functions
     // =========================================
@@ -3069,9 +3081,17 @@ const PointOfSales = () => {
                             className={`product-card ${selectedProduct?.i_d === product.i_d ? 'active' : ''}`}
                             onClick={() => handleProductClick(product)}
                         >
-                            <div className="product-icon">
-                                <MdShoppingBasket />
-                            </div>
+                                <div className="product-icon">
+                                    {getProductImageUrl(product) ? (
+                                        <img
+                                            src={getProductImageUrl(product)}
+                                            alt={product.name}
+                                            className="product-thumb-img"
+                                        />
+                                    ) : (
+                                        <MdShoppingBasket />
+                                    )}
+                                </div>
                             <div className="product-name">{product.name}</div>
                             <div className="product-price">₦{wrh === 'vip' ? (product.vipPrice || product.salesPrice) : product.salesPrice}</div>
                         </div>
