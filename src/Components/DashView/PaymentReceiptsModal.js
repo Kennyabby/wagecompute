@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import { FaTimes, FaFilter, FaReceipt } from 'react-icons/fa';
-import { exportReceiptsTableToPDF } from './pdfUtils';
+import { exportReceiptsTableToPDF, exportSummaryMatrixToPDF } from './pdfUtils';
 import { generateExcel } from '../../utils/exportUtils';
 
 const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
@@ -139,7 +139,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:5000,background:'rgba(0,0,0,0.25)'}}>
         <div className="modal-content" style={{position: 'relative', background:'#fff',borderRadius:12,maxWidth:1200,width:'98%',margin:'40px auto',padding:32,boxShadow:'0 4px 32px rgba(0,0,0,0.12)',position:'relative'}}>
         {/* PDF Download Section */}
-        <div style={{marginTop: '25px',marginBottom:'2px',display:'flex',justifyContent:'flex-end',gap:'12px'}}>
+        <div style={{marginTop: '25px',marginBottom:'2px',display:'flex',justifyContent:'flex-end',gap:'12px',flexWrap:'wrap'}}>
           <button
             style={{padding:'8px 20px',borderRadius:'6px',background:'#1976d2',color:'#fff',fontWeight:'bold',border:'none',boxShadow:'0 2px 8px rgba(25,118,210,0.08)',cursor:'pointer'}}
             onClick={()=>{
@@ -201,6 +201,46 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
             }}
           >
             Download Excel
+          </button>
+          <button
+            style={{padding:'8px 20px',borderRadius:'6px',background:'#6a1b9a',color:'#fff',fontWeight:'bold',border:'none',boxShadow:'0 2px 8px rgba(106,27,154,0.12)',cursor:'pointer'}}
+            onClick={()=>{
+              exportSummaryMatrixToPDF({
+                summary: summaryByModulePaypoint,
+                payPointAccounts,
+                title: 'Payment Receipts Summary by Module and Paypoint',
+                filters: { from: filter.from, to: filter.to }
+              })
+            }}
+          >
+            Summary PDF
+          </button>
+          <button
+            style={{padding:'8px 20px',borderRadius:'6px',background:'#ff8f00',color:'#fff',fontWeight:'bold',border:'none',boxShadow:'0 2px 8px rgba(255,143,0,0.12)',cursor:'pointer'}}
+            onClick={()=>{
+              const paypoints = summaryByModulePaypoint.paypoints;
+              const columns = [
+                { name: 'Module', reference: 'module' },
+                ...paypoints.map(p => ({ name: payPointAccounts[p] || p, reference: `pp_${p}` })),
+                { name: 'Row Total', reference: 'rowTotal', numeric: true }
+              ];
+              const data = summaryByModulePaypoint.modules.map(m => {
+                const row = { module: String(m).toUpperCase() };
+                let sum = 0;
+                paypoints.forEach(p => {
+                  const val = Number(summaryByModulePaypoint.matrix?.[m]?.[p] || 0);
+                  row[`pp_${p}`] = val;
+                  sum += val;
+                });
+                row.rowTotal = sum;
+                return row;
+              });
+              const companyInfo = { name: 'Payment Receipts Summary', address: '', phone: '', email: '' };
+              const dateRange = { startDate: filter.from, endDate: filter.to };
+              generateExcel(data, columns, companyInfo, dateRange, 'Payment Receipts Summary (Module x Paypoint)', filter, false);
+            }}
+          >
+            Summary Excel
           </button>
         </div>
         <button onClick={onClose} style={{position:'absolute',top:5,right:5,fontSize:22,background:'none',border:'none',cursor:'pointer'}}><FaTimes /></button>

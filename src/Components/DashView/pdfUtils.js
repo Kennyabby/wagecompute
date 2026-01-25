@@ -16,6 +16,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
       'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
       'cash':'CASH', 'Employee':'EMPLOYEE'
   }
+
   let totalAmount = 0;
   if (grouped) {
     totalAmount = filteredReceipts.reduce((sum, g) => sum + g.group.reduce((s, r) => s + Number(r.paymentAmount || 0), 0), 0);
@@ -196,4 +197,90 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   }
 
   doc.save('payment_receipts_report.pdf');
+}
+
+
+export function exportSummaryMatrixToPDF({
+  summary,
+  payPointAccounts = {},
+  title = 'Summary by Module and Paypoint',
+  filters = {}
+}){
+  const doc = new jsPDF({ orientation: 'landscape' });
+  const marginLeft = 10;
+  const marginTop = 14;
+  const rowHeight = 10;
+  // Build dynamic columns: Module, ...paypoints, Row Total
+  const paypoints = summary.paypoints || [];
+  const columns = ['Module', ...paypoints.map(p => payPointAccounts[p] || p), 'Row Total'];
+  const colWidthBase = Math.max(28, Math.min(60, (290 / columns.length))); // simple width calc
+  const colWidths = new Array(columns.length).fill(colWidthBase);
+
+  // Title
+  doc.setFontSize(14);
+  doc.text(title, marginLeft, marginTop);
+  // Filters line
+  doc.setFontSize(10);
+  const filterLine = `Date From: ${filters.from || 'Any'} | Date To: ${filters.to || 'Any'}`;
+  doc.text(filterLine, marginLeft, marginTop + 8);
+
+  // Header
+  let x = marginLeft;
+  let y = marginTop + 16;
+  doc.setFontSize(10);
+  columns.forEach((col, i) => {
+    doc.setFillColor(25, 118, 210);
+    doc.setTextColor(255,255,255);
+    doc.rect(x, y, colWidths[i], rowHeight, 'F');
+    doc.text(String(col), x + 2, y + 7);
+    x += colWidths[i];
+  });
+
+  // Rows
+  doc.setTextColor(40,40,40);
+  y += rowHeight;
+  (summary.modules || []).forEach(m => {
+    x = marginLeft;
+    const row = [String(m).toUpperCase(), ...paypoints.map(p => Number(summary.matrix?.[m]?.[p] || 0).toLocaleString()), Number(summary.rowTotals?.[m] || 0).toLocaleString()];
+    row.forEach((cell, i) => {
+      if (!i){
+        doc.setFontSize(6);
+      }else{
+        doc.setFontSize(10);
+      }
+      doc.rect(x, y, colWidths[i], rowHeight);
+      let text = String(cell);
+      if (text.length > 18) text = text.slice(0, 19) + '...';
+      doc.text(text, x + 2, y + 7);
+      x += colWidths[i];
+    });
+    y += rowHeight;
+    if (y > 190){
+      doc.addPage();
+      y = marginTop;
+    }
+  });
+
+  // Footer totals
+  x = marginLeft;
+  doc.setFontSize(10);
+  columns.forEach((_, i) => {
+    const w = colWidths[i];
+    doc.setFillColor(227, 242, 253);
+    doc.setTextColor(25, 118, 210);
+    doc.rect(x, y, w, rowHeight, 'F');
+    let text = '';
+    if (i === 0) text = 'Column Total';
+    else if (i === columns.length - 1) text = Number(summary.grandTotal || 0).toLocaleString();
+    else {
+      const p = paypoints[i-1];
+      text = Number(summary.colTotals?.[p] || 0).toLocaleString();
+    }
+    if (text){
+      doc.text(String(text), x + 2, y + 7);
+    }
+    x += w;
+  });
+
+  doc.save('payment_receipts_summary.pdf');
 }
