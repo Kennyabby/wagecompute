@@ -267,27 +267,29 @@ const Reports = ()=>{
         })
         const monthlyRentalData = getMonthWiseReport(rentalData)
 
-        var purchaseData = []
         // Prefer COGS (cost of goods sold) aggregated from InventoryTransactions for Sales
+        var cogsData = []
         if (cogsMap && Object.keys(cogsMap).length){
             Object.keys(cogsMap).forEach(d => {
                 if (filterFrom <= d && filterTo >= d){
-                    purchaseData.push({ postingDate: d, docType: 'purchase', purchaseAmount: Math.abs(Number(cogsMap[d] || 0)) })
-                }
-            })
-        } else {
-            purchase.forEach((pur)=>{
-                const {postingDate, purchaseAmount} = pur
-                if (filterFrom <= postingDate && filterTo >= postingDate){                
-                    var reportPurchase = {}
-                    reportPurchase.postingDate = postingDate
-                    reportPurchase.docType = 'purchase'
-                    reportPurchase.purchaseAmount = Number(purchaseAmount)
-        
-                    purchaseData = purchaseData.concat(reportPurchase)
+                    cogsData.push({ postingDate: d, docType: 'cogs', cogsAmount: Math.abs(Number(cogsMap[d] || 0)) })
                 }
             })
         }
+        const monthlyCogsData = getMonthWiseReport(cogsData)
+
+        var purchaseData = []
+        purchase.forEach((pur)=>{
+            const {postingDate, purchaseAmount} = pur
+            if (filterFrom <= postingDate && filterTo >= postingDate){                
+                var reportPurchase = {}
+                reportPurchase.postingDate = postingDate
+                reportPurchase.docType = 'purchase'
+                reportPurchase.purchaseAmount = Number(purchaseAmount)
+    
+                purchaseData = purchaseData.concat(reportPurchase)
+            }
+        })
         const monthlyPurchaseData = getMonthWiseReport(purchaseData)
 
         var expenseData = []
@@ -329,7 +331,7 @@ const Reports = ()=>{
         const monthlyExpenseData = getMonthWiseReport(expenseData)
 
         return combinedMonthReport([...monthlySalesData,...monthlyRentalData,
-            ...monthlyExpenseData,...monthlyPurchaseData
+            ...monthlyExpenseData,...monthlyPurchaseData, ...monthlyCogsData
         ])
     }
 
@@ -341,13 +343,15 @@ const Reports = ()=>{
             var sumSalesAmount = 0
             var sumRentalAmount = 0
             var sumPurchaseAmount = 0
+            var sumCogsAmount = 0
             var sumExpenseAmount = 0
             data.forEach((record)=>{
-                const {postingDate, salesAmount, rentalAmount, purchaseAmount, expenseAmount, salaryAmount} = record
+                const {postingDate, salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount} = record
                 if (postingDate.split('-')[1] === month){
                     sumSalesAmount += salesAmount ? salesAmount : 0
                     sumRentalAmount += rentalAmount ? rentalAmount : 0
                     sumPurchaseAmount += purchaseAmount ? purchaseAmount : 0
+                    sumCogsAmount += cogsAmount ? cogsAmount : 0
                     sumExpenseAmount += (expenseAmount || salaryAmount || 0)
                 }
             })
@@ -355,6 +359,7 @@ const Reports = ()=>{
             newRecord.salesAmount = sumSalesAmount
             newRecord.rentalAmount = sumRentalAmount
             newRecord.purchaseAmount = sumPurchaseAmount
+            newRecord.cogsAmount = sumCogsAmount
             newRecord.expenseAmount = sumExpenseAmount
             newData = newData.concat(newRecord)
         })
@@ -368,13 +373,16 @@ const Reports = ()=>{
             var sumSalesAmount = 0
             var sumRentalAmount = 0
             var sumPurchaseAmount = 0
+            var sumCogsAmount = 0
             var sumExpenseAmount = 0
+
             monthlyReports.forEach((report)=>{
-                const {salesAmount, rentalAmount, purchaseAmount, expenseAmount, salaryAmount} = report
+                const {salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount} = report
                 if (report.month === month){
                     sumSalesAmount += salesAmount
                     sumRentalAmount += rentalAmount
                     sumPurchaseAmount += purchaseAmount 
+                    sumCogsAmount += cogsAmount
                     sumExpenseAmount += (expenseAmount || salaryAmount || 0)
                 }
             })                        
@@ -382,6 +390,7 @@ const Reports = ()=>{
             monthlyRecord.salesAmount = sumSalesAmount
             monthlyRecord.rentalAmount = sumRentalAmount
             monthlyRecord.purchaseAmount = sumPurchaseAmount
+            monthlyRecord.cogsAmount = sumCogsAmount
             monthlyRecord.expenseAmount = sumExpenseAmount
 
             combinedReports = combinedReports.concat(monthlyRecord)
@@ -394,13 +403,15 @@ const Reports = ()=>{
         var sumSalesAmount = 0
         var sumRentalAmount = 0
         var sumPurchaseAmount = 0
+        var sumCogsAmount = 0
         var sumExpenseAmount = 0
         data.forEach((record)=>{
-            const {salesAmount, rentalAmount, purchaseAmount, expenseAmount, salaryAmount} = record
+            const {salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount} = record
             if (months.indexOf(record.month)<=months.indexOf(month)){
                 sumSalesAmount += salesAmount
                 sumRentalAmount += rentalAmount
                 sumPurchaseAmount += purchaseAmount 
+                sumCogsAmount += cogsAmount
                 sumExpenseAmount += (expenseAmount || salaryAmount || 0)
             }
         })
@@ -468,11 +479,11 @@ const Reports = ()=>{
                                             return <tr key={index}>
                                                 <td>{report.month}</td>
                                                 <td>{'₦'+(report.salesAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.purchaseAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.salesAmount - report.purchaseAmount).toLocaleString()}</td>
+                                                <td>{'₦'+(report.cogsAmount || report.purchaseAmount).toLocaleString()}</td>
+                                                <td>{'₦'+(report.salesAmount - (report.cogsAmount || report.purchaseAmount)).toLocaleString()}</td>
                                                 <td>{'₦'+(report.rentalAmount).toLocaleString()}</td>
                                                 <td>{'₦'+(report.expenseAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.salesAmount + report.rentalAmount - report.purchaseAmount - report.expenseAmount).toLocaleString()}</td>
+                                                <td>{'₦'+(report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount).toLocaleString()}</td>
                                             </tr>
                                         })}
                                         {curReport.title === 'TRIAL BALANCE' && 
@@ -508,9 +519,9 @@ const Reports = ()=>{
                                                         <td>{report.month}</td>
                                                         <td>{'SALES INCOME || ADMIN & OTHER EXPENSES'}</td>
                                                         <td>{'₦'+(report.salesAmount + report.rentalAmount).toLocaleString()}</td>
-                                                        <td>{'₦'+(report.purchaseAmount + report.expenseAmount).toLocaleString()}</td>                                                
+                                                        <td>{'₦'+((report.cogsAmount || report.purchaseAmount) + report.expenseAmount).toLocaleString()}</td>                                                
                                                         {[''].map((arg, index)=>{        
-                                                            cummulativeSum += report.salesAmount + report.rentalAmount - report.purchaseAmount - report.expenseAmount
+                                                            cummulativeSum += report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount
                                                             return <td>{'₦'+(cummulativeSum).toLocaleString()}</td>                                          
                                                         })}                                                
                                                     </tr>
@@ -534,7 +545,7 @@ const Reports = ()=>{
                                                 [''].map((arg, index)=>{
                                                     var totalPurchaseAmount = 0
                                                     curReport.data.forEach((report)=>{
-                                                        totalPurchaseAmount += report.purchaseAmount 
+                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount) 
                                                     })          
                                                     return <th>{'₦'+totalPurchaseAmount.toLocaleString()}</th>                                          
                                                 })
@@ -545,7 +556,7 @@ const Reports = ()=>{
                                                     var totalPurchaseAmount = 0
                                                     curReport.data.forEach((report)=>{
                                                         totalSalesAmount += report.salesAmount 
-                                                        totalPurchaseAmount += report.purchaseAmount 
+                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount) 
                                                     })          
                                                     return <th>{'₦'+(totalSalesAmount - totalPurchaseAmount).toLocaleString()}</th>                                          
                                                 })
@@ -577,7 +588,7 @@ const Reports = ()=>{
                                                     curReport.data.forEach((report)=>{
                                                         totalSalesAmount += report.salesAmount 
                                                         totalRentalAmount += report.rentalAmount
-                                                        totalPurchaseAmount += report.purchaseAmount
+                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
                                                         totalExpenseAmount += report.expenseAmount
                                                     })          
                                                     return <th>{'₦'+(totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>                                          
@@ -604,7 +615,7 @@ const Reports = ()=>{
                                                     curReport.data.forEach((report)=>{
                                                         totalSalesAmount += report.salesAmount 
                                                         totalRentalAmount += report.rentalAmount 
-                                                        totalPurchaseAmount += report.purchaseAmount
+                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
                                                         totalExpenseAmount += report.expenseAmount
                                                     })          
                                                     var cummulativeSum = cummulativeBalance(
@@ -660,8 +671,9 @@ const Reports = ()=>{
                             </div>
                         </div>
                         <button className="action-btn" onClick={()=>{
-                            setFilterFrom(pendingFrom)
-                            setFilterTo(pendingTo)
+                            // setFilterFrom(pendingFrom)
+                            // setFilterTo(pendingTo)
+                            fetchCogsForRange(filterFrom, filterTo)
                         }}>Apply Filter</button>
 
                         <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
