@@ -197,7 +197,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                 excelFilteredReceipts = Object.entries(groups).map(([receiptNum, group]) => ({ receiptNum, group }));
                 grouped = true;
               }
-              generateExcel(excelFilteredReceipts, columns, companyInfo, dateRange, 'Plantain Planet Payment Receipts Report', filter, grouped);
+              generateExcel(excelFilteredReceipts, columns, companyInfo, dateRange, 'The Plantain Planet Payment Receipts Report', filter, grouped);
             }}
           >
             Download Excel

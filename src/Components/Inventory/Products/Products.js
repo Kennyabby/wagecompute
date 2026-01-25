@@ -1248,7 +1248,7 @@ const Products = ({
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                <div style={{ fontWeight: 600 }}>Plantain Planet Customer Menu QR Codes</div>
+                                <div style={{ fontWeight: 600 }}>The Plantain Planet Customer Menu QR Codes</div>
                                 <button
                                     type='button'
                                     onClick={() => setIsQrModalOpen(false)}
