@@ -95,6 +95,30 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
   const paypoints = useMemo(() => Array.from(new Set(paymentReceipts.map(r => r.paymentPoint))), [paymentReceipts]);
   const modules = useMemo(() => Array.from(new Set(paymentReceipts.map(r => r.paymentModule))), [paymentReceipts]);
   const handlers = useMemo(() => Array.from(new Set(paymentReceipts.map(r => r.paymentHandler))), [paymentReceipts]);
+  
+  // Summary pivot by Module (rows) x Paypoint (columns), respecting current filters
+  const summaryByModulePaypoint = useMemo(() => {
+    const data = (filteredReceipts && filteredReceipts.length ? filteredReceipts : paymentReceipts);
+    const paypointList = Array.from(new Set(data.map(r => r.paymentPoint)));
+    const moduleList = Array.from(new Set(data.map(r => r.paymentModule)));
+    const matrix = {};
+    const rowTotals = {};
+    const colTotals = paypointList.reduce((o, p) => (o[p] = 0, o), {});
+    let grandTotal = 0;
+    moduleList.forEach(m => {
+      matrix[m] = {};
+      let rowSum = 0;
+      paypointList.forEach(p => {
+        const sum = data.reduce((acc, r) => acc + ((r.paymentModule === m && r.paymentPoint === p) ? Number(r.paymentAmount || 0) : 0), 0);
+        matrix[m][p] = sum;
+        rowSum += sum;
+        colTotals[p] += sum;
+        grandTotal += sum;
+      });
+      rowTotals[m] = rowSum;
+    });
+    return { paypoints: paypointList, modules: moduleList, matrix, rowTotals, colTotals, grandTotal };
+  }, [filteredReceipts, paymentReceipts]);
 
   if (!open) return null;
 
@@ -324,6 +348,44 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
           <button onClick={()=>setViewType('card')} style={{padding:'6px 16px',borderRadius:'4px',border:viewType==='card'?'2px solid #1976d2':'1px solid #ccc',background:viewType==='card'?'#e3f2fd':'#fff',color:'#1976d2',fontWeight:'bold',cursor:'pointer'}}>Card</button>
           <button onClick={()=>setViewType('table')} style={{padding:'6px 16px',borderRadius:'4px',border:viewType==='table'?'2px solid #1976d2':'1px solid #ccc',background:viewType==='table'?'#e3f2fd':'#fff',color:'#1976d2',fontWeight:'bold',cursor:'pointer'}}>Table</button>
         </div>
+        {/* Summary matrix: Module x Paypoint */}
+        {filteredReceipts.length > 0 && (
+          <div style={{marginBottom: '18px'}}>
+            <div style={{fontWeight:'bold', color:'#1976d2', margin:'6px 0'}}>Summary by Module and Paypoint</div>
+            <table style={{width:'100%', borderCollapse:'collapse', background:'#fff'}}>
+              <thead>
+                <tr style={{background:'#e3f2fd', color:'#1976d2'}}>
+                  <th style={{padding:'8px', border:'1px solid #90caf9', textAlign:'left'}}>Module</th>
+                  {summaryByModulePaypoint.paypoints.map(pp => (
+                    <th key={pp} style={{padding:'8px', border:'1px solid #90caf9', textAlign:'right'}}>{payPointAccounts[pp] || pp}</th>
+                  ))}
+                  <th style={{padding:'8px', border:'1px solid #90caf9', textAlign:'right'}}>Row Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summaryByModulePaypoint.modules.map(m => (
+                  <tr key={m}>
+                    <td style={{padding:'8px', border:'1px solid #90caf9', fontWeight:'bold'}}>{String(m).toUpperCase()}</td>
+                    {summaryByModulePaypoint.paypoints.map(pp => (
+                      <td key={m+'-'+pp} style={{padding:'8px', border:'1px solid #90caf9', textAlign:'right'}}>₦{Number(summaryByModulePaypoint.matrix[m][pp] || 0).toLocaleString()}</td>
+                    ))}
+                    <td style={{padding:'8px', border:'1px solid #90caf9', textAlign:'right', fontWeight:'bold'}}>₦{Number(summaryByModulePaypoint.rowTotals[m] || 0).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{background:'#e3f2fd', color:'#1976d2', fontWeight:'bold'}}>
+                  <td style={{padding:'8px', border:'1px solid #90caf9'}}>Column Total</td>
+                  {summaryByModulePaypoint.paypoints.map(pp => (
+                    <td key={'total-'+pp} style={{padding:'8px', border:'1px solid #90caf9', textAlign:'right'}}>₦{Number(summaryByModulePaypoint.colTotals[pp] || 0).toLocaleString()}</td>
+                  ))}
+                  <td style={{padding:'8px', border:'1px solid #90caf9', textAlign:'right'}}>₦{Number(summaryByModulePaypoint.grandTotal || 0).toLocaleString()}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
         <div className="modal-details" style={{maxHeight:'55vh'}}>
           {filteredReceipts.length === 0 ? (
             <div style={{textAlign:'center',color:'#888',marginTop:32}}>No receipts found for selected filters.</div>
