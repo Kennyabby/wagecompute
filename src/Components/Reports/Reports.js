@@ -18,7 +18,12 @@ const Reports = ()=>{
     } = useContext(ContextProvider)
 
     const [cogsMap, setCogsMap] = useState({}) // { 'YYYY-MM-DD': amount }
-
+    const [cogsLoading, setCogsLoading] = useState(false)
+    const [cogsError, setCogsError] = useState(null)
+    const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))
+    const [filterTo, setFilterTo] = useState(new Date(Date.now()).toISOString().slice(0,10))
+    const [pendingFrom, setPendingFrom] = useState(filterFrom)
+    const [pendingTo, setPendingTo] = useState(filterTo)
     useEffect(()=>{
         storePath('reports')  
     },[storePath])
@@ -90,15 +95,13 @@ const Reports = ()=>{
         },intervalPeriod)
         return () => clearInterval(intervalId);
     },[window.localStorage.getItem('sessn-cmp')])
-    const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))
-    const [filterTo, setFilterTo] = useState(new Date(Date.now()).toISOString().slice(0,10))
     const [isSyncing, setIsSyncing] = useState(false)
     const reports = ['PROFIT OR LOSS', 'TRIAL BALANCE', 'BALANCE SHEET']
     const [curReport, setCurReport] = useState({
         title:reports[0], 
         data:[],
         description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
-        columns: ['Month','Sales Income','Purchases', 'Gross Profit', 'Other Income', 'Admin Expenses', 'Net Profit']
+        columns: ['Month','Sales Income','COGS', 'Gross Profit', 'Other Income', 'Admin Expenses', 'Net Profit']
     })
     const reportRef = useRef(null)
     const handleReportSelection = (e)=>{
@@ -145,6 +148,10 @@ const Reports = ()=>{
         }
     },[filterFrom,filterTo, expenses, sales, rentals, purchase, cogsMap])
 
+    useEffect(()=>{
+        fetchCogsForRange(filterFrom, filterTo)
+    }, [filterFrom, filterTo])
+
     const getBalanceSheet = (filterFrom, filterTo)=>{
         return getAlldata(filterFrom, filterTo)
     }
@@ -190,7 +197,39 @@ const Reports = ()=>{
             setIsSyncing(false);
         }
     }
-
+    const fetchCogsForRange = async (from, to) => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return
+        setCogsLoading(true)
+        setCogsError(null)
+        try{
+            const formattedStart = new Date(from).toISOString().split('T')[0]
+            const formattedEnd = new Date(to).toISOString().split('T')[0]
+            const q = {
+            database: cmp_val,
+            collection: 'InventoryTransactions',
+            prop: [
+                { $match: { postingDate: { $gte: formattedStart, $lte: formattedEnd }, entryType: 'Sales' } },
+                { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [ { $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' } ] } } } }
+            ]
+            }
+            const resp = await fetchServer('POST', q, 'aggregateDocs', server)
+            const map = {}
+            if (resp && resp.record){
+            resp.record.forEach(r => { if (r._id) map[r._id] = r.cogs || 0 })
+            }
+            setCogsMap(map)
+            setCogsError(null)
+        }catch(e){
+            console.warn('fetch COGS failed', e)
+            setCogsError('Failed to fetch COGS. Reports may be incomplete.')
+            setAlertState('error')
+            setAlert('Failed to fetch COGS. Reports may be incomplete.')
+            setAlertTimeout(5000)
+        }finally{
+            setCogsLoading(false)
+        }
+    }
     const getTrialBalance = (filterFrom, filterTo)=>{
         return getAlldata(filterFrom, filterTo)
     }
@@ -404,6 +443,17 @@ const Reports = ()=>{
                             <div className='report-title'>
                                 {curReport.description + ` YEAR ${new Date(filterTo).getFullYear()}`}
                             </div>
+                            {cogsLoading && (
+                                <div className='report-loading' style={{margin: '8px 0', color: '#325aa8'}}>
+                                    Updating cost of goods... Please wait.
+                                </div>
+                            )}
+                            {cogsError && (
+                                <div className='report-error' style={{margin: '8px 0', color: 'red'}}>
+                                    {cogsError}
+                                    <button style={{marginLeft: 8}} onClick={()=>fetchCogsForRange(filterFrom, filterTo)}>Retry</button>
+                                </div>
+                            )}
                             <div className='report-table'>
                                 <table>
                                     <thead>
@@ -609,15 +659,20 @@ const Reports = ()=>{
                                 />
                             </div>
                         </div>
-                            <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
-                                <button className="action-btn" onClick={handleSyncOfflineReports} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
-                            </div>
-                            <div 
-                                className='print-report'
-                                onClick={printToPDF}
-                            >
-                                Print Report
-                            </div>
+                        <button className="action-btn" onClick={()=>{
+                            setFilterFrom(pendingFrom)
+                            setFilterTo(pendingTo)
+                        }}>Apply Filter</button>
+
+                        <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                            <button className="action-btn" onClick={handleSyncOfflineReports} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                        </div>
+                        <div 
+                            className='print-report'
+                            onClick={printToPDF}
+                        >
+                            Print Report
+                        </div>
                     </div>
                 </div>
             </div>
