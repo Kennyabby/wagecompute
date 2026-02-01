@@ -885,7 +885,19 @@ function App() {
       const curPosSetting = posSettings?.posSettings?.find((sett)=>{
         return sett.active
       })
-      const closingHour = Number(curPosSetting?.sessHour || 11)
+      // configured Sessions
+      let curClosingHour = Number(curPosSetting?.sessHour || 0)
+      // 11am sessions 
+      let fromDate = new Date('12/12/2025').getTime()
+      let toDate = new Date('2/2/2026').getTime()      
+      if (fromDate <= sessionStart && sessionStart <= toDate){
+        curClosingHour = 11
+      }
+      // previous 8am Sessions
+      if (sessionStart < fromDate){
+        curClosingHour = 8
+      }
+      const closingHour = curClosingHour
       const sessionStartDate = new Date(sessionStart);
       const sessionEndDate = new Date(sessionStartDate);
 
@@ -904,7 +916,20 @@ function App() {
     const curPosSetting = posSettings?.posSettings?.find((sett)=>{
         return sett.active
     })
-    const closingHour = Number(curPosSetting?.sessHour || 11)
+
+    // configured Sessions
+    let curClosingHour = Number(curPosSetting?.sessHour || 0)
+    // 11am sessions 
+    let fromDate = new Date('12/12/2025').getTime()
+    let toDate = new Date('2/2/2026').getTime()      
+    if (fromDate <= timestamp && timestamp <= toDate){
+      curClosingHour = 11
+    }
+    // previous 8am Sessions
+    if (timestamp < fromDate){
+      curClosingHour = 8
+    }
+    const closingHour = curClosingHour
     const date = new Date(timestamp);
 
     // Candidate session start at 11:00 AM same day

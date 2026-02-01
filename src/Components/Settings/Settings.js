@@ -68,7 +68,10 @@ const Settings = () => {
         size: '',
         capacity: '',
         active: false,
-        sessHour: ''
+        sessHour: '',
+        printPaymenReceipt: false,
+        printKitchenReceipt: false,
+        printBarReceipt: false,
     }
     const [loginDetails, setLoginDetails] = useState({
         email: '',
@@ -480,7 +483,7 @@ const Settings = () => {
                     }
                 }
                 break 
-            case "posSetting":
+            case "posSettings":
                 if (propState === 'view'){
                     const updatedPosSetting = posSettings.map((pos) => {
                         if (pos.name === curPropSet.name) {
@@ -598,6 +601,10 @@ const Settings = () => {
                     },3000)
                 }
                 break
+            case 'posSettings':
+                setAlertState('error')
+                setAlert("Can't Delete POS Settings, You can always pick one, activate it and post changes by using the Save Button.")
+                setAlertTimeout(3000)
         }
     }
     
@@ -1458,6 +1465,42 @@ const Settings = () => {
                                             return <option key={id} value={hour}>{hour}</option>
                                         })}
                                     </select>
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <div>Allow Print Payment Receipts</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='printPaymentReceipt'
+                                            checked={curPropSet.printPaymentReceipt}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && curPropSet.type === 'restaurant' && <div className='inpcov formpad'>
+                                    <div>Allow Print Kitchen Receipts</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='printKitchenReceipt'
+                                            checked={curPropSet.printKitchenReceipt}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && curPropSet.type === 'restaurant' && <div className='inpcov formpad'>
+                                    <div>Allow Print Bar Receipts</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='printBarReceipt'
+                                            checked={curPropSet.printBarReceipt}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
                                 </div>}
                                 {<div style={{display:'flex'}}>
                                     {<div className='savebtn' onClick={saveSettings}>Save</div>}

@@ -679,10 +679,10 @@ const Products = ({
         }
     }
 
-    // Base URL for the public Plantain Planet menu used in QR codes.
+    // Base URL for the public The Plantain Planet menu used in QR codes.
     // Edit this single value if the FeastWebsite domain changes.
-    // const QR_MENU_BASE_URL = "https://plantainplanetng.vercel.app";
-    const QR_MENU_BASE_URL = "http://localhost:5000";
+    const QR_MENU_BASE_URL = "https://cravefeast.vercel.app";
+    // const QR_MENU_BASE_URL = "http://localhost:5000";
 
     const normalMenuUrl = `${QR_MENU_BASE_URL}/menu?inStockOnly=true&priceType=normal`;
     const vipMenuUrl = `${QR_MENU_BASE_URL}/menu?inStockOnly=true&priceType=vip`;

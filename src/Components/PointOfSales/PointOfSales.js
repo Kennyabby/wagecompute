@@ -694,65 +694,65 @@ const PointOfSales = () => {
             return;
         }
 
-        if (curPosSettings?.type === 'shop'){            
-            const deliveryDate = new Date().getTime()
-            const newSession = {
-                employee_id: ![null, undefined].includes(sessionUser)
-                    ? sessionUser.profile.emailid
-                    : companyRecord.emailid,
-                i_d: deliveryDate,
-                type: 'delivery',
-                wrh: wrh,
-                start: deliveryDate,
-                startedBy: companyRecord.emailid,
-                end: null,
-                active: true,
-                shortage: 0,
-            };
+        // if (curPosSettings?.type === 'shop'){            
+        //     const deliveryDate = new Date().getTime()
+        //     const newSession = {
+        //         employee_id: ![null, undefined].includes(sessionUser)
+        //             ? sessionUser.profile.emailid
+        //             : companyRecord.emailid,
+        //         i_d: deliveryDate,
+        //         type: 'delivery',
+        //         wrh: wrh,
+        //         start: deliveryDate,
+        //         startedBy: companyRecord.emailid,
+        //         end: null,
+        //         active: true,
+        //         shortage: 0,
+        //     };
     
-            try {
-                // 1) Local write
-                if (company && companyRecord?.emailid) {
-                    await putSession(company, companyRecord.emailid, newSession);
-                }            
+        //     try {
+        //         // 1) Local write
+        //         if (company && companyRecord?.emailid) {
+        //             await putSession(company, companyRecord.emailid, newSession);
+        //         }            
     
-                // 3) Queue for sync
-                if (company && companyRecord?.emailid) {
-                    queuePendingChange(company, companyRecord.emailid, {
-                        entityType: 'session',
-                        op: 'create',
-                        clientId: newSession.start,
-                        payload: newSession,
-                    });
-                    // Immediate sync attempt – failures are fine, queue remains
-                    try {
-                        // 2) State
-                        setAlertState('success');
-                        if (![null, undefined].includes(sessionUser)) {
-                            setAlert('User Delivery Session Started Successfully!');
-                        }
+        //         // 3) Queue for sync
+        //         if (company && companyRecord?.emailid) {
+        //             queuePendingChange(company, companyRecord.emailid, {
+        //                 entityType: 'session',
+        //                 op: 'create',
+        //                 clientId: newSession.start,
+        //                 payload: newSession,
+        //             });
+        //             // Immediate sync attempt – failures are fine, queue remains
+        //             try {
+        //                 // 2) State
+        //                 setAlertState('success');
+        //                 if (![null, undefined].includes(sessionUser)) {
+        //                     setAlert('User Delivery Session Started Successfully!');
+        //                 }
 
-                        setAlertTimeout(500);
-                        setStartSession(false);
-                        setOpeningCash(0);
-                        mergeAndPersistSessions([newSession])
-                        setSessionUser(null);
-                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                        fetchAllSessions({company, companyRecord})
-                    } catch (e) {
-                        // Leave pending changes in queue; 5‑minute auto-sync will retry
-                    }
-                }
-                return;
-            } catch (e) {
-                setAlertState('error');
-                setAlert('Could not start delivery session locally.');
-                setAlertTimeout(3000);
-                return;
-            }
-        }else{
-            return
-        }
+        //                 setAlertTimeout(500);
+        //                 setStartSession(false);
+        //                 setOpeningCash(0);
+        //                 mergeAndPersistSessions([newSession])
+        //                 setSessionUser(null);
+        //                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+        //                 fetchAllSessions({company, companyRecord})
+        //             } catch (e) {
+        //                 // Leave pending changes in queue; 5‑minute auto-sync will retry
+        //             }
+        //         }
+        //         return;
+        //     } catch (e) {
+        //         setAlertState('error');
+        //         setAlert('Could not start delivery session locally.');
+        //         setAlertTimeout(3000);
+        //         return;
+        //     }
+        // }else{
+        //     return
+        // }
 
     };
 
@@ -1865,8 +1865,11 @@ const PointOfSales = () => {
                     setAlertTimeout(1000);
                     // Keep your existing reads (they only fetch, no writes)
                     if (curPosSettings?.type === 'restaurant'){
-                        printKitchenOrder(placedOrder);
-                        printBarOrder(placedOrder)
+                        if (curPosSettings?.printKitchenReceipt){
+                            printKitchenOrder(placedOrder);
+                        }if (curPosSettings?.printBarReceipt){
+                            printBarOrder(placedOrder)
+                        }
                     }                    
                     syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     if (curPosSettings?.type === 'shop'){
@@ -2310,8 +2313,9 @@ const PointOfSales = () => {
                     setAlertState('success');
                     setAlert('Payment processed successfully');
                     setAlertTimeout(1000);
-
-                    printReceipt(newOrder);
+                    if (curPosSettings?.printPaymentReceipt){
+                        printReceipt(newOrder);
+                    }
                     setShowPaymentModal(false);
                     createNewOrder(currentTable);
                     setPaymentDetails({ ...payPoints });
