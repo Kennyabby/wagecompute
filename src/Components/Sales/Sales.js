@@ -574,12 +574,18 @@ const Sales = ()=>{
                             const salesEndDate = new Date(postingDate1)
                             salesEndDate.setDate(salesEndDate.getDate() + 1);                        
                             const sessionOrders = session?.orders || []
+                            if (employeeId === '27'){
+                                // console.log(sessionOrders)
+                            }
                             sessionOrders.forEach((sessionOrder)=>{
                                 if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
-                                    && session.type === 'sales' && (session.totalSalesAmount || session.debtDue || session.unAccountedSales || session.totalPendingSales) && session.end && (sessionOrder.status === 'completed' || session.totalPendingSales)
+                                    && session.type === 'sales' && session.end && !['cancelled', 'pending'].includes(sessionOrder.status)
+                                    && (
+                                        session.totalSalesAmount || session.debtDue || 
+                                        session.unAccountedSales || session.totalPendingSales
+                                    )  && (sessionOrder.status === 'completed' || session.totalPendingSales)
                                     && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
-                                ){
-                                    
+                                ){                                    
                                     const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
                                     let wct = 0
                                     salesPostsPay.forEach((pay)=>{
@@ -624,10 +630,11 @@ const Sales = ()=>{
                                         totalWrhTransactions[wh].allPayPoints[payPoint]  = (Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])))
                                         totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                         totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
-                                        tbankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
-                                        tcashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                        tbankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : Number(splitPayment[wh] || 0))) : 0)
+                                        tcashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : Number(splitPayment[wh] || 0))) : 0)
                                     }                            
                                 })
+                                
                                 totalWrhTransactions[wh].totalSales += (tbankSales + tcashSales)
                             }else{                            
                                 if (session.wrh === wh){
@@ -635,26 +642,29 @@ const Sales = ()=>{
                                     let tbankSales = 0
                                     Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint)=>{
                                         if (sessionOrder[payPoint]){
-                                            totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))
-                                            totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
-                                            totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
-                                            tbankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
-                                            tcashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                            totalWrhTransactions[wh].allPayPoints[payPoint]  = Number(totalWrhTransactions[wh].allPayPoints[payPoint] || 0) + (Number(sessionOrder[payPoint] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))
+                                            totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash'] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                            totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                           
+                                            tbankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint] || 0) * (splitPayment['exclude'] ? 0 : Number(splitPayment[wh] || 0))) : 0)
+                                            tcashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash'] || 0) * (splitPayment['exclude'] ? 0 : Number(splitPayment[wh] || 0))) : 0)
                                         }                            
                                     })
+                                   
                                     totalWrhTransactions[wh].totalSales += (tbankSales + tcashSales)
                                     if (index === wrhSessionOrders.length-1){ 
                                         const {totalSalesAmount, debtDue, unAccountedSales} = session
                                         totalWrhTransactions[wh].debt += Number(debtDue)
                                         totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
-                                        totalWrhTransactions[wh].totalSales += Number(unAccountedSales)                        
+                                        
+                                        totalWrhTransactions[wh].totalSales += Number(unAccountedSales || 0)                        
                                     }
                                 }
     
                             }
     
                         })
-                        
+                        // console.log(wrhSessionOrders.length, wh, totalWrhTransactions[wh].totalSales)
                         if (wrhSessionOrders.length && totalWrhTransactions[wh].totalSales){
                             const salesUnits1 = {...salesUnits}
                             salesUnits1[wh] = {...(totalWrhTransactions[wh].allPayPoints)}
