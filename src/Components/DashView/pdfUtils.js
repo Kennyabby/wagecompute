@@ -1,7 +1,7 @@
 
 import jsPDF from 'jspdf';
 
-export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount, employees, grouped = false }) {
+export function exportReceiptsTableToPDF({ payPointAccounts, dbName, filteredReceipts, filter, resultCount, employees, grouped = false }) {
   const doc = new jsPDF({ orientation: 'landscape' });
   const marginLeft = 7;
   const marginTop = 18;
@@ -10,12 +10,6 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   const columns = [
     'Module', 'Paypoint', 'Amount', 'Receipt #', 'Date', 'Handler', 'For', 'Approved By'
   ];
-  const payPointAccounts = {
-      'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
-      'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063',
-      'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
-      'cash':'CASH', 'Employee':'EMPLOYEE'
-  }
 
   let totalAmount = 0;
   if (grouped) {
@@ -25,7 +19,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   }
   // Title
   doc.setFontSize(16);
-  doc.text('The Plantain Planet Payment Receipts Report', marginLeft, marginTop);
+  doc.text(`${dbName} Payment Receipts Report`, marginLeft, marginTop);
   doc.setFontSize(11);
   doc.text(`Filters:`, marginLeft, marginTop + 10);
   // Format multi-select filters for display
@@ -47,11 +41,11 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   let x = marginLeft;
   let y = marginTop + 32;
   doc.setFillColor(25, 118, 210);
-  doc.setTextColor(255,255,255);
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   columns.forEach((col, i) => {
     doc.setFillColor(25, 118, 210);
-    doc.setTextColor(255,255,255);
+    doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
     doc.rect(x, y, colWidths[i], rowHeight, 'F');
     doc.text(col, x + 2, y + 7);
@@ -60,7 +54,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
 
   // Table rows
   doc.setFontSize(9);
-  doc.setTextColor(40,40,40);
+  doc.setTextColor(40, 40, 40);
   y += rowHeight;
   if (grouped) {
     // filteredReceipts is [{ receiptNum, group }]
@@ -71,7 +65,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
         if (employees && r.paymentHandler) {
           const emp = employees.find(e => String(e.i_d) === String(r.paymentHandler) || String(e.id) === String(r.paymentHandler));
           if (emp) {
-            empName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName||'')) : '');
+            empName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName || '')) : '');
           }
         }
         const handlerDisplay = empName ? `${r.paymentHandler} (${empName})` : r.paymentHandler;
@@ -79,7 +73,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
         if (employees && r.paymentApprover) {
           const emp = employees.find(e => String(e.i_d) === String(r.paymentApprover) || String(e.id) === String(r.paymentApprover));
           if (emp) {
-            approverName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName||'')) : '');
+            approverName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName || '')) : '');
           }
         }
         const approverDisplay = approverName ? `${r.paymentApprover} (${approverName})` : r.paymentApprover;
@@ -111,9 +105,9 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
       doc.setFillColor(227, 242, 253);
       doc.setTextColor(25, 118, 210);
       doc.setFontSize(10);
-      doc.rect(x, y, colWidths[0]+colWidths[1], rowHeight, 'F');
+      doc.rect(x, y, colWidths[0] + colWidths[1], rowHeight, 'F');
       doc.text(`Subtotal for Receipt #${receiptNum}`, x + 2, y + 7);
-      x += colWidths[0]+colWidths[1];
+      x += colWidths[0] + colWidths[1];
       doc.setFillColor(227, 242, 253);
       doc.setTextColor(25, 118, 210);
       doc.setFontSize(10);
@@ -121,7 +115,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
       const subtotal = group.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
       doc.text(`${subtotal.toLocaleString()}`, x + 2, y + 7);
       x += colWidths[2];
-      for(let i=3;i<colWidths.length;i++) {
+      for (let i = 3; i < colWidths.length; i++) {
         doc.rect(x, y, colWidths[i], rowHeight, 'F');
         x += colWidths[i];
       }
@@ -139,16 +133,16 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
       if (employees && r.paymentHandler) {
         const emp = employees.find(e => String(e.i_d) === String(r.paymentHandler) || String(e.id) === String(r.paymentHandler));
         if (emp) {
-          empName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName||'')) : '');
+          empName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName || '')) : '');
         }
       }
       const handlerDisplay = empName ? `${r.paymentHandler} (${empName})` : r.paymentHandler;
-      
+
       let approverName = '';
       if (employees && r.paymentApprover) {
         const emp = employees.find(e => String(e.i_d) === String(r.paymentApprover) || String(e.id) === String(r.paymentApprover));
         if (emp) {
-          approverName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName||'')) : '');
+          approverName = emp.name || emp.fullName || (emp.firstName ? (emp.firstName + ' ' + (emp.lastName || '')) : '');
         }
       }
       const approverDisplay = approverName ? `${r.paymentApprover} (${approverName})` : r.paymentApprover;
@@ -181,9 +175,9 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   doc.setFillColor(227, 242, 253);
   doc.setTextColor(25, 118, 210);
   doc.setFontSize(10);
-  doc.rect(x, y, colWidths[0]+colWidths[1], rowHeight, 'F');
+  doc.rect(x, y, colWidths[0] + colWidths[1], rowHeight, 'F');
   doc.text('Total', x + 2, y + 7);
-  x += colWidths[0]+colWidths[1];  
+  x += colWidths[0] + colWidths[1];
   doc.setFillColor(227, 242, 253);
   doc.setTextColor(25, 118, 210);
   doc.setFontSize(10);
@@ -191,7 +185,7 @@ export function exportReceiptsTableToPDF({ filteredReceipts, filter, resultCount
   doc.text(`${totalAmount.toLocaleString()}`, x + 2, y + 7);
   x += colWidths[2];
   // Fill rest of row
-  for(let i=3;i<colWidths.length;i++) {
+  for (let i = 3; i < colWidths.length; i++) {
     doc.rect(x, y, colWidths[i], rowHeight, 'F');
     x += colWidths[i];
   }
@@ -205,7 +199,7 @@ export function exportSummaryMatrixToPDF({
   payPointAccounts = {},
   title = 'Summary by Module and Paypoint',
   filters = {}
-}){
+}) {
   const doc = new jsPDF({ orientation: 'landscape' });
   const marginLeft = 10;
   const marginTop = 14;
@@ -230,22 +224,22 @@ export function exportSummaryMatrixToPDF({
   doc.setFontSize(10);
   columns.forEach((col, i) => {
     doc.setFillColor(25, 118, 210);
-    doc.setTextColor(255,255,255);
+    doc.setTextColor(255, 255, 255);
     doc.rect(x, y, colWidths[i], rowHeight, 'F');
     doc.text(String(col), x + 2, y + 7);
     x += colWidths[i];
   });
 
   // Rows
-  doc.setTextColor(40,40,40);
+  doc.setTextColor(40, 40, 40);
   y += rowHeight;
   (summary.modules || []).forEach(m => {
     x = marginLeft;
     const row = [String(m).toUpperCase(), ...paypoints.map(p => Number(summary.matrix?.[m]?.[p] || 0).toLocaleString()), Number(summary.rowTotals?.[m] || 0).toLocaleString()];
     row.forEach((cell, i) => {
-      if (!i){
+      if (!i) {
         doc.setFontSize(6);
-      }else{
+      } else {
         doc.setFontSize(10);
       }
       doc.rect(x, y, colWidths[i], rowHeight);
@@ -255,7 +249,7 @@ export function exportSummaryMatrixToPDF({
       x += colWidths[i];
     });
     y += rowHeight;
-    if (y > 190){
+    if (y > 190) {
       doc.addPage();
       y = marginTop;
     }
@@ -273,10 +267,10 @@ export function exportSummaryMatrixToPDF({
     if (i === 0) text = 'Column Total';
     else if (i === columns.length - 1) text = Number(summary.grandTotal || 0).toLocaleString();
     else {
-      const p = paypoints[i-1];
+      const p = paypoints[i - 1];
       text = Number(summary.colTotals?.[p] || 0).toLocaleString();
     }
-    if (text){
+    if (text) {
       doc.text(String(text), x + 2, y + 7);
     }
     x += w;

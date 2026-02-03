@@ -2,17 +2,17 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
 import PaymentReceiptsModal from '../../DashView/PaymentReceiptsModal';
 import 'react-datepicker/dist/react-datepicker.css';
-import { 
-  FaFileExcel, FaFilePdf, FaTimes, FaFilter, 
-  FaChevronDown, FaChevronUp, FaSearch, FaExpand, FaCompress,
-  FaBox, FaBoxes, FaMoneyBillWave, FaMapMarkerAlt, FaCalendarAlt, FaUser, FaCircle, FaBoxOpen, FaChair
+import {
+    FaFileExcel, FaFilePdf, FaTimes, FaFilter,
+    FaChevronDown, FaChevronUp, FaSearch, FaExpand, FaCompress,
+    FaBox, FaBoxes, FaMoneyBillWave, FaMapMarkerAlt, FaCalendarAlt, FaUser, FaCircle, FaBoxOpen, FaChair
 } from 'react-icons/fa';
 import { format } from 'date-fns';
 import ContextProvider from '../../../Resources/ContextProvider';
 import { exportToExcel, exportToPDF } from './exportUtils';
 import './TransactionReports.css';
 
-const TransactionReports = ({ 
+const TransactionReports = ({
     type = 'sales', // 'sales' or 'delivery'
     sessions = [],
     setFilteredSessions,
@@ -22,21 +22,17 @@ const TransactionReports = ({
     onClose,
     wrhCategories,
 }) => {
-    const { 
+    const {
         company, server, fetchServer, user, companyRecord,
-        paymentReceipts, getPosOrders, fetchSessions,
+        paymentReceipts, getPosOrders, fetchSessions, paymentMethods,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider);
     const [loading, setLoading] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [expandedSessions, setExpandedSessions] = useState({});
     const [showReceiptsModal, setShowReceiptsModal] = useState(false)
-    const payPointAccounts = {
-        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
-        'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063',
-        'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
-        'cash':'CASH', 'Employee':'EMPLOYEE'
-    }
+    const [payPointAccounts, setPayPointAccounts] = useState({})
+
     // State for filters
     const [filters, setFilters] = useState({
         startDate: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -60,41 +56,41 @@ const TransactionReports = ({
             .map(s => s.wrh)
             .filter(wrh => wrh && wrh.trim() !== '')
         )].sort();
-        
+
         // Get unique categories from order items
-        const categories = [...new Set(orders.flatMap(order => 
+        const categories = [...new Set(orders.flatMap(order =>
             (order.items || []).map(item => item?.category) || []
         ))].filter(Boolean).sort();
-        
+
         // Get unique delivery persons from orders
         const deliveryPersons = [...new Set(orders
             .filter(order => order.lastDeliveredBy)
             .map(order => order.lastDeliveredBy)
         )].filter(Boolean).sort();
-        
+
         // Get unique tables from orders
         const tableNames = [...new Set(orders
             .filter(order => order.tableName)
             .map(order => order.tableName)
         )].filter(Boolean).sort();
-        
+
         // Get unique statuses from orders
         const statuses = [...new Set(orders
             .map(order => order.status)
             .filter(Boolean)
         )].sort();
-        
+
         // Get unique delivery statuses from orders
         const deliveryStatuses = [...new Set(orders
             .map(order => order.delivery)
             .filter(Boolean)
         )].sort();
-        
+
         // Get unique employees from sessions and orders
         const employeeIds = new Set([
             ...sessions.map(s => s.employee_id)
         ].filter(Boolean));
-        
+
         const sessionOperators = new Set([
             ...sessions.map(s => s.startedBy),
             ...sessions.map(s => s.endedby),
@@ -113,8 +109,19 @@ const TransactionReports = ({
         };
     }, [sessions, orders]);
 
+    useEffect(() => {
+        const payPoints = paymentMethods.reduce((obj, method) => {
+            if (method.name !== 'cash') {
+                obj[method.name] = `${method.i_d}-${method.account}`
+            } else {
+                obj[method.name] = `${method.i_d}`
+            }
+            return obj
+        }, {})
+        setPayPointAccounts({ ...payPoints, 'Employee': 'EMPLOYEE' })
+    }, [paymentMethods])
     // Detect Duplicate Orders
-    const getDuplicates = (array, prop)=>{
+    const getDuplicates = (array, prop) => {
         const groupedByProp = array.reduce((acc, elem) => {
             const key = elem[prop];
 
@@ -124,51 +131,51 @@ const TransactionReports = ({
 
             acc[key].push(elem);
             return acc;
-        }, {}) 
+        }, {})
         const groupKeys = Object.keys(groupedByProp)
         const duplicateGroups = {}
         let duplicateCount = 0
-        groupKeys.forEach((key)=>{
-            if (groupedByProp[key].length > 1){
+        groupKeys.forEach((key) => {
+            if (groupedByProp[key].length > 1) {
                 duplicateGroups[key] = groupedByProp[key]
                 duplicateCount += groupedByProp[key].length - 1
             }
         })
-        return {duplicates: duplicateGroups, count: duplicateCount}
+        return { duplicates: duplicateGroups, count: duplicateCount }
     }
 
-    const deleteDuplicates = async(duplicateGroups, type)=>{        
+    const deleteDuplicates = async (duplicateGroups, type) => {
         let toDelete = []
         let toInspect = []
-        Object.keys(duplicateGroups).forEach((key)=>{
-            if (type === 'order'){
+        Object.keys(duplicateGroups).forEach((key) => {
+            if (type === 'order') {
                 toInspect = []
                 let ct = 0
-                duplicateGroups[key].forEach((elem)=>{                
-                    if (elem.delivery === 'pending' && elem.status === 'pending'){
+                duplicateGroups[key].forEach((elem) => {
+                    if (elem.delivery === 'pending' && elem.status === 'pending') {
                         toInspect.push(elem)
-                    }else{
+                    } else {
                         ct++
                     }
-                })  
-                if (ct){
+                })
+                if (ct) {
                     toDelete = toDelete.concat(toInspect)
-                }else{
-                    toInspect =  []
+                } else {
+                    toInspect = []
                 }
             }
-            if (!toInspect.length){
-                duplicateGroups[key].forEach((elem, i)=>{                
-                    if (i){
+            if (!toInspect.length) {
+                duplicateGroups[key].forEach((elem, i) => {
+                    if (i) {
                         toDelete.push(elem)
                     }
                 })
-            }          
+            }
         })
 
         // console.log(toDelete)
         const confirmDelete = window.confirm(
-        `Delete ${toDelete.length} duplicate ${type}${toDelete.length > 1 ? 's' : ''}?`
+            `Delete ${toDelete.length} duplicate ${type}${toDelete.length > 1 ? 's' : ''}?`
         );
         if (!confirmDelete) return;
 
@@ -180,13 +187,13 @@ const TransactionReports = ({
             let dct = 0
             for (const elem of toDelete) {
                 dct++
-                const filter = {}                
+                const filter = {}
                 const resp = await fetchServer(
                     'POST',
                     {
                         database: company,
                         collection: type === 'order' ? 'Orders' : 'POSSessions',
-                        update: {_id: elem._id},
+                        update: { _id: elem._id },
                     },
                     'removeDoc',
                     server
@@ -199,7 +206,7 @@ const TransactionReports = ({
                 setAlertState('success')
                 setAlert(`Deleted ${dct}/${toDelete.length}`)
                 setAlertTimeout(100000)
-            }           
+            }
 
 
             setAlertState('success');
@@ -211,28 +218,28 @@ const TransactionReports = ({
             setAlert('Failed to delete one or more duplicates');
             setAlertTimeout(2000);
         } finally {
-            getPosOrders({company, companyRecord})
-            fetchSessions(company , "sales", companyRecord)
-            fetchSessions(company , "delivery", companyRecord)
+            getPosOrders({ company, companyRecord })
+            fetchSessions(company, "sales", companyRecord)
+            fetchSessions(company, "delivery", companyRecord)
         }
     }
 
     // Process and filter data
-    const processedData = useMemo(() => {        
-        if (!sessions || !sessions.length) return [];        
-        let result = [];        
+    const processedData = useMemo(() => {
+        if (!sessions || !sessions.length) return [];
+        let result = [];
         // Process sessions with their orders
         sessions.forEach(session => {
             // Skip invalid sessions
             if (!session || !session.i_d) return;
-            
-            let initSessionOrders = orders
-            if (!initSessionOrders.length){
-                initSessionOrders = session?.orders || []
+
+            let initSessionOrders = session?.orders || []
+            if (!initSessionOrders.length) {
+                initSessionOrders = orders || []
             }
 
-            const sessionOrders = initSessionOrders.filter(order => 
-               order.sessionId === session.i_d
+            let sessionOrders = initSessionOrders.filter(order =>
+                order.sessionId === session.i_d
             );
 
             const sessionData = {
@@ -243,7 +250,7 @@ const TransactionReports = ({
                 startDate: session.start ? new Date(session.start) : null,
                 endDate: session.end ? new Date(session.end) : null,
                 isActive: Boolean(session.active)
-            };                        
+            };
             result.push(sessionData);
         });
 
@@ -256,12 +263,12 @@ const TransactionReports = ({
             if (filters.endDate && (!session.startDate || new Date(session.startDate) > filters.endDate)) {
                 return false;
             }
-            
+
             // Session ID filter (exact match)
             if (filters.sessionId && session.i_d.toString() !== filters.sessionId.toString()) {
                 return false;
             }
-            
+
             // Location filter (case-insensitive partial match)
             if (filters.wrh) {
                 const sessionWrh = (session.wrh || '').toString().toLowerCase();
@@ -270,21 +277,21 @@ const TransactionReports = ({
                     return false;
                 }
             }
-            
+
             // Employee filter - check all possible employee fields (case-insensitive)
             if (filters.employee_id) {
                 const employeeId = filters.employee_id.toString().toLowerCase();
                 const sessionEmployee = (session.employee_id || '').toString().toLowerCase();
                 const sessionStartedBy = (session.startedBy || '').toString().toLowerCase();
                 const sessionEndedBy = (session.endedby || '').toString().toLowerCase();
-                
-                if (sessionEmployee !== employeeId && 
-                    sessionStartedBy !== employeeId && 
+
+                if (sessionEmployee !== employeeId &&
+                    sessionStartedBy !== employeeId &&
                     sessionEndedBy !== employeeId) {
                     return false;
                 }
             }
-        
+
             return true;
         });
 
@@ -293,7 +300,7 @@ const TransactionReports = ({
             ...session,
             orders: (session.orders || []).filter(order => {
                 if (!order) return false;
-                
+
                 // Order number filter (case-insensitive partial match)
                 if (filters.orderNumber) {
                     const orderNumber = (order.orderNumber || '').toString().toLowerCase();
@@ -302,7 +309,7 @@ const TransactionReports = ({
                         return false;
                     }
                 }
-                
+
                 // Status filter (case-insensitive match)
                 if (filters.status) {
                     const orderStatus = (order.status || '').toString().toLowerCase();
@@ -310,39 +317,39 @@ const TransactionReports = ({
                         return false;
                     }
                 }
-                
+
                 // Delivery status filter - case-insensitive match
-                if (filters.delivery && 
+                if (filters.delivery &&
                     order.delivery?.toLowerCase() !== filters.delivery.toLowerCase()) {
                     return false;
                 }
-                
+
                 // Table filter - case-insensitive partial match
-                if (filters.table_name && 
+                if (filters.table_name &&
                     !order.tableName?.toLowerCase().includes(filters.table_name.toLowerCase())) {
                     return false;
                 }
-                
+
                 // Item category filter - check if any item matches the category (case-insensitive)
-                if (filters.item_category && 
-                    !order.items?.some(item => 
+                if (filters.item_category &&
+                    !order.items?.some(item =>
                         item.category?.toLowerCase() === filters.category.toLowerCase()
                     )) {
                     return false;
                 }
-                
+
                 // Delivered by filter - case-insensitive partial match
-                if (filters.lastDeliveredBy && 
+                if (filters.lastDeliveredBy &&
                     !order.lastDeliveredBy?.toLowerCase().includes(filters.lastDeliveredBy.toLowerCase())) {
                     return false;
                 }
 
                 // Placecd by filter - case-insensitive partial match
-                if (filters.handlerId && 
+                if (filters.handlerId &&
                     !order.handlerId?.toLowerCase().includes(filters.handlerId.toLowerCase())) {
                     return false;
                 }
-                
+
                 return true;
             })
         }));
@@ -431,14 +438,20 @@ const TransactionReports = ({
     // Helper function to get payment method from order
     const getPaymentMethod = (order) => {
         if (!order) return 'N/A';
-        if (order.moniepoint1 > 0) return 'Moniepoint 1';
-        if (order.moniepoint2 > 0) return 'Moniepoint 2';
-        if (order.moniepoint3 > 0) return 'Moniepoint 3';
-        if (order.moniepoint4 > 0) return 'Moniepoint 4';
-        if (order.moniepoint5 > 0) return 'Moniepoint 5';
-        if (order.moniepoint6 > 0) return 'Moniepoint 6';
-        if (order.cash > 0) return 'Cash';
-        return 'N/A';
+        let ct = 0
+        let val = ''
+        paymentMethods.forEach((pay) => {
+            if (order[pay.name] > 0) {
+                ct++
+                val = pay.name
+                return pay.name?.toUpperCase();
+            }
+        })
+        if (!ct) {
+            return 'N/A';
+        } else {
+            return val
+        }
     };
 
     // Toggle order expansion
@@ -453,15 +466,15 @@ const TransactionReports = ({
     const renderFilterControls = () => {
         return (
             <div className="filter-controls">
-                <button 
-                    className="filter-toggle" 
+                <button
+                    className="filter-toggle"
                     onClick={() => setShowFilters(!showFilters)}
                     aria-expanded={showFilters}
                 >
                     <FaFilter /> {showFilters ? 'Hide Filters' : 'Show Filters'}
                     {showFilters ? <FaChevronUp /> : <FaChevronDown />}
                 </button>
-                
+
                 {showFilters && (
                     <div className="filters-section">
                         {/* Date Range */}
@@ -501,7 +514,7 @@ const TransactionReports = ({
                         {filterOptions.locations.length > 0 && (
                             <div className="filter-group">
                                 <label>Location</label>
-                                <select 
+                                <select
                                     value={filters.wrh}
                                     onChange={(e) => setFilters(prev => ({ ...prev, wrh: e.target.value }))}
                                     className="filter-select"
@@ -520,7 +533,7 @@ const TransactionReports = ({
                         {filterOptions.sessionOperators.length > 0 && (
                             <div className="filter-group">
                                 <label>Session Operator</label>
-                                <select 
+                                <select
                                     value={filters.sessionOperator}
                                     onChange={(e) => setFilters(prev => ({ ...prev, sessionOperator: e.target.value }))}
                                     className="filter-select"
@@ -542,7 +555,7 @@ const TransactionReports = ({
                         {filterOptions.employeeIds.length > 0 && (
                             <div className="filter-group">
                                 <label>Sales Person</label>
-                                <select 
+                                <select
                                     value={filters.employee_id}
                                     onChange={(e) => setFilters(prev => ({ ...prev, employee_id: e.target.value }))}
                                     className="filter-select"
@@ -562,7 +575,7 @@ const TransactionReports = ({
                         {filterOptions.employeeIds.length > 0 && (
                             <div className="filter-group">
                                 <label>Placed By</label>
-                                <select 
+                                <select
                                     value={filters.handlerId}
                                     onChange={(e) => setFilters(prev => ({ ...prev, handlerId: e.target.value }))}
                                     className="filter-select"
@@ -583,7 +596,7 @@ const TransactionReports = ({
                         {/* Status Filter */}
                         <div className="filter-group">
                             <label>Sales Status</label>
-                            <select 
+                            <select
                                 value={filters.status}
                                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                                 className="filter-select"
@@ -599,7 +612,7 @@ const TransactionReports = ({
                         {(
                             <div className="filter-group">
                                 <label>Delivery Status</label>
-                                <select 
+                                <select
                                     value={filters.delivery}
                                     onChange={(e) => setFilters(prev => ({ ...prev, delivery: e.target.value }))}
                                     className="filter-select"
@@ -615,7 +628,7 @@ const TransactionReports = ({
                         {/* Item Category Filter */}
                         <div className="filter-group">
                             <label>Item Category</label>
-                            <select 
+                            <select
                                 value={filters.category}
                                 onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
                                 className="filter-select"
@@ -633,7 +646,7 @@ const TransactionReports = ({
                         {(
                             <div className="filter-group">
                                 <label>Delivered By</label>
-                                <select 
+                                <select
                                     value={filters.lastDeliveredBy}
                                     onChange={(e) => setFilters(prev => ({ ...prev, lastDeliveredBy: e.target.value }))}
                                     className="filter-select"
@@ -656,8 +669,8 @@ const TransactionReports = ({
                             <label>Order Number</label>
                             <div className="search-input">
                                 <FaSearch className="search-icon" />
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="Search order number..."
                                     value={filters.orderNumber || ''}
                                     onChange={(e) => setFilters(prev => ({ ...prev, orderNumber: e.target.value }))}
@@ -682,11 +695,11 @@ const TransactionReports = ({
             const sessionTotal = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => sum + (parseFloat(order.totalSales) || 0), 0) || 0;
             const totalItems = session.orders.filter(order => order.status !== 'cancelled')?.reduce((sum, order) => sum + ((order.items || []).length || 0), 0) || 0;
             const isExpanded = expandedSessions[session.i_d];
-            const {duplicates, count} = getDuplicates(session.orders, 'orderNumber')        
-            
+            const { duplicates, count } = getDuplicates(session.orders, 'orderNumber')
+
             return (
                 <div key={session.i_d} className="session-card">
-                    <div 
+                    <div
                         className="session-header"
                         onClick={() => toggleSession(session.i_d)}
                     >
@@ -708,44 +721,27 @@ const TransactionReports = ({
                                 </div>
                             </div>
                             <div className="session-header-main">
-                                <h3 style={{marginTop: '8px'}}>Entered Closing Record:</h3>
+                                <h3 style={{ marginTop: '8px' }}>Entered Closing Record:</h3>
                                 <div className="session-meta">
-                                    <span className="session-date">
-                                        {`MP1: ${(session.moniepoint1 || 0).toLocaleString()}`}
-                                    </span>
-                                    <span className="session-date">
-                                        {`MP2: ${(session.moniepoint2 || 0).toLocaleString()}`}
-                                    </span>
-                                    <span className="session-date">
-                                        {`MP3: ${(session.moniepoint3 || 0).toLocaleString()}`}
-                                    </span>
-                                    <span className="session-date">
-                                        {`MP4: ${(session.moniepoint4 || 0).toLocaleString()}`}
-                                    </span>
-                                    <span className="session-date">
-                                        {`MP5: ${(session.moniepoint5 || 0).toLocaleString()}`}
-                                    </span>
-                                    <span className="session-date">
-                                        {`MP6: ${(session.moniepoint6 || 0).toLocaleString()}`}
-                                    </span>
-                                    <span className="session-date">
-                                        {`CASH: ${(session.cash || 0).toLocaleString()}`}
-                                    </span>
+                                    {paymentMethods.map((pay) => {
+                                        return (
+                                            <span className="session-date">
+                                                {`${pay.i_d}: ${(session[pay.name] || 0).toLocaleString()}`}
+                                            </span>
+                                        )
+                                    })}
                                     <span className="session-date">
                                         {`CASH CHANGE: ${(session.totalCashChange || 0).toLocaleString()}`}
                                     </span>
-                                    <span className="session-date">
-                                        {`TOTAL: ${
-                                            (Number(session.moniepoint1 || 0) + Number(session.moniepoint2 || 0) 
-                                            + Number(session.moniepoint3 || 0) + Number(session.moniepoint4 || 0) 
-                                            + Number(session.moniepoint5 || 0) + Number(session.moniepoint6 || 0) 
-                                            + Number(session.cash || 0)).toLocaleString()
-                                        }`}
+                                    <span className='session-date'>
+                                        {`TOTAL: ${(paymentMethods.reduce((sum, pay) => {
+                                            return sum + Number(session[pay.name] || 0)
+                                        }, 0)).toLocaleString()}`}
                                     </span>
                                 </div>
                             </div>
                             <div className="session-header-main">
-                                <h3 style={{marginTop: '8px'}}>Debts:</h3>
+                                <h3 style={{ marginTop: '8px' }}>Debts:</h3>
                                 <div className="session-meta">
                                     <span className="session-date">
                                         {`SALES DEBT: ${(session.debtDue || 0).toLocaleString()}`}
@@ -814,7 +810,7 @@ const TransactionReports = ({
                                     <div className="orders-list">
                                         {session.orders.map(order => (
                                             <div key={order._id} className="order-card">
-                                                <div 
+                                                <div
                                                     className="order-header"
                                                     onClick={() => toggleOrderExpansion(`order-${order._id}`)}
                                                 >
@@ -837,8 +833,8 @@ const TransactionReports = ({
                                                         <span className="order-items">
                                                             <FaBoxOpen /> {order.items?.length || 0} items
                                                         </span>
-                                                    
-                                                        
+
+
                                                         <span className={`status-badge ${order.status || 'pending'}`}>
                                                             {order.status || 'Pending'}
                                                         </span>
@@ -850,7 +846,7 @@ const TransactionReports = ({
                                                         <FaChevronDown className={`toggle-icon ${expandedSessions[`order-${order._id}`] ? 'expanded' : ''}`} />
                                                     </div>
                                                 </div>
-                                                
+
                                                 {expandedSessions[`order-${order._id}`] && (
                                                     <div className="order-details">
                                                         <div className="order-meta">
@@ -885,12 +881,12 @@ const TransactionReports = ({
                                                                 </span>
                                                             </div>}
                                                         </div>
-                                                        
+
                                                         <div className="order-items-container">
                                                             {order.items?.map((item, index) => {
                                                                 let salesPrice = Number(item.salesPrice)
 
-                                                                if (order.wrh === 'vip'){
+                                                                if (order.wrh === 'vip') {
                                                                     salesPrice = Number(item.vipPrice || item.salesPrice)
                                                                 }
                                                                 return (<div key={`${item.i_d}-${index}`} className="order-item">
@@ -900,7 +896,7 @@ const TransactionReports = ({
                                                                             {formatCurrency(parseFloat(salesPrice * (item.deliveredQuantity || item.quantity)) || 0)}
                                                                         </div>
                                                                     </div>
-                                                                    
+
                                                                     <div className="item-details">
                                                                         <div className="detail-row">
                                                                             <span className="detail-label">Quantity:</span>
@@ -923,16 +919,17 @@ const TransactionReports = ({
                                                                             </div>
                                                                         )}
                                                                     </div>
-                                                                    
+
                                                                     {item.category && (
                                                                         <div className="item-category">
                                                                             Category: {item.category}
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                            )})}
+                                                                )
+                                                            })}
                                                         </div>
-                                                        
+
                                                         <div className="order-totals">
                                                             <div className="total-row">
                                                                 <span className="total-label">Subtotal:</span>
@@ -972,7 +969,7 @@ const TransactionReports = ({
     };
 
     // Calculate totals and sales breakdown
-    const { totals, salesByLocation, salesByPayPoint, sessionDuplicates} = useMemo(() => {
+    const { totals, salesByLocation, salesByPayPoint, sessionDuplicates } = useMemo(() => {
         const result = {
             totals: {
                 totalSessions: 0,
@@ -992,43 +989,43 @@ const TransactionReports = ({
             result.totals.totalSessions += 1;
             const sessionOrders = session.orders?.length || 0;
             result.totals.totalOrders += sessionOrders;
-            
-            const sessionSales = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {                
+
+            const sessionSales = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {
                 const warehouse = order.wrh
                 let splitPayment = {}
-                if (order.salesPosts?.[Object.keys(order?.salesPosts || {})[0]] === 'multiple'){
-                    const totalOrderSales = Number(order?.totalSales || 0)                    
+                if (order.salesPosts?.[Object.keys(order?.salesPosts || {})[0]] === 'multiple') {
+                    const totalOrderSales = Number(order?.totalSales || 0)
                     let kct = 0
                     let bct = 0
-                    order.items.forEach((item)=>{
+                    order.items.forEach((item) => {
                         const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
-                        if (wrhCategories[warehouse].includes(item.category)){
+                        if (wrhCategories[warehouse].includes(item.category)) {
                             bct += totalItemPrice
-                        }else if (wrhCategories['kitchen'].includes(item.category)){
+                        } else if (wrhCategories['kitchen'].includes(item.category)) {
                             kct += totalItemPrice
                         }
-                        splitPayment[warehouse] = totalOrderSales ? (Number(bct)/totalOrderSales) : 0
-                        splitPayment['kitchen'] = totalOrderSales ? (Number(kct)/totalOrderSales) : 0                    
+                        splitPayment[warehouse] = totalOrderSales ? (Number(bct) / totalOrderSales) : 0
+                        splitPayment['kitchen'] = totalOrderSales ? (Number(kct) / totalOrderSales) : 0
                     })
                 }
-                Object.keys(order?.salesPosts || {})?.forEach((payPoint)=>{
+                Object.keys(order?.salesPosts || {})?.forEach((payPoint) => {
                     result.salesByPayPoint[payPoint] = (result.salesByPayPoint[payPoint] || 0) + Number(order[payPoint] || 0);
                     const location = order.salesPosts[payPoint]
-                    if (location === 'multiple'){
+                    if (location === 'multiple') {
                         result.salesByLocation[warehouse] = (result.salesByLocation[warehouse] || 0) + (Number(splitPayment[warehouse] || 0) * Number(order[payPoint]));
                         result.salesByLocation['kitchen'] = (result.salesByLocation['kitchen'] || 0) + (Number(splitPayment['kitchen'] || 0) * Number(order[payPoint]));
-                    }else{
+                    } else {
                         result.salesByLocation[location] = (result.salesByLocation[location] || 0) + Number(order[payPoint] || 0);
                     }
                 })
                 return sum + (parseFloat(order.totalSales) || 0);
             }, 0) || 0;
             result.totals.totalSales += sessionSales;
-            
-            const sessionPayments = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {                
+
+            const sessionPayments = session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {
                 return sum + (parseFloat(order.totalPayment) || 0)
             }, 0) || 0;
-            result.totals.totalPayment += sessionPayments; 
+            result.totals.totalPayment += sessionPayments;
 
             result.totals.totalItems += session.orders.filter(order => order.status !== 'cancelled' && order.status !== 'pending')?.reduce((sum, order) => {
                 return sum + ((order.items || []).reduce((itemSum, item) => {
@@ -1036,17 +1033,17 @@ const TransactionReports = ({
                 }, 0) || 0);
             }, 0) || 0;
 
-            const {count: totalDuplicateOrders} = getDuplicates(session.orders, 'orderNumber')
+            const { count: totalDuplicateOrders } = getDuplicates(session.orders, 'orderNumber')
             result.totals.totalOrderDuplicates += totalDuplicateOrders
-            
-            
+
+
             // Track sales by location
             // const location = session.wrh || 'Unknown';
             // result.salesByLocation[location] = (result.salesByLocation[location] || 0) + sessionSales;
-            
+
             // Track sales by pay point (assuming pay_point is a property on the session)
         });
-        const {duplicates: sessionDuplicates, count: totalDuplicateSessions} = getDuplicates(sessions, 'i_d')
+        const { duplicates: sessionDuplicates, count: totalDuplicateSessions } = getDuplicates(sessions, 'i_d')
         result.totals.totalSessionDuplicates = totalDuplicateSessions
         result.sessionDuplicates = sessionDuplicates
 
@@ -1057,13 +1054,13 @@ const TransactionReports = ({
     const renderExportControls = () => (
         <div className="export-actions">
             <div className="view-options">
-                <button 
+                <button
                     className="btn btn-outline"
                     onClick={() => toggleAllSessions(true)}
                 >
                     <FaExpand /> Expand All
                 </button>
-                <button 
+                <button
                     className="btn btn-outline"
                     onClick={() => toggleAllSessions(false)}
                 >
@@ -1130,7 +1127,7 @@ const TransactionReports = ({
                 end: filters.endDate
             }
         };
-        
+
         if (format === 'excel') {
             // Export to Excel logic
             console.log('Exporting to Excel:', data);
@@ -1146,7 +1143,7 @@ const TransactionReports = ({
     return (
         <div className="transaction-reports-overlay">
             {/* Receipts Modal Trigger State */}
-            <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
+            <PaymentReceiptsModal open={showReceiptsModal} onClose={() => setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
             <div className="transaction-reports">
                 {/* Header */}
                 <div className="reports-header">
@@ -1160,21 +1157,21 @@ const TransactionReports = ({
                             </h2>
                         </div>
                         <div className="export-actions">
-                            
-                            <button 
-                                className="btn-export" 
+
+                            <button
+                                className="btn-export"
                                 onClick={() => handleExport('excel')}
                             >
                                 <FaFileExcel /> Export to Excel
                             </button>
-                            <button 
-                                className="rcpt-export" 
-                                onClick={() => {setShowReceiptsModal(true)}}
+                            <button
+                                className="rcpt-export"
+                                onClick={() => { setShowReceiptsModal(true) }}
                             >
                                 <FaFileExcel /> View POS Receipts
                             </button>
-                            <button 
-                                className="btn-export" 
+                            <button
+                                className="btn-export"
                                 onClick={() => handleExport('pdf')}
                             >
                                 <FaFilePdf /> Export to PDF
@@ -1187,12 +1184,12 @@ const TransactionReports = ({
                         <div className="stat-item">
                             <span className="stat-label">Sessions</span>
                             <span className="stat-value">{totals.totalSessions}</span>
-                            <span className="stat-value" style={{fontSize: '13px'}}>Duplicates: {totals.totalSessionDuplicates}</span>
+                            <span className="stat-value" style={{ fontSize: '13px' }}>Duplicates: {totals.totalSessionDuplicates}</span>
                         </div>
                         <div className="stat-item">
                             <span className="stat-label">Orders</span>
                             <span className="stat-value">{totals.totalOrders}</span>
-                            <span className="stat-value" style={{fontSize: '13px'}}>Duplicates: {totals.totalOrderDuplicates}</span>
+                            <span className="stat-value" style={{ fontSize: '13px' }}>Duplicates: {totals.totalOrderDuplicates}</span>
                         </div>
                         <div className="stat-item total-amount">
                             <span className="stat-label">Total Sales</span>
@@ -1206,27 +1203,27 @@ const TransactionReports = ({
                             <span className="stat-label">Difference (P - S)</span>
                             <span className="stat-value">{formatCurrency(totals.totalPayment - totals.totalSales)}</span>
                         </div>
-                        <div style={{display: "flex", flexDirection:"column", flexWrap:"wrap", justifyContent:"center", alignItems:"center"}}>
-                            <button 
-                                disabled={!totals.totalOrderDuplicates} 
+                        <div style={{ display: "flex", flexDirection: "column", flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
+                            <button
+                                disabled={!totals.totalOrderDuplicates}
                                 className="start-value"
-                                style={{color: "black", margin:"5px", padding:"5px", borderRadius: "5px", cursor:"pointer"}}
-                                onClick={()=>{
-                                    const {duplicates} = getDuplicates(orders, "orderNumber")
+                                style={{ color: "black", margin: "5px", padding: "5px", borderRadius: "5px", cursor: "pointer" }}
+                                onClick={() => {
+                                    const { duplicates } = getDuplicates(orders, "orderNumber")
                                     deleteDuplicates(duplicates, 'order')
                                 }}
                             >Clean Duplicate Orders</button>
-                            <button 
-                                disabled={!totals.totalSessionDuplicates} 
+                            <button
+                                disabled={!totals.totalSessionDuplicates}
                                 className="start-value"
-                                style={{color: "black", margin:"5px", padding:"5px", borderRadius: "5px", cursor:"pointer"}}
-                                onClick={()=>{
+                                style={{ color: "black", margin: "5px", padding: "5px", borderRadius: "5px", cursor: "pointer" }}
+                                onClick={() => {
                                     deleteDuplicates(sessionDuplicates, 'session')
                                 }}
                             >Clean Duplicate Sessions</button>
                         </div>
                     </div>
-                    
+
                     {/* Sales by Location and Pay Point */}
                     <div className="sales-breakdown">
                         <div className="breakdown-section">
@@ -1240,10 +1237,10 @@ const TransactionReports = ({
                                 ))}
                             </div>
                         </div>
-                        
+
                         <div className="breakdown-section">
                             <h4>Sales by Pay Point</h4>
-                            <div className="breakdown-items"> 
+                            <div className="breakdown-items">
                                 {Object.entries(salesByPayPoint).map(([payPoint, amount]) => (
                                     <div key={`pay-${payPoint}`} className="breakdown-item">
                                         <span className="breakdown-label">{payPointAccounts[payPoint]}</span>
@@ -1256,11 +1253,11 @@ const TransactionReports = ({
                     <button className="close-btn" onClick={onClose}>
                         <FaTimes />
                     </button>
-                </div>                
+                </div>
 
                 {/* Export Controls */}
                 {renderExportControls()}
-         
+
                 {/* Results */}
                 <div className="results-container">
                     {loading ? (

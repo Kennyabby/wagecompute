@@ -10,29 +10,30 @@ import { FaTableCells } from 'react-icons/fa6'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import PurchaseReport from './PurchaseReport/PurchaseReport'
 
-const Purchase = ()=>{
+const Purchase = () => {
 
     const { storePath,
-        server, intervalPeriod, posSettings,
-        fetchServer,
+        server, intervalPeriod,
+        fetchServer, posSettings,
         companyRecord, allowBacklogs,
         company, getDate, products, getProducts, setProducts, getProductsWithStock,
-        employees, getEmployees,months, getPurchase, setPurchase, purchase,
+        employees, getEmployees, months, getPurchase, setPurchase, purchase,
         settings, setAlert, setAlertState, setAlertTimeout, setActionMessage,
         showApprovalBox, setShowApprovalBox,
         curApproval, setCurApproval,
         approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval,
-        setApprovalStatus, setApprovalMessage, getProductsStockReport              
+        setApprovalStatus, setApprovalMessage, getProductsStockReport
     } = useContext(ContextProvider)
 
     const getEntriesController = useRef(null)
     const [purchaseStatus, setPurchaseStatus] = useState('Post Purchase')
-    const [purchaseDate, setPurchaseDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
+    const [purchaseDate, setPurchaseDate] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [curPurchase, setCurPurchase] = useState(null)
     const [productAdd, setProductAdd] = useState(false)
+    const [curPosSettings, setCurPosSettings] = useState([])
     const [deleteCount, setDeleteCount] = useState(0)
     const [isView, setIsView] = useState(false)
-    const [isProductView,setIsProductView] = useState(false)
+    const [isProductView, setIsProductView] = useState(false)
     const [showReport, setShowReport] = useState(false)
     const [purchaseEntries, setPurchaseEntries] = useState([])
     const [postCount, setPostCount] = useState(0)
@@ -43,68 +44,69 @@ const Purchase = ()=>{
     const [productPurchased, setProductPurchased] = useState([])
     const [isSyncing, setIsSyncing] = useState(false);
     // const [purchaseWrh, setPurchaseWrh] = useState('')
-    const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+    const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
     const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [reportPurchase, setReportPurchase] = useState(null)
-    
+
     const [purchaseApprovals, setPurchaseApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
-    
+
     const defaultFields = {
-        purchaseDepartment:'',
-        purchaseHandler:'',
-        itemCategory:'',
-        purchaseQuantity:'',
-        purchaseUOM:'',
-        purchaseAmount:'',
-        purchaseVendor:'',
+        purchaseDepartment: '',
+        purchaseHandler: '',
+        itemCategory: '',
+        purchaseQuantity: '',
+        purchaseUOM: '',
+        purchaseAmount: '',
+        purchaseVendor: '',
     }
-    const [fields, setFields] = useState({...defaultFields})
-    const [departments, setDepartments] =  useState([])
+    const [fields, setFields] = useState({ ...defaultFields })
+    const [departments, setDepartments] = useState([])
     // const purchaseCategory = ['ASSORTED DRINKS', 'ASSORTED PROTEIN', 'INGREDIENTS', 'SWALLOW', 'CEREALS']
     const unitsofmeasurements = [
-        'PORTIONS', 'PACKETS', 'CRATES','CARTONS','PACKS'
+        'PORTIONS', 'PACKETS', 'CRATES', 'CARTONS', 'PACKS'
     ]
-    useEffect(()=>{
-        storePath('purchase')  
-    },[storePath])
-    useEffect(()=>{
-        const curPosSettings = posSettings?.posSettings?.find((setting)=>setting.active)
-        if (curPosSettings.type === 'restaurant'){
+    useEffect(() => {
+        storePath('purchase')
+    }, [storePath])
+    useEffect(() => {
+        const curPosSet = posSettings?.posSettings?.find((sett) => sett.active)
+        setCurPosSettings(curPosSet)
+        if (curPosSet?.type === 'restaurant') {
             setDepartments(['Bar', 'Kitchen'])
-        }else{
+        } else {
             setDepartments(['Purchase'])
         }
-    },[posSettings])
+    }, [posSettings])
     const refreshPurchaseData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
-        try{
+        try {
             const tasks = [];
-            if (products.length){
+            if (products.length) {
                 tasks.push(getProductsWithStock(cmp_val, products));
             }
             tasks.push(getApprovals(cmp_val, companyRecord));
             tasks.push(getEmployees(cmp_val, companyRecord));
             tasks.push(getPurchase(cmp_val, companyRecord));
             await Promise.all(tasks);
-        }catch(e){ }
+        } catch (e) { }
     }
 
-    useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')                      
-        const intervalId = setInterval(()=>{ refreshPurchaseData(); },intervalPeriod)
+    useEffect(() => {
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        const intervalId = setInterval(() => { refreshPurchaseData(); }, intervalPeriod)
         // run once
         refreshPurchaseData();
         return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
+    }, [window.localStorage.getItem('sessn-cmp')])
 
-    useEffect(()=>{
+    useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
-        if(!products.length){
+        if (!products.length) {
             getProducts(cmp_val)
-        }        
-    },[products])
+        }
+    }, [products])
 
     const handleSyncOfflinePurchase = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -112,13 +114,13 @@ const Purchase = ()=>{
         setAlertState('info');
         setAlert('Syncing offline Purchase changes...');
         setAlertTimeout(10000);
-        try{
+        try {
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             await refreshPurchaseData();
 
-            if (Array.isArray(results)){
+            if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
-                if (failed.length){
+                if (failed.length) {
                     setAlertState('error');
                     setAlert(`${failed.length} change(s) failed to sync; retry later.`);
                     setAlertTimeout(5000);
@@ -132,94 +134,94 @@ const Purchase = ()=>{
                 setAlert('Offline Purchase Sync complete');
                 setAlertTimeout(1000);
             }
-        }catch(e){
+        } catch (e) {
             setAlertState('error');
             setAlert('Offline Purchase Sync failed. Please try again.');
             setAlertTimeout(3000);
-        }finally{
+        } finally {
             setIsSyncing(false);
         }
     }
-    
-    useEffect(()=>{
-        if (settings.length){  
-            const uomSetFilt = settings.filter((setting)=>{
+
+    useEffect(() => {
+        if (settings.length) {
+            const uomSetFilt = settings.filter((setting) => {
                 return setting.name === 'uom'
             })
             delete uomSetFilt[0]?._id
-            setUoms(uomSetFilt[0].name?[...uomSetFilt[0].mearsures]:[])
+            setUoms(uomSetFilt[0].name ? [...uomSetFilt[0].mearsures] : [])
 
             const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
             delete catSetFilt[0]?._id;
             setCategories(catSetFilt[0].name ? [...catSetFilt[0].categories] : []);
 
-            const wrhSetFilt = settings.filter((setting)=>{
+            const wrhSetFilt = settings.filter((setting) => {
                 return setting.name === 'warehouses'
             })
 
             delete wrhSetFilt[0]?._id
             setWrhs(wrhSetFilt[0].name ? [...wrhSetFilt[0].warehouses] : [])
-        }  
-    },[settings])
-
-    useEffect(()=>{
-        if (!allowBacklogs){
-            setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
         }
-    },[companyRecord])
+    }, [settings])
 
-    useEffect(()=>{
-        if (curPurchase){
+    useEffect(() => {
+        if (!allowBacklogs) {
+            setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
+        }
+    }, [companyRecord])
+
+    useEffect(() => {
+        if (curPurchase) {
             setPurchaseDate(curPurchase.purchaseDate)
             setIsView(true)
-        }else{
-            if (curApproval){
+        } else {
+            if (curApproval) {
                 setPurchaseDate(curApproval.postingDate)
-            }else{
+            } else {
                 setPurchaseDate(new Date(Date.now()).toISOString().slice(0, 10))
             }
         }
-    },[curPurchase, curApproval])
+    }, [curPurchase, curApproval])
 
-    useEffect(()=>{
-        setPurchaseApprovals(approvals.filter((appr)=>{
+    useEffect(() => {
+        setPurchaseApprovals(approvals.filter((appr) => {
             return (
                 appr.module === 'purchase'
                 && appr.section.toUpperCase() === 'postPurchase'.toUpperCase()
             )
         }))
-        
+
     }, [approvals])
 
-    useEffect(()=>{
-        if(companyRecord?.permissions.includes('postPurchase') || companyRecord?.status==='admin'){
+    useEffect(() => {
+        if (companyRecord?.permissions.includes('postPurchase') || companyRecord?.status === 'admin') {
             setIsApprover(true)
         }
-    },[companyRecord])
+    }, [companyRecord])
 
-    useEffect(()=>{
-        if (curApproval){
+    useEffect(() => {
+        if (curApproval) {
             setCurPurchase(null)
-            setFields({...curApproval.data.purchaseFields})
+            setFields({ ...curApproval.data.purchaseFields })
             setIsView(true)
             setPurchaseDate(curApproval.postingDate)
             setPurchaseEntries([...curApproval.data.validEntries])
         }
-    },[curApproval])
+    }, [curApproval])
 
-    const handlePurchaseEntry = (e)=>{
+    const handlePurchaseEntry = (e) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value
 
-        if (name){
-            if (name === 'itemCategory'){
+        if (name) {
+            if (name === 'itemCategory') {
                 setPurchaseEntries([])
-                setFields((fields)=>{
-                    return {...fields, [name]:value, purchaseUOM: '', purchaseQuantity:''}
+                setFields((fields) => {
+                    return { ...fields, [name]: value, purchaseUOM: '', purchaseQuantity: '' }
                 })
-            }else{
-                setFields((fields)=>{
-                    return {...fields, [name]:value}
+            } else {
+                setFields((fields) => {
+                    return { ...fields, [name]: value }
                 })
             }
         }
@@ -233,7 +235,7 @@ const Purchase = ()=>{
 
         const controller = new AbortController();
         getEntriesController.current = controller;
-        
+
         const { signal } = controller;
         const response = await fetchServer("POST", {
             database: company,
@@ -246,22 +248,22 @@ const Purchase = ()=>{
         return (Array.isArray(response.record) && response.record.length > 0) ? response.record : [];
     };
 
-    const handleViewClick = async (pur) =>{
+    const handleViewClick = async (pur) => {
         setCurApproval(null)
         setCurPurchase(pur)
-        setFields({...pur})
+        setFields({ ...pur })
         setIsView(true)
-        const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
+        const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
         const transactions = await getPurchaseProducts(company, pur)
-        if (transactions.length){
+        if (transactions.length) {
             const entries = []
-            transactions.forEach((transaction)=>{
-                if (transaction.location === purchaseWrh.name){                    
+            transactions.forEach((transaction) => {
+                if (transaction.location === purchaseWrh.name) {
                     entries.push(transaction)
                 }
-            })            
+            })
             setPurchaseEntries([...entries])
-        }              
+        }
     }
 
     const checkDuplicateTransaction = async (company, transaction) => {
@@ -285,41 +287,41 @@ const Purchase = ()=>{
         return Array.isArray(response.record) && response.record.length > 0;
     };
 
-    const handleProductPurchase = ()=>{
-        const updateInventory = async ()=>{
+    const handleProductPurchase = () => {
+        const updateInventory = async () => {
             if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
                 fields.purchaseUOM && fields.purchaseHandler && fields.purchaseDepartment
-            ){                   
-                let validEntries = purchaseEntries.filter((entry)=>{
-                    const {baseQuantity, totalCost} = entry
-                    if (baseQuantity && totalCost){
+            ) {
+                let validEntries = purchaseEntries.filter((entry) => {
+                    const { baseQuantity, totalCost } = entry
+                    if (baseQuantity && totalCost) {
                         return entry
                     }
                 })
-                
-                if (curApproval!==null){
+
+                if (curApproval !== null) {
                     validEntries = curApproval.data.validEntries
                 }
-                
+
                 const data = {
                     purchaseFields: fields,
-                    validEntries: validEntries,                    
+                    validEntries: validEntries,
                 }
 
-                const postUpdate = async ()=>{
-                    if (curApproval){
+                const postUpdate = async () => {
+                    if (curApproval) {
                         curApproval.posted = true
                     }
                     setAlertState('info')
-                    setAlert('Updating Inventory...') 
+                    setAlert('Updating Inventory...')
                     setAlertTimeout(100000)
-                    if (curApproval!==null){
+                    if (curApproval !== null) {
                         validEntries = curApproval.data.validEntries
-                    }                   
+                    }
                     const createdAt = Date.now()
-                    const entryIds = validEntries.map(entry => {return entry.productId})
-                    validEntries.forEach(async (entry)=>{
-                        const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
+                    const entryIds = validEntries.map(entry => { return entry.productId })
+                    validEntries.forEach(async (entry) => {
+                        const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
                         const newTransaction = {
                             ...entry,
                             location: purchaseWrh.name,
@@ -333,28 +335,28 @@ const Purchase = ()=>{
                             collection: "InventoryTransactions",
                             update: newTransaction
                         }, "createDoc", server)
-                        if (resps.err){
+                        if (resps.err) {
                             setAlertState('error')
                             setAlert(resps.mess)
                             setAlertTimeout(5000)
-                            if (curApproval){
+                            if (curApproval) {
                                 curApproval.posted = false
                             }
-                        }else{
-                            setPostCount((prevCount)=>{
+                        } else {
+                            setPostCount((prevCount) => {
                                 const newCount = prevCount + 1
-                                if(newCount === validEntries.length){
+                                if (newCount === validEntries.length) {
                                     setProductAdd(false)
                                     setAlertState('success')
-                                    setAlert(`${validEntries.length} Inventory Updated Successfully!`)                        
+                                    setAlert(`${validEntries.length} Inventory Updated Successfully!`)
                                     setAlertTimeout(100000)
                                     getProductsWithStock(company, products)
-                                    const entryIds = validEntries.map(entry => {return entry.productId})
-                                    if (curPurchase === null){
-                                        setTimeout(()=>{                            
-                                            addPurchase(createdAt, entryIds)                                            
-                                        },500)
-                                    }else{
+                                    const entryIds = validEntries.map(entry => { return entry.productId })
+                                    if (curPurchase === null) {
+                                        setTimeout(() => {
+                                            addPurchase(createdAt, entryIds)
+                                        }, 500)
+                                    } else {
                                         setTimeout(async () => {
                                             setAlertState('info');
                                             setAlert('Linking to Posted Purchase...');
@@ -362,240 +364,241 @@ const Purchase = ()=>{
                                             const resps1 = await fetchServer("POST", {
                                                 database: company,
                                                 collection: "Purchase",
-                                                prop: [{ createdAt: curPurchase.createdAt }, { 
-                                                    productsRef: createdAt,  
+                                                prop: [{ createdAt: curPurchase.createdAt }, {
+                                                    productsRef: createdAt,
                                                     purchaseQuantity: fields.purchaseQuantity,
                                                     purchaseUOM: 'units'
                                                 }]
                                             }, "updateOneDoc", server);
-                
+
                                             if (resps1.err) {
                                                 console.log(resps1.mess);
                                                 setAlertState('error');
                                                 setAlert(resps1.mess);
                                                 setAlertTimeout(5000);
-                                                if (curApproval){
+                                                if (curApproval) {
                                                     curApproval.posted = false
                                                 }
                                             } else {
-                                                
+
                                                 setAlertState('success');
                                                 setAlert('Products Linked Successfully!');
                                                 setAlertTimeout(1000);
-                                                setFields((fields)=>{
-                                                    return {...fields, productsRef: createdAt}
+                                                setFields((fields) => {
+                                                    return { ...fields, productsRef: createdAt }
                                                 })
-                                                if (curApproval){
+                                                if (curApproval) {
                                                     curApproval.posted = false
                                                 }
                                                 getPurchase(company);
-                                                const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
-                                                const transactions = await getPurchaseProducts(company, {productsRef: createdAt})
-                                                if (transactions.length){
+                                                const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+                                                const transactions = await getPurchaseProducts(company, { productsRef: createdAt })
+                                                if (transactions.length) {
                                                     const entries = []
-                                                    transactions.forEach((transaction)=>{
-                                                        if (transaction.location === purchaseWrh.name){                    
+                                                    transactions.forEach((transaction) => {
+                                                        if (transaction.location === purchaseWrh.name) {
                                                             entries.push(transaction)
                                                         }
-                                                    })            
+                                                    })
                                                     setPurchaseEntries([...entries])
-                                                }   
+                                                }
                                                 const rep = await fetchServer("POST", {
                                                     database: company,
                                                     collection: "ProductCostLogs",
                                                     prop: entryIds
-                                                }, "updateProductCost", server) 
-                                
-                                                if (!rep.err){
+                                                }, "updateProductCost", server)
+
+                                                if (!rep.err) {
                                                     getProducts(company)
                                                 }
-                                                
+
                                             }
                                             return
                                         }, 1000);
                                     }
-                                }else{
+                                } else {
                                     setAlertState('success')
                                     setAlert(`${newCount} / ${validEntries.length} Inventory Updated Successfully!`)
                                 }
-    
+
                                 return newCount
                             })
-                        }        
+                        }
                     })
                 }
-                if (curApproval && curApproval?.approved){  
-                    if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_purchase_posts')){
+                if (curApproval && curApproval?.approved) {
+                    if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_purchase_posts')) {
                         setAlertState('error')
                         setAlert('You are not allowed to post purchases!')
                         setAlertTimeout(3000)
                         return
-                    }                
+                    }
                 }
-                if (curApproval){
-                    if (!curApproval.posted){
+                if (curApproval) {
+                    if (!curApproval.posted) {
                         curApproval.posted = true
                         runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
                     }
-                }else{
+                } else {
                     runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
                 }
-            }else{ 
+            } else {
                 setAlertState('error')
                 setAlert('All Fields Are Required! Kindly Fill All')
                 setAlertTimeout(5000)
             }
         }
         setPostCount(0)
-        if (fields.purchaseUOM!=='units'){
+        if (fields.purchaseUOM !== 'units') {
             var totalQuantity = 0
             var totalAmount = 0
-            purchaseEntries.filter((entry)=>{
-                const {baseQuantity, totalCost} = entry
-                if (baseQuantity && totalCost){
+            purchaseEntries.filter((entry) => {
+                const { baseQuantity, totalCost } = entry
+                if (baseQuantity && totalCost) {
                     totalQuantity += Number(baseQuantity)
                     totalAmount += Number(totalCost)
                     return entry
                 }
             })
-            if (Number(totalAmount) === Number(fields.purchaseAmount)){
-                setFields((fields)=>{
-                    return {...fields, purchaseQuantity: totalQuantity, purchaseUOM: 'units'}
-                })     
-                if(curPurchase!==null){
-                    setTimeout(()=>{
+            if (Number(totalAmount) === Number(fields.purchaseAmount)) {
+                setFields((fields) => {
+                    return { ...fields, purchaseQuantity: totalQuantity, purchaseUOM: 'units' }
+                })
+                if (curPurchase !== null) {
+                    setTimeout(() => {
                         updateInventory()
                         return
-                    },500)
-                }else{
+                    }, 500)
+                } else {
                     setProductAdd(false)
                 }
-            }else{
+            } else {
                 setAlertState('error')
                 setAlert('Total Purchase Amount does not match the sum of the Products Amounts')
                 setAlertTimeout(5000)
             }
-        }else{
+        } else {
             updateInventory()
         }
     }
 
-    const addPurchase = async (productsRef, entryIds)=>{
+    const addPurchase = async (productsRef, entryIds) => {
         setAlertState('info')
         setAlert('Posting Purchase...')
         setPurchaseStatus('Posting Purchase...')
         const newPurchase = {
             ...fields,
-            postingDate:purchaseDate,
+            postingDate: purchaseDate,
             approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
             productsRef,
             createdAt: Date.now()
         }
         const newPurchases = [newPurchase, ...purchase]
-        
+
         const resps = await fetchServer("POST", {
             database: company,
-            collection: "Purchase", 
+            collection: "Purchase",
             update: newPurchase
-            }, "createDoc", server)
-                                        
-            if (resps.err){
-                console.log(resps.mess)
-                setPurchaseStatus('Post Purchase')
-                setAlertState('error')
-                setAlert(resps.mess)
-                setAlertTimeout(5000)
-            }else{
-                if (curApproval){
-                    removeApproval(company, 'purchase', postAction, {                        
-                        createdAt: curApproval.createdAt,
-                        postingDate: curApproval.postingDate                                                 
-                    })
-                }
-                setPurchaseStatus('Post Purchase')
-                setPurchase(newPurchases)
-                setCurPurchase(newPurchase)
-                setIsView(true)
-                setFields({...newPurchase})
-                setAlertState('success')
-                setAlert('Purchase Record Posted Successfully!')
-                setAlertTimeout(1000)
-                getPurchase(company)
-                const purchaseWrh = wrhs.find((wh)=>{return wh.purchase})
-                const transactions = await getPurchaseProducts(company, newPurchase)
-                if (transactions.length){
-                    const entries = []
-                    transactions.forEach((transaction)=>{
-                        if (transaction.location === purchaseWrh.name){                    
-                            entries.push(transaction)
-                        }
-                    })            
-                    setPurchaseEntries([...entries])
-                }        
-                const rep = await fetchServer("POST", {
-                    database: company,
-                    collection: "ProductCostLogs",
-                    prop: entryIds
-                }, "updateProductCost", server) 
+        }, "createDoc", server)
 
-                if (!rep.err){
-                    getProducts(company)
-                }
-
+        if (resps.err) {
+            console.log(resps.mess)
+            setPurchaseStatus('Post Purchase')
+            setAlertState('error')
+            setAlert(resps.mess)
+            setAlertTimeout(5000)
+        } else {
+            if (curApproval) {
+                removeApproval(company, 'purchase', postAction, {
+                    createdAt: curApproval.createdAt,
+                    postingDate: curApproval.postingDate
+                })
             }
-        
+            setPurchaseStatus('Post Purchase')
+            setPurchase(newPurchases)
+            setCurPurchase(newPurchase)
+            setIsView(true)
+            setFields({ ...newPurchase })
+            setAlertState('success')
+            setAlert('Purchase Record Posted Successfully!')
+            setAlertTimeout(1000)
+            getPurchase(company)
+            const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+            const transactions = await getPurchaseProducts(company, newPurchase)
+            if (transactions.length) {
+                const entries = []
+                transactions.forEach((transaction) => {
+                    if (transaction.location === purchaseWrh.name) {
+                        entries.push(transaction)
+                    }
+                })
+                setPurchaseEntries([...entries])
+            }
+            const rep = await fetchServer("POST", {
+                database: company,
+                collection: "ProductCostLogs",
+                markUp: curPosSettings?.useMarkUp,
+                prop: entryIds
+            }, "updateProductCost", server)
+
+            if (!rep.err) {
+                getProducts(company)
+            }
+
+        }
+
     }
 
-    const deletePurchase = async (purchase)=>{
+    const deletePurchase = async (purchase) => {
         const today = new Date()
         let postDate = new Date(purchase.postingDate).toISOString().slice(0, 10)
-        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)  && !companyRecord?.access === 'admin'){
+        if (postDate < new Date(today.setDate(today.getDate() - 1)).toISOString().slice(0, 10) && !companyRecord?.access === 'admin') {
             setAlertState('error')
             setAlert('Cannot delete purchase after more than 1 day')
             setAlertTimeout(3000)
             return
         }
-        if(deleteCount === purchase.createdAt){
+        if (deleteCount === purchase.createdAt) {
             setAlertState('info')
             setAlert('Deleting Purchase...')
             const resps = await fetchServer("POST", {
                 database: company,
-                collection: "Purchase", 
-                update: {createdAt: purchase.createdAt}
+                collection: "Purchase",
+                update: { createdAt: purchase.createdAt }
             }, "removeDoc", server)
-            if (resps.err){
+            if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
-            }else{
+            } else {
                 setIsView(false)
                 setCurPurchase(null)
-                setFields({...defaultFields})
+                setFields({ ...defaultFields })
                 setAlertState('success')
                 setAlert('Purchase Record Deleted Successfully!')
                 setAlertTimeout(1000)
                 setDeleteCount(0)
                 getPurchase(company)
-            }        
-        }else{
+            }
+        } else {
             setDeleteCount(purchase.createdAt)
-            setTimeout(()=>{
+            setTimeout(() => {
                 setDeleteCount(0)
-            },12000)
+            }, 12000)
         }
     }
 
-    const calculateReportPurchase = ()=>{
-        var filteredReportPurchases = purchase.filter((ftrpurchase)=>{
+    const calculateReportPurchase = () => {
+        var filteredReportPurchases = purchase.filter((ftrpurchase) => {
             const prPostingDate = new Date(ftrpurchase.postingDate).getTime()
             const fromDate = new Date(saleFrom).getTime()
             const toDate = new Date(saleTo).getTime()
-            if ( prPostingDate>= fromDate && prPostingDate<=toDate
-            ){
+            if (prPostingDate >= fromDate && prPostingDate <= toDate
+            ) {
                 return ftrpurchase
             }
-        }).sort((a, b)=>{
+        }).sort((a, b) => {
             const first = new Date(a.postingDate)
             const second = new Date(b.postingDate)
             return second - first
@@ -606,29 +609,29 @@ const Purchase = ()=>{
         <>
             <div className='purchase'>
                 {showApprovalBox && <ApprovalBox
-                    onClose={()=>{
+                    onClose={() => {
                         setShowApprovalBox(false)
                         setApprovalStatus(false)
                         setApprovalMessage('')
                         curApproval.posted = false
                     }}
                     module={'purchase'}
-                    section= {postAction}
-                    postApprovalUpdate={()=>{
-                        postApprovalUpdate(company, 'purchase', postAction, curApproval)                        
+                    section={postAction}
+                    postApprovalUpdate={() => {
+                        postApprovalUpdate(company, 'purchase', postAction, curApproval)
                         curApproval.posted = false
                     }}
-                />}  
+                />}
                 {productAdd && <AddProduct
-                    products = {products}
-                    category = {fields.itemCategory}
-                    purchaseDate = {purchaseDate}
+                    products={products}
+                    category={fields.itemCategory}
+                    purchaseDate={purchaseDate}
                     fields={fields}
                     setFields={setFields}
-                    curPurchase = {curPurchase}
-                    setProductAdd = {setProductAdd}
-                    uoms = {uoms}
-                    handleProductPurchase = {handleProductPurchase}
+                    curPurchase={curPurchase}
+                    setProductAdd={setProductAdd}
+                    uoms={uoms}
+                    handleProductPurchase={handleProductPurchase}
                     purchaseEntries={purchaseEntries}
                     setPurchaseEntries={setPurchaseEntries}
                     isProductView={isProductView}
@@ -637,100 +640,100 @@ const Purchase = ()=>{
                     curApproval={curApproval}
                 />}
                 {showReport && <PurchaseReport
-                    reportPurchases = {reportPurchase}
-                    multiple = {true}
-                    setShowReport={(value)=>{
-                        setShowReport(value)                        
-                    }}              
-                    fromDate = {saleFrom}
-                    toDate = {saleTo}
-                />}    
+                    reportPurchases={reportPurchase}
+                    multiple={true}
+                    setShowReport={(value) => {
+                        setShowReport(value)
+                    }}
+                    fromDate={saleFrom}
+                    toDate={saleTo}
+                />}
                 <div className='purlst'>
-                    {companyRecord.status==='admin' && <FaTableCells                         
+                    {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'
-                        onClick={()=>{
+                        onClick={() => {
                             calculateReportPurchase()
-                            if (saleTo && saleFrom){                                
+                            if (saleTo && saleFrom) {
                                 setShowReport(true)
                             }
                         }}
                     />}
-                    {<MdAdd 
+                    {<MdAdd
                         className='add slsadd'
-                        onClick={()=>{
+                        onClick={() => {
                             setIsView(false)
-                            setFields({...defaultFields})
+                            setFields({ ...defaultFields })
                             setCurPurchase(null)
                             setCurApproval(null)
                             setIsApprover(false)
                         }}
                     />}
-                    
+
                     <div className='payeeinpcov'>
                         <div className='inpcov formpad'>
                             <div>Date From</div>
-                            <input 
+                            <input
                                 className='forminp prinps'
                                 name='salesfrom'
                                 type='date'
                                 placeholder='From'
                                 value={saleFrom}
                                 disabled={!allowBacklogs}
-                                onChange={(e)=>{
+                                onChange={(e) => {
                                     setSaleFrom(e.target.value)
                                 }}
                             />
                         </div>
                         <div className='inpcov formpad'>
                             <div>Date To</div>
-                            <input 
+                            <input
                                 className='forminp prinps'
                                 name='salesto'
                                 type='date'
                                 placeholder='To'
                                 value={saleTo}
                                 disabled={!allowBacklogs}
-                                onChange={(e)=>{
+                                onChange={(e) => {
                                     setSaleTo(e.target.value)
                                 }}
                             />
                         </div>
                     </div>
-                    <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
                         <button className="action-btn" onClick={handleSyncOfflinePurchase} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
-                    {[...purchaseApprovals, ...purchase].filter((purfltr)=>{
-                        if (purfltr.postingDate >= saleFrom && purfltr.postingDate <= saleTo){
+                    {[...purchaseApprovals, ...purchase].filter((purfltr) => {
+                        if (purfltr.postingDate >= saleFrom && purfltr.postingDate <= saleTo) {
                             return purfltr
                         }
-                    }).sort((a,b)=>{
+                    }).sort((a, b) => {
                         const first = new Date(a.postingDate)
                         const second = new Date(b.postingDate)
                         return second - first
-                    }).map((pur, index)=>{
-                        if (pur.isApproval){
-                            const {createdAt, postingDate, message, handlerId, approved, approvers} = pur
+                    }).map((pur, index) => {
+                        if (pur.isApproval) {
+                            const { createdAt, postingDate, message, handlerId, approved, approvers } = pur
                             var textColor = 'red'
-                            if (approved){
-                                textColor ='green'
+                            if (approved) {
+                                textColor = 'green'
                             }
                             return (
-                                <div className={'dept sldept' + (curApproval?.createdAt===createdAt?' curview':'')} key={index} 
-                                    onClick={(e)=>{
+                                <div className={'dept sldept' + (curApproval?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                    onClick={(e) => {
                                         setCurApproval(pur)
                                     }}
                                 >
                                     <div className='dets sldets'>
                                         <div>Approval Type: <b>{'PURCHASE'}</b></div>
                                         <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                        <div>Approval Status: <b style={{color: textColor}}>{message? 'REJECTED' : (approved? 'APPROVED': 'AWAITING APPROVAL')}</b></div>
+                                        <div>Approval Status: <b style={{ color: textColor }}>{message ? 'REJECTED' : (approved ? 'APPROVED' : 'AWAITING APPROVAL')}</b></div>
                                         {message && <div>Message: <b>{message}</b></div>}
                                         <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
-                                        {approvers?.length && 
-                                            <div 
-                                                className='deptdesc' 
+                                        {approvers?.length &&
+                                            <div
+                                                className='deptdesc'
                                                 style={{
-                                                    fontWeight:'bold', 
+                                                    fontWeight: 'bold',
                                                     fontSize: '13px',
                                                     color: 'greenyellow',
                                                     background: 'rgba(0,0,0,0.7)',
@@ -739,26 +742,26 @@ const Purchase = ()=>{
                                                     borderRadius: '8px',
                                                     border: 'solid greenyellow 3px',
                                                 }}
-                                            > 
+                                            >
                                                 ## PURCHASE VERIFIED ##
                                             </div>
                                         }
                                     </div>
-                                    {(companyRecord.status==='admin') && <div 
+                                    {(companyRecord.status === 'admin') && <div
                                         className='edit'
-                                        name='delete'         
-                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
-                                        onClick={async ()=>{                                        
+                                        name='delete'
+                                        style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
+                                        onClick={async () => {
                                             setAlertState('info')
                                             setAlert('Deleting Approval Data...')
                                             setAlertTimeout(100000)
 
-                                            const resp = await removeApproval(company, 'purchase', postAction, {                        
+                                            const resp = await removeApproval(company, 'purchase', postAction, {
                                                 createdAt: createdAt,
-                                                postingDate: postingDate                                                 
-                                            })     
-                                            
-                                            if(resp.completed){
+                                                postingDate: postingDate
+                                            })
+
+                                            if (resp.completed) {
                                                 setAlertState('success')
                                                 setAlert('Deleted Approval Data Successfully!')
                                                 setAlertTimeout(1000)
@@ -772,40 +775,40 @@ const Purchase = ()=>{
                                     </div>}
                                 </div>
                             )
-                        }else{
+                        } else {
                             const {
-                                createdAt,postingDate, 
+                                createdAt, postingDate,
                                 purchaseAmount, purchaseQuantity,
                                 purchaseUOM, purchaseDepartment,
-                                itemCategory,purchaseHandler 
+                                itemCategory, purchaseHandler
                             } = pur
                             var handlerName = ''
-                            employees.forEach((emp)=>{
-                                if (emp.i_d === purchaseHandler){
+                            employees.forEach((emp) => {
+                                if (emp.i_d === purchaseHandler) {
                                     handlerName = `${emp.firstName} ${emp.lastName}`
                                 }
                             })
-                            return(
-                                <div className={'dept' + (curPurchase?.createdAt===createdAt?' curview':'')} key={index} 
-                                    onClick={(e)=>{
+                            return (
+                                <div className={'dept' + (curPurchase?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                    onClick={(e) => {
                                         handleViewClick(pur)
                                     }}
                                 >
                                     <div className='dets sldets'>
                                         <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                        <div>Purchase Department: <b>{purchaseDepartment}</b></div>                                    
-                                        <div>Purchase Amount: <b>{'₦'+(Number(purchaseAmount)).toLocaleString()}</b></div>                                    
-                                        <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM.toUpperCase()} of ${itemCategory}`}</b></div>                                    
+                                        <div>Purchase Department: <b>{purchaseDepartment}</b></div>
+                                        <div>Purchase Amount: <b>{'₦' + (Number(purchaseAmount)).toLocaleString()}</b></div>
+                                        <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM.toUpperCase()} of ${itemCategory}`}</b></div>
                                         <div className='deptdesc'>{`Purchase Handled By:`} <b>{`${handlerName}`}</b></div>
                                     </div>
-                                    {(companyRecord.status==='admin') && <div 
+                                    {(companyRecord.status === 'admin') && <div
                                         className='edit'
-                                        name='delete'         
-                                        style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
-                                        onClick={()=>{                                        
+                                        name='delete'
+                                        style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
+                                        onClick={() => {
                                             setAlertState('info')
                                             setAlert('You are about to Reverse the selected Purchase Record. Please click again if you are sure!')
-                                            setAlertTimeout(5000)                                                                                    
+                                            setAlertTimeout(5000)
                                             deletePurchase(pur)
                                         }}
                                     >
@@ -821,15 +824,15 @@ const Purchase = ()=>{
                     <div className='purinfocontent' onChange={handlePurchaseEntry}>
                         <div className='inpcov'>
                             <div>Select Department</div>
-                            <select 
+                            <select
                                 className='forminp'
                                 name='purchaseDepartment'
                                 type='text'
-                                value={fields.purchaseDepartment}  
-                                disabled={isView}                              
+                                value={fields.purchaseDepartment}
+                                disabled={isView}
                             >
                                 <option value=''>Select Department</option>
-                                {departments.map((dept, index)=>{
+                                {departments.map((dept, index) => {
                                     return (
                                         <option key={index} value={dept}>{dept}</option>
                                     )
@@ -838,7 +841,7 @@ const Purchase = ()=>{
                         </div>
                         <div className='inpcov'>
                             <div>Vendor</div>
-                            <input 
+                            <input
                                 className='forminp'
                                 name='purchaseVendor'
                                 type='text'
@@ -849,19 +852,19 @@ const Purchase = ()=>{
                         </div>
                         <div className='inpcov'>
                             <div>Select Purchase Handler</div>
-                            <select 
+                            <select
                                 className='forminp'
                                 name='purchaseHandler'
                                 type='text'
-                                value={fields.purchaseHandler}     
-                                disabled={isView}                           
+                                value={fields.purchaseHandler}
+                                disabled={isView}
                             >
                                 <option value=''>Select Purchase Handler</option>
-                                {employees.map((employee)=>{
-                                    if (!isView){
-                                        if (!employee.dismissalDate){
+                                {employees.map((employee) => {
+                                    if (!isView) {
+                                        if (!employee.dismissalDate) {
                                             return (
-                                                <option 
+                                                <option
                                                     key={employee.i_d}
                                                     value={employee.i_d}
                                                 >
@@ -869,9 +872,9 @@ const Purchase = ()=>{
                                                 </option>
                                             )
                                         }
-                                    }else{
+                                    } else {
                                         return (
-                                            <option 
+                                            <option
                                                 key={employee.i_d}
                                                 value={employee.i_d}
                                             >
@@ -884,7 +887,7 @@ const Purchase = ()=>{
                         </div>
                         <div className='inpcov'>
                             <div>Item Category</div>
-                            <select 
+                            <select
                                 className='forminp'
                                 name='itemCategory'
                                 type='text'
@@ -892,7 +895,7 @@ const Purchase = ()=>{
                                 disabled={isView}
                             >
                                 <option value=''>Item Category</option>
-                                {categories.map((category, index)=>{
+                                {categories.map((category, index) => {
                                     return (
                                         <option key={index} value={category.code}>{category.name}</option>
                                     )
@@ -901,7 +904,7 @@ const Purchase = ()=>{
                         </div>
                         {(fields.productsRef || isView) && <div className='inpcov'>
                             <div>Purchase Quantity</div>
-                            <input 
+                            <input
                                 className='forminp'
                                 name='purchaseQuantity'
                                 type='number'
@@ -912,7 +915,7 @@ const Purchase = ()=>{
                         </div>}
                         {(fields.productsRef || isView) && <div className='inpcov'>
                             <div>Unit of Measurement</div>
-                            <select 
+                            <select
                                 className='forminp'
                                 name='purchaseUOM'
                                 type='text'
@@ -921,16 +924,16 @@ const Purchase = ()=>{
                             >
                                 <option value=''>Unit of Measurement</option>
                                 <option value='units'>UNITS</option>
-                                {unitsofmeasurements.map((uom, index)=>{
+                                {unitsofmeasurements.map((uom, index) => {
                                     return (
                                         <option key={index} value={uom}>{uom}</option>
                                     )
                                 })}
                             </select>
                         </div>}
-                        <div className='inpcov'> 
+                        <div className='inpcov'>
                             <div>Purchase Amount</div>
-                            <input 
+                            <input
                                 className='forminp'
                                 name='purchaseAmount'
                                 type='number'
@@ -939,50 +942,50 @@ const Purchase = ()=>{
                                 disabled={true}
                             />
                         </div>
-                        {(fields.productsRef || fields.purchaseUOM === 'units') ? 
-                        <div 
-                            className='prd-link'
-                            onClick={()=>{
-                                setIsProductView(true)
-                                setProductAdd(true)
-                            }}
-                        >
-                            {`View All (${fields.purchaseQuantity.toLocaleString()}) Quantities`}
-                        </div> : 
-                        (<div 
-                            className='prd-link'
-                            onClick={()=>{
-                                // setIsProductView(false)
-                                // setProductAdd(true)
-                                if (fields.purchaseVendor){
-                                    setIsProductView(false)
+                        {(fields.productsRef || fields.purchaseUOM === 'units') ?
+                            <div
+                                className='prd-link'
+                                onClick={() => {
+                                    setIsProductView(true)
                                     setProductAdd(true)
-                                }
-                                else{
-                                    setAlertState('error')
-                                    setAlert('Please select Vendor before linking products!')
-                                    setAlertTimeout(1000)
-                                }
-                            }}
-                        >
-                            Add Products
-                        </div>)}
+                                }}
+                            >
+                                {`View All (${fields.purchaseQuantity.toLocaleString()}) Quantities`}
+                            </div> :
+                            (<div
+                                className='prd-link'
+                                onClick={() => {
+                                    // setIsProductView(false)
+                                    // setProductAdd(true)
+                                    if (fields.purchaseVendor) {
+                                        setIsProductView(false)
+                                        setProductAdd(true)
+                                    }
+                                    else {
+                                        setAlertState('error')
+                                        setAlert('Please select Vendor before linking products!')
+                                        setAlertTimeout(1000)
+                                    }
+                                }}
+                            >
+                                Add Products
+                            </div>)}
                     </div>
                     {(!isView || curApproval) && <div className='purchasebuttom'>
                         <div className='inpcov'>
-                            <input 
+                            <input
                                 className='forminp'
                                 name='purchasedate'
                                 type='date'
                                 placeholder='Purchase Date'
                                 value={purchaseDate}
                                 disabled={isView}
-                                onChange={(e)=>{
+                                onChange={(e) => {
                                     const date = new Date(e.target.value)
                                     const today = new Date()
-                                    if (date <= today){
+                                    if (date <= today) {
                                         setPurchaseDate(e.target.value)
-                                    }else{
+                                    } else {
                                         setAlertState('error')
                                         setAlert('You cannot set the purchase date in the future!')
                                         setAlertTimeout(5000)
@@ -990,15 +993,15 @@ const Purchase = ()=>{
                                 }}
                             />
                         </div>
-                        <div 
+                        <div
                             className='purchasebutton'
-                            style={{cursor: purchaseEntries.length ? 'pointer':'not-allowed'}}
-                            onClick={()=>{
-                                if(purchaseEntries.length){
+                            style={{ cursor: purchaseEntries.length ? 'pointer' : 'not-allowed' }}
+                            onClick={() => {
+                                if (purchaseEntries.length) {
                                     handleProductPurchase()
                                 }
-                            }}                    
-                        >{curApproval ? (curApproval.approved? purchaseStatus: (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')}</div>
+                            }}
+                        >{curApproval ? (curApproval.approved ? purchaseStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Approve Request' : 'Request Approval')}</div>
                     </div>}
                 </div>
             </div>
@@ -1011,58 +1014,58 @@ export default Purchase
 const AddProduct = ({
     products, category, purchaseDate, fields, setFields, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
     handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord, curApproval,
-})=>{    
+}) => {
     const [productSearch, setProductSearch] = useState('')
     const [nullFieldsCount, setNullFieldsCount] = useState(0)
     const [isProductEdit, setIsProductEdit] = useState(false)
     const targetRef = useRef(null)
-    const { getDate, setAlertState, setAlert, setAlertTimeout} = useContext(ContextProvider)
+    const { getDate, setAlertState, setAlert, setAlertTimeout } = useContext(ContextProvider)
     const printToPDF = () => {
         const element = targetRef.current;
         const options = {
-            margin:       0.1,
-            filename:     `${curApproval? '(APPROVALS) ': ''}PRODUCT PURCHASE DETAILS ${getDate(curPurchase?.purchaseDate || curPurchase?.postingDate || curApproval?.postingDate || purchaseDate)}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
-            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+            margin: 0.1,
+            filename: `${curApproval ? '(APPROVALS) ' : ''}PRODUCT PURCHASE DETAILS ${getDate(curPurchase?.purchaseDate || curPurchase?.postingDate || curApproval?.postingDate || purchaseDate)}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
     };
-    useEffect(()=>{
-        if (!isProductView){
-            let  fltProducts = []
-            if (category){
-                fltProducts = products.filter((product)=>{
-                    return product.category === category.toLowerCase()                
+    useEffect(() => {
+        if (!isProductView) {
+            let fltProducts = []
+            if (category) {
+                fltProducts = products.filter((product) => {
+                    return product.category === category.toLowerCase()
                 })
-            }else{
-                fltProducts = products.filter((product)=>{
+            } else {
+                fltProducts = products.filter((product) => {
                     return product.category
-                }).map((product)=>{
-                    if (isProductEdit){
-                        const originalEntry = purchaseEntries.find((entry)=>{
+                }).map((product) => {
+                    if (isProductEdit) {
+                        const originalEntry = purchaseEntries.find((entry) => {
                             return entry.productId === product.i_d
-                        })                        
-                        if (!originalEntry){
+                        })
+                        if (!originalEntry) {
                             product.productId = product.i_d
                             // console.log('Adding Product:', product.name)
                             return product
-                        }else{
+                        } else {
                             originalEntry.i_d = originalEntry.productId
                             // console.log('Keeping Original Entry for Product:', originalEntry.name)
                             return originalEntry
                         }
-                    }else{
+                    } else {
                         return product
                     }
                 })
             }
-            setPurchaseEntries(fltProducts.map((product, index)=>{
-                const uom1 = uoms.filter((uom)=>{
+            setPurchaseEntries(fltProducts.map((product, index) => {
+                const uom1 = uoms.filter((uom) => {
                     return uom.code === product.purchaseUom.toLowerCase()
-                })                
-                return {                
-                    productId : product.i_d,
+                })
+                return {
+                    productId: product.i_d,
                     index: index,
                     name: product.name,
                     quantity: '',
@@ -1075,52 +1078,52 @@ const AddProduct = ({
                 }
             }))
         }
-    },[])
-    useEffect(()=>{
+    }, [])
+    useEffect(() => {
         // console.log(products)
-    },[products])
-    useEffect(()=>{
-        if (!isProductView){
+    }, [products])
+    useEffect(() => {
+        if (!isProductView) {
             let ct = 0
-            const fieldsAmount = purchaseEntries.reduce((acc, entry)=>{
-                if ((!entry.totalCost && entry.quantity) || (!entry.quantity && entry.totalCost)){
+            const fieldsAmount = purchaseEntries.reduce((acc, entry) => {
+                if ((!entry.totalCost && entry.quantity) || (!entry.quantity && entry.totalCost)) {
                     ct += 1
                 }
                 return acc + (Number(entry.totalCost) || 0)
-            },0)
-            setFields((fields)=>{
-                return {...fields, purchaseAmount: fieldsAmount}
+            }, 0)
+            setFields((fields) => {
+                return { ...fields, purchaseAmount: fieldsAmount }
             })
             setNullFieldsCount(ct)
         }
-    },[purchaseEntries])
+    }, [purchaseEntries])
 
-    const handlePurchaseUdpate = (e, index)=>{
-        const {name, id, value} = e.target
-        
-        if (name){
-            if (name === 'quantity'){
-                const uom2 = uoms.filter((uom)=>{
+    const handlePurchaseUdpate = (e, index) => {
+        const { name, id, value } = e.target
+
+        if (name) {
+            if (name === 'quantity') {
+                const uom2 = uoms.filter((uom) => {
                     return uom.code === purchaseEntries[index].purchaseUom
                 })
                 // console.log(uom)
-                setPurchaseEntries((entries)=>{                    
-                    const entry = entries.find((entry)=>{return entry.productId === id})
-                    const otherEntries = entries.filter((entry)=>{return entry.productId !== id})
+                setPurchaseEntries((entries) => {
+                    const entry = entries.find((entry) => { return entry.productId === id })
+                    const otherEntries = entries.filter((entry) => { return entry.productId !== id })
                     entry[name] = Number(value)
                     entry.baseQuantity = Number(value) * Number(uom2[0]?.multiple)
-                    return [...otherEntries, entry].sort((a,b) => {
+                    return [...otherEntries, entry].sort((a, b) => {
                         const numA = parseInt(a.productId.replace("PD", ""), 10);
                         const numB = parseInt(b.productId.replace("PD", ""), 10);
                         return numA - numB;
                     })
                 })
-            }else{
-                setPurchaseEntries((entries)=>{
-                    const entry = entries.find((entry)=>{return entry.productId === id})
-                    const otherEntries = entries.filter((entry)=>{return entry.productId !== id})
+            } else {
+                setPurchaseEntries((entries) => {
+                    const entry = entries.find((entry) => { return entry.productId === id })
+                    const otherEntries = entries.filter((entry) => { return entry.productId !== id })
                     entry[name] = value
-                    return [...otherEntries, entry].sort((a,b) => {
+                    return [...otherEntries, entry].sort((a, b) => {
                         const numA = parseInt(a.productId.replace("PD", ""), 10);
                         const numB = parseInt(b.productId.replace("PD", ""), 10);
                         return numA - numB;
@@ -1129,34 +1132,34 @@ const AddProduct = ({
             }
         }
     }
-    
+
     return (
         <>
             <div className='addproduct'>
                 <div className='add-products'>
                     <div className='add-products-title'>
                         <label>Product Purchase Details</label>
-                        {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('export_purchase_report')) && <div
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_purchase_report')) && <div
                             className='slprwh-print'
-                            onClick={()=>{
+                            onClick={() => {
                                 printToPDF()
                             }}
                         >Print Product</div>}
                     </div>
-                    <div> 
+                    <div>
                         <input
                             placeholder='Search Product'
                             style={{
-                                padding: '5px', borderRadius:'5px', 
-                                outline: 'none', fontSize:'12px'
+                                padding: '5px', borderRadius: '5px',
+                                outline: 'none', fontSize: '12px'
                             }}
-                            onChange={(e)=>{setProductSearch(e.target.value)}}
+                            onChange={(e) => { setProductSearch(e.target.value) }}
                         />
                     </div>
                     <div className='add-products-content' ref={targetRef}>
-                        <div className='add-products-content-title' style={{display:'flex', width:'fit-content'}}>{`${companyRecord?.name.toUpperCase()} (PURCHASE ORDER)`}</div>
-                        <div style={{display:'block', width:'fit-content', marginRight:'auto', marginLeft:'0px'}}>
-                            <label style={{width: 'fit-content', textAlign:'left'}}>{`Vendor: ${fields.purchaseVendor}`}</label>
+                        <div className='add-products-content-title' style={{ display: 'flex', width: 'fit-content' }}>{`${companyRecord?.name.toUpperCase()} (PURCHASE ORDER)`}</div>
+                        <div style={{ display: 'block', width: 'fit-content', marginRight: 'auto', marginLeft: '0px' }}>
+                            <label style={{ width: 'fit-content', textAlign: 'left' }}>{`Vendor: ${fields.purchaseVendor}`}</label>
                             <p></p>
                             <label>{`Order Date: ${purchaseDate || fields.postingDate}`}</label>
                             <p></p>
@@ -1164,10 +1167,10 @@ const AddProduct = ({
                         <div className='add-products-content-title'>
                             <div>Product Name</div>
                             <div>Product ID</div>
-                            {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
+                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
                                 <>
-                                    <div style={{color: 'red'}}>Current Stock</div>
-                                    <div style={{color: 'red'}}>Requested Stock (units)</div>
+                                    <div style={{ color: 'red' }}>Current Stock</div>
+                                    <div style={{ color: 'red' }}>Requested Stock (units)</div>
                                 </>
                             }
                             <div>Purchase Quantity</div>
@@ -1175,55 +1178,55 @@ const AddProduct = ({
                             <div>{`Purchase Amount (${(fields.purchaseAmount || 0).toLocaleString()})`}</div>
                         </div>
                         {purchaseEntries.length === 0 && isProductView && <div className='load-products'><span>Loading Purchase Products...</span></div>}
-                        {purchaseEntries.sort((a,b) => {
+                        {purchaseEntries.sort((a, b) => {
                             const numA = parseInt(a.productId.replace("PD", ""), 10);
                             const numB = parseInt(b.productId.replace("PD", ""), 10);
                             return numA - numB;
-                        }).filter((purflt)=>{
+                        }).filter((purflt) => {
                             let showEntry = true
-                            if (isProductView){
-                                if (!purflt.quantity && !purflt.totalCost){
+                            if (isProductView) {
+                                if (!purflt.quantity && !purflt.totalCost) {
                                     showEntry = false
                                 }
-                            }else(
+                            } else (
                                 showEntry = true
                             )
-                            if (showEntry){
-                                if (productSearch === ''){
+                            if (showEntry) {
+                                if (productSearch === '') {
                                     return purflt
-                                }else return (purflt.name.toLowerCase().includes(productSearch.toLowerCase()) || purflt.productId.toLowerCase().includes(productSearch.toLowerCase()))
+                                } else return (purflt.name.toLowerCase().includes(productSearch.toLowerCase()) || purflt.productId.toLowerCase().includes(productSearch.toLowerCase()))
                             }
-                        }).map((entry, index)=>{
-                            let currentStock = (products.find((p)=>{return p.i_d === entry.productId}))?.stockSummary?.closingQty
+                        }).map((entry, index) => {
+                            let currentStock = (products.find((p) => { return p.i_d === entry.productId }))?.stockSummary?.closingQty
                             return (
                                 <div key={index} className='add-products-content-entry'>
                                     <div>{entry.name}</div>
                                     <div>{entry.productId}</div>
-                                    {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
+                                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
                                         <>
-                                            <div style={{color: 'red'}}>{currentStock}</div>
-                                            <div style={{color: 'red'}}>{entry.baseQuantity}</div>
+                                            <div style={{ color: 'red' }}>{currentStock}</div>
+                                            <div style={{ color: 'red' }}>{entry.baseQuantity}</div>
                                         </>
                                     }
                                     <div>
-                                        <input 
+                                        <input
                                             type='number'
                                             name='quantity'
                                             id={entry.productId}
                                             value={entry.quantity}
-                                            onChange={(e)=>{handlePurchaseUdpate(e, index)}}
+                                            onChange={(e) => { handlePurchaseUdpate(e, index) }}
                                             disabled={isProductView}
                                         />
                                     </div>
                                     <div>
-                                        <select 
+                                        <select
                                             name='purchaseUom'
                                             id={entry.productId}
                                             value={entry.purchaseUom}
-                                            onChange={(e)=>{handlePurchaseUdpate(e, index)}}
+                                            onChange={(e) => { handlePurchaseUdpate(e, index) }}
                                             disabled={isProductView || true}
                                         >
-                                            {uoms.map((uom, idx)=>{
+                                            {uoms.map((uom, idx) => {
                                                 return (
                                                     <option key={idx} value={uom.code}>{uom.name}</option>
                                                 )
@@ -1231,13 +1234,13 @@ const AddProduct = ({
                                         </select>
                                     </div>
                                     <div>
-                                        <input 
+                                        <input
                                             name='totalCost'
                                             type='number'
                                             id={entry.productId}
                                             value={entry.totalCost}
                                             disabled={entry.baseQuantity === 0 || isProductView}
-                                            onChange={(e)=>{handlePurchaseUdpate(e, index)}}
+                                            onChange={(e) => { handlePurchaseUdpate(e, index) }}
                                         />
                                     </div>
                                 </div>
@@ -1245,40 +1248,40 @@ const AddProduct = ({
                         })}
                     </div>
                     <div className='add-products-button'>
-                        {!isProductView && <div 
+                        {!isProductView && <div
                             className='add-products-button-add'
                             onClick={
-                                ()=>{
-                                    if (nullFieldsCount === 0){
+                                () => {
+                                    if (nullFieldsCount === 0) {
                                         handleProductPurchase()
-                                    }else{
+                                    } else {
                                         setAlertState('error')
                                         setAlert('Please Make Sure Both Quantity and Amount fields are filled before proceeding!')
                                         setAlertTimeout(1000)
                                     }
                                 }
                             }
-                        >{curPurchase===null ? 'Add' : 'Save'}</div>}
-                        {isProductView && curPurchase === null && <div 
+                        >{curPurchase === null ? 'Add' : 'Save'}</div>}
+                        {isProductView && curPurchase === null && <div
                             className='add-products-button-add'
-                            onClick={()=>{
+                            onClick={() => {
                                 setIsProductEdit(true)
-                                setFields((fields)=>{
-                                    return {...fields, purchaseUOM: ''}
+                                setFields((fields) => {
+                                    return { ...fields, purchaseUOM: '' }
                                 })
                                 setIsProductView(false)
                             }}
                         >{'Edit'}</div>}
-                        <div 
+                        <div
                             className='add-products-button-cancel'
-                            onClick={()=>{
+                            onClick={() => {
                                 setIsProductView(false)
                                 setProductAdd(false)
-                                if(!isProductView){
+                                if (!isProductView) {
                                     setPurchaseEntries([])
                                 }
                             }}
-                        >{isProductView?'Close':'Cancel'}</div>
+                        >{isProductView ? 'Close' : 'Cancel'}</div>
                     </div>
                 </div>
             </div>

@@ -3,14 +3,14 @@ import { useEffect, useState, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 
 const Settings = () => {
-    const { storePath, company, companyRecord, 
-        settings, getSettings, server, fetchServer, 
-        recoveryVal, setRecoveryVal, changingSettings, 
-        setChangingSettings, colSettings, setColSettings, 
-        enableBlockVal, setEnableBlockVal, 
+    const { storePath, company, companyRecord,
+        settings, getSettings, server, fetchServer,
+        recoveryVal, setRecoveryVal, changingSettings,
+        setChangingSettings, colSettings, setColSettings,
+        enableBlockVal, setEnableBlockVal,
         genDb, DBProfiles, setDBProfiles, fetchDBProfiles,
-        profiles, setProfiles, 
-        employees, getEmployees, dashList, fetchProfiles, 
+        profiles, setProfiles,
+        employees, getEmployees, dashList, fetchProfiles,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
 
@@ -37,7 +37,7 @@ const Settings = () => {
     const [accessValue, setAccessValue] = useState('')
     const magicWord = 'oh ye server. deny all '
     const activationWord = 'oh ye server. allow all into your world '
-    
+
     const defaultWarehouse = {
         name: '',
         purchase: false,
@@ -60,7 +60,9 @@ const Settings = () => {
         i_d: '',
         name: '',
         type: '',
-        account: ''
+        account: '',
+        isSalesAccount: false,
+        isExpenseAccount: false,
     }
     const defaultPosSettings = {
         name: '',
@@ -68,8 +70,9 @@ const Settings = () => {
         size: '',
         capacity: '',
         active: false,
+        useMarkUp: false,
         sessHour: '',
-        printPaymenReceipt: false,
+        printPaymentReceipt: false,
         printKitchenReceipt: false,
         printBarReceipt: false,
     }
@@ -89,25 +92,25 @@ const Settings = () => {
     const [deliveryPostsPermissions, setDeliveryPostsPermissions] = useState([])
     const [posAdminPermissions, setPosAdminPermissions] = useState([])
     const editDeletePermissions = [
-        'edit_employees', 'enable_employee_debt_recovery', 'edit_product_details', 
-        'add_expense_category', 'edit_pos_order', 'cancel_pos_order', 'remove_pos_items', 'override_pos_receipts', 
-        'edit_payment_receipts', 'cancel_delivery_order', 'override_accomodation', 
+        'edit_employees', 'enable_employee_debt_recovery', 'edit_product_details',
+        'add_expense_category', 'edit_pos_order', 'cancel_pos_order', 'remove_pos_items', 'override_pos_receipts',
+        'edit_payment_receipts', 'cancel_delivery_order', 'override_accomodation',
         'view_all_accommodation', 'allow_group_payment'
     ]
     const postingPermissions = [
-        'allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products', 
-        'allow_recovery_posts', 'allow_rental_posts' , 'allow_accommodation_posts', 
+        'allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products',
+        'allow_recovery_posts', 'allow_rental_posts', 'allow_accommodation_posts',
         'allow_purchase_posts', 'allow_expense_posts', 'allow_payment_posts'
     ]
     const approvalPermissions = [
-        'approve_postsales','approve_postaddSalesProduct','approve_postrentals',
-        'approve_postrecovery','approve_postaccommodation', 'approve_postpurchase', 
+        'approve_postsales', 'approve_postaddSalesProduct', 'approve_postrentals',
+        'approve_postrecovery', 'approve_postaccommodation', 'approve_postpurchase',
         'approve_postexpense', 'approve_postpayment'
-    
+
     ]
     const importExportPermissions = [
-        'imports', 'export_inventory_report', 'export_sales_report', 
-        'export_pos_report', 'export_purchase_report', 'export_expense_report', 
+        'imports', 'export_inventory_report', 'export_sales_report',
+        'export_pos_report', 'export_purchase_report', 'export_expense_report',
         'adjustments'
     ]
     const stockTransferPermissions = [
@@ -117,10 +120,10 @@ const Settings = () => {
         storePath('settings')
     }, [storePath])
 
-    useEffect(()=>{
-        if (settings.length){  
-            const groups = settings.filter((setting)=>{
-                if (setting.name){
+    useEffect(() => {
+        if (settings.length) {
+            const groups = settings.filter((setting) => {
+                if (setting.name) {
                     switch (setting.name) {
                         case 'uom':
                             setting.desc = 'Product UOM'
@@ -136,59 +139,61 @@ const Settings = () => {
                             setCurPropSet(defaultWarehouse)
                             setCurrentSetting(setting)
                             return setting.desc
-                        case 'paymentMethods': 
+                        case 'paymentMethods':
                             setting.desc = 'Payment Methods'
                             setting.prop = 'paymentMethods'
                             return setting.desc
                         case 'posSettings':
                             setting.desc = 'POS Settings'
                             setting.prop = 'posSettings'
-                        default:                            
+                        default:
                             return setting.desc
-                    }                
+                    }
                 }
             })
             setSettingGroups(groups)
 
-            const uomSetFilt = settings.filter((setting)=>{
+            const uomSetFilt = settings.filter((setting) => {
                 return setting.name === 'uom'
             })
             delete uomSetFilt[0]?._id
-            setUoms(uomSetFilt[0]?.name?[...uomSetFilt[0].mearsures]:[])
+            setUoms(uomSetFilt[0]?.name ? [...uomSetFilt[0].mearsures] : [])
 
             const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
             delete catSetFilt[0]?._id;
             setCategories(catSetFilt[0]?.name ? [...catSetFilt[0].categories] : []);
 
-            const wrhSetFilt = settings.filter((setting)=>{
+            const wrhSetFilt = settings.filter((setting) => {
                 return setting.name === 'warehouses'
             })
             delete wrhSetFilt[0]?._id
             setWrhs(wrhSetFilt[0]?.name ? [...wrhSetFilt[0].warehouses] : [])
-            
-            const paySetFilt = settings.filter((setting)=>{
+
+            const paySetFilt = settings.filter((setting) => {
                 return setting.name === 'paymentMethods'
             })
             delete paySetFilt[0]?._id
             setPaymentMethods(paySetFilt[0]?.name ? [...paySetFilt[0].paymentMethods] : [])
-            
-            const posSetFilt = settings.filter((setting)=>{
+
+            const posSetFilt = settings.filter((setting) => {
                 return setting.name === 'posSettings'
             })
             delete posSetFilt[0]?._id
             setPosSettings(posSetFilt[0]?.name ? [...posSetFilt[0].posSettings] : [])
-        }  
-    },[settings])
+        }
+    }, [settings])
 
-    useEffect(()=>{
+    useEffect(() => {
         let salesPostsPerms = []
         let deliveryPostsPerms = []
         let overridePerms = []
-        if (wrhs.length){
-            wrhs.forEach((wrh)=>{
-                salesPostsPerms.push(`pos_${wrh.name}`)
-                deliveryPostsPerms.push(`delivery_${wrh.name}`)
-                overridePerms.push(`override_${wrh.name}`)
+        if (wrhs.length) {
+            wrhs.forEach((wrh) => {
+                if (!wrh.purchase) {
+                    salesPostsPerms.push(`pos_${wrh.name}`)
+                    deliveryPostsPerms.push(`delivery_${wrh.name}`)
+                    overridePerms.push(`override_${wrh.name}`)
+                }
             })
         }
         setSalesPostsPermissions(salesPostsPerms)
@@ -196,11 +201,11 @@ const Settings = () => {
         setPosAdminPermissions([
             'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent', 'reconcile_inventory',
             'edit_ended_sessions', 'place_multiple_deliveries', ...overridePerms])
-    },[wrhs])
+    }, [wrhs])
 
     useEffect(() => {
         const periods = []
-        for (let i=0 ; i<24; i++){
+        for (let i = 0; i < 24; i++) {
             const hour = `${i}`
             periods.push(hour)
         }
@@ -214,41 +219,41 @@ const Settings = () => {
             fetchDBProfiles(cmp_val, companyRecord)
         }
     }, [])
-    
-    useEffect(()=>{
-        setCurrentProfiles(profiles.map((profile)=>{
+
+    useEffect(() => {
+        setCurrentProfiles(profiles.map((profile) => {
             return profile.emailid
         }))
-    },[profiles])
+    }, [profiles])
 
-    useEffect(()=>{
-        const updateDBStatus = async()=>{
-            if (accessValue === magicWord || accessValue === activationWord){
-                setAccessValue('updating activation....') 
+    useEffect(() => {
+        const updateDBStatus = async () => {
+            if (accessValue === magicWord || accessValue === activationWord) {
+                setAccessValue('updating activation....')
                 const resps = await fetchServer("POST", {
                     database: company,
                     collection: "Profile",
-                    prop: [{ name: 'activation' }, { pauseDB: accessValue===magicWord}]
-                }, "updateOneDoc", server)            
+                    prop: [{ name: 'activation' }, { pauseDB: accessValue === magicWord }]
+                }, "updateOneDoc", server)
                 if (resps.err) {
                     console.log(resps.mess)
                 } else {
                     fetchProfiles(company)
                     setAccessValue('updated activation')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setAccessValue('')
-                    },[2000])                
-                }                                             
+                    }, [2000])
+                }
             }
         }
         updateDBStatus()
-    },[accessValue])
+    }, [accessValue])
 
-    const handleSecretAccess = (e)=>{
-        const {name, value} = e.target
-        if (name === 'access'){
+    const handleSecretAccess = (e) => {
+        const { name, value } = e.target
+        if (name === 'access') {
             setAccessValue(value)
-        }else{
+        } else {
             setAccessValue('')
         }
     }
@@ -259,11 +264,11 @@ const Settings = () => {
         setSelectedPaymentMethods([])
         setCurPropSet(null)
         switch (setting.name) {
-            case 'warehouses':                                
+            case 'warehouses':
                 setCurPropSet(defaultWarehouse)
                 break
             case 'uom':
-                setCurPropSet({...defaultUom})
+                setCurPropSet({ ...defaultUom })
                 break
             case 'product_categories':
                 setCurPropSet(defaultCategories)
@@ -277,14 +282,14 @@ const Settings = () => {
     }
     const handleSettingSelect = (setting) => {
         resetToDefault(setting)
-        if (currentSetting?.name !== setting.name){
+        if (currentSetting?.name !== setting.name) {
             setCurrentSetting(setting)
         }
     }
     const handlePropSetChange = (e) => {
-        const {name, type, value, checked} = e.target
-        setCurPropSet((curPropSet)=>{
-            return {...curPropSet, [name]: type === 'checkbox' ? checked : value}
+        const { name, type, value, checked } = e.target
+        setCurPropSet((curPropSet) => {
+            return { ...curPropSet, [name]: type === 'checkbox' ? checked : value }
         })
     }
 
@@ -301,7 +306,7 @@ const Settings = () => {
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "Settings",
-                        prop: [{name: 'warehouses'}, {
+                        prop: [{ name: 'warehouses' }, {
                             ...currentSetting,
                             warehouses: [...wrhs, newWarehouse]
                         }]
@@ -328,17 +333,17 @@ const Settings = () => {
                         prop: [{ name: 'warehouses' }, { ...currentSetting, warehouses: updatedWarehouses }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
-                        console.log(resps.mess)                        
+                        console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     } else {
-                        getSettings(company, companyRecord)                        
+                        getSettings(company, companyRecord)
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
                 }
                 break
@@ -350,17 +355,17 @@ const Settings = () => {
                         prop: [{ name: 'uom' }, { ...currentSetting, mearsures: [...uoms, curPropSet] }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
-                        console.log(resps.mess)                        
+                        console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     } else {
-                        getSettings(company, companyRecord)                        
+                        getSettings(company, companyRecord)
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
                 } else {
                     const updatedUoms = uoms.map((uom) => {
@@ -368,24 +373,24 @@ const Settings = () => {
                             return curPropSet
                         }
                         return uom
-                    }) 
+                    })
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "Settings",
                         prop: [{ name: 'uom' }, { ...currentSetting, mearsures: updatedUoms }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
-                        console.log(resps.mess)                        
+                        console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     } else {
-                        getSettings(company, companyRecord)                        
+                        getSettings(company, companyRecord)
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
                 }
                 break
@@ -397,17 +402,17 @@ const Settings = () => {
                         prop: [{ name: 'product_categories' }, { ...currentSetting, categories: [...categories, curPropSet] }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
-                        console.log(resps.mess)                        
+                        console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     } else {
-                        getSettings(company, companyRecord)                        
+                        getSettings(company, companyRecord)
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
                 } else {
                     const updatedCategories = categories.map((category) => {
@@ -422,17 +427,17 @@ const Settings = () => {
                         prop: [{ name: 'product_categories' }, { ...currentSetting, categories: updatedCategories }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
-                        console.log(resps.mess)                        
+                        console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     } else {
-                        getSettings(company, companyRecord)                        
+                        getSettings(company, companyRecord)
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
                 }
                 break
@@ -441,20 +446,20 @@ const Settings = () => {
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "Settings",
-                        prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: [...paymentMethods, curPropSet] }]    
+                        prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: [...paymentMethods, curPropSet] }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
-                        console.log(resps.mess)                        
+                        console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     } else {
-                        getSettings(company, companyRecord)                        
+                        getSettings(company, companyRecord)
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
                 } else {
                     const updatedPaymentMethods = paymentMethods.map((method) => {
@@ -469,22 +474,22 @@ const Settings = () => {
                         prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: updatedPaymentMethods }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
-                        console.log(resps.mess)                        
+                        console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     } else {
-                        getSettings(company, companyRecord)                        
+                        getSettings(company, companyRecord)
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
                 }
-                break 
+                break
             case "posSettings":
-                if (propState === 'view'){
+                if (propState === 'view') {
                     const updatedPosSetting = posSettings.map((pos) => {
                         if (pos.name === curPropSet.name) {
                             return curPropSet
@@ -494,23 +499,23 @@ const Settings = () => {
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "Settings",
-                        prop: [{ name: 'posSettings' }, { ...currentSetting, posSettings: updatedPosSetting}]
+                        prop: [{ name: 'posSettings' }, { ...currentSetting, posSettings: updatedPosSetting }]
                     }, "updateOneDoc", server)
                     if (resps.err) {
-                        console.log(resps.mess)                        
+                        console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     } else {
-                        getSettings(company, companyRecord)                        
+                        getSettings(company, companyRecord)
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
-                }    
-                break 
+                }
+                break
         }
     }
 
@@ -525,17 +530,17 @@ const Settings = () => {
                     prop: [{ name: 'warehouses' }, { ...currentSetting, warehouses: filteredWarehouses }]
                 }, "updateOneDoc", server)
                 if (resps.err) {
-                    console.log(resps.mess)                        
+                    console.log(resps.mess)
                     setSaveStatus('Error Deleting Settings')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 } else {
-                    getSettings(company, companyRecord)                        
+                    getSettings(company, companyRecord)
                     setSaveStatus('Deleted')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 }
                 break
             case 'uom':
@@ -546,17 +551,17 @@ const Settings = () => {
                     prop: [{ name: 'uom' }, { ...currentSetting, mearsures: filteredUoms }]
                 }, "updateOneDoc", server)
                 if (resps1.err) {
-                    console.log(resps1.mess)                        
+                    console.log(resps1.mess)
                     setSaveStatus('Error Deleting Settings')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 } else {
-                    getSettings(company, companyRecord)                        
+                    getSettings(company, companyRecord)
                     setSaveStatus('Deleted')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 }
                 break
             case 'product_categories':
@@ -567,17 +572,17 @@ const Settings = () => {
                     prop: [{ name: 'product_categories' }, { ...currentSetting, categories: filteredCategories }]
                 }, "updateOneDoc", server)
                 if (resps2.err) {
-                    console.log(resps2.mess)                        
+                    console.log(resps2.mess)
                     setSaveStatus('Error Deleting Settings')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 } else {
-                    getSettings(company, companyRecord)                        
+                    getSettings(company, companyRecord)
                     setSaveStatus('Deleted')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 }
                 break
             case 'paymentMethods':
@@ -588,17 +593,17 @@ const Settings = () => {
                     prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: filteredPaymentMethods }]
                 }, "updateOneDoc", server)
                 if (resps3.err) {
-                    console.log(resps3.mess)                        
+                    console.log(resps3.mess)
                     setSaveStatus('Error Deleting Settings')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 } else {
-                    getSettings(company, companyRecord)                        
+                    getSettings(company, companyRecord)
                     setSaveStatus('Deleted')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 }
                 break
             case 'posSettings':
@@ -607,7 +612,7 @@ const Settings = () => {
                 setAlertTimeout(3000)
         }
     }
-    
+
     const handleProfileSelect = (profile) => {
         setShowPass(false)
         setDeleteCount(0)
@@ -642,11 +647,11 @@ const Settings = () => {
     const saveLoginDetails = async () => {
         setAlert('')
         if (selectedEmployee) {
-            setSaveStatus('Saving...') 
+            setSaveStatus('Saving...')
             delete selectedEmployee._id
             delete selectedEmployee.sessionId
             const updatedProfile = {
-                ...selectedEmployee,                
+                ...selectedEmployee,
                 permissions: loginDetails.permissions,
                 enableLogin: loginDetails.enableLogin,
                 enableDebtRecovery: loginDetails.enableDebtRecovery
@@ -659,47 +664,47 @@ const Settings = () => {
             if (resps.err) {
                 console.log(resps.mess)
                 setSaveStatus(resps.mess)
-                setTimeout(()=>{
+                setTimeout(() => {
                     setSaveStatus('')
-                },3000)
+                }, 3000)
             } else {
-                if (loginDetails.password){
+                if (loginDetails.password) {
                     const resps = await fetchServer("POST", {
                         database: genDb,
                         collection: "Profiles",
-                        prop: [{ emailid: selectedEmployee.emailid }, {password: loginDetails.password}]
+                        prop: [{ emailid: selectedEmployee.emailid }, { password: loginDetails.password }]
                     }, "updateOneDoc", server)
-                    if (resps.error){
+                    if (resps.error) {
                         console.log(resps.mess)
                         setSaveStatus(resps.mess)
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
-                    }else{
+                        }, 3000)
+                    } else {
                         setSaveStatus('Saved')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                         fetchProfiles(company)
-                    }                                        
-                }else{
+                    }
+                } else {
                     setSaveStatus('Saved')
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                     fetchProfiles(company)
                 }
             }
         } else {
-            if (loginDetails.email && loginDetails.password && loginDetails.permissions.length){
-                setSaveStatus('Saving...') 
+            if (loginDetails.email && loginDetails.password && loginDetails.permissions.length) {
+                setSaveStatus('Saving...')
                 const newDBProfile = {
                     emailid: loginDetails.email,
                     name: companyRecord.name,
                     password: loginDetails.password,
                     db: company
                 }
-                const companyRecordClone = structuredClone({companyRecord})
+                const companyRecordClone = structuredClone({ companyRecord })
                 const defaultCompanyRecord = companyRecordClone.companyRecord
                 delete defaultCompanyRecord._id
                 const newProfile = {
@@ -708,9 +713,9 @@ const Settings = () => {
                     permissions: loginDetails.permissions,
                     enableLogin: loginDetails.enableLogin,
                     enableDebtRecovery: loginDetails.enableDebtRecovery,
-                    sessionId:'',
+                    sessionId: '',
                     status: 'user',
-                    access:'user'
+                    access: 'user'
                 }
                 const resps = await fetchServer("POST", {
                     database: company,
@@ -720,34 +725,34 @@ const Settings = () => {
                 if (resps.err) {
                     console.log(resps.mess)
                     setSaveStatus(resps.mess)
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 } else {
                     const resps1 = await fetchServer("POST", {
                         database: "WCDatabase",
                         collection: "Profiles",
                         update: newDBProfile
                     }, "createDoc", server)
-                    if (resps1.err){
+                    if (resps1.err) {
                         console.log(resps1.mess)
                         setSaveStatus(resps.mess)
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)                        
-                    }else{
-                        setSaveStatus('Profile Created')                       
+                        }, 3000)
+                    } else {
+                        setSaveStatus('Profile Created')
                         fetchProfiles(company)
-                        setDBProfiles((DBProfiles)=>{
+                        setDBProfiles((DBProfiles) => {
                             return [...DBProfiles, newDBProfile]
                         })
                         handleProfileSelect(newProfile)
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                     }
                 }
-            }else{
+            } else {
                 setAlertState('error')
                 setAlert('Select Employee, Create New Password and Select at least 1 Permission!')
                 setAlertTimeout(5000)
@@ -758,8 +763,8 @@ const Settings = () => {
     const deleteProfile = async () => {
         setAlert('')
         setSaveStatus('Delete again to confirm deletion!')
-        if(deleteCount === selectedEmployee.emailid){
-            setSaveStatus('Deleting...') 
+        if (deleteCount === selectedEmployee.emailid) {
+            setSaveStatus('Deleting...')
             if (selectedEmployee) {
                 const resps = await fetchServer("POST", {
                     database: company,
@@ -769,9 +774,9 @@ const Settings = () => {
                 if (resps.err) {
                     console.log(resps.mess)
                     setSaveStatus(resps.mess)
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         setSaveStatus('')
-                    },3000)
+                    }, 3000)
                 } else {
                     const resps1 = await fetchServer("POST", {
                         database: "WCDatabase",
@@ -781,14 +786,14 @@ const Settings = () => {
                     if (resps1.err) {
                         console.log(resps.mess)
                         setSaveStatus(resps.mess)
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
-                    }else{
+                        }, 3000)
+                    } else {
                         setSaveStatus('Profile Deleted')
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setSaveStatus('')
-                        },3000)
+                        }, 3000)
                         fetchProfiles(company)
                         setSelectedEmployee(null)
                         setLoginDetails({
@@ -801,14 +806,14 @@ const Settings = () => {
                     }
                 }
             }
-        }else{
+        } else {
             setDeleteCount(selectedEmployee.emailid)
-            setTimeout(()=>{
+            setTimeout(() => {
                 setSaveStatus('')
-            },2000)
-            setTimeout(()=>{
+            }, 2000)
+            setTimeout(() => {
                 setDeleteCount(0)
-            },12000)
+            }, 12000)
         }
     }
 
@@ -888,7 +893,7 @@ const Settings = () => {
 
     const renderView = () => {
         switch (currentView) {
-            case 'employees':   
+            case 'employees':
                 return (
                     <div className='employee-settings'>
                         <div className='sidebar'>
@@ -897,9 +902,9 @@ const Settings = () => {
                             </div>
                             <div className='profile-list'>
                                 {profiles.map((profile, index) => (
-                                    <div key={index} className={'profile-item ' + (selectedEmployee?.emailid === profile.emailid ? 'profile-item-active':'')} onClick={() => handleProfileSelect(profile)}>
-                                        {employees.map((employee)=>{
-                                            if (employee.i_d === profile.emailid){
+                                    <div key={index} className={'profile-item ' + (selectedEmployee?.emailid === profile.emailid ? 'profile-item-active' : '')} onClick={() => handleProfileSelect(profile)}>
+                                        {employees.map((employee) => {
+                                            if (employee.i_d === profile.emailid) {
                                                 return <>{employee.firstName} {employee.lastName}</>
                                             }
                                         })}
@@ -918,13 +923,13 @@ const Settings = () => {
                                             className='forminp'
                                             name='email'
                                             type='text'
-                                            disabled = {true}
+                                            disabled={true}
                                             placeholder='Employee ID'
                                             value={loginDetails.email}
                                             onChange={handleLoginDetailsChange}
                                         >
                                             <option value={'admin'}>Admin</option>
-                                            {employees.map((employee, index)=>{
+                                            {employees.map((employee, index) => {
                                                 return (
                                                     <option key={index} value={employee.i_d}>
                                                         {employee.firstName} {employee.lastName} {`(${employee.i_d})`}
@@ -946,13 +951,13 @@ const Settings = () => {
                                     </div>
                                     {DBProfiles.length > 0 && <div className='pass-detail'>
                                         <span
-                                            onClick={()=>{
+                                            onClick={() => {
                                                 setShowPass(!showPass)
                                             }}
                                         >
                                             {showPass ? 'Hide Password ' : 'View Password '}
                                         </span>
-                                        {`${showPass ? (DBProfiles.find((profile=>{return profile.emailid === loginDetails.email}))['password'] || 'loading..') : '************'}`}
+                                        {`${showPass ? (DBProfiles.find((profile => { return profile.emailid === loginDetails.email }))['password'] || 'loading..') : '************'}`}
                                     </div>}
                                     <div className='inpcov formpad'>
                                         <div>Module Permissions</div>
@@ -997,9 +1002,9 @@ const Settings = () => {
                                                 </label>
                                             ))}
                                         </div>
-                                        <br/>
+                                        <br />
                                         <h4>Other Permissions</h4>
-                                        <br/>
+                                        <br />
                                         <div>Edit / Delete Permissions</div>
                                         <div className='permissions'>
                                             {editDeletePermissions.map((permission, index) => (
@@ -1109,9 +1114,9 @@ const Settings = () => {
                                             <span className='slider'></span>
                                         </label>
                                     </div>
-                                    <div style={{display:'flex'}}>
-                                        {selectedEmployee.access!=='admin' && <div className='savebtn' onClick={saveLoginDetails}>Save</div>}
-                                        {selectedEmployee.status!=='admin' && <div className='deletebtn' onClick={deleteProfile}>Delete</div>}
+                                    <div style={{ display: 'flex' }}>
+                                        {selectedEmployee.access !== 'admin' && <div className='savebtn' onClick={saveLoginDetails}>Save</div>}
+                                        {selectedEmployee.status !== 'admin' && <div className='deletebtn' onClick={deleteProfile}>Delete</div>}
                                     </div>
                                 </div>
                             ) : (
@@ -1128,8 +1133,8 @@ const Settings = () => {
                                             onChange={handleLoginDetailsChange}
                                         >
                                             <option value={''}>Select Employee</option>
-                                            {employees.map((employee, index)=>{
-                                                if (!currentProfiles.includes(employee.i_d) && !employee.dismissalDate){
+                                            {employees.map((employee, index) => {
+                                                if (!currentProfiles.includes(employee.i_d) && !employee.dismissalDate) {
                                                     return (
                                                         <option key={index} value={employee.i_d}>
                                                             {employee.firstName} {employee.lastName} {`(${employee.i_d})`}
@@ -1164,7 +1169,7 @@ const Settings = () => {
                                                     <span className='permission-text'>{permission}</span>
                                                 </label>
                                             ))}
-                                        </div>                                        
+                                        </div>
                                     </div>
                                     <div className='inpcov formpad'>
                                         <div>Enable Login Access</div>
@@ -1240,7 +1245,7 @@ const Settings = () => {
                             <div className='formtitle'>General Settings</div>
                             <div className='profile-list'>
                                 {settingGroups.map((setting, index) => (
-                                    <div key={index} className={'profile-item ' + (currentSetting?.name === setting.name ? 'profile-item-active':'')} onClick={() => handleSettingSelect(setting)}>
+                                    <div key={index} className={'profile-item ' + (currentSetting?.name === setting.name ? 'profile-item-active' : '')} onClick={() => handleSettingSelect(setting)}>
                                         {setting.desc}
                                     </div>
                                 ))}
@@ -1248,28 +1253,28 @@ const Settings = () => {
                         </div>
                         <div className='general-details'>
                             {currentSetting[currentSetting.prop]?.length ? <div className='general-body'>
-                                {!['posSettings'].includes(currentSetting.name) && <div 
-                                    className='general-propSet-add' 
-                                    onClick={()=>{resetToDefault(currentSetting)}}
+                                {!['posSettings'].includes(currentSetting.name) && <div
+                                    className='general-propSet-add'
+                                    onClick={() => { resetToDefault(currentSetting) }}
                                 >Add +</div>}
-                                {currentSetting[currentSetting.prop].map((propSet, id)=>{
-                                    return <div 
-                                        className= {`general-propSet ${curPropSet?.name === propSet.name ? 'active-propSet':''}`}
+                                {currentSetting[currentSetting.prop].map((propSet, id) => {
+                                    return <div
+                                        className={`general-propSet ${curPropSet?.name === propSet.name ? 'active-propSet' : ''}`}
                                         key={id}
-                                        onClick={()=>{
-                                            if (currentSetting.name==='warehouses'){
+                                        onClick={() => {
+                                            if (currentSetting.name === 'warehouses') {
                                                 setSelectedCategories(propSet.productCategories || [])
                                                 setSelectedPaymentMethods(propSet.paymentMethods || [])
                                             }
-                                            setPropState('view')                                            
+                                            setPropState('view')
                                             setCurPropSet(propSet)
                                         }}
                                     >{propSet.name}</div>
                                 })}
-                            </div> 
-                            : <div>
-                                'No settings available for this group.'
-                            </div>}
+                            </div>
+                                : <div>
+                                    'No settings available for this group.'
+                                </div>}
                             {<div>
                                 {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
                                     <label>ID</label>
@@ -1281,7 +1286,7 @@ const Settings = () => {
                                         onChange={handlePropSetChange}
                                     />
                                 </div>}
-                                {['uom','product_categories',''].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                {['uom', 'product_categories', ''].includes(currentSetting.name) && <div className='inpcov formpad'>
                                     <label>Code</label>
                                     <input
                                         className='forminp'
@@ -1329,19 +1334,21 @@ const Settings = () => {
                                     <div> Product Categories</div>
                                     <div className='permissions'>
                                         {categories.map((cat, index) => (
-                                            <label key={index}  className='permission-label'>
+                                            <label key={index} className='permission-label'>
                                                 <input
                                                     type='checkbox'
                                                     value={cat.code}
                                                     name='productCategories'
                                                     checked={selectedCategories.includes(cat.code)}
-                                                    onChange={()=>{setSelectedCategories((prev)=>{
-                                                        if (prev.includes(cat.code)){
-                                                            return prev.filter((c)=>c!==cat.code)
-                                                        } else {
-                                                            return [...prev, cat.code]
-                                                        }
-                                                    })}}
+                                                    onChange={() => {
+                                                        setSelectedCategories((prev) => {
+                                                            if (prev.includes(cat.code)) {
+                                                                return prev.filter((c) => c !== cat.code)
+                                                            } else {
+                                                                return [...prev, cat.code]
+                                                            }
+                                                        })
+                                                    }}
                                                 />
                                                 <span className='permission-text'>{cat.name}</span>
                                             </label>
@@ -1358,13 +1365,15 @@ const Settings = () => {
                                                     name='paymentMethods'
                                                     value={pay.name}
                                                     checked={selectedPaymentMethods.includes(pay.name)}
-                                                    onChange={()=>{setSelectedPaymentMethods((prev)=>{
-                                                        if (prev.includes(pay.name)){
-                                                            return prev.filter((p)=>p!==pay.name)
-                                                        } else {
-                                                            return [...prev, pay.name]
-                                                        }
-                                                    })}}
+                                                    onChange={() => {
+                                                        setSelectedPaymentMethods((prev) => {
+                                                            if (prev.includes(pay.name)) {
+                                                                return prev.filter((p) => p !== pay.name)
+                                                            } else {
+                                                                return [...prev, pay.name]
+                                                            }
+                                                        })
+                                                    }}
                                                 />
                                                 <span className='permission-text'>{pay.name}</span>
                                             </label>
@@ -1381,7 +1390,7 @@ const Settings = () => {
                                         onChange={handlePropSetChange}
                                     >
                                         <option value={''}>Select Base</option>
-                                        {currentSetting?.bases?.map((base, index)=>{
+                                        {currentSetting?.bases?.map((base, index) => {
                                             return (
                                                 <option key={index} value={base}>
                                                     {base}
@@ -1394,13 +1403,13 @@ const Settings = () => {
                                     <label>Multiple</label>
                                     <input
                                         className='forminp'
-                                        name='multiple'                                        
+                                        name='multiple'
                                         placeholder={`Enter Name`}
                                         value={curPropSet.multiple}
                                         onChange={handlePropSetChange}
                                     />
                                 </div>}
-                                {['uom','product_categories','paymentMethods','posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                {['uom', 'product_categories', 'paymentMethods', 'posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
                                     <label>Type</label>
                                     <select
                                         className='forminp'
@@ -1410,7 +1419,7 @@ const Settings = () => {
                                         onChange={handlePropSetChange}
                                     >
                                         <option value={''}>Select Type</option>
-                                        {currentSetting?.types?.map((type, index)=>{
+                                        {currentSetting?.types?.map((type, index) => {
                                             return (
                                                 <option key={index} value={type}>
                                                     {type}
@@ -1420,10 +1429,34 @@ const Settings = () => {
                                     </select>
                                 </div>}
                                 {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <div>Sales Account</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='isSalesAccount'
+                                            checked={curPropSet.isSalesAccount}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <div>Expense Account</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='isExpenseAccount'
+                                            checked={curPropSet.isExpenseAccount}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
                                     <label>Account</label>
                                     <input
                                         className='forminp'
-                                        name='account'                                        
+                                        name='account'
                                         placeholder={`Enter Account No`}
                                         value={curPropSet.account}
                                         onChange={handlePropSetChange}
@@ -1434,7 +1467,7 @@ const Settings = () => {
                                     <input
                                         className='forminp'
                                         name='size'
-                                        type='number'                                        
+                                        type='number'
                                         placeholder={`Enter Size`}
                                         value={curPropSet.size}
                                         onChange={handlePropSetChange}
@@ -1444,8 +1477,8 @@ const Settings = () => {
                                     <label>Capacity</label>
                                     <input
                                         className='forminp'
-                                        name='capacity'  
-                                        type='number'                                      
+                                        name='capacity'
+                                        type='number'
                                         placeholder={`Enter Capacity`}
                                         value={curPropSet.capacity}
                                         onChange={handlePropSetChange}
@@ -1455,16 +1488,28 @@ const Settings = () => {
                                     <label>Session-End Hour (Automatic)</label>
                                     <select
                                         className='forminp'
-                                        name='sessHour'                                      
+                                        name='sessHour'
                                         placeholder={`Select Session-End Hour`}
                                         value={curPropSet.sessHour}
                                         onChange={handlePropSetChange}
                                     >
                                         <option>Select Session-End Hour</option>
-                                        {sessionPeriods.map((hour, id)=>{
+                                        {sessionPeriods.map((hour, id) => {
                                             return <option key={id} value={hour}>{hour}</option>
                                         })}
                                     </select>
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <div>Allow Sales Mark-Up</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='useMarkUp'
+                                            checked={curPropSet.useMarkUp}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
                                 </div>}
                                 {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
                                     <div>Allow Print Payment Receipts</div>
@@ -1502,9 +1547,9 @@ const Settings = () => {
                                         <span className='slider'></span>
                                     </label>
                                 </div>}
-                                {<div style={{display:'flex'}}>
+                                {<div style={{ display: 'flex' }}>
                                     {<div className='savebtn' onClick={saveSettings}>Save</div>}
-                                    {companyRecord?.access==='admin' && propState!=='new' && <div className='deletebtn' onClick={deleteSettingsProp}>Delete</div>}
+                                    {companyRecord?.access === 'admin' && propState !== 'new' && <div className='deletebtn' onClick={deleteSettingsProp}>Delete</div>}
                                 </div>}
                                 {/* {settingGroups.map((set)=>{
                                     if (currentSetting?.name === set.name){
@@ -1523,16 +1568,16 @@ const Settings = () => {
                 return null
         }
     }
-    
+
     return (
         <div className='settings' onClick={handleSecretAccess}>
             <input
                 className='saccess1'
-                name = 'access'
-                value={accessValue}                           
-                onChange={handleSecretAccess}  
+                name='access'
+                value={accessValue}
+                onChange={handleSecretAccess}
                 autoComplete={false}
-                disabled={accessValue === magicWord || accessValue === activationWord}       
+                disabled={accessValue === magicWord || accessValue === activationWord}
             />
             {saveStatus && <div className='save-status'>{saveStatus}</div>}
             <div className='settings-nav'>
@@ -1548,7 +1593,7 @@ const Settings = () => {
 export default Settings
 
 
-/** 
+/**
 * Paste one or more documents here
 */
 // {
@@ -1713,7 +1758,7 @@ export default Settings
 //         "g/l code": 52030,
 //         "name": "Plumbing Repairs",
 //         "type": ""
-//       }, 
+//       },
 //       {
 //         "header-code": 50001,
 //         "sub-header-code": 52001,
@@ -1860,6 +1905,6 @@ export default Settings
 //         "g/l code": 55060,
 //         "name": "PR",
 //         "type": ""
-//       }   
+//       }
 //       ]
 //   }
