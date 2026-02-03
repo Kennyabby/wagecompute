@@ -925,6 +925,17 @@ const Products = ({
                                 disabled={!productFields.costPrice}
                             />
                         </div>}
+                        {defaultProductType === 'goods' && <div className='otherInpCov'>
+                            <label>Cost price (₦)</label>
+                            <input
+                                className='otherInp'
+                                type='number'
+                                name='costPrice'
+                                placeholder='0.00'
+                                value={productFields.costPrice}
+                                disabled={true}
+                            />
+                        </div>}
                         <div className='otherInpCov'>
                             <label>Sales vat</label>
                             <input
