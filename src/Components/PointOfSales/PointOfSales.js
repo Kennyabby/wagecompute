@@ -4,17 +4,17 @@ import './PointOfSales.css';
 import { MdShoppingBasket } from 'react-icons/md';
 import TransactionReports from '../Shared/TransactionReports/TransactionReports';
 import {
-  loadPosSnapshot,
-  savePosSnapshot,
-  queuePendingChange,
-  loadPendingChanges,
-  loadAllOrders,
-  loadAllTables,
-  loadAllSessionsLocal,
-  putOrder,
-  putTable,
-  putSession,
-  putInventoryTransactions,
+    loadPosSnapshot,
+    savePosSnapshot,
+    queuePendingChange,
+    loadPendingChanges,
+    loadAllOrders,
+    loadAllTables,
+    loadAllSessionsLocal,
+    putOrder,
+    putTable,
+    putSession,
+    putInventoryTransactions,
 } from '../../Resources/offlineDb';
 import { syncPendingChanges } from '../../Resources/offlineSync';
 
@@ -22,11 +22,11 @@ const PointOfSales = () => {
     // =========================================
     // 1. Context and State Management
     // =========================================
-    const { 
-        storePath, intervalPeriod, posSettings,paymentMethods,
+    const {
+        storePath, intervalPeriod, posSettings, paymentMethods,
         fetchServer, server, company, companyRecord,
         setAlert, setAlertState, setAlertTimeout,
-        settings, getDate, posWrhAccess, employees, 
+        settings, getDate, posWrhAccess, employees,
         profiles, fetchProfiles, getSessionEnd,
         products, getProducts, setProducts, getEmployeeName,
         fetchSessions, fetchAllSessions, sessions, setSessions, posOrders,
@@ -37,28 +37,28 @@ const PointOfSales = () => {
     } = useContext(ContextProvider);
 
     // Core States
-    
+
     const [loading, setLoading] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
 
     const refreshPOSData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
-        try{
+        try {
             await Promise.all([
                 fetchTables(cmp_val),
             ]);
-        }catch(e){}
+        } catch (e) { }
     }
 
     const refreshPOSData2 = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
-        try{
+        try {
             await Promise.all([
-                getPosOrders({company, companyRecord}),
+                getPosOrders({ company, companyRecord }),
             ]);
-        }catch(e){}
+        } catch (e) { }
     }
     const [curPosSettings, setCurPosSettings] = useState({});
     const [activeScreen, setActiveScreen] = useState('home');
@@ -84,9 +84,9 @@ const PointOfSales = () => {
     const [tableFetchCount, setTableFetchCount] = useState(0)
     const [hasPosAgentPermissions, setHasPosAgentPermissions] = useState(false)
     const [curPosHandler, setCurPosHandler] = useState('')
-    useEffect(()=>{
-        storePath('pos')  
-    },[storePath])
+    useEffect(() => {
+        storePath('pos')
+    }, [storePath])
 
     // =========================================
     // 1a. Offline snapshot hydration (read from local, then server refresh)
@@ -94,7 +94,7 @@ const PointOfSales = () => {
 
     // Order States
     const [currentOrder, setCurrentOrder] = useState(null);
-    const [posCurrentOrder, setPosCurrentOrder] = useState(null); 
+    const [posCurrentOrder, setPosCurrentOrder] = useState(null);
     const [allSessionOrders, setAllSessionOrders] = useState([])
     const [allOrders, setAllOrders] = useState([]);
     const [tableOrders, setTableOrders] = useState([]);
@@ -137,12 +137,12 @@ const PointOfSales = () => {
         change: '',
         receipt: '',
     }
-    const paymentDetailClone = structuredClone({paymentDetail})
+    const paymentDetailClone = structuredClone({ paymentDetail })
     const [payPoints, setPayPoints] = useState(paymentMethods.reduce((acc, method) => {
-        acc[method.name] = {...paymentDetailClone.paymentDetail};
+        acc[method.name] = { ...paymentDetailClone.paymentDetail };
         return acc;
     }, {}));
-    const defaultPaymentDetails = {...structuredClone({payPoints}).payPoints}
+    const defaultPaymentDetails = { ...structuredClone({ payPoints }).payPoints }
     const [paymentDetails, setPaymentDetails] = useState(defaultPaymentDetails);
 
     // Settings States
@@ -157,7 +157,7 @@ const PointOfSales = () => {
         handleSettingsUpdate();
     }, [settings]);
 
-    
+
 
     // useEffect(() => {
     //     if (!company || !companyRecord?.emailid) return;
@@ -240,15 +240,15 @@ const PointOfSales = () => {
     //         cancelled = true;
     //     };
     // }, [company, companyRecord?.emailid]);
-    
+
     // Hydrate orders, sessions, and tables from IndexedDB on mount
     // useEffect(() => {
     //     if (!company || !companyRecord?.emailid) return;
-        
+
     //     (async () => {
     //         try {
-                // const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
-                // setHasPosAgentPermissions(isPosAgent)
+    // const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
+    // setHasPosAgentPermissions(isPosAgent)
     //             const [orders, sessionsLocal, tablesLocal] = await Promise.all([
     //                 loadAllOrders(company, companyRecord.emailid),
     //                 loadAllSessionsLocal(company, companyRecord.emailid),
@@ -280,51 +280,51 @@ const PointOfSales = () => {
     //     })();
     // }, [company, companyRecord?.emailid]);
 
-    useEffect(()=>{
-        if (company && companyRecord){
+    useEffect(() => {
+        if (company && companyRecord) {
             const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
             setHasPosAgentPermissions(isPosAgent)
         }
-    },[company, companyRecord])
-    
-    useEffect(()=>{
+    }, [company, companyRecord])
+
+    useEffect(() => {
         loadTableData()
-        if (window.localStorage.getItem('pos-wrh')){
+        if (window.localStorage.getItem('pos-wrh')) {
             setWrh(window.localStorage.getItem('pos-wrh'))
-        }else{
-            if  (curSession){
+        } else {
+            if (curSession) {
                 setWrh(curSession.wrh || Object.keys(posWrhAccess)[0])
             }
         }
-    },[curSession])
+    }, [curSession])
 
     useEffect(() => {
         handleCategoryFilter();
     }, [activeCategory, activeChar, productSearch, products]);
-       
 
-    useEffect(()=>{
-        if (wrhs.length){
-            setWrhCategories((wrhCategories)=>{
+
+    useEffect(() => {
+        if (wrhs.length) {
+            setWrhCategories((wrhCategories) => {
                 const cat = {}
-                wrhs.forEach((wrh)=>{
-                    if (!wrh.purchase){
+                wrhs.forEach((wrh) => {
+                    if (!wrh.purchase) {
                         cat[wrh.name] = wrh.productCategories
                     }
                 })
-                return {...cat}
+                return { ...cat }
             })
         }
-    },[wrhs])
+    }, [wrhs])
 
-    useEffect(()=>{
+    useEffect(() => {
         // console.log(salesSessions)
-        if (Array.isArray(salesSessions)){
+        if (Array.isArray(salesSessions)) {
             setSessions(salesSessions)
-            const syncToIndexDB = async ()=>{
+            const syncToIndexDB = async () => {
                 try {
                     const pending = await loadPendingChanges(company, companyRecord.emailid);
-                    const pendingSessionIds = new Set(pending.filter(c=>c.entityType==='session').map(c=>(c.clientId || c.payload?.start)).filter(Boolean));
+                    const pendingSessionIds = new Set(pending.filter(c => c.entityType === 'session').map(c => (c.clientId || c.payload?.start)).filter(Boolean));
                     for (const s of salesSessions) {
                         if (s && s.start != null && !pendingSessionIds.has(s.start)) {
                             await putSession(company, companyRecord.emailid, s);
@@ -336,7 +336,7 @@ const PointOfSales = () => {
             }
             syncToIndexDB()
         }
-    },[salesSessions])
+    }, [salesSessions])
 
     // useEffect(()=>{
     //     console.log('all sales sessions',allSalesSessions)
@@ -357,42 +357,42 @@ const PointOfSales = () => {
     //         syncToIndexDB()
     //     }
     // },[allSalesSessions])
-    
-    useEffect(()=>{
-        if (tables?.length && sessions !== null){            
-            if (sessions.length){
+
+    useEffect(() => {
+        if (tables?.length && sessions !== null && companyRecord?.emailid) {
+            if (sessions?.length) {
                 UpdateSessionState(sessions, false)
                 setIsLive(true)
-                setLoadSession(false)                
-            }else{
+                setLoadSession(false)
+            } else {
                 setIsLive(true)
                 setLoadSession(false)
                 setStartSession(true)
             }
         }
-    },[tables, sessions])
+    }, [tables, sessions, companyRecord])
 
-    useEffect(()=>{
+    useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         fetchTables(cmp_val)
-        const intervalId = setInterval(()=>{ refreshPOSData(); },300000)
+        const intervalId = setInterval(() => { refreshPOSData(); }, 300000)
         // run once
         // refreshPOSData();
         return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
+    }, [window.localStorage.getItem('sessn-cmp')])
 
-    useEffect(()=>{
-        var cmp_val = window.localStorage.getItem('sessn-cmp')        
+    useEffect(() => {
+        var cmp_val = window.localStorage.getItem('sessn-cmp')
         // loadInitialData()
         // getPosOrders({company, companyRecord})
-        const intervalId = setInterval(()=>{ refreshPOSData2(); },intervalPeriod)
+        const intervalId = setInterval(() => { refreshPOSData2(); }, intervalPeriod)
         // run once
         // refreshPOSData2();
         return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
+    }, [window.localStorage.getItem('sessn-cmp')])
 
-    useEffect(()=>{
-        if (Array.isArray(posOrders) && companyRecord?.emailid){
+    useEffect(() => {
+        if (Array.isArray(posOrders) && companyRecord?.emailid) {
             // console.log(companyRecord.emailid)
             setAllSessionOrders(posOrders);
             // const mergeAndPersist = async () => {
@@ -431,9 +431,9 @@ const PointOfSales = () => {
             // };
             // mergeAndPersist();
         }
-    },[posOrders, companyRecord?.emailid])
+    }, [posOrders, companyRecord?.emailid])
 
-    useEffect(()=> {
+    useEffect(() => {
         const curPosSettings = posSettings?.posSettings?.find((setting) => setting.active)
         setCurPosSettings(curPosSettings || {})
         // Fetch products
@@ -444,37 +444,37 @@ const PointOfSales = () => {
         // Fetch prpfiles
         fetchProfiles(company)
 
-        fetchAllSessions({company, companyRecord})
+        fetchAllSessions({ company, companyRecord })
 
-        getPosOrders({company, companyRecord})    
-    },[settings])
+        getPosOrders({ company, companyRecord })
+    }, [settings])
 
-    useEffect(()=>{
-        if (posContainerRef.current){
-            if (loadSession || startSession || endSession){
+    useEffect(() => {
+        if (posContainerRef.current) {
+            if (loadSession || startSession || endSession) {
                 posContainerRef.current.style.overflow = 'hidden'
-            }else{
+            } else {
                 posContainerRef.current.style.overflow = 'auto'
             }
         }
-    },[posContainerRef, loadSession, startSession, endSession])
+    }, [posContainerRef, loadSession, startSession, endSession])
 
-    useEffect(()=>{
-        if (curSession!==null){
-            setAllOrders(allSessionOrders?.filter((order) =>{
-                if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)){
+    useEffect(() => {
+        if (curSession !== null) {
+            setAllOrders(allSessionOrders?.filter((order) => {
+                if (getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.start)) {
                     return order
-                }                            
-            })) 
+                }
+            }))
         }
-    },[allSessionOrders, curSession])
+    }, [allSessionOrders, curSession])
 
-    useEffect(()=>{
-        if (tables.length && wrh && curSession && employees.length){
-            const syncToIndexDB = async ()=>{
+    useEffect(() => {
+        if (tables.length && wrh && curSession && employees.length) {
+            const syncToIndexDB = async () => {
                 try {
                     const pending = await loadPendingChanges(company, companyRecord.emailid);
-                    const pendingTableIds = new Set(pending.filter(c=>c.entityType==='table').map(c=>(c.clientId || c.payload?.i_d)).filter(Boolean));
+                    const pendingTableIds = new Set(pending.filter(c => c.entityType === 'table').map(c => (c.clientId || c.payload?.i_d)).filter(Boolean));
                     for (const t of tables) {
                         if (t && t.i_d != null && !pendingTableIds.has(t.i_d)) {
                             await putTable(company, companyRecord.emailid, t);
@@ -485,66 +485,66 @@ const PointOfSales = () => {
                 }
             }
             syncToIndexDB()
-            setOrderTables((orderTables)=>{
+            setOrderTables((orderTables) => {
                 const activeOrders = []
-                wrhs.forEach((warehouse)=>{
-                    const prevTable = tables.find((table)=>{return table['wrh'] === warehouse.name})
-                    prevTable?.activeTables?.forEach((activeOrder)=>{
-                        if (activeOrder.status === 'pending'){
+                wrhs.forEach((warehouse) => {
+                    const prevTable = tables.find((table) => { return table['wrh'] === warehouse.name })
+                    prevTable?.activeTables?.forEach((activeOrder) => {
+                        if (activeOrder.status === 'pending') {
                             activeOrders.push(activeOrder)
                         }
                     })
                 })
-                orderTables.forEach((orderTable)=>{
+                orderTables.forEach((orderTable) => {
                     const myTableOrders = []
-                    const otherTableOrders  = []
+                    const otherTableOrders = []
                     var tableUser = null
-                    activeOrders.forEach((activeOrder)=>{
+                    activeOrders.forEach((activeOrder) => {
                         var orderDate = '01/01/1970'
-                        if (activeOrder.createdAt){
+                        if (activeOrder.createdAt) {
                             orderDate = activeOrder.createdAt
                         }
                         if (
                             activeOrder.tableId === orderTable.i_d &&
                             activeOrder.wrh === wrh &&
-                            getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)                            
-                        ){                            
-                            if (                                
+                            getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
+                        ) {
+                            if (
                                 activeOrder.handlerId === (curPosHandler || companyRecord.emailid)
-                            ){
+                            ) {
                                 tableUser = employees.find(employee => employee.i_d === activeOrder.handlerId)
                                 myTableOrders.push(activeOrder)
-                            }else{
+                            } else {
                                 tableUser = employees.find(employee => employee.i_d === activeOrder.handlerId)
                                 otherTableOrders.push(activeOrder)
                             }
                         }
                     })
-                    if (myTableOrders.length){
+                    if (myTableOrders.length) {
                         orderTable.status = 'available'
                         orderTable.activeOrders = myTableOrders.length
-                    }else{
-                        if (otherTableOrders.length){
+                    } else {
+                        if (otherTableOrders.length) {
                             orderTable.status = 'unavailable'
                             orderTable.activeOrders = otherTableOrders.length
-                        }else{
+                        } else {
                             orderTable.status = 'available'
                             orderTable.activeOrders = 0
-                        }                        
+                        }
                     }
-                    if ([null, undefined].includes(tableUser) && orderTable.activeOrders){
+                    if ([null, undefined].includes(tableUser) && orderTable.activeOrders) {
                         orderTable.tableUser = {
                             firstName: 'Admin',
                             lastName: ''
                         }
-                    }else{
+                    } else {
                         orderTable.tableUser = tableUser
                     }
                 })
                 return [...orderTables]
             })
         }
-    },[tables,curSession, wrh, employees, curPosHandler])
+    }, [tables, curSession, wrh, employees, curPosHandler])
 
     // useEffect(() => {
     //     if (!company || !companyRecord?.emailid) return;
@@ -579,22 +579,22 @@ const PointOfSales = () => {
     //     currentOrder,
     // ]);
 
-    const getSessionSales = (orders) =>{
+    const getSessionSales = (orders) => {
         const payPointList = Object.keys(payPoints)
         const allSales = {}
         var totalCashChange = 0
         var totalPendingSales = 0
         var totalCancelledSales = 0
         var totalUnattendedSales = 0
-        payPointList.forEach((payPoint)=>{
+        payPointList.forEach((payPoint) => {
             allSales[payPoint] = 0
         })
-        orders.forEach((order)=>{
-            if (order.status !== 'cancelled'){
-                if (order.status === 'pending'){
-                    if (order.delivery === 'completed'){
-                        totalPendingSales += Number(order.totalSales || 0)                    
-                    }else{
+        orders.forEach((order) => {
+            if (order.status !== 'cancelled') {
+                if (order.status === 'pending') {
+                    if (order.delivery === 'completed') {
+                        totalPendingSales += Number(order.totalSales || 0)
+                    } else {
                         // const deliverySessionsList = order.deliverySessions
                         // if (deliverySessionsList?.length){
                         //     deliverySessionsList.forEach((session)=>{
@@ -604,19 +604,19 @@ const PointOfSales = () => {
                         // }
                         totalUnattendedSales += Number(order.totalSales || 0)
                     }
-                }else{
-                    payPointList.forEach((payPoint)=>{
+                } else {
+                    payPointList.forEach((payPoint) => {
                         allSales[payPoint] += Number(order[payPoint] || 0)
                     })
                 }
                 totalCashChange += Number(order.cashChange || 0)
-            }else{
+            } else {
                 totalCancelledSales += Number(order.totalSales || 0)
-            }          
+            }
         })
-        return {allSales, totalPendingSales, totalUnattendedSales, totalCancelledSales, totalCashChange}
+        return { allSales, totalPendingSales, totalUnattendedSales, totalCancelledSales, totalCashChange }
     }
-    
+
     const createSession = async (sessionUser) => {
         if (!wrh) {
             setAlertState('info');
@@ -639,13 +639,13 @@ const PointOfSales = () => {
             active: true,
             openingCash: openingCash,
             debtDue: 0,
-        };        
+        };
 
         try {
             // 1) Save session locally
             if (company && companyRecord?.emailid) {
                 await putSession(company, companyRecord.emailid, newSession);
-            }            
+            }
 
             // 3) Queue session create for sync
             if (company && companyRecord?.emailid) {
@@ -681,12 +681,12 @@ const PointOfSales = () => {
                     setStartSession(false);
                     setLoading(false)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    fetchAllSessions({company, companyRecord})
+                    fetchAllSessions({ company, companyRecord })
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
-            }            
-            
+            }
+
         } catch (e) {
             setAlertState('error');
             setAlert('Could not start session locally. Please try again.');
@@ -709,13 +709,13 @@ const PointOfSales = () => {
         //         active: true,
         //         shortage: 0,
         //     };
-    
+
         //     try {
         //         // 1) Local write
         //         if (company && companyRecord?.emailid) {
         //             await putSession(company, companyRecord.emailid, newSession);
         //         }            
-    
+
         //         // 3) Queue for sync
         //         if (company && companyRecord?.emailid) {
         //             queuePendingChange(company, companyRecord.emailid, {
@@ -821,7 +821,7 @@ const PointOfSales = () => {
             // 1) Local update
             if (company && companyRecord?.emailid) {
                 await putSession(company, companyRecord.emailid, closedSession);
-            }            
+            }
 
             // 3) Queue session update
             if (company && companyRecord?.emailid) {
@@ -846,7 +846,7 @@ const PointOfSales = () => {
                     setEndSession(false);
                     setSessionUser(null);
                     setLoading(false)
-                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                    
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -861,18 +861,18 @@ const PointOfSales = () => {
         }
     };
 
-    const UpdateSessionState = (sessions, loadSession, sId)=>{
-        if (!loadSession && sessions?.length){            
-            const previousSession = sessions.filter((session)=> session.active)            
+    const UpdateSessionState = (sessions, loadSession, sId) => {
+        if (!loadSession && sessions?.length) {
+            const previousSession = sessions.filter((session) => session.active)
             let lastSessionIndex = 0
-            if (previousSession.length){
+            if (previousSession.length) {
                 lastSessionIndex = previousSession.length - 1
                 setCurrSession(previousSession[lastSessionIndex])
-                if(new Date().getTime() >= getSessionEnd(previousSession[lastSessionIndex].start)){                
+                if (new Date().getTime() >= getSessionEnd(previousSession[lastSessionIndex].start)) {
                     // setStartSession(false)
                     setSessionEnded(true)
-                }else{
-                    if (sessionUser === null){
+                } else {
+                    if (sessionUser === null) {
                         setStartSession(false)
                         setSessionEnded(false)
                     }
@@ -880,25 +880,25 @@ const PointOfSales = () => {
                 }
             } else {
                 let oldSession = null
-                if (sessions.length){
+                if (sessions.length) {
                     let oldSessions = sessions.sort((a, b) => a.start - b.start)
                     oldSession = oldSessions[sessions.length - 1]
                     setCurrSession(oldSession)
                     setSessionEnded(true)
                     setOpeningCash((Number(oldSession.openingCash || 0) + Number(oldSession.cash || 0) - Number(oldSession.totalCashChange || 0)))
                 }
-                if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_sessions')){
+                if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_sessions')) {
                     // console.log('starting session')
                     setStartSession(true)
                 }
                 // setEndSession(false)
             }
         }
-    } 
+    }
 
-    useEffect(()=>{
+    useEffect(() => {
         UpdateSessionState(sessions, loadSession)
-    },[loadSession,sessions])
+    }, [loadSession, sessions])
 
     // Helper to derive a product image URL (same pattern as Products/Accommodation)
     const getProductImageUrl = (product) => {
@@ -915,13 +915,13 @@ const PointOfSales = () => {
     // =========================================
     // 3. Data Loading Functions
     // =========================================
-    const loadTableData = () =>{        
-        if (curPosSettings?.type === 'restaurant'){
+    const loadTableData = () => {
+        if (curPosSettings?.type === 'restaurant') {
             let orderTables = []
-            for (let i=0; i<(Number(curPosSettings.size || 30)); i++){
+            for (let i = 0; i < (Number(curPosSettings.size || 30)); i++) {
                 const orderTable = {}
-                orderTable.i_d = i+1
-                orderTable.name = `Table ${i+1}`
+                orderTable.i_d = i + 1
+                orderTable.name = `Table ${i + 1}`
                 orderTable.capacity = Number(curPosSettings?.capacity || 10)
                 orderTable.status = 'available'
                 orderTable.activeOrders = 0
@@ -929,12 +929,12 @@ const PointOfSales = () => {
                 orderTables.push(orderTable)
             }
             setOrderTables(orderTables)
-        }else if (curPosSettings?.type === 'shop'){
+        } else if (curPosSettings?.type === 'shop') {
             let orderTables = []
-            for (let i=0; i<(Number(curPosSettings?.size || 1)); i++){
+            for (let i = 0; i < (Number(curPosSettings?.size || 1)); i++) {
                 const orderTable = {}
-                orderTable.i_d = i+1
-                orderTable.name = `Shop ${i+1}`
+                orderTable.i_d = i + 1
+                orderTable.name = `Shop ${i + 1}`
                 orderTable.capacity = curPosSettings?.capacity || 1000
                 orderTable.status = 'available'
                 orderTable.activeOrders = 0
@@ -975,7 +975,7 @@ const PointOfSales = () => {
         //         tableControllerRef.current.abort();
         //     }
         // }
-       
+
         // if (sessionControllerRef.current) {
         //     sessionControllerRef.current.abort();
         // }
@@ -990,18 +990,18 @@ const PointOfSales = () => {
         // productControllerRef.current = productController;
         // tableControllerRef.current = tableController;
         // sessionControllerRef.current = sessionController;
-        
+
         const orderDays = 50 * 24 * 60 * 60 * 1000
         const allowedFromDays = Date.now() - orderDays
         const ordersResponse = await fetchServer("POST", {
             database: company,
             collection: "Orders",
             prop: {
-                createdAt: {$gte: allowedFromDays}
+                createdAt: { $gte: allowedFromDays }
             }
         }, "getDocsDetails", server, orderController.signal);
-        if (!ordersResponse.err){  
-            if (Array.isArray(ordersResponse.record)){
+        if (!ordersResponse.err) {
+            if (Array.isArray(ordersResponse.record)) {
                 mergeAndPersistOrders(ordersResponse.record)
                 // Merge server results with local pending changes: prefer local pending
                 // try {
@@ -1029,14 +1029,14 @@ const PointOfSales = () => {
                 //     // fallback to server data
                 //     setAllSessionOrders(ordersResponse.record);
                 // }
-            }  
+            }
         }
 
-        if (curSession){
-            if(!ordersResponse.err && !ordersResponse.mess){
+        if (curSession) {
+            if (!ordersResponse.err && !ordersResponse.mess) {
                 setIsLive(true)
-                if (![null,undefined].includes(ordersResponse.record)){
-                    if(ordersResponse.record?.length && Array.isArray(ordersResponse.record)){
+                if (![null, undefined].includes(ordersResponse.record)) {
+                    if (ordersResponse.record?.length && Array.isArray(ordersResponse.record)) {
                         // setAllSessionOrders(ordersResponse.record)                        
                         // write-through to IndexedDB orders store (guard keyPath)
                         // try {
@@ -1051,23 +1051,23 @@ const PointOfSales = () => {
                         //     console.warn('POS: putOrder merge failed', e);
                         // }
                         var ordersUpdate = ordersResponse.record
-                        if (currentOrder!==null){
-                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
-                                setTableOrders(ordersUpdate.filter((order)=>{
+                        if (currentOrder !== null) {
+                            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) {
+                                setTableOrders(ordersUpdate.filter((order) => {
                                     var orderDate = '01/01/1970'
-                                    if (order.createdAt){
+                                    if (order.createdAt) {
                                         orderDate = order.createdAt
                                     }
                                     if (
                                         order.tableId === currentOrder.tableId
-                                        && order.wrh === wrh 
-                                    ){
+                                        && order.wrh === wrh
+                                    ) {
                                         // Check if the order is from the current session
                                         return getSessionEnd(new Date(orderDate).getTime()) === getSessionEnd(curSession.start)
                                     }
                                 }))
-                            }else{
-                                const myTableOrders = ordersUpdate.filter(order => 
+                            } else {
+                                const myTableOrders = ordersUpdate.filter(order =>
                                     order.tableId === currentTable.i_d
                                     && order.wrh === wrh &&
                                     getSessionEnd(new Date(order.createdAt).getTime()) === getSessionEnd(curSession.i_d) &&
@@ -1077,36 +1077,36 @@ const PointOfSales = () => {
                             }
                         }
                     }
-                }                
-            }else{
-                if (ordersResponse.mess !== 'Request aborted'){
+                }
+            } else {
+                if (ordersResponse.mess !== 'Request aborted') {
                     setIsLive(false)
                     setLiveErrorMessages('Slow Network. Check Connection')
                 }
             }
         }
-        
+
     };
 
     const handleSettingsUpdate = () => {
-        if (settings.length){  
-            const uomSetFilt = settings.filter((setting)=> {
+        if (settings.length) {
+            const uomSetFilt = settings.filter((setting) => {
                 return setting.name === 'uom'
             })
             delete uomSetFilt[0]?._id
-            setUoms(uomSetFilt[0].name?[...uomSetFilt[0].mearsures]:[])
+            setUoms(uomSetFilt[0].name ? [...uomSetFilt[0].mearsures] : [])
 
             const catSetFilt = settings.filter(setting => setting.name === 'product_categories');
             delete catSetFilt[0]?._id;
             setCategories(catSetFilt[0].name ? [...catSetFilt[0].categories] : []);
 
-            const wrhSetFilt = settings.filter((setting)=> {
+            const wrhSetFilt = settings.filter((setting) => {
                 return setting.name === 'warehouses'
             })
 
             delete wrhSetFilt[0]?._id
             setWrhs(wrhSetFilt[0].name ? [...wrhSetFilt[0].warehouses] : [])
-        }  
+        }
     };
 
     // =========================================
@@ -1118,46 +1118,46 @@ const PointOfSales = () => {
             tableId: table.i_d,
             handlerId: curPosHandler || companyRecord.emailid,
             agent: companyRecord.emailid,
-            wrh:wrh,
+            wrh: wrh,
             sessionId: curSession.i_d,
             tableName: table.name,
-            items: [],            
+            items: [],
             ...payPoints,
             status: 'new',
             createdAt: new Date().getTime()
         };
         setCurrentOrder(newOrder);
-    };    
+    };
 
-    const switchTable = (e)=>{
+    const switchTable = (e) => {
         let nextIndex
-        const {name} = e.target
-        
-        if (!placingOrder && !makingPayment && name){                     
+        const { name } = e.target
+
+        if (!placingOrder && !makingPayment && name) {
             let currentTableIndex = 0
             const sortedOrderTables = orderTables.sort((a, b) => {
                 const numA = parseInt(a.name.replace(/[^0-9]/g, ''));
                 const numB = parseInt(b.name.replace(/[^0-9]/g, ''));
                 return numA - numB;
             })
-            
-            sortedOrderTables.forEach((orderTable, i)=>{
-                if (orderTable.i_d === currentTable.i_d){
+
+            sortedOrderTables.forEach((orderTable, i) => {
+                if (orderTable.i_d === currentTable.i_d) {
                     currentTableIndex = i
                 }
             })
 
             nextIndex = currentTableIndex
-            if (name === 'prevTable' && currentTableIndex > 0){
+            if (name === 'prevTable' && currentTableIndex > 0) {
                 nextIndex = currentTableIndex - 1
-            }else if (name === 'nextTable' && currentTableIndex < sortedOrderTables.length - 1){
+            } else if (name === 'nextTable' && currentTableIndex < sortedOrderTables.length - 1) {
                 nextIndex = currentTableIndex + 1
             }
             setTableOrders([])
             setCurrentOrder(null)
             setPlacingOrder(false)
             setMakingPayment(false)
-            handleTableSelect(sortedOrderTables[nextIndex])            
+            handleTableSelect(sortedOrderTables[nextIndex])
         }
     }
 
@@ -1177,21 +1177,21 @@ const PointOfSales = () => {
             setSelectedProduct(null);
             setAlertState('info');
             setAlert(`Loading ${table.name} Orders...`);
-            setAlertTimeout(100000)            
+            setAlertTimeout(100000)
 
             // 1) Use locally available orders (mirrored from IndexedDB) as primary           
             const baseOrders =
                 Array.isArray(allOrders) && allOrders.length
                     ? allOrders
                     : [];
-            
+
             let localOrders = [];
             if (Array.isArray(baseOrders)) {
                 localOrders = baseOrders.filter((order) => {
                     if (!order) return false;
                     if (order.tableId !== table.i_d) return false;
                     if (order.wrh !== wrh) return false;
-                    
+
                     // Non-admin users: enforce handler + session
                     if (
                         !(
@@ -1201,7 +1201,7 @@ const PointOfSales = () => {
                     ) {
                         if (order.handlerId !== (curPosHandler || companyRecord.emailid)) return false;
                         if (order.sessionId !== curSession.i_d) return false;
-                        
+
                         return true;
                     }
 
@@ -1220,9 +1220,9 @@ const PointOfSales = () => {
                     (order) => order.status === 'pending'
                 );
                 if (pendingLocal.length) {
-                    setCurrentOrder(pendingLocal[0]);                    
+                    setCurrentOrder(pendingLocal[0]);
                     setPosCurrentOrder(pendingLocal[0]);
-                    
+
                 } else {
                     createNewOrder(table);
                 }
@@ -1254,14 +1254,14 @@ const PointOfSales = () => {
                 type: 'sales'
             };
 
-            const response = await getPosOrders({company, option: 'tableOrders', filter: orderFilter, companyRecord})
+            const response = await getPosOrders({ company, option: 'tableOrders', filter: orderFilter, companyRecord })
             const filteredOrders = response?.record ?? []
             if (!response.err && Array.isArray(filteredOrders)) {
                 setIsLive(true)
                 // console.log("received allOrders list:", filteredOrders)                
-                if (!localOrders.length){
+                if (!localOrders.length) {
                     if (filteredOrders.length) {
-                        if(table?.i_d === filteredOrders[0]?.tableId){                            
+                        if (table?.i_d === filteredOrders[0]?.tableId) {
                             // setCurrentTable(table);
                             // setTableOrders(filteredOrders);
                             // const pendingRemote = filteredOrders.filter(
@@ -1305,9 +1305,9 @@ const PointOfSales = () => {
             // loadInitialData();
         }
     };
-    
+
     const handleCreateTable = () => {
-        setOrderTables((orderTables)=>{
+        setOrderTables((orderTables) => {
             return [...orderTables, newTableData]
         })
         setShowNewTableModal(false)
@@ -1341,7 +1341,7 @@ const PointOfSales = () => {
     // =========================================
 
     const updateInventory = async (action, items, deliveryDataUpdate, currentOrder, count) => {
-        if (!count){
+        if (!count) {
             setAlertState('info');
             setAlert('Updating Inventory...');
             setAlertTimeout(5000);
@@ -1450,21 +1450,21 @@ const PointOfSales = () => {
                         });
                         setTableOrders((tableOrders) => {
                             const updated = tableOrders.map((tableOrder) =>
-                                    tableOrder.orderNumber === currentOrder.orderNumber
-                                ? { ...tableOrder, ...deliveryDataUpdate }
-                                : tableOrder
+                                tableOrder.orderNumber === currentOrder.orderNumber
+                                    ? { ...tableOrder, ...deliveryDataUpdate }
+                                    : tableOrder
                             );
                             return updated;
                         });
                     }
-                    setPlacingOrder(false) 
+                    setPlacingOrder(false)
                     // 4) Local success alerts (no dependence on server)
                     if (action === 'deplete') {
-                        if (!count){
+                        if (!count) {
                             setAlertState('success');
                             setAlert('Delivery processed successfully');
                             setAlertTimeout(1000);
-                        }else if (count === tableOrders.length - 1){
+                        } else if (count === tableOrders.length - 1) {
                             setAlertState('success');
                             setAlert('All Deliveries processed successfully');
                             setAlertTimeout(1000);
@@ -1483,7 +1483,7 @@ const PointOfSales = () => {
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
-            }            
+            }
 
         } catch (e) {
             setAlertState('error');
@@ -1500,7 +1500,7 @@ const PointOfSales = () => {
         // if (products.length) {
         //     getProductsWithStock(company, products);
         // }
-        if (!count){
+        if (!count) {
             setAlertState('info');
             setAlert('Processing Delivery...');
             setAlertTimeout(10000);
@@ -1544,8 +1544,8 @@ const PointOfSales = () => {
                 if (item.delivery !== 'completed') {
                     const depletedQuantity = Number(
                         item.orderQuantity ||
-                            item.remainingQuantity ||
-                            item.quantity
+                        item.remainingQuantity ||
+                        item.quantity
                     );
                     previousItemState.deliveredQuantity =
                         Number(previousItemState.deliveredQuantity || 0) +
@@ -1747,7 +1747,7 @@ const PointOfSales = () => {
                         setTimeout(() => {
                             updateInventory('deplete', itemsToDeplete, deliveryDataUpdate, currentOrder, count);
                         }, 500);
-                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                                                
+                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     } catch (e) {
                         // Leave pending changes in queue; 5‑minute auto-sync will retry
                     }
@@ -1755,13 +1755,13 @@ const PointOfSales = () => {
             } else {
                 setAlertState('error');
                 setAlert('Nothing to Post Here!');
-                setAlertTimeout(2000);            
+                setAlertTimeout(2000);
                 setPlacingOrder(false)
-            }            
+            }
         } catch (e) {
             setAlertState('error');
             setAlert('Error processing delivery locally');
-            setAlertTimeout(2000);            
+            setAlertTimeout(2000);
             setPlacingOrder(false)
         }
     };
@@ -1769,7 +1769,7 @@ const PointOfSales = () => {
     // =========================================
     // 5. Order Management
     // =========================================
-    
+
     const handlePlaceOrder = async () => {
         // fetchSessions(company, "sales", companyRecord)
         // fetchTables(company)
@@ -1864,25 +1864,25 @@ const PointOfSales = () => {
                     setAlertState('success');
                     setAlertTimeout(1000);
                     // Keep your existing reads (they only fetch, no writes)
-                    if (curPosSettings?.type === 'restaurant'){
-                        if (curPosSettings?.printKitchenReceipt){
+                    if (curPosSettings?.type === 'restaurant') {
+                        if (curPosSettings?.printKitchenReceipt) {
                             printKitchenOrder(placedOrder);
-                        }if (curPosSettings?.printBarReceipt){
+                        } if (curPosSettings?.printBarReceipt) {
                             printBarOrder(placedOrder)
                         }
-                    }                    
+                    }
                     syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    if (curPosSettings?.type === 'shop'){
+                    if (curPosSettings?.type === 'shop') {
                         var totalItems = 0
                         var deliveredQuantity = 0
-                        const deliveredItems = placedOrder.items.filter((item)=>{
-                            if (wrhCategories[wrh].includes(item.category)){
+                        const deliveredItems = placedOrder.items.filter((item) => {
+                            if (wrhCategories[wrh].includes(item.category)) {
                                 totalItems += Number(item.quantity)
                                 deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
                             }
                         })
-                        if (deliveredQuantity < totalItems){
+                        if (deliveredQuantity < totalItems) {
                             handleOrderDelivery(placedOrder, placedOrder);
                         }
                     }
@@ -1897,7 +1897,7 @@ const PointOfSales = () => {
             }
 
             // 5) Local success feedback
-            
+
 
             // View Payment Modal?
             // setShowPaymentModal(true);
@@ -1908,7 +1908,7 @@ const PointOfSales = () => {
             setPlacingOrder(false);
         }
     };
-    
+
     const handleEditOrder = async () => {
         // fetchSessions(company, "sales", companyRecord)
         // fetchTables(company)
@@ -1924,7 +1924,7 @@ const PointOfSales = () => {
             ...currentOrder,
             status: 'pending',
             editedAt: new Date().getTime(),
-            delivery: 'pending', 
+            delivery: 'pending',
         };
 
         try {
@@ -2003,22 +2003,22 @@ const PointOfSales = () => {
                     setAlertState('success');
                     setAlertTimeout(1000);
                     // Keep your existing reads (they only fetch, no writes)
-                    if (curPosSettings?.type === 'restaurant'){
+                    if (curPosSettings?.type === 'restaurant') {
                         printKitchenOrder(placedOrder);
                         printBarOrder(placedOrder)
                     }
                     syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    if (curPosSettings?.type === 'shop'){
+                    if (curPosSettings?.type === 'shop') {
                         var totalItems = 0
                         var deliveredQuantity = 0
-                        const deliveredItems = placedOrder.items.filter((item)=>{
-                            if (wrhCategories[wrh].includes(item.category)){
+                        const deliveredItems = placedOrder.items.filter((item) => {
+                            if (wrhCategories[wrh].includes(item.category)) {
                                 totalItems += Number(item.quantity)
                                 deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
                             }
                         })
-                        if (deliveredQuantity < totalItems){
+                        if (deliveredQuantity < totalItems) {
                             handleOrderDelivery(placedOrder, placedOrder);
                         }
                     }
@@ -2033,7 +2033,7 @@ const PointOfSales = () => {
             }
 
             // 5) Local success feedback
-            
+
 
             // View Payment Modal?
             // setShowPaymentModal(true);
@@ -2044,36 +2044,36 @@ const PointOfSales = () => {
             setPlacingOrder(false);
         }
     };
-    
+
 
     // Update the handleAddItem function to separate selection from adding
     const handleAddItem = (product, quantity = 1) => {
         if (!product) return;
-        const productClone = structuredClone({product}); 
+        const productClone = structuredClone({ product });
         const productCopy = productClone.product
-        wrhs.forEach((warehouse)=>{
+        wrhs.forEach((warehouse) => {
             var wrh = warehouse.name
             delete productCopy[wrh]
         })
         const existingItem = currentOrder.items.find(item => item.i_d === product.i_d);
         let updatedItems;
-    
-        if (existingItem){
-            updatedItems = currentOrder.items.map((item) =>{
-                const itemClone = structuredClone({item})
+
+        if (existingItem) {
+            updatedItems = currentOrder.items.map((item) => {
+                const itemClone = structuredClone({ item })
                 const itemCopy = itemClone.item
-                wrhs.forEach((warehouse)=>{
+                wrhs.forEach((warehouse) => {
                     var wrh = warehouse.name
                     delete itemCopy[wrh]
                 })
-                return(
-                    itemCopy.i_d === product.i_d 
-                        ? { ...itemCopy, quantity: quantity ? itemCopy.quantity + quantity :itemCopy.quantity + 1 }
+                return (
+                    itemCopy.i_d === product.i_d
+                        ? { ...itemCopy, quantity: quantity ? itemCopy.quantity + quantity : itemCopy.quantity + 1 }
                         : itemCopy
                 )
             });
         } else {
-            updatedItems = [...currentOrder.items, { 
+            updatedItems = [...currentOrder.items, {
                 ...productCopy,
                 i_d: product.i_d,
                 quantity: quantity || 1,
@@ -2081,7 +2081,7 @@ const PointOfSales = () => {
                 tableId: currentOrder.tableId,
             }];
         }
-        
+
         const updatedOrder = {
             ...currentOrder,
             items: updatedItems,
@@ -2104,15 +2104,15 @@ const PointOfSales = () => {
     };
 
     const calculateTotal = (items) => {
-        if (wrh === 'vip'){
+        if (wrh === 'vip') {
             return items.reduce((sum, item) => sum + ((item.vipPrice || item.salesPrice) * item.quantity), 0);
         }
         return items.reduce((sum, item) => sum + (item.salesPrice * item.quantity), 0);
     };
 
     const handleOrderSelect = (order, status) => {
-        const orderClone = structuredClone({order});
-        const posOrderClone = structuredClone({order})
+        const orderClone = structuredClone({ order });
+        const posOrderClone = structuredClone({ order })
         setSelectedProduct(null);
         setCurrentOrder(orderClone.order);
         setPosCurrentOrder(posOrderClone.order)
@@ -2135,12 +2135,12 @@ const PointOfSales = () => {
             // Refresh related data by reusing periodic refresh functions
             await Promise.all([
                 // reuse POS table refresh
-                (async ()=>{ await refreshPOSData(); })(),
-                (async ()=>{ await refreshPOSData2(); })(),
+                (async () => { await refreshPOSData(); })(),
+                (async () => { await refreshPOSData2(); })(),
                 getProducts(company),
                 fetchProfiles(company),
-                fetchAllSessions({company, companyRecord}),                
-            ]).catch(()=>{});
+                fetchAllSessions({ company, companyRecord }),
+            ]).catch(() => { });
 
             await loadInitialData();
 
@@ -2232,7 +2232,7 @@ const PointOfSales = () => {
             }
 
             setCurrentOrder(newOrder);
-            
+
             setTableOrders((prev) =>
                 prev.map((o) =>
                     o.orderNumber === newOrder.orderNumber ? newOrder : o
@@ -2313,21 +2313,21 @@ const PointOfSales = () => {
                     setAlertState('success');
                     setAlert('Payment processed successfully');
                     setAlertTimeout(1000);
-                    if (curPosSettings?.printPaymentReceipt){
+                    if (curPosSettings?.printPaymentReceipt) {
                         printReceipt(newOrder);
                     }
                     setShowPaymentModal(false);
                     createNewOrder(currentTable);
                     setPaymentDetails({ ...payPoints });
-                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);                    
-                    getPosOrders({company, companyRecord}); // read-only
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    getPosOrders({ company, companyRecord }); // read-only
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
             }
 
             // 4) Local success feedback
-                        
+
 
             return;
         } catch (e) {
@@ -2341,7 +2341,7 @@ const PointOfSales = () => {
 
     const printReceipt = (orderData) => {
         const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
-        const table = orderTables.find((table)=>{return table.i_d === orderData.tableId})
+        const table = orderTables.find((table) => { return table.i_d === orderData.tableId })
         const receiptContent = `
             <div class="receipt">
                 <h2>${companyRecord.name} Payment Receipt</h2>
@@ -2353,7 +2353,7 @@ const PointOfSales = () => {
                 ${orderData.items.map(item => `
                     <div class="receipt-item">
                         <span>${item.name} x ${item.quantity}</span>
-                        <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
+                        <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                     </div>
                 `).join('')}
                 <hr/>
@@ -2364,7 +2364,7 @@ const PointOfSales = () => {
                     ${Object.keys(orderData.salesPosts).map(payPoint => `
                         ${orderData[payPoint] ? `<p>${payPoint}(${payPoint === 'cash' ? 'cash' : orderData.receipts[payPoint]}): ₦${orderData[payPoint]}</p>` : ''}                    
                     `).join('')}
-                    ${orderData.cashChange ? `<p>{Change: ₦${orderData.cashChange}}</p>`: ''}
+                    ${orderData.cashChange ? `<p>{Change: ₦${orderData.cashChange}}</p>` : ''}
                     <p>Paid: ₦${orderData.totalPayment}</p>
                 </div>
 
@@ -2372,7 +2372,7 @@ const PointOfSales = () => {
             </div>
         `;
 
-         // Create a hidden iframe
+        // Create a hidden iframe
         const iframe = document.createElement('iframe');
         iframe.style.position = 'absolute';
         iframe.style.width = '0';
@@ -2401,17 +2401,17 @@ const PointOfSales = () => {
         iframe.contentWindow.print();
 
         // Cleanup
-        setTimeout(() => iframe.remove(), 1000);        
+        setTimeout(() => iframe.remove(), 1000);
     };
-    
+
     const printKitchenOrder = (orderData) => {
         if (
-            orderData.items.find((item)=>{return wrhCategories['kitchen']?.includes(item.category)}) 
-            && ((orderData.handlerId === (curPosHandler || companyRecord.emailid)) 
-                || companyRecord?.status === 'admin' 
+            orderData.items.find((item) => { return wrhCategories['kitchen']?.includes(item.category) })
+            && ((orderData.handlerId === (curPosHandler || companyRecord.emailid))
+                || companyRecord?.status === 'admin'
                 || companyRecord?.permissions?.includes('access_pos_sessions')
             )
-        ){
+        ) {
             const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
             const receiptContent = `
                 <div class="receipt">
@@ -2422,23 +2422,23 @@ const PointOfSales = () => {
                     <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                     <hr/>
                         ${orderData.items.map(item => (
-                            wrhCategories['kitchen']?.includes(item.category) ? `
+                wrhCategories['kitchen']?.includes(item.category) ? `
                                 <div class="receipt-item">
                                     <span>${item.name} x ${item.quantity}</span>
-                                    <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
+                                    <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                                 </div>` : ''
-                        )).join('')}
+            )).join('')}
                     <hr/>
                     <div class="receipt-total">
-                        <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>
-                            sum + (wrhCategories['kitchen']?.includes(item.category)
-                            ? Number(item.quantity) * Number(item.salesPrice) : 0)
-                        , 0)) || 0).toFixed(2)}</p>                    
+                        <p>Total: ₦${(Number(orderData.items.reduce((sum, item) =>
+                sum + (wrhCategories['kitchen']?.includes(item.category)
+                    ? Number(item.quantity) * Number(item.salesPrice) : 0)
+                , 0)) || 0).toFixed(2)}</p>                    
                     </div>
                     <p>Printed For Kitchen Use Only!</p>
                 </div>
             `;
-    
+
             // Create a hidden iframe
             const iframe = document.createElement('iframe');
             iframe.style.position = 'absolute';
@@ -2446,7 +2446,7 @@ const PointOfSales = () => {
             iframe.style.height = '0';
             iframe.style.border = 'none';
             document.body.appendChild(iframe);
-    
+
             // Write your content into it
             iframe.contentDocument.open();
             iframe.contentDocument.write(`
@@ -2462,24 +2462,24 @@ const PointOfSales = () => {
                 </html>
             `);
             iframe.contentDocument.close();
-    
+
             // Print directly from the iframe
             iframe.contentWindow.focus();
             iframe.contentWindow.print();
-    
+
             // Cleanup
             setTimeout(() => iframe.remove(), 1000);
         }
     };
-    
+
     const printBarOrder = (orderData) => {
         if (
-            orderData.items.find((item)=>{return !wrhCategories['kitchen']?.includes(item.category)}) 
-            && ((orderData.handlerId === (curPosHandler || companyRecord.emailid)) 
-                || companyRecord?.status === 'admin' 
+            orderData.items.find((item) => { return !wrhCategories['kitchen']?.includes(item.category) })
+            && ((orderData.handlerId === (curPosHandler || companyRecord.emailid))
+                || companyRecord?.status === 'admin'
                 || companyRecord?.permissions?.includes('access_pos_sessions')
             )
-        ){}
+        ) { }
         const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
         const receiptContent = `
             <div class="receipt">
@@ -2490,18 +2490,18 @@ const PointOfSales = () => {
                 <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                 <hr/>
                     ${orderData.items.map(item => (
-                        !wrhCategories['kitchen']?.includes(item.category) ? `
+            !wrhCategories['kitchen']?.includes(item.category) ? `
                             <div class="receipt-item">
                                 <span>${item.name} x ${item.quantity}</span>
-                                <span>₦${wrh==='vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
+                                <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                             </div>` : ''
-                    )).join('')}
+        )).join('')}
                 <hr/>
                 <div class="receipt-total">
-                    <p>Total: ₦${(Number(orderData.items.reduce((sum, item)=>
-                        sum + (!wrhCategories['kitchen']?.includes(item.category)
-                        ? (wrh==='vip'? (Number(item.quantity) * Number(item.vipPrice || item.salesPrice)) : (Number(item.quantity) * Number(item.salesPrice))) : 0)
-                    , 0)) || 0).toFixed(2)}</p>                    
+                    <p>Total: ₦${(Number(orderData.items.reduce((sum, item) =>
+            sum + (!wrhCategories['kitchen']?.includes(item.category)
+                ? (wrh === 'vip' ? (Number(item.quantity) * Number(item.vipPrice || item.salesPrice)) : (Number(item.quantity) * Number(item.salesPrice))) : 0)
+            , 0)) || 0).toFixed(2)}</p>                    
                 </div>
                 <p>Printed For ${orderData.wrh} Use Only!</p>
             </div>
@@ -2568,15 +2568,15 @@ const PointOfSales = () => {
     };
 
     const handleCategoryFilter = () => {
-        if (activeCategory && activeChar) {            
+        if (activeCategory && activeChar) {
             const filtered = products.filter((product) => {
                 const productName = product.name.toLowerCase()[0]
-                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())                
-                if (!productSearch){
+                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())
+                if (!productSearch) {
                     return (
                         product.category === activeCategory && productName === activeChar.toLowerCase()
                     )
-                }else{
+                } else {
                     return (
                         product.category === activeCategory && productName === activeChar.toLowerCase() && foundProduct
                     )
@@ -2584,25 +2584,25 @@ const PointOfSales = () => {
             });
             setFilteredProducts(filtered);
         } else if (activeCategory) {
-            const filtered = products.filter((product) =>{ 
-                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())                
+            const filtered = products.filter((product) => {
+                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())
                 return product.category === activeCategory && foundProduct
             });
             setFilteredProducts(filtered);
         } else if (activeChar) {
             const filtered = products.filter((product) => {
                 const productName = product.name.toLowerCase()[0]
-                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())                
+                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())
                 return productName === activeChar.toLowerCase() && foundProduct
             });
             setFilteredProducts(filtered);
-        } else if (productSearch){
+        } else if (productSearch) {
             const filtered = products.filter((product) => {
-                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())                
+                const foundProduct = product.i_d.toLowerCase()?.includes(productSearch.toLowerCase()) || product.barcode?.toLowerCase()?.includes(productSearch.toLowerCase())
                 return foundProduct
             });
             setFilteredProducts(filtered);
-        }else{
+        } else {
             setFilteredProducts(products);
 
         }
@@ -2610,7 +2610,7 @@ const PointOfSales = () => {
 
     // Update the click handler in the products grid to only select the product
     const handleProductClick = (product) => {
-        if (!sessionEnded && ['new','edit'].includes(currentOrder.status) && product?.salesPrice){
+        if (!sessionEnded && ['new', 'edit'].includes(currentOrder.status) && product?.salesPrice) {
             setSelectedProduct(product);
             setQuantity(''); // Reset quantity when new product is selected
         }
@@ -2620,17 +2620,17 @@ const PointOfSales = () => {
     // 8. UI Rendering Functions
     // =========================================
     const handleStartSession = async () => {
-        if (companyRecord.status === 'admin' || companyRecord.permissions.includes('access_pos_sessions')){
-            if (sessionUser!==null){
+        if (companyRecord.status === 'admin' || companyRecord.permissions.includes('access_pos_sessions')) {
+            if (sessionUser !== null) {
                 setWrh('')
                 setLoading(true);
                 await createSession(sessionUser);
-            }else{
+            } else {
                 setLoading(true);
                 await createSession();
                 setLoading(false);
             }
-        }else{
+        } else {
             setAlertState('error')
             setAlert('You do not have access to this feature. Get your admin to start your session!')
             setAlertTimeout(7000)
@@ -2639,15 +2639,15 @@ const PointOfSales = () => {
     };
 
     const handleEndSession = async () => {
-        if (sessionUser !== null) {            
-            if (allSessionOrders.length){
-                const allUserOrders = allSessionOrders.filter((order) =>{
+        if (sessionUser !== null) {
+            if (allSessionOrders.length) {
+                const allUserOrders = allSessionOrders.filter((order) => {
                     return ((getSessionEnd(order.sessionId) === getSessionEnd((sessionUser.curSession).i_d)) && (order.handlerId === (sessionUser.profile).emailid))
                 })
                 setLoading(true);
                 await stopSession(sessionUser.curSession, allUserOrders);
                 setPosSalesDifference({})
-            }else{
+            } else {
                 setAlertState('info')
                 setAlert('Could not load orders. Please check your connection and try again.')
                 setAlertTimeout(5000)
@@ -2657,50 +2657,50 @@ const PointOfSales = () => {
         }
     };
     const renderSessionEntry = () => {
-        const allUserOrders = allSessionOrders?.filter((order) =>{
-            if (sessionUser!==null && sessionUser?.curSession){
+        const allUserOrders = allSessionOrders?.filter((order) => {
+            if (sessionUser !== null && sessionUser?.curSession) {
                 return ((getSessionEnd(order.sessionId) === getSessionEnd((sessionUser.curSession).i_d)) && (order.handlerId === (sessionUser.profile).emailid))
-            }else{
+            } else {
                 return ((getSessionEnd(order.sessionId) === getSessionEnd(curSession?.i_d)) && (order.handlerId === companyRecord?.emailid))
             }
-        })        
+        })
         const {
             allSales, totalPendingSales,
             totalCancelledSales, totalCashChange
         } = getSessionSales(allUserOrders)
 
         var posSalesAccess = []
-        if (sessionUser!==null){
+        if (sessionUser !== null) {
             let wrhsPosObj = {}
             let wrhsDeliveryObj = {}
-            wrhs.forEach((wrh)=>{
-              if (wrh.purchase) return
-              wrhsPosObj[wrh.name] = ((sessionUser.profile).permissions.includes(`pos_${wrh.name}`) || (sessionUser.profile).permissions.includes('all'))
-              wrhsDeliveryObj[wrh.name] = ((sessionUser.profile).permissions.includes(`delivery_${wrh.name}`) || (sessionUser.profile).permissions.includes('all'))
+            wrhs.forEach((wrh) => {
+                if (wrh.purchase) return
+                wrhsPosObj[wrh.name] = ((sessionUser.profile).permissions.includes(`pos_${wrh.name}`) || (sessionUser.profile).permissions.includes('all'))
+                wrhsDeliveryObj[wrh.name] = ((sessionUser.profile).permissions.includes(`delivery_${wrh.name}`) || (sessionUser.profile).permissions.includes('all'))
             })
-            const userSalesWrhAccess = {...wrhsPosObj}
-            Object.keys(userSalesWrhAccess).forEach((wrh)=>{
-                if (userSalesWrhAccess[wrh]){
+            const userSalesWrhAccess = { ...wrhsPosObj }
+            Object.keys(userSalesWrhAccess).forEach((wrh) => {
+                if (userSalesWrhAccess[wrh]) {
                     posSalesAccess.push(wrh)
                 }
             })
         }
 
-        const handleCountedSalesEntry = (e)=>{
-            const {name, value} = e.target
+        const handleCountedSalesEntry = (e) => {
+            const { name, value } = e.target
 
-            setCountedSales((countedSales)=>{
-                return {...countedSales, [name]: value}
+            setCountedSales((countedSales) => {
+                return { ...countedSales, [name]: value }
             })
-            setPosSalesDifference((posSalesDifference)=>{
-                return {...posSalesDifference, [name] : (Number(value) - Number(allSales[name] || 0))}
+            setPosSalesDifference((posSalesDifference) => {
+                return { ...posSalesDifference, [name]: (Number(value) - Number(allSales[name] || 0)) }
             })
         }
 
         return (
             <>
                 {loadSession && (
-                    <div className='openingsession' style={{color: 'white', fontSize:'1.2rem', fontWeight:'600'}}>
+                    <div className='openingsession' style={{ color: 'white', fontSize: '1.2rem', fontWeight: '600' }}>
                         Loading Session...
                     </div>
                 )}
@@ -2709,13 +2709,13 @@ const PointOfSales = () => {
                         <div className="session-entry">
                             <div className="modal-header">
                                 <h2>Start Session {
-                                    [''].map((args)=>{
-                                        const userProfile = employees.find((employee)=>{return (employee.i_d === ((sessionUser === null) ? curSession?.employee_id : sessionUser.profile.emailid))})
+                                    [''].map((args) => {
+                                        const userProfile = employees.find((employee) => { return (employee.i_d === ((sessionUser === null) ? curSession?.employee_id : sessionUser.profile.emailid)) })
                                         return (userProfile ? <span key={userProfile.i_d}>{`(${userProfile.firstName})`}</span> : <span>{(curSession === null) ? '' : `(Admin)`}</span>)
                                     })
                                 }</h2>
-                                {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_sessions')) && 
-                                    <button 
+                                {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_sessions')) &&
+                                    <button
                                         onClick={() => {
                                             setStartSession(false)
                                             setSessionUser(null)
@@ -2725,40 +2725,40 @@ const PointOfSales = () => {
                             </div>
                             <div className="form-group">
                                 <label>Opening Cash</label>
-                                <input 
-                                    type="number" 
-                                    value={openingCash} 
-                                    onChange={(e) => setOpeningCash(parseFloat(e.target.value) || 0)} 
+                                <input
+                                    type="number"
+                                    value={openingCash}
+                                    onChange={(e) => setOpeningCash(parseFloat(e.target.value) || 0)}
                                     disabled={loading}
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Sales Post</label>
-                                <select 
-                                    value={wrh} 
+                                <select
+                                    value={wrh}
                                     onChange={(e) => {
                                         setWrh(e.target.value)
-                                        window.localStorage.setItem('pos-wrh',e.target.value)
+                                        window.localStorage.setItem('pos-wrh', e.target.value)
                                     }}
                                     disabled={loading}
                                 >
                                     <option value={''}>Select Sales Post</option>
-                                    {sessionUser ===  null ? wrhs.map((warehouse, index) => (
-                                            posWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
-                                                {warehouse.name}
-                                            </option>                                        
-                                    )):
-                                    posSalesAccess.map((warehouse, index) => (
-                                        <option key={index} value={warehouse}>
-                                            {warehouse}
-                                        </option>                                        
-                                    ))
+                                    {sessionUser === null ? wrhs.map((warehouse, index) => (
+                                        posWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
+                                            {warehouse.name}
+                                        </option>
+                                    )) :
+                                        posSalesAccess.map((warehouse, index) => (
+                                            <option key={index} value={warehouse}>
+                                                {warehouse}
+                                            </option>
+                                        ))
                                     }
                                 </select>
                             </div>
                             <div className="session-actions">
-                                <button 
-                                    className="session-btn start" 
+                                <button
+                                    className="session-btn start"
                                     onClick={handleStartSession}
                                     disabled={loading}
                                 >
@@ -2773,12 +2773,12 @@ const PointOfSales = () => {
                         <div className="session-entry">
                             <div className="modal-header">
                                 <h2>End Session {
-                                    [''].map((args)=>{
-                                        const userProfile = employees.find((employee)=>{return (employee.i_d === ((sessionUser === null) ? curSession.employee_id : sessionUser.profile.emailid))})
+                                    [''].map((args) => {
+                                        const userProfile = employees.find((employee) => { return (employee.i_d === ((sessionUser === null) ? curSession.employee_id : sessionUser.profile.emailid)) })
                                         return (userProfile ? <span>{`(${userProfile.firstName})`}</span> : <span>(Admin)</span>)
                                     })
                                 }</h2>
-                                <button 
+                                <button
                                     onClick={() => {
                                         setEndSession(false)
                                         setSessionUser(null)
@@ -2790,33 +2790,33 @@ const PointOfSales = () => {
                             <div className="form-group">
                                 <label>Total Bank Sales</label>
                                 {Object.keys(allSales).map((payPoint) => {
-                                    if (payPoint !== 'cash'){
+                                    if (payPoint !== 'cash') {
                                         return (
                                             <div key={payPoint}>
                                                 <label>{payPoint.toUpperCase()}</label>
                                                 <div className='session-entry-inputs'>
-                                                    <input 
-                                                        style={{cursor:'not-allowed'}}
-                                                        type="number" 
-                                                        value={allSales[payPoint] || 0} 
+                                                    <input
+                                                        style={{ cursor: 'not-allowed' }}
+                                                        type="number"
+                                                        value={allSales[payPoint] || 0}
                                                         disabled={true}
                                                         readOnly
                                                     />
                                                     <span>{'->'}</span>
-                                                    <input 
-                                                        type="number" 
+                                                    <input
+                                                        type="number"
                                                         name={payPoint}
-                                                        value={countedSales[payPoint]} 
+                                                        value={countedSales[payPoint]}
                                                         placeholder={'Counted Amount'}
-                                                        onChange={(e) => handleCountedSalesEntry(e)} 
+                                                        onChange={(e) => handleCountedSalesEntry(e)}
                                                         disabled={loading}
                                                     />
                                                 </div>
-                                                <input 
-                                                    style={{cursor:'not-allowed'}}
-                                                    type="number" 
-                                                    value={posSalesDifference[payPoint] || 0} 
-                                                    disabled={true}                                                    
+                                                <input
+                                                    style={{ cursor: 'not-allowed' }}
+                                                    type="number"
+                                                    value={posSalesDifference[payPoint] || 0}
+                                                    disabled={true}
                                                     readOnly
                                                 />
                                             </div>
@@ -2827,79 +2827,79 @@ const PointOfSales = () => {
                             <div className="form-group">
                                 <label>Total Cash Sales</label>
                                 <div>
-                                    <input 
-                                        style={{cursor:'not-allowed'}}
-                                        type="number" 
+                                    <input
+                                        style={{ cursor: 'not-allowed' }}
+                                        type="number"
                                         value={
-                                            ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash) 
-                                            + (allSales['cash'] || 0) 
+                                            ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash)
+                                            + (allSales['cash'] || 0)
                                             - totalCashChange
-                                        } 
+                                        }
                                         disabled={true}
                                         readOnly
                                     />
                                     <span>{'->'}</span>
-                                    <input 
-                                        type="number" 
-                                        value={countedSales['cash']} 
+                                    <input
+                                        type="number"
+                                        value={countedSales['cash']}
                                         name='cash'
                                         placeholder={'Counted Cash Amount'}
-                                        onChange={(e) => handleCountedSalesEntry(e)} 
+                                        onChange={(e) => handleCountedSalesEntry(e)}
                                         disabled={loading}
                                     />
                                 </div>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
+                                <input
+                                    style={{ cursor: 'not-allowed' }}
+                                    type="number"
                                     value={
                                         (posSalesDifference['cash'] || 0)
-                                        - ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash) 
+                                        - ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash)
                                         + totalCashChange
-                                    } 
+                                    }
                                     disabled={true}
                                     readOnly
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Opening Cash</label>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
-                                    value={(sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash} 
+                                <input
+                                    style={{ cursor: 'not-allowed' }}
+                                    type="number"
+                                    value={(sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash}
                                     readOnly
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Total Cash Change</label>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
-                                    value={totalCashChange} 
+                                <input
+                                    style={{ cursor: 'not-allowed' }}
+                                    type="number"
+                                    value={totalCashChange}
                                     readOnly
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Total Pending Sales</label>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
-                                    value={totalPendingSales} 
+                                <input
+                                    style={{ cursor: 'not-allowed' }}
+                                    type="number"
+                                    value={totalPendingSales}
                                     readOnly
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Total Cancelled Sales</label>
-                                <input 
-                                    style={{cursor:'not-allowed'}}
-                                    type="number" 
-                                    value={totalCancelledSales} 
+                                <input
+                                    style={{ cursor: 'not-allowed' }}
+                                    type="number"
+                                    value={totalCancelledSales}
                                     readOnly
                                 />
                             </div>
                             <div className="session-actions">
-                                <button 
-                                    className="session-btn end" 
-                                    onClick={()=>{
+                                <button
+                                    className="session-btn end"
+                                    onClick={() => {
                                         handleEndSession()
                                     }}
                                     disabled={loading}
@@ -2917,16 +2917,16 @@ const PointOfSales = () => {
         <div className="keypad-section">
             <div className="quantity-display">{quantity || '0'}</div>
             <div className="keypad-grid">
-                {['7','8','9','4','5','6','1','2','3','C','0','.'].map(key => (
-                    <button 
-                        key={key} 
+                {['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', '.'].map(key => (
+                    <button
+                        key={key}
                         className="keypad-btn"
                         onClick={() => handleKeypadClick(key)}
                     >
                         {key}
                     </button>
                 ))}
-                <button 
+                <button
                     className="keypad-btn enter"
                     onClick={() => handleKeypadEnter()}
                     disabled={!selectedProduct || !quantity}
@@ -2946,13 +2946,13 @@ const PointOfSales = () => {
                             <span>{item.name}</span>
                             <span>{item.quantity}</span>
                             <span>₦{wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity) : (item.salesPrice * item.quantity)}</span>
-                            {['new', 'edit'].includes(currentOrder.status) && <button 
+                            {['new', 'edit'].includes(currentOrder.status) && <button
                                 className="remove-btn"
                                 onClick={() => {
-                                    if (currentOrder.status==='new'){
+                                    if (currentOrder.status === 'new') {
                                         handleRemoveItem(item.i_d)
-                                    }else{
-                                        if (currentOrder.status==='edit' && (companyRecord?.access === 'admin' || companyRecord?.permissions?.includes('remove_pos_items'))){
+                                    } else {
+                                        if (currentOrder.status === 'edit' && (companyRecord?.access === 'admin' || companyRecord?.permissions?.includes('remove_pos_items'))) {
                                             handleRemoveItem(item.i_d)
                                         }
                                     }
@@ -2964,12 +2964,12 @@ const PointOfSales = () => {
                     ))}
                 </div>
                 {selectedProduct && renderKeypad()}
-                {(currentOrder.status!=='cancelled' && ['new', 'edit'].includes(currentOrder.status)) && <button 
+                {(currentOrder.status !== 'cancelled' && ['new', 'edit'].includes(currentOrder.status)) && <button
                     className="place-order-btn"
                     onClick={() => {
-                        if (currentOrder.status === 'new'){
+                        if (currentOrder.status === 'new') {
                             handlePlaceOrder()
-                        }else if (currentOrder.status === 'edit'){
+                        } else if (currentOrder.status === 'edit') {
                             handleEditOrder()
                         }
                     }}
@@ -2977,80 +2977,80 @@ const PointOfSales = () => {
                 >
                     {currentOrder.status === 'new' ? `Place Order` : 'Edit Order'} (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
-                {(currentOrder.status!=='cancelled' && currentOrder.status === 'pending') && <button 
+                {(currentOrder.status !== 'cancelled' && currentOrder.status === 'pending') && <button
                     className="place-order-btn"
                     onClick={() => setShowPaymentModal(true)}
                     disabled={!currentOrder.totalSales || makingPayment || currentTable?.status === 'unavailable'}
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
-                {(currentOrder.status!=='cancelled' && currentOrder.status === 'pending') 
-                && (
-                    currentOrder.items.filter((item)=>{
-                        if (wrhCategories[wrh].includes(item.category)){
-                            return Number(item?.deliveredQuantity || 0) > 0
-                        }
-                    }).length < currentOrder.items.reduce((sum, item)=>{return sum + Number(item.quantity)},0)
-                ) && curPosSettings?.type === 'shop' && <button 
-                    className="place-order-btn"
-                    onClick={() => {
-                        var totalItems = 0
-                        var deliveredQuantity = 0
-                        const deliveredItems = currentOrder.items.filter((item)=>{
-                            if (wrhCategories[wrh].includes(item.category)){
-                                totalItems += Number(item.quantity)
-                                deliveredQuantity += Number(item?.deliveredQuantity || 0)
+                {(currentOrder.status !== 'cancelled' && currentOrder.status === 'pending')
+                    && (
+                        currentOrder.items.filter((item) => {
+                            if (wrhCategories[wrh].includes(item.category)) {
                                 return Number(item?.deliveredQuantity || 0) > 0
                             }
-                        })
-                        if (deliveredQuantity < totalItems){
-                            handleOrderDelivery(currentOrder, posCurrentOrder)
-                        }else{
-                            setAlertState('error')
-                            setAlert('Nothing to Post. You Have Completed Your Delivery!')
-                            setAlertTimeout(3000)
-                        }
-                    }}
-                    disabled={!currentOrder.totalSales || makingPayment || currentTable?.status === 'unavailable'}
-                >
-                    Place Delivery
-                </button>}
-                {currentOrder.items.find((item)=>{return wrhCategories['kitchen']?.includes(item.category)}) 
-                && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid)) 
-                    || companyRecord?.status === 'admin' 
-                    || companyRecord?.permissions?.includes('access_pos_sessions')
-                ) && ['pending', 'completed'].includes(currentOrder.status) 
-                && curPosSettings?.type === 'restaurant' && <button 
-                    className="place-order-btn"
-                    onClick={() => printKitchenOrder(currentOrder)}
-                    disabled={!currentOrder.items.length}
-                >
-                    Print Kitchen Order
-                </button>}
-                {currentOrder.items.find((item)=>{return !wrhCategories['kitchen']?.includes(item.category)}) 
-                && ((currentOrder.handlerId ===(curPosHandler || companyRecord.emailid)) 
-                    || companyRecord?.status === 'admin' 
-                    || companyRecord?.permissions?.includes('access_pos_sessions')
-                ) && ['pending', 'completed'].includes(currentOrder.status) 
-                && curPosSettings?.type === 'restaurant' && <button 
-                    className="place-order-btn"
-                    onClick={() => printBarOrder(currentOrder)}
-                    disabled={!currentOrder.items.length}
-                >
-                    Print Bar Order
-                </button>}
+                        }).length < currentOrder.items.reduce((sum, item) => { return sum + Number(item.quantity) }, 0)
+                    ) && curPosSettings?.type === 'shop' && <button
+                        className="place-order-btn"
+                        onClick={() => {
+                            var totalItems = 0
+                            var deliveredQuantity = 0
+                            const deliveredItems = currentOrder.items.filter((item) => {
+                                if (wrhCategories[wrh].includes(item.category)) {
+                                    totalItems += Number(item.quantity)
+                                    deliveredQuantity += Number(item?.deliveredQuantity || 0)
+                                    return Number(item?.deliveredQuantity || 0) > 0
+                                }
+                            })
+                            if (deliveredQuantity < totalItems) {
+                                handleOrderDelivery(currentOrder, posCurrentOrder)
+                            } else {
+                                setAlertState('error')
+                                setAlert('Nothing to Post. You Have Completed Your Delivery!')
+                                setAlertTimeout(3000)
+                            }
+                        }}
+                        disabled={!currentOrder.totalSales || makingPayment || currentTable?.status === 'unavailable'}
+                    >
+                        Place Delivery
+                    </button>}
+                {currentOrder.items.find((item) => { return wrhCategories['kitchen']?.includes(item.category) })
+                    && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid))
+                        || companyRecord?.status === 'admin'
+                        || companyRecord?.permissions?.includes('access_pos_sessions')
+                    ) && ['pending', 'completed'].includes(currentOrder.status)
+                    && curPosSettings?.type === 'restaurant' && <button
+                        className="place-order-btn"
+                        onClick={() => printKitchenOrder(currentOrder)}
+                        disabled={!currentOrder.items.length}
+                    >
+                        Print Kitchen Order
+                    </button>}
+                {currentOrder.items.find((item) => { return !wrhCategories['kitchen']?.includes(item.category) })
+                    && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid))
+                        || companyRecord?.status === 'admin'
+                        || companyRecord?.permissions?.includes('access_pos_sessions')
+                    ) && ['pending', 'completed'].includes(currentOrder.status)
+                    && curPosSettings?.type === 'restaurant' && <button
+                        className="place-order-btn"
+                        onClick={() => printBarOrder(currentOrder)}
+                        disabled={!currentOrder.items.length}
+                    >
+                        Print Bar Order
+                    </button>}
             </div>
             <div className="products-panel">
                 <div className="categories-bar">
-                    <input className='product-finder' placeholder='Enter ID / Barcode' value={productSearch} onChange={(e)=>{setProductSearch(e.target.value)}}/>
-                    <button 
+                    <input className='product-finder' placeholder='Enter ID / Barcode' value={productSearch} onChange={(e) => { setProductSearch(e.target.value) }} />
+                    <button
                         className={`category-btn ${!activeCategory ? 'active' : ''}`}
                         onClick={() => setActiveCategory(null)}
                     >
                         All
                     </button>
                     {categories.map(category => (
-                        <button 
+                        <button
                             key={category.code}
                             className={`category-btn ${activeCategory === category.code ? 'active' : ''}`}
                             onClick={() => setActiveCategory(category.code)}
@@ -3060,15 +3060,15 @@ const PointOfSales = () => {
                     ))}
                 </div>
                 <div className='categories-bar'>
-                    <button 
+                    <button
                         className={`category-btn ${!activeChar ? 'active' : ''}`}
                         onClick={() => setActiveChar(null)}
                     >
                         All
                     </button>
-                    {['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'].map((char)=>{
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'].map((char) => {
                         return (
-                            <button 
+                            <button
                                 key={char}
                                 className={`category-btn ${activeChar === char ? 'active' : ''}`}
                                 onClick={() => setActiveChar(char)}
@@ -3080,22 +3080,22 @@ const PointOfSales = () => {
                 </div>
                 <div className="products-grid">
                     {filteredProducts.map(product => (
-                        <div 
+                        <div
                             key={product.i_d}
                             className={`product-card ${selectedProduct?.i_d === product.i_d ? 'active' : ''}`}
                             onClick={() => handleProductClick(product)}
                         >
-                                <div className="product-icon">
-                                    {getProductImageUrl(product) ? (
-                                        <img
-                                            src={getProductImageUrl(product)}
-                                            alt={product.name}
-                                            className="product-thumb-img"
-                                        />
-                                    ) : (
-                                        <MdShoppingBasket />
-                                    )}
-                                </div>
+                            <div className="product-icon">
+                                {getProductImageUrl(product) ? (
+                                    <img
+                                        src={getProductImageUrl(product)}
+                                        alt={product.name}
+                                        className="product-thumb-img"
+                                    />
+                                ) : (
+                                    <MdShoppingBasket />
+                                )}
+                            </div>
                             <div className="product-name">{product.name}</div>
                             <div className="product-price">₦{wrh === 'vip' ? (product.vipPrice || product.salesPrice) : product.salesPrice}</div>
                         </div>
@@ -3128,27 +3128,27 @@ const PointOfSales = () => {
             case 'home':
                 return (
                     <>
-                        
-                        <div className='pos-wh-cover' onClick={(e)=>{
+
+                        <div className='pos-wh-cover' onClick={(e) => {
                             const name = e.target.getAttribute('name')
-                            if (name){
+                            if (name) {
                                 setWrh(name)
-                                window.localStorage.setItem('pos-wrh',name)
+                                window.localStorage.setItem('pos-wrh', name)
                             }
                         }}>
                             {
-                                wrhs.map((wh, id)=>{
-                                    if (!wh.purchase && (curSession?.wrh === wh.name || companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions'))){
+                                wrhs.map((wh, id) => {
+                                    if (!wh.purchase && (curSession?.wrh === wh.name || companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions'))) {
                                         return (posWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
                                     }
-                                })                        
+                                })
                             }
-                            
+
                             {
                                 <div className={'live-nav'}>
                                     {
                                         <div className={'live-nav'}>
-                                            {<button 
+                                            {<button
                                                 className="action-btn"
                                                 onClick={handleSyncOfflinePOS}
                                                 disabled={isSyncing}
@@ -3156,9 +3156,9 @@ const PointOfSales = () => {
                                                 {isSyncing ? 'Syncing...' : 'Sync()'}
                                             </button>}
                                         </div>
-                                        
+
                                     }
-                                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
+                                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button
                                         className="action-btn"
                                         onClick={() => setViewSessions(true)}
                                     >
@@ -3166,31 +3166,31 @@ const PointOfSales = () => {
                                     </button>}
                                     <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
                                 </div>
-                                
+
                             }
-                            
+
                         </div>
                         <div className="pos-time-display">
                             <div>Session: {new Date(curSession?.start).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                             <p></p>
                             <div>Date: {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                            <div className="time">{formatTime(currentTime)}</div>                            
-                            {hasPosAgentPermissions ? 
-                                <div style={{fontWeight: 'bold'}}>Handler: 
+                            <div className="time">{formatTime(currentTime)}</div>
+                            {hasPosAgentPermissions ?
+                                <div style={{ fontWeight: 'bold' }}>Handler:
                                     <select
                                         className='forminp'
                                         name='email'
                                         type='text'
                                         placeholder='Select POS Handler'
                                         value={curPosHandler}
-                                        onChange={(e)=>{setCurPosHandler(e.target.value)}}
+                                        onChange={(e) => { setCurPosHandler(e.target.value) }}
                                     >
                                         <option value={''}>
                                             {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}
                                         </option>
-                                        {employees.map((employee, index)=>{
-                                            const profile = profiles.find((profile)=>{return profile.emailid === employee.i_d})
-                                            if (!employee.dismissalDate && !(employee.i_d === companyRecord?.emailid) && profile?.permissions?.includes(`pos_${wrh}`)){
+                                        {employees.map((employee, index) => {
+                                            const profile = profiles.find((profile) => { return profile.emailid === employee.i_d })
+                                            if (!employee.dismissalDate && !(employee.i_d === companyRecord?.emailid) && profile?.permissions?.includes(`pos_${wrh}`)) {
                                                 return (
                                                     <option key={index} value={employee.i_d}>
                                                         {employee.firstName} {employee.lastName} {`(${employee.i_d})`}
@@ -3199,12 +3199,12 @@ const PointOfSales = () => {
                                             }
                                         })}
                                     </select>
-                                </div> 
-                                :<div style={{fontWeight: 'bold'}}>Handler: {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}</div>
+                                </div>
+                                : <div style={{ fontWeight: 'bold' }}>Handler: {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}</div>
                             }
                         </div>
                         <div className="pos-tables-layout">
-                            {curPosSettings?.type === 'restaurant' && <div 
+                            {curPosSettings?.type === 'restaurant' && <div
                                 className="add-table-box"
                                 onClick={handleAddTableClick}
                             >
@@ -3218,7 +3218,7 @@ const PointOfSales = () => {
                                     return numA - numB;
                                 })
                                 .map(table => (
-                                    <div 
+                                    <div
                                         key={table.i_d}
                                         className={`pos-table ${table.status}`}
                                         onClick={() => handleTableSelect(table)}
@@ -3260,18 +3260,18 @@ const PointOfSales = () => {
 
                 <div className="form-group">
                     <label>Table Name</label>
-                    <input 
+                    <input
                         type="text"
                         value={newTableData.name}
-                        onChange={(e) => setNewTableData({...newTableData, name: e.target.value})}
+                        onChange={(e) => setNewTableData({ ...newTableData, name: e.target.value })}
                     />
                 </div>
                 <div className="form-group">
                     <label>Capacity</label>
-                    <input 
+                    <input
                         type="number"
                         value={newTableData.capacity}
-                        onChange={(e) => setNewTableData({...newTableData, capacity: e.target.value})}
+                        onChange={(e) => setNewTableData({ ...newTableData, capacity: e.target.value })}
                     />
                 </div>
                 <div className="modal-actions">
@@ -3294,9 +3294,9 @@ const PointOfSales = () => {
         const year = date.getFullYear().toString().slice(-2);
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
-        
+
         // Combine epoch time + high-resolution performance time
-        const uniquePart = `${Date.now()}${Math.floor(performance.now() * 1000) % 1000}`; 
+        const uniquePart = `${Date.now()}${Math.floor(performance.now() * 1000) % 1000}`;
         const shortCode = uniquePart.slice(-8); // shorten if you want
 
         return `ORD-${year}${month}${day}-${shortCode}`;
@@ -3308,139 +3308,139 @@ const PointOfSales = () => {
     return (
         <div className="pos-container" ref={posContainerRef}>
             {(loadSession || startSession || endSession) && renderSessionEntry()}
-            {viewSesions ? 
-            <POSDashboard
-                setViewSessions={setViewSessions}
-                setStartSession={setStartSession}
-                setEndSession={setEndSession}
-                curSession={curSession}
-                sessions={sessions}
-                allSalesSessions={allSalesSessions}
-                setAllSalesSessions = {setAllSalesSessions}
-                mergeAndPersistOrders = {mergeAndPersistOrders}
-                mergeAndPersistSessions = {mergeAndPersistSessions}
-                allSessions={allSessions}
-                setAllSessions={setAllSessions}
-                deliverySessions={deliverySessions}
-                setDeliverySessions={setDeliverySessions}
-                setAllSessionOrders={setAllSessionOrders}
-                allOrders={allOrders}
-                setSessionUser={setSessionUser}
-                companyRecord = {companyRecord}
-                employees={employees}
-                profiles={profiles}
-                isLive={isLive}
-                liveErrorMessages={liveErrorMessages}
-                sessionEnded={sessionEnded}
-                getSessionEnd = {getSessionEnd}
-                setWrh={setWrh}
-                posWrhAccess={posWrhAccess}
-                allSessionOrders={allSessionOrders}
-                getSessionSales={getSessionSales}
-                setAlertState={setAlertState}
-                setAlert={setAlert}
-                setAlertTimeout={setAlertTimeout}
-                wrhCategories={wrhCategories}
-            />:
-            <div>                
-                {activeScreen === 'order' && (
-                    <div className="pos-mini-header">
-                        <div className="header-info">
-                            <span className="table-name">{currentOrder.tableName}</span>
-                            {currentOrder.orderNumber && (
-                                <span className="order-number">#{currentOrder.orderNumber}</span>
-                            )}
-                            {
-                                <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
-                            }
-                        </div>
-                        <div className="header-actions">
-                            <button 
-                                className="action-btn"
-                                disabled={placingOrder || makingPayment || currentTable?.status === 'unavailable'}
-                                onClick={() => createNewOrder(currentTable)}
-                            >
-                                New Order
-                            </button>
-                            <button 
-                                className="action-btn"
-                                disabled={placingOrder || makingPayment}
-                                onClick={() => setShowOrdersModal(true)}
-                            >
-                                All Orders
-                            </button>
-                            <button 
-                                name="prevTable" 
-                                className='action-btn'
-                                onClick={switchTable}
-                            >
-                                {'<'}
-                            </button>
-                            <span style={{margin:"auto"}}>{'.'}</span>
-                            <button 
-                                name="nextTable" 
-                                className='action-btn'
-                                onClick={switchTable}
-                            >
-                                {'>'}
-                            </button>
-                            <button 
-                                className="action-btn"
-                                disabled={placingOrder || makingPayment}
-                                onClick={() => {
-                                    setTableOrders([])
-                                    setActiveScreen('home')
-                                    setCurrentTable(null)
-                                    setCurrentOrder(null)
-                                    setPlacingOrder(false)
-                                    setMakingPayment(false)
-                                }}
-                            >
-                                Back to Tables
-                            </button>
-                        </div>
-                    </div>
-                )}
-                <div className="pos-content">
-                    {renderScreen()}
-                </div>
-                {showNewTableModal && <TableModal />}
-                {showOrdersModal && 
-                <OrdersModal 
-                    tableOrders={tableOrders}
-                    handleOrderSelect={handleOrderSelect}
-                    setShowOrdersModal={setShowOrdersModal}
-                    tables={tables}
-                    wrh={wrh}
-                    currentOrder={currentOrder}
-                    setCurrentOrder={setCurrentOrder}
-                    createNewOrder={createNewOrder}
+            {viewSesions ?
+                <POSDashboard
+                    setViewSessions={setViewSessions}
+                    setStartSession={setStartSession}
+                    setEndSession={setEndSession}
                     curSession={curSession}
-                    employees={employees}
-                />}
-                {showPaymentModal && 
-                <PaymentModal 
-                    amount={amount}
-                    setAmount={setAmount}
-                    currentOrder={currentOrder}
-                    method={method}
-                    setMethod={setMethod}
-                    wrh={wrh}
-                    wrhCategories={wrhCategories}
-                    curSession={curSession}
-                    defaultPaymentDetails={defaultPaymentDetails}
-                    paymentDetails={paymentDetails}
-                    setPaymentDetails={setPaymentDetails}
-                    setShowPaymentModal={setShowPaymentModal}
-                    handlePayment={handlePayment}
-                    paymentReceipts={paymentReceipts}
-                    payPoints={payPoints}
-                    setAlert={setAlert}
-                    setAlertState={setAlertState}
-                    setAlertTimeout={setAlertTimeout}
+                    sessions={sessions}
+                    allSalesSessions={allSalesSessions}
+                    setAllSalesSessions={setAllSalesSessions}
+                    mergeAndPersistOrders={mergeAndPersistOrders}
+                    mergeAndPersistSessions={mergeAndPersistSessions}
+                    allSessions={allSessions}
+                    setAllSessions={setAllSessions}
+                    deliverySessions={deliverySessions}
+                    setDeliverySessions={setDeliverySessions}
+                    setAllSessionOrders={setAllSessionOrders}
+                    allOrders={allOrders}
+                    setSessionUser={setSessionUser}
                     companyRecord={companyRecord}
-                />}
-            </div>
+                    employees={employees}
+                    profiles={profiles}
+                    isLive={isLive}
+                    liveErrorMessages={liveErrorMessages}
+                    sessionEnded={sessionEnded}
+                    getSessionEnd={getSessionEnd}
+                    setWrh={setWrh}
+                    posWrhAccess={posWrhAccess}
+                    allSessionOrders={allSessionOrders}
+                    getSessionSales={getSessionSales}
+                    setAlertState={setAlertState}
+                    setAlert={setAlert}
+                    setAlertTimeout={setAlertTimeout}
+                    wrhCategories={wrhCategories}
+                /> :
+                <div>
+                    {activeScreen === 'order' && (
+                        <div className="pos-mini-header">
+                            <div className="header-info">
+                                <span className="table-name">{currentOrder.tableName}</span>
+                                {currentOrder.orderNumber && (
+                                    <span className="order-number">#{currentOrder.orderNumber}</span>
+                                )}
+                                {
+                                    <span className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>{isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}</span>
+                                }
+                            </div>
+                            <div className="header-actions">
+                                <button
+                                    className="action-btn"
+                                    disabled={placingOrder || makingPayment || currentTable?.status === 'unavailable'}
+                                    onClick={() => createNewOrder(currentTable)}
+                                >
+                                    New Order
+                                </button>
+                                <button
+                                    className="action-btn"
+                                    disabled={placingOrder || makingPayment}
+                                    onClick={() => setShowOrdersModal(true)}
+                                >
+                                    All Orders
+                                </button>
+                                <button
+                                    name="prevTable"
+                                    className='action-btn'
+                                    onClick={switchTable}
+                                >
+                                    {'<'}
+                                </button>
+                                <span style={{ margin: "auto" }}>{'.'}</span>
+                                <button
+                                    name="nextTable"
+                                    className='action-btn'
+                                    onClick={switchTable}
+                                >
+                                    {'>'}
+                                </button>
+                                <button
+                                    className="action-btn"
+                                    disabled={placingOrder || makingPayment}
+                                    onClick={() => {
+                                        setTableOrders([])
+                                        setActiveScreen('home')
+                                        setCurrentTable(null)
+                                        setCurrentOrder(null)
+                                        setPlacingOrder(false)
+                                        setMakingPayment(false)
+                                    }}
+                                >
+                                    Back to Tables
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    <div className="pos-content">
+                        {renderScreen()}
+                    </div>
+                    {showNewTableModal && <TableModal />}
+                    {showOrdersModal &&
+                        <OrdersModal
+                            tableOrders={tableOrders}
+                            handleOrderSelect={handleOrderSelect}
+                            setShowOrdersModal={setShowOrdersModal}
+                            tables={tables}
+                            wrh={wrh}
+                            currentOrder={currentOrder}
+                            setCurrentOrder={setCurrentOrder}
+                            createNewOrder={createNewOrder}
+                            curSession={curSession}
+                            employees={employees}
+                        />}
+                    {showPaymentModal &&
+                        <PaymentModal
+                            amount={amount}
+                            setAmount={setAmount}
+                            currentOrder={currentOrder}
+                            method={method}
+                            setMethod={setMethod}
+                            wrh={wrh}
+                            wrhCategories={wrhCategories}
+                            curSession={curSession}
+                            defaultPaymentDetails={defaultPaymentDetails}
+                            paymentDetails={paymentDetails}
+                            setPaymentDetails={setPaymentDetails}
+                            setShowPaymentModal={setShowPaymentModal}
+                            handlePayment={handlePayment}
+                            paymentReceipts={paymentReceipts}
+                            payPoints={payPoints}
+                            setAlert={setAlert}
+                            setAlertState={setAlertState}
+                            setAlertTimeout={setAlertTimeout}
+                            companyRecord={companyRecord}
+                        />}
+                </div>
             }
         </div>
     );
@@ -3449,7 +3449,7 @@ const PointOfSales = () => {
 export default PointOfSales;
 
 const PaymentModal = ({
-    amount, setAmount, 
+    amount, setAmount,
     currentOrder, companyRecord,
     method, setMethod, wrh, curSession, defaultPaymentDetails,
     paymentDetails, setPaymentDetails, wrhCategories,
@@ -3462,101 +3462,101 @@ const PaymentModal = ({
     const [loading, setLoading] = useState(false)
     const [receipts, setReceipts] = useState({})
 
-    useEffect(()=>{
+    useEffect(() => {
         var paymentAmount = 0
-        Object.keys(paymentDetails).forEach((payPoint)=>{
+        Object.keys(paymentDetails).forEach((payPoint) => {
             paymentAmount += Number(paymentDetails[payPoint].amount || 0)
         })
         setPaymentSum(paymentAmount)
-    },[paymentDetails])
+    }, [paymentDetails])
 
-    const confirmReceiptsAvailable = (receipts)=>{
+    const confirmReceiptsAvailable = (receipts) => {
         let voidReceipts = []
         var postingDate = new Date(currentOrder.createdAt).toISOString().split('T')[0]
         const maximumPayHours = (companyRecord?.permissions?.includes('override_pos_receipts') || companyRecord?.status === 'admin') ? 15 : 9 // 15 hours for admin, 9 hours for others
-        Object.keys(receipts).forEach((payPoint)=>{
-            const queryReceiptDetails = paymentReceipts.find((payrec)=>{
-                const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
-                    if (rec.trim('').toLowerCase()==='cash'){
+        Object.keys(receipts).forEach((payPoint) => {
+            const queryReceiptDetails = paymentReceipts.find((payrec) => {
+                const payRecs = String(payrec?.paymentReceipt).split(',').map((rec) => {
+                    if (rec.trim('').toLowerCase() === 'cash') {
                         return rec.trim('')
-                    }else{
+                    } else {
                         return Number(rec.trim(''))
                     }
-                }).filter((fltRec)=>{
+                }).filter((fltRec) => {
                     return fltRec !== 'cash'
                 })
-                let accRecs = String(receipts[payPoint]).split(',').filter((rec)=>{
-                    return rec.trim('').toLowerCase()!=='cash'
+                let accRecs = String(receipts[payPoint]).split(',').filter((rec) => {
+                    return rec.trim('').toLowerCase() !== 'cash'
                 })
-                let accRecFiltered = accRecs.filter((fltRec)=>{
+                let accRecFiltered = accRecs.filter((fltRec) => {
                     return (
-                        (payrec.paymentReceipt === Number(fltRec) 
-                        || payRecs.includes(Number(fltRec)))
+                        (payrec.paymentReceipt === Number(fltRec)
+                            || payRecs.includes(Number(fltRec)))
                         && payrec.paymentPoint === payPoint
                     )
                 })
                 return accRecFiltered.length > 0
             })
             let hourDiff = 9
-            if (queryReceiptDetails){
+            if (queryReceiptDetails) {
                 hourDiff = Math.abs((new Date().getTime() - new Date(queryReceiptDetails.paymentModuleRef).getTime()) / 36e5); // Difference in hours
             }
             if (
-                queryReceiptDetails    
-            ){
-                if (queryReceiptDetails?.paymentTable === currentOrder.tableId && hourDiff <= maximumPayHours){
-                }else{
-                    voidReceipts.push(payPoint.toUpperCase())                
+                queryReceiptDetails
+            ) {
+                if (queryReceiptDetails?.paymentTable === currentOrder.tableId && hourDiff <= maximumPayHours) {
+                } else {
+                    voidReceipts.push(payPoint.toUpperCase())
                 }
             }
         })
-        return {isReceiptsAvailable: (voidReceipts.length === 0), voidReceipts}
+        return { isReceiptsAvailable: (voidReceipts.length === 0), voidReceipts }
     }
 
-    const validatePayment = async ()=>{
-        var payPointsWithNoReceipts = []        
-        if (!paymentDetails['cash'].amount || (Number(paymentDetails['cash'].amount || 0) < Number(currentOrder.totalSales || 0))){
-            Object.keys(paymentDetails).forEach((payPoint)=>{
-                if (payPoint !== 'cash'){
-                    if (Number(paymentDetails[payPoint].amount) > 0 && !paymentDetails[payPoint]['receipt']){
+    const validatePayment = async () => {
+        var payPointsWithNoReceipts = []
+        if (!paymentDetails['cash'].amount || (Number(paymentDetails['cash'].amount || 0) < Number(currentOrder.totalSales || 0))) {
+            Object.keys(paymentDetails).forEach((payPoint) => {
+                if (payPoint !== 'cash') {
+                    if (Number(paymentDetails[payPoint].amount) > 0 && !paymentDetails[payPoint]['receipt']) {
                         payPointsWithNoReceipts.push(payPoint.toUpperCase())
                     }
                 }
             })
         }
-        if (!payPointsWithNoReceipts.length){
-            const {isReceiptsAvailable, voidReceipts} = confirmReceiptsAvailable(receipts)
-            if (isReceiptsAvailable){
-                if (Number(currentOrder.totalSales)>paymentSum){
+        if (!payPointsWithNoReceipts.length) {
+            const { isReceiptsAvailable, voidReceipts } = confirmReceiptsAvailable(receipts)
+            if (isReceiptsAvailable) {
+                if (Number(currentOrder.totalSales) > paymentSum) {
                     const remainingDifference = Number(currentOrder.totalSales) - paymentSum
                     setAlertState('error')
                     setAlert(`Insufficient payment amount. Remaining ${Number(remainingDifference).toLocaleString()}!`)
                     setAlertTimeout(3000)
-                }else if ((Number(currentOrder.totalSales)<(paymentSum - (Number(paymentDetails['cash'].change))))){
+                } else if ((Number(currentOrder.totalSales) < (paymentSum - (Number(paymentDetails['cash'].change))))) {
                     setAlertState('error')
                     setAlert(`Payment Amount is greater than Total Sales. Total amount remaining should be 0.00`)
                     setAlertTimeout(3000)
-                }else{
+                } else {
                     setLoading(true)
                     await handlePayment()
                     setPaymentDetails(defaultPaymentDetails)
-                    setLoading (false)
+                    setLoading(false)
                 }
-            }else{
+            } else {
                 setAlertState('error');
                 setAlert(`Receipt Number Already Used for the Following Pay Points: ${voidReceipts.join(', ')}!`);
                 setAlertTimeout(3000)
             }
-        }else{
+        } else {
             var errmess = ''
-            payPointsWithNoReceipts.forEach((payPoint, index)=>{
-                if (!index){
+            payPointsWithNoReceipts.forEach((payPoint, index) => {
+                if (!index) {
                     errmess += String(payPoint)
-                }else{
-                    if (index === payPointsWithNoReceipts.length -1){
-                        errmess += ' and '+String(payPoint)
-                    }else{
-                        errmess += ', '+String(payPoint)
+                } else {
+                    if (index === payPointsWithNoReceipts.length - 1) {
+                        errmess += ' and ' + String(payPoint)
+                    } else {
+                        errmess += ', ' + String(payPoint)
                     }
                 }
             })
@@ -3566,24 +3566,24 @@ const PaymentModal = ({
         }
     }
 
-    const suggestSalesPoint = ()=>{
+    const suggestSalesPoint = () => {
         var kc = 0
         var bc = 0
-        
-        currentOrder.items.forEach((item)=>{
-            if (wrhCategories[wrh].includes(item.category)){
+
+        currentOrder.items.forEach((item) => {
+            if (wrhCategories[wrh].includes(item.category)) {
                 bc++
-            }else if (wrhCategories['kitchen']?.includes(item.category)){
+            } else if (wrhCategories['kitchen']?.includes(item.category)) {
                 kc++
             }
         })
-        
-        if (bc > 0 && kc > 0){
+
+        if (bc > 0 && kc > 0) {
             return 'multiple'
         }
-        else if (bc > 0 && kc === 0){
+        else if (bc > 0 && kc === 0) {
             return wrh
-        }else if (kc > 0 && bc === 0){
+        } else if (kc > 0 && bc === 0) {
             return 'kitchen'
         }
     }
@@ -3592,42 +3592,42 @@ const PaymentModal = ({
         const name = e.target.getAttribute('name')
         const value = e.target.value;
         setAmount(value);
-        if (method === 'cash'){
+        if (method === 'cash') {
             const amountNum = parseFloat(value) || 0;
-            if (cashAmount===0){
+            if (cashAmount === 0) {
                 const changeAmount = amountNum - currentOrder.totalSales;
-                setPaymentDetails((paymentDetails)=>{
+                setPaymentDetails((paymentDetails) => {
                     return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: amountNum ? changeAmount : 0}
+                        ...paymentDetails, [method]: { ...paymentDetails[method], amount: value, change: amountNum ? changeAmount : 0 }
                     }
                 })
-            }else{
+            } else {
                 const changeAmount = amountNum - cashAmount;
-                setPaymentDetails((paymentDetails)=>{
+                setPaymentDetails((paymentDetails) => {
                     return {
-                        ...paymentDetails, [method]: {...paymentDetails[method], amount: value, change: amountNum ? changeAmount : 0}
+                        ...paymentDetails, [method]: { ...paymentDetails[method], amount: value, change: amountNum ? changeAmount : 0 }
                     }
                 })
             }
-        }else{
-            setPaymentDetails((paymentDetails)=>{
+        } else {
+            setPaymentDetails((paymentDetails) => {
                 return {
-                    ...paymentDetails, [method]: {...paymentDetails[method], [name]: value,  ...(Number(value)=== 0 && {receipt:''})}
+                    ...paymentDetails, [method]: { ...paymentDetails[method], [name]: value, ...(Number(value) === 0 && { receipt: '' }) }
                 }
             })
-            if (name==='receipt'){
-                setReceipts((receipts)=>{
-                    return {...receipts, [method]: value}
+            if (name === 'receipt') {
+                setReceipts((receipts) => {
+                    return { ...receipts, [method]: value }
                 })
             }
         }
-        if (name === 'amount'){
-            setPaymentDetails((paymentDetails)=>{
+        if (name === 'amount') {
+            setPaymentDetails((paymentDetails) => {
                 return {
-                    ...paymentDetails, [method]: {...paymentDetails[method], ['salesPost']: suggestSalesPoint()}
+                    ...paymentDetails, [method]: { ...paymentDetails[method], ['salesPost']: suggestSalesPoint() }
                 }
             })
-        }        
+        }
     };
 
     return (
@@ -3639,7 +3639,7 @@ const PaymentModal = ({
                 </div>
                 <div className="payment-methods">
                     {Object.keys(payPoints).map((payMethod) => {
-                        if (!['moniepoint1', 'moniepoint3'].includes(payMethod)){
+                        if (!['moniepoint1', 'moniepoint3'].includes(payMethod)) {
                             return (
                                 <button
                                     key={payMethod}
@@ -3647,9 +3647,9 @@ const PaymentModal = ({
                                     disabled={paymentDetails['cash'].amount}
                                     onClick={() => {
                                         setMethod(payMethod)
-                                        if (payMethod === 'cash'){
+                                        if (payMethod === 'cash') {
                                             setCashAmount(currentOrder.totalSales - paymentSum)
-                                        }else{
+                                        } else {
                                             setCashAmount(0)
                                         }
                                     }}
@@ -3708,13 +3708,13 @@ const PaymentModal = ({
                         </select>
                     </div>
                 )}
-                
+
                 <div className="modal-actions">
-                    <button 
+                    <button
                         className="modal-btn cancel"
                         diabled={loading}
                         onClick={() => {
-                            setPaymentDetails({...payPoints})
+                            setPaymentDetails({ ...payPoints })
                             setShowPaymentModal(false)
                         }}
                     >
@@ -3932,13 +3932,13 @@ const OrdersModal = ({
                                     <button
                                         className="edit-order-btn"
                                         onClick={() => {
-                                            const orderToEdit =  {
+                                            const orderToEdit = {
                                                 ...order,
                                                 status: 'edit'
                                             }
-                                            if (order.delivery !== 'completed'){
+                                            if (order.delivery !== 'completed') {
                                                 handleOrderSelect(orderToEdit)
-                                            }else{
+                                            } else {
                                                 setAlertState('error');
                                                 setAlert('Please Cancel Delivery First Before Editting Order!');
                                                 setAlertTimeout(3000);
@@ -3976,13 +3976,13 @@ const OrdersModal = ({
 };
 
 const POSDashboard = ({
-    sessions, allSalesSessions, setAllSalesSessions, profiles, employees, companyRecord, 
+    sessions, allSalesSessions, setAllSalesSessions, profiles, employees, companyRecord,
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, mergeAndPersistOrders, mergeAndPersistSessions,
-    setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd, 
+    setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd,
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
     setAlertState, setAlert, setAlertTimeout, tables, wrhCategories
 }) => {
-    const { fetchServer, server, company, wrhs} = useContext(ContextProvider);
+    const { fetchServer, server, company, wrhs } = useContext(ContextProvider);
 
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
@@ -3995,24 +3995,24 @@ const POSDashboard = ({
     const [pendingLoading, setPendingLoading] = useState(false);
     const [pendingError, setPendingError] = useState(null);
 
-    useEffect(()=>{
+    useEffect(() => {
         const isAdminUser = companyRecord?.access === 'admin'
-        if (!Array.isArray(filteredSessions)){
-            var pendingSessions = allSessions.filter((session)=>{
-                return (session.employee_id !== (isAdminUser ? companyRecord?.emailid : 'theplantainplanet22@gmail.com') && 
+        if (!Array.isArray(filteredSessions)) {
+            var pendingSessions = allSessions.filter((session) => {
+                return (session.employee_id !== (isAdminUser ? companyRecord?.emailid : 'theplantainplanet22@gmail.com') &&
                     session.active && (getSessionEnd(new Date().getTime()) > getSessionEnd(session.start))
                 )
             })
             // console.log(curSession)
-            setPendingSessions(pendingSessions)        
-        }else{
+            setPendingSessions(pendingSessions)
+        } else {
             setPendingSessions([])
         }
-    },[stableSalesSessions, filteredSessions])
+    }, [stableSalesSessions, filteredSessions])
 
 
-    useEffect(()=>{
-        if (allSalesSessions?.length && Array.isArray(allSalesSessions)){            
+    useEffect(() => {
+        if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
             setStableSalesSessions(allSalesSessions)
         }
         // const getSessionsData = async ()=>{
@@ -4030,26 +4030,26 @@ const POSDashboard = ({
         //     }
         // }
         // getSessionsData()
-    },[allSalesSessions])
+    }, [allSalesSessions])
 
     useEffect(() => {
-        (async()=>{
+        (async () => {
             const sessionDays = 50 * 24 * 60 * 60 * 1000
             const allowedFromDays1 = Date.now() - sessionDays
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
                 collection: "POSSessions",
                 prop: {
-                    type:'sales',
-                    start: {$gte: allowedFromDays1}
-                } 
-            }, "getDocsDetails", server);             
-            if(!sessionsResponse.err && Array.isArray(sessionsResponse.record)){                
+                    type: 'sales',
+                    start: { $gte: allowedFromDays1 }
+                }
+            }, "getDocsDetails", server);
+            if (!sessionsResponse.err && Array.isArray(sessionsResponse.record)) {
                 setStableSalesSessions(sessionsResponse.record)
-                mergeAndPersistSessions(sessionsResponse.record)                
+                mergeAndPersistSessions(sessionsResponse.record)
             }
         })()
-    },[])
+    }, [])
 
     const loadPendingOfflineChanges = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -4065,7 +4065,7 @@ const POSDashboard = ({
         }
     };
 
-    const showPendingSessionAlert = ()=>{
+    const showPendingSessionAlert = () => {
         setAlertState('error')
         setAlert('Please End All Other Sessions Before Starting A New One!')
         setAlertTimeout(3000)
@@ -4073,16 +4073,16 @@ const POSDashboard = ({
 
     return (
         <>
-            <div className='pos-sessions'>                
+            <div className='pos-sessions'>
                 <div className='pos-sessions-nav'>
                     <div className={'live-nav'}>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <select 
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <select
                             className="action-btn"
                             value={sessionsState}
                             onChange={(e) => {
                                 const val = e.target.value
                                 setSessionsState(val)
-                                if(val === 'general'){
+                                if (val === 'general') {
                                     setFilteredSessions(null)
                                 }
                             }}
@@ -4091,177 +4091,177 @@ const POSDashboard = ({
                         >
                             <option value={'general'}>General</option>
                             <option value={'edit'}>Edit</option>
-                        </select>}                        
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <button 
+                        </select>}
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <button
                             className="action-btn"
                             onClick={() => setShowReports(true)}
                             style={{ marginRight: '10px' }}
                         >
                             View Reports
-                        </button>}                        
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button 
+                        </button>}
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')) && <button
                             className="action-btn"
-                            onClick={() => {    
-                                var wrhAccess = Object.keys(posWrhAccess).filter((wrh)=>{
+                            onClick={() => {
+                                var wrhAccess = Object.keys(posWrhAccess).filter((wrh) => {
                                     return posWrhAccess[wrh]
                                 })
                                 setWrh(wrhAccess[0])
-                                setViewSessions(false)                                
+                                setViewSessions(false)
                             }}
                             style={{ marginRight: '10px' }}
                         >
                             POS Tables
                         </button>}
-                        <span 
+                        <span
                             className={isLive ? (sessionEnded ? "session-ended" : "live-state") : "error-state"}>
                             {isLive ? (sessionEnded ? 'Session Ended' : 'Live Session') : liveErrorMessages}
-                        </span>                        
+                        </span>
                     </div>
                 </div>
                 <div className='pos-sessions-view'>
-                    <div className='pos-sessions-list'>                        
-                        {profiles?.map((profile)=>{
-                            if (profile.status !== 'admin' || companyRecord.status === 'admin'){
+                    <div className='pos-sessions-list'>
+                        {profiles?.map((profile) => {
+                            if (profile.status !== 'admin' || companyRecord.status === 'admin') {
                                 var hasPosSalesAccess = false
                                 let wrhsPosObj = {}
                                 let wrhsDeliveryObj = {}
-                                wrhs.forEach((wrh)=>{
+                                wrhs.forEach((wrh) => {
                                     if (wrh.purchase) return
                                     wrhsPosObj[wrh.name] = (profile.permissions.includes(`pos_${wrh.name}`) || profile.permissions.includes('all'))
                                     wrhsDeliveryObj[wrh.name] = (profile.permissions.includes(`delivery_${wrh.name}`) || profile.permissions.includes('all'))
                                 })
-                                const userSalesWrhAccess = {...wrhsPosObj}
-                                Object.keys(userSalesWrhAccess).forEach((wrh)=>{
-                                    if (userSalesWrhAccess[wrh]){
+                                const userSalesWrhAccess = { ...wrhsPosObj }
+                                Object.keys(userSalesWrhAccess).forEach((wrh) => {
+                                    if (userSalesWrhAccess[wrh]) {
                                         hasPosSalesAccess = true
                                         return
                                     }
                                 })
-                                if((profile?.permissions.includes('pos') && hasPosSalesAccess) || profile?.permissions.includes('all')){                                
-                                    const {firstName, lastName} = ((profile.status === 'admin' && profile.access === 'admin')? {
+                                if ((profile?.permissions.includes('pos') && hasPosSalesAccess) || profile?.permissions.includes('all')) {
+                                    const { firstName, lastName } = ((profile.status === 'admin' && profile.access === 'admin') ? {
                                         firstName: 'Admin', lastName: ''
-                                    } : employees.find(employee => {return employee.i_d === profile.emailid}))
-                                    
+                                    } : employees.find(employee => { return employee.i_d === profile.emailid }))
+
                                     const employeeSessions = (filteredSessions || stableSalesSessions)?.filter(session => {
                                         return (
-                                            session.employee_id === profile.emailid                                        
+                                            session.employee_id === profile.emailid
                                         )
                                     }).sort((a, b) => a.start - b.start)
                                     var employeeSession = null
                                     var sessionLive = false
-                                    if (employeeSessions.length > 0){                                       
-                                        employeeSession = employeeSessions.find((session)=>{return !session.end})
-                                        if ([null, undefined].includes(employeeSession)){
-                                            employeeSession = employeeSessions[employeeSessions.length -1]
+                                    if (employeeSessions.length > 0) {
+                                        employeeSession = employeeSessions.find((session) => { return !session.end })
+                                        if ([null, undefined].includes(employeeSession)) {
+                                            employeeSession = employeeSessions[employeeSessions.length - 1]
                                         }
-                                        if (((new Date().getTime()) >= getSessionEnd(employeeSession.start)) || employeeSession.end){
+                                        if (((new Date().getTime()) >= getSessionEnd(employeeSession.start)) || employeeSession.end) {
                                             sessionLive = false
-                                        }else{
+                                        } else {
                                             sessionLive = true
                                         }
                                     }
                                     return (
                                         <div className='pos-sessions-card' key={profile.emailid}>
-                                            <span className='pos-sessions-card-name'>{`${firstName} ${lastName} ${employeeSession? `(${employeeSession.wrh})` : ''}`}</span>
+                                            <span className='pos-sessions-card-name'>{`${firstName} ${lastName} ${employeeSession ? `(${employeeSession.wrh})` : ''}`}</span>
                                             <span className='pos-sessions-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
                                             <div>
                                                 <h4 className='pos-sessions-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
-                                                <div 
+                                                <div
                                                     className='pos-sessions-card-action'
-                                                    onClick={()=>{   
-                                                        if (profile.status !== 'admin' || companyRecord.status === 'admin'){
+                                                    onClick={() => {
+                                                        if (profile.status !== 'admin' || companyRecord.status === 'admin') {
                                                             var viewModal = true
-                                                            const validateUserSession = async ()=>{
-                                                                if (!allSessionOrders.length){
+                                                            const validateUserSession = async () => {
+                                                                if (!allSessionOrders.length) {
                                                                     viewModal = false
                                                                     setAlertState('info')
                                                                     setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
-                                                                    setAlertTimeout(3000)     
+                                                                    setAlertTimeout(3000)
                                                                     const orderDays = 50 * 24 * 60 * 60 * 1000
                                                                     const allowedFromDays = Date.now() - orderDays
                                                                     const ordersResponse = await fetchServer("POST", {
                                                                         database: company,
                                                                         collection: "Orders",
                                                                         prop: {
-                                                                            createdAt: {$gte: allowedFromDays}
-                                                                        } 
-                                                                    }, "getDocsDetails", server); 
-                                                                    if (ordersResponse.err){
+                                                                            createdAt: { $gte: allowedFromDays }
+                                                                        }
+                                                                    }, "getDocsDetails", server);
+                                                                    if (ordersResponse.err) {
                                                                         setAlertState('error')
                                                                         setAlert('Could not load Orders. Please check your network connection!')
                                                                         setAlertTimeout(3000)
-                                                                        return           
-                                                                    }else{
-                                                                        if (Array.isArray(ordersResponse.record)){
+                                                                        return
+                                                                    } else {
+                                                                        if (Array.isArray(ordersResponse.record)) {
                                                                             mergeAndPersistOrders(ordersResponse.record)
                                                                             setAlertState('info')
                                                                             setAlert('Orders Calculated. Please proceed with the ending of user session!')
                                                                             setAlertTimeout(3000)
-                                                                        }                                                          
-                                                                    }                                              
-                                                                }else{
-                                                                    const allUserOrders = allSessionOrders.filter((order) =>{
-                                                                        return ((getSessionEnd(order.sessionId) === getSessionEnd(employeeSession.i_d)) && (order.handlerId === profile.emailid))                                                        
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    const allUserOrders = allSessionOrders.filter((order) => {
+                                                                        return ((getSessionEnd(order.sessionId) === getSessionEnd(employeeSession.i_d)) && (order.handlerId === profile.emailid))
                                                                     })
                                                                     const {
                                                                         totalUnattendedSales
-                                                                    } = getSessionSales(allUserOrders)  
-                                                                    if (totalUnattendedSales){
+                                                                    } = getSessionSales(allUserOrders)
+                                                                    if (totalUnattendedSales) {
                                                                         viewModal = false
                                                                         setAlertState('error')
-                                                                        setAlert('This User Has Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!', )
+                                                                        setAlert('This User Has Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!',)
                                                                         setAlertTimeout(5000)
-                                                                    }                                               
+                                                                    }
                                                                 }
                                                             }
-                                                            if (sessionLive){
+                                                            if (sessionLive) {
                                                                 validateUserSession()
-                                                            }else{
-                                                                if(![null, undefined].includes(employeeSession)){
-                                                                    if (!employeeSession.end){
+                                                            } else {
+                                                                if (![null, undefined].includes(employeeSession)) {
+                                                                    if (!employeeSession.end) {
                                                                         validateUserSession()
                                                                     }
                                                                 }
                                                             }
-                                                            if (viewModal){
-                                                                if (sessionLive){
+                                                            if (viewModal) {
+                                                                if (sessionLive) {
                                                                     setSessionUser({
                                                                         profile: profile,
                                                                         curSession: employeeSession
                                                                     })
                                                                     setEndSession(true)
-                                                                }else{
+                                                                } else {
                                                                     setSessionUser({
                                                                         profile: profile,
                                                                     })
-                                                                    if ([null, undefined].includes(employeeSession)){
-                                                                        if (pendingSessions.length){
+                                                                    if ([null, undefined].includes(employeeSession)) {
+                                                                        if (pendingSessions.length) {
                                                                             showPendingSessionAlert()
-                                                                        }else{
-                                                                            if (!Array.isArray(filteredSessions)){
+                                                                        } else {
+                                                                            if (!Array.isArray(filteredSessions)) {
                                                                                 setWrh('')
                                                                                 setStartSession(true)
                                                                             }
                                                                         }
-                                                                    }else{
-                                                                        if (employeeSession.end){
-                                                                            if (pendingSessions.length){
+                                                                    } else {
+                                                                        if (employeeSession.end) {
+                                                                            if (pendingSessions.length) {
                                                                                 showPendingSessionAlert()
-                                                                            }else{
-                                                                                if (Array.isArray(filteredSessions)){
+                                                                            } else {
+                                                                                if (Array.isArray(filteredSessions)) {
                                                                                     setSessionUser({
                                                                                         profile: profile,
                                                                                         curSession: employeeSession
                                                                                     })
                                                                                     setEndSession(true)
-                                                                                }else{
-                                                                                    if (!Array.isArray(filteredSessions)){
+                                                                                } else {
+                                                                                    if (!Array.isArray(filteredSessions)) {
                                                                                         setWrh('')
                                                                                         setStartSession(true)
                                                                                     }
                                                                                 }
                                                                             }
-                                                                        }else{
+                                                                        } else {
                                                                             setSessionUser({
                                                                                 profile: profile,
                                                                                 curSession: employeeSession
@@ -4271,13 +4271,13 @@ const POSDashboard = ({
                                                                     }
                                                                 }
                                                             }
-                                                        }else{
+                                                        } else {
                                                             setAlertState('error')
                                                             setAlert('Only the Super Admin can interact with this Session!')
                                                             setAlertTimeout(3000)
                                                         }
                                                     }}
-                                                >{sessionLive? 'End Session' : ([null, undefined].includes(employeeSession) ? 'Start Session' : (employeeSession.end ? (Array.isArray(filteredSessions) ? 'End Session': 'Start Session') : 'End Session'))}</div>
+                                                >{sessionLive ? 'End Session' : ([null, undefined].includes(employeeSession) ? 'Start Session' : (employeeSession.end ? (Array.isArray(filteredSessions) ? 'End Session' : 'Start Session') : 'End Session'))}</div>
                                             </div>
                                         </div>
                                     )
@@ -4290,8 +4290,8 @@ const POSDashboard = ({
                     <TransactionReports
                         type="sales"
                         sessions={stableSalesSessions}
-                        setFilteredSessions={(processedData)=>{
-                            if (sessionsState === 'edit'){
+                        setFilteredSessions={(processedData) => {
+                            if (sessionsState === 'edit') {
                                 setFilteredSessions(processedData)
                             }
                         }}

@@ -1,5 +1,5 @@
 import './Expenses.css'
-import { useEffect, useContext, useState} from 'react'
+import { useEffect, useContext, useState } from 'react'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 // import { useInventory } from '../../Resources/InventoryContext';
@@ -14,14 +14,14 @@ import { FaTableCells, FaPrint } from 'react-icons/fa6'
 import { FaAngleDown, FaAngleUp } from "react-icons/fa";
 import ExpensesReport from './ExpensesReport/ExpensesReport'
 
-const Expenses = ()=>{
+const Expenses = () => {
 
     const { storePath,
-        server, 
+        server,
         fetchServer, intervalPeriod,
         companyRecord, paymentMethods,
         company, getDate,
-        alert,alertState,alertTimeout,actionMessage, 
+        alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         expenses, setExpenses, getExpenses,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
@@ -29,28 +29,15 @@ const Expenses = ()=>{
         removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
 
-    // const {employees, getEmployees} = useAttendance()
-    
-    // const {
-        
-    // } = useInventory();
 
-    // const {
-        
-    // } = useAttendance();
-
-    // const {
-        
-    // } = useApproval();
-    
     const [expensesStatus, setExpensesStatus] = useState('Post Expenses')
-    const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0,10))
+    const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [curExpense, setCurExpense] = useState(null)
     const [deleteCount, setDeleteCount] = useState(0)
     const [isView, setIsView] = useState(false)
     const [showReport, setShowReport] = useState(false)
     const [isSyncing, setIsSyncing] = useState(false)
-    const [expenseFrom, setExpenseFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+    const [expenseFrom, setExpenseFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
     const [expenseTo, setExpenseTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [reportExpense, setReportExpense] = useState(null)
     const [expenseCode, setExpenseCode] = useState(null)
@@ -58,66 +45,62 @@ const Expenses = ()=>{
     const [showExpenseModal, setShowExpenseModal] = useState(false)
     const [salaryDetails, setSalaryDetails] = useState(null)
     const [expenseFilter, setExpenseFilter] = useState('')
+    const [expenseAccount, setExpenseAccount] = useState({})
 
     const defaultFields = {
-        expensesDepartment:'',
-        expensesHandler:'',
-        expenseCategory:'',
-        expensesAmount:'',
-        expensesBank:'',
-        expensesVendor:'',
-        expensesDescription:'',
+        expensesDepartment: '',
+        expensesHandler: '',
+        expenseCategory: '',
+        expensesAmount: '',
+        expensesBank: '',
+        expensesVendor: '',
+        expensesDescription: '',
     }
-    const [payPoints, setPayPoints] = useState([])
 
-    const payPointAccounts = {
-        'moniepoint1':'MP1-8198068382', 'moniepoint2':'MP2-5342270174', 
-        'moniepoint3':'MP3-5399647958', 'moniepoint4':'MP4-5536588063',
-        'moniepoint5':'MP5-8198068382', 'moniepoint6':'MP6-5399647958',
-        'cash':'CASH', 'Employee':'EMPLOYEE'
-    }
-    const [fields, setFields] = useState({...defaultFields})
+    const [payPoints, setPayPoints] = useState([])
+    const [fields, setFields] = useState({ ...defaultFields })
     const departments = ['Admin']
     const [expensesCategory, setExpensesCategory] = useState([])
-    
-    useEffect(()=>{
-        storePath('expenses')  
-    },[storePath])
 
-    useEffect(()=>{
-        const payPoints = paymentMethods.map((pay)=>pay.name)
+    useEffect(() => {
+        storePath('expenses')
+    }, [storePath])
+
+    useEffect(() => {
+        const payPoints = paymentMethods.map((pay) => pay.name)
         setPayPoints(payPoints)
-    },[paymentMethods])
+        setExpenseAccount(paymentMethods.find((pay) => { return pay.isExpenseAccount }) || {})
+    }, [paymentMethods])
 
-    useEffect(()=>{
-        const expenseLedger = chartOfAccounts.find((acc)=>{
-            return acc.name === 'Expenses'                
+    useEffect(() => {
+        const expenseLedger = chartOfAccounts.find((acc) => {
+            return acc.name === 'Expenses'
         })
-        if (expenseLedger){
+        if (expenseLedger) {
             setExpenseCode(expenseLedger['g/l code'])
             var allExpenseAccounts = expenseLedger.accounts
             setAllExpenseAccounts(allExpenseAccounts)
-            var expensesCategory = allExpenseAccounts.filter((account)=>{
+            var expensesCategory = allExpenseAccounts.filter((account) => {
                 return ![null, undefined].includes(account.type)
             })
             setExpensesCategory(expensesCategory)
         }
-    },[chartOfAccounts])
+    }, [chartOfAccounts])
 
-    useEffect(()=>{
+    useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         // getEmployees(cmp_val)
         // getExpenses(cmp_val)
         // getAttendance(cmp_val)
-        const intervalId = setInterval(()=>{
-          if (cmp_val){
-            getEmployees(cmp_val)
-            getExpenses(cmp_val)
-            getAttendance(cmp_val)
-          }
-        },intervalPeriod)
+        const intervalId = setInterval(() => {
+            if (cmp_val) {
+                getEmployees(cmp_val)
+                getExpenses(cmp_val)
+                getAttendance(cmp_val)
+            }
+        }, intervalPeriod)
         return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
+    }, [window.localStorage.getItem('sessn-cmp')])
 
     const handleSyncOfflineExpenses = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -125,7 +108,7 @@ const Expenses = ()=>{
         setAlertState('info');
         setAlert('Syncing offline Expenses changes...');
         setAlertTimeout(10000);
-        try{
+        try {
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             const cmp_val = window.localStorage.getItem('sessn-cmp');
             if (cmp_val) {
@@ -133,12 +116,12 @@ const Expenses = ()=>{
                     getExpenses(cmp_val),
                     getEmployees(cmp_val),
                     getAttendance(cmp_val)
-                ]).catch(()=>{});
+                ]).catch(() => { });
             };
 
-            if (Array.isArray(results)){
+            if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
-                if (failed.length){
+                if (failed.length) {
                     setAlertState('error');
                     setAlert(`${failed.length} change(s) failed to sync; retry later.`);
                     setAlertTimeout(5000);
@@ -152,58 +135,58 @@ const Expenses = ()=>{
                 setAlert('Offline Expenses Sync complete');
                 setAlertTimeout(3000);
             }
-        }catch(e){
+        } catch (e) {
             setAlertState('error');
             setAlert('Offline Expenses Sync failed. Please try again.');
             setAlertTimeout(3000);
-        }finally{
+        } finally {
             setIsSyncing(false);
         }
     }
 
-    useEffect(()=>{
-        if (companyRecord.status!=='admin'){
-            setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+    useEffect(() => {
+        if (companyRecord.status !== 'admin') {
+            setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
         }
-    },[companyRecord])
+    }, [companyRecord])
 
-    useEffect(()=>{
+    useEffect(() => {
         const selectedMonthFrom = expenseFrom.split('-')[1]
         const selectedYearFrom = expenseFrom.split('-')[0]
         const selectedMonthTo = expenseTo.split('-')[1]
         const selectedYearTo = expenseTo.split('-')[0]
-        
+
         const monthsList = []
-        for (let year = Number(selectedYearFrom); year <= Number(selectedYearTo); year++){
+        for (let year = Number(selectedYearFrom); year <= Number(selectedYearTo); year++) {
             const startMonth = year === Number(selectedYearFrom) ? Number(selectedMonthFrom) : 1
             const endMonth = year === Number(selectedYearTo) ? Number(selectedMonthTo) : 12
-            for (let month = startMonth; month <= endMonth; month++){
-                monthsList.push({year, month:months[month-1]})
+            for (let month = startMonth; month <= endMonth; month++) {
+                monthsList.push({ year, month: months[month - 1] })
             }
         }
-        
+
         const details = []
-        monthsList.forEach((monthDetail)=>{
+        monthsList.forEach((monthDetail) => {
             let monthlySalary = 0
-            const {year, month} = monthDetail
-            const salaryPostingDate = new Date(Number(year), months.indexOf(month), monthDays[month]+1).toISOString().slice(0,10)
-            
-            attendance.forEach((att)=>{
-                const {year, month, payees} = att
-                payees.forEach((payee)=>{   
-                    const postingDate = new Date(Number(year), months.indexOf(month), monthDays[month]+1).toISOString().slice(0,10)
-                    if (monthDetail.month === month && monthDetail.year === Number(year)){                
+            const { year, month } = monthDetail
+            const salaryPostingDate = new Date(Number(year), months.indexOf(month), monthDays[month] + 1).toISOString().slice(0, 10)
+
+            attendance.forEach((att) => {
+                const { year, month, payees } = att
+                payees.forEach((payee) => {
+                    const postingDate = new Date(Number(year), months.indexOf(month), monthDays[month] + 1).toISOString().slice(0, 10)
+                    if (monthDetail.month === month && monthDetail.year === Number(year)) {
                         var reportSalary = {}
-                        const totalPay = Number(payee['Total Pay']?payee['Total Pay']:0)
+                        const totalPay = Number(payee['Total Pay'] ? payee['Total Pay'] : 0)
                         const adjustment = Number(payee.adjustment) ? Number(payee.adjustment) : 0
-                        const bonus = Number(payee['bonus']) ? Number(payee['bonus']): 0 
+                        const bonus = Number(payee['bonus']) ? Number(payee['bonus']) : 0
                         const penalties = Number(payee['penalties']) ? Number(payee['penalties']) : 0
-                        const shortages = Number(payee['shortages'])? Number(payee['shortages']) : 0
-                        const debtDue = Number(payee['debtDue'])? Number(payee['debtDue']) : 0
-                        const prevDebt = Number(payee['prevDebt'])? Number(payee['prevDebt']) : 0
+                        const shortages = Number(payee['shortages']) ? Number(payee['shortages']) : 0
+                        const debtDue = Number(payee['debtDue']) ? Number(payee['debtDue']) : 0
+                        const prevDebt = Number(payee['prevDebt']) ? Number(payee['prevDebt']) : 0
                         const salaryAmount = totalPay + adjustment + bonus
-                        - penalties - shortages - debtDue - prevDebt
-        
+                            - penalties - shortages - debtDue - prevDebt
+
                         reportSalary.postingDate = postingDate
                         reportSalary.docType = 'salary'
                         reportSalary.salaryAmount = Number(salaryAmount || 0)
@@ -216,131 +199,131 @@ const Expenses = ()=>{
                 "expensesDepartment": "Admin",
                 "expensesHandler": "1",
                 "expenseCategory": "Salary & Wages",
-                "expensesBank": "moniepoint1",
+                "expensesBank": expenseAccount?.name || '',
                 "expensesAmount": monthlySalary,
                 "expensesVendor": "EMPLOYEES / STAFFS",
                 "expensesDescription": `Salary and Wages for ${month} ${year}`,
                 "postingDate": salaryPostingDate,
                 "createdAt": Date.now()
             }
-            details.push(detail)            
+            details.push(detail)
         })
         setSalaryDetails(details)
-    },[attendance, expenseFrom, expenseTo])
+    }, [attendance, expenseFrom, expenseTo, expenseAccount])
 
-    const handleExpensesEntry = (e)=>{
+    const handleExpensesEntry = (e) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value
 
-        if (name){
-            setFields((fields)=>{
-                return {...fields, [name]:value}
+        if (name) {
+            setFields((fields) => {
+                return { ...fields, [name]: value }
             })
         }
     }
 
-    const handleViewClick = (exp) =>{
-        setIsView(true)            
-        if (curExpense === null || exp.createdAt !== curExpense?.createdAt){
+    const handleViewClick = (exp) => {
+        setIsView(true)
+        if (curExpense === null || exp.createdAt !== curExpense?.createdAt) {
             setCurExpense(exp)
-            setFields({...exp})
-            setIsView(true)             
+            setFields({ ...exp })
+            setIsView(true)
         }
     }
 
-    const addExpenses = async ()=>{
-        if (fields.expensesAmount && fields.expenseCategory && 
+    const addExpenses = async () => {
+        if (fields.expensesAmount && fields.expenseCategory &&
             fields.expensesDepartment && fields.expensesHandler &&
             fields.expensesVendor && fields.expensesBank
-        ){
+        ) {
             setExpensesStatus('Posting Expenses...')
             setAlertState('info')
             setAlert('Posting Expenses...')
             const newExpense = {
                 ...fields,
-                postingDate:expensesDate,
+                postingDate: expensesDate,
                 createdAt: Date.now()
             }
             const newExpenses = [newExpense, ...expenses]
-            
+
             const resps = await fetchServer("POST", {
                 database: company,
-                collection: "Expenses", 
+                collection: "Expenses",
                 update: newExpense
-              }, "createDoc", server)
-                                          
-              if (resps.err){
+            }, "createDoc", server)
+
+            if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
                 setExpensesStatus('Post Expenses')
-              }else{
+            } else {
                 setExpensesStatus('Post Expenses')
                 setExpenses(newExpenses)
                 setCurExpense(newExpense)
                 setIsView(true)
-                setFields({...newExpense})
+                setFields({ ...newExpense })
                 setAlertState('success')
                 setAlert('Expenses Record Posted Successfully!')
                 setAlertTimeout(5000)
                 getExpenses(company)
-              }
-        }else{
+            }
+        } else {
             setAlertState('error')
             setAlert('All Fields Are Required! Kindly Fill All.')
             setAlertTimeout(5000)
         }
     }
 
-    const deleteExpenses = async (expense)=>{
-        if (deleteCount === expense.createdAt){
+    const deleteExpenses = async (expense) => {
+        if (deleteCount === expense.createdAt) {
             setAlertState('info')
             setAlert('Deleting Expenses...')
             const resps = await fetchServer("POST", {
                 database: company,
-                collection: "Expenses", 
-                update: {createdAt: expense.createdAt}
+                collection: "Expenses",
+                update: { createdAt: expense.createdAt }
             }, "removeDoc", server)
-            if (resps.err){
+            if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
-            }else{
+            } else {
                 setIsView(false)
                 setCurExpense(null)
-                setFields({...defaultFields})
+                setFields({ ...defaultFields })
                 setAlertState('success')
                 setAlert('Expenses Deleted Successfully!')
                 setAlertTimeout(5000)
                 setDeleteCount(0)
                 getExpenses(company)
-            }        
-        }else{
+            }
+        } else {
             setDeleteCount(expense.createdAt)
-            setTimeout(()=>{
+            setTimeout(() => {
                 setDeleteCount(0)
-            },12000)
+            }, 12000)
         }
     }
 
-    const calculateReportExpense = ()=>{
-        var filteredReportExpenses = [...(salaryDetails || []),...expenses].sort((a,b) => {
+    const calculateReportExpense = () => {
+        var filteredReportExpenses = [...(salaryDetails || []), ...expenses].sort((a, b) => {
             const first = new Date(a.postingDate)
             const second = new Date(b.postingDate)
             return second - first
-        }).filter((ftrexpense)=>{
+        }).filter((ftrexpense) => {
             const expPostingDate = new Date(ftrexpense.postingDate).getTime()
             const fromDate = new Date(expenseFrom).getTime()
             const toDate = new Date(expenseTo).getTime()
-            if ( expPostingDate>= fromDate && expPostingDate<=toDate
-            ){
-                if (expenseFilter){
-                    if (ftrexpense.expenseCategory === expenseFilter){
+            if (expPostingDate >= fromDate && expPostingDate <= toDate
+            ) {
+                if (expenseFilter) {
+                    if (ftrexpense.expenseCategory === expenseFilter) {
                         return ftrexpense
                     }
-                }else{
+                } else {
                     return ftrexpense
                 }
             }
@@ -348,21 +331,21 @@ const Expenses = ()=>{
         setReportExpense(filteredReportExpenses)
     }
 
-    const addExpenseCategory = async (newExpenseAccount) =>{
+    const addExpenseCategory = async (newExpenseAccount) => {
         setAlertState('info')
         setAlert('Creating New Expense Account...')
         setAlertTimeout(100000)
         const resp = await fetchServer("POST", {
             database: company,
             collection: "ChartOfAccounts",
-            prop: [{'name':'Expenses'}, {accounts: [...allExpenseAccounts || [], newExpenseAccount]}]
+            prop: [{ 'name': 'Expenses' }, { accounts: [...allExpenseAccounts || [], newExpenseAccount] }]
         }, "updateOneDoc", server)
-        if (resp.err){
+        if (resp.err) {
             setAlertState('error')
             setAlert('Could not create new category. No internet connection!')
             setAlertTimeout(10)
             return
-        }else{
+        } else {
             setAlertState('success')
             setAlert('New Expense Account Has Been Added!')
             setAlertTimeout(10)
@@ -370,177 +353,177 @@ const Expenses = ()=>{
         }
     }
 
-    const printToPDF = (e) => {        
+    const printToPDF = (e) => {
         const element = e.target.parentElement.parentElement
         const options = {
-            margin:       0.1,
-            filename:     `EXPENSE DESCRIPTION.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
-            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+            margin: 0.1,
+            filename: `EXPENSE DESCRIPTION.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
-        html2pdf().set(options).from(element).save();        
+        html2pdf().set(options).from(element).save();
     };
 
     return (
         <>
             <div className='expenses'>
                 {showReport && <ExpensesReport
-                    reportExpense = {reportExpense}
+                    reportExpense={reportExpense}
                     multiple={true}
-                    setShowReport={(value)=>{
-                        setShowReport(value)                        
-                    }}              
-                    fromDate = {expenseFrom}
-                    toDate = {expenseTo}      
-                    // selectedMonth={selectedMonth}
-                    // selectedYear={selectedYear}
+                    setShowReport={(value) => {
+                        setShowReport(value)
+                    }}
+                    fromDate={expenseFrom}
+                    toDate={expenseTo}
+                // selectedMonth={selectedMonth}
+                // selectedYear={selectedYear}
                 />}
                 <div className='purlst'>
-                    {companyRecord.status==='admin' && <FaTableCells                         
+                    {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'
-                        onClick={()=>{
+                        onClick={() => {
                             calculateReportExpense()
-                            if (expenseTo && expenseFrom){                                
+                            if (expenseTo && expenseFrom) {
                                 setShowReport(true)
                             }
                         }}
                     />}
-                    {<MdAdd 
+                    {<MdAdd
                         className='add slsadd'
-                        onClick={()=>{
+                        onClick={() => {
                             setIsView(false)
-                            setFields({...defaultFields})
+                            setFields({ ...defaultFields })
                             setCurExpense(null)
                         }}
                     />}
                     <div className='payeeinpcov'>
                         <div className='inpcov formpad'>
                             <div>Date From</div>
-                            <input 
+                            <input
                                 className='forminp prinps'
                                 name='expensesfrom'
                                 type='date'
                                 placeholder='From'
                                 value={expenseFrom}
-                                disabled={companyRecord.status!=='admin'}
-                                onChange={(e)=>{
+                                disabled={companyRecord.status !== 'admin'}
+                                onChange={(e) => {
                                     setExpenseFrom(e.target.value)
                                 }}
                             />
                         </div>
                         <div className='inpcov formpad'>
                             <div>Date To</div>
-                            <input 
+                            <input
                                 className='forminp prinps'
                                 name='expensesto'
                                 type='date'
                                 placeholder='To'
                                 value={expenseTo}
-                                disabled={companyRecord.status!=='admin'}
-                                onChange={(e)=>{
+                                disabled={companyRecord.status !== 'admin'}
+                                onChange={(e) => {
                                     setExpenseTo(e.target.value)
                                 }}
                             />
                         </div>
                     </div>
-                    <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
                         <button className="action-btn" onClick={handleSyncOfflineExpenses} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
-                    {companyRecord.status==='admin' && <div className='inpcov fltinpcov'>
-                        <select 
+                    {companyRecord.status === 'admin' && <div className='inpcov fltinpcov'>
+                        <select
                             className='forminp'
                             name='employeeId'
                             type='text'
                             value={expenseFilter}
-                            onChange={(e)=>{
-                                setExpenseFilter(e.target.value)                                
+                            onChange={(e) => {
+                                setExpenseFilter(e.target.value)
                             }}
                         >
                             <option value=''>Select Expense Filter</option>
-                            {expensesCategory.sort((a,b) => a - b).map((category, index)=>{
+                            {expensesCategory.sort((a, b) => a - b).map((category, index) => {
                                 return (
                                     <option key={index} value={category.name}>{`${category.name} ${category['g/l code']}`}</option>
                                 )
                             })}
                         </select>
                     </div>}
-                    {[...(salaryDetails || []),...expenses].filter((expfltr)=>{
-                        if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo){
-                            if (expenseFilter){
-                                if (expfltr.expenseCategory === expenseFilter){
+                    {[...(salaryDetails || []), ...expenses].filter((expfltr) => {
+                        if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo) {
+                            if (expenseFilter) {
+                                if (expfltr.expenseCategory === expenseFilter) {
                                     return expfltr
                                 }
-                            }else{
+                            } else {
                                 return expfltr
                             }
                         }
-                    }).sort((a,b)=>{
+                    }).sort((a, b) => {
                         const first = new Date(a.postingDate)
                         const second = new Date(b.postingDate)
                         return second - first
-                    }).map((exp,index)=>{                        
+                    }).map((exp, index) => {
                         const {
-                            createdAt,postingDate, 
+                            createdAt, postingDate,
                             expensesAmount, expensesDepartment,
-                            expenseCategory,expensesHandler, expensesVendor,
+                            expenseCategory, expensesHandler, expensesVendor,
                             expensesDescription
                         } = exp
                         var handlerName = ''
-                        employees.forEach((emp)=>{
-                            if (emp.i_d === expensesHandler){
+                        employees.forEach((emp) => {
+                            if (emp.i_d === expensesHandler) {
                                 handlerName = `${emp.firstName} ${emp.lastName}`
                             }
                         })
-                        return(
-                            <div className={'dept  desc-relt' + (curExpense?.createdAt===createdAt?' curview':'')} key={index} 
-                                onClick={(e)=>{
+                        return (
+                            <div className={'dept  desc-relt' + (curExpense?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                onClick={(e) => {
                                     handleViewClick(exp)
                                 }}
                             >
                                 <div className='dets sldets'>
-                                    {(curExpense?.createdAt === createdAt && curExpense.showDetails) && 
-                                        <FaPrint 
+                                    {(curExpense?.createdAt === createdAt && curExpense.showDetails) &&
+                                        <FaPrint
                                             className='desc-btn-top'
-                                            onClick={(e)=>{printToPDF(e)}}
+                                            onClick={(e) => { printToPDF(e) }}
                                         />
                                     }
-                                    {(curExpense?.createdAt === createdAt && curExpense.showDetails) ? 
-                                        (<FaAngleUp 
+                                    {(curExpense?.createdAt === createdAt && curExpense.showDetails) ?
+                                        (<FaAngleUp
                                             className='desc-btn-bottom'
-                                            onClick={()=>{
-                                                setCurExpense((curExpense)=>{
-                                                    return {...curExpense, showDetails: false}
+                                            onClick={() => {
+                                                setCurExpense((curExpense) => {
+                                                    return { ...curExpense, showDetails: false }
                                                 })
                                             }}
-                                        />) 
-                                        : (curExpense?.createdAt === createdAt && <FaAngleDown 
+                                        />)
+                                        : (curExpense?.createdAt === createdAt && <FaAngleDown
                                             className='desc-btn-bottom'
-                                            onClick={()=>{
-                                                setCurExpense((curExpense)=>{
-                                                    return {...curExpense, showDetails: true}
+                                            onClick={() => {
+                                                setCurExpense((curExpense) => {
+                                                    return { ...curExpense, showDetails: true }
                                                 })
                                             }}
                                         />)}
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                    <div>Expenses Department: <b>{expensesDepartment}</b></div>                                    
-                                    <div>Expenses Category: <b>{expenseCategory}</b></div>                                    
-                                    <div>Expenses Amount: <b>{'₦'+(Number(expensesAmount)).toLocaleString()}</b></div>                                    
+                                    <div>Expenses Department: <b>{expensesDepartment}</b></div>
+                                    <div>Expenses Category: <b>{expenseCategory}</b></div>
+                                    <div>Expenses Amount: <b>{'₦' + (Number(expensesAmount)).toLocaleString()}</b></div>
                                     <div className='deptdesc'>{`Expenses Handled By:`} <b>{`${handlerName}`}</b></div>
                                     {(curExpense?.createdAt === createdAt && curExpense?.showDetails) && <div>
-                                        <div>Expenses Vendor: <b>{expensesVendor}</b></div>                                    
+                                        <div>Expenses Vendor: <b>{expensesVendor}</b></div>
                                         <div className='exp-desc'>Description of Items:</div>
                                         <pre className='exp-dets'>{expensesDescription}</pre>
                                     </div>}
                                 </div>
-                                {(companyRecord.status==='admin') && <div 
+                                {(companyRecord.status === 'admin') && <div
                                     className='edit'
-                                    name='delete'         
-                                    style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}                           
-                                    onClick={()=>{                                        
+                                    name='delete'
+                                    style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
+                                    onClick={() => {
                                         setAlertState('info')
                                         setAlert('You are about to delete the selected Expense Record. Please Delete again if you are sure!')
-                                        setAlertTimeout(5000)                                                                                    
+                                        setAlertTimeout(5000)
                                         deleteExpenses(exp)
                                     }}
                                 >
@@ -555,15 +538,15 @@ const Expenses = ()=>{
                     <div className='purinfocontent' onChange={handleExpensesEntry}>
                         <div className='inpcov'>
                             <div>Select Department</div>
-                            <select 
+                            <select
                                 className='forminp'
                                 name='expensesDepartment'
                                 type='text'
-                                value={fields.expensesDepartment}  
-                                disabled={isView}                              
+                                value={fields.expensesDepartment}
+                                disabled={isView}
                             >
                                 <option value=''>Select Department</option>
-                                {departments.map((dept, index)=>{
+                                {departments.map((dept, index) => {
                                     return (
                                         <option key={index} value={dept}>{dept}</option>
                                     )
@@ -572,7 +555,7 @@ const Expenses = ()=>{
                         </div>
                         <div className='inpcov'>
                             <div>Vendor</div>
-                            <input 
+                            <input
                                 className='forminp'
                                 name='expensesVendor'
                                 type='text'
@@ -583,19 +566,19 @@ const Expenses = ()=>{
                         </div>
                         <div className='inpcov'>
                             <div>Select Expenses Handler</div>
-                            <select 
+                            <select
                                 className='forminp'
                                 name='expensesHandler'
                                 type='text'
-                                value={fields.expensesHandler}     
-                                disabled={isView}                           
+                                value={fields.expensesHandler}
+                                disabled={isView}
                             >
                                 <option value=''>Select Expenses Handler</option>
-                                {employees.map((employee)=>{
-                                    if (!isView){
-                                        if (!employee.dismissalDate){
+                                {employees.map((employee) => {
+                                    if (!isView) {
+                                        if (!employee.dismissalDate) {
                                             return (
-                                                <option 
+                                                <option
                                                     key={employee.i_d}
                                                     value={employee.i_d}
                                                 >
@@ -603,9 +586,9 @@ const Expenses = ()=>{
                                                 </option>
                                             )
                                         }
-                                    }else{
+                                    } else {
                                         return (
-                                            <option 
+                                            <option
                                                 key={employee.i_d}
                                                 value={employee.i_d}
                                             >
@@ -619,11 +602,11 @@ const Expenses = ()=>{
                         <div className='inpcov'>
                             {(companyRecord.status === 'admin' || companyRecord?.permissions.includes('add_expense_category')) && <div><FaPlus
                                 className='add-expense'
-                                onClick={()=>{
+                                onClick={() => {
                                     setShowExpenseModal(true)
                                 }}
                             /> Expense Account</div>}
-                            <select 
+                            <select
                                 className='forminp'
                                 name='expenseCategory'
                                 type='text'
@@ -631,7 +614,7 @@ const Expenses = ()=>{
                                 disabled={isView}
                             >
                                 <option value=''>Expense Category</option>
-                                {expensesCategory.sort((a,b) => a - b).map((category, index)=>{
+                                {expensesCategory.sort((a, b) => a - b).map((category, index) => {
                                     return (
                                         <option key={index} value={category.name}>{`${category.name} ${category['g/l code']}`}</option>
                                     )
@@ -640,7 +623,7 @@ const Expenses = ()=>{
                         </div>
                         <div className='inpcov'>
                             <div>Description of Item</div>
-                            <textarea 
+                            <textarea
                                 className='forminp  exparea'
                                 name='expensesDescription'
                                 type='text'
@@ -651,7 +634,7 @@ const Expenses = ()=>{
                         </div>
                         <div className='inpcov'>
                             <div>Expenses Amount</div>
-                            <input 
+                            <input
                                 className='forminp'
                                 name='expensesAmount'
                                 type='number'
@@ -670,7 +653,7 @@ const Expenses = ()=>{
                                 disabled={isView}
                             >
                                 <option value={''}>Select Expenses Bank</option>
-                                {payPoints.map((payPoint,id)=>{
+                                {payPoints.map((payPoint, id) => {
                                     return <option key={id} value={payPoint}>{payPoint.toUpperCase()}</option>
                                 })}
                             </select>
@@ -678,18 +661,18 @@ const Expenses = ()=>{
                     </div>
                     {!isView && <div className='expensesbuttom'>
                         <div className='inpcov'>
-                            <input 
+                            <input
                                 className='forminp'
                                 name='expensesdate'
                                 type='date'
                                 placeholder='Expenses Date'
                                 value={expensesDate}
-                                onChange={(e)=>{
+                                onChange={(e) => {
                                     setExpensesDate(e.target.value)
                                 }}
                             />
                         </div>
-                        <div 
+                        <div
                             className='expensesbutton'
                             onClick={addExpenses}
                         >{expensesStatus}</div>
@@ -698,9 +681,9 @@ const Expenses = ()=>{
             </div>
             {showExpenseModal && <AddExpenseAccount
                 isOpen={showExpenseModal}
-                onClose={()=>{
+                onClose={() => {
                     setShowExpenseModal(false)
-                }}                
+                }}
                 expenseCode={expenseCode}
                 addExpenseCategory={addExpenseCategory}
                 allExpenseAccounts={allExpenseAccounts}
@@ -711,7 +694,7 @@ const Expenses = ()=>{
 
 export default Expenses
 
-const AddExpenseAccount = ({ 
+const AddExpenseAccount = ({
     isOpen, onClose, expenseCode,
     addExpenseCategory, allExpenseAccounts
 }) => {
@@ -724,7 +707,7 @@ const AddExpenseAccount = ({
         'type': ''
     })
 
-    const subHeaders = allExpenseAccounts.filter((account)=>{
+    const subHeaders = allExpenseAccounts.filter((account) => {
         return account['header-type'] === 'sub-header'
     })
 
@@ -733,23 +716,23 @@ const AddExpenseAccount = ({
         'Income Statement'
     ]
 
-    useEffect(()=>{
-        if (accountDetails['sub-header-code']){
-            var allCategoryCodes = allExpenseAccounts.filter((account)=>{
+    useEffect(() => {
+        if (accountDetails['sub-header-code']) {
+            var allCategoryCodes = allExpenseAccounts.filter((account) => {
                 return Number(account['sub-header-code']) === Number(accountDetails['sub-header-code'])
             })
-            var lastCode = allCategoryCodes[allCategoryCodes.length -1]?.['g/l code']
+            var lastCode = allCategoryCodes[allCategoryCodes.length - 1]?.['g/l code']
             console.log(lastCode)
-            if (lastCode){
+            if (lastCode) {
                 setDefaultGLCode(Number(lastCode) + 10)
-                setAccountDetails((accountDetails)=>{
-                    return {...accountDetails, ['g/l code']: Number(lastCode)+10}
+                setAccountDetails((accountDetails) => {
+                    return { ...accountDetails, ['g/l code']: Number(lastCode) + 10 }
                 })
-            }else{
+            } else {
                 setDefaultGLCode(Number(expenseCode) + 20)
             }
         }
-    },[accountDetails['sub-header-code']])
+    }, [accountDetails['sub-header-code']])
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -779,7 +762,7 @@ const AddExpenseAccount = ({
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label>Sub Header</label>
-                        <select 
+                        <select
                             name="sub-header-code"
                             value={accountDetails['sub-header-code']}
                             onChange={handleChange}
@@ -795,7 +778,7 @@ const AddExpenseAccount = ({
                     <div className="form-group">
                         <label>Account Type</label>
                         <select
-                            name="type" 
+                            name="type"
                             value={accountDetails.type}
                             onChange={handleChange}
                             required
