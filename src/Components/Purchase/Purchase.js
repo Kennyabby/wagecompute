@@ -172,7 +172,7 @@ const Purchase = () => {
 
     useEffect(() => {
         if (curPurchase) {
-            setPurchaseDate(curPurchase.purchaseDate)
+            setPurchaseDate(curPurchase.postingDate)
             setIsView(true)
         } else {
             if (curApproval) {
@@ -289,8 +289,9 @@ const Purchase = () => {
 
     const handleProductPurchase = () => {
         const updateInventory = async () => {
+            // console.log(fields)
             if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
-                fields.purchaseUOM && fields.purchaseHandler && fields.purchaseDepartment
+                (fields.purchaseUOM || fields.stage === 'receipt') && fields.purchaseHandler && fields.purchaseDepartment
             ) {
                 let validEntries = purchaseEntries.filter((entry) => {
                     const { baseQuantity, totalCost } = entry
@@ -309,122 +310,129 @@ const Purchase = () => {
                 }
 
                 const postUpdate = async () => {
+
                     if (curApproval) {
                         curApproval.posted = true
                     }
-                    setAlertState('info')
-                    setAlert('Updating Inventory...')
-                    setAlertTimeout(100000)
                     if (curApproval !== null) {
                         validEntries = curApproval.data.validEntries
                     }
                     const createdAt = Date.now()
                     const entryIds = validEntries.map(entry => { return entry.productId })
-                    validEntries.forEach(async (entry) => {
-                        const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
-                        const newTransaction = {
-                            ...entry,
-                            location: purchaseWrh.name,
-                            postingDate: purchaseDate,
-                            postingStamp: new Date(purchaseDate),
-                            createdAt: createdAt,
-                            handlerId: fields.purchaseHandler,
-                        }
-                        const resps = await fetchServer("POST", {
-                            database: company,
-                            collection: "InventoryTransactions",
-                            update: newTransaction
-                        }, "createDoc", server)
-                        if (resps.err) {
-                            setAlertState('error')
-                            setAlert(resps.mess)
-                            setAlertTimeout(5000)
-                            if (curApproval) {
-                                curApproval.posted = false
+                    if (fields.stage === 'receipt') {
+                        setAlertState('info')
+                        setAlert('Updating Inventory...')
+                        setAlertTimeout(100000)
+                        validEntries.forEach(async (entry) => {
+                            const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+                            const newTransaction = {
+                                ...entry,
+                                location: purchaseWrh.name,
+                                postingDate: purchaseDate,
+                                postingStamp: new Date(purchaseDate),
+                                createdAt: createdAt,
+                                handlerId: fields.purchaseHandler,
                             }
-                        } else {
-                            setPostCount((prevCount) => {
-                                const newCount = prevCount + 1
-                                if (newCount === validEntries.length) {
-                                    setProductAdd(false)
-                                    setAlertState('success')
-                                    setAlert(`${validEntries.length} Inventory Updated Successfully!`)
-                                    setAlertTimeout(100000)
-                                    getProductsWithStock(company, products)
-                                    const entryIds = validEntries.map(entry => { return entry.productId })
-                                    if (curPurchase === null) {
-                                        setTimeout(() => {
-                                            addPurchase(createdAt, entryIds)
-                                        }, 500)
-                                    } else {
-                                        setTimeout(async () => {
-                                            setAlertState('info');
-                                            setAlert('Linking to Posted Purchase...');
-                                            setAlertTimeout(100000);
-                                            const resps1 = await fetchServer("POST", {
-                                                database: company,
-                                                collection: "Purchase",
-                                                prop: [{ createdAt: curPurchase.createdAt }, {
-                                                    productsRef: createdAt,
-                                                    purchaseQuantity: fields.purchaseQuantity,
-                                                    purchaseUOM: 'units'
-                                                }]
-                                            }, "updateOneDoc", server);
-
-                                            if (resps1.err) {
-                                                console.log(resps1.mess);
-                                                setAlertState('error');
-                                                setAlert(resps1.mess);
-                                                setAlertTimeout(5000);
-                                                if (curApproval) {
-                                                    curApproval.posted = false
-                                                }
-                                            } else {
-
-                                                setAlertState('success');
-                                                setAlert('Products Linked Successfully!');
-                                                setAlertTimeout(1000);
-                                                setFields((fields) => {
-                                                    return { ...fields, productsRef: createdAt }
-                                                })
-                                                if (curApproval) {
-                                                    curApproval.posted = false
-                                                }
-                                                getPurchase(company);
-                                                const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
-                                                const transactions = await getPurchaseProducts(company, { productsRef: createdAt })
-                                                if (transactions.length) {
-                                                    const entries = []
-                                                    transactions.forEach((transaction) => {
-                                                        if (transaction.location === purchaseWrh.name) {
-                                                            entries.push(transaction)
-                                                        }
-                                                    })
-                                                    setPurchaseEntries([...entries])
-                                                }
-                                                const rep = await fetchServer("POST", {
-                                                    database: company,
-                                                    collection: "ProductCostLogs",
-                                                    prop: entryIds
-                                                }, "updateProductCost", server)
-
-                                                if (!rep.err) {
-                                                    getProducts(company)
-                                                }
-
-                                            }
-                                            return
-                                        }, 1000);
-                                    }
-                                } else {
-                                    setAlertState('success')
-                                    setAlert(`${newCount} / ${validEntries.length} Inventory Updated Successfully!`)
+                            const resps = await fetchServer("POST", {
+                                database: company,
+                                collection: "InventoryTransactions",
+                                update: newTransaction
+                            }, "createDoc", server)
+                            if (resps.err) {
+                                setAlertState('error')
+                                setAlert(resps.mess)
+                                setAlertTimeout(5000)
+                                if (curApproval) {
+                                    curApproval.posted = false
                                 }
+                            } else {
+                                setPostCount((prevCount) => {
+                                    const newCount = prevCount + 1
+                                    if (newCount === validEntries.length) {
+                                        setProductAdd(false)
+                                        setAlertState('success')
+                                        setAlert(`${validEntries.length} Inventory Updated Successfully!`)
+                                        setAlertTimeout(100000)
+                                        getProductsWithStock(company, products)
+                                        const entryIds = validEntries.map(entry => { return entry.productId })
+                                        if (curPurchase === null) {
+                                            setTimeout(() => {
+                                                addPurchase(createdAt, entryIds)
+                                            }, 500)
+                                        } else {
+                                            setTimeout(async () => {
+                                                setAlertState('info');
+                                                setAlert('Linking to Posted Purchase...');
+                                                setAlertTimeout(100000);
+                                                const resps1 = await fetchServer("POST", {
+                                                    database: company,
+                                                    collection: "Purchase",
+                                                    prop: [{ createdAt: curPurchase.createdAt }, {
+                                                        productsRef: createdAt,
+                                                        purchaseQuantity: fields.purchaseQuantity,
+                                                        purchaseUOM: 'units',
+                                                        stage: 'posted'
 
-                                return newCount
-                            })
-                        }
-                    })
+                                                    }]
+                                                }, "updateOneDoc", server);
+
+                                                if (resps1.err) {
+                                                    console.log(resps1.mess);
+                                                    setAlertState('error');
+                                                    setAlert(resps1.mess);
+                                                    setAlertTimeout(5000);
+                                                    if (curApproval) {
+                                                        curApproval.posted = false
+                                                    }
+                                                } else {
+
+                                                    setAlertState('success');
+                                                    setAlert('Products Linked Successfully!');
+                                                    setAlertTimeout(1000);
+                                                    setFields((fields) => {
+                                                        return { ...fields, productsRef: createdAt }
+                                                    })
+                                                    if (curApproval) {
+                                                        curApproval.posted = false
+                                                    }
+                                                    getPurchase(company);
+                                                    const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+                                                    const transactions = await getPurchaseProducts(company, { productsRef: createdAt })
+                                                    if (transactions.length) {
+                                                        const entries = []
+                                                        transactions.forEach((transaction) => {
+                                                            if (transaction.location === purchaseWrh.name) {
+                                                                entries.push(transaction)
+                                                            }
+                                                        })
+                                                        setPurchaseEntries([...entries])
+                                                    }
+                                                    const rep = await fetchServer("POST", {
+                                                        database: company,
+                                                        collection: "ProductCostLogs",
+                                                        prop: entryIds
+                                                    }, "updateProductCost", server)
+
+                                                    if (!rep.err) {
+                                                        getProducts(company)
+                                                    }
+
+                                                }
+                                                return
+                                            }, 1000);
+                                        }
+                                    } else {
+                                        setAlertState('success')
+                                        setAlert(`${newCount} / ${validEntries.length} Inventory Updated Successfully!`)
+                                    }
+
+                                    return newCount
+                                })
+                            }
+                        })
+                    } else {
+                        addPurchase(createdAt, entryIds, data)
+                    }
                 }
                 if (curApproval && curApproval?.approved) {
                     if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_purchase_posts')) {
@@ -482,15 +490,17 @@ const Purchase = () => {
         }
     }
 
-    const addPurchase = async (productsRef, entryIds) => {
+    const addPurchase = async (productsRef, entryIds, data) => {
         setAlertState('info')
         setAlert('Posting Purchase...')
+        setAlertTimeout(10000)
         setPurchaseStatus('Posting Purchase...')
         const newPurchase = {
             ...fields,
+            ...(curPurchase === null && { stage: 'receipt', data: data }),
             postingDate: purchaseDate,
             approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
-            productsRef,
+            ...(productsRef && { productsRef }),
             createdAt: Date.now()
         }
         const newPurchases = [newPurchase, ...purchase]
@@ -523,26 +533,28 @@ const Purchase = () => {
             setAlert('Purchase Record Posted Successfully!')
             setAlertTimeout(1000)
             getPurchase(company)
-            const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
-            const transactions = await getPurchaseProducts(company, newPurchase)
-            if (transactions.length) {
-                const entries = []
-                transactions.forEach((transaction) => {
-                    if (transaction.location === purchaseWrh.name) {
-                        entries.push(transaction)
-                    }
-                })
-                setPurchaseEntries([...entries])
-            }
-            const rep = await fetchServer("POST", {
-                database: company,
-                collection: "ProductCostLogs",
-                markUp: curPosSettings?.useMarkUp,
-                prop: entryIds
-            }, "updateProductCost", server)
+            if (fields.stage === 'receipt') {
+                const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+                const transactions = await getPurchaseProducts(company, newPurchase)
+                if (transactions.length) {
+                    const entries = []
+                    transactions.forEach((transaction) => {
+                        if (transaction.location === purchaseWrh.name) {
+                            entries.push(transaction)
+                        }
+                    })
+                    setPurchaseEntries([...entries])
+                }
+                const rep = await fetchServer("POST", {
+                    database: company,
+                    collection: "ProductCostLogs",
+                    markUp: curPosSettings?.useMarkUp,
+                    prop: entryIds
+                }, "updateProductCost", server)
 
-            if (!rep.err) {
-                getProducts(company)
+                if (!rep.err) {
+                    getProducts(company)
+                }
             }
 
         }
@@ -780,7 +792,7 @@ const Purchase = () => {
                                 createdAt, postingDate,
                                 purchaseAmount, purchaseQuantity,
                                 purchaseUOM, purchaseDepartment,
-                                itemCategory, purchaseHandler
+                                itemCategory, purchaseHandler, stage
                             } = pur
                             var handlerName = ''
                             employees.forEach((emp) => {
@@ -799,9 +811,10 @@ const Purchase = () => {
                                         <div>Purchase Department: <b>{purchaseDepartment}</b></div>
                                         <div>Purchase Amount: <b>{'₦' + (Number(purchaseAmount)).toLocaleString()}</b></div>
                                         <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM.toUpperCase()} of ${itemCategory}`}</b></div>
-                                        <div className='deptdesc'>{`Purchase Handled By:`} <b>{`${handlerName}`}</b></div>
+                                        <div className='deptdesc'>{`Purchase Handled By:`}<b>{`${handlerName}`}</b></div>
+                                        {stage === 'receipt' && <div className='deptdesc' style={{ fontSize: '1rem', color: 'red' }}><b>PENDING RECEIPT</b></div>}
                                     </div>
-                                    {(companyRecord.status === 'admin') && <div
+                                    {(companyRecord.status === 'admin') && [null, undefined, 'posted'].includes(stage) && <div
                                         className='edit'
                                         name='delete'
                                         style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
@@ -1001,7 +1014,7 @@ const Purchase = () => {
                                     handleProductPurchase()
                                 }
                             }}
-                        >{curApproval ? (curApproval.approved ? purchaseStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Approve Request' : 'Request Approval')}</div>
+                        >{curApproval ? (curApproval.approved ? purchaseStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Purchase' : 'Request Approval')}</div>
                     </div>}
                 </div>
             </div>
@@ -1077,11 +1090,11 @@ const AddProduct = ({
                     documentType: 'Receipt'
                 }
             }))
+        } else if (curPurchase?.stage === 'receipt') {
+            setPurchaseEntries(curPurchase?.data?.validEntries || [])
         }
     }, [])
-    useEffect(() => {
-        // console.log(products)
-    }, [products])
+
     useEffect(() => {
         if (!isProductView) {
             let ct = 0
@@ -1261,8 +1274,8 @@ const AddProduct = ({
                                     }
                                 }
                             }
-                        >{curPurchase === null ? 'Add' : 'Save'}</div>}
-                        {isProductView && curPurchase === null && <div
+                        >{curPurchase === null ? 'Add' : (fields.stage === 'receipt' ? 'Receive' : 'Save')}</div>}
+                        {isProductView && (curPurchase === null || fields?.stage === 'receipt') && <div
                             className='add-products-button-add'
                             onClick={() => {
                                 setIsProductEdit(true)
@@ -1271,7 +1284,7 @@ const AddProduct = ({
                                 })
                                 setIsProductView(false)
                             }}
-                        >{'Edit'}</div>}
+                        >{fields?.stage === 'receipt' ? 'Release' : 'Edit'}</div>}
                         <div
                             className='add-products-button-cancel'
                             onClick={() => {

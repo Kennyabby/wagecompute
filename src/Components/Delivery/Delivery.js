@@ -561,12 +561,12 @@ const Delivery = () => {
                 } else {
                     setAlertState('success');
                     setAlert('Offline Delivery Sync complete');
-                    setAlertTimeout(3000);
+                    setAlertTimeout(1000);
                 }
             } else {
                 setAlertState('success');
                 setAlert('Offline Delivery Sync complete');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
             }
         } catch (e) {
             setAlertState('error');
@@ -654,7 +654,7 @@ const Delivery = () => {
                     } else {
                         setAlert('Welcome Back!');
                     }
-                    setAlertTimeout(2000);
+                    setAlertTimeout(1000);
                     setStartSession(false);
                     setCurrSession(newSession);
                     setOpeningCash(0);
@@ -720,7 +720,7 @@ const Delivery = () => {
                 } else {
                     setAlert('Session Ended!');
                 }
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
                 mergeAndPersistSessions([closedSession])
                 setCountedSales({});
                 setEndSession(false);
@@ -1322,7 +1322,7 @@ const Delivery = () => {
                 });
                 setAlertState('success');
                 setAlert((count || 0) + 1, 'Order(s) Inventory updated successfully');
-                setAlertTimeout(2000);
+                setAlertTimeout(1000);
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
                     // 3) Update local order state with deliveryDataUpdate
@@ -1357,17 +1357,17 @@ const Delivery = () => {
                         if (!count) {
                             setAlertState('success');
                             setAlert('Delivery processed successfully');
-                            setAlertTimeout(2000);
+                            setAlertTimeout(1000);
                         } else if (count === tableOrders.length - 1) {
                             setAlertState('success');
                             setAlert('All Deliveries processed successfully');
-                            setAlertTimeout(2000);
+                            setAlertTimeout(1000);
                         }
                     } else {
                         setCancelling(false);
                         setAlertState('success');
                         setAlert('Delivery cancelled successfully');
-                        setAlertTimeout(2000);
+                        setAlertTimeout(1000);
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     // fetchSessions(company, "delivery", companyRecord)
@@ -1632,7 +1632,7 @@ const Delivery = () => {
                             : o
                     )
                 );
-                mergeAndPersistOrders(updatedOrder)
+                mergeAndPersistOrders([updatedOrder])
                 // setAllSessionOrders((allSessionOrders) =>
                 //     allSessionOrders.map((o) =>
                 //         o.orderNumber === updatedOrder.orderNumber
@@ -2594,9 +2594,9 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    setAlertTimeout(2000);
                     setAlert('Order cancelled successfully');
                     setAlertState('success');
+                    setAlertTimeout(1000);
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
@@ -3202,7 +3202,7 @@ const DeliveryDashboard = ({
                                                                         setAlertTimeout(3000)
                                                                         return
                                                                     } else {
-                                                                        if (![null, undefined].includes(ordersResponse.record)) {
+                                                                        if (![null, undefined].includes(ordersResponse.record && Array.isArray(ordersResponse.record))) {
                                                                             mergeAndPersistOrders(ordersResponse.record)
                                                                             setAlertState('info')
                                                                             setAlert('Orders Calculated. Please proceed with the ending of user session!')

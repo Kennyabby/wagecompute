@@ -270,12 +270,12 @@ const Sales = () => {
                 } else {
                     setAlertState('success');
                     setAlert('Offline Sales Sync complete');
-                    setAlertTimeout(3000);
+                    setAlertTimeout(1000);
                 }
             } else {
                 setAlertState('success');
                 setAlert('Offline Sales Sync complete');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
             }
         } catch (e) {
             setAlertState('error');
@@ -1375,7 +1375,7 @@ const Sales = () => {
                                             localStorage.removeItem(`sales-${curSale?.createdAt}`)
                                             setAlertState('success');
                                             setAlert('Products Linked Successfully!');
-                                            setAlertTimeout(3000);
+                                            setAlertTimeout(1000);
                                             setAddingProducts(false)
                                             setPostedProducts([])
                                             getProductsWithStock(company, products);
@@ -1487,7 +1487,7 @@ const Sales = () => {
                 getSales(company)
                 setAlertState('success')
                 setAlert('Sales Posted Successfully!')
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 setPostStatus('Post Sales')
                 // const transactions = await getSalesProducts(company, newSale); 
                 // if (transactions.length){
@@ -1680,7 +1680,7 @@ const Sales = () => {
                 setAlertState('success')
                 setAlert('Sales Deleted Successfully!')
                 setDeleteCount(0)
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 getSales(company)
             }
         } else {
@@ -1784,7 +1784,7 @@ const Sales = () => {
                     setRecoveryFields([])
                     setAlertState('success')
                     setAlert('Debt Recovered Successfully!')
-                    setAlertTimeout(5000)
+                    setAlertTimeout(1000)
                     setRecoveryStatus('Post Recovery')
                     setRecoveryEmployeeId('')
                     result = true
@@ -1858,7 +1858,7 @@ const Sales = () => {
                     setRecoveryFields([])
                     setAlertState('success')
                     setAlert('Debt Recovered Successfully!')
-                    setAlertTimeout(5000)
+                    setAlertTimeout(1000)
                     setRecoveryStatus('Post Recovery')
                     setRecoveryEmployeeId('')
                     result = true
@@ -2098,7 +2098,7 @@ const Sales = () => {
             getApprovals(company, companyRecord)
             setAlertState('success')
             setAlert('Rentals Posted Successfully!')
-            setAlertTimeout(5000)
+            setAlertTimeout(1000)
             setRentalsStatus('Post Rentals')
         }
     }
@@ -2123,7 +2123,7 @@ const Sales = () => {
                 setAlertState('success')
                 setAlert('Rental Sales Deleted Successfully!')
                 setDeleteCount(0)
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 getRentals(company)
             }
         } else {
@@ -2199,7 +2199,7 @@ const Sales = () => {
                 getApprovals(company, companyRecord)
                 setAlertState('success')
                 setAlert('Receipt Uploaded Successfully!')
-                setAlertTimeout(3000)
+                setAlertTimeout(1000)
             }
             if (resp.err) {
                 setUploadingReceipt(false)
@@ -2240,7 +2240,7 @@ const Sales = () => {
                 setAlertState('success')
                 setDeletingReceipt(false)
                 setAlert('Receipt Deleted Successfully!')
-                setAlertTimeout(3000)
+                setAlertTimeout(1000)
             }
             if (resp.err) {
                 setDeletingReceipt(false)
@@ -2484,7 +2484,7 @@ const Sales = () => {
                                             if (resp.completed) {
                                                 setAlertState('success')
                                                 setAlert('Deleted Approval Data Successfully!')
-                                                setAlertTimeout(3000)
+                                                setAlertTimeout(1000)
                                                 setKitchenRecords([])
                                                 setCurSale(null)
                                             }
@@ -2645,7 +2645,7 @@ const Sales = () => {
                                             if (resp.completed) {
                                                 setAlertState('success')
                                                 setAlert('Deleted Approval Data Successfully!')
-                                                setAlertTimeout(3000)
+                                                setAlertTimeout(1000)
                                                 setCurRent(null)
                                             }
 
@@ -2748,7 +2748,7 @@ const Sales = () => {
                                             if (resp.completed) {
                                                 setAlertState('success')
                                                 setAlert('Deleted Recovery Approval Data Successfully!')
-                                                setAlertTimeout(3000)
+                                                setAlertTimeout(1000)
                                                 setCurRent(null)
                                             }
 

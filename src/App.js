@@ -32,6 +32,7 @@ import {
 } from './Resources/offlineDb';
 
 // const SERVER = "http://localhost:3001"
+// const SERVER = ""
 const SERVER = "https://enterpriseserver.up.railway.app"
 // const SERVER = "https://enterpriseserver-1.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
@@ -301,8 +302,8 @@ function App() {
                       existing.forEach(co => { if (co && co.orderNumber) map[co.orderNumber] = co });
                       payload.data.forEach(o => { if (o && o.orderNumber) map[o.orderNumber] = o });
                       const merged = Object.values(map);
-                      setPosOrders(merged);
-                      setAllPosOrders(merged)
+                      // setPosOrders(merged);
+                      // setAllPosOrders(merged)
                       setCached(company, 'posOrders', merged, companyRecord?.emailid);
                     } catch (e) {/* ignore cache update failures */ }
                   } catch (e) {
@@ -333,8 +334,8 @@ function App() {
                       existing.forEach(co => { if (co && co.orderNumber) map[co.orderNumber] = co });
                       if (o && o.orderNumber) map[o.orderNumber] = o;
                       const merged = Object.values(map);
-                      setPosOrders(merged);
-                      setAllPosOrders(merged)
+                      // setPosOrders(merged);
+                      // setAllPosOrders(merged)
                       setCached(company, 'posOrders', merged, companyRecord?.emailid);
                     } catch (e) { }
                   } catch (e) { console.error('SSE Orders apply error', e) }
@@ -370,13 +371,13 @@ function App() {
                       existing.forEach(ss => { if (ss && ss.start != null) map[ss.start] = ss });
                       payload.data.forEach(ss => { if (ss && ss.start != null) map[ss.start] = ss });
                       const merged = Object.values(map);
-                      setAllSessions(merged);
+                      // setAllSessions(merged);
                       setCached(company, 'allSessions', merged, companyRecord?.emailid);
 
                       // derive sales/delivery session lists
                       const salesList = merged.filter(m => m.type === 'sales');
                       const deliveryList = merged.filter(m => m.type === 'delivery');
-                      setAllSalesSessions(salesList);
+                      // setAllSalesSessions(salesList);
                       setSalesSessions(salesList.filter(s => s.employee_id === companyRecord?.emailid));
                       setDeliverySessions(deliveryList);
                     } catch (e) { }
@@ -407,7 +408,7 @@ function App() {
                       existing.forEach(ss => { if (ss && ss.start != null) map[ss.start] = ss });
                       if (s && s.start != null) map[s.start] = s;
                       const merged = Object.values(map);
-                      setAllSessions(merged);
+                      // setAllSessions(merged);
                       setCached(company, 'allSessions', merged, companyRecord?.emailid);
                     } catch (e) { }
                   } catch (e) { console.error('SSE POSSessions apply error', e) }
@@ -555,7 +556,11 @@ function App() {
                     }
                   } catch (e) { console.error('SSE InventoryTransactions apply error', e) }
                   // recompute lightweight stock view (best-effort)
-                  try { getProductsWithStock(company, products) } catch (e) { }
+                  try { 
+                    if (products){
+                      getProductsWithStock(company, products) 
+                    }
+                  } catch (e) { }
                 })
               } else if (payload.data && typeof payload.data === 'object') {
                 import('./Resources/offlineDb').then(async ({ putInventoryTransactions, loadPendingChanges }) => {
@@ -568,7 +573,11 @@ function App() {
                       await putInventoryTransactions(company, companyRecord?.emailid, [txn]).catch(() => { });
                     }
                   } catch (e) { console.error('SSE InventoryTransactions apply error', e) }
-                  try { getProductsWithStock(company, products) } catch (e) { }
+                  try { 
+                    if (products){
+                      getProductsWithStock(company, products) 
+                    }
+                  } catch (e) { }
                 })
               }
               break;
@@ -1159,7 +1168,7 @@ function App() {
           getApprovals(company, companyRecord)
           setAlertState('success')
           setAlert('Approval Updated!')
-          setAlertTimeout(5000)
+          setAlertTimeout(1000)
           setApprovalStatus(false)
           setApprovalMessage('')
           setShowApprovalBox(false)
@@ -1231,7 +1240,7 @@ function App() {
           }
           setAlertState('success')
           setAlert('Approval Request Sent Successfully!')
-          setAlertTimeout(5000)
+          setAlertTimeout(1000)
           getApprovals(company, companyRecord)
           setCurApproval(approvalData)
           return true
@@ -1686,7 +1695,7 @@ function App() {
         console.log(resps.mess)
         setViewAccess('405')
       } else {
-        if (!resps.mess && Array.isArray(resps.record)) {
+        if (!resps.mess && ![null, undefined].includes(resps.record[0]) && Array.isArray(resps.record)) {
           setViewAccess(resps.record[0].pauseDB)
           if (resps.record[0].pauseDB) {
             window.localStorage.removeItem('ps-vw')
@@ -1694,6 +1703,9 @@ function App() {
             window.localStorage.setItem('ps-vw', 'true')
           }
           setPauseView(resps.record[0].pauseDB)
+        }else{
+          setPauseView(false)
+          setViewAccess(false)
         }
       }
     }
@@ -1858,8 +1870,8 @@ function App() {
     }
   };
 
-  const mergeAndPersistOrders = async (orders) => {
-    try {
+  const mergeAndPersistOrders = async (orders) => {    
+    try {      
       const pending = await loadPendingChanges(company, companyRecord.emailid);
       const pendingOrders = pending.filter(c => c.entityType === 'order').map(c => c.payload).filter(Boolean);
       const pendingOrderNums = new Set(pendingOrders.map(o => o.orderNumber));
@@ -1868,7 +1880,7 @@ function App() {
       const localMap = {};
       for (const l of localOrders) if (l && l.orderNumber) localMap[l.orderNumber] = l;
 
-      const serverOrders = orders || [];
+      const serverOrders = orders ? orders : [];      
       const map = {};
       // start with server
       for (const s of serverOrders) if (s && s.orderNumber) map[s.orderNumber] = s;
@@ -1879,7 +1891,7 @@ function App() {
       // finally apply pending orders (create/update) to override server
       for (const p of pendingOrders) if (p && p.orderNumber) map[p.orderNumber] = p;
 
-      const merged = Object.values(map);
+      const merged = Object.values(map);      
       setPosOrders(merged);
       setAllPosOrders(merged)
       // persist server orders to IndexedDB except those that are pending locally
@@ -1890,7 +1902,7 @@ function App() {
       }
     } catch (e) {
       console.warn('POS Orders: mergeAndPersist failed', e);
-      if (orders.length) {
+      if (orders?.length) {
         setPosOrders(orders);
         setAllPosOrders(orders)
       }
@@ -2061,6 +2073,10 @@ function App() {
 
         if (resp.record && Array.isArray(resp.record)) {
           // console.log('table Response: ',resp.record)
+          // console.log('For getPosOrder: Printing Orders createdAt...', resp.record)
+          // resp.record?.forEach((ord)=>{
+          //   console.log(ord?.createdAt)
+          // })
           mergeAndPersistOrders(resp.record);
           // console.log("allOrders list:", resp.record)
           // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
@@ -2081,6 +2097,10 @@ function App() {
         }, "getDocsDetails", SERVER)
 
         if (resp.record && Array.isArray(resp.record)) {
+          // console.log('For getPosOrder else section: Printing Orders createdAt...', resp.record)
+          // resp.record?.forEach((ord)=>{
+          //   console.log(ord?.createdAt)
+          // })
           mergeAndPersistOrders(resp.record);
           // console.log("allOrders list:", resp.record)
           // console.log('allOrders:', resp.record.find((order)=> order.orderNumber === 'ORD-251213-89997400'))
@@ -2208,7 +2228,7 @@ function App() {
     const knownFields = [
       "_id", "i_d", "name", "salesPrice", "costPrice", "category",
       "purchaseVat", "salesVat", "salesUom", "purchaseUom",
-      "buyTo", "createdAt", "type", "vipPrice", "imgId", "viewLink", "downloadLink"
+      "buyTo", "createdAt", "type", "markUp", "vipPrice", "imgId", "viewLink", "downloadLink"
     ];
 
     // Build a projection object like { _id: 1, i_d: 1, name: 1, ... }

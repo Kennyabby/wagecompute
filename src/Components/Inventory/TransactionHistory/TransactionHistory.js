@@ -43,7 +43,7 @@ const TransactionHistory = () => {
     summary: {}
   });
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10), // 1st of current month
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10), // 1st of current month
     endDate: new Date().toISOString().slice(0, 10), // Today
     location: 'all',
     productId: '',
@@ -63,7 +63,7 @@ const TransactionHistory = () => {
     positiveAdjustments: 0,
     negativeAdjustments: 0,
     closingStock: 0,
-    
+
     // Cost Values
     openingStockCost: 0,
     purchasesCost: 0,
@@ -74,11 +74,11 @@ const TransactionHistory = () => {
     positiveAdjustmentsCost: 0,
     negativeAdjustmentsCost: 0,
     closingStockCost: 0,
-    
+
     // Calculated Values
     netTransferCost: 0,
     netAdjustmentCost: 0,
-    
+
     // Totals
     totalIn: 0,
     totalOut: 0,
@@ -263,7 +263,7 @@ const TransactionHistory = () => {
   }, [settings]);
 
   // ========== Helper Functions ==========
-  
+
   // Format date from timestamp
   const formatTransactionDate = (timestamp) => {
     if (!timestamp) return 'N/A';
@@ -308,7 +308,7 @@ const TransactionHistory = () => {
     if (tx.entryType === 'Sales') return 'Sale';
     if (tx.documentType === 'Transfer Shipment') return 'Transfer Out';
     if (tx.documentType === 'Transfer Receipt') return 'Transfer In';
-    if (tx.entryType === 'Positive Entry') return 'Adjustment (+)'; 
+    if (tx.entryType === 'Positive Entry') return 'Adjustment (+)';
     if (tx.entryType === 'Nagative Entry') return 'Adjustment (-)';
     return tx.entryType || tx.documentType || 'Other';
   };
@@ -319,7 +319,7 @@ const TransactionHistory = () => {
       const query = {
         database: company,
         collection: 'InventoryTransactions',
-        
+
         prop: {
           postingDate: {
             [type === 'openingStock' ? '$lt' : '$lte']: type === 'openingStock' ? startDate : endDate
@@ -346,16 +346,16 @@ const TransactionHistory = () => {
         // Add sort to use index efficiently
         sort: { postingDate: 1 }
       };
-  
+
       // Add filters only if needed
       if (filters.location && filters.location !== 'all') {
         query.prop.location = filters.location;
       }
-  
+
       if (filters.productId) {
         query.prop.productId = filters.productId;
       }
-  
+
       // if (filters.transactionType) {
       //   query.prop.$or = [
       //     { entryType: filters.transactionType },
@@ -427,7 +427,7 @@ const TransactionHistory = () => {
 
       setAlertState('success');
       setAlert('Selected duplicate transactions deleted successfully');
-      setAlertTimeout(3000);
+      setAlertTimeout(1000);
     } catch (error) {
       console.error('Batch delete failed', error);
       setAlertState('error');
@@ -505,7 +505,7 @@ const TransactionHistory = () => {
 
       setAlertState('success');
       setAlert('Duplicate cleanup completed successfully');
-      setAlertTimeout(3000);
+      setAlertTimeout(1000);
     } catch (error) {
       console.error('Auto clean duplicates failed', error);
       setAlertState('error');
@@ -520,14 +520,14 @@ const TransactionHistory = () => {
 
   // Handle summary card click
   const handleSummaryCardClick = async (type) => {
-    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')){
+    if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')) {
       try {
         setLoading(true);
-        
+
         let transactionsToProcess = [];
         const startDate = new Date(filters.startDate).toISOString().split('T')[0];
         const endDate = new Date(filters.endDate).toISOString().split('T')[0];
-  
+
         // For opening/closing stock, use direct queries for better accuracy
         if (type === 'openingStock' || type === 'closingStock') {
           transactionsToProcess = await fetchStockData(type, startDate, endDate);
@@ -537,11 +537,11 @@ const TransactionHistory = () => {
             const txDate = new Date(tx.postingStamp || tx.postingDate);
             const startDate = new Date(filters.startDate);
             const endDate = new Date(filters.endDate);
-            
+
             // if (!(txDate >= startDate && txDate <= endDate)) {
             //   return false;
             // }
-            
+
             // Apply type-specific filters
             switch (type) {
               case 'purchases':
@@ -557,7 +557,7 @@ const TransactionHistory = () => {
             }
           });
         }
-  
+
         // Process the transactions and group by product
         const processedData = {};
         let totalQuantity = 0;
@@ -566,7 +566,7 @@ const TransactionHistory = () => {
         transactionsToProcess.forEach(tx => {
           const productId = tx.productId;
           const productName = tx.name || products.find(p => p.i_d === productId)?.name || `Product ${productId}`;
-          
+
           if (!processedData[productId]) {
             processedData[productId] = {
               productId,
@@ -578,7 +578,7 @@ const TransactionHistory = () => {
               locations: {}
             };
           }
-  
+
           // For opening/closing stock, we need to consider the running balance
           // const quantity = type === 'openingStock' || type === 'closingStock' ? 
           //   (tx.entryType === 'Sales' || tx.documentType === 'Transfer Shipment' ? 
@@ -594,7 +594,7 @@ const TransactionHistory = () => {
           const cost = Number(tx.totalCost || 0)
           const salesValue = -1 * Math.abs(Number(tx.totalSales || 0))
           const location = tx.location || 'Unknown Location';
-          
+
           // Initialize location data if it doesn't exist
           if (!processedData[productId].locations[location]) {
             processedData[productId].locations[location] = {
@@ -603,48 +603,48 @@ const TransactionHistory = () => {
               value: 0
             };
           }
-  
+
           // Update product totals
           let productCost = products.find(p => p.i_d === productId)?.costPrice || 0;
           processedData[productId].quantity += quantity;
           processedData[productId].cost += quantity * productCost; // Use costPrice for cost calculation
-          if (type === 'sales'){
+          if (type === 'sales') {
             processedData[productId].value += salesValue;
           }
-          
+
           // Update location-specific totals
           processedData[productId].locations[location].quantity += quantity;
           processedData[productId].locations[location].cost += quantity * productCost;
-          if (type === 'sales'){
+          if (type === 'sales') {
             processedData[productId].locations[location].value += salesValue;
           }
-  
+
           // Update grand totals
           totalQuantity += quantity;
           totalCost += (quantity * productCost);
           totalValue += salesValue;
         });
-  
+
         // Convert to array and calculate percentages
         const productList = Object.values(processedData).map(product => ({
           ...product,
           percentage: totalQuantity !== 0 ? (product.quantity / totalQuantity) * 100 : 0,
           unitCost: product.quantity !== 0 ? product.cost / product.quantity : 0,
-          costPercentage: totalCost !==0 ? (product.cost / totalCost) * 100 : 0,
-          valuePercentage: totalValue !==0 ? (product.value / totalValue) * 100 : 0,
+          costPercentage: totalCost !== 0 ? (product.cost / totalCost) * 100 : 0,
+          valuePercentage: totalValue !== 0 ? (product.value / totalValue) * 100 : 0,
           locations: Object.entries(product.locations).map(([location, data]) => ({
             name: location,
             quantity: data.quantity,
-            unitCost: data.quantity ? (data.cost/data.quantity) : 0,
+            unitCost: data.quantity ? (data.cost / data.quantity) : 0,
             cost: data.cost,
             value: data.value,
             percentage: data.quantity / product.quantity * 100
           }))
         }));
-  
+
         // Sort by quantity (highest first)
         productList.sort((a, b) => b.quantity - a.quantity);
-  
+
         // Determine the title based on the card type
         const getTitle = () => {
           switch (type) {
@@ -657,7 +657,7 @@ const TransactionHistory = () => {
             default: return 'Transaction Details';
           }
         };
-  
+
         // Set the modal data and show the modal
         setModalData({
           show: true,
@@ -713,18 +713,18 @@ const TransactionHistory = () => {
 
     // Set font
     doc.setFont('helvetica');
-    
+
     // Add title
     doc.setFontSize(18);
     doc.text(title, 15, 20);
-    
+
     // Add date and date range
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 15, 28);
-    
+
     let startY = 35; // Default start position
-    
+
     // Add date range if available
     if (startDate && endDate) {
       const formattedStart = new Date(startDate).toLocaleDateString();
@@ -732,7 +732,7 @@ const TransactionHistory = () => {
       doc.text(`Date Range: ${formattedStart} to ${formattedEnd}`, 15, 34);
       startY = 42; // Adjust startY if date range is shown
     }
-    
+
     // Table settings
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
@@ -747,15 +747,15 @@ const TransactionHistory = () => {
     ];
     const rowHeight = 7;
     let currentY = startY;
-    
+
     // Draw table header
     doc.setFillColor(41, 128, 185);
     // doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    
+
     // Set text color to white for all headers
     // doc.setTextColor(255, 255, 255);
-    
+
     // Draw header cells
     let xPos = margin;
     ['Product', 'Qty', 'Sales Value', 'Unit Cost', 'Total Cost'].forEach((header, i) => {
@@ -766,18 +766,18 @@ const TransactionHistory = () => {
       doc.text(header, xPos + 2, currentY + 5);
       xPos += colWidths[i];
     });
-    
-    
-    
+
+
+
     currentY += rowHeight;
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, currentY, pageWidth - margin, currentY);
-    
+
     // Reset text color and font
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    
+
     // Process each product
     data.forEach((product, index) => {
       // Check for page break
@@ -785,24 +785,24 @@ const TransactionHistory = () => {
         doc.addPage();
         currentY = 20;
       }
-      
+
       // Product name (main row)
       doc.setFont('helvetica', 'bold');
       doc.text(product.productName, margin + 2, currentY + 5);
       doc.setFont('helvetica', 'normal');
-      
+
       // Quantity
       doc.text(
         formatNumber(product.quantity),
-        margin + colWidths[0] + colWidths[1]/2,
+        margin + colWidths[0] + colWidths[1] / 2,
         currentY + 5,
         { align: 'right' }
       );
-      
+
       // Total Value
       doc.text(
         formatCurrency(product.value),
-        margin + colWidths[0] + colWidths[1] + colWidths[2]/2,
+        margin + colWidths[0] + colWidths[1] + colWidths[2] / 2,
         currentY + 5,
         { align: 'right' }
       );
@@ -810,21 +810,21 @@ const TransactionHistory = () => {
       // Unit Cost
       doc.text(
         formatCurrency(Math.abs(product.unitCost)),
-        margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
+        margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2,
         currentY + 5,
         { align: 'right' }
       );
-      
+
       // Total Cost
       doc.text(
         formatCurrency(product.cost),
-        margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4]/2,
+        margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] / 2,
         currentY + 5,
         { align: 'right' }
       );
-      
+
       currentY += rowHeight;
-      
+
       // Add location details
       if (product.locations && Object.keys(product.locations).length > 0) {
         Object.entries(product.locations).forEach(([location, locData]) => {
@@ -832,7 +832,7 @@ const TransactionHistory = () => {
             doc.addPage();
             currentY = 20;
           }
-          
+
           doc.setFontSize(9);
           doc.text(
             `• ${locData.name}`,
@@ -842,100 +842,100 @@ const TransactionHistory = () => {
           // Location quantity
           doc.text(
             formatNumber(locData.quantity),
-            margin + colWidths[0] + colWidths[1]/2,
+            margin + colWidths[0] + colWidths[1] / 2,
             currentY + 5,
             { align: 'right' }
           );
-         
+
           // Location value
           doc.text(
             formatCurrency(locData.value),
-            margin + colWidths[0] + colWidths[1] + colWidths[2]/2,
+            margin + colWidths[0] + colWidths[1] + colWidths[2] / 2,
             currentY + 5,
             { align: 'right' }
           );
-         
+
           // Location unit cost
           doc.text(
             formatCurrency(Math.abs(locData.unitCost)),
-            margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
+            margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2,
             currentY + 5,
             { align: 'right' }
           );
-         
+
           // Location total cost
           doc.text(
             formatCurrency(Math.abs(locData.cost)),
-            margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4]/2,
+            margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] / 2,
             currentY + 5,
             { align: 'right' }
           );
-          
+
           currentY += rowHeight;
         });
         doc.setFontSize(10);
       }
-      
+
       // Add some space after each product
       currentY += 2;
       doc.setDrawColor(240, 240, 240);
       doc.line(margin, currentY, pageWidth - margin, currentY);
       currentY += 3;
     });
-    
+
     // Add summary row
     currentY += 5;
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, currentY, pageWidth - margin, currentY);
     currentY += 2;
-    
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    
+
     // Total label
     doc.text(
       'Total',
       margin + 2,
       currentY + 6
     );
-    
+
     // Total Quantity
     doc.text(
       formatNumber(summary.totalQuantity),
-      margin + colWidths[0] + colWidths[1]/2,
+      margin + colWidths[0] + colWidths[1] / 2,
       currentY + 6,
       { align: 'right' }
     );
-    
+
     // Total Value
     doc.text(
       formatCurrency(summary.totalValue || 0),
-      margin + colWidths[0] + colWidths[1] + colWidths[2]/2,
+      margin + colWidths[0] + colWidths[1] + colWidths[2] / 2,
       currentY + 6,
       { align: 'right' }
     );
-    
+
     // Average Unit Cost
     doc.text(
       formatCurrency(Math.abs(summary.averageUnitCost) || 0),
-      margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]/2,
+      margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2,
       currentY + 6,
       { align: 'right' }
     );
-    
+
     // Total Cost
     doc.text(
       formatCurrency(summary.totalCost || 0),
-      margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4]/2,
+      margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] / 2,
       currentY + 6,
       { align: 'right' }
     );
-    
+
     // Draw bottom border
     currentY += 10;
     doc.setDrawColor(0, 0, 0);
     doc.line(margin, currentY, pageWidth - margin, currentY);
-    
+
     // Save the PDF with a proper filename
     doc.save(`${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
@@ -951,10 +951,10 @@ const TransactionHistory = () => {
     try {
       // Format the date to match the database format (ISO string)
       const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
-      
+
       // Get all products that have a salesPrice or vipPrice
       const productIds = products
-        .filter(product => product.salesPrice || product.vipPrice )
+        .filter(product => product.salesPrice || product.vipPrice)
         .map(product => product.i_d);
 
       const query = {
@@ -966,7 +966,7 @@ const TransactionHistory = () => {
               postingDate: { $lt: formattedStartDate },
               ...(location !== 'all' && { location }),
               ...(productId && { productId }),
-              ...(transactionType !== 'all' && { 
+              ...(transactionType !== 'all' && {
                 $or: [
                   { entryType: transactionType },
                   { documentType: transactionType }
@@ -974,41 +974,51 @@ const TransactionHistory = () => {
               })
             }
           },
-          { 
+          {
             $group: {
               _id: null,
-              openingStock: { $sum: {
-                $cond: [
-                  { $isNumber: "$baseQuantity" },
-                  "$baseQuantity",
-                  { $toDouble: "$baseQuantity" }
-                ]
-              }},
-              openingStockCost: { $sum: {
-                $cond: [
-                  { $in: ["$productId", productIds] },
-                  { $cond: [
-                    { $isNumber: "$totalCost" },
-                    "$totalCost",
-                    { $toDouble: "$totalCost" }
-                  ]},
-                  0
-                ]
-              }},
+              openingStock: {
+                $sum: {
+                  $cond: [
+                    { $isNumber: "$baseQuantity" },
+                    "$baseQuantity",
+                    { $toDouble: "$baseQuantity" }
+                  ]
+                }
+              },
+              openingStockCost: {
+                $sum: {
+                  $cond: [
+                    { $in: ["$productId", productIds] },
+                    {
+                      $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
+                      ]
+                    },
+                    0
+                  ]
+                }
+              },
               // Only include purchases for products that have a salesPrice or vipPrice
               openingPurchasedQty: {
                 $sum: {
                   $cond: [
-                    { $and: [
-                      { $eq: ["$entryType", "Purchase"] },
-                      { $gt: ["$baseQuantity", 0] },
-                      { $in: ["$productId", productIds] }
-                    ]},
-                    { $cond: [
-                      { $isNumber: "$baseQuantity" },
-                      "$baseQuantity",
-                      { $toDouble: "$baseQuantity" }
-                    ]},
+                    {
+                      $and: [
+                        { $eq: ["$entryType", "Purchase"] },
+                        { $gt: ["$baseQuantity", 0] },
+                        { $in: ["$productId", productIds] }
+                      ]
+                    },
+                    {
+                      $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]
+                    },
                     0
                   ]
                 }
@@ -1017,11 +1027,13 @@ const TransactionHistory = () => {
                 $sum: {
                   $cond: [
                     { $in: ["$productId", productIds] },
-                    { $cond: [
-                      { $isNumber: "$baseQuantity" },
-                      "$baseQuantity",
-                      { $toDouble: "$baseQuantity" }
-                    ]},  
+                    {
+                      $cond: [
+                        { $isNumber: "$baseQuantity" },
+                        "$baseQuantity",
+                        { $toDouble: "$baseQuantity" }
+                      ]
+                    },
                     0
                   ]
                 }
@@ -1029,16 +1041,20 @@ const TransactionHistory = () => {
               openingPurchaseCost: {
                 $sum: {
                   $cond: [
-                    { $and: [
-                      { $eq: ["$entryType", "Purchase"] },
-                      { $gte: ["$totalCost", 0] },
-                      { $in: ["$productId", productIds] }
-                    ]},
-                    { $cond: [
-                      { $isNumber: "$totalCost" },
-                      "$totalCost",
-                      { $toDouble: "$totalCost" }
-                    ]},
+                    {
+                      $and: [
+                        { $eq: ["$entryType", "Purchase"] },
+                        { $gte: ["$totalCost", 0] },
+                        { $in: ["$productId", productIds] }
+                      ]
+                    },
+                    {
+                      $cond: [
+                        { $isNumber: "$totalCost" },
+                        "$totalCost",
+                        { $toDouble: "$totalCost" }
+                      ]
+                    },
                     0
                   ]
                 }
@@ -1049,12 +1065,12 @@ const TransactionHistory = () => {
       };
 
       const result = await fetchServer('POST', query, 'aggregateDocs', server);
-      return result.record?.[0] || {openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0};
+      return result.record?.[0] || { openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0 };
     } catch (error) {
       setAlertState('error');
       setAlert(`Error fetching opening stock data. Please try again.`);
       setAlertTimeout(5000)
-      return {openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0};
+      return { openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0 };
     }
   }, [company, fetchServer]);
 
@@ -1064,7 +1080,7 @@ const TransactionHistory = () => {
       // Format dates to match the database format (ISO strings)
       const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
       const formattedEndDate = new Date(endDate).toISOString().split('T')[0];
-      
+
       // Build the transactions query
       const transactionsQuery = {
         database: company,
@@ -1078,7 +1094,7 @@ const TransactionHistory = () => {
           },
           ...(filters.location !== 'all' && { location: filters.location }),
           ...(filters.productId && { productId: filters.productId }),
-          ...(filters.transactionType !== 'all' && { 
+          ...(filters.transactionType !== 'all' && {
             $or: [
               { entryType: filters.transactionType },
               { documentType: filters.transactionType }
@@ -1124,7 +1140,7 @@ const TransactionHistory = () => {
       } catch (e) {
         console.warn('fetchTransactionsData: putInventoryTransactions failed', e);
       }
-      
+
       // Initialize summary data with default values
       const summaryData = {
         // Quantities
@@ -1136,7 +1152,7 @@ const TransactionHistory = () => {
         transfersOut: 0,
         positiveAdjustments: 0,
         negativeAdjustments: 0,
-        
+
         // Cost Values
         openingStockCost: 0,
         closingStockCost: 0,
@@ -1148,7 +1164,7 @@ const TransactionHistory = () => {
         positiveAdjustmentsCost: 0,
         negativeAdjustmentsCost: 0,
         averageCost: 0,
-        
+
         // Totals
         totalIn: 0,
         totalOut: 0,
@@ -1177,7 +1193,7 @@ const TransactionHistory = () => {
         summaryData.negativeAdjustmentsCost += product.stockSummary?.negativeAdjustmentCost || 0;
         summaryData.averageCost += product.stockSummary?.averageCost || 0;
       })
-    
+
       return {
         transactions,
         summaryData
@@ -1463,7 +1479,7 @@ const TransactionHistory = () => {
     // applyTxSnapshot,
   ]);
 
-  
+
   // Error handling is done in the main fetchTransactionHistory function
 
   // Handle page change
@@ -1489,14 +1505,14 @@ const TransactionHistory = () => {
         'Total Cost': tx.formattedTotalCost,
         'Reference': tx.reference
       })));
-      
+
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, 'Transaction History');
       writeFile(wb, `Transaction_History_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      
+
       setAlertState('success');
       setAlert('Export to Excel completed successfully');
-      setAlertTimeout(3000);
+      setAlertTimeout(1000);
     } catch (error) {
       setAlertState('error');
       setAlert('Failed to export to Excel');
@@ -1559,8 +1575,7 @@ const TransactionHistory = () => {
     if (!company || !tx) return;
 
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete this transaction for ${tx.name || tx.productId} on ${
-        tx.postingDate || tx.createdAt || ''
+      `Are you sure you want to delete this transaction for ${tx.name || tx.productId} on ${tx.postingDate || tx.createdAt || ''
       }?`
     );
     if (!confirmDelete) return;
@@ -1603,7 +1618,7 @@ const TransactionHistory = () => {
 
       setAlertState('success');
       setAlert('Transaction deleted successfully');
-      setAlertTimeout(3000);
+      setAlertTimeout(1000);
     } catch (error) {
       console.error('Failed to delete transaction', error);
       setAlertState('error');
@@ -1624,7 +1639,7 @@ const TransactionHistory = () => {
     if (!products[0].hasOwnProperty('stockSummary')) {
       handleApplyFilters();
       return;
-    }else{
+    } else {
       fetchTransactionHistory()
     }
   }, [company, products]);
@@ -1638,7 +1653,7 @@ const TransactionHistory = () => {
     }));
   };
 
-  const handleApplyFilters = () => {   
+  const handleApplyFilters = () => {
     const { startDate, endDate, location, productId, transactionType } = filters;
     // Format dates to ISO strings (YYYY-MM-DD)
     // This ensures compatibility with the database date format
@@ -1647,7 +1662,7 @@ const TransactionHistory = () => {
 
     // Trigger the stock report (which has its own caching in App.js)
     getProductsStockReport(company, products, {
-      startDate: formattedStartDate, 
+      startDate: formattedStartDate,
       endDate: formattedEndDate,
       ...(location !== 'all' && { location }),
       ...(productId && { productId }),
@@ -1688,9 +1703,9 @@ const TransactionHistory = () => {
   // Modal component
   const DetailModal = ({ show, onClose, data, title, type, summary, startDate, endDate }) => {
     if (!show || !data) return null;
-    
+
     const { totalQuantity, totalValue, totalCost, averageUnitCost } = summary || {};
-    
+
     const handleExportPDF = () => {
       exportToPDF(title, type, data, summary, startDate, endDate);
     };
@@ -1701,7 +1716,7 @@ const TransactionHistory = () => {
           <div className="modal-header">
             <h3>{title}</h3>
             <div className="modal-actions">
-              <button 
+              <button
                 className="export-pdf-button"
                 onClick={handleExportPDF}
                 title="Export to PDF"
@@ -1711,7 +1726,7 @@ const TransactionHistory = () => {
               <button className="close-button" onClick={onClose}>&times;</button>
             </div>
           </div>
-          
+
           <div className="modal-body">
             <table className="table table-striped table-hover table-sm">
               <thead>
@@ -1737,7 +1752,7 @@ const TransactionHistory = () => {
                             {loc.name}: {formatNumber(loc.quantity)} ({loc.percentage?.toFixed(1)}%)
                           </div>
                         ))}
-                      </div> 
+                      </div>
                     </td>
                     <td className="text-end">{formatNumber(product.quantity)}</td>
                     <td className="text-end">{product.percentage?.toFixed(1)}%</td>
@@ -1779,7 +1794,7 @@ const TransactionHistory = () => {
 
   return (
     <div className="transaction-history">
-      <DetailModal 
+      <DetailModal
         show={modalData.show}
         onClose={() => setModalData(prev => ({ ...prev, show: false }))}
         data={modalData.data}
@@ -1864,21 +1879,21 @@ const TransactionHistory = () => {
         </div>
 
         <div className="filter-actions">
-          <button 
+          <button
             onClick={handleApplyFilters}
             className="btn btn-primary"
             disabled={loading}
           >
             <FaFilter /> Apply Filters
           </button>
-          <button 
+          <button
             onClick={handleResetFilters}
             className="btn btn-secondary"
             disabled={loading}
           >
             Reset
           </button>
-          <button 
+          <button
             onClick={fetchTransactionHistory}
             className="btn btn-icon"
             title="Refresh"
@@ -2126,7 +2141,7 @@ const TransactionHistory = () => {
         </div>
 
         <div className="pagination">
-          <button 
+          <button
             onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
             disabled={filters.page === 1 || loading}
             className="pagination-btn"
@@ -2134,7 +2149,7 @@ const TransactionHistory = () => {
             Previous
           </button>
           <span>Page {filters.page}</span>
-          <button 
+          <button
             onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
             disabled={transactions.length < filters.limit || loading}
             className="pagination-btn"

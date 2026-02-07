@@ -1,20 +1,20 @@
 import './Employees.css'
 
-import {useEffect, useState} from 'react'
+import { useEffect, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
 
-const Employees = () =>{
-    const {storePath, 
-        fetchServer, 
+const Employees = () => {
+    const { storePath,
+        fetchServer,
         server, intervalPeriod,
         company, companyRecord,
         departments,
         positions, editAccess,
         employees, setEmployees, getEmployees,
-        sales,purchase,expenses,accommodations,
-        alert,alertState,alertTimeout,actionMessage, 
-        setAlert, setAlertState, setAlertTimeout, setActionMessage 
+        sales, purchase, expenses, accommodations,
+        alert, alertState, alertTimeout, actionMessage,
+        setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
     const [selform, setSelform] = useState("Basic")
     const [writeStatus, setWriteStatus] = useState('New')
@@ -25,222 +25,222 @@ const Employees = () =>{
     const [editId, setEditId] = useState(null)
     const [editIndex, setEditIndex] = useState(null)
     const initFields = {
-        i_d:'',
-        firstName:'',
-        lastName:'',
-        otherName:'',
-        department:'',
-        position:'',
-        gender:'',
-        dateOfBirth:'',
-        phoneNo:'',
-        address:'',
-        hiredDate:'',
-        dismissalDate:'',
-        dismissalReason:'',
-        bankName:'',
-        bankBranch:'',
-        accountNo:'',
+        i_d: '',
+        firstName: '',
+        lastName: '',
+        otherName: '',
+        department: '',
+        position: '',
+        gender: '',
+        dateOfBirth: '',
+        phoneNo: '',
+        address: '',
+        hiredDate: '',
+        dismissalDate: '',
+        dismissalReason: '',
+        bankName: '',
+        bankBranch: '',
+        accountNo: '',
         expectedWorkDays: '',
-        salary:'',        
-        guarantorName:'',
-        guarantorAddress:'',
-        guarantorLGA:'',
-        guarantorSOA:'',
-        guarantorPhoneNo:'',
-        guarantorGender:'',
-        guarantorMaritalStatus:'',
-        guarantorReligion:'',
-        guarantorRelationship:'',
-        guarantorKnowsEmploeyeeFor:'',
-        guarantorStance:'',
-        guarantorFormCreatedAt:''
+        salary: '',
+        guarantorName: '',
+        guarantorAddress: '',
+        guarantorLGA: '',
+        guarantorSOA: '',
+        guarantorPhoneNo: '',
+        guarantorGender: '',
+        guarantorMaritalStatus: '',
+        guarantorReligion: '',
+        guarantorRelationship: '',
+        guarantorKnowsEmploeyeeFor: '',
+        guarantorStance: '',
+        guarantorFormCreatedAt: ''
     }
-    const [fields, setFields] = useState({...initFields})
-    useEffect(()=>{
-        storePath('employees')  
-    },[storePath])
-    useEffect(()=>{
+    const [fields, setFields] = useState({ ...initFields })
+    useEffect(() => {
+        storePath('employees')
+    }, [storePath])
+    useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getEmployees(cmp_val)
-        const intervalId = setInterval(()=>{
-          if (cmp_val){
-            getEmployees(cmp_val)
-          }
-        },intervalPeriod)
+        const intervalId = setInterval(() => {
+            if (cmp_val) {
+                getEmployees(cmp_val)
+            }
+        }, intervalPeriod)
         return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
-    useEffect(()=>{
-        if (!editAccess.employees && companyRecord.status!=='admin'){
+    }, [window.localStorage.getItem('sessn-cmp')])
+    useEffect(() => {
+        if (!editAccess.employees && companyRecord.status !== 'admin') {
             setIsView(true)
         }
-    },[editAccess])
-    const toggleSelForm = (e)=>{
+    }, [editAccess])
+    const toggleSelForm = (e) => {
         const name = e.target.getAttribute('name')
-        if (name){
+        if (name) {
             setSelform(name)
         }
     }
-    const addEmployee = async ()=>{
+    const addEmployee = async () => {
         setAlertState('info')
         setAlert(
             `Adding Employee...`
         )
-        if (fields.i_d){
+        if (fields.i_d) {
             const newEmployee = {
                 ...fields,
                 createdAt: Date.now()
             }
             const newEmployees = [...employees, newEmployee]
-            
+
             const resps = await fetchServer("POST", {
                 database: company,
-                collection: "Employees", 
+                collection: "Employees",
                 update: newEmployee
-              }, "createDoc", server)
-              
-              if (resps.err){
+            }, "createDoc", server)
+
+            if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('error')
                 setAlert(
                     resps.mess
                 )
                 setAlertTimeout(5000)
-              }else{
+            } else {
                 setEmployees(newEmployees)
                 setCurEmployee(newEmployee)
                 setIsView(true)
-                setFields({...newEmployee})
+                setFields({ ...newEmployee })
                 setAlertState('success')
                 setAlert(
                     'Employee Added Successfully!'
                 )
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 getEmployees(company)
-              }
-          
+            }
+
         }
     }
-    const editEmployee = async ()=>{
+    const editEmployee = async () => {
         setAlertState('info')
         setAlert(
             `Updating Employee...`
         )
         const i_d = curEmployee.i_d
         const index = Number(editIndex)
-        if (fields.i_d){
+        if (fields.i_d) {
             const updatedEmployee = {
                 ...fields,
                 createdAt: employees[index].createdAt
             }
-            const filteredEmp = employees.filter((emp)=>{
-                return emp.i_d!==i_d
+            const filteredEmp = employees.filter((emp) => {
+                return emp.i_d !== i_d
             })
             const updatedEmployees = [...filteredEmp, updatedEmployee]
             const resps = await fetchServer("POST", {
                 database: company,
-                collection: "Employees", 
-                prop: [{i_d: i_d}, updatedEmployee]
-              }, "updateOneDoc", server)
-              
-              if (resps.err){
+                collection: "Employees",
+                prop: [{ i_d: i_d }, updatedEmployee]
+            }, "updateOneDoc", server)
+
+            if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('error')
                 setAlert(
                     resps.mess
                 )
                 setAlertTimeout(5000)
-              }else{
-                  setEmployees(updatedEmployees)
-                  setCurEmployee(updatedEmployee)
-                  setIsView(true)
-                  setFields({...updatedEmployee})
-                  setAlertState('success')
-                  setAlert(
+            } else {
+                setEmployees(updatedEmployees)
+                setCurEmployee(updatedEmployee)
+                setIsView(true)
+                setFields({ ...updatedEmployee })
+                setAlertState('success')
+                setAlert(
                     'Employee Details Updated Successfully!'
-                  )
-                  setAlertTimeout(5000)
-                  getEmployees(company)
-              }
-    
+                )
+                setAlertTimeout(1000)
+                getEmployees(company)
+            }
+
         }
     }
 
-    const deleteEmployee = async()=>{
-        var act=0
-        accommodations.filter((accommodation)=>{
-            if (accommodation.employeeId === curEmployee.i_d){
+    const deleteEmployee = async () => {
+        var act = 0
+        accommodations.filter((accommodation) => {
+            if (accommodation.employeeId === curEmployee.i_d) {
                 act++
             }
-            if (act){
-                return 
+            if (act) {
+                return
             }
         })
-        if (!act){        
-            sales.map((sale)=>{
-                sale.record.filter((record)=>{
-                    if (record.employeeId === curEmployee.i_d){
+        if (!act) {
+            sales.map((sale) => {
+                sale.record.filter((record) => {
+                    if (record.employeeId === curEmployee.i_d) {
                         act++
                     }
-                    if (act){
-                        return 
+                    if (act) {
+                        return
                     }
                 })
             })
         }
-        if(!act){
-            purchase.filter((purchase)=>{
-                if (purchase.purchaseHandler === curEmployee.i_d){
+        if (!act) {
+            purchase.filter((purchase) => {
+                if (purchase.purchaseHandler === curEmployee.i_d) {
                     act++
                 }
-                if (act){
-                    return 
+                if (act) {
+                    return
                 }
             })
         }
-        if(!act){
-            expenses.filter((expense)=>{
-                if (expense.expenseHandler === curEmployee.i_d){
+        if (!act) {
+            expenses.filter((expense) => {
+                if (expense.expenseHandler === curEmployee.i_d) {
                     act++
                 }
-                if (act){
-                    return 
+                if (act) {
+                    return
                 }
             })
         }
 
-        if (act){
+        if (act) {
             setActionMessage('')
             setAlertState('error')
             setAlert(
                 `The Employee Record is in use in another Model. Delete the Corresponding Record Before Proceeding`
             )
             setAlertTimeout(5000)
-        }else{
+        } else {
             setAlertState('info')
             setAlert(
                 `Deleting Employee...`
             )
             const i_d = curEmployee.i_d
-            const filteredEmp = employees.filter((emp)=>{
-                return emp.i_d!==i_d
+            const filteredEmp = employees.filter((emp) => {
+                return emp.i_d !== i_d
             })
             const resps = await fetchServer("POST", {
                 database: company,
-                collection: "Employees", 
-                update: {i_d: i_d}
+                collection: "Employees",
+                update: { i_d: i_d }
             }, "removeDoc", server)
-            if (resps.err){
+            if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('error')
                 setAlert(
                     resps.mess
                 )
                 setAlertTimeout(5000)
-            }else{
+            } else {
                 setEmployees(filteredEmp)
                 setCurEmployee(null)
-                setFields({...initFields, i_d:filteredEmp.length+1})
+                setFields({ ...initFields, i_d: filteredEmp.length + 1 })
                 setIsView(false)
                 setWriteStatus('New')
                 setAlert(
@@ -252,117 +252,117 @@ const Employees = () =>{
         }
     }
 
-    const handleFieldChange = (e)=>{
+    const handleFieldChange = (e) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value
 
-        setFields((fields)=>{
+        setFields((fields) => {
             return {
-                ...fields, [name]:value
+                ...fields, [name]: value
             }
         })
     }
-    const handleViewClick = (e, index, employee)=>{
+    const handleViewClick = (e, index, employee) => {
         const name = e.target.getAttribute('name')
-        if (name==='edit'){
+        if (name === 'edit') {
             setIsView(false)
             setEditIndex(index)
             setWriteStatus('Edit')
-        }else{
+        } else {
             setIsView(true)
         }
         setCurEmployee(employee)
-        var newEmpValue = {...employee}
+        var newEmpValue = { ...employee }
         delete newEmpValue._id
-        setFields({...newEmpValue})
+        setFields({ ...newEmpValue })
     }
-    return(
+    return (
         <>
             <div className='employees'>
                 <div className='emplist'>
-                    <div className='add' 
-                        onClick={()=>{
-                            setFields({...initFields})
+                    <div className='add'
+                        onClick={() => {
+                            setFields({ ...initFields })
                             setIsView(false)
                             setWriteStatus('New')
                             setCurEmployee(null)
                         }}
                     >{'+'}</div>
-                <div className='emptypecov' 
-                    onClick={(e)=>{
-                        const name = e.target.getAttribute('name')
-                        if (name){
-                            setEmployeeType(name)
+                    <div className='emptypecov'
+                        onClick={(e) => {
+                            const name = e.target.getAttribute('name')
+                            if (name) {
+                                setEmployeeType(name)
+                            }
+                            setFields({ ...initFields })
+                            setIsView(false)
+                            setWriteStatus('New')
+                            setCurEmployee(null)
+                        }}
+                    >
+                        <div name='current' className={employeeType === 'current' ? 'emptype' : ''}>Current</div>
+                        <div name='dismissed' className={employeeType === 'dismissed' ? 'emptype' : ''}>Dismissed</div>
+                    </div>
+                    {employees.filter((empl) => {
+                        var dismissalStatus = ''
+                        if (empl.dismissalDate) {
+                            dismissalStatus = 'dismissed'
+                        } else {
+                            dismissalStatus = 'current'
                         }
-                        setFields({...initFields})
-                        setIsView(false)
-                        setWriteStatus('New')
-                        setCurEmployee(null)
-                    }}
-                >
-                    <div name='current' className={employeeType ==='current' ? 'emptype' : ''}>Current</div>
-                    <div name='dismissed' className={employeeType ==='dismissed' ? 'emptype' : ''}>Dismissed</div>
-                </div>
-                {employees.filter((empl)=>{ 
-                    var dismissalStatus = ''
-                    if (empl.dismissalDate){
-                        dismissalStatus = 'dismissed'
-                    }else{
-                        dismissalStatus = 'current'
-                    }
 
-                    if (dismissalStatus === employeeType) {
-                        return empl
-                    }
-                }).map((employee, index)=>{
-                    const {i_d, 
-                        firstName, lastName,
-                        department, position,
-                    } = employee
-                    return(
-                        <div className={'dept' + (curEmployee?.i_d===i_d?' curview':'')} key={index} i_d={i_d} 
-                            onClick={(e)=>{
-                                handleViewClick(e,index,employee)
-                            }}
-                        >
-                            <div className='dets'>
-                                <div><b>Employee ID: </b>{i_d}</div>
-                                <div> <b>Name:</b>{` ${firstName} ${lastName}`}</div>
-                                <div className='deptdesc'>{`${department} Department`}</div>
-                                <div className='deptdesc'><b>Position:</b>{` ${position}`}</div>
-                            </div>
-                            {(companyRecord.status==='admin' || editAccess.employees) && <div 
-                                className='edit'
-                                name='edit'
+                        if (dismissalStatus === employeeType) {
+                            return empl
+                        }
+                    }).map((employee, index) => {
+                        const { i_d,
+                            firstName, lastName,
+                            department, position,
+                        } = employee
+                        return (
+                            <div className={'dept' + (curEmployee?.i_d === i_d ? ' curview' : '')} key={index} i_d={i_d}
+                                onClick={(e) => {
+                                    handleViewClick(e, index, employee)
+                                }}
                             >
-                                Edit
-                            </div>}
-                        </div>
-                    )
-                  })}
+                                <div className='dets'>
+                                    <div><b>Employee ID: </b>{i_d}</div>
+                                    <div> <b>Name:</b>{` ${firstName} ${lastName}`}</div>
+                                    <div className='deptdesc'>{`${department} Department`}</div>
+                                    <div className='deptdesc'><b>Position:</b>{` ${position}`}</div>
+                                </div>
+                                {(companyRecord.status === 'admin' || editAccess.employees) && <div
+                                    className='edit'
+                                    name='edit'
+                                >
+                                    Edit
+                                </div>}
+                            </div>
+                        )
+                    })}
                 </div>
                 <div className='empview'>
                     <div className='formtitle padtitle'>
-                        {isView ? <div className={writeStatus==='New'?'frmttle':''}>
+                        {isView ? <div className={writeStatus === 'New' ? 'frmttle' : ''}>
                             {`EMPLOYEE FORM`}
                         </div> :
-                        <div className={writeStatus==='New'?'frmttle':''}>
-                            {`${writeStatus.toUpperCase()} EMPLOYEE FORM`}
-                        </div>}
-                        {writeStatus==='Edit'&& !isView && <div className='yesbtn popbtn delbtn'
-                                onClick={deleteEmployee}
+                            <div className={writeStatus === 'New' ? 'frmttle' : ''}>
+                                {`${writeStatus.toUpperCase()} EMPLOYEE FORM`}
+                            </div>}
+                        {writeStatus === 'Edit' && !isView && <div className='yesbtn popbtn delbtn'
+                            onClick={deleteEmployee}
                         >Delete</div>}
                     </div>
                     <div className='selform' onClick={toggleSelForm}>
-                        <div name='Basic' className={selform==='Basic'?'seltype':''}>Basic Info</div>
-                        <div name='Hr' className={selform==='Hr'?'seltype':''}>HR Info</div>
-                        <div name='Guarantor' className={selform==='Guarantor'?'seltype':''}>Guarantor Info</div>
+                        <div name='Basic' className={selform === 'Basic' ? 'seltype' : ''}>Basic Info</div>
+                        <div name='Hr' className={selform === 'Hr' ? 'seltype' : ''}>HR Info</div>
+                        <div name='Guarantor' className={selform === 'Guarantor' ? 'seltype' : ''}>Guarantor Info</div>
                     </div>
                     <div className='fm' onChange={handleFieldChange}>
-                        {selform==='Basic'&&<div className='basic'>
+                        {selform === 'Basic' && <div className='basic'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='i_d'
                                     type='text'
@@ -373,7 +373,7 @@ const Employees = () =>{
                             </div>
                             <div className='inpcov'>
                                 <div>First Name</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='firstName'
                                     type='text'
@@ -384,7 +384,7 @@ const Employees = () =>{
                             </div>
                             <div className='inpcov'>
                                 <div>Last Name</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='lastName'
                                     type='text'
@@ -395,51 +395,51 @@ const Employees = () =>{
                             </div>
                             <div className='inpcov'>
                                 <div>Other Name</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='otherName'
                                     type='text'
-                                    placeholder='Other Name' 
+                                    placeholder='Other Name'
                                     value={fields.otherName}
                                     disabled={isView}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Address</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='address'
                                     type='text'
-                                    placeholder='Address' 
+                                    placeholder='Address'
                                     value={fields.address}
                                     disabled={isView}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Phone Number</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='phoneNo'
                                     type='text'
-                                    placeholder='Phone Number' 
+                                    placeholder='Phone Number'
                                     value={fields.phoneNo}
                                     disabled={isView}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Date of Birth</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='dateOfBirth'
                                     type='date'
-                                    placeholder='Date of Birth' 
+                                    placeholder='Date of Birth'
                                     value={fields.dateOfBirth}
                                     disabled={isView}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Gender</div>
-                                <select 
+                                <select
                                     className='forminp'
                                     name='gender'
                                     type='text'
@@ -453,7 +453,7 @@ const Employees = () =>{
                             </div>
                             <div className='inpcov'>
                                 <div>Department</div>
-                                <select 
+                                <select
                                     className='forminp'
                                     name='department'
                                     type='text'
@@ -461,8 +461,8 @@ const Employees = () =>{
                                     disabled={isView}
                                 >
                                     <option value=''>Select Department</option>
-                                    {departments.map((department,id)=>{
-                                        const {name} = department
+                                    {departments.map((department, id) => {
+                                        const { name } = department
                                         return <option key={id} value={name}>{name}</option>
 
                                     })}
@@ -470,7 +470,7 @@ const Employees = () =>{
                             </div>
                             <div className='inpcov'>
                                 <div>Position</div>
-                                <select 
+                                <select
                                     className='forminp'
                                     name='position'
                                     type='text'
@@ -478,41 +478,41 @@ const Employees = () =>{
                                     disabled={isView}
                                 >
                                     <option value=''>Select Position</option>
-                                    {positions.map((position,id)=>{
-                                        const {name} = position
+                                    {positions.map((position, id) => {
+                                        const { name } = position
                                         return <option key={id} value={name}>{name}</option>
 
                                     })}
                                 </select>
                             </div>
                         </div>}
-                        {selform==='Hr'&&
+                        {selform === 'Hr' &&
                             <div className='hr'>
                                 <div className='inpcov'>
                                     <div>Hired Date</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='hiredDate'
                                         type='date'
-                                        placeholder='Select Date' 
+                                        placeholder='Select Date'
                                         value={fields.hiredDate}
                                         disabled={isView}
                                     />
                                 </div>
                                 <div className='inpcov'>
                                     <div>Dismissal Date</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='dismissalDate'
                                         type='date'
-                                        placeholder='Select Date' 
+                                        placeholder='Select Date'
                                         value={fields.dismissalDate}
                                         disabled={isView}
                                     />
                                 </div>
                                 <div className='inpcov'>
                                     <div>Dismissal Reason</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='dismissalReason'
                                         type='text'
@@ -523,7 +523,7 @@ const Employees = () =>{
                                 </div>
                                 <div className='inpcov'>
                                     <div>Bank Name</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='bankName'
                                         type='text'
@@ -534,7 +534,7 @@ const Employees = () =>{
                                 </div>
                                 <div className='inpcov'>
                                     <div>Bank Branch</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='bankBranch'
                                         type='text'
@@ -545,7 +545,7 @@ const Employees = () =>{
                                 </div>
                                 <div className='inpcov'>
                                     <div>Account No</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='accountNo'
                                         type='number'
@@ -554,69 +554,69 @@ const Employees = () =>{
                                         disabled={isView}
                                     />
                                 </div>
-                                
+
                                 <div className='inpcov'>
                                     <div>Salary (Naira)</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='salary'
                                         type='number'
-                                        placeholder='Salary' 
+                                        placeholder='Salary'
                                         value={fields.salary}
                                         disabled={isView}
                                     />
                                 </div>
                                 {fields.employeeDebt && <div className='inpcov'>
                                     <div>Debt (Naira)</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='employeeDebt'
                                         type='number'
-                                        placeholder='Debts' 
+                                        placeholder='Debts'
                                         value={fields.employeeDebt}
                                         disabled={true}
                                     />
                                 </div>}
                                 {fields.employeeDebtRecoverd && <div className='inpcov'>
                                     <div>Recovered (Naira)</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='employeeDebtRecoverd'
                                         type='number'
-                                        placeholder='Debts' 
+                                        placeholder='Debts'
                                         value={fields.employeeDebtRecoverd}
                                         disabled={true}
                                     />
                                 </div>}
                                 <div className='inpcov'>
                                     <div>Expected Work Days</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='expectedWorkDays'
                                         type='number'
-                                        placeholder='Set to Default' 
+                                        placeholder='Set to Default'
                                         value={fields.expectedWorkDays}
                                         disabled={isView}
                                     />
                                 </div>
                             </div>
                         }
-                        {selform==='Guarantor'&&
+                        {selform === 'Guarantor' &&
                             <div className='hr'>
                                 <div className='inpcov'>
                                     <div>Full Name</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorName'
                                         type='text'
-                                        placeholder='Guarantor Name' 
+                                        placeholder='Guarantor Name'
                                         value={fields.guarantorName}
                                         disabled={isView}
                                     />
                                 </div>
                                 <div className='inpcov'>
                                     <div>Address</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorAddress'
                                         type='text'
@@ -627,7 +627,7 @@ const Employees = () =>{
                                 </div>
                                 <div className='inpcov'>
                                     <div>Local Government of Origin</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorLGA'
                                         type='text'
@@ -638,7 +638,7 @@ const Employees = () =>{
                                 </div>
                                 <div className='inpcov'>
                                     <div>State of Origin</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorSOA'
                                         type='text'
@@ -647,21 +647,21 @@ const Employees = () =>{
                                         disabled={isView}
                                     />
                                 </div>
-                                
+
                                 <div className='inpcov'>
                                     <div>Phone No</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorPhoneNo'
                                         type='text'
-                                        placeholder='Gurantor Phone No' 
+                                        placeholder='Gurantor Phone No'
                                         value={fields.guarantorPhoneNo}
                                         disabled={isView}
                                     />
                                 </div>
                                 <div className='inpcov'>
                                     <div>Guarantor Gender</div>
-                                    <select 
+                                    <select
                                         className='forminp'
                                         name='guarantorGender'
                                         type='text'
@@ -675,55 +675,55 @@ const Employees = () =>{
                                 </div>
                                 <div className='inpcov'>
                                     <div>Marital Status</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorMaritalStatus'
                                         type='text'
-                                        placeholder='Marital Status' 
+                                        placeholder='Marital Status'
                                         value={fields.guarantorMaritalStatus}
                                         disabled={isView}
                                     />
                                 </div>
                                 <div className='inpcov'>
                                     <div>Guarantor Religion</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorReligion'
                                         type='text'
-                                        placeholder='Religion' 
+                                        placeholder='Religion'
                                         value={fields.guarantorReligion}
                                         disabled={isView}
                                     />
                                 </div>
                                 <div className='inpcov'>
                                     <div>Relationship</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorRelationship'
                                         type='text'
-                                        placeholder='Relationship' 
+                                        placeholder='Relationship'
                                         value={fields.guarantorRelationship}
                                         disabled={isView}
                                     />
                                 </div>
                                 <div className='inpcov'>
                                     <div>{`Knows ${fields.firstName} ${fields.lastName} For`}</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='guarantorKnowsEmploeyeeFor'
                                         type='text'
-                                        placeholder='Knows Employee For' 
+                                        placeholder='Knows Employee For'
                                         value={fields.guarantorKnowsEmploeyeeFor}
                                         disabled={isView}
                                     />
                                 </div>
                                 <div className='inpcov'>
                                     <div>Gurantor Can Vouch</div>
-                                    <select 
+                                    <select
                                         className='forminp'
                                         name='guarantorStance'
                                         type='text'
-                                        placeholder='Gurantor Can Vouch' 
+                                        placeholder='Gurantor Can Vouch'
                                         value={fields.guarantorStance}
                                         disabled={isView}
                                     >
@@ -735,18 +735,18 @@ const Employees = () =>{
                             </div>
                         }
                     </div>
-                   {!isView && <div className='confirm'>
-                        {writeStatus==='Edit'&&<div className='yesbtn nobtn edbtn'
-                            onClick={()=>{
+                    {!isView && <div className='confirm'>
+                        {writeStatus === 'Edit' && <div className='yesbtn nobtn edbtn'
+                            onClick={() => {
                                 setIsView(true)
-                                setFields({...curEmployee})
+                                setFields({ ...curEmployee })
                             }}
                         >Discard</div>}
                         <div className='yesbtn'
-                            onClick={()=>{
-                                if (writeStatus==='New'){
+                            onClick={() => {
+                                if (writeStatus === 'New') {
                                     addEmployee()
-                                }else{
+                                } else {
                                     editEmployee()
                                 }
                             }}

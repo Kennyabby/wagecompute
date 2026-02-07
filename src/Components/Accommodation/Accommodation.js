@@ -15,17 +15,17 @@ import { MdAdd } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 
-const Accommodation = ()=>{
-    const {storePath, 
+const Accommodation = () => {
+    const { storePath,
         fetchServer, paymentMethods,
         server, intervalPeriod,
-        companyRecord, 
+        companyRecord,
         company, recoveryVal, allowBacklogs,
         employees, getEmployees,
-        accommodations, setAccommodations, getAccommodations, months, 
+        accommodations, setAccommodations, getAccommodations, months,
         customers, setCustomers, getCustomers,
         getDate, removeComma, showApprovalBox, setShowApprovalBox,
-        alert,alertState,alertTimeout,actionMessage, 
+        alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow,
         paymentReceipts, obtainPaymentReceipts,
@@ -37,9 +37,9 @@ const Accommodation = ()=>{
     const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const [reportSales, setReportSales] = useState(null)
     const [isMultiple, setIsMultiple] = useState(false)
-    const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+    const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
     const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
-    const [accommodationCustomer, setAccommodationCustomer] = useState('')   
+    const [accommodationCustomer, setAccommodationCustomer] = useState('')
     const [deleteCount, setDeleteCount] = useState(0)
     const [salesOpts, setSalesOpts] = useState('accommodation')
     const [salesOpts1, setSalesOpts1] = useState('accommodation')
@@ -56,25 +56,25 @@ const Accommodation = ()=>{
     const [unPaidAccommodations, setUnPaidAccommodations] = useState([])
     const [selectedUnPaidAccommodations, setSelectedUnPaidAccommodations] = useState([])
     const [curSelectedUnPaidAccommodation, setCurSelectedUnPaidAccommodation] = useState('')
-    const [curPaymentAmount, setCurPaymentAmount] = useState(0)    
+    const [curPaymentAmount, setCurPaymentAmount] = useState(0)
     const [payPoints, setPayPoints] = useState({})
     const rooms = {
-        '1':{
+        '1': {
             price: 15000
         },
-        '2':{
+        '2': {
             price: 10000
         },
-        '3':{
+        '3': {
             price: 15000
         },
-        '4':{
+        '4': {
             price: 15000
         },
-        '5':{
+        '5': {
             price: 20000
         },
-        'SHORT REST':{
+        'SHORT REST': {
             price: 5000
         }
     }
@@ -91,9 +91,9 @@ const Accommodation = ()=>{
 
     const defaultAccommodationFields = {
         employeeId: companyRecord.emailid,
-        customerId:'',
-        arrivalDate: new Date(Date.now()).toISOString().slice(0, 10), 
-        departureDate:'',
+        customerId: '',
+        arrivalDate: new Date(Date.now()).toISOString().slice(0, 10),
+        departureDate: '',
         arrivalTime: '',
         departureTime: '',
         roomNo: '',
@@ -101,10 +101,10 @@ const Accommodation = ()=>{
         paymentStatus: 'Make Payment',
         paymentAmount: 0,
         payPoint: '',
-        paymentReceipt:''
-    }    
+        paymentReceipt: ''
+    }
 
-    const [accommodationFields, setAccommodationFields] = useState({...defaultAccommodationFields})
+    const [accommodationFields, setAccommodationFields] = useState({ ...defaultAccommodationFields })
     const [customerFields, setCustomerFields] = useState({
         ...defaultCustomerFields
     })
@@ -113,69 +113,69 @@ const Accommodation = ()=>{
     const [imageUpload, setImageUpload] = useState(null)
     const [uploadingReceipt, setUploadingReceipt] = useState(false)
     const [deletingReceipt, setDeletingReceipt] = useState(false)
-    useEffect(()=>{
-        storePath('accommodations')  
-    },[storePath])
+    useEffect(() => {
+        storePath('accommodations')
+    }, [storePath])
 
-    useEffect(()=>{
-        const payPoints = paymentMethods.reduce((obj, method)=>{
-            if (method.name !== 'cash'){
+    useEffect(() => {
+        const payPoints = paymentMethods.reduce((obj, method) => {
+            if (method.name !== 'cash') {
                 obj[method.name] = `${method.i_d}-${method.account}`
-            }else{
+            } else {
                 obj[method.name] = `${method.i_d}`
             }
             return obj
-        },{})
-        setPayPoints({...payPoints, 'Employee': 'EMPLOYEE' })
-    },[paymentMethods])
-    useEffect(()=>{
+        }, {})
+        setPayPoints({ ...payPoints, 'Employee': 'EMPLOYEE' })
+    }, [paymentMethods])
+    useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getApprovals(cmp_val, companyRecord)
         // getEmployees(cmp_val, companyRecord)
         getCustomers(cmp_val, companyRecord)
         getAccommodations(cmp_val, companyRecord)
-        const intervalId = setInterval(()=>{
-          if (cmp_val){
-            getApprovals(cmp_val, companyRecord)
-            getEmployees(cmp_val, companyRecord)
-            getCustomers(cmp_val, companyRecord)
-            getAccommodations(cmp_val, companyRecord)
-          }
-        },intervalPeriod)
+        const intervalId = setInterval(() => {
+            if (cmp_val) {
+                getApprovals(cmp_val, companyRecord)
+                getEmployees(cmp_val, companyRecord)
+                getCustomers(cmp_val, companyRecord)
+                getAccommodations(cmp_val, companyRecord)
+            }
+        }, intervalPeriod)
         return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
-    
-    useEffect(()=>{
-        setAccommodationApprovals(approvals.filter((appr)=>{
+    }, [window.localStorage.getItem('sessn-cmp')])
+
+    useEffect(() => {
+        setAccommodationApprovals(approvals.filter((appr) => {
             return (
                 appr.module === 'accommodation'
                 && appr.section.toUpperCase() === 'postAccommodation'.toUpperCase()
             )
         }))
-        
+
     }, [approvals])
-   
-    useEffect(()=>{
-        if (curAccommodation?.paymentStatus === 'Make Payment'){
+
+    useEffect(() => {
+        if (curAccommodation?.paymentStatus === 'Make Payment') {
             setSelectedUnPaidAccommodations([])
             setCurSelectedUnPaidAccommodation('')
-            setCurPaymentAmount(0)            
+            setCurPaymentAmount(0)
         }
-        if (curAccommodation){
+        if (curAccommodation) {
             setPostingDate(curAccommodation.postingDate)
-            setAccommodationFields({...curAccommodation})
+            setAccommodationFields({ ...curAccommodation })
             setIsView(true)
         }
-        else{
+        else {
             setPostingDate(new Date(Date.now()).toISOString().slice(0, 10))
         }
-        if (curApproval){
+        if (curApproval) {
             setImageUpload(null)
             setPostingDate(curAccommodation.postingDate)
-            setAccommodationFields({...curAccommodation, ...curApproval.data})
+            setAccommodationFields({ ...curAccommodation, ...curApproval.data })
             setIsView(true)
         }
-    },[curAccommodation, curApproval])
+    }, [curAccommodation, curApproval])
 
     const handleSyncOfflineAccommodation = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -183,7 +183,7 @@ const Accommodation = ()=>{
         setAlertState('info');
         setAlert('Syncing offline Accommodation changes...');
         setAlertTimeout(10000);
-        try{
+        try {
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             const cmp_val = window.localStorage.getItem('sessn-cmp');
             if (cmp_val) {
@@ -194,201 +194,203 @@ const Accommodation = ()=>{
                     getAccommodations(cmp_val),
                 ])
             };
-            if (Array.isArray(results)){
+            if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
-                if (failed.length){
+                if (failed.length) {
                     setAlertState('error');
                     setAlert(`${failed.length} change(s) failed to sync; retry later.`);
                     setAlertTimeout(5000);
                 } else {
                     setAlertState('success');
                     setAlert('Offline Accommodation Sync complete');
-                    setAlertTimeout(3000);
+                    setAlertTimeout(1000);
                 }
             } else {
                 setAlertState('success');
                 setAlert('Offline Accommodation Sync complete');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
             }
-        }catch(e){
+        } catch (e) {
             setAlertState('error');
             setAlert('Offline Accommodation Sync failed. Please try again.');
             setAlertTimeout(3000);
-        }finally{
+        } finally {
             setIsSyncing(false);
         }
     }
 
-    useEffect(()=>{
-        const pendings = accommodations.filter((accommodation)=>{ return accommodation.paymentStatus === 'Make Payment' && accommodation.createdAt !== (curAccommodation ? curAccommodation.createdAt : 0)})
+    useEffect(() => {
+        const pendings = accommodations.filter((accommodation) => { return accommodation.paymentStatus === 'Make Payment' && accommodation.createdAt !== (curAccommodation ? curAccommodation.createdAt : 0) })
         setUnPaidAccommodations(pendings)
-    },[accommodations, curAccommodation])
-    useEffect(()=>{
-        if (!isView){
-            setCustomerFields((customerFields)=>{
-                return {...customerFields, i_d:'CO-'+Number(customers.length+1)}
+    }, [accommodations, curAccommodation])
+    useEffect(() => {
+        if (!isView) {
+            setCustomerFields((customerFields) => {
+                return { ...customerFields, i_d: 'CO-' + Number(customers.length + 1) }
             })
         }
-    },[customers, isView])
-    useEffect(()=>{
-        if (!allowBacklogs){
-            if (companyRecord?.status === 'admin'){
+    }, [customers, isView])
+    useEffect(() => {
+        if (!allowBacklogs) {
+            if (companyRecord?.status === 'admin') {
                 setSaleFrom(new Date(Date.now()).toISOString().slice(0, 10))
-            }else{
-                setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10))
+            } else {
+                setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
             }
         }
-        if(companyRecord?.permissions.includes('approve_postaccommodation') || companyRecord?.status==='admin'){
+        if (companyRecord?.permissions.includes('approve_postaccommodation') || companyRecord?.status === 'admin') {
             setIsApprover(true)
         }
-    },[companyRecord])
-    useEffect(()=>{
-        if (accommodationCustomer){
+    }, [companyRecord])
+    useEffect(() => {
+        if (accommodationCustomer) {
             calculateAccommodationSales()
-        }else{
+        } else {
             setReportSales(null)
         }
-    },[accommodationCustomer])
+    }, [accommodationCustomer])
 
-    useEffect(()=>{
-        if (reportSales){
+    useEffect(() => {
+        if (reportSales) {
             handleAccommodationViewClick(reportSales)
         }
-    },[reportSales])
-    
-    useEffect(()=>{
-        if (salesOpts){
+    }, [reportSales])
+
+    useEffect(() => {
+        if (salesOpts) {
             setIsView(false)
             setCurApproval(null)
             setCurAccomodation(null)
             setImageUpload(null)
-            setAccommodationFields({...defaultAccommodationFields})
+            setAccommodationFields({ ...defaultAccommodationFields })
             setCurCustomer(null)
-            setCustomerFields({...defaultCustomerFields})    
-            setCustomerFields((customerFields)=>{
-                return {...customerFields, i_d:'CO-'+Number(customers.length+1)}
+            setCustomerFields({ ...defaultCustomerFields })
+            setCustomerFields((customerFields) => {
+                return { ...customerFields, i_d: 'CO-' + Number(customers.length + 1) }
             })
             setFillMode('')
         }
-    },[salesOpts])
+    }, [salesOpts])
 
-    const calculateAccommodationSales = ()=>{
-        var salesReportList = []        
-        {customers.forEach((customer)=>{
-            if (!accommodationCustomer){
-                const salesDoc = {}
-                salesDoc.customerId = customer.i_d
-                salesDoc.phoneNo = customer.phoneNo
-                var totalAccommodationAmount = 0
-                var totalPaymentAmount = 0
-                var totalAccommodationDays = 0
-                const roomDays = {}
-                accommodations.filter((ftrsale)=>{
-                    const slPostingDate = new Date(ftrsale.postingDate).getTime()
-                    const fromDate = new Date(saleFrom).getTime()
-                    const toDate = new Date(saleTo).getTime()
-                    if ( slPostingDate>= fromDate && slPostingDate<=toDate
-                    ){
-                        return ftrsale
+    const calculateAccommodationSales = () => {
+        var salesReportList = []
+        {
+            customers.forEach((customer) => {
+                if (!accommodationCustomer) {
+                    const salesDoc = {}
+                    salesDoc.customerId = customer.i_d
+                    salesDoc.phoneNo = customer.phoneNo
+                    var totalAccommodationAmount = 0
+                    var totalPaymentAmount = 0
+                    var totalAccommodationDays = 0
+                    const roomDays = {}
+                    accommodations.filter((ftrsale) => {
+                        const slPostingDate = new Date(ftrsale.postingDate).getTime()
+                        const fromDate = new Date(saleFrom).getTime()
+                        const toDate = new Date(saleTo).getTime()
+                        if (slPostingDate >= fromDate && slPostingDate <= toDate
+                        ) {
+                            return ftrsale
+                        }
+                    }).forEach((accommodation, index) => {
+                        if (accommodation.customerId === customer.i_d) {
+                            var accommodationDays = 1
+                            const arrivalDate = new Date(accommodation.arrivalDate).getTime()
+                            const departureDate = new Date(accommodation.departureDate).getTime()
+                            const days = (departureDate - arrivalDate) / (24 * 60 * 60 * 1000)
+                            accommodationDays = days ? days : accommodationDays
+                            roomDays[accommodation.roomNo] = Number(roomDays[accommodation.roomNo] || 0) + accommodationDays
+                            totalAccommodationAmount += Number(accommodation.accommodationAmount)
+                            totalPaymentAmount += Number(accommodation.paymentAmount)
+                            totalAccommodationDays += accommodationDays
+                        }
+                    })
+                    if (totalAccommodationDays) {
+                        salesDoc.totalAccommodationAmount = totalAccommodationAmount
+                        salesDoc.totalPaymentAmount = totalPaymentAmount
+                        salesDoc.roomDays = roomDays
+                        salesDoc.totalAccommodationDays = totalAccommodationDays
+                        salesReportList = salesReportList.concat(salesDoc)
                     }
-                }).forEach((accommodation,index)=>{
-                    if (accommodation.customerId === customer.i_d){
-                        var accommodationDays = 1
-                        const arrivalDate = new Date(accommodation.arrivalDate).getTime()
-                        const departureDate = new Date(accommodation.departureDate).getTime()
-                        const days = (departureDate - arrivalDate) / (24*60*60*1000)
-                        accommodationDays = days ? days : accommodationDays
-                        roomDays[accommodation.roomNo] = Number(roomDays[accommodation.roomNo] || 0) + accommodationDays
-                        totalAccommodationAmount +=  Number(accommodation.accommodationAmount)
-                        totalPaymentAmount += Number(accommodation.paymentAmount) 
-                        totalAccommodationDays += accommodationDays
-                    }
-                })       
-                if (totalAccommodationDays){
-                    salesDoc.totalAccommodationAmount = totalAccommodationAmount
-                    salesDoc.totalPaymentAmount = totalPaymentAmount
-                    salesDoc.roomDays = roomDays
-                    salesDoc.totalAccommodationDays = totalAccommodationDays
-                    salesReportList = salesReportList.concat(salesDoc)
+                } else {
+                    accommodations.filter((ftrsale) => {
+                        const slPostingDate = new Date(ftrsale.postingDate).getTime()
+                        const fromDate = new Date(saleFrom).getTime()
+                        const toDate = new Date(saleTo).getTime()
+                        if (slPostingDate >= fromDate && slPostingDate <= toDate
+                        ) {
+                            return ftrsale
+                        }
+                    }).forEach((accommodation) => {
+                        if (accommodation.customerId === customer.i_d && customer.i_d === accommodationCustomer) {
+                            const { employeeId, arrivalDate, departureDate, paymentReceipt,
+                                accommodationAmount, postingDate, roomNo, paymentAmount, payPoint
+                            } = accommodation
+                            var accommodationDays = 1
+                            const days = (new Date(departureDate).getTime() - new Date(arrivalDate).getTime()) / (24 * 60 * 60 * 1000)
+                            accommodationDays = days ? days : accommodationDays
+                            const cusSaleDoc = {}
+                            cusSaleDoc.postingDate = postingDate
+                            cusSaleDoc.roomNo = roomNo
+                            cusSaleDoc.accommodationDays = accommodationDays
+                            cusSaleDoc.accommodationAmount = accommodationAmount
+                            cusSaleDoc.paymentAmount = paymentAmount
+                            cusSaleDoc.payPoint = payPoint
+                            cusSaleDoc.paymentReceipt = paymentReceipt
+                            cusSaleDoc.employeeId = employeeId
+                            salesReportList = salesReportList.concat(cusSaleDoc)
+                        }
+                    })
                 }
-            }else{
-                accommodations.filter((ftrsale)=>{
-                    const slPostingDate = new Date(ftrsale.postingDate).getTime()
-                    const fromDate = new Date(saleFrom).getTime()
-                    const toDate = new Date(saleTo).getTime()
-                    if ( slPostingDate>= fromDate && slPostingDate<=toDate
-                    ){
-                        return ftrsale
-                    }
-                }).forEach((accommodation)=>{
-                    if (accommodation.customerId === customer.i_d && customer.i_d === accommodationCustomer){                                    
-                        const {employeeId, arrivalDate, departureDate, paymentReceipt,
-                            accommodationAmount, postingDate, roomNo, paymentAmount, payPoint
-                        } = accommodation
-                        var accommodationDays = 1
-                        const days = (new Date(departureDate).getTime() - new Date(arrivalDate).getTime()) / (24*60*60*1000)
-                        accommodationDays = days ? days : accommodationDays
-                        const cusSaleDoc = {}
-                        cusSaleDoc.postingDate = postingDate
-                        cusSaleDoc.roomNo = roomNo
-                        cusSaleDoc.accommodationDays = accommodationDays
-                        cusSaleDoc.accommodationAmount = accommodationAmount
-                        cusSaleDoc.paymentAmount = paymentAmount
-                        cusSaleDoc.payPoint = payPoint
-                        cusSaleDoc.paymentReceipt = paymentReceipt
-                        cusSaleDoc.employeeId = employeeId
-                        salesReportList = salesReportList.concat(cusSaleDoc)
-                    }
-                })
-            }
-            
-        })}
+
+            })
+        }
         setReportSales([...salesReportList])
     }
-    const postAccommodation = async ()=> { 
-        setAccommodationStatus('Posting Accommodation...')        
+    const postAccommodation = async () => {
+        setAccommodationStatus('Posting Accommodation...')
         const newAccommodation = {
             ...accommodationFields,
             postingDate: postingDate,
-            createdAt: new Date().getTime(),            
+            createdAt: new Date().getTime(),
         }
 
-        const newAccommodations = [newAccommodation, ...accommodations]        
+        const newAccommodations = [newAccommodation, ...accommodations]
         const resps = await fetchServer("POST", {
             database: company,
-            collection: "Accommodations", 
+            collection: "Accommodations",
             update: newAccommodation
         }, "createDoc", server)
-        
-        if (resps.err){
+
+        if (resps.err) {
             console.log(resps.mess)
             setAlertState('info')
             setAlert(resps.mess)
             setAlertTimeout(5000)
             setAccommodationStatus('Post Accommodation')
             accommodationFields.posted = false
-        }else{
+        } else {
             setAccommodations(newAccommodations)
             setCurAccomodation(newAccommodation)
             setIsView(true)
-            setAccommodationFields({...newAccommodation})
+            setAccommodationFields({ ...newAccommodation })
             getAccommodations(company)
             setAlertState('success')
             setAlert('Accommodation Posted Successfully!')
-            setAlertTimeout(5000)
+            setAlertTimeout(1000)
             setAccommodationStatus('Post Accommodation')
             setFillMode('payment')
         }
     }
 
-    const postPayment = async (accommodationFields)=>{
+    const postPayment = async (accommodationFields) => {
         setAlertState('info')
         setAlert(
             `Updating Payment Status...`
         )
         setAlertTimeout(100000)
         var paymentStatus = 'Partially Paid'
-        if (accommodationFields.paymentAmount > 0 && Number(accommodationFields.paymentAmount) === Number(accommodationFields.accommodationAmount)){
+        if (accommodationFields.paymentAmount > 0 && Number(accommodationFields.paymentAmount) === Number(accommodationFields.accommodationAmount)) {
             paymentStatus = 'Fully Paid'
         }
         const updatedPayment = {
@@ -400,43 +402,43 @@ const Accommodation = ()=>{
             downloadLink: accommodationFields.downloadLink,
             paymentStatus: paymentStatus
         }
-        
+
         const resps = await fetchServer("POST", {
             database: company,
-            collection: "Accommodations", 
-            prop: [{createdAt: accommodationFields.createdAt}, updatedPayment]
-          }, "updateOneDoc", server)
-          
-          if (resps.err){
+            collection: "Accommodations",
+            prop: [{ createdAt: accommodationFields.createdAt }, updatedPayment]
+        }, "updateOneDoc", server)
+
+        if (resps.err) {
             console.log(resps.mess)
             setAlertState('error')
             setAlert(
                 resps.mess
             )
             setAlertTimeout(5000)
-          }else{
-            removeApproval(company, 'accommodation', 'postaccommodation', {                        
+        } else {
+            removeApproval(company, 'accommodation', 'postaccommodation', {
                 createdAt: accommodationFields.createdAt,
-                postingDate: accommodationFields.postingDate                                                  
+                postingDate: accommodationFields.postingDate
             })
             getAccommodations(company)
-            setCurAccomodation({...curAccommodation, ...updatedPayment})
-            setAccommodationFields({...accommodationFields, ...updatedPayment})
+            setCurAccomodation({ ...curAccommodation, ...updatedPayment })
+            setAccommodationFields({ ...accommodationFields, ...updatedPayment })
             setIsView(true)
             setAlertState('success')
             setAlert(
                 'Payment Updated Successfully!'
             )
-            setAlertTimeout(5000)
-          }
+            setAlertTimeout(1000)
+        }
     }
 
-    const handleImageSelect = async (e)=>{
+    const handleImageSelect = async (e) => {
         const file = e.target.files[0]
         let blob = file;
         // ✅ Convert HEIC to JPEG if necessary
         if (file.type === "image/heic" || file.name.endsWith(".heic")) {
-            try {                
+            try {
                 const converted = await heic2any({
                     blob: file,
                     toType: "image/jpeg",
@@ -454,7 +456,7 @@ const Accommodation = ()=>{
         setImageUpload(blob)
     }
 
-    const handleImageUpload = async (imageUpload)=>{
+    const handleImageUpload = async (imageUpload) => {
         if (!imageUpload) {
             setAlertState('error')
             setAlert("Please select an image first")
@@ -468,65 +470,65 @@ const Accommodation = ()=>{
         const collection = 'Accommodations'
         const createdAt = curAccommodation.createdAt
         const res = await uploadFile(
-            imageUpload, company+"/Payment Receipts", 
+            imageUpload, company + "/Payment Receipts",
             createdAt, company, collection, server
-        ); 
-        if (res.mess){
+        );
+        if (res.mess) {
             setUploadingReceipt(false)
             setAlertState('error')
             setAlert(res.mess)
             setAlertTimeout(3000)
             return
         }
-        if (res?.downloadLink){
-            setCurAccomodation((curAccommodation)=>{
-                return {...curAccommodation, ...res}
+        if (res?.downloadLink) {
+            setCurAccomodation((curAccommodation) => {
+                return { ...curAccommodation, ...res }
             })
-            setAccommodationFields((accommodationFields)=>{
-                return {...accommodationFields, ...res, receiptLastUploadedBy: companyRecord?.emailid}
+            setAccommodationFields((accommodationFields) => {
+                return { ...accommodationFields, ...res, receiptLastUploadedBy: companyRecord?.emailid }
             })
             setUploadingReceipt(false)
             setAlertState('success')
             setAlert('Receipt Uploaded Successfully!')
-            setAlertTimeout(3000)
+            setAlertTimeout(1000)
             getAccommodations(company)
         }
     }
 
-    const handleImageDelete = async (imgId)=>{
+    const handleImageDelete = async (imgId) => {
         setDeletingReceipt(true)
         setAlertState('info')
         setAlert('Deleting Receipt...')
         setAlertTimeout(100000)
         const res = await deleteFile(imgId, server)
-        if (res.success){
+        if (res.success) {
             const updatedAccommodtion = {
                 imgId: null,
                 viewLink: null,
-                downloadLink: null,                
+                downloadLink: null,
                 receiptLastDeletedBy: companyRecord?.emailid
             }
 
             const resp = await fetchServer('POST', {
                 database: company,
                 collection: 'Accommodations',
-                prop: [{createdAt: curAccommodation.createdAt}, {...updatedAccommodtion}]                
+                prop: [{ createdAt: curAccommodation.createdAt }, { ...updatedAccommodtion }]
             }, 'updateOneDoc', server)
-            if (resp.updated){
-                setCurAccomodation((curAccommodation)=>{
-                    
-                    return {...curAccommodation, ...updatedAccommodtion}
+            if (resp.updated) {
+                setCurAccomodation((curAccommodation) => {
+
+                    return { ...curAccommodation, ...updatedAccommodtion }
                 })
-                setAccommodationFields((accommodationFields)=>{
-                    return {...accommodationFields, ...updatedAccommodtion}
+                setAccommodationFields((accommodationFields) => {
+                    return { ...accommodationFields, ...updatedAccommodtion }
                 })
                 setDeletingReceipt(false)
                 setAlertState('success')
                 setAlert('Receipt Deleted Successfully!')
-                setAlertTimeout(3000)
+                setAlertTimeout(1000)
                 getAccommodations(company)
             }
-        }else{
+        } else {
             setDeletingReceipt(false)
             setAlertState('error')
             setAlert('Error Deleting Receipt. Check your network!')
@@ -534,28 +536,28 @@ const Accommodation = ()=>{
         }
     }
 
-    const handleCustomerViewClick = (customer) =>{
+    const handleCustomerViewClick = (customer) => {
         setCurCustomer(customer)
         setSalesOpts('customers')
         setIsView(true)
-        setCustomerFields({...customer})
-        setIsView(true)
-    }
-    
-    const handleAccommodationViewClick = (accommodation) =>{
-        setCurAccomodation(accommodation)
-        setSalesOpts('accommodation')
-        setImageUpload(null)
-        if (fillmode){
-            setFillMode('')
-        }        
+        setCustomerFields({ ...customer })
         setIsView(true)
     }
 
-    const deleteAccommodation = async (accommodation)=>{
+    const handleAccommodationViewClick = (accommodation) => {
+        setCurAccomodation(accommodation)
+        setSalesOpts('accommodation')
+        setImageUpload(null)
+        if (fillmode) {
+            setFillMode('')
+        }
+        setIsView(true)
+    }
+
+    const deleteAccommodation = async (accommodation) => {
         const today = new Date()
         let postDate = new Date(accommodation.postingDate).toISOString().slice(0, 10)
-        if (postDate < new Date(today.setDate(today.getDate()-1)).toISOString().slice(0, 10)  && !companyRecord?.access === 'admin'){
+        if (postDate < new Date(today.setDate(today.getDate() - 1)).toISOString().slice(0, 10) && !companyRecord?.access === 'admin') {
             setAlertState('error')
             setAlert('Cannot delete accommodation after more than 1 day')
             setAlertTimeout(3000)
@@ -566,112 +568,112 @@ const Accommodation = ()=>{
             setAlert('Deleting...')
             const resps = await fetchServer("POST", {
                 database: company,
-                collection: "Accommodations", 
-                update: {createdAt: accommodation.createdAt}
+                collection: "Accommodations",
+                update: { createdAt: accommodation.createdAt }
             }, "removeDoc", server)
-            if (resps.err){
+            if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
                 setAlertTimeout(5000)
-            }else{
-                if (curApproval){
-                    removeApproval(company, 'accommodation', 'postaccommodation', {                        
+            } else {
+                if (curApproval) {
+                    removeApproval(company, 'accommodation', 'postaccommodation', {
                         createdAt: curApproval.createdAt,
-                        postingDate: curApproval.postingDate                                                  
+                        postingDate: curApproval.postingDate
                     })
                 }
                 setIsView(false)
                 setCurApproval(null)
                 setCurAccomodation(null)
-                setAccommodationFields({...defaultAccommodationFields})
+                setAccommodationFields({ ...defaultAccommodationFields })
                 setAlertState('success')
                 setAlert('Accommodation Deleted Successfully!')
                 setDeleteCount(0)
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 getAccommodations(company)
             }
-        }else{
+        } else {
             setDeleteCount(accommodation.createdAt)
-            setTimeout(()=>{
+            setTimeout(() => {
                 setDeleteCount(0)
-            },12000)
+            }, 12000)
         }
     }
 
-    const handleSalesOpts = (e)=>{
+    const handleSalesOpts = (e) => {
         const name = e.target.getAttribute('name')
-        if (name){
+        if (name) {
             setSalesOpts1(name)
             setSalesOpts(name)
         }
     }
-    const handleSalesOpts1 = (e)=>{
+    const handleSalesOpts1 = (e) => {
         const name = e.target.getAttribute('name')
-        if (name){
+        if (name) {
             setSalesOpts1(name)
             setSalesOpts(name)
         }
     }
-    
-    const handleCustomerFieldChange = (e)=>{
+
+    const handleCustomerFieldChange = (e) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value
 
-        if (name){
-            setCustomerFields((customerFields)=>{
-                return {...customerFields, [name]:value}
+        if (name) {
+            setCustomerFields((customerFields) => {
+                return { ...customerFields, [name]: value }
             })
         }
     }
 
-    const handleAccommodationFieldChange = (e)=>{
+    const handleAccommodationFieldChange = (e) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value
 
-        if (name){
-            if (name==='roomNo'){
-                if (value){
-                    if (accommodationFields.arrivalDate && accommodationFields.departureDate){
+        if (name) {
+            if (name === 'roomNo') {
+                if (value) {
+                    if (accommodationFields.arrivalDate && accommodationFields.departureDate) {
                         const arrivalDate = new Date(accommodationFields.arrivalDate).getTime()
                         const departureDate = new Date(accommodationFields.departureDate).getTime()
                         var defaultDays = 1
-                        const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
+                        const multiple = (departureDate - arrivalDate) / (24 * 60 * 60 * 1000)
                         defaultDays = multiple > 0 ? multiple : defaultDays
-                        setAccommodationFields((accommodationFields)=>{
-                            return {...accommodationFields, [name]:value, accommodationAmount : defaultDays * rooms[value]['price']}
+                        setAccommodationFields((accommodationFields) => {
+                            return { ...accommodationFields, [name]: value, accommodationAmount: defaultDays * rooms[value]['price'] }
                         })
-    
-                    }else{
-                        setAccommodationFields((accommodationFields)=>{
-                            return {...accommodationFields, [name]:value, accommodationAmount : rooms[value]['price']}
-                        })    
+
+                    } else {
+                        setAccommodationFields((accommodationFields) => {
+                            return { ...accommodationFields, [name]: value, accommodationAmount: rooms[value]['price'] }
+                        })
                     }
-                }else{
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value, accommodationAmount:''}
+                } else {
+                    setAccommodationFields((accommodationFields) => {
+                        return { ...accommodationFields, [name]: value, accommodationAmount: '' }
                     })
                 }
-            }else if (name==='departureDate'){
-                if (accommodationFields.arrivalDate){
+            } else if (name === 'departureDate') {
+                if (accommodationFields.arrivalDate) {
                     const date = new Date(value)
                     const arrDate = new Date(accommodationFields.arrivalDate)
-                    if (date >= arrDate){
+                    if (date >= arrDate) {
                         const roomNo = accommodationFields.roomNo
                         const arrivalDate = new Date(accommodationFields.arrivalDate).getTime()
                         const departureDate = new Date(value).getTime()
                         var defaultDays = 1
-                        const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
+                        const multiple = (departureDate - arrivalDate) / (24 * 60 * 60 * 1000)
                         defaultDays = multiple > 0 ? multiple : defaultDays
-                        setAccommodationFields((accommodationFields)=>{
-                            return {...accommodationFields, [name]:value, accommodationAmount : roomNo ? (defaultDays * rooms[roomNo]['price']): ''}
+                        setAccommodationFields((accommodationFields) => {
+                            return { ...accommodationFields, [name]: value, accommodationAmount: roomNo ? (defaultDays * rooms[roomNo]['price']) : '' }
                         })
-                    }else{
+                    } else {
                         setAlertState('error')
                         setAlert('Departure Date cannot be less than arrival date')
                         setAlertTimeout(5000)
                     }
-                }else{
+                } else {
                     setAlertState('error')
                     setAlert('Arrival Date is required')
                     setAlertTimeout(5000)
@@ -679,196 +681,196 @@ const Accommodation = ()=>{
                     //     return {...accommodationFields, [name]:value}
                     // })
                 }
-            }else if (name==='arrivalDate'){
-                if (accommodationFields.arrivalDate){
+            } else if (name === 'arrivalDate') {
+                if (accommodationFields.arrivalDate) {
                     const date = new Date(value)
                     const today = new Date()
-                    if (date <= today){
+                    if (date <= today) {
                         const roomNo = accommodationFields.roomNo
                         const arrivalDate = new Date(value).getTime()
                         const departureDate = new Date(accommodationFields.departureDate).getTime()
                         var defaultDays = 1
-                        const multiple = (departureDate - arrivalDate) / (24*60*60*1000)
+                        const multiple = (departureDate - arrivalDate) / (24 * 60 * 60 * 1000)
                         defaultDays = multiple > 0 ? multiple : defaultDays
-                        setAccommodationFields((accommodationFields)=>{
-                            return {...accommodationFields, [name]:value, accommodationAmount : roomNo ? (defaultDays * rooms[roomNo]['price']): ''}
+                        setAccommodationFields((accommodationFields) => {
+                            return { ...accommodationFields, [name]: value, accommodationAmount: roomNo ? (defaultDays * rooms[roomNo]['price']) : '' }
                         })
-                    }else{
+                    } else {
                         setAlertState('error')
                         setAlert('You cannot set the arrival date in the future!')
                         setAlertTimeout(5000)
                     }
-                }else{
+                } else {
                     const date = new Date(value)
                     const today = new Date()
-                    if (date <= today){
-                        setAccommodationFields((accommodationFields)=>{
-                            return {...accommodationFields, [name]:value}
+                    if (date <= today) {
+                        setAccommodationFields((accommodationFields) => {
+                            return { ...accommodationFields, [name]: value }
                         })
-                    }else{
+                    } else {
                         setAlertState('error')
                         setAlert('You cannot set the arrival date in the future!')
                         setAlertTimeout(5000)
                     }
                 }
-            }else if (name==='payPoint'){
-                if (value==='cash'){
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value, paymentReceipt : 'CASH'}
+            } else if (name === 'payPoint') {
+                if (value === 'cash') {
+                    setAccommodationFields((accommodationFields) => {
+                        return { ...accommodationFields, [name]: value, paymentReceipt: 'CASH' }
                     })
-                }else{
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value}
-                    })
-                }
-            }else if (name==='paymentAmount'){
-                if (value <= Number(accommodationFields.accommodationAmount)){
-                    setAccommodationFields((accommodationFields)=>{
-                        return {...accommodationFields, [name]:value}
+                } else {
+                    setAccommodationFields((accommodationFields) => {
+                        return { ...accommodationFields, [name]: value }
                     })
                 }
-            }else{
-                setAccommodationFields((accommodationFields)=>{
-                    return {...accommodationFields, [name]:value}
+            } else if (name === 'paymentAmount') {
+                if (value <= Number(accommodationFields.accommodationAmount)) {
+                    setAccommodationFields((accommodationFields) => {
+                        return { ...accommodationFields, [name]: value }
+                    })
+                }
+            } else {
+                setAccommodationFields((accommodationFields) => {
+                    return { ...accommodationFields, [name]: value }
                 })
             }
-            
+
         }
     }
-    const addCustomers = async ()=> {
-        setCustomerStatus('Adding Customers...')        
+    const addCustomers = async () => {
+        setCustomerStatus('Adding Customers...')
         const newCustomer = {
             ...customerFields,
-            createdAt: new Date().getTime(),            
+            createdAt: new Date().getTime(),
         }
 
-        const newCustomers = [newCustomer, ...customers]        
+        const newCustomers = [newCustomer, ...customers]
         const resps = await fetchServer("POST", {
             database: company,
-            collection: "Customers", 
+            collection: "Customers",
             update: newCustomer
         }, "createDoc", server)
-        
-        if (resps.err){
+
+        if (resps.err) {
             console.log(resps.mess)
             setAlertState('info')
             setAlert(resps.mess)
             setAlertTimeout(5000)
             setCustomerStatus('Add Customer')
-        }else{
+        } else {
             setCustomers(newCustomers)
             setCurCustomer(newCustomer)
             setIsView(true)
-            setCustomerFields({...newCustomer})
+            setCustomerFields({ ...newCustomer })
             getCustomers(company)
             setAlertState('success')
             setAlert('Customer Added Successfully!')
-            setAlertTimeout(5000)
-            setCustomerStatus('Add Customer')            
+            setAlertTimeout(1000)
+            setCustomerStatus('Add Customer')
         }
     }
-    const deleteCustomer = async (customer)=>{
+    const deleteCustomer = async (customer) => {
         if (deleteCount === customer.createdAt) {
-            var act=0
-            accommodations.filter((accommodation)=>{
-                if (accommodation.customerId === customer.i_d){
+            var act = 0
+            accommodations.filter((accommodation) => {
+                if (accommodation.customerId === customer.i_d) {
                     act++
                 }
-                if (act){
-                    return 
+                if (act) {
+                    return
                 }
             })
-            if (act){
+            if (act) {
                 setActionMessage('')
                 setAlertState('error')
                 setAlert(
                     `The Customer Record is in use in another Model. Delete the Corresponding Record Before Proceeding`
                 )
                 setAlertTimeout(12000)
-            }else{                
+            } else {
                 setAlertState('info')
                 setAlert('Deleting...')
                 const resps = await fetchServer("POST", {
                     database: company,
-                    collection: "Customers", 
-                    update: {createdAt: customer.createdAt}
+                    collection: "Customers",
+                    update: { createdAt: customer.createdAt }
                 }, "removeDoc", server)
-                if (resps.err){
+                if (resps.err) {
                     console.log(resps.mess)
                     setAlertState('info')
                     setAlert(resps.mess)
                     setAlertTimeout(5000)
-                }else{
+                } else {
                     setIsView(false)
                     setCurCustomer(null)
-                    setCustomerFields({...defaultCustomerFields})
+                    setCustomerFields({ ...defaultCustomerFields })
                     setAlertState('success')
                     setAlert('Customer Deleted Successfully!')
                     setDeleteCount(0)
-                    setAlertTimeout(5000)
+                    setAlertTimeout(1000)
                     getCustomers(company)
                 }
             }
-        }else{
+        } else {
             setDeleteCount(customer.createdAt)
-            setTimeout(()=>{
+            setTimeout(() => {
                 setDeleteCount(0)
-            },12000)
+            }, 12000)
         }
     }
     return (
         <>
-            <div className='sales'> 
-                 {/* Receipts Modal Trigger State  */}
-                <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />   
+            <div className='sales'>
+                {/* Receipts Modal Trigger State  */}
+                <PaymentReceiptsModal open={showReceiptsModal} onClose={() => setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
                 {showApprovalBox && <ApprovalBox
-                    onClose={()=>{
+                    onClose={() => {
                         setShowApprovalBox(false)
                         setApprovalStatus(false)
                         setApprovalMessage('')
                     }}
                     module={'accommodation'}
-                    section= {'postaccommodation'}
-                    postApprovalUpdate={()=>{
-                        postApprovalUpdate(company, 'accommodation', 'postaccommodation', curApproval)                        
+                    section={'postaccommodation'}
+                    postApprovalUpdate={() => {
+                        postApprovalUpdate(company, 'accommodation', 'postaccommodation', curApproval)
                     }}
-                />}         
+                />}
                 {showReport && <AccommodationReport
                     rooms={rooms}
-                    reportSales = {reportSales}
+                    reportSales={reportSales}
                     multiple={!accommodationCustomer}
-                    accommodationCustomer={accommodationCustomer}                  
-                    setShowReport={(value)=>{
+                    accommodationCustomer={accommodationCustomer}
+                    setShowReport={(value) => {
                         setShowReport(value)
-                        if (!accommodationCustomer){
+                        if (!accommodationCustomer) {
                             setReportSales(null)
                         }
-                    }}              
-                    fromDate = {saleFrom}
-                    toDate = {saleTo}
-                />} 
+                    }}
+                    fromDate={saleFrom}
+                    toDate={saleTo}
+                />}
                 {showReceipt && <AccommodationReceipt
-                    curAccommodation = {curAccommodation}
-                    setShowReceipt={(value)=>{
-                        setShowReceipt(value)                        
-                    }}                                  
-                />}    
-                {actionMessage && <Notify        
+                    curAccommodation={curAccommodation}
+                    setShowReceipt={(value) => {
+                        setShowReceipt(value)
+                    }}
+                />}
+                {actionMessage && <Notify
                     notifyMessage={alert}
-                    notifyState = {alertState}
-                    timeout = {alertTimeout}
+                    notifyState={alertState}
+                    timeout={alertTimeout}
                     actionMessage={actionMessage}
-                    action={()=>{
+                    action={() => {
                         // setActionMessage('Calculating...')
                         // acceptSalesDebt()
                     }}
-                />}   
-                <div className='emplist saleslist'> 
-                    {companyRecord.status==='admin' && <FaTableCells                         
+                />}
+                <div className='emplist saleslist'>
+                    {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'
-                        onClick={()=>{
+                        onClick={() => {
                             calculateAccommodationSales()
-                            if (saleTo && saleFrom){                                
+                            if (saleTo && saleFrom) {
                                 setShowReport(true)
                             }
                         }}
@@ -876,14 +878,14 @@ const Accommodation = ()=>{
                     <div className='payeeinpcov'>
                         <div className='inpcov formpad'>
                             <div>Date From</div>
-                            <input 
+                            <input
                                 className='forminp prinps'
                                 name='salesfrom'
                                 type='date'
                                 placeholder='From'
                                 value={saleFrom}
                                 disabled={!allowBacklogs}
-                                onChange={(e)=>{
+                                onChange={(e) => {
                                     setSaleFrom(e.target.value)
                                     setAccommodationCustomer('')
                                 }}
@@ -891,43 +893,43 @@ const Accommodation = ()=>{
                         </div>
                         <div className='inpcov formpad'>
                             <div>Date To</div>
-                            <input 
+                            <input
                                 className='forminp prinps'
                                 name='salesto'
                                 type='date'
                                 placeholder='To'
                                 value={saleTo}
                                 disabled={!allowBacklogs}
-                                onChange={(e)=>{
+                                onChange={(e) => {
                                     setSaleTo(e.target.value)
                                     setAccommodationCustomer('')
                                 }}
                             />
                         </div>
-                    </div>     
-                    <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
                         <button className="action-btn" onClick={handleSyncOfflineAccommodation} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
-                    <div className='emptypecov' 
+                    <div className='emptypecov'
                         onClick={handleSalesOpts1}
                     >
-                        <div name='customers' className={salesOpts1==='customers' ? 'slopts': ''}>Customers</div>
-                        <div name='accommodation' className={salesOpts1==='accommodation' ? 'slopts': ''}>Accommodation</div>
-                    </div>                                                  
-                    {salesOpts1 === 'accommodation' && companyRecord.status==='admin' && <div className='inpcov fltinpcov'>
-                        <select 
+                        <div name='customers' className={salesOpts1 === 'customers' ? 'slopts' : ''}>Customers</div>
+                        <div name='accommodation' className={salesOpts1 === 'accommodation' ? 'slopts' : ''}>Accommodation</div>
+                    </div>
+                    {salesOpts1 === 'accommodation' && companyRecord.status === 'admin' && <div className='inpcov fltinpcov'>
+                        <select
                             className='forminp'
                             name='accommodationCustomer'
                             type='text'
                             value={accommodationCustomer}
-                            onChange={(e)=>{
-                                setAccommodationCustomer(e.target.value)                                
+                            onChange={(e) => {
+                                setAccommodationCustomer(e.target.value)
                             }}
                         >
                             <option value=''>All Customers</option>
-                            {customers?.map((customer)=>{
+                            {customers?.map((customer) => {
                                 return (
-                                    <option 
+                                    <option
                                         key={customer.i_d}
                                         value={customer.i_d}
                                     >
@@ -937,91 +939,91 @@ const Accommodation = ()=>{
                             })}
                         </select>
                     </div>}
-                    {salesOpts1 === 'accommodation' && accommodations?.filter((ftrsale)=>{
+                    {salesOpts1 === 'accommodation' && accommodations?.filter((ftrsale) => {
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
                         const toDate = new Date(saleTo).getTime()
 
-                        if ( slCreatedAt>= fromDate && slCreatedAt<=toDate
-                        ){
-                            if (accommodationCustomer){
-                                if (accommodationCustomer === ftrsale.customerId){
+                        if (slCreatedAt >= fromDate && slCreatedAt <= toDate
+                        ) {
+                            if (accommodationCustomer) {
+                                if (accommodationCustomer === ftrsale.customerId) {
                                     return ftrsale
                                 }
-                            }else{
-                                if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('view_all_accommodation')){
-                                    if (ftrsale.employeeId === companyRecord.emailid){
+                            } else {
+                                if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('view_all_accommodation')) {
+                                    if (ftrsale.employeeId === companyRecord.emailid) {
                                         return ftrsale
                                     }
-                                }else{
+                                } else {
                                     return ftrsale
                                 }
                             }
                         }
-                    }).map((accommodation, index)=>{
-                        const accommodationApproval = accommodationApprovals.find((accappr)=>{
+                    }).map((accommodation, index) => {
+                        const accommodationApproval = accommodationApprovals.find((accappr) => {
                             return accappr.link === accommodation.createdAt
                         })
-            
-                        if (accommodationApproval){                               
+
+                        if (accommodationApproval) {
                             accommodation.approval = accommodationApproval
                         }
-                        const {createdAt, postingDate, employeeId, customerId, roomNo, accommodationAmount,
+                        const { createdAt, postingDate, employeeId, customerId, roomNo, accommodationAmount,
                             arrivalDate, departureDate, arrivalTime, departureTime, paymentStatus, paymentAmount,
                             approval
-                        } = accommodation 
+                        } = accommodation
                         var textColor = 'red'
-                        if (approval?.approved){
+                        if (approval?.approved) {
                             textColor = 'green'
                         }
-                        return(
-                            <div className={'dept relative' + (curAccommodation?.createdAt===createdAt?' curview':'')} key={index} 
-                                onClick={(e)=>{
+                        return (
+                            <div className={'dept relative' + (curAccommodation?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                onClick={(e) => {
                                     handleAccommodationViewClick(accommodation)
                                 }}
                             >
-                                <div 
-                                    className={'stsvw'+(paymentStatus==='Fully Paid'?' stspd':' stsupd')}
-                                    style  ={{
-                                        border: approval? `solid ${textColor} 3px` : 'solid black 0px'
+                                <div
+                                    className={'stsvw' + (paymentStatus === 'Fully Paid' ? ' stspd' : ' stsupd')}
+                                    style={{
+                                        border: approval ? `solid ${textColor} 3px` : 'solid black 0px'
                                     }}
-                                    onClick={()=>{
+                                    onClick={() => {
                                         setFillMode('payment')
-                                        if (approval){
+                                        if (approval) {
                                             setCurApproval(approval)
-                                            setAccommodationFields({...accommodationFields, ...approval.data})
-                                        }else{
+                                            setAccommodationFields({ ...accommodationFields, ...approval.data })
+                                        } else {
                                             setCurApproval(null)
                                         }
                                     }}
                                 >
-                                        <div>{approval ? (approval.approved? paymentStatus: (isApprover?'Approve Payment':paymentStatus)) : (paymentStatus)}</div>
-                                    </div>
+                                    <div>{approval ? (approval.approved ? paymentStatus : (isApprover ? 'Approve Payment' : paymentStatus)) : (paymentStatus)}</div>
+                                </div>
                                 <div className={'dets sldets'}>
-                                    
+
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                     <div>Room No: <b>{roomNo}</b></div>
-                                    <div>Rented By: {customers?.map((customer)=>{
-                                        if (customerId === customer.i_d){
+                                    <div>Rented By: {customers?.map((customer) => {
+                                        if (customerId === customer.i_d) {
                                             return <b>{`${customer.fullName}`}</b>
                                         }
-                                        
+
                                     })}</div>
-                                    <div>Amount: <b>{'₦'+accommodationAmount.toLocaleString()}</b></div>
-                                    <div>Payment Amount: <b>{'₦'+paymentAmount.toLocaleString()}</b></div>
-                                    <div>Debt: <b>{'₦'+(Number(accommodationAmount) - Number(paymentAmount)).toLocaleString()}</b></div>
+                                    <div>Amount: <b>{'₦' + accommodationAmount.toLocaleString()}</b></div>
+                                    <div>Payment Amount: <b>{'₦' + paymentAmount.toLocaleString()}</b></div>
+                                    <div>Debt: <b>{'₦' + (Number(accommodationAmount) - Number(paymentAmount)).toLocaleString()}</b></div>
                                     <div>Arrival Date (Time): <b>{`${getDate(arrivalDate)} (${arrivalTime})`}</b></div>
                                     <div>Departure Date (Time): <b>{`${getDate(departureDate)} (${departureTime})`}</b></div>
                                     <div className='deptdesc'>{`Accommodation Posted By:`} <b>{
-                                        employees.length?employees.filter((employee)=>{
+                                        employees.length ? employees.filter((employee) => {
                                             return employee.i_d === employeeId
-                                        })[0]?.['firstName']:''
+                                        })[0]?.['firstName'] : ''
                                     }</b></div>
-                                    {approval && approval?.approvers?.length > 0 && 
-                                        <div 
-                                            className='deptdesc' 
+                                    {approval && approval?.approvers?.length > 0 &&
+                                        <div
+                                            className='deptdesc'
                                             style={{
-                                                fontWeight:'bold', 
+                                                fontWeight: 'bold',
                                                 fontSize: '13px',
                                                 color: 'greenyellow',
                                                 background: 'rgba(0,0,0,0.7)',
@@ -1030,38 +1032,38 @@ const Accommodation = ()=>{
                                                 borderRadius: '8px',
                                                 border: 'solid greenyellow 3px',
                                             }}
-                                        > 
+                                        >
                                             ## PAYMENT VERIFIED ##
                                         </div>
                                     }
-                                    {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Payment Point: {payPoints[approval.data.payPoint].toUpperCase()}</div>}
-                                    {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{fontWeight:'bold', fontSize: '12px'}}>Receipt No: {approval.data.paymentReceipt}</div>}
-                                    {approval && isApprover && <div className='deptdesc' style={{fontSize:'13px', color:'red'}}>{
-                                        approval.data?.voidReceipt && 
-                                        <div onClick={()=>{setShowReceiptsModal(true)}}><span style={{fontWeight: 'bold'}}>Void Receipt Reason:</span> Receipt "{approval.data?.voidReceipt.voidReceipt}" already used on the date {approval.data?.voidReceipt.voidReceiptDate} for {payPoints[approval.data?.voidReceipt.voidReceiptPoint]}. <a>Click to Find Receipt Report</a></div>
+                                    {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{ fontWeight: 'bold', fontSize: '12px' }}>Payment Point: {payPoints[approval.data.payPoint].toUpperCase()}</div>}
+                                    {approval && (isApprover || companyRecord?.permissions.includes('view_all_accommodation')) && <div className='deptdesc' style={{ fontWeight: 'bold', fontSize: '12px' }}>Receipt No: {approval.data.paymentReceipt}</div>}
+                                    {approval && isApprover && <div className='deptdesc' style={{ fontSize: '13px', color: 'red' }}>{
+                                        approval.data?.voidReceipt &&
+                                        <div onClick={() => { setShowReceiptsModal(true) }}><span style={{ fontWeight: 'bold' }}>Void Receipt Reason:</span> Receipt "{approval.data?.voidReceipt.voidReceipt}" already used on the date {approval.data?.voidReceipt.voidReceiptDate} for {payPoints[approval.data?.voidReceipt.voidReceiptPoint]}. <a>Click to Find Receipt Report</a></div>
                                     }</div>}
                                 </div>
-                                {(companyRecord.status==='admin') && <div 
+                                {(companyRecord.status === 'admin') && <div
                                     className='edit'
-                                    style={{color:'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border:'solid red 1.3px'}}
-                                    name='delete'         
-                                    onClick={()=>{                                        
+                                    style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
+                                    name='delete'
+                                    onClick={() => {
                                         setAlertState('info')
                                         setAlert('You are about to delete the selected Accommodation Record. Please Delete again if you are sure!')
                                         setAlertTimeout(5000)
-                                        deleteAccommodation(accommodation)                                        
+                                        deleteAccommodation(accommodation)
                                     }}
                                 >
                                     Delete
                                 </div>}
                             </div>
                         )
-                  })}
-                    {salesOpts1 === 'customers' && customers?.map((customer, index)=>{
-                        const {i_d, fullName, email, phoneNo, createdAt, address, localGovernmentArea, stateOfOrigin} = customer
-                        return(
-                            <div className={'dept' + (curCustomer?.createdAt===createdAt?' curview':'')} key={index} 
-                                onClick={(e)=>{
+                    })}
+                    {salesOpts1 === 'customers' && customers?.map((customer, index) => {
+                        const { i_d, fullName, email, phoneNo, createdAt, address, localGovernmentArea, stateOfOrigin } = customer
+                        return (
+                            <div className={'dept' + (curCustomer?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                onClick={(e) => {
                                     handleCustomerViewClick(customer)
                                 }}
                             >
@@ -1071,14 +1073,14 @@ const Accommodation = ()=>{
                                     <div>Phone No: <b>{phoneNo}</b></div>
                                     {email && <div>Email: <b>{email}</b></div>}
                                 </div>
-                                {(companyRecord.status==='admin') && <div 
+                                {(companyRecord.status === 'admin') && <div
                                     className='edit'
-                                    name='delete'         
-                                    style={{color:'red'}}                           
-                                    onClick={()=>{                                                                                
+                                    name='delete'
+                                    style={{ color: 'red' }}
+                                    onClick={() => {
                                         setAlertState('info')
                                         setAlert('You are about to delete the selected Customer Record. Please Delete again if you are sure!')
-                                        setAlertTimeout(5000)                                                                                    
+                                        setAlertTimeout(5000)
                                         deleteCustomer(customer)
                                     }}
                                 >
@@ -1086,29 +1088,29 @@ const Accommodation = ()=>{
                                 </div>}
                             </div>
                         )
-                  })}
+                    })}
                 </div>
                 <div className='empview salesview'>
-                    {isView && salesOpts==='accommodation' && 
-                        <FaReceipt                   
+                    {isView && salesOpts === 'accommodation' &&
+                        <FaReceipt
                             className='slrepicon'
-                            onClick={()=>{
-                                setShowReceipt(true)                                
+                            onClick={() => {
+                                setShowReceipt(true)
                             }}
                         />
                     }
-                    {['accommodation','customers'].includes(salesOpts) &&
-                        <MdAdd 
+                    {['accommodation', 'customers'].includes(salesOpts) &&
+                        <MdAdd
                             className='add slsadd'
-                            onClick={()=>{
-                                if (salesOpts==='accommodation'){
+                            onClick={() => {
+                                if (salesOpts === 'accommodation') {
                                     setFillMode('')
                                     setIsView(false)
-                                    setAccommodationFields({...defaultAccommodationFields})
+                                    setAccommodationFields({ ...defaultAccommodationFields })
                                     setCurAccomodation(null)
-                                }else if (salesOpts==='customers'){
+                                } else if (salesOpts === 'customers') {
                                     setIsView(false)
-                                    setCustomerFields({...defaultCustomerFields})
+                                    setCustomerFields({ ...defaultCustomerFields })
                                     setCurCustomer(null)
                                 }
                                 setCurApproval(null)
@@ -1123,41 +1125,41 @@ const Accommodation = ()=>{
                     <div className='formtitle padtitle'>
                         <div className={'frmttle'}>
                             {`HOSPITALITY RECORDS`}
-                        </div> 
+                        </div>
                     </div>
-                    
+
                     <div className='salesfm'>
                         {<div className='salesopts' onClick={handleSalesOpts}>
-                            <div name='customers' className={salesOpts==='customers' ? 'slopts': ''}>Customers</div>                            
-                            <div name='accommodation' className={salesOpts==='accommodation' ? 'slopts': ''}>Accommodation</div>
+                            <div name='customers' className={salesOpts === 'customers' ? 'slopts' : ''}>Customers</div>
+                            <div name='accommodation' className={salesOpts === 'accommodation' ? 'slopts' : ''}>Accommodation</div>
                         </div>}
-                        
-                        {salesOpts==='accommodation' && fillmode === '' && <div className='addnewsales'>
+
+                        {salesOpts === 'accommodation' && fillmode === '' && <div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
-                                <select 
+                                <select
                                     className='forminp'
                                     name='employeeId'
                                     type='text'
-                                    value={accommodationFields.employeeId} 
-                                    disabled={true}                                   
-                                    onChange={(e)=>{
+                                    value={accommodationFields.employeeId}
+                                    disabled={true}
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 >
                                     <option value=''>Select Sales Person</option>
-                                    {employees.filter((fltemp)=>{
-                                        if (fltemp.dismissalDate){
-                                            if (new Date(fltemp.dismissalDate).getMonth() >= new Date(saleFrom).getMonth()){
+                                    {employees.filter((fltemp) => {
+                                        if (fltemp.dismissalDate) {
+                                            if (new Date(fltemp.dismissalDate).getMonth() >= new Date(saleFrom).getMonth()) {
                                                 return fltemp
                                             }
-                                        }else{
+                                        } else {
                                             return fltemp
                                         }
-                                       
-                                    }).map((employee)=>{
+
+                                    }).map((employee) => {
                                         return (
-                                            <option 
+                                            <option
                                                 key={employee.i_d}
                                                 value={employee.i_d}
                                             >
@@ -1169,7 +1171,7 @@ const Accommodation = ()=>{
                             </div>
                             <div className='inpcov'>
                                 <div>Select Customer</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='customerId'
                                     type='text'
@@ -1177,15 +1179,15 @@ const Accommodation = ()=>{
                                     placeholder='Select Customer'
                                     value={accommodationFields.customerId}
                                     disabled={isView}
-                                    onChange={(e)=>{
-                                        handleAccommodationFieldChange(e)                                
+                                    onChange={(e) => {
+                                        handleAccommodationFieldChange(e)
                                     }}
                                 />
                                 <datalist id='customerslist'>
                                     <option value=''>Select Customer</option>
-                                    {customers?.map((customer)=>{
+                                    {customers?.map((customer) => {
                                         return (
-                                            <option 
+                                            <option
                                                 key={customer.i_d}
                                                 value={customer.i_d}
                                             >
@@ -1197,144 +1199,144 @@ const Accommodation = ()=>{
                             </div>
                             <div className='inpcov'>
                                 <div>Room Number</div>
-                                <select 
+                                <select
                                     className='forminp'
                                     name='roomNo'
                                     type='text'
                                     value={accommodationFields.roomNo}
                                     disabled={isView}
-                                    onChange={(e)=>{
-                                        handleAccommodationFieldChange(e)                                
+                                    onChange={(e) => {
+                                        handleAccommodationFieldChange(e)
                                     }}
                                 >
                                     <option value=''>Select Room No</option>
-                                    {Object.keys(rooms).map((room)=>{
+                                    {Object.keys(rooms).map((room) => {
                                         return <option key={room} value={room}>{`ROOM ${room}`}</option>
                                     })}
                                 </select>
                             </div>
                             <div className='inpcov'>
                                 <div>Amount</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='accommodationAmount'
                                     type='number'
                                     placeholder='Amount'
                                     value={accommodationFields.accommodationAmount}
                                     disabled={true}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Arrival Date</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='arrivalDate'
                                     type='date'
                                     placeholder='Arrival Date'
                                     value={accommodationFields.arrivalDate}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Departure Date</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='departureDate'
                                     type='date'
                                     placeholder='Departure Date'
                                     value={accommodationFields.departureDate}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Arrival Time</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='arrivalTime'
                                     type='time'
                                     placeholder='Arrival Time'
                                     value={accommodationFields.arrivalTime}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Departure Time</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='departureTime'
                                     type='time'
                                     placeholder='Departure Time'
                                     value={accommodationFields.departureTime}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
-                            </div>                                             
+                            </div>
                         </div>}
-                        {salesOpts==='accommodation' && fillmode === 'payment' && <div className='addnewsales'>
+                        {salesOpts === 'accommodation' && fillmode === 'payment' && <div className='addnewsales'>
                             <div className='acpymdt'>{`Payment Details (Room No: ${accommodationFields.roomNo}, Date: ${accommodationFields.postingDate})`}</div>
                             <div className='inpcov'>
                                 <div>Payment Amount</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='paymentAmount'
                                     type='number'
                                     placeholder='Payment Amount'
                                     value={accommodationFields.paymentAmount}
                                     disabled={isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Select Payment Point</div>
-                                <select 
+                                <select
                                     className='forminp'
                                     name='payPoint'
                                     type='text'
                                     placeholder='Payment Point'
                                     value={accommodationFields.payPoint}
-                                    disabled={(isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)) || selectedUnPaidAccommodations.length>0}
-                                    onChange={(e)=>{
+                                    disabled={(isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)) || selectedUnPaidAccommodations.length > 0}
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 >
                                     <option value=''>Select Payment Point</option>
 
-                                    {Object.keys(payPoints).map((payPoint, index)=>{
-                                        if (isView){
+                                    {Object.keys(payPoints).map((payPoint, index) => {
+                                        if (isView) {
                                             return <option key={index} value={payPoint}>{payPoints[payPoint]}</option>
                                         }
-                                        else if (!['moniepoint1', 'moniepoint3'].includes(payPoint)){
+                                        else if (!['moniepoint1', 'moniepoint3'].includes(payPoint)) {
                                             return <option key={index} value={payPoint}>{payPoints[payPoint]}</option>
                                         }
                                     })}
                                 </select>
-                            </div>                            
+                            </div>
                             <div className='inpcov'>
                                 <div>Payment Receipt</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='paymentReceipt'
                                     type='text'
                                     placeholder='Enter Receipt Number'
-                                    disabled={(isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)) || accommodationFields.payPoint === 'cash' || selectedUnPaidAccommodations.length>0}
+                                    disabled={(isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)) || accommodationFields.payPoint === 'cash' || selectedUnPaidAccommodations.length > 0}
                                     value={accommodationFields.paymentReceipt}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleAccommodationFieldChange(e)
                                     }}
                                 />
@@ -1342,116 +1344,116 @@ const Accommodation = ()=>{
 
                             {/* Logic for Payment Receipt Upload Here */}
                             {accommodationFields?.paymentReceipt?.toLowerCase() !== 'cash' && accommodationFields.payPoint && <section className='imgview'>
-                               
+
                                 <div className='acpymdt'>Upload Payment Receipt</div>
-                                
-                                {(accommodationFields.imgId || imageUpload) && 
-                                
-                                    <a href={accommodationFields?.viewLink || ''} target="_blank" rel="noopener noreferrer">                        
-                                        <img className='imgtag' src={(accommodationFields?.imgId? `https://drive.google.com/thumbnail?id=${accommodationFields.imgId}&sz=w1000`: '') || (imageUpload? (URL.createObjectURL(imageUpload)): '')} 
+
+                                {(accommodationFields.imgId || imageUpload) &&
+
+                                    <a href={accommodationFields?.viewLink || ''} target="_blank" rel="noopener noreferrer">
+                                        <img className='imgtag' src={(accommodationFields?.imgId ? `https://drive.google.com/thumbnail?id=${accommodationFields.imgId}&sz=w1000` : '') || (imageUpload ? (URL.createObjectURL(imageUpload)) : '')}
                                             alt='receipt'
                                         />
                                     </a>
                                 }
                                 {!imageUpload && !accommodationFields.imgId && <div className='inpcov'>
                                     <div>Upload Image</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='imgId'
                                         type='file'
-                                        accept='image/*' 
-                                        capture="environment"                                      
-                                        onChange={(e)=>{
+                                        accept='image/*'
+                                        capture="environment"
+                                        onChange={(e) => {
                                             handleImageSelect(e)
                                         }}
                                     />
                                 </div>}
-                                {(!accommodationFields.imgId) && <button 
+                                {(!accommodationFields.imgId) && <button
                                     className='imgupld'
-                                    style={{cursor: uploadingReceipt ? 'not-allowed': 'pointer'}}
+                                    style={{ cursor: uploadingReceipt ? 'not-allowed' : 'pointer' }}
                                     disabled={uploadingReceipt}
-                                    onClick={()=>{
+                                    onClick={() => {
                                         handleImageUpload(imageUpload)
                                     }}
-                                > Upload</button>} 
-                                {((((companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('edit_payment_receipts')) && accommodationFields.imgId) || imageUpload) && <button 
+                                > Upload</button>}
+                                {((((companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('edit_payment_receipts')) && accommodationFields.imgId) || imageUpload) && <button
                                     className='imgupld'
                                     color='red'
-                                    style={{cursor: deletingReceipt ? 'not-allowed': 'pointer'}}
+                                    style={{ cursor: deletingReceipt ? 'not-allowed' : 'pointer' }}
                                     disabled={deletingReceipt}
-                                    onClick={()=>{
+                                    onClick={() => {
                                         setImageUpload(null)
-                                        if (accommodationFields.imgId){
+                                        if (accommodationFields.imgId) {
                                             handleImageDelete(accommodationFields.imgId)
                                         }
                                     }}
                                 > Delete</button>)
                                 }
                             </section>}
-                            
-                            {accommodationFields.paymentStatus==='Make Payment' && !curApproval && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_group_payment')) && <>
+
+                            {accommodationFields.paymentStatus === 'Make Payment' && !curApproval && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_group_payment')) && <>
                                 <div className='acpymdt'>Apply Receipt to other Pending Accommodations</div>
                                 <div className='inpcov'>
                                     <div>Select Other Accommodation to Pay</div>
-                                    <select 
+                                    <select
                                         className='forminp'
                                         name='multiplePayments'
                                         type='text'
                                         placeholder='Select A Pending Accommodation'
                                         value={curSelectedUnPaidAccommodation}
-                                        onChange={(e)=>{
+                                        onChange={(e) => {
                                             setCurSelectedUnPaidAccommodation(e.target.value)
                                         }}
                                     >
                                         <option value=''>Select A Pending Accommodation</option>
-                                        {unPaidAccommodations.filter((flt)=>{
-                                            return !(selectedUnPaidAccommodations.map((sel)=>{return sel.createdAt})).includes(flt.createdAt) 
-                                        }).map((accm, index1)=>{
+                                        {unPaidAccommodations.filter((flt) => {
+                                            return !(selectedUnPaidAccommodations.map((sel) => { return sel.createdAt })).includes(flt.createdAt)
+                                        }).map((accm, index1) => {
                                             return <option key={index1} value={accm.createdAt}>{`Rooom ${accm.roomNo} (${accm.postingDate} By ${accm.customerId})`}</option>
                                         })}
                                     </select>
                                 </div>
                                 <div className='inpcov'>
                                     <div>Payment Amount</div>
-                                    <input 
+                                    <input
                                         className='forminp'
                                         name='paymentAmount'
                                         type='number'
                                         placeholder='Enter Payment Amount'
                                         disabled={!curSelectedUnPaidAccommodation}
                                         value={curPaymentAmount}
-                                        onChange={(e)=>{
-                                            const relatedAccommodation = unPaidAccommodations.find((accm)=>{return accm.createdAt === Number(curSelectedUnPaidAccommodation)})
-                                            if (e.target.value <= Number(relatedAccommodation?.accommodationAmount || 0)){
+                                        onChange={(e) => {
+                                            const relatedAccommodation = unPaidAccommodations.find((accm) => { return accm.createdAt === Number(curSelectedUnPaidAccommodation) })
+                                            if (e.target.value <= Number(relatedAccommodation?.accommodationAmount || 0)) {
                                                 setCurPaymentAmount(e.target.value)
                                             }
                                         }}
                                     />
                                 </div>
-                                <div className='acpymdt' style={{marginTop: '0px'}}>
-                                    <div 
+                                <div className='acpymdt' style={{ marginTop: '0px' }}>
+                                    <div
                                         className='yesbtn salesyesbtn'
                                         title='Fill All Fields plus the payPoint and PayReceipt first'
                                         style={{
                                             cursor: (
-                                                curSelectedUnPaidAccommodation 
+                                                curSelectedUnPaidAccommodation
                                                 && curPaymentAmount
                                                 && accommodationFields.payPoint
                                                 && accommodationFields.paymentReceipt
                                             ) ? 'pointer' : 'not-allowed'
                                         }}
-                                        onClick={()=>{
+                                        onClick={() => {
                                             if (
-                                                curSelectedUnPaidAccommodation 
-                                                && curPaymentAmount 
+                                                curSelectedUnPaidAccommodation
+                                                && curPaymentAmount
                                                 && accommodationFields.payPoint
                                                 && accommodationFields.paymentReceipt
-                                            ){
-                                                const selectedAcc = unPaidAccommodations.find((accm)=>{
+                                            ) {
+                                                const selectedAcc = unPaidAccommodations.find((accm) => {
                                                     return accm.createdAt === Number(curSelectedUnPaidAccommodation)
                                                 })
-                                                if (selectedAcc){
-                                                    setSelectedUnPaidAccommodations((prevState)=>{
+                                                if (selectedAcc) {
+                                                    setSelectedUnPaidAccommodations((prevState) => {
                                                         return [
                                                             {
                                                                 ...selectedAcc,
@@ -1461,7 +1463,7 @@ const Accommodation = ()=>{
                                                                 imgId: accommodationFields.imgId,
                                                                 viewLink: accommodationFields.viewLink,
                                                                 downloadLink: accommodationFields.downloadLink
-                                                            }, 
+                                                            },
                                                             ...prevState
                                                         ]
                                                     })
@@ -1474,21 +1476,21 @@ const Accommodation = ()=>{
                                         Add Payment (+)
                                     </div>
                                 </div>
-                                {selectedUnPaidAccommodations.length>0 && selectedUnPaidAccommodations.map((accommodation, index)=>{
+                                {selectedUnPaidAccommodations.length > 0 && selectedUnPaidAccommodations.map((accommodation, index) => {
                                     return (
-                                        <div className='acpymdt' key={index} style={{textAlign:'left'}}>
+                                        <div className='acpymdt' key={index} style={{ textAlign: 'left' }}>
                                             <div>{`Room No: ${accommodation.roomNo}`}</div>
                                             <div>{`Payment Point: ${accommodation.payPoint}`}</div>
                                             <div>{`Amount: ₦${Number(accommodation.paymentAmount).toLocaleString()}`}</div>
                                             <div>{`Receipt No: ${accommodation.paymentReceipt || 'N/A'}`}</div>
                                             <div>{`Debt: ₦${(Number(accommodation.accommodationAmount) - Number(accommodation.paymentAmount)).toLocaleString()}`}</div>
                                             <p>....</p>
-                                            {(accommodation.createdAt !== curAccommodation.createdAt) && <div 
-                                                className = 'edit' 
-                                                style={{color: 'red', cursor: 'pointer', marginTop: '3px'}}
-                                                onClick={()=>{
-                                                    setSelectedUnPaidAccommodations((prevState)=>{
-                                                        return prevState.filter((accm, index1)=>{
+                                            {(accommodation.createdAt !== curAccommodation.createdAt) && <div
+                                                className='edit'
+                                                style={{ color: 'red', cursor: 'pointer', marginTop: '3px' }}
+                                                onClick={() => {
+                                                    setSelectedUnPaidAccommodations((prevState) => {
+                                                        return prevState.filter((accm, index1) => {
                                                             return accm.createdAt !== accommodation.createdAt
                                                         })
                                                     })
@@ -1498,145 +1500,145 @@ const Accommodation = ()=>{
                                     )
                                 })}
                             </>}
-                            
+
                         </div>}
-                        
-                        {salesOpts==='customers' && <div className='basic'>                            
+
+                        {salesOpts === 'customers' && <div className='basic'>
                             <div className='inpcov'>
                                 <div>Customer ID</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='i_d'
                                     type='text'
                                     placeholder='Customer ID'
                                     value={customerFields.i_d}
                                     disabled={true}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleCustomerFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Customer Name</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='fullName'
                                     type='text'
                                     placeholder='Customer Full Name'
                                     value={customerFields.fullName}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleCustomerFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Address</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='address'
                                     type='text'
                                     placeholder='Customer Address'
                                     value={customerFields.address}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleCustomerFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Email Address</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='email'
                                     type='text'
                                     placeholder='Email Address'
                                     value={customerFields.email}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleCustomerFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Phone No</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='phoneNo'
                                     type='text'
                                     placeholder='Customer Phone No'
                                     value={customerFields.phoneNo}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleCustomerFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>State of Origin</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='stateOfOrigin'
                                     type='text'
                                     placeholder='Stae of Origin'
                                     value={customerFields.stateOfOrigin}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleCustomerFieldChange(e)
                                     }}
                                 />
                             </div>
                             <div className='inpcov'>
                                 <div>Local Government Area</div>
-                                <input 
+                                <input
                                     className='forminp'
                                     name='localGovernmentArea'
                                     type='text'
                                     placeholder='Customer LGA'
                                     value={customerFields.localGovernmentArea}
                                     disabled={isView}
-                                    onChange={(e)=>{
+                                    onChange={(e) => {
                                         handleCustomerFieldChange(e)
                                     }}
                                 />
                             </div>
-                        </div>}                        
+                        </div>}
                     </div>
-                    {(!isView || (curAccommodation?.paymentStatus!=='Fully Paid' && fillmode==='payment')) && <div className='confirm'>     
+                    {(!isView || (curAccommodation?.paymentStatus !== 'Fully Paid' && fillmode === 'payment')) && <div className='confirm'>
                         {(salesOpts === 'accommodation' && !fillmode) && <div className='inpcov salesinpcov'>
-                            <input 
+                            <input
                                 className='forminp'
                                 name='postingDate'
                                 type='date'
                                 placeholder='Posting Date'
                                 value={postingDate}
-                                disabled={!companyRecord.status==='admin'}
-                                onChange={(e)=>{
+                                disabled={!companyRecord.status === 'admin'}
+                                onChange={(e) => {
                                     const date = new Date(e.target.value)
                                     const today = new Date()
-                                    if (date <= today){
+                                    if (date <= today) {
                                         setPostingDate(e.target.value)
-                                    }else{
+                                    } else {
                                         setAlertState('error')
                                         setAlert('You cannot set the posting date in the future!')
                                         setAlertTimeout(5000)
                                     }
                                 }}
                             />
-                        </div>}  
-                                    
-                        {(salesOpts === 'accommodation' && accommodationFields?.paymentStatus==='Make Payment') && ((companyRecord?.status === 'admin' && !curApproval?.approved) || companyRecord?.permissions.includes('accommodations')) && <div className='yesbtn salesyesbtn'
+                        </div>}
+
+                        {(salesOpts === 'accommodation' && accommodationFields?.paymentStatus === 'Make Payment') && ((companyRecord?.status === 'admin' && !curApproval?.approved) || companyRecord?.permissions.includes('accommodations')) && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:(accommodationFields.accommodationAmount && !accommodationFields.posted)?'pointer':'not-allowed'
+                                cursor: (accommodationFields.accommodationAmount && !accommodationFields.posted) ? 'pointer' : 'not-allowed'
                             }}
-                            onClick={()=>{
-                                if (accommodationFields.accommodationAmount){
-                                    if (accommodationFields.employeeId === companyRecord?.emailid || (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_postaccommodation'))){
-                                        if (fillmode === 'payment'){
+                            onClick={() => {
+                                if (accommodationFields.accommodationAmount) {
+                                    if (accommodationFields.employeeId === companyRecord?.emailid || (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_postaccommodation'))) {
+                                        if (fillmode === 'payment') {
                                             if (accommodationFields.paymentAmount > 0 && accommodationFields.payPoint &&
                                                 accommodationFields.paymentReceipt
-                                            ){
-                                                if (accommodationFields.imgId || accommodationFields.paymentReceipt.toLowerCase() === 'cash'){
+                                            ) {
+                                                if (accommodationFields.imgId || accommodationFields.paymentReceipt.toLowerCase() === 'cash') {
                                                     const paymentFields = {
                                                         paymentAmount: accommodationFields.paymentAmount,
                                                         payPoint: accommodationFields.payPoint,
@@ -1644,29 +1646,29 @@ const Accommodation = ()=>{
                                                     }
                                                     let foundVoidReceipt = false
                                                     let voidReceiptDetails = {}
-                                                    let usedReceipt = paymentReceipts.find((payrec)=>{
-                                                        const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
-                                                            if (rec.trim('').toLowerCase()==='cash'){
+                                                    let usedReceipt = paymentReceipts.find((payrec) => {
+                                                        const payRecs = String(payrec?.paymentReceipt).split(',').map((rec) => {
+                                                            if (rec.trim('').toLowerCase() === 'cash') {
                                                                 return rec.trim('')
-                                                            }else{
+                                                            } else {
                                                                 return Number(rec.trim(''))
                                                             }
-                                                        }).filter((fltRec)=>{
+                                                        }).filter((fltRec) => {
                                                             return fltRec !== 'cash'
                                                         })
-                                                        let accRecs = String(accommodationFields.paymentReceipt).split(',').filter((rec)=>{
-                                                            return rec.trim('').toLowerCase()!=='cash'
+                                                        let accRecs = String(accommodationFields.paymentReceipt).split(',').filter((rec) => {
+                                                            return rec.trim('').toLowerCase() !== 'cash'
                                                         })
-                                                        let accRecFiltered = accRecs.filter((fltRec)=>{
+                                                        let accRecFiltered = accRecs.filter((fltRec) => {
                                                             return (
-                                                                (payrec.paymentReceipt === Number(fltRec) 
-                                                                || payRecs.includes(Number(fltRec)))
+                                                                (payrec.paymentReceipt === Number(fltRec)
+                                                                    || payRecs.includes(Number(fltRec)))
                                                                 && payrec.paymentPoint === accommodationFields.payPoint
                                                             )
                                                         })
                                                         return accRecFiltered.length > 0
                                                     })
-                                                    if (usedReceipt){
+                                                    if (usedReceipt) {
                                                         foundVoidReceipt = true
                                                         voidReceiptDetails = {
                                                             voidReceipt: usedReceipt?.paymentReceipt,
@@ -1677,38 +1679,38 @@ const Accommodation = ()=>{
                                                             voidReceiptHandler: usedReceipt?.paymentHandler
                                                         }
                                                         paymentFields.voidReceipt = voidReceiptDetails
-                                                        if (companyRecord?.status === 'admin'){
+                                                        if (companyRecord?.status === 'admin') {
                                                             setAlertState('error')
                                                             setAlert('Payment Receipt Number Already Used for the Selected Payment Point!')
                                                             setAlertTimeout(5000)
                                                             return
                                                         }
-                                                    }else {
-                                                        let voidReceipts = paymentReceipts.filter((payrec)=>{                                       
-                                                            const payRecs = String(payrec?.paymentReceipt).split(',').map((rec)=>{
-                                                                if (rec.trim('').toLowerCase()==='cash'){
+                                                    } else {
+                                                        let voidReceipts = paymentReceipts.filter((payrec) => {
+                                                            const payRecs = String(payrec?.paymentReceipt).split(',').map((rec) => {
+                                                                if (rec.trim('').toLowerCase() === 'cash') {
                                                                     return rec.trim('')
-                                                                }else{
+                                                                } else {
                                                                     return Number(rec.trim(''))
                                                                 }
-                                                            }).filter((fltRec)=>{
+                                                            }).filter((fltRec) => {
                                                                 return fltRec !== 'cash'
                                                             })
-                                                            let accRecs = String(accommodationFields.paymentReceipt).split(',').filter((rec)=>{
-                                                                return rec.trim('').toLowerCase()!=='cash'
+                                                            let accRecs = String(accommodationFields.paymentReceipt).split(',').filter((rec) => {
+                                                                return rec.trim('').toLowerCase() !== 'cash'
                                                             })
-                                                            let accRecFiltered = accRecs.filter((fltRec)=>{
-                                                                payRecs.forEach((prtRec)=>{
-                                                                    return(
-                                                                        String(fltRec).toLowerCase()!=='cash' && Number(prtRec) > Number(fltRec)
+                                                            let accRecFiltered = accRecs.filter((fltRec) => {
+                                                                payRecs.forEach((prtRec) => {
+                                                                    return (
+                                                                        String(fltRec).toLowerCase() !== 'cash' && Number(prtRec) > Number(fltRec)
                                                                         && payrec.paymentPoint === accommodationFields.payPoint && payrec.paymentDate < postingDate
                                                                     )
                                                                 })
                                                             })
                                                             return accRecFiltered.length > 0
                                                         })
-                                                        
-                                                        if (voidReceipts.length){
+
+                                                        if (voidReceipts.length) {
                                                             foundVoidReceipt = true
                                                             voidReceiptDetails = {
                                                                 voidReceipt: voidReceipts[0]?.paymentReceipt,
@@ -1719,7 +1721,7 @@ const Accommodation = ()=>{
                                                                 voidReceiptHandler: voidReceipts[0]?.paymentHandler
                                                             }
                                                             paymentFields.voidReceipt = voidReceiptDetails
-        
+
                                                             // if (companyRecord?.status === 'admin'){
                                                             //     setAlertState('error')
                                                             //     setAlert('Payment Receipt Number Already Used for an Earlier Date for the Selected Payment Point!')
@@ -1728,17 +1730,17 @@ const Accommodation = ()=>{
                                                             // }
                                                         }
                                                     }
-                                                    if (curApproval && curApproval?.approved){  
-                                                        if (companyRecord?.status !=='admin' && !companyRecord?.permissions.includes('allow_accommodation_posts')){
+                                                    if (curApproval && curApproval?.approved) {
+                                                        if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_accommodation_posts')) {
                                                             setAlertState('error')
                                                             setAlert('You are not allowed to post payments!')
                                                             setAlertTimeout(3000)
                                                             return
-                                                        }                
-                                                    }                                           
-                                                    runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, ()=>{postPayment(accommodationFields)}, curAccommodation.createdAt)
-                                                    if (selectedUnPaidAccommodations.length){
-                                                        selectedUnPaidAccommodations.forEach((selectedAccommodation)=>{
+                                                        }
+                                                    }
+                                                    runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', paymentFields, () => { postPayment(accommodationFields) }, curAccommodation.createdAt)
+                                                    if (selectedUnPaidAccommodations.length) {
+                                                        selectedUnPaidAccommodations.forEach((selectedAccommodation) => {
                                                             let accPaymentFields = {
                                                                 paymentAmount: selectedAccommodation.paymentAmount,
                                                                 payPoint: selectedAccommodation.payPoint,
@@ -1749,20 +1751,20 @@ const Accommodation = ()=>{
                                                                 downloadLink: selectedAccommodation.downloadLink,
                                                                 createdAt: selectedAccommodation.createdAt
                                                             }
-                                                            if (foundVoidReceipt){
+                                                            if (foundVoidReceipt) {
                                                                 accPaymentFields.voidReceipt = voidReceiptDetails
                                                             }
-                                                            runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, ()=>{postPayment(accPaymentFields)}, selectedAccommodation.createdAt)
+                                                            runApprovalWorkFlow(postingDate, curApproval, 'accommodation', 'postaccommodation', accPaymentFields, () => { postPayment(accPaymentFields) }, selectedAccommodation.createdAt)
                                                         })
                                                     }
-                                                }else{
+                                                } else {
                                                     setAlertState('error')
                                                     setAlert(
                                                         `Upload Payment Receipt!`
                                                     )
-                                                    setAlertTimeout(5000)   
+                                                    setAlertTimeout(5000)
                                                 }
-                                            }else{
+                                            } else {
                                                 setActionMessage('')
                                                 setAlertState('error')
                                                 setAlert(
@@ -1770,77 +1772,77 @@ const Accommodation = ()=>{
                                                 )
                                                 setAlertTimeout(5000)
                                             }
-                                        }else{
-                                            var ct=0                                    
+                                        } else {
+                                            var ct = 0
                                             var requiredNo = Object.keys(accommodationFields).length - 3
-                                            Object.keys(accommodationFields).forEach((field)=>{
-                                                if (accommodationFields[field]){
-                                                    ct++ 
+                                            Object.keys(accommodationFields).forEach((field) => {
+                                                if (accommodationFields[field]) {
+                                                    ct++
                                                 }
                                             })
-                                            if (ct===requiredNo){
-                                                if (!accommodationFields.posted){
+                                            if (ct === requiredNo) {
+                                                if (!accommodationFields.posted) {
                                                     postAccommodation()
                                                 }
                                                 accommodationFields.posted = true
-                                            }else{
+                                            } else {
                                                 setActionMessage('')
                                                 setAlertState('error')
                                                 setAlert(
                                                     `All Fields Are Required! Kindly Fill All`
                                                 )
-                                                setAlertTimeout(5000)                                        
+                                                setAlertTimeout(5000)
                                             }
                                         }
-                                    }else{
+                                    } else {
                                         setAlertState('error')
                                         setAlert('You are not allowed to post payments for this employee!')
                                         setAlertTimeout(3000)
                                     }
                                 }
                             }}
-                        >{(fillmode==='payment')? 
-                            (curApproval ? (curApproval.approved? 'Make Payment': (isApprover?'Approve Request':'Request Approval')) : (isApprover?'Approve Request':'Request Approval')) : 
+                        >{(fillmode === 'payment') ?
+                            (curApproval ? (curApproval.approved ? 'Make Payment' : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Approve Request' : 'Request Approval')) :
                             accommodationStatus
-                        }</div>}
+                            }</div>}
                         {salesOpts === 'customers' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor:(customerFields.fullName && customerFields.phoneNo && !customerFields.posted)?'pointer':'not-allowed'
+                                cursor: (customerFields.fullName && customerFields.phoneNo && !customerFields.posted) ? 'pointer' : 'not-allowed'
                             }}
-                            onClick={()=>{
-                                if (customerFields.fullName && customerFields.phoneNo){
-                                    if (String(customerFields.phoneNo).split('').length === 11){
-                                        if ((customers.map((customer)=>{return customer.phoneNo})).includes(customerFields.phoneNo)){
+                            onClick={() => {
+                                if (customerFields.fullName && customerFields.phoneNo) {
+                                    if (String(customerFields.phoneNo).split('').length === 11) {
+                                        if ((customers.map((customer) => { return customer.phoneNo })).includes(customerFields.phoneNo)) {
                                             setActionMessage('')
                                             setAlertState('error')
                                             setAlert(
                                                 `Customer has been created before. The customer already exists!`
                                             )
-                                            setAlertTimeout(8000) 
-                                        }else{
-                                            if (!customerFields.posted){
+                                            setAlertTimeout(8000)
+                                        } else {
+                                            if (!customerFields.posted) {
                                                 addCustomers()
                                             }
                                             customerFields.posted = true
                                         }
-                                    }else{
+                                    } else {
                                         setActionMessage('')
                                         setAlertState('error')
                                         setAlert(
                                             `Please enter a valid phone number!`
                                         )
-                                        setAlertTimeout(5000) 
+                                        setAlertTimeout(5000)
                                     }
-                                }else{
+                                } else {
                                     setActionMessage('')
                                     setAlertState('error')
                                     setAlert(
                                         `Customer Name and Phone No Fields are Required!`
                                     )
-                                    setAlertTimeout(10000)   
+                                    setAlertTimeout(10000)
                                 }
                             }}
-                        >{customerStatus}</div>}                        
+                        >{customerStatus}</div>}
                     </div>}
                 </div>
             </div>

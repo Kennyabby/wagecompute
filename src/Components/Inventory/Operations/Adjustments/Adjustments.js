@@ -10,12 +10,12 @@ const Adjustments = ({
     clickedLabel, isSaveClicked, setIsSaveValue, postingDate,
     isDeleteClicked, setIsDeleteValue,
     isImportClicked, setIsImportValue,
-})=>{
+}) => {
     const {
         server, fetchServer, generateSeries, intervalPeriod,
         setAlert, setAlertState, setAlertTimeout, getProductsWithStock,
         products, company, companyRecord, setProducts, getProducts,
-        settings, exportFile, importFile, 
+        settings, exportFile, importFile,
     } = useContext(ContextProvider)
     const intervalRef = useRef(null);
     const [wrhs, setWrhs] = useState([])
@@ -24,27 +24,27 @@ const Adjustments = ({
     const [curCategory, setCurCategory] = useState('all')
     const [headers, setHeaders] = useState([])
     const [adjustmentPostCount, setAdjustmentPostCount] = useState(0)
-    const defaultColumns = [ 
-        {name: 'Product ID', reference:'i_d', show:true},
-        {name: 'Product Name', reference:'name', show:true},
-        {name: 'Base UOM', reference:'salesUom', show:true},
-        {name: 'Unit Cost', reference: 'costPrice', show:true},
-        {name: 'Quantity', reference:'available quantity', show:true}, 
-        {name: 'Counted Quantity', reference:'counted quantity', show:true},
-        {name: 'Difference', reference:'difference', show:true}, 
-        {name: 'Difference Cost', reference:'differenceCost', show:true}, 
+    const defaultColumns = [
+        { name: 'Product ID', reference: 'i_d', show: true },
+        { name: 'Product Name', reference: 'name', show: true },
+        { name: 'Base UOM', reference: 'salesUom', show: true },
+        { name: 'Unit Cost', reference: 'costPrice', show: true },
+        { name: 'Quantity', reference: 'available quantity', show: true },
+        { name: 'Counted Quantity', reference: 'counted quantity', show: true },
+        { name: 'Difference', reference: 'difference', show: true },
+        { name: 'Difference Cost', reference: 'differenceCost', show: true },
         // {name: 'User', reference:'user'}
     ]
 
-    const [columns, setColumns] = useState([ 
-        {name: 'Product ID', reference:'i_d', show:true},
-        {name: 'Product Name', reference:'name', show:true},
-        {name: 'Base UOM', reference:'salesUom', show:true},
-        {name: 'Unit Cost', reference: 'costPrice', show:true},
-        {name: 'Quantity', reference:'available quantity', show:true}, 
-        {name: 'Counted Quantity', reference:'counted quantity', show:false},
-        {name: 'Difference', reference:'difference', show:false}, 
-        {name: 'Difference Cost', reference:'differenceCost', show:false},])
+    const [columns, setColumns] = useState([
+        { name: 'Product ID', reference: 'i_d', show: true },
+        { name: 'Product Name', reference: 'name', show: true },
+        { name: 'Base UOM', reference: 'salesUom', show: true },
+        { name: 'Unit Cost', reference: 'costPrice', show: true },
+        { name: 'Quantity', reference: 'available quantity', show: true },
+        { name: 'Counted Quantity', reference: 'counted quantity', show: false },
+        { name: 'Difference', reference: 'difference', show: false },
+        { name: 'Difference Cost', reference: 'differenceCost', show: false },])
 
     const [adjustmentEntries, setAdjustmentEntries] = useState([])
     const [isSyncing, setIsSyncing] = useState(false)
@@ -52,46 +52,46 @@ const Adjustments = ({
     const refreshAdjustmentsData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
-        try{
+        try {
             await getProductsWithStock(cmp_val, products)
-        }catch(e){}
+        } catch (e) { }
     }
 
     useEffect(() => {
-        const cmp_val = window.localStorage.getItem('sessn-cmp');        
-        if (products.length){
-            if (!products[0]?.stockSummary){
+        const cmp_val = window.localStorage.getItem('sessn-cmp');
+        if (products.length) {
+            if (!products[0]?.stockSummary) {
                 getProductsWithStock(cmp_val, products)
             }
         }
-    },[products])
-    
+    }, [products])
+
     useEffect(() => {
-        const cmp_val = window.localStorage.getItem('sessn-cmp');        
-        if (!isNewEntry){            
-        
+        const cmp_val = window.localStorage.getItem('sessn-cmp');
+        if (!isNewEntry) {
+
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
-        
+
             if (cmp_val && products.length) {
                 // refreshAdjustmentsData()
                 intervalRef.current = setInterval(() => {
                     refreshAdjustmentsData()
                 }, intervalPeriod);
             }
-        
+
             return () => {
                 if (intervalRef.current) {
                     clearInterval(intervalRef.current);
                 }
             };
-        }else{
-            if (intervalRef.current){
+        } else {
+            if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
             return () => {
-                if (intervalRef.current){
+                if (intervalRef.current) {
                     clearInterval(intervalRef.current);
                 }
             }
@@ -104,106 +104,106 @@ const Adjustments = ({
         setAlertState('info');
         setAlert('Syncing offline Adjustments changes...');
         setAlertTimeout(10000);
-        try{
+        try {
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             const cmp_val = window.localStorage.getItem('sessn-cmp');
             if (!products) return
             await Promise.all([
                 getProductsWithStock(cmp_val, products)
-            ]).catch(()=>{});
-            if (Array.isArray(results)){
+            ]).catch(() => { });
+            if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
-                if (failed.length){
+                if (failed.length) {
                     setAlertState('error');
                     setAlert(`${failed.length} change(s) failed to sync; retry later.`);
                     setAlertTimeout(5000);
                 } else {
                     setAlertState('success');
                     setAlert('Offline Adjustments Sync complete');
-                    setAlertTimeout(3000);
+                    setAlertTimeout(1000);
                 }
             } else {
                 setAlertState('success');
                 setAlert('Offline Adjustments Sync complete');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
             }
-        }catch(e){
+        } catch (e) {
             setAlertState('error');
             setAlert('Offline Adjustments Sync failed. Please try again.');
             setAlertTimeout(3000);
-        }finally{setIsSyncing(false)}
+        } finally { setIsSyncing(false) }
     }
-    
 
-    useEffect(()=>{
-        if (settings.length){
-            const wrhSetFilt = settings.filter((setting)=>{
+
+    useEffect(() => {
+        if (settings.length) {
+            const wrhSetFilt = settings.filter((setting) => {
                 return setting.name === 'warehouses'
             })
 
             delete wrhSetFilt[0]?._id
-            setWrhs(wrhSetFilt[0].name?[...wrhSetFilt[0].warehouses]:[])
+            setWrhs(wrhSetFilt[0].name ? [...wrhSetFilt[0].warehouses] : [])
 
-            const wrhCatFilt = settings.filter((setting)=>{
+            const wrhCatFilt = settings.filter((setting) => {
                 return setting.name === 'product_categories'
             })
 
             delete wrhCatFilt[0]?._id
-            setCategories(wrhCatFilt[0].name?[...wrhCatFilt[0].categories]:[])
-        }  
-    },[settings])
+            setCategories(wrhCatFilt[0].name ? [...wrhCatFilt[0].categories] : [])
+        }
+    }, [settings])
 
-    useEffect(()=>{
+    useEffect(() => {
         resetCount()
-        if(isNewEntry){            
-            if (curWarehouse!=='all'){
+        if (isNewEntry) {
+            if (curWarehouse !== 'all') {
                 setColumns([...defaultColumns])
             }
-        }else{
-            setColumns((columns)=>{
-                columns.forEach((column)=>{                                        
-                    if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)){
+        } else {
+            setColumns((columns) => {
+                columns.forEach((column) => {
+                    if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)) {
                         column.show = false
                     }
                 })
                 return [...columns]
             })
         }
-    },[products, isNewEntry, curWarehouse])
+    }, [products, isNewEntry, curWarehouse])
 
-    
-    useEffect(()=>{
-        if (isSaveClicked){            
+
+    useEffect(() => {
+        if (isSaveClicked) {
             const adjustments = [...adjustmentEntries]
             var entct = 0
-            const fltAdjustments = adjustments.filter((entFlt)=>{
+            const fltAdjustments = adjustments.filter((entFlt) => {
                 return Math.abs(Number(entFlt.difference)) > 0
-            })            
-            if (fltAdjustments.length){
+            })
+            if (fltAdjustments.length) {
                 setAlertState('info')
                 setAlert('Posting Adjustments...')
                 setAlertTimeout(100000)
             }
             setAdjustmentPostCount(0)
             const createdAt = new Date().getTime()
-            fltAdjustments.forEach((entry)=>{
+            fltAdjustments.forEach((entry) => {
                 let absVal = Math.abs(Number(entry.difference))
-                let val = Number(entry.difference)/absVal
+                let val = Number(entry.difference) / absVal
                 let entryIndex = entry.index
                 entry.baseQuantity = Number(entry.difference)
-                entry.entryType = (val===-1? 'Nagative Entry' : 'Positive Entry')
-                entry.documentType = (val===-1? 'Negative Adjustment' : 'Positive Adjustment')
+                entry.entryType = (val === -1 ? 'Nagative Entry' : 'Positive Entry')
+                entry.documentType = (val === -1 ? 'Negative Adjustment' : 'Positive Adjustment')
                 entry.totalCost = Number(entry.difference) * Number(entry.costPrice)
                 entry.createdAt = createdAt
                 entry.handlerId = companyRecord?.emailid
                 entry.postingDate = postingDate
                 entry.postingStamp = new Date(postingDate)
                 entry.location = curWarehouse
-                delete entry.index 
+                delete entry.index
                 // const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
                 entct++
-                setAdjustmentPostCount((adjustmentPostCount)=>{
-                    var newCount = adjustmentPostCount + 1 
+                setAdjustmentPostCount((adjustmentPostCount) => {
+                    var newCount = adjustmentPostCount + 1
                     postAdjustments(entry, entry.i_d, fltAdjustments.length, newCount)
                     return newCount
                 })
@@ -211,26 +211,26 @@ const Adjustments = ({
             })
 
         }
-    },[isSaveClicked])
-    
-    const handleInputChange = ({e, availableQty, productId})=>{
-        const {name, value} = e.target
+    }, [isSaveClicked])
+
+    const handleInputChange = ({ e, availableQty, productId }) => {
+        const { name, value } = e.target
         let index
-        adjustmentEntries.forEach((entry, i)=>{
-            if (entry.i_d === productId){
+        adjustmentEntries.forEach((entry, i) => {
+            if (entry.i_d === productId) {
                 index = i
             }
         })
-        setAdjustmentEntries((adjustmentEntries)=>{
-            adjustmentEntries[index] = {...adjustmentEntries[index], [name]:value, difference: value === '' ? 0 : (Number(value) - Number(availableQty))}
+        setAdjustmentEntries((adjustmentEntries) => {
+            adjustmentEntries[index] = { ...adjustmentEntries[index], [name]: value, difference: value === '' ? 0 : (Number(value) - Number(availableQty)) }
             return [...adjustmentEntries]
         })
     }
 
-    const resetCount = ()=>{
+    const resetCount = () => {
         setAdjustmentEntries([])
-        products.forEach((product, index)=>{
-            if (product.type === 'goods'){
+        products.forEach((product, index) => {
+            if (product.type === 'goods') {
                 const entry = {}
                 entry.i_d = product.i_d
                 entry.productId = product.i_d
@@ -241,93 +241,93 @@ const Adjustments = ({
                 entry.counted = ''
                 entry.postingDate = postingDate
                 entry.userId = companyRecord.emailid
-                setAdjustmentEntries((adjustmentEntries)=>{
+                setAdjustmentEntries((adjustmentEntries) => {
                     return [...adjustmentEntries, entry]
                 })
             }
         })
     }
 
-    const postAdjustments = async (adjustedProduct, i_d, length, count)=>{        
+    const postAdjustments = async (adjustedProduct, i_d, length, count) => {
         console.log(count)
         setAlertState('info')
         setAlert(`Adjusting ${count} / ${length} ...`)
         setAlertTimeout(100000)
         const resps = await fetchServer("POST", {
             database: company,
-            collection: "InventoryTransactions", 
+            collection: "InventoryTransactions",
             update: adjustedProduct
         }, "createDoc", server)
-        if (resps.err){
+        if (resps.err) {
             console.log(resps.mess)
             setAlertState('info')
-            setAlert(resps.mess+`. Could not post for product [${i_d}]`)
+            setAlert(resps.mess + `. Could not post for product [${i_d}]`)
             setAlertTimeout(3000)
             setIsSaveValue(false)
             setIsOnView(clickedLabel)
             return
-        }else{
+        } else {
             setIsOnView(clickedLabel)
             setIsNewView(false)
             getProductsWithStock(company, products)
-            if (count === length){
+            if (count === length) {
                 setAlertState('success')
                 setAlert(`Adjustments Posted Successfully!`)
-                setAlertTimeout(2000)                    
+                setAlertTimeout(1000)
             }
         }
         setIsSaveValue(false)
     }
-    
+
     return (
         <>
             <div className='adjustments'>
-                <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
-                    <button className="action-btn" onClick={handleSyncOfflineAdjustments} disabled={isSyncing}>{isSyncing? 'Syncing...' : 'Sync()'}</button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
+                    <button className="action-btn" onClick={handleSyncOfflineAdjustments} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                 </div>
-                <div className='adj-left'>                    
-                    <div className='adj-title'>Warehouses</div>                    
-                    <div className='adj-list' onClick={(e)=>{
+                <div className='adj-left'>
+                    <div className='adj-title'>Warehouses</div>
+                    <div className='adj-list' onClick={(e) => {
                         const name = e.target.getAttribute('name')
-                        if (name){
+                        if (name) {
                             resetCount()
-                            if (name === 'all'){
-                                setColumns((columns)=>{
-                                    columns.forEach((column)=>{                                        
-                                        if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)){
+                            if (name === 'all') {
+                                setColumns((columns) => {
+                                    columns.forEach((column) => {
+                                        if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)) {
                                             column.show = false
                                         }
                                     })
                                     return [...columns]
                                 })
-                            }else{
-                                if(isNewEntry){
+                            } else {
+                                if (isNewEntry) {
                                     setColumns([...defaultColumns])
                                 }
                             }
                             setCurWarehouse(name)
                         }
                     }}>
-                        <div className={(curWarehouse === 'all'? 'opt-active' : '')} name='all'>All</div>
-                        {wrhs.map((wrh)=>{
-                            return <div 
-                                className={(wrh.name === curWarehouse)? 'opt-active':''}
+                        <div className={(curWarehouse === 'all' ? 'opt-active' : '')} name='all'>All</div>
+                        {wrhs.map((wrh) => {
+                            return <div
+                                className={(wrh.name === curWarehouse) ? 'opt-active' : ''}
                                 name={wrh.name}>{wrh.name.toUpperCase()}
                             </div>
                         })}
                     </div>
                     <div className='adj-title'>Categories</div>
-                    <div className='adj-list' onClick={(e)=>{
+                    <div className='adj-list' onClick={(e) => {
                         const name = e.target.getAttribute('name')
-                        if (name){
+                        if (name) {
                             setCurCategory(name)
                         }
                     }}>
-                        <div className={(curCategory === 'all'? 'opt-active' : '')} name='all'>All</div>
-                        {categories.map((category)=>{
-                            if (category.type === 'goods'){
-                                return <div 
-                                    className={(category.code === curCategory)? 'opt-active':''}
+                        <div className={(curCategory === 'all' ? 'opt-active' : '')} name='all'>All</div>
+                        {categories.map((category) => {
+                            if (category.type === 'goods') {
+                                return <div
+                                    className={(category.code === curCategory) ? 'opt-active' : ''}
                                     name={category.code}> {category.name}
                                 </div>
                             }
@@ -335,56 +335,56 @@ const Adjustments = ({
                     </div>
                 </div>
                 <div className='adj-right'>
-                    {columns.map((col, index)=>{
+                    {columns.map((col, index) => {
                         return col.show && <div className='adj-right-content' key={index}>
                             <div className='colname'>{col.name}</div>
-                            {products.filter((prflt)=>{
-                                if (curCategory === 'all'){
+                            {products.filter((prflt) => {
+                                if (curCategory === 'all') {
                                     return prflt.type === 'goods'
-                                }else{
-                                    if (prflt.type === 'goods'){
+                                } else {
+                                    if (prflt.type === 'goods') {
                                         return prflt.category === curCategory
                                     }
                                 }
-                            }).map((product, index1)=>{
-                                const purchaseWrh = wrhs.find((warehouse)=>{
+                            }).map((product, index1) => {
+                                const purchaseWrh = wrhs.find((warehouse) => {
                                     return warehouse.purchase
                                 })
-                                const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
-                                let cummulativeUnitCostPrice = 0            
-                                cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
-                                
+                                const { cost, quantity } = product.locationStock?.[purchaseWrh?.name] || { cost: 0, quantity: 0 }
+                                let cummulativeUnitCostPrice = 0
+                                cummulativeUnitCostPrice = quantity ? parseFloat(Math.abs(Number(cost / quantity))).toFixed(2) : 0
+
                                 product.costPrice = cummulativeUnitCostPrice
                                 let availableQty = 0;
-                                if (['available quantity', 'difference', 'differenceCost', 'counted quantity'].includes(col.reference)){
-                                    wrhs.forEach((wrh)=>{ 
-                                        if (curWarehouse === 'all'){
+                                if (['available quantity', 'difference', 'differenceCost', 'counted quantity'].includes(col.reference)) {
+                                    wrhs.forEach((wrh) => {
+                                        if (curWarehouse === 'all') {
                                             availableQty = Number(product.totalStock || 0)
-                                        }else{
-                                            if (wrh.name === curWarehouse){
-                                                const {cost, quantity} = product.locationStock?.[curWarehouse] || {cost: 0, quantity: 0}
+                                        } else {
+                                            if (wrh.name === curWarehouse) {
+                                                const { cost, quantity } = product.locationStock?.[curWarehouse] || { cost: 0, quantity: 0 }
                                                 availableQty = Number(quantity || 0);
-                                            }                                       
+                                            }
                                         }
                                     })
-                                    if (col.reference === 'available quantity'){
+                                    if (col.reference === 'available quantity') {
                                         return <div className='colrows' key={index1}>{availableQty}</div>
-                                    }else if (col.reference === 'counted quantity'){
+                                    } else if (col.reference === 'counted quantity') {
                                         return <input
                                             key={index1}
-                                            type='number'   
+                                            type='number'
                                             className='countedInp'
                                             name='counted'
                                             placeholder={product.name}
                                             value={adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.counted}
-                                            onChange={(e)=>{handleInputChange({e, availableQty, productId: product.i_d})}} 
+                                            onChange={(e) => { handleInputChange({ e, availableQty, productId: product.i_d }) }}
                                         />
-                                    }else if(col.reference === 'difference'){
+                                    } else if (col.reference === 'difference') {
                                         return <div className='colrows' key={index1}>{Number(adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.difference)?.toLocaleString()}</div>
-                                    }else{
+                                    } else {
                                         return <div className='colrows' key={index1}>{(Number(adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.difference) * Number(product.costPrice)).toLocaleString()}</div>
                                     }
-                                }else{
+                                } else {
                                     return <div className='colrows' key={index1}>{(col.reference === 'costPrice' ? Number(product[col.reference]).toLocaleString() : product[col.reference])}</div>
                                 }
                             })}

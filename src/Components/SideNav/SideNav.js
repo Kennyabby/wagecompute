@@ -15,12 +15,12 @@ import { CgArrangeBack } from "react-icons/cg";
 import OfflineSyncModal from '../Offline Sync/OfflineSyncModal';
 import { loadPendingChanges } from '../../Resources/offlineDb';
 
-const SideNav = ()=>{
+const SideNav = () => {
     const {
         server, fetchServer, company, companyRecord,
         setAlertState, setAlert, setAlertTimeout, approvals, setCurApproval
     } = useContext(ContextProvider)
-    const [companyName, setCompanyName] = useState('....') 
+    const [companyName, setCompanyName] = useState('....')
     const [curPath, setCurPath] = useState('')
     const [logStatus, setLogStatus] = useState('Log Out')
     const [salesApprovals, setSalesApprovals] = useState([])
@@ -35,110 +35,110 @@ const SideNav = ()=>{
     const location = useLocation()
     const Navigate = useNavigate()
 
-    useEffect(()=>{
+    useEffect(() => {
         const curloc = location.pathname.slice(1,)
         setCurPath(curloc)
-    },[location])
-   
-    useEffect(()=>{
-        setAllApprovals(approvals.filter((appr)=>{
-            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_post'+appr.module)){
-                return(
+    }, [location])
+
+    useEffect(() => {
+        setAllApprovals(approvals.filter((appr) => {
+            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_post' + appr.module)) {
+                return (
                     !appr.approved && !appr.message
                 )
             }
         }))
-        setSalesApprovals(approvals.filter((appr)=>{
+        setSalesApprovals(approvals.filter((appr) => {
             return (
-                (appr.module === 'sales' 
-                && (!appr.approved && !appr.message))
+                (appr.module === 'sales'
+                    && (!appr.approved && !appr.message))
             )
         }))
-        setPurchaseApprovals(approvals.filter((appr)=>{
+        setPurchaseApprovals(approvals.filter((appr) => {
             return (
                 (appr.module === 'purchase' && (!appr.approved && !appr.message))
             )
         }))
-        setAccommodationApprovals(approvals.filter((appr)=>{
+        setAccommodationApprovals(approvals.filter((appr) => {
             return (
                 (appr.module === 'accommodation' && (!appr.approved && !appr.message))
             )
         }))
-        setAttendanceApprovals(approvals.filter((appr)=>{
+        setAttendanceApprovals(approvals.filter((appr) => {
             return (
                 (appr.module === 'attendance' && (!appr.approved && !appr.message))
             )
         }))
-        setExpenseApprovals(approvals.filter((appr)=>{
+        setExpenseApprovals(approvals.filter((appr) => {
             return (
                 (appr.module === 'expense' && (!appr.approved && !appr.message))
             )
         }))
-    },[approvals])
+    }, [approvals])
 
-    useEffect(()=>{
-        if (companyRecord){
+    useEffect(() => {
+        if (companyRecord) {
             setCompanyName(companyRecord.name)
         }
-    },[companyRecord])
+    }, [companyRecord])
 
-    const refreshOfflinePendingCount = async ()=>{
-        try{
-            if (company && companyRecord?.emailid){
+    const refreshOfflinePendingCount = async () => {
+        try {
+            if (company && companyRecord?.emailid) {
                 const list = await loadPendingChanges(company, companyRecord.emailid)
                 setOfflinePendingCount((list || []).length)
             }
-        }catch(e){
+        } catch (e) {
             // ignore count errors
         }
     }
 
-    useEffect(()=>{
+    useEffect(() => {
         refreshOfflinePendingCount()
         const id = setInterval(() => {
             refreshOfflinePendingCount()
         }, 800); // every 0.8 milliseconds
         return () => clearInterval(id);
-    },[company, companyRecord?.emailid])
+    }, [company, companyRecord?.emailid])
 
-    const handleNav = (e)=>{
+    const handleNav = (e) => {
         setIsMenuOpen(false)
         const name = e.target.getAttribute('name')
-        if(name){
-          setCurApproval(null)
-          setAlertState('success')
-          setAlert('.')
-          setAlertTimeout(1)
-          Navigate('/'+name)  
+        if (name) {
+            setCurApproval(null)
+            setAlertState('success')
+            setAlert('.')
+            setAlertTimeout(1)
+            Navigate('/' + name)
         }
     }
 
-    const logout = async()=>{
+    const logout = async () => {
         setLogStatus('Ending Session')
         const resps = await fetchServer("POST", {
             database: company,
-            collection: "Profile", 
+            collection: "Profile",
             record: companyRecord
         }, "closeSession", server)
-        
-        if (resps.err){
-           console.log(resps.mess)
-           setLogStatus('Log Out')
-        }else{
+
+        if (resps.err) {
+            console.log(resps.mess)
+            setLogStatus('Log Out')
+        } else {
             window.localStorage.setItem('lgt-mess', 'Logged Out Successfully!')
             window.localStorage.removeItem('ps-vw')
             window.localStorage.removeItem('acc-vw')
             window.location.reload()
         }
     }
-    
+
     // Toggle mobile menu
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    
+
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
-    
+
     // Close menu when a nav item is clicked (for mobile)
     const handleNavClick = (e) => {
         handleNav(e);
@@ -146,7 +146,7 @@ const SideNav = ()=>{
             setIsMenuOpen(false);
         }
     };
-    
+
     // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -154,13 +154,13 @@ const SideNav = ()=>{
                 setIsMenuOpen(false);
             }
         };
-        
+
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [isMenuOpen]);
-    
+
     const toggleCollapse = () => {
         setIsCollapsed(!isCollapsed);
         // Save state to localStorage
@@ -175,11 +175,11 @@ const SideNav = ()=>{
         }
     }, []);
 
-    return(
+    return (
         <>
-            <button 
-                className="mobile-menu-btn" 
-                onClick={toggleMenu} 
+            <button
+                className="mobile-menu-btn"
+                onClick={toggleMenu}
                 aria-label="Toggle menu"
             >
                 {isMenuOpen ? <MdClose /> : <BiMenu />}
@@ -189,14 +189,14 @@ const SideNav = ()=>{
                     </span>
                 )}
             </button>
-            
+
             <div className={`menu-overlay ${isMenuOpen ? 'open' : ''}`} onClick={toggleMenu}></div>
             <div className={`sidenav ${isMenuOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className='navheader'>
                     {!isCollapsed && <span>{companyName.toUpperCase()}</span>}
                     {/* {!isCollapsed && <span>{'TEST COMPANY'}</span>} */}
-                    <button 
-                        className="collapse-btn" 
+                    <button
+                        className="collapse-btn"
                         onClick={toggleCollapse}
                         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     >
@@ -205,140 +205,140 @@ const SideNav = ()=>{
                 </div>
                 <nav className='navbox' onClick={handleNavClick}>
                     <ul className='navbarr'>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard')) && 
-                            <div 
-                                name="dashboard" 
-                                className={'navdiv ' + (curPath==='dashboard'?'selected':'')}
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('dashboard')) &&
+                            <div
+                                name="dashboard"
+                                className={'navdiv ' + (curPath === 'dashboard' ? 'selected' : '')}
                                 data-tooltip="Dashboard"
                             >
-                                <BiSolidDashboard className='navdivicon' name="dashboard"/>
+                                <BiSolidDashboard className='navdivicon' name="dashboard" />
                                 <div name="dashboard">Dashboard</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reports')) && 
-                            <div 
-                                name="reports" 
-                                className={'navdiv ' + (curPath==='reports'?'selected':'')}
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('reports')) &&
+                            <div
+                                name="reports"
+                                className={'navdiv ' + (curPath === 'reports' ? 'selected' : '')}
                                 data-tooltip="Reports"
                             >
-                                <BsTable className='navdivicon' name="reports"/>
+                                <BsTable className='navdivicon' name="reports" />
                                 <div name="reports">Reports</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees')) && 
-                            <div 
-                                name="employees" 
-                                className={'navdiv ' + (curPath==='employees'?'selected':'')}
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('employees')) &&
+                            <div
+                                name="employees"
+                                className={'navdiv ' + (curPath === 'employees' ? 'selected' : '')}
                                 data-tooltip="Employees"
                             >
-                                <FaUsers className='navdivicon' name="employees"/>
+                                <FaUsers className='navdivicon' name="employees" />
                                 <div name="employees">Employees</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments')) && 
-                            <div 
-                                name="departments" 
-                                className={'navdiv ' + (curPath==='departments'?'selected':'')}
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('departments')) &&
+                            <div
+                                name="departments"
+                                className={'navdiv ' + (curPath === 'departments' ? 'selected' : '')}
                                 data-tooltip="Departments"
-                            >   
-                                <MdSubject className='navdivicon' name="departments"/>
+                            >
+                                <MdSubject className='navdivicon' name="departments" />
                                 <div name="departments">Departments</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions')) && 
-                            <div name="positions" className={'navdiv ' + (curPath==='positions'?'selected':'')}>
-                                <CgArrangeBack className='navdivicon' name="positions"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('positions')) &&
+                            <div name="positions" className={'navdiv ' + (curPath === 'positions' ? 'selected' : '')}>
+                                <CgArrangeBack className='navdivicon' name="positions" />
                                 <div name="positions">Positions</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance')) && 
-                            <div name="attendance" className={'navdiv ' + (curPath==='attendance'?'selected':'')}>
-                                <GiPlayerTime className='navdivicon' name="attendance"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('attendance')) &&
+                            <div name="attendance" className={'navdiv ' + (curPath === 'attendance' ? 'selected' : '')}>
+                                <GiPlayerTime className='navdivicon' name="attendance" />
                                 <div name="attendance">Attendance</div>
-                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postattendance')) && attendanceApprovals.length > 0 && <div className='navdivcount'>{attendanceApprovals.length}</div>}
+                                {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('approve_postattendance')) && attendanceApprovals.length > 0 && <div className='navdivcount'>{attendanceApprovals.length}</div>}
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll')) && 
-                            <div name="payroll" className={'navdiv ' + (curPath==='payroll'?'selected':'')}>
-                                <SiPayloadcms className='navdivicon' name="payroll"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('payroll')) &&
+                            <div name="payroll" className={'navdiv ' + (curPath === 'payroll' ? 'selected' : '')}>
+                                <SiPayloadcms className='navdivicon' name="payroll" />
                                 <div name="payroll">Payroll</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('inventory')) && 
-                            <div name="inventory" className={'navdiv ' + (curPath==='inventory'?'selected':'')}>
-                                <MdInventory className='navdivicon' name="inventory"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('inventory')) &&
+                            <div name="inventory" className={'navdiv ' + (curPath === 'inventory' ? 'selected' : '')}>
+                                <MdInventory className='navdivicon' name="inventory" />
                                 <div name="inventory">Inventory</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales')) && 
-                            <div name="sales" className={'navdiv ' + (curPath==='sales'?'selected':'')}>
-                                <GiPayMoney className='navdivicon' name="sales"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('sales')) &&
+                            <div name="sales" className={'navdiv ' + (curPath === 'sales' ? 'selected' : '')}>
+                                <GiPayMoney className='navdivicon' name="sales" />
                                 <div name="sales">Sales</div>
-                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postsales')) && salesApprovals.length > 0 && <div className='navdivcount'>{salesApprovals.length}</div>}
+                                {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('approve_postsales')) && salesApprovals.length > 0 && <div className='navdivcount'>{salesApprovals.length}</div>}
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos')) && 
-                            <div name="pos" className={'navdiv ' + (curPath==='pos'?'selected':'')}>
-                                <GiPayMoney className='navdivicon' name="pos"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('pos')) &&
+                            <div name="pos" className={'navdiv ' + (curPath === 'pos' ? 'selected' : '')}>
+                                <GiPayMoney className='navdivicon' name="pos" />
                                 <div name="pos">POS</div>
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('delivery')) && 
-                            <div name="delivery" className={'navdiv ' + (curPath==='delivery'?'selected':'')}>
-                                <MdDeliveryDining className='navdivicon' name="delivery"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('delivery')) &&
+                            <div name="delivery" className={'navdiv ' + (curPath === 'delivery' ? 'selected' : '')}>
+                                <MdDeliveryDining className='navdivicon' name="delivery" />
                                 <div name="delivery">Order Delivery</div>
                             </div>
                         }
-                        {<div 
-                                className={'navdiv ' + (curPath==='offline-sync'?'selected':'')}
-                                onClick={(e)=>{
-                                    e.stopPropagation();
-                                    setShowOfflineModal(true)
-                                }}
-                                data-tooltip="Offline Sync"
-                            >
-                                <TbReportMoney className='navdivicon'/>
-                                <div>Offline Sync</div>
-                                {offlinePendingCount > 0 && <div className='navdivcount'>{offlinePendingCount > 99 ? '99+' : offlinePendingCount}</div>}
-                            </div>
+                        {<div
+                            className={'navdiv ' + (curPath === 'offline-sync' ? 'selected' : '')}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowOfflineModal(true)
+                            }}
+                            data-tooltip="Offline Sync"
+                        >
+                            <TbReportMoney className='navdivicon' />
+                            <div>Offline Sync</div>
+                            {offlinePendingCount > 0 && <div className='navdivcount'>{offlinePendingCount > 99 ? '99+' : offlinePendingCount}</div>}
+                        </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations')) && 
-                            <div name="accommodations" className={'navdiv ' + (curPath==='accommodations'?'selected':'')}>
-                                <FaHotel className='navdivicon' name="accommodations"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('accommodations')) &&
+                            <div name="accommodations" className={'navdiv ' + (curPath === 'accommodations' ? 'selected' : '')}>
+                                <FaHotel className='navdivicon' name="accommodations" />
                                 <div name="accommodations">Accommodation</div>
-                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postaccommodation')) && accommodationApprovals.length > 0 && <div className='navdivcount'>{accommodationApprovals.length}</div>}
+                                {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('approve_postaccommodation')) && accommodationApprovals.length > 0 && <div className='navdivcount'>{accommodationApprovals.length}</div>}
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase')) && 
-                            <div name="purchase" className={'navdiv ' + (curPath==='purchase'?'selected':'')}>
-                                <GiBuyCard className='navdivicon' name="purchase"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('purchase')) &&
+                            <div name="purchase" className={'navdiv ' + (curPath === 'purchase' ? 'selected' : '')}>
+                                <GiBuyCard className='navdivicon' name="purchase" />
                                 <div name="purchase">Direct Purchase</div>
-                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postpurchase')) && purchaseApprovals.length > 0 && <div className='navdivcount'>{purchaseApprovals.length}</div>}
+                                {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('approve_postpurchase')) && purchaseApprovals.length > 0 && <div className='navdivcount'>{purchaseApprovals.length}</div>}
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses')) && 
-                            <div name="expenses" className={'navdiv ' + (curPath==='expenses'?'selected':'')}>
-                                <GiExpense className='navdivicon' name="expenses"/> 
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('expenses')) &&
+                            <div name="expenses" className={'navdiv ' + (curPath === 'expenses' ? 'selected' : '')}>
+                                <GiExpense className='navdivicon' name="expenses" />
                                 <div name="expenses">Admin Expenses</div>
-                                {(companyRecord?.status==='admin' || companyRecord?.permissions.includes('approve_postexpense')) && expenseApprovals.length > 0 && <div className='navdivcount'>{expenseApprovals.length}</div>}                           
+                                {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('approve_postexpense')) && expenseApprovals.length > 0 && <div className='navdivcount'>{expenseApprovals.length}</div>}
                             </div>
                         }
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings')) && 
-                            <div name="settings" className={'navdiv ' + (curPath==='settings'?'selected':'')}>
-                                <RiSettings2Fill className='navdivicon' name="settings"/>
+                        {(companyRecord?.permissions.includes('all') || companyRecord?.permissions.includes('settings')) &&
+                            <div name="settings" className={'navdiv ' + (curPath === 'settings' ? 'selected' : '')}>
+                                <RiSettings2Fill className='navdivicon' name="settings" />
                                 <div name="settings">Settings</div>
                             </div>
                         }
                         <div
-                            className ='navlogout'
+                            className='navlogout'
                             onClick={logout}
-                        ><MdLogout className='navlogouticon'/> {logStatus}</div>
+                        ><MdLogout className='navlogouticon' /> {logStatus}</div>
                     </ul>
                 </nav>
             </div>
-            <OfflineSyncModal 
+            <OfflineSyncModal
                 isOpen={showOfflineModal}
-                onClose={()=>{
+                onClose={() => {
                     setShowOfflineModal(false)
                     refreshOfflinePendingCount()
                 }}
