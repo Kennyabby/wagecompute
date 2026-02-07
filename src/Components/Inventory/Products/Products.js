@@ -53,7 +53,8 @@ const Products = ({
         purchaseUom: 'pcs',
         restockLevel: '',
         markUp: '',
-        buyTo: ''
+        buyTo: '',
+        type: ''
     })
     const productExportFormat = {
         name: '',
@@ -81,7 +82,7 @@ const Products = ({
         salesUom: 'salesUom',
         purchaseUom: 'purchaseUom',
         restockLevel: 'restockLevel',
-        markUp: '',
+        markUp: 'markUp',
         type: 'type',
     })
 
@@ -196,12 +197,12 @@ const Products = ({
                 } else {
                     setAlertState('success');
                     setAlert('Offline Products Sync complete');
-                    setAlertTimeout(3000);
+                    setAlertTimeout(1000);
                 }
             } else {
                 setAlertState('success');
                 setAlert('Offline Products Sync complete');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
             }
         } catch (e) {
             setAlertState('error');
@@ -366,11 +367,15 @@ const Products = ({
                     newProductField[header] = (productData[importCount])[headersMap[header]] ?
                         (productData[importCount])[headersMap[header]] : ''
                 })
+                if (newProductField?.costPrice && newProductField.markUp) {
+                    newProductField.salesPrice = Math.round(Number(newProductField.costPrice * (1 + Number(newProductField.markUp || 0) / 100) * 0.1)) * 10
+                    newProductField.markUp = Number(newProductField.markUp || 0)
+                }
                 addProduct(newProductField)
             } else {
                 setAlertState('success')
                 setAlert('All Products Imported Successfully!')
-                setAlertTimeout(2000)
+                setAlertTimeout(1000)
                 setImportCount(null)
                 getProducts(company)
                 setIsOnView(false)
@@ -463,7 +468,7 @@ const Products = ({
                 setUploadingImage(false);
                 setAlertState('success');
                 setAlert('Product image uploaded successfully');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
                 getProducts(company);
             }
         } catch (err) {
@@ -497,7 +502,7 @@ const Products = ({
                 setProductFields((fields) => ({ ...fields, ...cleared }));
                 setAlertState('success');
                 setAlert('Product image deleted successfully');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
                 getProducts(company);
             } else {
                 setAlertState('error');
@@ -601,7 +606,7 @@ const Products = ({
                     setProductFields({ ...newProduct })
                     setAlertState('success')
                     setAlert(`Updated [${productFields.i_d}] Successfully!`)
-                    setAlertTimeout(2000)
+                    setAlertTimeout(1000)
                     setIsSaveValue(false)
                     // getProducts(company)
                     return
@@ -648,7 +653,7 @@ const Products = ({
                     setCurProduct(null)
                     setAlertState('success')
                     setAlert(`Product [${productId}] Deleted Successfully!`)
-                    setAlertTimeout(2000)
+                    setAlertTimeout(1000)
                     setDeleteCount(0)
                     setIsDeleteValue(false)
                     getProducts(company)
@@ -659,7 +664,7 @@ const Products = ({
                     if (delCount >= selectedProducts.length - 1) {
                         setAlertState('success')
                         setAlert(`${delCount + 1} products deleted successfully!`)
-                        setAlertTimeout(2000)
+                        setAlertTimeout(1000)
                         setIsDeleteValue(false)
                         getProducts(company)
                         setTimeout(() => {
@@ -899,7 +904,7 @@ const Products = ({
                                 type='number'
                                 name='salesPrice'
                                 placeholder='0.00'
-                                disabled={(isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details')) || curPosSettings?.useMarkUp)}
+                                disabled={(isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details')))}
                                 value={productFields.salesPrice}
                             />
                         </div>
@@ -921,8 +926,8 @@ const Products = ({
                                 type='number'
                                 name='markUp'
                                 placeholder='20'
+                                disabled={!productFields.costPrice || isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                                 value={productFields.markUp}
-                                disabled={!productFields.costPrice}
                             />
                         </div>}
                         {defaultProductType === 'goods' && <div className='otherInpCov'>
@@ -932,8 +937,8 @@ const Products = ({
                                 type='number'
                                 name='costPrice'
                                 placeholder='0.00'
-                                value={productFields.costPrice}
                                 disabled={true}
+                                value={productFields.costPrice}
                             />
                         </div>}
                         <div className='otherInpCov'>
@@ -1079,9 +1084,9 @@ const Products = ({
                                     // })
                                     return <div className='product-card-others'>{`On Hand: ${Number(product.totalStock || 0).toLocaleString()} ${product.salesUom}`}</div>
                                 }) :
-                                    <div className='product-card-others'>{product.type.toUpperCase()}</div>
+                                    <div className='product-card-others'>{product?.type?.toUpperCase()}</div>
                                 }
-                                <div className='product-card-others-top'>{product.type.toUpperCase()}</div>
+                                <div className='product-card-others-top'>{product?.type?.toUpperCase()}</div>
                             </div>
                         )
                     })}
@@ -1142,9 +1147,9 @@ const Products = ({
                                     // })
                                     return <div className='product-list-others'>{`On Hand: ${Number(product.totalStock || 0).toLocaleString()} ${product.salesUom}`}</div>
                                 }) :
-                                    <div className='product-list-others'>{product.type.toUpperCase()}</div>
+                                    <div className='product-list-others'>{product?.type?.toUpperCase()}</div>
                                 }
-                                <div className='product-list-others-top'>{product.type.toUpperCase()}</div>
+                                <div className='product-list-others-top'>{product?.type?.toUpperCase()}</div>
                             </div>
                         )
                     })}

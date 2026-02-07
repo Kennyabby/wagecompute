@@ -128,17 +128,17 @@ const Expenses = () => {
                 } else {
                     setAlertState('success');
                     setAlert('Offline Expenses Sync complete');
-                    setAlertTimeout(3000);
+                    setAlertTimeout(1000);
                 }
             } else {
                 setAlertState('success');
                 setAlert('Offline Expenses Sync complete');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
             }
         } catch (e) {
             setAlertState('error');
             setAlert('Offline Expenses Sync failed. Please try again.');
-            setAlertTimeout(3000);
+            setAlertTimeout(1000);
         } finally {
             setIsSyncing(false);
         }
@@ -266,7 +266,7 @@ const Expenses = () => {
                 setFields({ ...newExpense })
                 setAlertState('success')
                 setAlert('Expenses Record Posted Successfully!')
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 getExpenses(company)
             }
         } else {
@@ -296,7 +296,7 @@ const Expenses = () => {
                 setFields({ ...defaultFields })
                 setAlertState('success')
                 setAlert('Expenses Deleted Successfully!')
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 setDeleteCount(0)
                 getExpenses(company)
             }

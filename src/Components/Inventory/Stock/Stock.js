@@ -7,14 +7,14 @@ import ContextProvider from '../../../Resources/ContextProvider';
 import { syncPendingChanges } from '../../../Resources/offlineSync';
 import './Stock.css';
 
-const Stock = ({ 
-    isNewEntry, 
-    setIsNewView, 
-    setIsOnView, 
-    clickedLabel, 
-    isSaveClicked, 
-    setIsSaveValue, 
-    isTransferClicked, 
+const Stock = ({
+    isNewEntry,
+    setIsNewView,
+    setIsOnView,
+    clickedLabel,
+    isSaveClicked,
+    setIsSaveValue,
+    isTransferClicked,
     setIsTransferValue,
     postingDate
 }) => {
@@ -29,10 +29,10 @@ const Stock = ({
 
     // Initialize date range with first day of current month as start date and current date as end date
     const [dateRange, setDateRange] = useState({
-        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10), // First day of current month
-        endDate: new Date().toISOString().slice(0,10) // Today
+        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10), // First day of current month
+        endDate: new Date().toISOString().slice(0, 10) // Today
     });
-    
+
     // Fetch warehouses from the database
     const getWarehouses = async () => {
         try {
@@ -96,37 +96,37 @@ const Stock = ({
     const [isSyncing, setIsSyncing] = useState(false);
     const refreshStockData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
-        try{
+        try {
             await Promise.all([
                 getWarehouses(),
                 getCategories(),
                 getProductsStockReport(cmp_val, products, { startDate: dateRange.startDate, endDate: dateRange.endDate })
             ]);
-        }catch(e){}
+        } catch (e) { }
     }
     const [availableColumns, setAvailableColumns] = useState([
         // Basic Info (always visible)
         { id: 'i_d', name: 'Product ID', category: 'basic', visible: true, required: true },
         { id: 'name', name: 'Product Name', category: 'basic', visible: true, required: true },
         { id: 'salesUom', name: 'UOM', category: 'basic', visible: true, required: true },
-        
+
         // Opening Stock
         { id: 'openingQuantity', name: 'Opening Stock', category: 'stock', visible: true, required: true },
         { id: 'openingCost', name: 'Opening Value', category: 'stock', visible: true, required: true },
-        
+
         // Purchases
         { id: 'purchasedQty', name: 'Purchased Qty', category: 'purchases', visible: true, required: true },
         { id: 'purchaseCost', name: 'Purchase Cost', category: 'purchases', visible: true, required: false },
-        
+
         // Transfers
         { id: 'transferInQty', name: 'Transfer In', category: 'transfers', visible: true, required: false },
         { id: 'transferOutQty', name: 'Transfer Out', category: 'transfers', visible: true, required: false },
-        
+
         // Sales
         { id: 'soldQty', name: 'Sold Qty', category: 'sales', visible: true, required: true },
         { id: 'salesValue', name: 'Sales Value', category: 'sales', visible: true, required: false },
         { id: 'costOfGoodsSold', name: 'COGS', category: 'sales', visible: true, required: false },
-        
+
         // Adjustments
         { id: 'netAdjustmentQty', name: 'Net Adjustment Qty', category: 'adjustments', visible: false, required: false },
         { id: 'netAdjustmentCost', name: 'Net Adjustment Cost', category: 'adjustments', visible: false, required: false },
@@ -134,18 +134,18 @@ const Stock = ({
         { id: 'positiveAdjustmentCost', name: 'Positive Adjustment Cost', category: 'adjustments', visible: false, required: false },
         { id: 'negativeAdjustmentQty', name: 'Negative Adjustment Qty', category: 'adjustments', visible: false, required: false },
         { id: 'negativeAdjustmentCost', name: 'Negative Adjustment Cost', category: 'adjustments', visible: false, required: false },
-        
+
         // Closing Stock
         { id: 'closingQty', name: 'Closing Stock', category: 'closing', visible: true, required: true },
         { id: 'averageCost', name: 'Average Cost', category: 'closing', visible: true, required: false },
-        { id: 'closingCost', name: 'Closing Cost', category: 'closing', visible: true, required: true},
+        { id: 'closingCost', name: 'Closing Cost', category: 'closing', visible: true, required: true },
         { id: 'closingSalesValue', name: 'Closing Value', category: 'closing', visible: true, required: false },
-        
+
         // Transfer related (hidden by default)
         { id: 'quantityToTransfer', name: 'Quantity to Transfer', category: 'transfer', visible: false, required: false },
         { id: 'transferCost', name: 'Transfer Cost', category: 'transfer', visible: false, required: false }
     ]);
-    
+
     // Load saved column preferences on component mount
     useEffect(() => {
         const savedColumns = localStorage.getItem('inventoryStockColumns');
@@ -153,21 +153,21 @@ const Stock = ({
             setAvailableColumns(JSON.parse(savedColumns));
         }
     }, []);
-    
+
     // Save column preferences when they change
     const saveColumnPreferences = (columns) => {
         setAvailableColumns(columns);
         localStorage.setItem('inventoryStockColumns', JSON.stringify(columns));
     };
-    
+
     // Toggle column visibility
     const toggleColumnVisibility = (columnId) => {
-        const updatedColumns = availableColumns.map(col => 
+        const updatedColumns = availableColumns.map(col =>
             col.id === columnId ? { ...col, visible: !col.visible } : col
         );
         saveColumnPreferences(updatedColumns);
     };
-    
+
     // Reset to default columns
     const resetToDefaultColumns = () => {
         const defaultColumns = availableColumns.map(col => ({
@@ -176,10 +176,10 @@ const Stock = ({
         }));
         saveColumnPreferences(defaultColumns);
     };
-    
+
     // Get visible columns for the table
     const visibleColumns = availableColumns.filter(col => col.visible);
-    
+
     // Group columns by category for the column manager
     const columnsByCategory = availableColumns.reduce((acc, column) => {
         if (!acc[column.category]) {
@@ -188,7 +188,7 @@ const Stock = ({
         acc[column.category].push(column);
         return acc;
     }, {});
-    
+
     // Column Manager Component
     const ColumnManagerModal = () => (
         showColumnManager && (
@@ -196,8 +196,8 @@ const Stock = ({
                 <div className="column-manager" onClick={e => e.stopPropagation()}>
                     <div className="column-manager-header">
                         <h3 className="column-manager-title">Manage Columns</h3>
-                        <button 
-                            className="column-manager-close" 
+                        <button
+                            className="column-manager-close"
                             onClick={() => setShowColumnManager(false)}
                         >
                             &times;
@@ -220,8 +220,8 @@ const Stock = ({
                                                 disabled={column.required}
                                                 className="column-checkbox"
                                             />
-                                            <label 
-                                                htmlFor={`col-${column.id}`} 
+                                            <label
+                                                htmlFor={`col-${column.id}`}
                                                 className="column-label"
                                             >
                                                 {column.name}
@@ -236,13 +236,13 @@ const Stock = ({
                         ))}
                     </div>
                     <div className="column-manager-footer">
-                        <button 
+                        <button
                             className="column-manager-button"
                             onClick={resetToDefaultColumns}
                         >
                             Reset to Default
                         </button>
-                        <button 
+                        <button
                             className="column-manager-button primary"
                             onClick={() => setShowColumnManager(false)}
                         >
@@ -253,9 +253,9 @@ const Stock = ({
             </div>
         )
     );
-    
-    
-    
+
+
+
     // Memoize dateRange to prevent unnecessary effect re-runs
     // const stableDateRange = useMemo(() => ({
     //     startDate: dateRange.startDate,
@@ -263,8 +263,8 @@ const Stock = ({
     // }), [dateRange.startDate.getTime(), dateRange.endDate.getTime()]);
 
     useEffect(() => {
-        const cmp_val = window.localStorage.getItem('sessn-cmp');        
-        if (!isTransferClicked){
+        const cmp_val = window.localStorage.getItem('sessn-cmp');
+        if (!isTransferClicked) {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
@@ -285,7 +285,7 @@ const Stock = ({
                     clearInterval(intervalRef.current);
                 }
             };
-        }else{
+        } else {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
@@ -315,47 +315,47 @@ const Stock = ({
     const resetCount = () => {
         let defaultEntries = []
         products.forEach(product => {
-            if (product.type === 'goods'){
+            if (product.type === 'goods') {
                 defaultEntries.push({
                     productId: product.i_d,
                     quantityToTransfer: 0,
                     transferCost: 0,
                     type: product.type
                 })
-            }    
+            }
         })
-        setTransferEntries(defaultEntries);        
+        setTransferEntries(defaultEntries);
     };
-    
+
     useEffect(() => {
-        if (isTransferClicked){
+        if (isTransferClicked) {
             resetCount();
             setAvailableColumns((prevColumns) => {
                 const columns = prevColumns.map(column => ({
                     ...column,
                     visible: column.visible || ['quantityToTransfer', 'transferCost'].includes(column.id)
-                }))                
+                }))
                 // console.log('availableColumns', columns.filter(col => col.visible))
-                return columns;       
+                return columns;
             })
         }
-    },[isTransferClicked]);
-    
-    useEffect(()=>{        
+    }, [isTransferClicked]);
+
+    useEffect(() => {
         if (isSaveClicked) {
-            handleTransfer();            
+            handleTransfer();
         }
-    },[isSaveClicked])
+    }, [isSaveClicked])
 
     useEffect(() => {
         const fetchData = async () => {
             if (company) {
                 setIsLoading(true);
-                
+
                 try {
                     // First get warehouses and categories
                     await Promise.all([getWarehouses(), getCategories()]);
-                    
+
                     // Then get products with stock data using the stock report
                     // const products = await getProducts(company);
                     if (products && products.length) {
@@ -437,21 +437,21 @@ const Stock = ({
             return (entry.quantityToTransfer > 0 && entry.type === 'goods')
         });
         const insufficientProducts = [];
-        if (validEntries.length > 0 && fromWarehouse && toWarehouse){
+        if (validEntries.length > 0 && fromWarehouse && toWarehouse) {
             // Validate if the warehouse selected as fromWarehouse has availableQuantity >= quantityToTransfer specified for each product
-            for (const entry of validEntries){
+            for (const entry of validEntries) {
                 const { productId, quantityToTransfer } = entry;
                 const product = products.find(p => p.i_d === productId);
                 if (product) {
                     let countBaseQuantity = 0;
-                    const {closingCost, closingQty} = product.locationStockDetails?.[fromWarehouse] || {closingCost: 0, closingQty: 0}
-                    countBaseQuantity = Number(closingQty || 0);                    
+                    const { closingCost, closingQty } = product.locationStockDetails?.[fromWarehouse] || { closingCost: 0, closingQty: 0 }
+                    countBaseQuantity = Number(closingQty || 0);
                     if (countBaseQuantity < Number(quantityToTransfer)) {
                         insufficientProducts.push(productId);
                     }
                 }
             }
-    
+
             // If there are products with insufficient quantity, display an error message
             if (insufficientProducts.length > 0) {
                 setAlertState('error');
@@ -460,7 +460,7 @@ const Stock = ({
                 setIsSaveValue(false)
                 return;
             }
-    
+
             // Proceed with the transfer if all validations pass
             setAlertState('info');
             setAlert('Transferring products...');
@@ -469,7 +469,7 @@ const Stock = ({
             for (const entry of validEntries) {
                 const { productId, quantityToTransfer, transferCost } = entry;
                 const product = products.find(p => p.i_d === productId);
-                if (product) {                    
+                if (product) {
                     const createdAt = new Date().getTime();
                     const fromWarehouseData = {
                         productId: productId,
@@ -515,11 +515,11 @@ const Stock = ({
                         setAlertTimeout(3000);
                         setIsOnView(false);
                         setIsSaveValue(false);
-                        setIsTransferValue(false);                        
+                        setIsTransferValue(false);
                         setFromWarehouse('');
                         setToWarehouse('');
                         return;
-                    }else{
+                    } else {
                         countSuccess++;
                         setAlertState('success');
                         setAlert(`${countSuccess}/${validEntries.length} product(s) transferred successfully`);
@@ -530,10 +530,10 @@ const Stock = ({
             if (countSuccess === validEntries.length) {
                 setAlertState('success');
                 setAlert('All Products Transfered Successful!');
-                setAlertTimeout(2000);
+                setAlertTimeout(1000);
                 setIsOnView(false);
                 setIsSaveValue(false);
-                setIsTransferValue(false);                        
+                setIsTransferValue(false);
                 setFromWarehouse('');
                 setToWarehouse('');
                 getProductsWithStock(company, products, {
@@ -587,7 +587,7 @@ const Stock = ({
             .map(item => {
                 // Get warehouse-specific data if a specific warehouse is selected
                 const warehouseData = curWarehouse !== 'all' ? item.locationStockDetails?.[curWarehouse] : item.stockSummary;
-                
+
                 // Map all required fields and ensure consistent naming
                 const mappedItem = {
                     // Basic Info
@@ -597,24 +597,24 @@ const Stock = ({
                     category: item.category || item.itemGroup || '',
                     salesUom: item.salesUom || 'Nos',
                     description: item.description || '',
-                    
+
                     // Opening Stock
                     openingQuantity: warehouseData?.openingQuantity || 0,
                     openingCost: warehouseData?.openingCost || 0,
-                    
+
                     // Purchases
                     purchasedQty: warehouseData?.purchasedQty || 0,
                     purchaseCost: warehouseData?.purchaseCost || 0,
-                    
+
                     // Transfers
                     transferInQty: warehouseData?.transferInQty || 0,
                     transferOutQty: warehouseData?.transferOutQty || 0,
-                    
+
                     // Sales
                     soldQty: warehouseData?.soldQty || 0,
                     salesValue: warehouseData?.salesValue || 0,
                     costOfGoodsSold: warehouseData?.costOfGoodsSold || 0,
-                    
+
                     // Adjustments
                     netAdjustmentQty: warehouseData?.netAdjustmentQty || 0,
                     netAdjustmentCost: warehouseData?.netAdjustmentCost || 0,
@@ -622,17 +622,17 @@ const Stock = ({
                     positiveAdjustmentCost: warehouseData?.positiveAdjustmentCost || 0,
                     negativeAdjustmentQty: warehouseData?.negativeAdjustmentQty || 0,
                     negativeAdjustmentCost: warehouseData?.negativeAdjustmentCost || 0,
-                    
+
                     // Closing Stock
                     closingQty: warehouseData?.closingQty || 0,
                     averageCost: warehouseData?.averageCost || 0,
                     closingCost: warehouseData?.closingCost || 0,
                     closingSalesValue: warehouseData?.closingSalesValue || 0,
-                    
+
                     // Transfer related
                     quantityToTransfer: 0,
                     transferCost: 0,
-                    
+
                     // Additional fields for backward compatibility
                     quantity: parseFloat(warehouseData?.closingQty || 0),
                     cost: parseFloat(warehouseData?.averageCost || 0),
@@ -692,7 +692,7 @@ const Stock = ({
                         // Use the mapped reference or fall back to the column ID
                         reference: columnMap[col.id] || col.id,
                         // Mark numeric columns for proper formatting
-                        numeric: ['quantity', 'cost', 'value', 'qty', 'amount', 'price'].some(term => 
+                        numeric: ['quantity', 'cost', 'value', 'qty', 'amount', 'price'].some(term =>
                             (col.id || col.reference || '').toLowerCase().includes(term)
                         )
                     };
@@ -763,7 +763,7 @@ const Stock = ({
                         // Use the mapped reference or fall back to the column ID
                         reference: columnMap[col.id] || col.id,
                         // Mark numeric columns for proper formatting
-                        numeric: ['quantity', 'cost', 'value', 'qty', 'amount', 'price'].some(term => 
+                        numeric: ['quantity', 'cost', 'value', 'qty', 'amount', 'price'].some(term =>
                             (col.id || col.reference || '').toLowerCase().includes(term)
                         )
                     };
@@ -801,7 +801,7 @@ const Stock = ({
             <div className='filter-section'>
                 <div className="export-controls">
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')) && <>
-                        <button 
+                        <button
                             className="export-button"
                             onClick={handleExportPDF}
                             disabled={isExporting}
@@ -814,7 +814,7 @@ const Stock = ({
                             </svg>
                             PDF
                         </button>
-                        <button 
+                        <button
                             className="export-button"
                             onClick={handleExportExcel}
                             disabled={isExporting}
@@ -829,7 +829,7 @@ const Stock = ({
                             Excel
                         </button>
                     </>}
-                    <button 
+                    <button
                         className="column-manager-toggle"
                         onClick={() => setShowColumnManager(true)}
                         title="Manage Columns"
@@ -842,38 +842,38 @@ const Stock = ({
                         </svg>
                         Manage Columns
                     </button>
-                    <button 
+                    <button
                         className="action-btn"
-                        onClick={async ()=>{
+                        onClick={async () => {
                             if (!company || !companyRecord?.emailid) return;
                             setIsSyncing(true);
                             setAlertState('info');
                             setAlert('Syncing offline Inventory changes...');
                             setAlertTimeout(10000);
-                            try{
+                            try {
                                 const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                                 await refreshStockData();
-                                if (Array.isArray(results)){
+                                if (Array.isArray(results)) {
                                     const failed = results.filter(r => r.status === 'error');
-                                    if (failed.length){
+                                    if (failed.length) {
                                         setAlertState('error');
                                         setAlert(`${failed.length} change(s) failed to sync; retry later.`);
                                         setAlertTimeout(5000);
                                     } else {
                                         setAlertState('success');
                                         setAlert('Offline Inventory Sync complete');
-                                        setAlertTimeout(3000);
+                                        setAlertTimeout(1000);
                                     }
                                 } else {
                                     setAlertState('success');
                                     setAlert('Offline Inventory Sync complete');
-                                    setAlertTimeout(3000);
+                                    setAlertTimeout(1000);
                                 }
-                            }catch(e){
+                            } catch (e) {
                                 setAlertState('error');
                                 setAlert('Offline Inventory Sync failed. Please try again.');
                                 setAlertTimeout(3000);
-                            }finally{setIsSyncing(false)}
+                            } finally { setIsSyncing(false) }
                         }}
                         disabled={isSyncing}
                     >
@@ -908,12 +908,12 @@ const Stock = ({
                             />
                         </div>
                     </div>
-                    
+
                     <div className='filter-group'>
                         <label>Warehouse</label>
                         <div className='filter-select-container'>
-                            <select 
-                                className='filter-select' 
+                            <select
+                                className='filter-select'
                                 value={curWarehouse}
                                 onChange={(e) => {
                                     const name = e.target.value;
@@ -931,12 +931,12 @@ const Stock = ({
                             </select>
                         </div>
                     </div>
-                    
+
                     <div className='filter-group'>
                         <label>Category</label>
                         <div className='filter-select-container'>
-                            <select 
-                                className='filter-select' 
+                            <select
+                                className='filter-select'
                                 value={curCategory}
                                 onChange={(e) => setCurCategory(e.target.value)}
                             >
@@ -951,7 +951,7 @@ const Stock = ({
                     </div>
                 </div>
             </div>
-            
+
             <div className='adj-right-header'>
                 {isTransferClicked && <div className='transfer-section'>
                     <h4><b>Internal Transfer</b></h4>
@@ -981,7 +981,7 @@ const Stock = ({
                     {visibleColumns.map((col) => {
                         // Skip if column is not visible
                         if (!col.visible) return null;
-                        
+
                         // Filter and map products once to avoid duplicate calculations
                         const filteredProducts = isLoading ? [] : products.filter(prflt => {
                             if (curCategory !== 'all' && prflt.category !== curCategory) return false;
@@ -1009,32 +1009,32 @@ const Stock = ({
                                 {isLoading ? (
                                     <div className='colrows'>Loading...</div>
                                 ) : filteredProducts.map((product, index1) => {
-                                    
+
                                     // Get stock summary for the current warehouse or all warehouses
                                     let stockData = { ...(product.stockSummary || {}) };
-                                    
+
                                     // If a specific warehouse is selected, use its data
                                     if (curWarehouse !== 'all') {
                                         const locationData = product.locationStockDetails?.[curWarehouse] || {};
                                         stockData = { ...locationData };
                                     }
-                                   
+
 
                                     // Handle different column types
                                     if (col.id === 'quantityToTransfer') {
                                         return (
                                             <div key={index1}>
-                                                <input 
-                                                    className='countedInp stockCountedInp' 
-                                                    type='number' 
-                                                    name='quantityToTransfer' 
+                                                <input
+                                                    className='countedInp stockCountedInp'
+                                                    type='number'
+                                                    name='quantityToTransfer'
                                                     placeholder={product.name}
-                                                    value={transferEntries.find(entry => product.i_d === entry.productId)?.quantityToTransfer || ''} 
-                                                    onChange={(e) => handleInputChange({ 
-                                                        e, 
-                                                        productId: product.i_d, 
-                                                        costPrice: stockData.averageCost || 0 
-                                                    })} 
+                                                    value={transferEntries.find(entry => product.i_d === entry.productId)?.quantityToTransfer || ''}
+                                                    onChange={(e) => handleInputChange({
+                                                        e,
+                                                        productId: product.i_d,
+                                                        costPrice: stockData.averageCost || 0
+                                                    })}
                                                 />
                                             </div>
                                         );
@@ -1048,8 +1048,8 @@ const Stock = ({
                                         // Handle numeric values with formatting
                                         const value = stockData[col.id];
                                         if (typeof value === 'number') {
-                                            if (['openingCost', 'purchaseCost', 'salesValue', 'costOfGoodsSold', 
-                                                 'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.id)) {
+                                            if (['openingCost', 'purchaseCost', 'salesValue', 'costOfGoodsSold',
+                                                'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.id)) {
                                                 return <div className='colrows' key={index1}>{formatCurrency(value)}</div>;
                                             }
                                             return <div className='colrows' key={index1}>{value.toLocaleString()}</div>;
@@ -1065,11 +1065,11 @@ const Stock = ({
                                 {/* Totals Row */}
                                 {!isLoading && filteredProducts.length > 0 && (
                                     <div className='colrows total-row'>
-                                        {['openingCost', 'purchaseCost', 'salesValue', 'costOfGoodsSold', 
-                                          'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.reference) 
+                                        {['openingCost', 'purchaseCost', 'salesValue', 'costOfGoodsSold',
+                                            'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.reference)
                                             ? formatCurrency(columnTotal)
-                                            : (typeof columnTotal === 'number' 
-                                                ? columnTotal.toLocaleString() 
+                                            : (typeof columnTotal === 'number'
+                                                ? columnTotal.toLocaleString()
                                                 : columnTotal || '0')
                                         }
                                     </div>

@@ -211,7 +211,7 @@ const TransactionReports = ({
 
             setAlertState('success');
             setAlert('duplicates deleted successfully');
-            setAlertTimeout(2000);
+            setAlertTimeout(1000);
         } catch (error) {
             console.error('Duplicate delete failed', error);
             setAlertState('error');

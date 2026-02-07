@@ -1,10 +1,10 @@
 import './Measures.css'
-import {useState, useEffect, useContext} from 'react'
+import { useState, useEffect, useContext } from 'react'
 import ContextProvider from '../../../../Resources/ContextProvider'
 
-const Measures = ({setPopModal})=>{
-    
-    const {server, fetchServer, company, companyRecord,
+const Measures = ({ setPopModal }) => {
+
+    const { server, fetchServer, company, companyRecord,
         settings, getSettings,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
@@ -12,32 +12,32 @@ const Measures = ({setPopModal})=>{
     const [uoms, setUoms] = useState([])
     const [bases, setBases] = useState([])
     const [newEntry, setNewEntry] = useState(false)
-    const [saveEntry, setSaveEntry] = useState(false)    
+    const [saveEntry, setSaveEntry] = useState(false)
     const defaultFields = {
-        type:'conversion',
-        code:'',
-        name:'',
-        base:'pcs',
-        multiple:''
+        type: 'conversion',
+        code: '',
+        name: '',
+        base: 'pcs',
+        multiple: ''
     }
-    const [fields, setFields] = useState({...defaultFields})
-    useEffect(()=>{
-        if (settings.length){  
-            const uomSetFilt = settings.filter((setting)=>{
+    const [fields, setFields] = useState({ ...defaultFields })
+    useEffect(() => {
+        if (settings.length) {
+            const uomSetFilt = settings.filter((setting) => {
                 return setting.name === 'uom'
             })
             delete uomSetFilt[0]?._id
-            setUoms(uomSetFilt[0].name?[...uomSetFilt[0].mearsures]:[])
-            setBases(uomSetFilt[0].mearsures?.filter((uom)=>{
+            setUoms(uomSetFilt[0].name ? [...uomSetFilt[0].mearsures] : [])
+            setBases(uomSetFilt[0].mearsures?.filter((uom) => {
                 return uom.type === 'base'
             }))
-        }  
-    },[settings])
+        }
+    }, [settings])
 
-    const handleSaveMeasures = async () =>{
-        if (fields.type && fields.name && fields.code && fields.base && 
+    const handleSaveMeasures = async () => {
+        if (fields.type && fields.name && fields.code && fields.base &&
             fields.multiple
-        ){
+        ) {
             setAlertState('info');
             setAlert('Adding Measure...');
             const newMeasure = {
@@ -48,46 +48,46 @@ const Measures = ({setPopModal})=>{
             const resps = await fetchServer("POST", {
                 database: company,
                 collection: "Settings",
-                prop: [{ name: 'uom' }, { 'mearsures': newUoms}]
+                prop: [{ name: 'uom' }, { 'mearsures': newUoms }]
             }, "updateOneDoc", server);
-            if (!resps){
+            if (!resps) {
                 setAlertState('info');
                 setAlert(resps.message);
                 setAlertTimeout(5000);
                 return
-            }else{
+            } else {
                 setAlertState('success');
                 setAlert('New Measure Added Successfully!')
-                setAlertTimeout(5000)
+                setAlertTimeout(1000)
                 setNewEntry(false)
-                setFields({...defaultFields})
+                setFields({ ...defaultFields })
                 setUoms(newUoms)
                 getSettings(company, companyRecord)
             }
-        }else{
+        } else {
             setAlertState('error')
             setAlert('All Field are Required!')
             setAlertTimeout(3000)
         }
     }
-    const handleFieldChange = (e)=>{
+    const handleFieldChange = (e) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value
 
-        if (name){
-            if (name==='type'){
-                if (value === 'base'){                               
-                    setFields((fields)=>{
-                        return {...fields, [name]:value, multiple: 1}
+        if (name) {
+            if (name === 'type') {
+                if (value === 'base') {
+                    setFields((fields) => {
+                        return { ...fields, [name]: value, multiple: 1 }
                     })
-                }else{
-                    setFields((fields)=>{
-                        return {...fields, [name]:value }
+                } else {
+                    setFields((fields) => {
+                        return { ...fields, [name]: value }
                     })
                 }
-            }else{
-                setFields((fields)=>{
-                    return {...fields, [name]:value }
+            } else {
+                setFields((fields) => {
+                    return { ...fields, [name]: value }
                 })
             }
         }
@@ -96,40 +96,40 @@ const Measures = ({setPopModal})=>{
         <>
             <div className='modalView'>
                 <div className='measures'>
-                    <div 
+                    <div
                         className='closeModal'
-                        onClick={()=>{
+                        onClick={() => {
                             setPopModal('')
                         }}
-                    >Close</div>     
-                    <div className='modal-title'>Units of Measurement</div>           
+                    >Close</div>
+                    <div className='modal-title'>Units of Measurement</div>
                     <div className='measures-list-container'>
-                        {!newEntry && <div 
+                        {!newEntry && <div
                             className='new-record'
-                            onClick={()=>{
+                            onClick={() => {
                                 setNewEntry(true)
                             }}
                         >
                             New
                         </div>}
-                        <div style={{display:'flex'}}>
-                            {newEntry && <div 
+                        <div style={{ display: 'flex' }}>
+                            {newEntry && <div
                                 className='new-record'
                                 onClick={handleSaveMeasures}
                             >
                                 Save
                             </div>}
-                            {newEntry && <div 
+                            {newEntry && <div
                                 className='new-record'
-                                onClick={()=>{
+                                onClick={() => {
                                     setNewEntry(false)
-                                    setFields({...defaultFields})
+                                    setFields({ ...defaultFields })
                                 }}
                             >
                                 Cancel
                             </div>}
                         </div>
-                        
+
                         <div className='measures-list'>
                             <div className='measures-list-title'>
                                 <div>Type</div>
@@ -138,50 +138,50 @@ const Measures = ({setPopModal})=>{
                                 <div>Base</div>
                                 <div>Multiple</div>
                             </div>
-                            {uoms.map((uom,index)=>{
-                                return (                                
+                            {uoms.map((uom, index) => {
+                                return (
                                     <div key={index} className='measures-list-content'>
-                                        <div>{uom.type}</div>                                        
-                                        <div>{uom.code}</div>                                        
-                                        <div>{uom.name}</div>                                        
-                                        <div>{uom.base}</div>                                        
-                                        <div>{uom.multiple}</div>                                        
+                                        <div>{uom.type}</div>
+                                        <div>{uom.code}</div>
+                                        <div>{uom.name}</div>
+                                        <div>{uom.base}</div>
+                                        <div>{uom.multiple}</div>
                                     </div>
                                 )
                             })}
-                            {newEntry && <div 
+                            {newEntry && <div
                                 className='measures-list-content'
                                 onChange={handleFieldChange}
                             >
                                 <select
-                                    type='text' 
+                                    type='text'
                                     name='type'
                                     value={fields.type}
                                 >
                                     <option value={'conversion'}>conversion</option>
                                     <option value={'base'}>base</option>
                                 </select>
-                                <input 
-                                    type='text' 
+                                <input
+                                    type='text'
                                     name='code'
                                     value={fields.code}
                                 />
-                                <input 
-                                    type='text' 
+                                <input
+                                    type='text'
                                     name='name'
                                     value={fields.name}
                                 />
                                 <select
-                                    type='text' 
+                                    type='text'
                                     name='base'
                                     value={fields.base}
                                 >
-                                    {bases?.map((base, idx)=>{
+                                    {bases?.map((base, idx) => {
                                         return <option key={idx} value={base.code}>{base.code}</option>
                                     })}
                                 </select>
-                                <input 
-                                    type='number' 
+                                <input
+                                    type='number'
                                     name='multiple'
                                     value={fields.multiple}
                                 />

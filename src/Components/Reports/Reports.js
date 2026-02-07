@@ -5,37 +5,37 @@ import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 import html2pdf from 'html2pdf.js';
 
-const Reports = ()=>{
+const Reports = () => {
     const { storePath,
         server, intervalPeriod,
         fetchServer,
         companyRecord,
         company, getDate, years, monthDays,
         employees, months, expenses, sales, rentals, purchase, attendance,
-        getSales,getRentals, getPurchase, getExpenses,
-        alert,alertState,alertTimeout,actionMessage, 
+        getSales, getRentals, getPurchase, getExpenses,
+        alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage
     } = useContext(ContextProvider)
 
     const [cogsMap, setCogsMap] = useState({}) // { 'YYYY-MM-DD': amount }
     const [cogsLoading, setCogsLoading] = useState(false)
     const [cogsError, setCogsError] = useState(null)
-    const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0,10))
-    const [filterTo, setFilterTo] = useState(new Date(Date.now()).toISOString().slice(0,10))
+    const [filterFrom, setFilterFrom] = useState(new Date(new Date().getFullYear(), 0, 2).toISOString().slice(0, 10))
+    const [filterTo, setFilterTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [pendingFrom, setPendingFrom] = useState(filterFrom)
     const [pendingTo, setPendingTo] = useState(filterTo)
-    useEffect(()=>{
-        storePath('reports')  
-    },[storePath])
-    useEffect(()=>{
+    useEffect(() => {
+        storePath('reports')
+    }, [storePath])
+    useEffect(() => {
         // fetch COGS mapping for current overall range
-        (async ()=>{
-            var cmp_val = window.localStorage.getItem('sessn-cmp')     
+        (async () => {
+            var cmp_val = window.localStorage.getItem('sessn-cmp')
             getSales(cmp_val, 'all')
             getRentals(cmp_val, 'all')
             getPurchase(cmp_val, 'all')
             getExpenses(cmp_val, 'all')
-            try{
+            try {
                 const formattedStart = new Date(filterFrom).toISOString().split('T')[0]
                 const formattedEnd = new Date(filterTo).toISOString().split('T')[0]
                 const q = {
@@ -43,116 +43,116 @@ const Reports = ()=>{
                     collection: 'InventoryTransactions',
                     prop: [
                         { $match: { postingDate: { $gte: formattedStart, $lte: formattedEnd }, entryType: 'Sales' } },
-                        { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [ { $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' } ] } } } }
+                        { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [{ $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' }] } } } }
                     ]
                 }
                 const resp = await fetchServer('POST', q, 'aggregateDocs', server)
                 const map = {}
-                if (resp && resp.record){
+                if (resp && resp.record) {
                     resp.record.forEach(r => {
                         if (r._id) map[r._id] = r.cogs || 0
                     })
                 }
                 setCogsMap(map)
-            }catch(e){
+            } catch (e) {
                 console.warn('fetch COGS failed', e)
             }
         })()
-        const intervalId = setInterval(()=>{
-          var cmp_val = window.localStorage.getItem('sessn-cmp')     
-          if (cmp_val){
-              // refresh cogs map periodically
-              (async ()=>{
-                getSales(cmp_val, 'all')
-                getRentals(cmp_val, 'all')
-                getPurchase(cmp_val, 'all')
-                getExpenses(cmp_val,'all')
-                try{
-                    const formattedStart = new Date(filterFrom).toISOString().split('T')[0]
-                    const formattedEnd = new Date(filterTo).toISOString().split('T')[0]
-                    const q = {
-                        database: cmp_val,
-                        collection: 'InventoryTransactions',
-                        prop: [
-                            { $match: { postingDate: { $gte: formattedStart, $lte: formattedEnd }, entryType: 'Sales' } },
-                            { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [ { $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' } ] } } } }
-                        ]
+        const intervalId = setInterval(() => {
+            var cmp_val = window.localStorage.getItem('sessn-cmp')
+            if (cmp_val) {
+                // refresh cogs map periodically
+                (async () => {
+                    getSales(cmp_val, 'all')
+                    getRentals(cmp_val, 'all')
+                    getPurchase(cmp_val, 'all')
+                    getExpenses(cmp_val, 'all')
+                    try {
+                        const formattedStart = new Date(filterFrom).toISOString().split('T')[0]
+                        const formattedEnd = new Date(filterTo).toISOString().split('T')[0]
+                        const q = {
+                            database: cmp_val,
+                            collection: 'InventoryTransactions',
+                            prop: [
+                                { $match: { postingDate: { $gte: formattedStart, $lte: formattedEnd }, entryType: 'Sales' } },
+                                { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [{ $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' }] } } } }
+                            ]
+                        }
+                        const resp = await fetchServer('POST', q, 'aggregateDocs', server)
+                        const map = {}
+                        if (resp && resp.record) {
+                            resp.record.forEach(r => {
+                                if (r._id) map[r._id] = r.cogs || 0
+                            })
+                        }
+                        setCogsMap(map)
+                    } catch (e) {
+                        console.warn('refresh COGS failed', e)
                     }
-                    const resp = await fetchServer('POST', q, 'aggregateDocs', server)
-                    const map = {}
-                    if (resp && resp.record){
-                        resp.record.forEach(r => {
-                            if (r._id) map[r._id] = r.cogs || 0
-                        })
-                    }
-                    setCogsMap(map)
-                }catch(e){
-                    console.warn('refresh COGS failed', e)
-                }
-            })()
-            // getAttendance(cmp_val)
-          }
-        },intervalPeriod)
+                })()
+                // getAttendance(cmp_val)
+            }
+        }, intervalPeriod)
         return () => clearInterval(intervalId);
-    },[window.localStorage.getItem('sessn-cmp')])
+    }, [window.localStorage.getItem('sessn-cmp')])
     const [isSyncing, setIsSyncing] = useState(false)
     const reports = ['PROFIT OR LOSS', 'TRIAL BALANCE', 'BALANCE SHEET']
     const [curReport, setCurReport] = useState({
-        title:reports[0], 
-        data:[],
+        title: reports[0],
+        data: [],
         description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
-        columns: ['Month','Sales Income','COGS', 'Gross Profit', 'Other Income', 'Admin Expenses', 'Net Profit']
+        columns: ['Month', 'Sales Income', 'COGS', 'Gross Profit', 'Other Income', 'Admin Expenses', 'Net Profit']
     })
     const reportRef = useRef(null)
-    const handleReportSelection = (e)=>{
+    const handleReportSelection = (e) => {
         const name = e.target.getAttribute('name')
-        if (name){
-            if (name==='PROFIT OR LOSS'){
+        if (name) {
+            if (name === 'PROFIT OR LOSS') {
                 setCurReport({
-                    title:name,
-                    data:getPandLdata(filterFrom, filterTo),
+                    title: name,
+                    data: getPandLdata(filterFrom, filterTo),
                     description: 'Statement of profit or Loss and Other Comprehensive Income for'.toUpperCase(),
-                    columns: ['Month','Sales Income','COGS', 'Gross Profit', 'Other Income', 'Admin Expenses', 'Net Profit']
+                    columns: ['Month', 'Sales Income', 'COGS', 'Gross Profit', 'Other Income', 'Admin Expenses', 'Net Profit']
                 })
-            }else if (name==='TRIAL BALANCE'){
+            } else if (name === 'TRIAL BALANCE') {
                 setCurReport({
-                    title:name,
+                    title: name,
                     description: 'Trial Balance for'.toUpperCase(),
-                    data:getTrialBalance(filterFrom, filterTo),
-                    columns:['Month', 'Description', 'Credit', 'Debit', 'Balance']
+                    data: getTrialBalance(filterFrom, filterTo),
+                    columns: ['Month', 'Description', 'Credit', 'Debit', 'Balance']
                 })
-            }else if (name==='BALANCE SHEET'){
+            } else if (name === 'BALANCE SHEET') {
                 setCurReport({
-                    title:name,
+                    title: name,
                     description: 'Balance Sheet Report for'.toUpperCase(),
-                    data:getBalanceSheet(filterFrom, filterTo),
-                    columns:['Month']
+                    data: getBalanceSheet(filterFrom, filterTo),
+                    columns: ['Month']
                 })
             }
         }
     }
 
-    useEffect(()=>{
-        if (curReport.title === 'PROFIT OR LOSS'){
-            setCurReport((curReport)=>{                
-                return {...curReport, data:getPandLdata(filterFrom,filterTo)}
+    useEffect(() => {
+        if (curReport.title === 'PROFIT OR LOSS') {
+            setCurReport((curReport) => {
+                return { ...curReport, data: getPandLdata(filterFrom, filterTo) }
             })
-        }else if (curReport.title === 'TRIAL BALANCE'){
-            setCurReport((curReport)=>{                
-                return {...curReport, data:getTrialBalance(filterFrom,filterTo)}
+        } else if (curReport.title === 'TRIAL BALANCE') {
+            setCurReport((curReport) => {
+                return { ...curReport, data: getTrialBalance(filterFrom, filterTo) }
             })
-        }else if (curReport.title === 'BALANCE SHEET'){
-            setCurReport((curReport)=>{                
-                return {...curReport, data:getBalanceSheet(filterFrom,filterTo)}
+        } else if (curReport.title === 'BALANCE SHEET') {
+            setCurReport((curReport) => {
+                return { ...curReport, data: getBalanceSheet(filterFrom, filterTo) }
             })
         }
-    },[filterFrom,filterTo, expenses, sales, rentals, purchase, cogsMap])
+    }, [filterFrom, filterTo, expenses, sales, rentals, purchase, cogsMap])
 
-    useEffect(()=>{
+    useEffect(() => {
         fetchCogsForRange(filterFrom, filterTo)
     }, [filterFrom, filterTo])
 
-    const getBalanceSheet = (filterFrom, filterTo)=>{
+    const getBalanceSheet = (filterFrom, filterTo) => {
         return getAlldata(filterFrom, filterTo)
     }
 
@@ -162,10 +162,10 @@ const Reports = ()=>{
         setAlertState('info');
         setAlert('Syncing offline Report changes...');
         setAlertTimeout(10000);
-        try{
+        try {
             const results = await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             const cmp_val = window.localStorage.getItem('sessn-cmp');
-            if (cmp_val){
+            if (cmp_val) {
                 await Promise.all([
                     getSales(cmp_val, 'all'),
                     getRentals(cmp_val, 'all'),
@@ -173,27 +173,27 @@ const Reports = ()=>{
                     getExpenses(cmp_val, 'all')
                 ])
             }
-            if (Array.isArray(results)){
+            if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
-                if (failed.length){
+                if (failed.length) {
                     setAlertState('error');
                     setAlert(`${failed.length} change(s) failed to sync; retry later.`);
                     setAlertTimeout(5000);
                 } else {
                     setAlertState('success');
                     setAlert('Offline Reports Sync complete');
-                    setAlertTimeout(3000);
+                    setAlertTimeout(1000);
                 }
             } else {
                 setAlertState('success');
                 setAlert('Offline Reports Sync complete');
-                setAlertTimeout(3000);
+                setAlertTimeout(1000);
             }
-        }catch(e){
+        } catch (e) {
             setAlertState('error');
             setAlert('Offline Reports Sync failed. Please try again.');
             setAlertTimeout(3000);
-        }finally{
+        } finally {
             setIsSyncing(false);
         }
     }
@@ -202,62 +202,62 @@ const Reports = ()=>{
         if (!cmp_val) return
         setCogsLoading(true)
         setCogsError(null)
-        try{
+        try {
             const formattedStart = new Date(from).toISOString().split('T')[0]
             const formattedEnd = new Date(to).toISOString().split('T')[0]
             const q = {
-            database: cmp_val,
-            collection: 'InventoryTransactions',
-            prop: [
-                { $match: { postingDate: { $gte: formattedStart, $lte: formattedEnd }, entryType: 'Sales' } },
-                { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [ { $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' } ] } } } }
-            ]
+                database: cmp_val,
+                collection: 'InventoryTransactions',
+                prop: [
+                    { $match: { postingDate: { $gte: formattedStart, $lte: formattedEnd }, entryType: 'Sales' } },
+                    { $group: { _id: '$postingDate', cogs: { $sum: { $cond: [{ $isNumber: '$totalCost' }, '$totalCost', { $toDouble: '$totalCost' }] } } } }
+                ]
             }
             const resp = await fetchServer('POST', q, 'aggregateDocs', server)
             const map = {}
-            if (resp && resp.record){
-            resp.record.forEach(r => { if (r._id) map[r._id] = r.cogs || 0 })
+            if (resp && resp.record) {
+                resp.record.forEach(r => { if (r._id) map[r._id] = r.cogs || 0 })
             }
             setCogsMap(map)
             setCogsError(null)
-        }catch(e){
+        } catch (e) {
             console.warn('fetch COGS failed', e)
             setCogsError('Failed to fetch COGS. Reports may be incomplete.')
             setAlertState('error')
             setAlert('Failed to fetch COGS. Reports may be incomplete.')
             setAlertTimeout(5000)
-        }finally{
+        } finally {
             setCogsLoading(false)
         }
     }
-    const getTrialBalance = (filterFrom, filterTo)=>{
+    const getTrialBalance = (filterFrom, filterTo) => {
         return getAlldata(filterFrom, filterTo)
     }
 
-    const getPandLdata = (filterFrom, filterTo) =>{
+    const getPandLdata = (filterFrom, filterTo) => {
         return getAlldata(filterFrom, filterTo)
     }
-    const getAlldata = (filterFrom, filterTo)=>{
+    const getAlldata = (filterFrom, filterTo) => {
         var saledata = []
-        sales.forEach((sale)=>{
-            const {postingDate, totalCashSales, totalBankSales, 
-                    totalDebt, totalShortage, totalDebtRecovered} = sale
-            if (filterFrom <= postingDate && filterTo >= postingDate){                
+        sales.forEach((sale) => {
+            const { postingDate, totalCashSales, totalBankSales,
+                totalDebt, totalShortage, totalDebtRecovered } = sale
+            if (filterFrom <= postingDate && filterTo >= postingDate) {
                 var reportSale = {}
                 reportSale.postingDate = postingDate
                 reportSale.docType = 'sales'
-                reportSale.salesAmount = Number(totalCashSales) + Number(totalBankSales) 
-                + Number(totalDebt) + Number(totalShortage)
-                
+                reportSale.salesAmount = Number(totalCashSales) + Number(totalBankSales)
+                    + Number(totalDebt) + Number(totalShortage)
+
                 saledata = saledata.concat(reportSale)
             }
-        })       
+        })
         const monthlySalesData = getMonthWiseReport(saledata)
 
         var rentalData = []
-        rentals.forEach((rental)=>{
-            const {paymentDate, paymentAmount} = rental
-            if (filterFrom <= paymentDate && filterTo >= paymentDate){
+        rentals.forEach((rental) => {
+            const { paymentDate, paymentAmount } = rental
+            if (filterFrom <= paymentDate && filterTo >= paymentDate) {
                 var reportRental = {}
                 reportRental.postingDate = paymentDate
                 reportRental.docType = 'rentals'
@@ -269,9 +269,9 @@ const Reports = ()=>{
 
         // Prefer COGS (cost of goods sold) aggregated from InventoryTransactions for Sales
         var cogsData = []
-        if (cogsMap && Object.keys(cogsMap).length){
+        if (cogsMap && Object.keys(cogsMap).length) {
             Object.keys(cogsMap).forEach(d => {
-                if (filterFrom <= d && filterTo >= d){
+                if (filterFrom <= d && filterTo >= d) {
                     cogsData.push({ postingDate: d, docType: 'cogs', cogsAmount: Math.abs(Number(cogsMap[d] || 0)) })
                 }
             })
@@ -279,75 +279,75 @@ const Reports = ()=>{
         const monthlyCogsData = getMonthWiseReport(cogsData)
 
         var purchaseData = []
-        purchase.forEach((pur)=>{
-            const {postingDate, purchaseAmount} = pur
-            if (filterFrom <= postingDate && filterTo >= postingDate){                
+        purchase.forEach((pur) => {
+            const { postingDate, purchaseAmount } = pur
+            if (filterFrom <= postingDate && filterTo >= postingDate) {
                 var reportPurchase = {}
                 reportPurchase.postingDate = postingDate
                 reportPurchase.docType = 'purchase'
                 reportPurchase.purchaseAmount = Number(purchaseAmount)
-    
+
                 purchaseData = purchaseData.concat(reportPurchase)
             }
         })
         const monthlyPurchaseData = getMonthWiseReport(purchaseData)
 
         var expenseData = []
-        expenses.forEach((exp)=>{
-            const {postingDate, expensesAmount} = exp
-            if (filterFrom <= postingDate && filterTo >= postingDate){                
+        expenses.forEach((exp) => {
+            const { postingDate, expensesAmount } = exp
+            if (filterFrom <= postingDate && filterTo >= postingDate) {
                 var reportExpenses = {}
                 reportExpenses.postingDate = postingDate
                 reportExpenses.docType = 'expenses'
                 reportExpenses.expenseAmount = Number(expensesAmount)
                 expenseData = expenseData.concat(reportExpenses)
             }
-        })        
+        })
 
         var payrollData = []
-        attendance.forEach((att)=>{
-            const {year, month, payees} = att
-            payees.forEach((payee)=>{   
-                const postingDate = new Date(Number(year), months.indexOf(month), monthDays[month]+1).toISOString().slice(0,10)
-                if (filterFrom <= postingDate && filterTo >= postingDate){                
+        attendance.forEach((att) => {
+            const { year, month, payees } = att
+            payees.forEach((payee) => {
+                const postingDate = new Date(Number(year), months.indexOf(month), monthDays[month] + 1).toISOString().slice(0, 10)
+                if (filterFrom <= postingDate && filterTo >= postingDate) {
                     var reportSalary = {}
-                    const totalPay = Number(payee['Total Pay']?payee['Total Pay']:0)
+                    const totalPay = Number(payee['Total Pay'] ? payee['Total Pay'] : 0)
                     const adjustment = Number(payee.adjustment) ? Number(payee.adjustment) : 0
-                    const bonus = Number(payee['bonus']) ? Number(payee['bonus']): 0 
+                    const bonus = Number(payee['bonus']) ? Number(payee['bonus']) : 0
                     const penalties = Number(payee['penalties']) ? Number(payee['penalties']) : 0
-                    const shortages = Number(payee['shortages'])? Number(payee['shortages']) : 0
-                    const debtDue = Number(payee['debtDue'])? Number(payee['debtDue']) : 0
-                    const prevDebt = Number(payee['prevDebt'])? Number(payee['prevDebt']) : 0
+                    const shortages = Number(payee['shortages']) ? Number(payee['shortages']) : 0
+                    const debtDue = Number(payee['debtDue']) ? Number(payee['debtDue']) : 0
+                    const prevDebt = Number(payee['prevDebt']) ? Number(payee['prevDebt']) : 0
                     const salaryAmount = totalPay + adjustment + bonus
-                    - penalties - shortages - debtDue - prevDebt
-    
+                        - penalties - shortages - debtDue - prevDebt
+
                     reportSalary.postingDate = postingDate
                     reportSalary.docType = 'salary'
                     reportSalary.salaryAmount = Number(salaryAmount || 0)
                     expenseData = expenseData.concat(reportSalary)
                 }
             })
-        }) 
+        })
         const monthlyExpenseData = getMonthWiseReport(expenseData)
 
-        return combinedMonthReport([...monthlySalesData,...monthlyRentalData,
-            ...monthlyExpenseData,...monthlyPurchaseData, ...monthlyCogsData
+        return combinedMonthReport([...monthlySalesData, ...monthlyRentalData,
+        ...monthlyExpenseData, ...monthlyPurchaseData, ...monthlyCogsData
         ])
     }
 
     const getMonthWiseReport = (data) => {
-        const monthIndex = ['01','02','03','04','05','06','07','08','09','10','11','12']
+        const monthIndex = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
         var newData = []
-        monthIndex.forEach((month)=>{  
-            var newRecord = {}          
+        monthIndex.forEach((month) => {
+            var newRecord = {}
             var sumSalesAmount = 0
             var sumRentalAmount = 0
             var sumPurchaseAmount = 0
             var sumCogsAmount = 0
             var sumExpenseAmount = 0
-            data.forEach((record)=>{
-                const {postingDate, salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount} = record
-                if (postingDate.split('-')[1] === month){
+            data.forEach((record) => {
+                const { postingDate, salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount } = record
+                if (postingDate.split('-')[1] === month) {
                     sumSalesAmount += salesAmount ? salesAmount : 0
                     sumRentalAmount += rentalAmount ? rentalAmount : 0
                     sumPurchaseAmount += purchaseAmount ? purchaseAmount : 0
@@ -355,7 +355,7 @@ const Reports = ()=>{
                     sumExpenseAmount += (expenseAmount || salaryAmount || 0)
                 }
             })
-            newRecord.month = months[Number(month)-1]
+            newRecord.month = months[Number(month) - 1]
             newRecord.salesAmount = sumSalesAmount
             newRecord.rentalAmount = sumRentalAmount
             newRecord.purchaseAmount = sumPurchaseAmount
@@ -366,9 +366,9 @@ const Reports = ()=>{
         return newData
     }
 
-    const combinedMonthReport = (monthlyReports)=>{
+    const combinedMonthReport = (monthlyReports) => {
         var combinedReports = []
-        months.forEach((month)=>{
+        months.forEach((month) => {
             var monthlyRecord = {}
             var sumSalesAmount = 0
             var sumRentalAmount = 0
@@ -376,16 +376,16 @@ const Reports = ()=>{
             var sumCogsAmount = 0
             var sumExpenseAmount = 0
 
-            monthlyReports.forEach((report)=>{
-                const {salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount} = report
-                if (report.month === month){
+            monthlyReports.forEach((report) => {
+                const { salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount } = report
+                if (report.month === month) {
                     sumSalesAmount += salesAmount
                     sumRentalAmount += rentalAmount
-                    sumPurchaseAmount += purchaseAmount 
+                    sumPurchaseAmount += purchaseAmount
                     sumCogsAmount += cogsAmount
                     sumExpenseAmount += (expenseAmount || salaryAmount || 0)
                 }
-            })                        
+            })
             monthlyRecord.month = month
             monthlyRecord.salesAmount = sumSalesAmount
             monthlyRecord.rentalAmount = sumRentalAmount
@@ -398,35 +398,35 @@ const Reports = ()=>{
         return combinedReports
     }
 
-    const cummulativeBalance = (data, month)=>{
+    const cummulativeBalance = (data, month) => {
         var balance = 0
         var sumSalesAmount = 0
         var sumRentalAmount = 0
         var sumPurchaseAmount = 0
         var sumCogsAmount = 0
         var sumExpenseAmount = 0
-        data.forEach((record)=>{
-            const {salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount} = record
-            if (months.indexOf(record.month)<=months.indexOf(month)){
+        data.forEach((record) => {
+            const { salesAmount, rentalAmount, purchaseAmount, cogsAmount, expenseAmount, salaryAmount } = record
+            if (months.indexOf(record.month) <= months.indexOf(month)) {
                 sumSalesAmount += salesAmount
                 sumRentalAmount += rentalAmount
-                sumPurchaseAmount += purchaseAmount 
+                sumPurchaseAmount += purchaseAmount
                 sumCogsAmount += cogsAmount
                 sumExpenseAmount += (expenseAmount || salaryAmount || 0)
             }
         })
         balance = sumSalesAmount + sumRentalAmount - sumPurchaseAmount - sumExpenseAmount
-        return balance 
+        return balance
     }
-    
+
     const printToPDF = () => {
         const element = reportRef.current;
         const options = {
-            margin:       0.2,
-            filename:     `${curReport.title} REPORT - ${new Date(filterTo).getFullYear()}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
-            jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
+            margin: 0.2,
+            filename: `${curReport.title} REPORT - ${new Date(filterTo).getFullYear()}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
     };
@@ -435,8 +435,8 @@ const Reports = ()=>{
         <>
             <div className='reports'>
                 <div className='reports-list' onClick={handleReportSelection}>
-                    {reports.map((report, id)=>{
-                        return <div className={'report-card'+(curReport.title===report?' report-selected':'')} name={report} key={id}>
+                    {reports.map((report, id) => {
+                        return <div className={'report-card' + (curReport.title === report ? ' report-selected' : '')} name={report} key={id}>
                             {report}
                         </div>
                     })}
@@ -450,80 +450,80 @@ const Reports = ()=>{
                                 <p className='billfromitem report-billfrom'>{`Email: ${companyRecord.emailid}`}</p>
                             </div>
                         </div>
-                        {curReport.title?<div className='reports-onview'>
+                        {curReport.title ? <div className='reports-onview'>
                             <div className='report-title'>
                                 {curReport.description + ` YEAR ${new Date(filterTo).getFullYear()}`}
                             </div>
                             {cogsLoading && (
-                                <div className='report-loading' style={{margin: '8px 0', color: '#325aa8'}}>
+                                <div className='report-loading' style={{ margin: '8px 0', color: '#325aa8' }}>
                                     Updating cost of goods... Please wait.
                                 </div>
                             )}
                             {cogsError && (
-                                <div className='report-error' style={{margin: '8px 0', color: 'red'}}>
+                                <div className='report-error' style={{ margin: '8px 0', color: 'red' }}>
                                     {cogsError}
-                                    <button style={{marginLeft: 8}} onClick={()=>fetchCogsForRange(filterFrom, filterTo)}>Retry</button>
+                                    <button style={{ marginLeft: 8 }} onClick={() => fetchCogsForRange(filterFrom, filterTo)}>Retry</button>
                                 </div>
                             )}
                             <div className='report-table'>
                                 <table>
                                     <thead>
                                         <tr>
-                                            {curReport.columns?.map((col, index)=>{
+                                            {curReport.columns?.map((col, index) => {
                                                 return <th key={index}>{col}</th>
-                                            })}                                            
-                                        </tr>                                        
+                                            })}
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                        {curReport.title === 'PROFIT OR LOSS' && curReport.data.map((report, index)=>{
+                                        {curReport.title === 'PROFIT OR LOSS' && curReport.data.map((report, index) => {
                                             return <tr key={index}>
                                                 <td>{report.month}</td>
-                                                <td>{'₦'+(report.salesAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.cogsAmount || report.purchaseAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.salesAmount - (report.cogsAmount || report.purchaseAmount)).toLocaleString()}</td>
-                                                <td>{'₦'+(report.rentalAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.expenseAmount).toLocaleString()}</td>
-                                                <td>{'₦'+(report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount).toLocaleString()}</td>
+                                                <td>{'₦' + (report.salesAmount).toLocaleString()}</td>
+                                                <td>{'₦' + (report.cogsAmount || report.purchaseAmount).toLocaleString()}</td>
+                                                <td>{'₦' + (report.salesAmount - (report.cogsAmount || report.purchaseAmount)).toLocaleString()}</td>
+                                                <td>{'₦' + (report.rentalAmount).toLocaleString()}</td>
+                                                <td>{'₦' + (report.expenseAmount).toLocaleString()}</td>
+                                                <td>{'₦' + (report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount).toLocaleString()}</td>
                                             </tr>
                                         })}
-                                        {curReport.title === 'TRIAL BALANCE' && 
+                                        {curReport.title === 'TRIAL BALANCE' &&
                                             <tr>
                                                 <td>{`1ST JANUARY`}</td>
                                                 <td>{`OPENING BALANCE, ${new Date(filterFrom).getFullYear()}`}</td>
                                                 <td></td>
                                                 <td></td>
-                                                <td>{'₦'+
+                                                <td>{'₦' +
                                                     cummulativeBalance(
                                                         getAlldata('2024-01-01',
-                                                            new Date(new Date(filterFrom).getFullYear()-1, 
-                                                                months.indexOf('DECEMBER'), 
-                                                                monthDays['DECEMBER']+1
-                                                            ).toISOString().slice(0,10)
-                                                        ),'DECEMBER'
+                                                            new Date(new Date(filterFrom).getFullYear() - 1,
+                                                                months.indexOf('DECEMBER'),
+                                                                monthDays['DECEMBER'] + 1
+                                                            ).toISOString().slice(0, 10)
+                                                        ), 'DECEMBER'
                                                     ).toLocaleString()}
                                                 </td>
                                             </tr>
                                         }
-                                        {curReport.title === 'TRIAL BALANCE' && 
-                                            [''].map((args, index)=>{
+                                        {curReport.title === 'TRIAL BALANCE' &&
+                                            [''].map((args, index) => {
                                                 var cummulativeSum = cummulativeBalance(
                                                     getAlldata('2024-01-01',
-                                                        new Date(new Date(filterTo).getFullYear()-1, 
-                                                            months.indexOf('DECEMBER'), 
-                                                            monthDays['DECEMBER']+1
-                                                        ).toISOString().slice(0,10)
-                                                    ),'DECEMBER'
+                                                        new Date(new Date(filterTo).getFullYear() - 1,
+                                                            months.indexOf('DECEMBER'),
+                                                            monthDays['DECEMBER'] + 1
+                                                        ).toISOString().slice(0, 10)
+                                                    ), 'DECEMBER'
                                                 )
-                                                return curReport.data.map((report, index)=>{
+                                                return curReport.data.map((report, index) => {
                                                     return <tr key={index}>
                                                         <td>{report.month}</td>
                                                         <td>{'SALES INCOME || ADMIN & OTHER EXPENSES'}</td>
-                                                        <td>{'₦'+(report.salesAmount + report.rentalAmount).toLocaleString()}</td>
-                                                        <td>{'₦'+((report.cogsAmount || report.purchaseAmount) + report.expenseAmount).toLocaleString()}</td>                                                
-                                                        {[''].map((arg, index)=>{        
+                                                        <td>{'₦' + (report.salesAmount + report.rentalAmount).toLocaleString()}</td>
+                                                        <td>{'₦' + ((report.cogsAmount || report.purchaseAmount) + report.expenseAmount).toLocaleString()}</td>
+                                                        {[''].map((arg, index) => {
                                                             cummulativeSum += report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount
-                                                            return <td>{'₦'+(cummulativeSum).toLocaleString()}</td>                                          
-                                                        })}                                                
+                                                            return <td>{'₦' + (cummulativeSum).toLocaleString()}</td>
+                                                        })}
                                                     </tr>
                                                 })
                                             })
@@ -531,102 +531,102 @@ const Reports = ()=>{
                                     </tbody>
                                     <tfoot>
                                         {curReport.title === 'PROFIT OR LOSS' && <tr>
-                                            <th>Total Amount</th>                                            
-                                            {curReport.title === 'PROFIT OR LOSS' && 
-                                                [''].map((arg, index)=>{
+                                            <th>Total Amount</th>
+                                            {curReport.title === 'PROFIT OR LOSS' &&
+                                                [''].map((arg, index) => {
                                                     var totalSalesAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalSalesAmount += report.salesAmount 
-                                                    })          
-                                                    return <th>{'₦'+totalSalesAmount.toLocaleString()}</th>                                          
+                                                    curReport.data.forEach((report) => {
+                                                        totalSalesAmount += report.salesAmount
+                                                    })
+                                                    return <th>{'₦' + totalSalesAmount.toLocaleString()}</th>
                                                 })
-                                            }                                                                                                                            
-                                            {curReport.title === 'PROFIT OR LOSS' && 
-                                                [''].map((arg, index)=>{
+                                            }
+                                            {curReport.title === 'PROFIT OR LOSS' &&
+                                                [''].map((arg, index) => {
                                                     var totalPurchaseAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount) 
-                                                    })          
-                                                    return <th>{'₦'+totalPurchaseAmount.toLocaleString()}</th>                                          
+                                                    curReport.data.forEach((report) => {
+                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
+                                                    })
+                                                    return <th>{'₦' + totalPurchaseAmount.toLocaleString()}</th>
                                                 })
-                                            }                                         
-                                            {curReport.title === 'PROFIT OR LOSS' && 
-                                                [''].map((arg, index)=>{
+                                            }
+                                            {curReport.title === 'PROFIT OR LOSS' &&
+                                                [''].map((arg, index) => {
                                                     var totalSalesAmount = 0
                                                     var totalPurchaseAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalSalesAmount += report.salesAmount 
-                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount) 
-                                                    })          
-                                                    return <th>{'₦'+(totalSalesAmount - totalPurchaseAmount).toLocaleString()}</th>                                          
+                                                    curReport.data.forEach((report) => {
+                                                        totalSalesAmount += report.salesAmount
+                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
+                                                    })
+                                                    return <th>{'₦' + (totalSalesAmount - totalPurchaseAmount).toLocaleString()}</th>
                                                 })
-                                            }   
-                                            {curReport.title === 'PROFIT OR LOSS' && 
-                                                [''].map((arg, index)=>{
+                                            }
+                                            {curReport.title === 'PROFIT OR LOSS' &&
+                                                [''].map((arg, index) => {
                                                     var totalRentalAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalRentalAmount += report.rentalAmount 
-                                                    })          
-                                                    return <th>{'₦'+totalRentalAmount.toLocaleString()}</th>                                          
+                                                    curReport.data.forEach((report) => {
+                                                        totalRentalAmount += report.rentalAmount
+                                                    })
+                                                    return <th>{'₦' + totalRentalAmount.toLocaleString()}</th>
                                                 })
-                                            }                                        
-                                            {curReport.title === 'PROFIT OR LOSS' && 
-                                                [''].map((arg, index)=>{
+                                            }
+                                            {curReport.title === 'PROFIT OR LOSS' &&
+                                                [''].map((arg, index) => {
                                                     var totalExpenseAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalExpenseAmount += report.expenseAmount 
-                                                    })          
-                                                    return <th>{'₦'+totalExpenseAmount.toLocaleString()}</th>                                          
+                                                    curReport.data.forEach((report) => {
+                                                        totalExpenseAmount += report.expenseAmount
+                                                    })
+                                                    return <th>{'₦' + totalExpenseAmount.toLocaleString()}</th>
                                                 })
-                                            }                                                                                     
-                                            {curReport.title === 'PROFIT OR LOSS' && 
-                                                [''].map((arg, index)=>{
+                                            }
+                                            {curReport.title === 'PROFIT OR LOSS' &&
+                                                [''].map((arg, index) => {
                                                     var totalSalesAmount = 0
                                                     var totalRentalAmount = 0
                                                     var totalPurchaseAmount = 0
                                                     var totalExpenseAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalSalesAmount += report.salesAmount 
+                                                    curReport.data.forEach((report) => {
+                                                        totalSalesAmount += report.salesAmount
                                                         totalRentalAmount += report.rentalAmount
                                                         totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
                                                         totalExpenseAmount += report.expenseAmount
-                                                    })          
-                                                    return <th>{'₦'+(totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>                                          
+                                                    })
+                                                    return <th>{'₦' + (totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>
                                                 })
-                                            }                                                                                                                                                                             
+                                            }
                                         </tr>}
                                         {curReport.title === 'TRIAL BALANCE' && <tr>
-                                            <th>Total Amount</th>     
-                                            {curReport.title === 'TRIAL BALANCE' && 
+                                            <th>Total Amount</th>
+                                            {curReport.title === 'TRIAL BALANCE' &&
                                                 <th>{`CLOSING BALANCE, ${new Date(filterTo).getFullYear()}`}</th>
                                             }
-                                            {curReport.title === 'TRIAL BALANCE' && 
+                                            {curReport.title === 'TRIAL BALANCE' &&
                                                 <th></th>
                                             }
-                                            {curReport.title === 'TRIAL BALANCE' && 
+                                            {curReport.title === 'TRIAL BALANCE' &&
                                                 <th></th>
-                                            }                                                                                                                                                                             
-                                            {curReport.title === 'TRIAL BALANCE' && 
-                                                [''].map((arg, index)=>{
+                                            }
+                                            {curReport.title === 'TRIAL BALANCE' &&
+                                                [''].map((arg, index) => {
                                                     var totalSalesAmount = 0
                                                     var totalRentalAmount = 0
                                                     var totalPurchaseAmount = 0
                                                     var totalExpenseAmount = 0
-                                                    curReport.data.forEach((report)=>{
-                                                        totalSalesAmount += report.salesAmount 
-                                                        totalRentalAmount += report.rentalAmount 
+                                                    curReport.data.forEach((report) => {
+                                                        totalSalesAmount += report.salesAmount
+                                                        totalRentalAmount += report.rentalAmount
                                                         totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
                                                         totalExpenseAmount += report.expenseAmount
-                                                    })          
+                                                    })
                                                     var cummulativeSum = cummulativeBalance(
                                                         getAlldata('2024-01-01',
-                                                            new Date(new Date(filterTo).getFullYear()-1, 
-                                                                months.indexOf('DECEMBER'), 
-                                                                monthDays['DECEMBER']+1
-                                                            ).toISOString().slice(0,10)
-                                                        ),'DECEMBER'
+                                                            new Date(new Date(filterTo).getFullYear() - 1,
+                                                                months.indexOf('DECEMBER'),
+                                                                monthDays['DECEMBER'] + 1
+                                                            ).toISOString().slice(0, 10)
+                                                        ), 'DECEMBER'
                                                     )
-                                                    return <th>{'₦'+(cummulativeSum + totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>                                          
+                                                    return <th>{'₦' + (cummulativeSum + totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>
                                                 })
                                             }
                                         </tr>}
@@ -634,52 +634,52 @@ const Reports = ()=>{
                                 </table>
                             </div>
 
-                        </div> 
-                        :<div className='no-report'>
-                            <div>Select Report To View!</div>
-                        </div>}
+                        </div>
+                            : <div className='no-report'>
+                                <div>Select Report To View!</div>
+                            </div>}
                     </div>
                     <div className='reports-filter'>
                         <div className='inp-cov'>
                             <div className='inpcov reppad'>
                                 <div>Date From</div>
-                                <input 
+                                <input
                                     className='forminp inppad'
                                     name='salesfrom'
                                     type='date'
                                     placeholder='From'
                                     value={filterFrom}
-                                    disabled={companyRecord.status!=='admin'}
-                                    onChange={(e)=>{
+                                    disabled={companyRecord.status !== 'admin'}
+                                    onChange={(e) => {
                                         setFilterFrom(e.target.value)
                                     }}
                                 />
                             </div>
                             <div className='inpcov reppad'>
                                 <div>Date To</div>
-                                <input 
+                                <input
                                     className='forminp inppad'
                                     name='salesto'
                                     type='date'
                                     placeholder='To'
                                     value={filterTo}
-                                    disabled={companyRecord.status!=='admin'}
-                                    onChange={(e)=>{
+                                    disabled={companyRecord.status !== 'admin'}
+                                    onChange={(e) => {
                                         setFilterTo(e.target.value)
                                     }}
                                 />
                             </div>
                         </div>
-                        <button className="action-btn" onClick={()=>{
+                        <button className="action-btn" onClick={() => {
                             // setFilterFrom(pendingFrom)
                             // setFilterTo(pendingTo)
                             fetchCogsForRange(filterFrom, filterTo)
                         }}>Apply Filter</button>
 
-                        <div style={{display:'flex', justifyContent:'flex-end', padding:4}}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
                             <button className="action-btn" onClick={handleSyncOfflineReports} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                         </div>
-                        <div 
+                        <div
                             className='print-report'
                             onClick={printToPDF}
                         >
