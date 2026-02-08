@@ -429,6 +429,9 @@ const Sales = () => {
                             sessionEmployees = sessionEmployees.concat(employeeId)
                         }
                     })
+                    if (!sessionEmployees.includes("1")) {
+                        sessionEmployees = sessionEmployees.concat("1")
+                    }
                     if (!session.end) {
                         activeSessions.push(session.i_d)
                     }
@@ -578,24 +581,62 @@ const Sales = () => {
                         updatedAllSessions.forEach((session) => {
                             const salesEndDate = new Date(postingDate1)
                             salesEndDate.setDate(salesEndDate.getDate() + 1);
-                            const sessionOrders = session?.orders || []
-                            if (employeeId === '27') {
-                                // console.log(sessionOrders)
-                            }
+                            const sessionOrders = session?.orders || []                            
                             sessionOrders.forEach((sessionOrder) => {
+                                // if ((sessionOrder.lastDeliveredBy === '1' || sessionOrder.handlerId === '1')
+                                //     && session.type === 'sales' && session.end && !['cancelled'].includes(sessionOrder.status)
+                                //      && (
+                                //         session.totalSalesAmount || session.debtDue ||
+                                //         session.unAccountedSales || sessionOrder.status === 'completed' || session.totalPendingSales
+                                //     )
+                                // ){
+                                //     console.log(new Date(session.start), new Date(salesEndDate))
+                                //     console.log(getSessionEnd(session.start) === getSessionEnd(salesEndDate))
+                                //     console.log('7', getSessionEnd(session.start), getSessionEnd(salesEndDate), session, sessionOrder)
+                                // }
                                 if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
-                                    && session.type === 'sales' && session.end && !['cancelled', 'pending'].includes(sessionOrder.status)
+                                    && session.type === 'sales' && session.end && !['cancelled'].includes(sessionOrder.status)
                                     && (
                                         session.totalSalesAmount || session.debtDue ||
-                                        session.unAccountedSales || session.totalPendingSales
-                                    ) && (sessionOrder.status === 'completed' || session.totalPendingSales)
+                                        session.unAccountedSales || sessionOrder.status === 'completed' || session.totalPendingSales
+                                    ) 
                                     && getSessionEnd(session.start) === getSessionEnd(salesEndDate)
                                 ) {
+                                    // console.log(sessionOrder)
                                     const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
                                     let wct = 0
-                                    salesPostsPay.forEach((pay) => {
+                                    if (sessionOrder?.salesPosts){
+                                        salesPostsPay.forEach((pay) => {
+                                            let splitPayment = {}
+                                            if (sessionOrder?.salesPosts[pay] === wh) {
+                                                wct++
+                                                splitPayment[wh] = 1
+                                                if (wct > 1) {
+                                                    splitPayment['exclude'] = true
+                                                }
+    
+                                                if (sessionOrder.handlerId === employeeId) {
+                                                    wrhSessionOrders.push({ session, sessionOrder, splitPayment })
+                                                } else {
+                                                    if (session.employee_id !== employeeId && wh === 'kitchen') {
+                                                        wrhSessionOrders.push({ session, sessionOrder, splitPayment })
+                                                    }
+                                                }
+                                                sessionOrder?.deliverySessions?.forEach((deliverySession) => {
+                                                    if (!deliverySessions.includes(deliverySession)) {
+                                                        deliverySessions.push(deliverySession)
+                                                    }
+                                                })
+    
+                                                if (!salesSessions.includes(sessionOrder.sessionId)) {
+                                                    salesSessions.push(sessionOrder.sessionId)
+                                                }
+                                            }
+                                        })
+                                    }else{
                                         let splitPayment = {}
-                                        if (sessionOrder?.salesPosts[pay] === wh) {
+                                        if (sessionOrder.wrh === wh || sessionOrder?.deliverySessions?.length) {
+                                            // console.log('yes')
                                             wct++
                                             splitPayment[wh] = 1
                                             if (wct > 1) {
@@ -619,7 +660,7 @@ const Sales = () => {
                                                 salesSessions.push(sessionOrder.sessionId)
                                             }
                                         }
-                                    })
+                                    }
                                 }
                             })
 
@@ -631,7 +672,7 @@ const Sales = () => {
                                 let tcashSales = 0
                                 let tbankSales = 0
                                 Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint) => {
-                                    if (sessionOrder[payPoint]) {
+                                    if (sessionOrder[payPoint] && sessionOrder.status === 'completed') {
                                         totalWrhTransactions[wh].allPayPoints[payPoint] = (Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])))
                                         totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                         totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
@@ -646,7 +687,7 @@ const Sales = () => {
                                     let tcashSales = 0
                                     let tbankSales = 0
                                     Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint) => {
-                                        if (sessionOrder[payPoint]) {
+                                        if (sessionOrder[payPoint] && sessionOrder.status === 'completed') {
                                             totalWrhTransactions[wh].allPayPoints[payPoint] = Number(totalWrhTransactions[wh].allPayPoints[payPoint] || 0) + (Number(sessionOrder[payPoint] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))
                                             totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash'] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
                                             totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)

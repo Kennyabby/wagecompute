@@ -1806,7 +1806,7 @@ const TransactionHistory = () => {
       />
       <div className="filters-container">
         <div className="filter-group">
-          <label>Date Range</label>
+          <label>Date Range From</label>
           <div className="date-range">
             <input
               type="date"
@@ -1815,7 +1815,12 @@ const TransactionHistory = () => {
               onChange={handleFilterChange}
               className="date-input"
             />
-            <span>to</span>
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <label>To</label>
+          <div className="date-range">            
             <input
               type="date"
               name="endDate"

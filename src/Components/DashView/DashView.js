@@ -1025,15 +1025,15 @@ const DashView = () =>{
                 <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
                 {/* Filters */}
                 <div className='dash-filters'>
-                    <div className='filter-group'>
+                    <div className='filter-group1'>
                         <label>From</label>
                         <input type='date' value={fromDate} onChange={e=>setFromDate(e.target.value)} />
                     </div>
-                    <div className='filter-group'>
+                    <div className='filter-group1'>
                         <label>To</label>
                         <input type='date' value={toDate} onChange={e=>setToDate(e.target.value)} />
                     </div>
-                    <div className='filter-group'>
+                    <div className='filter-group1'>
                         <label>Presets</label>
                         <div className='btn-group' style={{display:'flex', gap:8, flexWrap:'wrap'}}>
                             <button className='btn-secondary' onClick={()=>{ const d=new Date(); const s=d.toISOString().slice(0,10); setFromDate(s); setToDate(s) }}>Today</button>
@@ -1043,28 +1043,28 @@ const DashView = () =>{
                             <button className='btn-secondary' onClick={handleClearFilters}>Clear All Filters</button>
                         </div>
                     </div>
-                    <div className='filter-group'>
+                    <div className='filter-group1'>
                         <label>Location</label>
                         <select value={locationFilter} onChange={e=>setLocationFilter(e.target.value)}>
                             <option value=''>All</option>
                             {locationOptions.map((l,i)=>(<option value={l} key={i}>{l}</option>))}
                         </select>
                     </div>
-                    <div className='filter-group'>
+                    <div className='filter-group1'>
                         <label>Product</label>
                         <select value={productFilter} onChange={e=>setProductFilter(e.target.value)}>
                             <option value=''>All</option>
                             {productOptions.map(p=>(<option value={p.value} key={p.value}>{p.label}</option>))}
                         </select>
                     </div>
-                    <div className='filter-group'>
+                    <div className='filter-group1'>
                         <label>Employee</label>
                         <select value={employeeFilter} onChange={e=>setEmployeeFilter(e.target.value)}>
                             <option value=''>All</option>
                             {employeeOptions.map(eo=>(<option value={eo.value} key={eo.value}>{eo.label}</option>))}
                         </select>
                     </div>
-                    <div className='filter-group'>
+                    <div className='filter-group1'>
                         <label>Season</label>
                         <select value={seasonFilter} onChange={e => handleSeasonChange(e.target.value)}>
                             <option value=''>All</option>
