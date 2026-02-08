@@ -233,9 +233,9 @@ const TransactionReports = ({
             // Skip invalid sessions
             if (!session || !session.i_d) return;
 
-            let initSessionOrders = session?.orders || []
+            let initSessionOrders = orders || []
             if (!initSessionOrders.length) {
-                initSessionOrders = orders || []
+                initSessionOrders = session?.orders || []
             }
 
             let sessionOrders = initSessionOrders.filter(order =>
@@ -244,7 +244,7 @@ const TransactionReports = ({
 
             const sessionData = {
                 ...session,
-                orders: sessionOrders,
+                orders: sessionOrders?.length ? sessionOrders : (session?.order || []),
                 totalSales: sessionOrders.reduce((sum, order) => sum + (parseFloat(order.totalSales) || 0), 0),
                 totalItems: sessionOrders.reduce((sum, order) => sum + ((order.items || []).length || 0), 0),
                 startDate: session.start ? new Date(session.start) : null,

@@ -10,7 +10,8 @@
 .filters-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 15px;
+  width: 100%;
   margin-bottom: 24px;
   padding: 16px;
   background: #fff;
@@ -19,9 +20,9 @@
 }
 
 .filter-group {
-  display: flex;
-  flex-direction: column;
+  display: block;
   min-width: 200px;
+  width: max-content;
   flex: 1;
 }
 
@@ -35,6 +36,7 @@
 .date-range {
   display: flex;
   align-items: center;
+  width: max-content;
   gap: 8px;
 }
 
