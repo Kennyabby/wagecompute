@@ -33,7 +33,8 @@ import {
 
 // const SERVER = "http://localhost:3001"
 // const SERVER = ""
-const SERVER = "https://enterpriseserver.up.railway.app"
+// const SERVER = "https://enterpriseserver.up.railway.app"
+const SERVER = "https://enterpriseserver1.up.railway.app"
 // const SERVER = "https://enterpriseserver-1.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
@@ -556,9 +557,9 @@ function App() {
                     }
                   } catch (e) { console.error('SSE InventoryTransactions apply error', e) }
                   // recompute lightweight stock view (best-effort)
-                  try { 
-                    if (products){
-                      getProductsWithStock(company, products) 
+                  try {
+                    if (products) {
+                      getProductsWithStock(company, products)
                     }
                   } catch (e) { }
                 })
@@ -573,9 +574,9 @@ function App() {
                       await putInventoryTransactions(company, companyRecord?.emailid, [txn]).catch(() => { });
                     }
                   } catch (e) { console.error('SSE InventoryTransactions apply error', e) }
-                  try { 
-                    if (products){
-                      getProductsWithStock(company, products) 
+                  try {
+                    if (products) {
+                      getProductsWithStock(company, products)
                     }
                   } catch (e) { }
                 })
@@ -1703,7 +1704,7 @@ function App() {
             window.localStorage.setItem('ps-vw', 'true')
           }
           setPauseView(resps.record[0].pauseDB)
-        }else{
+        } else {
           setPauseView(false)
           setViewAccess(false)
         }
@@ -1870,8 +1871,8 @@ function App() {
     }
   };
 
-  const mergeAndPersistOrders = async (orders) => {    
-    try {      
+  const mergeAndPersistOrders = async (orders) => {
+    try {
       const pending = await loadPendingChanges(company, companyRecord.emailid);
       const pendingOrders = pending.filter(c => c.entityType === 'order').map(c => c.payload).filter(Boolean);
       const pendingOrderNums = new Set(pendingOrders.map(o => o.orderNumber));
@@ -1880,7 +1881,7 @@ function App() {
       const localMap = {};
       for (const l of localOrders) if (l && l.orderNumber) localMap[l.orderNumber] = l;
 
-      const serverOrders = orders ? orders : [];      
+      const serverOrders = orders ? orders : [];
       const map = {};
       // start with server
       for (const s of serverOrders) if (s && s.orderNumber) map[s.orderNumber] = s;
@@ -1891,7 +1892,7 @@ function App() {
       // finally apply pending orders (create/update) to override server
       for (const p of pendingOrders) if (p && p.orderNumber) map[p.orderNumber] = p;
 
-      const merged = Object.values(map);      
+      const merged = Object.values(map);
       setPosOrders(merged);
       setAllPosOrders(merged)
       // persist server orders to IndexedDB except those that are pending locally
