@@ -52,15 +52,16 @@ const SalesReport = ({
         setPayPointAccounts({ ...payAccounts, 'Employee': 'EMPLOYEE' })
         setPayPoints({ ...payPointz })
 
-        const sunits = wrhs.reduce((sunit, wrh) => {
+        const sunits = wrhs.filter((wh)=>!wh.purchase).reduce((sunit, wrh) => {
             sunit[wrh.name] = { ...payPointz };
-            return sunit;
+            return sunit;   
         }, {})
         setSalesUnits(sunits)
     }, [paymentMethods, wrhs])
 
     useEffect(() => {
         var reportEmps = []
+        setReportEmployees([])
         reportSales.record.forEach((sale) => {
             employees.forEach((emp) => {
                 if (emp.i_d === sale.employeeId && !reportEmps.includes(emp)) {
@@ -162,7 +163,7 @@ const SalesReport = ({
             })
         })
         setReportAllSalesDebts(newDebtUnits)
-    }, [reportSales])
+    }, [reportSales, payPoints, salesUnits])
 
     const options = {
         // default is `save`
@@ -270,28 +271,28 @@ const SalesReport = ({
                                                         <td className='prr-ttrow'>SALES</td>
                                                         {reportEmployees.map((emp) => {
                                                             return (
-                                                                <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allSales']).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number((reportAllSales[emp.i_d]?.['allSales'] || 0).toFixed(2)).toLocaleString()}</td>
                                                             )
                                                         })}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales) + Number(reportSales.totalDebt) + Number(reportSales.totalShortage)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales) + Number(reportSales.totalDebt) + Number(reportSales.totalShortage)).toFixed(2)).toLocaleString()}</td>}
                                                     </tr>
                                                     <tr>
                                                         <td className='prr-ttrow'>DEBT</td>
                                                         {reportEmployees.map((emp) => {
                                                             return (
-                                                                <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number((reportAllSales[emp.i_d]?.['allDebt'] || 0).toFixed(2)).toLocaleString()}</td>
                                                             )
                                                         })}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalDebt) + Number(reportSales.totalShortage)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalDebt) + Number(reportSales.totalShortage)).toFixed(2)).toLocaleString()}</td>}
                                                     </tr>
                                                     <tr>
                                                         <td className='prr-ttrow'>TOTAL</td>
                                                         {reportEmployees.map((emp) => {
                                                             return (
-                                                                <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allSales'] - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number(((reportAllSales[emp.i_d]?.['allSales'] || 0) - (reportAllSales[emp.i_d]?.['allDebt'] || 0)).toFixed(2)).toLocaleString()}</td>
                                                             )
                                                         })}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales)).toFixed(2)).toLocaleString()}</td>}
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -324,13 +325,13 @@ const SalesReport = ({
                                                             <tr>
                                                                 <td className='prr-ttrow'>{payPointAccounts[payPoint]}</td>
                                                                 {reportEmployees.map((emp) => {
-                                                                    totalPaypointAmount += reportAllPayPoints[payPoint][emp.i_d]
+                                                                    totalPaypointAmount += reportAllPayPoints[payPoint]?.[emp.i_d] || 0
                                                                     return (
-                                                                        <td className='prr-ttrow'>{(reportAllPayPoints[payPoint][emp.i_d]).toLocaleString()}</td>
+                                                                        <td className='prr-ttrow'>{Number((reportAllPayPoints[payPoint]?.[emp.i_d] || 0).toFixed(2)).toLocaleString()}</td>
                                                                     )
 
                                                                 })}
-                                                                <td className='prr-ttrow'>{(totalPaypointAmount).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number((totalPaypointAmount).toFixed(2)).toLocaleString()}</td>
                                                             </tr>
                                                         )
                                                     })}
@@ -338,11 +339,11 @@ const SalesReport = ({
                                                         <td className='prr-ttrow'>TOTAL</td>
                                                         {reportEmployees.map((emp) => {
                                                             return (
-                                                                <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allSales'] + Number(reportAllSales[emp.i_d]['allDebtRecovered'] || 0) - reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number(((reportAllSales[emp.i_d]?.['allSales'] || 0) + Number(reportAllSales[emp.i_d]?.['allDebtRecovered'] || 0) - (reportAllSales[emp.i_d]?.['allDebt'] || 0)).toFixed(2)).toLocaleString()}</td>
                                                             )
                                                         })}
 
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales) + Number(reportSales.totalDebtRecovered)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales) + Number(reportSales.totalDebtRecovered)).toFixed(2)).toLocaleString()}</td>}
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -384,7 +385,7 @@ const SalesReport = ({
                                                                     if (reportAllSalesUnits[salesunit]) {
                                                                         totalSaleUnitAmount += reportAllSalesUnits[salesunit][paypoint]
                                                                         return (
-                                                                            <td className='prr-ttrow'>{reportAllSalesUnits[salesunit][paypoint].toLocaleString()}</td>
+                                                                            <td className='prr-ttrow'>{Number((reportAllSalesUnits[salesunit][paypoint]).toFixed(2)).toLocaleString()}</td>
                                                                         )
                                                                     } else {
                                                                         return (
@@ -392,9 +393,9 @@ const SalesReport = ({
                                                                         )
                                                                     }
                                                                 })}
-                                                                {<td className='prr-ttrow'>{(totalSaleUnitAmount).toLocaleString()}</td>}
-                                                                {reportAllSalesDebts[salesunit] !== undefined && <td className='ttrow'>{(reportAllSalesDebts[salesunit]).toLocaleString()}</td>}
-                                                                {reportAllSalesDebts[salesunit] !== undefined && <td className='ttrow'>{(totalSaleUnitAmount + reportAllSalesDebts[salesunit]).toLocaleString()}</td>}
+                                                                {<td className='prr-ttrow'>{Number((totalSaleUnitAmount).toFixed(2)).toLocaleString()}</td>}
+                                                                {reportAllSalesDebts[salesunit] !== undefined && <td className='ttrow'>{Number((reportAllSalesDebts[salesunit]).toFixed(2)).toLocaleString()}</td>}
+                                                                {reportAllSalesDebts[salesunit] !== undefined && <td className='ttrow'>{Number((totalSaleUnitAmount + reportAllSalesDebts[salesunit]).toFixed(2)).toLocaleString()}</td>}
                                                             </tr>
                                                         )
                                                     })}
@@ -408,12 +409,12 @@ const SalesReport = ({
                                                                 }
                                                             })
                                                             return (
-                                                                <td className='prr-ttrow'>{(totalPaypointAmount).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number((totalPaypointAmount).toFixed(2)).toLocaleString()}</td>
                                                             )
                                                         })}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales) + Number(reportSales.totalDebtRecovered)).toLocaleString()}</td>}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalDebt) + Number(reportSales.totalShortage) - Number(reportSales.totalDebtRecovered)).toLocaleString()}</td>}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalDebt) + Number(reportSales.totalShortage) + Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales) + Number(reportSales.totalDebtRecovered)).toFixed(2)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalDebt) + Number(reportSales.totalShortage) - Number(reportSales.totalDebtRecovered)).toFixed(2)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalDebt) + Number(reportSales.totalShortage) + Number(reportSales.totalCashSales) + Number(reportSales.totalBankSales)).toFixed(2)).toLocaleString()}</td>}
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -447,28 +448,28 @@ const SalesReport = ({
                                                         <td className='prr-ttrow'>DEBT</td>
                                                         {reportEmployees.map((emp) => {
                                                             return (
-                                                                <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allDebt']).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number((reportAllSales[emp.i_d]['allDebt']).toFixed(2)).toLocaleString()}</td>
                                                             )
                                                         })}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalDebt) + Number(reportSales.totalShortage)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalDebt) + Number(reportSales.totalShortage)).toFixed(2)).toLocaleString()}</td>}
                                                     </tr>
                                                     <tr>
                                                         <td className='prr-ttrow'>DEBTS RECOVERED</td>
                                                         {reportEmployees.map((emp) => {
                                                             return (
-                                                                <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allDebtRecovered']).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number((reportAllSales[emp.i_d]['allDebtRecovered']).toFixed(2)).toLocaleString()}</td>
                                                             )
                                                         })}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toFixed(2)).toLocaleString()}</td>}
                                                     </tr>
                                                     <tr>
                                                         <td className='prr-ttrow'>OUTSTANDING DEBT</td>
                                                         {reportEmployees.map((emp) => {
                                                             return (
-                                                                <td className='prr-ttrow'>{(reportAllSales[emp.i_d]['allDebt'] - reportAllSales[emp.i_d]['allDebtRecovered']).toLocaleString()}</td>
+                                                                <td className='prr-ttrow'>{Number((reportAllSales[emp.i_d]['allDebt'] - reportAllSales[emp.i_d]['allDebtRecovered']).toFixed(2)).toLocaleString()}</td>
                                                             )
                                                         })}
-                                                        {<td className='prr-ttrow'>{(Number(reportSales.totalDebt) + Number(reportSales.totalShortage) - Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toLocaleString()}</td>}
+                                                        {<td className='prr-ttrow'>{Number((Number(reportSales.totalDebt) + Number(reportSales.totalShortage) - Number(reportSales.totalDebtRecovered ? reportSales.totalDebtRecovered : 0)).toFixed(2)).toLocaleString()}</td>}
                                                     </tr>
                                                 </tbody>
                                             </table>

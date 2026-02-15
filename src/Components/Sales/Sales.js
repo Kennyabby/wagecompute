@@ -231,7 +231,7 @@ const Sales = () => {
         setPayPointAccounts({ ...payAccounts, 'Employee': 'EMPLOYEE' })
         setPayPoints({ ...payPointz })
 
-        const sunits = wrhs.reduce((sunit, wrh) => {
+        const sunits = wrhs.filter((wh)=>!wh.purchase).reduce((sunit, wrh) => {
             sunit[wrh.name] = { ...payPointz };
             return sunit;
         }, {})
