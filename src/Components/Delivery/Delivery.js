@@ -2178,7 +2178,7 @@ const Delivery = () => {
                         }}>
                             {
                                 wrhs.map((wh, id) => {
-                                    if (!wh.purchase && (curSession?.wrh === wh.name || companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions'))) {
+                                    if (!wh.purchase && wh?.productCategories?.length && (curSession?.wrh === wh.name || companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions'))) {
                                         return (deliveryWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
                                     }
                                 })
