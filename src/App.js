@@ -33,8 +33,8 @@ import {
 
 // const SERVER = "http://localhost:3001"
 // const SERVER = ""
-// const SERVER = "https://enterpriseserver.up.railway.app"
 const SERVER = "https://enterpriseserver1.up.railway.app"
+// const SERVER = "https://enterpriseserver.up.railway.app"
 // const SERVER = "https://enterpriseserver-1.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"
 // const SERVER = "https://hserver.techpros.com.ng"
@@ -745,7 +745,6 @@ function App() {
               fetchSessions(company, "sales", companyRecord)
               fetchSessions(company, "delivery", companyRecord)
               fetchAllSessions({ company: company, companyRecord: companyRecord })
-              getProducts(company)
               getRentals(company)
               getPurchase(company)
               getExpenses(company)
@@ -1770,7 +1769,7 @@ function App() {
 
       if (allPosOrders.length && allSessions.length) {
         allPosOrders?.forEach((order) => {
-          if (order.salesPosts) {
+          if (order.salesPosts && order.status !== 'cancelled') {
             Object.keys(order.salesPosts).forEach((payPoint) => {
               if (paymentPoints.includes(payPoint)) {
                 // if (!order.createdAt){
@@ -2234,20 +2233,27 @@ function App() {
 
     // Build a projection object like { _id: 1, i_d: 1, name: 1, ... }
     const projection = Object.fromEntries(knownFields.map(key => [key, 1]));
-
+    
+    // const curPosSetting = posSettings?.posSettings?.find((sett) => {
+    //   return sett.active
+    // })
+    
     const resp = await fetchServer("POST", {
       database: company,
       collection: "Products",
       prop: {},
       project: projection
     }, "getDocsDetails", SERVER);
-
-    if (resp.record && resp.record.length) {
+    if (Array.isArray(resp.record) && resp.record.length) {
       setProducts(resp.record);
       setCached(company, 'products', resp.record, companyRecord?.emailid);
       getProductsWithStock(company, resp.record)
     }
   };
+
+  useEffect(()=>{
+    // console.log('products: ',products)
+  },[products])
 
   const getProductsWithStock = async (company, products) => {
     if (!company || !companyRecord?.emailid) {
@@ -2257,7 +2263,7 @@ function App() {
     if (cached && cached.length) {
       setProducts(cached);
     }
-
+    // console.log('calculating products with stock..')
     // 1. Fetch aggregated stock and cost from InventoryTransactions
     const stockResp = await fetchServer(
       "POST",

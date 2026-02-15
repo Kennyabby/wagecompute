@@ -55,6 +55,7 @@ const Purchase = () => {
         purchaseDepartment: '',
         purchaseHandler: '',
         itemCategory: '',
+        location: '',
         purchaseQuantity: '',
         purchaseUOM: '',
         purchaseAmount: '',
@@ -258,7 +259,7 @@ const Purchase = () => {
         if (transactions.length) {
             const entries = []
             transactions.forEach((transaction) => {
-                if (transaction.location === purchaseWrh.name) {
+                if (transaction.location === purchaseWrh?.name || transaction.location === pur?.location) {
                     entries.push(transaction)
                 }
             })
@@ -327,7 +328,7 @@ const Purchase = () => {
                             const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
                             const newTransaction = {
                                 ...entry,
-                                location: purchaseWrh.name,
+                                location: fields?.location || purchaseWrh?.name,
                                 postingDate: purchaseDate,
                                 postingStamp: new Date(purchaseDate),
                                 createdAt: createdAt,
@@ -371,7 +372,8 @@ const Purchase = () => {
                                                         productsRef: createdAt,
                                                         purchaseQuantity: fields.purchaseQuantity,
                                                         purchaseUOM: 'units',
-                                                        stage: 'posted'
+                                                        stage: 'posted',
+                                                        data: null
 
                                                     }]
                                                 }, "updateOneDoc", server);
@@ -401,7 +403,7 @@ const Purchase = () => {
                                                     if (transactions.length) {
                                                         const entries = []
                                                         transactions.forEach((transaction) => {
-                                                            if (transaction.location === purchaseWrh.name) {
+                                                            if (transaction.location === purchaseWrh?.name || transaction.location === curPurchase?.location) {
                                                                 entries.push(transaction)
                                                             }
                                                         })
@@ -539,7 +541,7 @@ const Purchase = () => {
                 if (transactions.length) {
                     const entries = []
                     transactions.forEach((transaction) => {
-                        if (transaction.location === purchaseWrh.name) {
+                        if (transaction.location === purchaseWrh?.name || transaction.location === newPurchase?.location) {
                             entries.push(transaction)
                         }
                     })
@@ -549,6 +551,7 @@ const Purchase = () => {
                     database: company,
                     collection: "ProductCostLogs",
                     markUp: curPosSettings?.useMarkUp,
+                    markUpValue: 30,
                     prop: entryIds
                 }, "updateProductCost", server)
 
@@ -858,6 +861,7 @@ const Purchase = () => {
                                 className='forminp'
                                 name='purchaseVendor'
                                 type='text'
+                                autoComplete={true}
                                 placeholder='Vendor'
                                 value={fields.purchaseVendor}
                                 disabled={isView}
@@ -915,6 +919,27 @@ const Purchase = () => {
                                 })}
                             </select>
                         </div>
+                        
+                        <div className='inpcov'>
+                            <div>Purchase Location</div>
+                            <select
+                                className='forminp'
+                                name='location'
+                                type='text'
+                                value={fields.location}
+                                disabled={isView}
+                            >
+                                <option value=''>DEFAULT</option>
+                                {wrhs.filter((wrhfl)=>{
+                                    return wrhfl?.productCategories?.length
+                                }).map((wrh, index) => {
+                                    return (
+                                        <option key={index} value={wrh.name}>{wrh.name.toUpperCase()}</option>
+                                    )
+                                })}
+                            </select>
+                        </div>
+
                         {(fields.productsRef || isView) && <div className='inpcov'>
                             <div>Purchase Quantity</div>
                             <input
@@ -944,7 +969,7 @@ const Purchase = () => {
                                 })}
                             </select>
                         </div>}
-                        <div className='inpcov'>
+                        {(fields.productsRef || isView) && <div className='inpcov'>
                             <div>Purchase Amount</div>
                             <input
                                 className='forminp'
@@ -954,7 +979,7 @@ const Purchase = () => {
                                 value={fields.purchaseAmount}
                                 disabled={true}
                             />
-                        </div>
+                        </div>}
                         {(fields.productsRef || fields.purchaseUOM === 'units') ?
                             <div
                                 className='prd-link'
@@ -1011,6 +1036,13 @@ const Purchase = () => {
                             style={{ cursor: purchaseEntries.length ? 'pointer' : 'not-allowed' }}
                             onClick={() => {
                                 if (purchaseEntries.length) {
+                                    const purchaseWrh = wrhs.find((wh)=>wh.purchase)
+                                    if (!purchaseWrh && !fields?.location){
+                                        setAlertState('error')
+                                        setAlert('Please Configure a Default Purchase Location, or Select A Purchase Location Before Proceeding!')
+                                        setAlertTimeout(3000)
+                                        return
+                                    }
                                     handleProductPurchase()
                                 }
                             }}

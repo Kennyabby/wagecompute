@@ -296,7 +296,7 @@ const PointOfSales = () => {
                 setWrh(curSession.wrh || Object.keys(posWrhAccess)[0])
             }
         }
-    }, [curSession])
+    }, [curSession, curPosSettings])
 
     useEffect(() => {
         handleCategoryFilter();
@@ -1169,10 +1169,10 @@ const PointOfSales = () => {
         }
     }
 
-    const handleTableSelect = async (table) => {
-        if (!loadSession && !startSession && !endSession) {
+    const handleTableSelect = async (table, status) => {
+        if (!loadSession && !startSession && !endSession && table) {
             if (
-                table.status !== 'available' &&
+                table?.status !== 'available' &&
                 (companyRecord?.status !== 'admin' &&
                     !companyRecord?.permissions.includes('access_pos_sessions'))
             ) {
@@ -1182,10 +1182,12 @@ const PointOfSales = () => {
                 return;
             }
 
-            setSelectedProduct(null);
-            setAlertState('info');
-            setAlert(`Loading ${table.name} Orders...`);
-            setAlertTimeout(100000)
+            if (status !== 'auto'){
+                setSelectedProduct(null);
+                setAlertState('info');
+                setAlert(`Loading ${table.name} Orders...`);
+                setAlertTimeout(100000)
+            }
 
             // 1) Use locally available orders (mirrored from IndexedDB) as primary           
             const baseOrders =
@@ -1234,18 +1236,22 @@ const PointOfSales = () => {
                 } else {
                     createNewOrder(table);
                 }
-                setActiveScreen('order');
-                setAlertState('info');
-                setAlert('Loaded orders from local cache...');
-                setAlertTimeout(500);
+                if (status !== 'auto'){
+                    setActiveScreen('order');
+                    setAlertState('info');
+                    setAlert('Loaded orders from local cache...');
+                    setAlertTimeout(500);
+                }
             } else {
                 // No local orders; optimistic new order
+                // setAlertState('info');
+                // setAlert('Loaded orders (no local orders found)...');
                 setCurrentTable(table)
-                createNewOrder(table);
-                setActiveScreen('order');
-                setAlertState('info');
-                setAlert('Loaded orders (no local orders found)...');
-                setAlertTimeout(500);
+                if (status !== 'auto'){
+                    createNewOrder(table);
+                    setActiveScreen('order');
+                    setAlertTimeout(500);
+                }
             }
 
             // 2) Background refresh from server and mirror into IndexedDB
@@ -1271,15 +1277,20 @@ const PointOfSales = () => {
                     if (filteredOrders.length) {
                         if (table?.i_d === filteredOrders[0]?.tableId) {
                             // setCurrentTable(table);
-                            // setTableOrders(filteredOrders);
-                            // const pendingRemote = filteredOrders.filter(
-                            //     (order) => order.status === 'pending'
-                            // );
-                            // if (pendingRemote.length) {
-                            //     setCurrentOrder(pendingRemote[0]);
-                            // } else {
-                            //     createNewOrder(table);
-                            // }
+                            if(curPosSettings?.type === 'shop'){
+                                setTableOrders(filteredOrders);
+                                const pendingRemote = filteredOrders.filter(
+                                    (order) => order.status === 'pending'
+                                );
+                                if (status !== 'auto'){
+                                    if (pendingRemote.length) {
+                                        setCurrentOrder(pendingRemote[0]);
+                                    } else {
+                                        createNewOrder(table);
+                                    }
+                                    setActiveScreen('order');
+                                }
+                            }
                             // if (company && companyRecord?.emailid) {
                             //     for (const o of filteredOrders) {
                             //         if (o && o.orderNumber !== null) {
@@ -1287,7 +1298,6 @@ const PointOfSales = () => {
                             //         }
                             //     }
                             // }
-                            // setActiveScreen('order');
                             // setAlertState('info');
                             // setAlert('Loaded table orders from server...');
                             // setAlertTimeout(500);
@@ -1360,6 +1370,12 @@ const PointOfSales = () => {
         const createdAt = new Date().getTime();
         const transactions = [];
 
+        if (!items.length){
+            setAlertState('error')
+            setAlert('No Items to Deplete Specified! Please Make Sure All Items Belong to a Catgory, then Place Delivery Again.')
+            setAlertTimeout(3000)
+            return
+        }
         for (const item of items) {
             const quantityUpdate = isDeplete
                 ? -1 * Math.abs(Number(item.depletedQuantity))
@@ -1572,10 +1588,12 @@ const PointOfSales = () => {
         for (const entry of itemsToDeplete) {
             const product = products.find((p) => p.i_d === entry.i_d);
             if (product) {
+                // console.log(product, product.locationStock)
                 let countBaseQuantity = 0;
                 const { cost, quantity } =
                     product.locationStock?.[wrh] || { cost: 0, quantity: 0 };
                 countBaseQuantity = Number(quantity || 0);
+                // console.log(countBaseQuantity, Number(entry.depletedQuantity))
                 if (countBaseQuantity < Number(entry.depletedQuantity)) {
                     insufficientProducts.push(
                         `[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`
@@ -1597,6 +1615,7 @@ const PointOfSales = () => {
             getProducts(company)
             refreshPOSData()
             refreshPOSData2()
+            handleTableSelect(currentTable, 'auto')
             await loadInitialData();
             return;
         } else {
@@ -1780,8 +1799,9 @@ const PointOfSales = () => {
                         try {
                             // 3) Kick off local inventory update + queue
                             setTimeout(() => {
-                                updateInventory('deplete', itemsToDeplete, deliveryDataUpdate, currentOrder, count);
+                                updateInventory('deplete', itemsToDeplete, deliveryDataUpdate, currentOrder, 0);
                             }, 500);
+                            handleTableSelect(currentTable, 'auto')
                             await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                         } catch (e) {
                             // Leave pending changes in queue; 5‑minute auto-sync will retry
@@ -1792,15 +1812,183 @@ const PointOfSales = () => {
                     setAlert('Nothing to Post Here!');
                     setAlertTimeout(2000);
                     setPlacingOrder(false)
+                    handleTableSelect(currentTable, 'auto')
                 }
             } catch (e) {
                 setAlertState('error');
                 setAlert('Error processing delivery locally');
                 setAlertTimeout(2000);
                 setPlacingOrder(false)
+                handleTableSelect(currentTable, 'auto')
             }
         }
 
+    };
+
+    const handleCancelDelivery = async (order, status) => {
+        // const cancelOrder = window.confirm(
+        //     `Are you sure you want to Cancel Order Delivery #${order.orderNumber}?`
+        // );
+        // if (!cancelOrder) return;
+
+        if (status !== 'edit'){
+            setCancelling(true);
+            setAlertState('info');
+            setAlert('Cancelling Delivery...');
+            setAlertTimeout(5000);
+        }
+
+        let orderItemsQuantity = 0;
+        let deliveredItemsQuantity = 0;
+
+        const deliveredItems = order.items.filter((item) => {
+            orderItemsQuantity += Number(item.quantity);
+            if (wrhCategories[wrh].includes(item.category)) {
+                deliveredItemsQuantity += Number(item.deliveredQuantity || 0);
+                return Number(item.deliveredQuantity || 0) > 0;
+            }
+            return false;
+        });
+
+        const itemsToCancel = structuredClone({ deliveredItems });
+
+        try {
+            // 1) If everything was delivered, reset table delivery status locally
+            if (orderItemsQuantity === deliveredItemsQuantity) {
+                const prevTable = tables.find(
+                    (table) => table['wrh'] === order.wrh
+                );
+                if (prevTable) {
+                    const activeTablesUpdate = [
+                        ...(prevTable.activeTables || []).filter((table) => {
+                            return !(
+                                table.tableId === order.tableId &&
+                                table.sessionId === order.sessionId &&
+                                table.orderNumber === order.orderNumber
+                            );
+                        }),
+                        {
+                            ...(prevTable.activeTables || []).find((table) => {
+                                return (
+                                    table.tableId === order.tableId &&
+                                    table.sessionId === order.sessionId &&
+                                    table.orderNumber === order.orderNumber
+                                );
+                            }),
+                            delivery: 'pending',
+                        },
+                    ];
+
+                    const updatedTable = {
+                        ...prevTable,
+                        activeTables: activeTablesUpdate,
+                    };
+
+                    if (company && companyRecord?.emailid) {
+                        await putTable(
+                            company,
+                            companyRecord.emailid,
+                            updatedTable
+                        );
+                    }
+
+                    if (company && companyRecord?.emailid) {
+                        queuePendingChange(company, companyRecord.emailid, {
+                            entityType: 'table',
+                            op: 'update',
+                            clientId: updatedTable.i_d,
+                            payload: updatedTable,
+                        });
+                    }
+                }
+            }
+
+            // 2) Build order deliveryUpdate locally
+            const deliveryUpdate = {
+                delivery: 'pending',
+                cancelDetails: [
+                    ...(order?.cancelDetails || []),
+                    {
+                        items: itemsToCancel.deliveredItems,
+                        deliveryCancelledBy: companyRecord.emailid,
+                        deliveryCancelledAt: new Date().getTime(),
+                        cancellingSession: curSession.i_d,
+                    },
+                ],
+                lastCancelledAt: new Date().getTime(),
+            };
+
+            const itemUpdate = order.items.map((item) => {
+                const deliveredItem = [...deliveredItems].find(
+                    (itm) => itm.i_d === item.i_d
+                );
+                if (deliveredItem) {
+                    deliveredItem.delivery = null;
+                    deliveredItem.deliveredQuantity = null;
+                    deliveredItem.remainingQuantity = null;
+                    return deliveredItem;
+                }
+                return item;
+            });
+
+            deliveryUpdate.items = itemUpdate;
+
+            const updatedOrder = {
+                ...order,
+                ...deliveryUpdate,
+            };
+
+            // 3) Update Orders locally (IndexedDB + React state)
+            if (company && companyRecord?.emailid) {
+                await putOrder(company, companyRecord.emailid, updatedOrder);
+            }
+
+            setCurrentOrder(updatedOrder);
+
+            // 4) Queue order update for sync
+            if (company && companyRecord?.emailid) {
+                setAlertTimeout(20);
+                queuePendingChange(company, companyRecord.emailid, {
+                    entityType: 'order',
+                    op: 'update',
+                    clientId: order.orderNumber,
+                    payload: {
+                        orderNumber: order.orderNumber,
+                        ...deliveryUpdate,
+                    },
+                });
+                // Immediate sync attempt – failures are fine, queue remains
+                try {
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    setAlert('Delivery Reversed Successfully');
+                    setAlertState('success');
+                    setAlertTimeout(1000);
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
+            }
+
+            // 5) Local success + inventory rollback (already offline-first)
+            setAlertState('info');
+            setAlert('Delivery Reversed!');
+            setTimeout(() => {
+                updateInventory(
+                    'cancel',
+                    itemsToCancel.deliveredItems,
+                    deliveryUpdate,
+                    order
+                );
+            }, 1000);
+
+            setCancelling(false);
+            return;
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Error cancelling delivery locally');
+            setAlertTimeout(3000);
+            setCancelling(false);
+            return;
+        }
     };
 
     // =========================================
@@ -2783,7 +2971,7 @@ const PointOfSales = () => {
                                 >
                                     <option value={''}>Select Sales Post</option>
                                     {sessionUser === null ? wrhs.map((warehouse, index) => (
-                                        posWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
+                                        posWrhAccess[warehouse.name] && warehouse?.productCategories?.length && <option key={index} value={warehouse.name}>
                                             {warehouse.name}
                                         </option>
                                     )) :
@@ -3008,7 +3196,7 @@ const PointOfSales = () => {
                     onClick={() => {
                         if (currentOrder.status === 'new') {
                             handlePlaceOrder()
-                        } else if (currentOrder.status === 'edit') {
+                        } else if (currentOrder.status === 'edit') {                                    
                             handleEditOrder()
                         }
                     }}
@@ -3178,7 +3366,7 @@ const PointOfSales = () => {
                         }}>
                             {
                                 wrhs.map((wh, id) => {
-                                    if (!wh.purchase && (curSession?.wrh === wh.name || companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions'))) {
+                                    if (!wh.purchase && wh.productCategories.length && (curSession?.wrh === wh.name || companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions'))) {
                                         return (posWrhAccess[wh.name] && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>)
                                     }
                                 })
@@ -3405,7 +3593,10 @@ const PointOfSales = () => {
                                 <button
                                     className="action-btn"
                                     disabled={placingOrder || makingPayment}
-                                    onClick={() => setShowOrdersModal(true)}
+                                    onClick={() => {
+                                        handleTableSelect(currentTable, 'auto')
+                                        setShowOrdersModal(true)
+                                    }}
                                 >
                                     All Orders
                                 </button>
@@ -3450,6 +3641,8 @@ const PointOfSales = () => {
                             tableOrders={tableOrders}
                             handleOrderSelect={handleOrderSelect}
                             setShowOrdersModal={setShowOrdersModal}
+                            curPosSettings={curPosSettings}
+                            handleCancelDelivery={handleCancelDelivery}
                             tables={tables}
                             wrh={wrh}
                             currentOrder={currentOrder}
@@ -3778,6 +3971,8 @@ const OrdersModal = ({
     wrh,
     handleOrderSelect,
     setShowOrdersModal,
+    curPosSettings,
+    handleCancelDelivery,
     tables,
     currentOrder,
     setCurrentOrder,
@@ -3798,7 +3993,8 @@ const OrdersModal = ({
     const [cancelling, setCancelling] = useState(false);
 
     const handleCancelOrder = async (order) => {
-        if (order.delivery !== 'completed') {
+        if (order.delivery !== 'completed' || curPosSettings?.type === 'shop') {
+            
             const cancelOrder = window.confirm(
                 `Are you sure you want to Cancel Order #${order.orderNumber}?`
             );
@@ -3889,9 +4085,9 @@ const OrdersModal = ({
                     // Immediate sync attempt – failures are fine, queue remains
                     try {
                         await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                        setAlertTimeout(1000);
                         setAlert('Order cancelled successfully');
                         setAlertState('success');
+                        setAlertTimeout(1000);
                     } catch (e) {
                         // Leave pending changes in queue; 5‑minute auto-sync will retry
                     }
@@ -3901,6 +4097,10 @@ const OrdersModal = ({
                 setAlertState('success');
                 setAlert('Order cancelled successfully');
                 setAlertTimeout(1000);
+
+                if (curPosSettings?.type === 'shop' || order.status === 'completed'){
+                    handleCancelDelivery(order)
+                }
 
                 if (currentOrder?.orderNumber === order.orderNumber) {
                     createNewOrder({
@@ -3976,7 +4176,8 @@ const OrdersModal = ({
                                                 ...order,
                                                 status: 'edit'
                                             }
-                                            if (order.delivery !== 'completed') {
+                                            if (order.delivery !== 'completed' || curPosSettings?.type === 'shop') {
+                                                handleCancelDelivery(currentOrder, 'edit')
                                                 handleOrderSelect(orderToEdit)
                                             } else {
                                                 setAlertState('error');
@@ -4004,6 +4205,23 @@ const OrdersModal = ({
                                         title="Cancel Order"
                                     >
                                         🗑️
+                                    </button>
+                                )
+                            }
+                            {(companyRecord?.status === 'admin' ||
+                                companyRecord?.permissions.includes(
+                                    'cancel_paid_orders'
+                                )) &&
+                                ['completed'].includes(
+                                    order.status
+                                ) && (
+                                    <button
+                                        disabled={cancelling}
+                                        className="edit-order-btn"
+                                        onClick={() => handleCancelOrder(order)}
+                                        title="Cancel Order"
+                                    >
+                                        Cancel Order
                                     </button>
                                 )
                             }
