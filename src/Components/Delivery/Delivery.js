@@ -2594,7 +2594,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-                    setAlert('Order cancelled successfully');
+                    setAlert('Delivery cancelled successfully');
                     setAlertState('success');
                     setAlertTimeout(1000);
                 } catch (e) {
