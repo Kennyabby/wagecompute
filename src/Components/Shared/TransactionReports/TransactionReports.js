@@ -998,7 +998,7 @@ const TransactionReports = ({
                     let kct = 0
                     let bct = 0
                     order.items.forEach((item) => {
-                        const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
+                        const totalItemPrice = (Number(item.quantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
                         if (wrhCategories[warehouse].includes(item.category)) {
                             bct += totalItemPrice
                         } else if (wrhCategories['kitchen'].includes(item.category)) {
