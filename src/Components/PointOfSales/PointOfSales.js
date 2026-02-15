@@ -3307,7 +3307,7 @@ const PointOfSales = () => {
                     })}
                 </div>
                 <div className="products-grid">
-                    {filteredProducts.map(product => (
+                    {filteredProducts.filter((pr)=>pr.type === 'goods').map(product => (
                         <div
                             key={product.i_d}
                             className={`product-card ${selectedProduct?.i_d === product.i_d ? 'active' : ''}`}
@@ -3643,6 +3643,7 @@ const PointOfSales = () => {
                             setShowOrdersModal={setShowOrdersModal}
                             curPosSettings={curPosSettings}
                             handleCancelDelivery={handleCancelDelivery}
+                            wrhCategories={wrhCategories}
                             tables={tables}
                             wrh={wrh}
                             currentOrder={currentOrder}
@@ -3972,6 +3973,7 @@ const OrdersModal = ({
     handleOrderSelect,
     setShowOrdersModal,
     curPosSettings,
+    wrhCategories,
     handleCancelDelivery,
     tables,
     currentOrder,
@@ -4172,18 +4174,24 @@ const OrdersModal = ({
                                     <button
                                         className="edit-order-btn"
                                         onClick={() => {
+                                            var totalItems = 0
+                                            var deliveredQuantity = 0
+                                            const deliveredItems = order.items.filter((item) => {
+                                                if (wrhCategories[wrh].includes(item.category)) {
+                                                    totalItems += Number(item.quantity)
+                                                    deliveredQuantity += Number(item?.deliveredQuantity || 0)
+                                                    return Number(item?.deliveredQuantity || 0) > 0
+                                                }
+                                            })
+                                            if (deliveredQuantity){
+                                                handleCancelDelivery(order, 'edit')
+                                            }
+                                            
                                             const orderToEdit = {
-                                                ...order,
+                                                ...(currentOrder?.orderNumber === order.orderNumber ? currentOrder : order),
                                                 status: 'edit'
                                             }
-                                            if (order.delivery !== 'completed' || curPosSettings?.type === 'shop') {
-                                                handleCancelDelivery(currentOrder, 'edit')
-                                                handleOrderSelect(orderToEdit)
-                                            } else {
-                                                setAlertState('error');
-                                                setAlert('Please Cancel Delivery First Before Editting Order!');
-                                                setAlertTimeout(3000);
-                                            }
+                                            handleOrderSelect(orderToEdit)
                                         }}
                                         title="Edit Order"
                                     >

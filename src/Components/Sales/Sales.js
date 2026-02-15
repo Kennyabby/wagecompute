@@ -4311,7 +4311,9 @@ const AddProduct = ({
     useEffect(() => {
         setAddingProducts(false)
         if (!isProductView) {
+            // console.log('not product View')
             if (curSale !== null && localStorage.getItem(`sales-${curSale?.createdAt}`)) {
+                // console.log('found local storage')
                 if (!curSale.approval) {
                     setSalesEntries(JSON.parse(localStorage.getItem(`sales-${curSale.createdAt}`)))
                 } else {
@@ -4319,9 +4321,10 @@ const AddProduct = ({
                 }
 
             } else if (!localStorage.getItem(`sales-${curSale?.createdAt}`)) {
+                // console.log('no local storage found!')
                 if (!curSale.approval) {
                     resetSalesEntries()
-                } else {
+                } else {                    
                     setApprovalEntries(curSale.approval)
                 }
             }
@@ -4423,7 +4426,7 @@ const AddProduct = ({
                     }}>
                         {
                             wrhs.map((wh, id) => {
-                                if (!wh.purchase) {
+                                if (!wh.purchase && wh?.productCategories?.length) {
                                     if (isProductView) {
                                         return Object.keys(salesEntries).includes(wh.name) && <div key={id} className={'slprwh ' + (wrh === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
                                     } else {

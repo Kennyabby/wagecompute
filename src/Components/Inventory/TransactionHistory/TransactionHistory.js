@@ -1875,7 +1875,7 @@ const TransactionHistory = () => {
             className="select-input"
           >
             <option value="">All Products</option>
-            {products.map(product => (
+            {products.filter((pr)=>pr.type === 'goods').map(product => (
               <option key={product.i_d} value={product.i_d}>
                 {product.name} ({product.i_d})
               </option>
