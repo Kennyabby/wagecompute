@@ -1081,11 +1081,11 @@ const AddProduct = ({
             let fltProducts = []
             if (category) {
                 fltProducts = products.filter((product) => {
-                    return product.category === category.toLowerCase()
+                    return product.category === category.toLowerCase() && product.type === 'goods'
                 })
             } else {
                 fltProducts = products.filter((product) => {
-                    return product.category
+                    return product.category && product.type === 'goods'
                 }).map((product) => {
                     if (isProductEdit) {
                         const originalEntry = purchaseEntries.find((entry) => {
@@ -1120,7 +1120,7 @@ const AddProduct = ({
                     totalCost: '',
                     entryType: 'Purchase',
                     documentType: 'Receipt'
-                }
+                }                
             }))
         } else if (curPurchase?.stage === 'receipt') {
             setPurchaseEntries(curPurchase?.data?.validEntries || [])
