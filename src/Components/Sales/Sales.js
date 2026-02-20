@@ -60,7 +60,7 @@ const Sales = () => {
         }
     ]
 
-    const rentalSpaces = ['Suya Space', 'Shisha Space', 'Snooker Space', 'Shawarma Space']
+    const rentalSpaces = ['Suya Space', 'Shisha Space', 'Snooker Space', 'Shawarma Space', 'Birthday Space', 'Other Programme Space']
 
     const [payPoints, setPayPoints] = useState({})
     const [salesUnits, setSalesUnits] = useState({})
@@ -665,7 +665,9 @@ const Sales = () => {
                             })
 
                         })
-                        // console.log('for warehouse:',wh,'by',employeeId,'wrhSessionOrders is:',wrhSessionOrders)
+                        if (wrhSessionOrders.length){
+                            // console.log('for warehouse:',wh,'by',employeeId,'wrhSessionOrders is:',wrhSessionOrders)
+                        }
                         wrhSessionOrders.forEach(({ session, sessionOrder, splitPayment }, index) => {
                             if (session.employee_id !== employeeId && wh === 'kitchen') {
 
