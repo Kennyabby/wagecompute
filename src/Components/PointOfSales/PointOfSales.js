@@ -590,6 +590,7 @@ const PointOfSales = () => {
         var totalPendingSales = 0
         var totalCancelledSales = 0
         var totalUnattendedSales = 0
+        var totalPendngDeliveries = 0
         payPointList.forEach((payPoint) => {
             allSales[payPoint] = 0
         })
@@ -609,6 +610,9 @@ const PointOfSales = () => {
                         totalUnattendedSales += Number(order.totalSales || 0)
                     }
                 } else {
+                    if (order.delivery === 'pending') {
+                        totalPendngDeliveries += Number(order.totalSales || 0)
+                    }
                     payPointList.forEach((payPoint) => {
                         allSales[payPoint] += Number(order[payPoint] || 0)
                     })
@@ -618,7 +622,7 @@ const PointOfSales = () => {
                 totalCancelledSales += Number(order.totalSales || 0)
             }
         })
-        return { allSales, totalPendingSales, totalUnattendedSales, totalCancelledSales, totalCashChange }
+        return { allSales, totalPendingSales, totalUnattendedSales, totalPendngDeliveries, totalCancelledSales, totalCashChange }
     }
 
     const createSession = async (sessionUser) => {
@@ -4470,13 +4474,20 @@ const POSDashboard = ({
                                                                         return ((getSessionEnd(order.sessionId) === getSessionEnd(employeeSession.i_d)) && (order.handlerId === profile.emailid))
                                                                     })
                                                                     const {
-                                                                        totalUnattendedSales
+                                                                        totalUnattendedSales,
+                                                                        totalPendngDeliveries
                                                                     } = getSessionSales(allUserOrders)
                                                                     if (totalUnattendedSales) {
                                                                         viewModal = false
                                                                         setAlertState('error')
                                                                         setAlert('This User Has Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!',)
-                                                                        setAlertTimeout(5000)
+                                                                        setAlertTimeout(3000)
+                                                                    }
+                                                                    if (totalPendngDeliveries) {
+                                                                        viewModal = false
+                                                                        setAlertState('error')
+                                                                        setAlert('This User Still Has Pending Delivery(s) for Order(s) that have been paid for. Please place all deliveries before proceeding!',)
+                                                                        setAlertTimeout(3000)
                                                                     }
                                                                 }
                                                             }
