@@ -87,6 +87,8 @@ const Products = ({
     })
 
     const [productFields, setProductFields] = useState({ ...defaultProductFields })
+    const [filteredProducts, setFilteredProducts] = useState([])
+    const [productSearch, setProductSearch] = useState('')
     // Monthly stats state
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
     const [monthStats, setMonthStats] = useState({
@@ -222,6 +224,20 @@ const Products = ({
     }, [products, isProductView])
 
     useEffect(() => {
+        if (productSearch) {
+            const filtered = products.filter((product) => {
+                return (
+                    product.name.toLowerCase().includes(productSearch.toLowerCase())
+                    || product.i_d.toLowerCase().includes(productSearch.toLowerCase())
+                )
+            })
+            setFilteredProducts(filtered)
+        } else {
+            setFilteredProducts(products)
+        }
+    }, [productSearch, products])
+
+    useEffect(() => {
         setSelectedProducts([])
     }, [productView])
 
@@ -300,12 +316,14 @@ const Products = ({
             // setIsNewView(false)
             // setProductFields({...defaultProductFields})
             // setIsView(false)
+        }else{            
+            setFilteredProducts(products)            
         }
     }, [isNewProduct])
 
     useEffect(() => {
         if (!isProductView) {
-            setProductFields({ ...defaultProductFields })
+            setProductFields({ ...defaultProductFields })            
         }
     }, [isProductView])
 
@@ -367,7 +385,7 @@ const Products = ({
                     newProductField[header] = (productData[importCount])[headersMap[header]] ?
                         (productData[importCount])[headersMap[header]] : ''
                 })
-                if (newProductField?.costPrice && newProductField.markUp) {
+                if (newProductField?.costPrice && newProductField.markUp && !newProductField.salesPrice) {
                     newProductField.salesPrice = Math.round(Number(newProductField.costPrice * (1 + Number(newProductField.markUp || 0) / 100) * 0.1)) * 10
                     newProductField.markUp = Number(newProductField.markUp || 0)
                 }
@@ -1061,8 +1079,20 @@ const Products = ({
 
                     </div>
                 </div>}
+                {!isImportClicked && !isNewProduct && <div style={{width: '100%'}}>
+                    <input
+                        placeholder='Search Product'
+                        style={{
+                            padding: '5px', borderRadius: '5px',
+                            outline: 'none', fontSize: '12px',
+                            marginRight: 'auto', marginLeft: '5px'
+                        }}
+                        value={productSearch}
+                        onChange={(e) => { setProductSearch(e.target.value) }}
+                    />
+                </div>}
                 {!isImportClicked && !isNewProduct && productView === 'card' && <div className='pr-all-products'>
-                    {products.map((product, id) => {
+                    {filteredProducts.map((product, id) => {
                         return (
                             <div key={id} className='pr-product-card' onClick={() => {
                                 delete product._id
@@ -1106,7 +1136,7 @@ const Products = ({
                         <div className='product-list-others'>On Hand</div>
                         <div className='product-list-others-top'>Type</div>
                     </div>
-                    {products.map((product, id) => {
+                    {filteredProducts.map((product, id) => {
                         return (
                             <div key={id} className='product-list' onClick={(e) => {
                                 const name = e.target.getAttribute('name')
