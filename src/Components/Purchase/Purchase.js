@@ -287,117 +287,130 @@ const Purchase = () => {
 
         return Array.isArray(response.record) && response.record.length > 0;
     };
+    const updateInventory = async (action) => {
+        // console.log(fields)
+        if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
+            (fields.purchaseUOM || fields.stage === 'receipt') && fields.purchaseHandler && fields.purchaseDepartment
+        ) {
+            let validEntries = purchaseEntries.filter((entry) => {
+                const { baseQuantity, totalCost } = entry
+                if (baseQuantity && totalCost) {
+                    return entry
+                }
+            })
 
-    const handleProductPurchase = () => {
-        const updateInventory = async () => {
-            // console.log(fields)
-            if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
-                (fields.purchaseUOM || fields.stage === 'receipt') && fields.purchaseHandler && fields.purchaseDepartment
-            ) {
-                let validEntries = purchaseEntries.filter((entry) => {
-                    const { baseQuantity, totalCost } = entry
-                    if (baseQuantity && totalCost) {
-                        return entry
-                    }
-                })
+            if (curApproval !== null) {
+                validEntries = curApproval.data.validEntries
+            }
 
+            const data = {
+                purchaseFields: fields,
+                validEntries: validEntries,
+            }
+
+            const postUpdate = async () => {
+
+                if (curApproval) {
+                    curApproval.posted = true
+                }
                 if (curApproval !== null) {
                     validEntries = curApproval.data.validEntries
                 }
-
-                const data = {
-                    purchaseFields: fields,
-                    validEntries: validEntries,
-                }
-
-                const postUpdate = async () => {
-
-                    if (curApproval) {
-                        curApproval.posted = true
-                    }
-                    if (curApproval !== null) {
-                        validEntries = curApproval.data.validEntries
-                    }
-                    const createdAt = Date.now()
-                    const entryIds = validEntries.map(entry => { return entry.productId })
-                    if (fields.stage === 'receipt') {
-                        setAlertState('info')
-                        setAlert('Updating Inventory...')
-                        setAlertTimeout(100000)
-                        validEntries.forEach(async (entry) => {
-                            const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
-                            const newTransaction = {
-                                ...entry,
-                                location: fields?.location || purchaseWrh?.name,
-                                postingDate: purchaseDate,
-                                postingStamp: new Date(purchaseDate),
-                                createdAt: createdAt,
-                                handlerId: fields.purchaseHandler,
+                const createdAt = Date.now()
+                const entryIds = validEntries.map(entry => { return entry.productId })
+                if (fields.stage === 'receipt' || action === 'reverse') {
+                    setAlertState('info')
+                    setAlert(action === 'purchase' ? 'Updating Inventory...' : 'Reversing Inventory...')
+                    setAlertTimeout(100000)
+                    validEntries.forEach(async (entry) => {
+                        const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+                        const newTransaction = {
+                            ...entry,
+                            ...(action === 'reverse' && {
+                                documentType: 'Purchase Return', 
+                                quantity: -1 * Number(entry.quantity),
+                                baseQuantity: -1 * Number(entry.baseQuantity),
+                                totalCost: -1 * Number(entry.totalCost)
+                            }),
+                            location: fields?.location || purchaseWrh?.name,
+                            postingDate: purchaseDate,
+                            postingStamp: new Date(purchaseDate),
+                            createdAt: createdAt,
+                            handlerId: fields.purchaseHandler,
+                        }
+                        const resps = await fetchServer("POST", {
+                            database: company,
+                            collection: "InventoryTransactions",
+                            update: newTransaction
+                        }, "createDoc", server)
+                        if (resps.err) {
+                            setAlertState('error')
+                            setAlert(resps.mess)
+                            setAlertTimeout(5000)
+                            if (curApproval) {
+                                curApproval.posted = false
                             }
-                            const resps = await fetchServer("POST", {
-                                database: company,
-                                collection: "InventoryTransactions",
-                                update: newTransaction
-                            }, "createDoc", server)
-                            if (resps.err) {
-                                setAlertState('error')
-                                setAlert(resps.mess)
-                                setAlertTimeout(5000)
-                                if (curApproval) {
-                                    curApproval.posted = false
-                                }
-                            } else {
-                                setPostCount((prevCount) => {
-                                    const newCount = prevCount + 1
-                                    if (newCount === validEntries.length) {
-                                        setProductAdd(false)
-                                        setAlertState('success')
-                                        setAlert(`${validEntries.length} Inventory Updated Successfully!`)
-                                        setAlertTimeout(100000)
-                                        getProductsWithStock(company, products)
-                                        const entryIds = validEntries.map(entry => { return entry.productId })
-                                        if (curPurchase === null) {
-                                            setTimeout(() => {
-                                                addPurchase(createdAt, entryIds)
-                                            }, 500)
-                                        } else {
-                                            setTimeout(async () => {
-                                                setAlertState('info');
+                        } else {
+                            setPostCount((prevCount) => {
+                                const newCount = prevCount + 1
+                                if (newCount === validEntries.length) {
+                                    setProductAdd(false)
+                                    setAlertState('success')
+                                    setAlert(`${validEntries.length} Inventory ${action === 'purchase' ? 'Updated' : 'Reversed'} Successfully!`)
+                                    setAlertTimeout(100000)
+                                    getProductsWithStock(company, products)
+                                    const entryIds = validEntries.map(entry => { return entry.productId })
+                                    if (curPurchase === null) {
+                                        setTimeout(() => {
+                                            addPurchase(createdAt, entryIds)
+                                        }, 500)
+                                    } else {
+                                        setTimeout(async () => {
+                                            setAlertState('info');
+                                            if (action === 'purchase'){
                                                 setAlert('Linking to Posted Purchase...');
-                                                setAlertTimeout(100000);
-                                                const resps1 = await fetchServer("POST", {
-                                                    database: company,
-                                                    collection: "Purchase",
-                                                    prop: [{ createdAt: curPurchase.createdAt }, {
-                                                        productsRef: createdAt,
-                                                        purchaseQuantity: fields.purchaseQuantity,
-                                                        purchaseUOM: 'units',
-                                                        stage: 'posted',
-                                                        data: null
+                                            }else{
+                                                setAlert('Unlinking from Posted Purchase...');
+                                            }
+                                            setAlertTimeout(100000);
+                                            const resps1 = await fetchServer("POST", {
+                                                database: company,
+                                                collection: "Purchase",
+                                                prop: [{ createdAt: curPurchase.createdAt }, {
+                                                    productsRef: action === 'purchase' ? createdAt : null,
+                                                    purchaseQuantity: fields.purchaseQuantity,
+                                                    purchaseUOM: 'units',
+                                                    stage: action === 'purchase' ? 'posted' : 'receipt',
+                                                    data : action === 'purchase' ? null : data
 
-                                                    }]
-                                                }, "updateOneDoc", server);
+                                                }]
+                                            }, "updateOneDoc", server);
 
-                                                if (resps1.err) {
-                                                    console.log(resps1.mess);
-                                                    setAlertState('error');
-                                                    setAlert(resps1.mess);
-                                                    setAlertTimeout(5000);
-                                                    if (curApproval) {
-                                                        curApproval.posted = false
-                                                    }
-                                                } else {
+                                            if (resps1.err) {
+                                                console.log(resps1.mess);
+                                                setAlertState('error');
+                                                setAlert(resps1.mess);
+                                                setAlertTimeout(5000);
+                                                if (curApproval) {
+                                                    curApproval.posted = false
+                                                }
+                                            } else {
 
-                                                    setAlertState('success');
+                                                setAlertState('success');
+                                                if (action === 'purchase'){
                                                     setAlert('Products Linked Successfully!');
-                                                    setAlertTimeout(1000);
-                                                    setFields((fields) => {
-                                                        return { ...fields, productsRef: createdAt }
-                                                    })
-                                                    if (curApproval) {
-                                                        curApproval.posted = false
-                                                    }
-                                                    getPurchase(company);
+                                                }else{
+                                                    setAlert('Products Unlinked Successfully!');
+                                                }
+                                                setAlertTimeout(1000);
+                                                setFields((fields) => {
+                                                    return { ...fields, productsRef: action === 'purchase' ? createdAt : null}
+                                                })
+                                                if (curApproval) {
+                                                    curApproval.posted = false
+                                                }
+                                                getPurchase(company);
+                                                if (action === 'purchase'){
                                                     const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
                                                     const transactions = await getPurchaseProducts(company, { productsRef: createdAt })
                                                     if (transactions.length) {
@@ -409,55 +422,70 @@ const Purchase = () => {
                                                         })
                                                         setPurchaseEntries([...entries])
                                                     }
-                                                    const rep = await fetchServer("POST", {
-                                                        database: company,
-                                                        collection: "ProductCostLogs",
-                                                        prop: entryIds
-                                                    }, "updateProductCost", server)
-
-                                                    if (!rep.err) {
-                                                        getProducts(company)
-                                                    }
-
                                                 }
-                                                return
-                                            }, 1000);
-                                        }
-                                    } else {
-                                        setAlertState('success')
-                                        setAlert(`${newCount} / ${validEntries.length} Inventory Updated Successfully!`)
-                                    }
+                                                const rep = await fetchServer("POST", {
+                                                    database: company,
+                                                    collection: "ProductCostLogs",
+                                                    markUp: curPosSettings?.useMarkUp,
+                                                    markUpValue: 30,
+                                                    prop: entryIds
+                                                }, "updateProductCost", server)
 
-                                    return newCount
-                                })
-                            }
-                        })
-                    } else {
+                                                if (!rep.err) {
+                                                    getProducts(company)
+                                                }
+
+                                            }
+                                            return
+                                        }, 1000);
+                                    }
+                                } else {
+                                    setAlertState('success')
+                                    setAlert(`${newCount} / ${validEntries.length} Inventory ${action === 'purchase' ? 'Updated' : 'Reversed'} Successfully!`)
+                                }
+
+                                return newCount
+                            })
+                        }
+                    })
+                } else {
+                    if (action === 'purchase'){
                         addPurchase(createdAt, entryIds, data)
                     }
                 }
-                if (curApproval && curApproval?.approved) {
-                    if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_purchase_posts')) {
-                        setAlertState('error')
-                        setAlert('You are not allowed to post purchases!')
-                        setAlertTimeout(3000)
-                        return
-                    }
+            }
+            if (curApproval && curApproval?.approved) {
+                if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_purchase_posts')) {
+                    setAlertState('error')
+                    setAlert('You are not allowed to post purchases!')
+                    setAlertTimeout(3000)
+                    return
                 }
-                if (curApproval) {
-                    if (!curApproval.posted) {
-                        curApproval.posted = true
-                        runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
-                    }
-                } else {
+            }
+            if (curApproval) {
+                if (!curApproval.posted) {
+                    curApproval.posted = true
                     runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
                 }
             } else {
-                setAlertState('error')
-                setAlert('All Fields Are Required! Kindly Fill All')
-                setAlertTimeout(5000)
+                if (action === 'purchase'){
+                    if (curPurchase?.data && curPurchase?.stage === 'receipt'){
+                        postUpdate()
+                    }else{
+                        runApprovalWorkFlow(purchaseDate, curApproval, 'purchase', postAction, data, postUpdate)
+                    }
+                }else{
+                    postUpdate()
+                }
             }
+        } else {
+            setAlertState('error')
+            setAlert('All Fields Are Required! Kindly Fill All')
+            setAlertTimeout(5000)
         }
+    }
+
+    const handleProductPurchase = () => {    
         setPostCount(0)
         if (fields.purchaseUOM !== 'units') {
             var totalQuantity = 0
@@ -476,7 +504,7 @@ const Purchase = () => {
                 })
                 if (curPurchase !== null) {
                     setTimeout(() => {
-                        updateInventory()
+                        updateInventory('purchase')
                         return
                     }, 500)
                 } else {
@@ -488,7 +516,7 @@ const Purchase = () => {
                 setAlertTimeout(5000)
             }
         } else {
-            updateInventory()
+            updateInventory('purchase')
         }
     }
 
@@ -567,7 +595,7 @@ const Purchase = () => {
     const deletePurchase = async (purchase) => {
         const today = new Date()
         let postDate = new Date(purchase.postingDate).toISOString().slice(0, 10)
-        if (postDate < new Date(today.setDate(today.getDate() - 1)).toISOString().slice(0, 10) && !companyRecord?.access === 'admin') {
+        if (postDate < new Date(today.setDate(today.getDate() - 1)).toISOString().slice(0, 10) && !companyRecord?.status === 'admin') {
             setAlertState('error')
             setAlert('Cannot delete purchase after more than 1 day')
             setAlertTimeout(3000)
@@ -575,26 +603,54 @@ const Purchase = () => {
         }
         if (deleteCount === purchase.createdAt) {
             setAlertState('info')
-            setAlert('Deleting Purchase...')
-            const resps = await fetchServer("POST", {
-                database: company,
-                collection: "Purchase",
-                update: { createdAt: purchase.createdAt }
-            }, "removeDoc", server)
-            if (resps.err) {
-                console.log(resps.mess)
-                setAlertState('info')
-                setAlert(resps.mess)
-                setAlertTimeout(5000)
-            } else {
-                setIsView(false)
-                setCurPurchase(null)
-                setFields({ ...defaultFields })
-                setAlertState('success')
-                setAlert('Purchase Record Deleted Successfully!')
-                setAlertTimeout(1000)
-                setDeleteCount(0)
-                getPurchase(company)
+            setAlert(`${fields?.stage === 'receipt' ? 'Deleting' : 'Reversing'} Purchase...`)
+            if (['posted', null, undefined].includes(fields.stage)) {
+                const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+                const transactions = await getPurchaseProducts(company, purchase)
+                if (transactions.length) {
+                    const entries = []
+                    transactions.forEach((transaction) => {
+                        if (transaction.location === purchaseWrh?.name || transaction.location === purchase?.location) {                            
+                            entries.push(transaction)
+                        }
+                    })
+                    setPurchaseEntries([...entries])
+                }
+                setPostCount(0)
+                updateInventory('reverse')
+                // const rep = await fetchServer("POST", {
+                //     database: company,
+                //     collection: "ProductCostLogs",
+                //     markUp: curPosSettings?.useMarkUp,
+                //     markUpValue: 30,
+                //     prop: entryIds
+                // }, "updateProductCost", server)
+
+                // if (!rep.err) {
+                //     getProducts(company)
+                // }
+            }else if (fields?.stage === 'receipt'){
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Purchase",
+                    update: { createdAt: purchase.createdAt }
+                }, "removeDoc", server)
+                if (resps.err) {
+                    console.log(resps.mess)
+                    setAlertState('info')
+                    setAlert(resps.mess)
+                    setAlertTimeout(5000)
+                } else {
+    
+                    setIsView(false)
+                    setCurPurchase(null)
+                    setFields({ ...defaultFields })
+                    setAlertState('success')
+                    setAlert('Purchase Record Deleted Successfully!')
+                    setAlertTimeout(1000)
+                    setDeleteCount(0)
+                    getPurchase(company)
+                }
             }
         } else {
             setDeleteCount(purchase.createdAt)
@@ -817,7 +873,7 @@ const Purchase = () => {
                                         <div className='deptdesc'>{`Purchase Handled By:`}<b>{`${handlerName}`}</b></div>
                                         {stage === 'receipt' && <div className='deptdesc' style={{ fontSize: '1rem', color: 'red' }}><b>PENDING RECEIPT</b></div>}
                                     </div>
-                                    {(companyRecord.status === 'admin') && [null, undefined, 'posted'].includes(stage) && <div
+                                    {(companyRecord.status === 'admin') && <div
                                         className='edit'
                                         name='delete'
                                         style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
@@ -828,7 +884,7 @@ const Purchase = () => {
                                             deletePurchase(pur)
                                         }}
                                     >
-                                        Reverse
+                                        {stage === 'posted' ? 'Reverse': 'Delete'}
                                     </div>}
                                 </div>
                             )
