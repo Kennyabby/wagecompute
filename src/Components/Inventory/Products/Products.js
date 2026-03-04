@@ -412,7 +412,7 @@ const Products = ({
             })
             if (name === 'markUp' && curPosSettings?.useMarkUp) {
                 setProductFields((productFields) => {
-                    return { ...productFields, salesPrice: Math.round(Number(productFields.costPrice * (1 + Number(value || 0) / 100) * 0.1)) * 10 }
+                    return { ...productFields, salesPrice: Math.round(Number(Number(productFields.costPrice || 0) * (1 + Number(value || 0) / 100) * 0.1)) * 10 }
                 })
             }
         }
@@ -943,8 +943,8 @@ const Products = ({
                                 className='otherInp'
                                 type='number'
                                 name='markUp'
-                                placeholder='20'
-                                disabled={!productFields.costPrice || isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
+                                placeholder='--%'
+                                disabled={isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details'))}
                                 value={productFields.markUp}
                             />
                         </div>}
@@ -955,7 +955,7 @@ const Products = ({
                                 type='number'
                                 name='costPrice'
                                 placeholder='0.00'
-                                disabled={true}
+                                disabled={companyRecord?.access !== 'admin'}
                                 value={productFields.costPrice}
                             />
                         </div>}

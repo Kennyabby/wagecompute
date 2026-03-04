@@ -16,7 +16,7 @@ import {
     putSession,
     putInventoryTransactions,
 } from '../../Resources/offlineDb';
-import { syncPendingChanges } from '../../Resources/offlineSync';
+import { syncPendingChanges, processChange } from '../../Resources/offlineSync';
 
 const PointOfSales = () => {
     // =========================================
@@ -657,12 +657,18 @@ const PointOfSales = () => {
 
             // 3) Queue session create for sync
             if (company && companyRecord?.emailid) {
-                queuePendingChange(company, companyRecord.emailid, {
+                const change = {
                     entityType: 'session',
                     op: 'create',
                     clientId: newSession.start,
                     payload: newSession,
-                });
+                }
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
+                
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
                     // 2) Update React state
@@ -833,12 +839,17 @@ const PointOfSales = () => {
 
             // 3) Queue session update
             if (company && companyRecord?.emailid) {
-                queuePendingChange(company, companyRecord.emailid, {
+                const change = {
                     entityType: 'session',
                     op: 'update',
                     clientId: session.start,
                     payload: closedSession,
-                });
+                }
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
                     // 2) State updates
@@ -906,7 +917,7 @@ const PointOfSales = () => {
 
     useEffect(() => {
         UpdateSessionState(sessions, loadSession)
-    }, [loadSession, sessions])
+    }, [loadSession, sessions, companyRecord])
 
     // Helper to derive a product image URL (same pattern as Products/Accommodation)
     const getProductImageUrl = (product) => {
@@ -1141,6 +1152,33 @@ const PointOfSales = () => {
         setCurrentOrder(newOrder);
     };
 
+    const switchOrder = (e) => {
+        let nextIndex
+        const { name } = e.target
+        
+        if (!placingOrder && !makingPayment && name){
+            let currentOrderIndex = 0
+            const sortedOrders = tableOrders.sort((a, b) => {
+                const numA = a.createdAt;
+                const numB = b.createdAt;
+                return numA - numB;
+            })
+            sortedOrders.forEach((order, i) => {
+                if (order.orderNumber === currentOrder.orderNumber) {
+                    currentOrderIndex = i
+                }
+            })
+
+            nextIndex = currentOrderIndex
+            if (name === 'prevTable' && currentOrderIndex > 0){
+                nextIndex = currentOrderIndex - 1
+            } else if (name === 'nextTable' && currentOrderIndex < sortedOrders.length - 1){
+                nextIndex = currentOrderIndex + 1
+            }
+            setCurrentOrder(sortedOrders[nextIndex])
+        }
+    }
+
     const switchTable = (e) => {
         let nextIndex
         const { name } = e.target
@@ -1233,12 +1271,14 @@ const PointOfSales = () => {
                 const pendingLocal = localOrders.filter(
                     (order) => order.status === 'pending'
                 );
-                if (pendingLocal.length) {
-                    setCurrentOrder(pendingLocal[0]);
-                    setPosCurrentOrder(pendingLocal[0]);
-
-                } else {
-                    createNewOrder(table);
+                if (status!== 'auto'){                    
+                    if (pendingLocal.length) {
+                        setCurrentOrder(pendingLocal[0]);
+                        setPosCurrentOrder(pendingLocal[0]);
+    
+                    } else {
+                        createNewOrder(table);
+                    }
                 }
                 if (status !== 'auto'){
                     setActiveScreen('order');
@@ -1362,7 +1402,7 @@ const PointOfSales = () => {
     // 5. Order Delivery Management
     // =========================================
 
-    const updateInventory = async (action, items, deliveryDataUpdate, currentOrder, count) => {
+    const updateInventory = async (action, items, deliveryDataUpdate, currentOrder, count, status) => {
         if (!count) {
             setAlertState('info');
             setAlert('Updating Inventory...');
@@ -1449,11 +1489,16 @@ const PointOfSales = () => {
 
                 // 2) Queue inventory changes for sync
                 setAlertTimeout(20);
-                await queuePendingChange(company, companyRecord.emailid, {
+                const change = {
                     entityType: 'inventory',
                     op: 'create',
                     payload: { transactions },
-                });
+                }
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
                 setAlertState('success');
                 setAlert((count || 0) + 1, 'Order(s) Inventory updated successfully');
                 setAlertTimeout(1000);
@@ -1462,7 +1507,7 @@ const PointOfSales = () => {
                     // 3) Update local order state with deliveryDataUpdate
                     if (action === 'deplete') {
                         setCurrentOrder((currentOrder) => {
-                            return { ...currentOrder, ...deliveryDataUpdate };
+                            return { ...currentOrder, ...deliveryDataUpdate};
                         });
                         // setTableOrders((tableOrders) => {
                         //     const updated = tableOrders.map((tableOrder) =>
@@ -1474,7 +1519,7 @@ const PointOfSales = () => {
                         // });
                     } else {
                         setCurrentOrder((currentOrder) => {
-                            return { ...currentOrder, ...deliveryDataUpdate };
+                            return { ...currentOrder, ...deliveryDataUpdate, ...(status && {status}) };
                         });
                         // setTableOrders((tableOrders) => {
                         //     const updated = tableOrders.map((tableOrder) =>
@@ -1742,12 +1787,21 @@ const PointOfSales = () => {
 
                     // Queue table update
                     if (company && companyRecord?.emailid) {
-                        queuePendingChange(company, companyRecord.emailid, {
+                        const change = {
                             entityType: 'table',
                             op: 'update',
                             clientId: updatedTable.i_d,
                             payload: updatedTable,
-                        });
+                        }
+                        if (curPosSettings?.type === 'restaurant'){
+                            queuePendingChange(company, companyRecord.emailid, change);
+                        }else{
+                            try{
+                                await processChange(change, company, fetchServer, server);
+                            }catch (e) {
+                                console.log(e)
+                            }
+                        }
                     }
                 }
 
@@ -1790,7 +1844,7 @@ const PointOfSales = () => {
 
                     // Queue order update
                     if (company && companyRecord?.emailid) {
-                        queuePendingChange(company, companyRecord.emailid, {
+                        const change = {
                             entityType: 'order',
                             op: 'update',
                             clientId: currentOrder.orderNumber,
@@ -1798,7 +1852,12 @@ const PointOfSales = () => {
                                 orderNumber: currentOrder.orderNumber,
                                 ...deliveryDataUpdate,
                             },
-                        });
+                        }
+                        if (curPosSettings?.type === 'restaurant'){
+                            queuePendingChange(company, companyRecord.emailid, change);
+                        }else{
+                            await processChange(change, company, fetchServer, server);
+                        }
                         // Immediate sync attempt – failures are fine, queue remains
                         try {
                             // 3) Kick off local inventory update + queue
@@ -1897,12 +1956,21 @@ const PointOfSales = () => {
                     }
 
                     if (company && companyRecord?.emailid) {
-                        queuePendingChange(company, companyRecord.emailid, {
+                        const change = {
                             entityType: 'table',
                             op: 'update',
                             clientId: updatedTable.i_d,
                             payload: updatedTable,
-                        });
+                        }
+                        if (curPosSettings?.type === 'restaurant'){
+                            queuePendingChange(company, companyRecord.emailid, change);
+                        }else{
+                            try{                                
+                                await processChange(change, company, fetchServer, server);
+                            }catch (e) {
+                                console.log(e)
+                            }
+                        }
                     }
                 }
             }
@@ -1952,7 +2020,7 @@ const PointOfSales = () => {
             // 4) Queue order update for sync
             if (company && companyRecord?.emailid) {
                 setAlertTimeout(20);
-                queuePendingChange(company, companyRecord.emailid, {
+                const change = {
                     entityType: 'order',
                     op: 'update',
                     clientId: order.orderNumber,
@@ -1960,7 +2028,12 @@ const PointOfSales = () => {
                         orderNumber: order.orderNumber,
                         ...deliveryUpdate,
                     },
-                });
+                }
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
@@ -1980,12 +2053,13 @@ const PointOfSales = () => {
                     'cancel',
                     itemsToCancel.deliveredItems,
                     deliveryUpdate,
-                    order
+                    order,
+                    0,
+                    'edit'
                 );
             }, 1000);
 
             setCancelling(false);
-            return;
         } catch (e) {
             setAlertState('error');
             setAlert('Error cancelling delivery locally');
@@ -2068,23 +2142,37 @@ const PointOfSales = () => {
 
                 // Queue table update for later sync
                 if (company && companyRecord?.emailid) {
-                    queuePendingChange(company, companyRecord.emailid, {
+                    const change = {
                         entityType: 'table',
                         op: 'update',
                         clientId: updatedTable.i_d,
                         payload: updatedTable,
-                    });
+                    }
+                    if (curPosSettings?.type === 'restaurant'){
+                        queuePendingChange(company, companyRecord.emailid, change);
+                    }else{
+                        try {
+                            await processChange(change, company, fetchServer, server);
+                        }catch (e) {
+                            console.log(e)
+                        }
+                    }
                 }
             }
 
             // 4) Enqueue offline change so this order can be synced later
             if (company && companyRecord?.emailid) {
-                queuePendingChange(company, companyRecord.emailid, {
+                const change = {
                     entityType: 'order',
                     op: 'create',
                     clientId: placedOrder.orderNumber,
                     payload: placedOrder,
-                });
+                }
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
                 // Immediate sync attempt – failures are fine, queue remains
                 setAlertTimeout(20);
                 try {
@@ -2208,23 +2296,37 @@ const PointOfSales = () => {
 
                 // Queue table update for later sync
                 if (company && companyRecord?.emailid) {
-                    queuePendingChange(company, companyRecord.emailid, {
+                    const change = {
                         entityType: 'table',
                         op: 'update',
                         clientId: updatedTable.i_d,
                         payload: updatedTable,
-                    });
+                    }
+                    if (curPosSettings?.type === 'restaurant'){
+                        queuePendingChange(company, companyRecord.emailid, change);
+                    }else{
+                        try {
+                            await processChange(change, company, fetchServer, server);
+                        }catch (e){
+                            console.log(e)
+                        }
+                    }
                 }
             }
 
             // 4) Enqueue offline change so this order can be synced later
             if (company && companyRecord?.emailid) {
-                queuePendingChange(company, companyRecord.emailid, {
+                const change = {
                     entityType: 'order',
                     op: 'update',
                     clientId: placedOrder.orderNumber,
                     payload: placedOrder,
-                });
+                }
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
                 // Immediate sync attempt – failures are fine, queue remains
                 setAlertTimeout(20);
                 try {
@@ -2344,9 +2446,9 @@ const PointOfSales = () => {
     const handleOrderSelect = (order, status) => {
         const orderClone = structuredClone({ order });
         const posOrderClone = structuredClone({ order })
-        setSelectedProduct(null);
-        setCurrentOrder(orderClone.order);
-        setPosCurrentOrder(posOrderClone.order)
+        setSelectedProduct(null);   
+        setCurrentOrder({...orderClone.order, ...(status && {status})});
+        setPosCurrentOrder({...posOrderClone.order, ...(status && {status})});
         setActiveScreen('order');
         setShowOrdersModal(false);
     };
@@ -2505,30 +2607,37 @@ const PointOfSales = () => {
                     ...prevTable,
                     activeTables: updatedActiveTables,
                 };
-
+                
                 if (company && companyRecord?.emailid) {
                     await putTable(company, companyRecord.emailid, updatedTable);
                 }
-
+                
                 setTables((prev) =>
                     prev.map((t) => (t.wrh === wrh ? updatedTable : t))
-                );
-
-                // Queue table update for sync
+            );
+            
+            // Queue table update for sync
                 if (company && companyRecord?.emailid) {
-                    setAlertTimeout(20);
-                    queuePendingChange(company, companyRecord.emailid, {
+                    const change = {
                         entityType: 'table',
                         op: 'update',
                         clientId: updatedTable.i_d,
                         payload: updatedTable,
-                    });
+                    }
+                    if (curPosSettings?.type === 'restaurant'){
+                        queuePendingChange(company, companyRecord.emailid, change);
+                    }else{
+                        try{
+                            await processChange(change, company, fetchServer, server);
+                        }catch(e){
+                            console.log(e)
+                        }
+                    }
                 }
             }
-
             // 3) Queue order update for sync (you already had this pattern)
             if (company && companyRecord?.emailid) {
-                queuePendingChange(company, companyRecord.emailid, {
+                const change = {
                     entityType: 'order',
                     op: 'update',
                     clientId: currentOrder.orderNumber,
@@ -2536,7 +2645,12 @@ const PointOfSales = () => {
                         orderNumber: currentOrder.orderNumber,
                         ...paymentDataUpdate,
                     },
-                });
+                }
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
 
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
@@ -2548,7 +2662,8 @@ const PointOfSales = () => {
                         printReceipt(newOrder);
                     }
                     setShowPaymentModal(false);
-                    createNewOrder(currentTable);
+                    setCurrentOrder(newOrder)
+                    // createNewOrder(currentTable);
                     setPaymentDetails({ ...payPoints });
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     getPosOrders({ company, companyRecord }); // read-only
@@ -2565,6 +2680,7 @@ const PointOfSales = () => {
             setAlertState('error');
             setAlert('Error processing payment locally');
             setAlertTimeout(3000);
+            console.log(e)
             setMakingPayment(false);
             return;
         }
@@ -3215,7 +3331,7 @@ const PointOfSales = () => {
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
-                {(currentOrder.status !== 'cancelled' && currentOrder.status === 'pending')
+                {(currentOrder.status !== 'cancelled' && currentOrder.delivery === 'pending' && !['new', 'edit'].includes(currentOrder.status))
                     && (
                         currentOrder.items.filter((item) => {
                             if (wrhCategories[wrh].includes(item.category)) {
@@ -3607,7 +3723,15 @@ const PointOfSales = () => {
                                 <button
                                     name="prevTable"
                                     className='action-btn'
-                                    onClick={switchTable}
+                                    onClick={
+                                        (e)=>{
+                                            if (curPosSettings?.type === 'restaurant'){
+                                                switchTable(e)
+                                            }else{
+                                                switchOrder(e)
+                                            }
+                                        }
+                                    }
                                 >
                                     {'<'}
                                 </button>
@@ -3615,7 +3739,15 @@ const PointOfSales = () => {
                                 <button
                                     name="nextTable"
                                     className='action-btn'
-                                    onClick={switchTable}
+                                    onClick={
+                                        (e)=>{
+                                            if (curPosSettings?.type === 'restaurant'){
+                                                switchTable(e)
+                                            }else{
+                                                switchOrder(e)
+                                            }
+                                        }
+                                    }
                                 >
                                     {'>'}
                                 </button>
@@ -4065,19 +4197,28 @@ const OrdersModal = ({
                     // on parent’s state changes. We still queue table change.
 
                     if (company && companyRecord?.emailid) {
-                        queuePendingChange(company, companyRecord.emailid, {
+                        const change = {
                             entityType: 'table',
                             op: 'update',
                             clientId: updatedTable.i_d,
                             payload: updatedTable,
-                        });
+                        }
+                        if (curPosSettings?.type === 'restaurant'){
+                            queuePendingChange(company, companyRecord.emailid, change);
+                        }else{
+                            try {
+                                await processChange(change, company, fetchServer, server);
+                            }catch (e){
+                                console.log(e)
+                            }
+                        }
                     }
                 }
 
                 // 4) Queue order cancellation
                 if (company && companyRecord?.emailid) {
                     setAlertTimeout(20);
-                    queuePendingChange(company, companyRecord.emailid, {
+                    const change = {
                         entityType: 'order',
                         op: 'update',
                         clientId: order.orderNumber,
@@ -4087,7 +4228,12 @@ const OrdersModal = ({
                             cancelledBy: companyRecord.emailid,
                             cancelledAt: Date.now(),
                         },
-                    });
+                    }
+                    if (curPosSettings?.type === 'restaurant'){
+                        queuePendingChange(company, companyRecord.emailid, change);
+                    }else{
+                        await processChange(change, company, fetchServer, server);
+                    }
                     // Immediate sync attempt – failures are fine, queue remains
                     try {
                         await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
@@ -4195,7 +4341,7 @@ const OrdersModal = ({
                                                 ...(currentOrder?.orderNumber === order.orderNumber ? currentOrder : order),
                                                 status: 'edit'
                                             }
-                                            handleOrderSelect(orderToEdit)
+                                            handleOrderSelect(orderToEdit, 'edit')
                                         }}
                                         title="Edit Order"
                                     >
