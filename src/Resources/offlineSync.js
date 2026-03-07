@@ -93,7 +93,7 @@ function assertDelete(resp) {
 // Dispatcher
 // =====================================================
 
-async function processChange(change, company, fetchServer, server) {
+export async function processChange(change, company, fetchServer, server) {
   switch (change.entityType) {
     case 'order':
       return syncOrder(change, company, fetchServer, server);
