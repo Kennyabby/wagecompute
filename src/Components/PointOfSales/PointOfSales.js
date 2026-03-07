@@ -2123,7 +2123,7 @@ const PointOfSales = () => {
                 const updatedTable = {
                     ...prevTable,
                     activeTables: [
-                        ...(prevTable.activeTables || []).filter((t) => {
+                        ...(prevTable?.activeTables || []).filter((t) => {
                             return !(
                                 t.tableId === activeOrder.tableId &&
                                 t.sessionId === activeOrder.sessionId &&
@@ -3909,6 +3909,11 @@ const PointOfSales = () => {
                             setAlert={setAlert}
                             setAlertState={setAlertState}
                             setAlertTimeout={setAlertTimeout}
+                            setActionMessage={setActionMessage}
+                            alert={alert}
+                            alertTimeout={alertTimeout}
+                            alertState={alertState}
+                            actionMessage={actionMessage}
                             companyRecord={companyRecord}
                         />}
                 </div>
@@ -4010,10 +4015,12 @@ const PaymentModal = ({
                 } else {
                     var actmess = ''
                     Object.keys(paymentDetails).forEach((payPoint, index)=>{
-                        if (index) {
-                            actmess += ', '
+                        if (paymentDetails[payPoint]?.amount){
+                            if (index) {
+                                actmess += ', '
+                            }
+                            actmess += `${payPoint.toUpperCase()}: ${Number(paymentDetails[payPoint].amount).toLocaleString()}`
                         }
-                        actmess += `${payPoint.toUpperCase()}: ${Number(paymentDetails[payPoint].amount).toLocaleString()}`
                     })
                     setAlertState('info')
                     setActionMessage('Confirm Payment')
