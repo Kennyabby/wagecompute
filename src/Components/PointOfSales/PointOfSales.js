@@ -2782,7 +2782,7 @@ const PointOfSales = () => {
         const table = orderTables.find((table) => { return table.i_d === orderData.tableId })
         const receiptContent = `
             <div class="receipt">
-                <h2>${companyRecord.name} Payment Receipt</h2>
+                <h2>${companyRecord.name} Customer Order</h2>
                 <p>From: ${table?.name || ''} (${orderData.wrh})</p>
                 <p>Order: #${orderData.orderNumber}</p>
                 <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
