@@ -3462,6 +3462,7 @@ const Sales = () => {
                                 </select>
                             </div>
                             <div className='inpcov'>
+                                <div>Rental Receipt</div>
                                 <input
                                     className='forminp'
                                     name='rentalReceipt'
