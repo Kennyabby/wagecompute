@@ -2798,10 +2798,10 @@ const PointOfSales = () => {
                 <div class="receipt-total">
                     <p>Subtotal: ₦${(Number(orderData.totalSales || 0) * 0.925).toFixed(2)}</p>
                     <p>Tax: ₦${(Number(orderData.totalSales || 0) * 0.075).toFixed(2)}</p>
-                    <p>Total: ₦${(Number(orderData.totalSales || 0) * 1).toFixed(2)}</p>                    
+                    <h2>Total: ₦${(Number(orderData.totalSales || 0) * 1).toFixed(2)}</h2>                    
                 </div>
 
-                <p>Kindly Pay To Only Company Account. Thank You!</p>
+                <p>Kindly Pay Only To Company Account. Thank You!</p>
             </div>
         `;
 
