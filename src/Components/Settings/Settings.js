@@ -75,6 +75,7 @@ const Settings = () => {
         printPaymentReceipt: false,
         printKitchenReceipt: false,
         printBarReceipt: false,
+        printCustomerOrder: false,
     }
     const [loginDetails, setLoginDetails] = useState({
         email: '',
@@ -1542,6 +1543,18 @@ const Settings = () => {
                                             type='checkbox'
                                             name='printBarReceipt'
                                             checked={curPropSet.printBarReceipt}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && curPropSet.type === 'restaurant' && <div className='inpcov formpad'>
+                                    <div>Allow Print Customer Order</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='printCustomerOrder'
+                                            checked={curPropSet.printCustomerOrder}
                                             onChange={handlePropSetChange}
                                         />
                                         <span className='slider'></span>
