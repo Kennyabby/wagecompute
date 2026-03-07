@@ -703,7 +703,7 @@ const PointOfSales = () => {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
             }
-
+            return;
         } catch (e) {
             setAlertState('error');
             setAlert('Could not start session locally. Please try again.');
@@ -3058,6 +3058,7 @@ const PointOfSales = () => {
                 setWrh('')
                 setLoading(true);
                 await createSession(sessionUser);
+                setLoading(false)
             } else {
                 setLoading(true);
                 await createSession();
@@ -3080,6 +3081,7 @@ const PointOfSales = () => {
                 setLoading(true);
                 await stopSession(sessionUser.curSession, allUserOrders);
                 setPosSalesDifference({})
+                setLoading(false)
             } else {
                 setAlertState('info')
                 setAlert('Could not load orders. Please check your connection and try again.')
@@ -3417,7 +3419,7 @@ const PointOfSales = () => {
                 >
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
-                {(currentOrder.status !== 'cancelled' && currentOrder.delivery === 'pending' && !['new', 'edit'].includes(currentOrder.status))
+                {(currentOrder.status !== 'cancelled' && ((curPosSettings?.type === 'shop' && currentOrder.delivery === 'pending') || (curPosSettings?.type === 'restaurant' && currentOrder?.status !== 'pending')) && !['new', 'edit'].includes(currentOrder.status))
                 && (
                     currentOrder.items.filter((item) => {
                         if (wrhCategories[wrh].includes(item.category)) {
