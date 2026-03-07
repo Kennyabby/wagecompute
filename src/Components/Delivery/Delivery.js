@@ -3028,7 +3028,7 @@ const AddProduct = ({
                                     } else if (stocksNegativeDifference.count) {
                                         setAlertState('info')
                                         setActionMessage('Accept')
-                                        setAlert('Your Stock Count is less than current Inventory. Accept the difference as Sales Shortage, to be applied to the responsible employee IDs')
+                                        setAlert('Your Stock Count is less than current Inventory. Accept the differences as Sales Shortage, to be applied directly to the responsible employee(s) ID(s)')
                                         setAlertTimeout(15000)
                                     } else {
                                         saveStocksDifference(result)

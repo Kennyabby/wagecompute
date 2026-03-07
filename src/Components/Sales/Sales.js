@@ -154,6 +154,7 @@ const Sales = () => {
         paymentMonth: months[new Date(Date.now()).getMonth() - 1],
         payPoint: '',
         amountPaid: '',
+        rentalReceipt: '',
         rentalDebt: 0,
         expectedPayment: '',
         paymentAmount: '',
@@ -3461,6 +3462,20 @@ const Sales = () => {
                                 </select>
                             </div>
                             <div className='inpcov'>
+                                <input
+                                    className='forminp'
+                                    name='rentalReceipt'
+                                    type='text'
+                                    placeholder='Enter Receipt Number'
+                                    title = {rentalFields?.payPoint ? 'Enter Receipt Number' : 'Please Select PayPoint'}
+                                    disabled={isView || !rentalFields?.payPoint}
+                                    value={rentalFields?.rentalReceipt || ''}
+                                    onChange={(e) => {
+                                        handleRentalFieldChange(e)
+                                    }}
+                                />
+                            </div>
+                            <div className='inpcov'>
                                 <div>For The Month of</div>
                                 <select
                                     className='forminp'
@@ -4072,10 +4087,10 @@ const Sales = () => {
 
                         {salesOpts === 'rentals' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment) ? 'pointer' : 'not-allowed'
+                                cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) ? 'pointer' : 'not-allowed'
                             }}
                             onClick={() => {
-                                if (rentalFields.paymentAmount && rentalFields.expectedPayment) {
+                                if (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) {
                                     if (curApproval && curApproval?.approved) {
                                         if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_rental_posts')) {
                                             setAlertState('error')

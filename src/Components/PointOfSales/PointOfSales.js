@@ -3,6 +3,7 @@ import ContextProvider from '../../Resources/ContextProvider';
 import './PointOfSales.css';
 import { MdShoppingBasket } from 'react-icons/md';
 import TransactionReports from '../Shared/TransactionReports/TransactionReports';
+import Notify from '../../Resources/Notify/Notify';
 import {
     loadPosSnapshot,
     savePosSnapshot,
@@ -25,7 +26,8 @@ const PointOfSales = () => {
     const {
         storePath, intervalPeriod, posSettings, paymentMethods,
         fetchServer, server, company, companyRecord,
-        setAlert, setAlertState, setAlertTimeout,
+        setAlert, setAlertState, setAlertTimeout, setActionMessage,
+        alert, alertState, alertTimeout, actionMessage,
         settings, getDate, posWrhAccess, employees,
         profiles, fetchProfiles, getSessionEnd,
         products, getProducts, setProducts, getEmployeeName,
@@ -375,6 +377,7 @@ const PointOfSales = () => {
     useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         fetchTables(cmp_val)
+        // const intervalIds = setInterval(() => { fetchTables(cmp_val) }, 60000)
         const intervalId = setInterval(() => { refreshPOSData(); }, 300000)
         // run once
         // refreshPOSData();
@@ -1870,6 +1873,7 @@ const PointOfSales = () => {
                             // Leave pending changes in queue; 5‑minute auto-sync will retry
                         }
                     }
+                    fetchTables(company)
                 } else {
                     setAlertState('error');
                     setAlert('Nothing to Post Here!');
@@ -1885,7 +1889,6 @@ const PointOfSales = () => {
                 handleTableSelect(currentTable, 'auto')
             }
         }
-
     };
 
     const handleCancelDelivery = async (order, status) => {
@@ -2058,7 +2061,7 @@ const PointOfSales = () => {
                     'edit'
                 );
             }, 1000);
-
+            fetchTables(company)
             setCancelling(false);
         } catch (e) {
             setAlertState('error');
@@ -2185,10 +2188,13 @@ const PointOfSales = () => {
                         if (curPosSettings?.printKitchenReceipt) {
                             printKitchenOrder(placedOrder);
                         } if (curPosSettings?.printBarReceipt) {
-                            printBarOrder(placedOrder)
+                            printBarOrder(placedOrder)                            
+                        } if (curPosSettings?.printCustomerOrder){
+                            printCustomerOrder(placedOrder)
                         }
                     }
-                    syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    fetchTables(company)
                     if (curPosSettings?.type === 'shop') {
                         var totalItems = 0
                         var deliveredQuantity = 0
@@ -2336,10 +2342,18 @@ const PointOfSales = () => {
                     setAlertTimeout(1000);
                     // Keep your existing reads (they only fetch, no writes)
                     if (curPosSettings?.type === 'restaurant') {
-                        printKitchenOrder(placedOrder);
-                        printBarOrder(placedOrder)
+                        if (curPosSettings?.printKitchenReceipt) {
+                            printKitchenOrder(placedOrder);
+                        } 
+                        if (curPosSettings?.printBarReceipt) {
+                            printBarOrder(placedOrder)                            
+                        } 
+                        if (curPosSettings?.printCustomerOrder){
+                            printCustomerOrder(placedOrder)
+                        }
                     }
-                    syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    fetchTables(company)
                     if (curPosSettings?.type === 'shop') {
                         var totalItems = 0
                         var deliveredQuantity = 0
@@ -2667,15 +2681,27 @@ const PointOfSales = () => {
                     setPaymentDetails({ ...payPoints });
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     getPosOrders({ company, companyRecord }); // read-only
+                    fetchTables(company)
+                    if (curPosSettings?.type === 'restaurant') {
+                        var totalItems = 0
+                        var deliveredQuantity = 0
+                        const deliveredItems = newOrder.items.filter((item) => {
+                            if (wrhCategories[wrh].includes(item.category)) {
+                                totalItems += Number(item.quantity)
+                                deliveredQuantity += Number(item?.deliveredQuantity || 0)
+                                return Number(item?.deliveredQuantity || 0) > 0
+                            }
+                        })
+                        if (deliveredQuantity < totalItems) {
+                            const orderClone = structuredClone({ newOrder }).newOrder
+                            handleOrderDelivery(newOrder, orderClone);
+                        }
+                    }
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
             }
-
-            // 4) Local success feedback
-
-
-            return;
+            // 4) Local success feedback            
         } catch (e) {
             setAlertState('error');
             setAlert('Error processing payment locally');
@@ -2716,6 +2742,66 @@ const PointOfSales = () => {
                 </div>
 
                 <p>Thank you for your business!</p>
+            </div>
+        `;
+
+        // Create a hidden iframe
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+
+        // Write your content into it
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(`
+            <html>
+                <head>
+                    <style>
+                        .receipt { font-family: monospace; width: 300px; padding: 20px; }
+                        .receipt-item { display: flex; justify-content: space-between; }
+                        .receipt-total { margin-top: 20px; }
+                    </style>
+                </head>
+                <body>${receiptContent}</body>
+            </html>
+        `);
+        iframe.contentDocument.close();
+
+        // Print directly from the iframe
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+
+        // Cleanup
+        setTimeout(() => iframe.remove(), 1000);
+    };
+    
+    const printCustomerOrder = (orderData) => {
+        const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
+        const table = orderTables.find((table) => { return table.i_d === orderData.tableId })
+        const receiptContent = `
+            <div class="receipt">
+                <h2>${companyRecord.name} Payment Receipt</h2>
+                <p>From: ${table?.name || ''} (${orderData.wrh})</p>
+                <p>Order: #${orderData.orderNumber}</p>
+                <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
+                <p>Date: ${new Date().toLocaleString()}</p>
+                <hr/>
+                ${orderData.items.map(item => `
+                    <div class="receipt-item">
+                        <span>${item.name} x ${item.quantity}</span>
+                        <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
+                    </div>
+                `).join('')}
+                <hr/>
+                <div class="receipt-total">
+                    <p>Subtotal: ₦${(Number(orderData.totalSales || 0) * 0.925).toFixed(2)}</p>
+                    <p>Tax: ₦${(Number(orderData.totalSales || 0) * 0.075).toFixed(2)}</p>
+                    <p>Total: ₦${(Number(orderData.totalSales || 0) * 1).toFixed(2)}</p>                    
+                </div>
+
+                <p>Kindly Pay To Only Company Account. Thank You!</p>
             </div>
         `;
 
@@ -3332,61 +3418,73 @@ const PointOfSales = () => {
                     Make Payment (₦{currentOrder.totalSales?.toFixed(2)})
                 </button>}
                 {(currentOrder.status !== 'cancelled' && currentOrder.delivery === 'pending' && !['new', 'edit'].includes(currentOrder.status))
-                    && (
-                        currentOrder.items.filter((item) => {
+                && (
+                    currentOrder.items.filter((item) => {
+                        if (wrhCategories[wrh].includes(item.category)) {
+                            return Number(item?.deliveredQuantity || 0) > 0
+                        }
+                    }).length < currentOrder.items.reduce((sum, item) => { return sum + Number(item.quantity) }, 0)
+                ) && <button
+                    className="place-order-btn"
+                    onClick={() => {
+                        var totalItems = 0
+                        var deliveredQuantity = 0
+                        const deliveredItems = currentOrder.items.filter((item) => {
                             if (wrhCategories[wrh].includes(item.category)) {
+                                totalItems += Number(item.quantity)
+                                deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
                             }
-                        }).length < currentOrder.items.reduce((sum, item) => { return sum + Number(item.quantity) }, 0)
-                    ) && curPosSettings?.type === 'shop' && <button
-                        className="place-order-btn"
-                        onClick={() => {
-                            var totalItems = 0
-                            var deliveredQuantity = 0
-                            const deliveredItems = currentOrder.items.filter((item) => {
-                                if (wrhCategories[wrh].includes(item.category)) {
-                                    totalItems += Number(item.quantity)
-                                    deliveredQuantity += Number(item?.deliveredQuantity || 0)
-                                    return Number(item?.deliveredQuantity || 0) > 0
-                                }
-                            })
-                            if (deliveredQuantity < totalItems) {
-                                const orderClone = structuredClone({ placedOrder: currentOrder }).placedOrder
-                                handleOrderDelivery(currentOrder, orderClone)
-                            } else {
-                                setAlertState('error')
-                                setAlert('Nothing to Post. You Have Completed Your Delivery!')
-                                setAlertTimeout(3000)
-                            }
-                        }}
-                        disabled={!currentOrder.totalSales || makingPayment || currentTable?.status === 'unavailable'}
-                    >
-                        Place Delivery
-                    </button>}
+                        })
+                        if (deliveredQuantity < totalItems) {
+                            const orderClone = structuredClone({ placedOrder: currentOrder }).placedOrder
+                            handleOrderDelivery(currentOrder, orderClone)
+                        } else {
+                            setAlertState('error')
+                            setAlert('Nothing to Post. You Have Completed Your Delivery!')
+                            setAlertTimeout(3000)
+                        }
+                    }}
+                    disabled={!currentOrder.totalSales || makingPayment || currentTable?.status === 'unavailable'}
+                >
+                    Place Delivery
+                </button>}
                 {currentOrder.items.find((item) => { return wrhCategories['kitchen']?.includes(item.category) })
-                    && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid))
-                        || companyRecord?.status === 'admin'
-                        || companyRecord?.permissions?.includes('access_pos_sessions')
-                    ) && ['pending', 'completed'].includes(currentOrder.status)
-                    && curPosSettings?.type === 'restaurant' && <button
-                        className="place-order-btn"
-                        onClick={() => printKitchenOrder(currentOrder)}
-                        disabled={!currentOrder.items.length}
-                    >
-                        Print Kitchen Order
-                    </button>}
+                && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid))
+                    || companyRecord?.status === 'admin'
+                    || companyRecord?.permissions?.includes('access_pos_sessions')
+                ) && ['pending', 'completed'].includes(currentOrder.status)
+                && curPosSettings?.type === 'restaurant' && <button
+                    className="place-order-btn"
+                    onClick={() => printKitchenOrder(currentOrder)}
+                    disabled={!currentOrder.items.length}
+                >
+                    Print For Kitchen
+                </button>}
                 {currentOrder.items.find((item) => { return !wrhCategories['kitchen']?.includes(item.category) })
-                    && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid))
-                        || companyRecord?.status === 'admin'
-                        || companyRecord?.permissions?.includes('access_pos_sessions')
-                    ) && ['pending', 'completed'].includes(currentOrder.status)
-                    && curPosSettings?.type === 'restaurant' && <button
-                        className="place-order-btn"
-                        onClick={() => printBarOrder(currentOrder)}
-                        disabled={!currentOrder.items.length}
-                    >
-                        Print Bar Order
-                    </button>}
+                && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid))
+                    || companyRecord?.status === 'admin'
+                    || companyRecord?.permissions?.includes('access_pos_sessions')
+                ) && ['pending', 'completed'].includes(currentOrder.status)
+                && curPosSettings?.type === 'restaurant' && <button
+                    className="place-order-btn"
+                    onClick={() => printBarOrder(currentOrder)}
+                    disabled={!currentOrder.items.length}
+                >
+                    Print For Bar
+                </button>}
+                {currentOrder.items?.length
+                && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid))
+                    || companyRecord?.status === 'admin'
+                    || companyRecord?.permissions?.includes('access_pos_sessions')
+                ) && ['pending', 'completed'].includes(currentOrder.status)
+                && curPosSettings?.type === 'restaurant' && <button
+                    className="place-order-btn"
+                    onClick={() => printCustomerOrder(currentOrder)}
+                    disabled={!currentOrder.items.length}
+                >
+                    Print Customer Order
+                </button>}
             </div>
             <div className="products-panel">
                 <div className="categories-bar">
@@ -3679,6 +3777,7 @@ const PointOfSales = () => {
                     profiles={profiles}
                     isLive={isLive}
                     liveErrorMessages={liveErrorMessages}
+                    fetchTables={fetchTables}
                     sessionEnded={sessionEnded}
                     getSessionEnd={getSessionEnd}
                     setWrh={setWrh}
@@ -3824,7 +3923,7 @@ const PaymentModal = ({
     method, setMethod, wrh, curSession, defaultPaymentDetails,
     paymentDetails, setPaymentDetails, wrhCategories,
     setShowPaymentModal, handlePayment, allPaymentReceipts,
-    payPoints, setAlertState, setAlert, setAlertTimeout,
+    payPoints, setAlertState, setAlert, setAlertTimeout, setActionMessage, alert, alertState, alertTimeout, actionMessage,
     paymentReceipts
 }) => {
     const [paymentSum, setPaymentSum] = useState(0)
@@ -3883,7 +3982,7 @@ const PaymentModal = ({
         return { isReceiptsAvailable: (voidReceipts.length === 0), voidReceipts }
     }
 
-    const validatePayment = async () => {
+    const validatePayment = async () => {        
         var payPointsWithNoReceipts = []
         if (!paymentDetails['cash'].amount || (Number(paymentDetails['cash'].amount || 0) < Number(currentOrder.totalSales || 0))) {
             Object.keys(paymentDetails).forEach((payPoint) => {
@@ -3907,10 +4006,17 @@ const PaymentModal = ({
                     setAlert(`Payment Amount is greater than Total Sales. Total amount remaining should be 0.00`)
                     setAlertTimeout(3000)
                 } else {
-                    setLoading(true)
-                    await handlePayment()
-                    setPaymentDetails(defaultPaymentDetails)
-                    setLoading(false)
+                    var actmess = ''
+                    Object.keys(paymentDetails).forEach((payPoint, index)=>{
+                        if (index) {
+                            actmess += ', '
+                        }
+                        actmess += `${payPoint.toUpperCase()}: ${Number(paymentDetails[payPoint].amount).toLocaleString()}`
+                    })
+                    setAlertState('info')
+                    setActionMessage('Confirm Payment')
+                    setAlert(`Please Confirm That The Following Payment Details Are Correct: ${actmess}`)
+                    setAlertTimeout(10000)
                 }
             } else {
                 setAlertState('error');
@@ -4002,6 +4108,22 @@ const PaymentModal = ({
 
     return (
         <div className="modal-overlay">
+            {actionMessage && <Notify
+                notifyMessage={alert}
+                notifyState={alertState}
+                timeout={alertTimeout}
+                actionMessage={actionMessage}
+                cancel={() => {
+                    setLoading(false)
+                }}
+                action={async () => {
+                    setActionMessage('')
+                    setLoading(true)
+                    await handlePayment()
+                    setPaymentDetails(defaultPaymentDetails)
+                    setLoading(false)
+                }}
+            />}
             <div className="modal-content payment-modal">
                 <div className="modal-header">
                     <h3>Payment</h3>
@@ -4396,7 +4518,7 @@ const POSDashboard = ({
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, mergeAndPersistOrders, mergeAndPersistSessions,
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd,
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
-    setAlertState, setAlert, setAlertTimeout, tables, wrhCategories
+    setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories
 }) => {
     const { fetchServer, server, company, wrhs } = useContext(ContextProvider);
 
@@ -4523,6 +4645,7 @@ const POSDashboard = ({
                                 })
                                 setWrh(wrhAccess[0])
                                 setViewSessions(false)
+                                fetchTables(company)
                             }}
                             style={{ marginRight: '10px' }}
                         >
