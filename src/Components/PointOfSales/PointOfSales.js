@@ -1305,7 +1305,7 @@ const PointOfSales = () => {
             // setAlertState('info');
             // setAlert(`Refreshing Table ${table.i_d} orders from server...`);
             // setAlertTimeout(100);
-
+            fetchTables(company)
             const orderFilter = {
                 tableId: table.i_d,
                 sessionId: curSession.i_d,
@@ -1765,7 +1765,7 @@ const PointOfSales = () => {
                                 ...(newActiveTables.find(
                                     (table) =>
                                         table.tableId === currentOrder.tableId &&
-                                        table.sessionId === currentOrder.sessionId &&
+                                         table.sessionId === currentOrder.sessionId &&
                                         table.orderNumber === currentOrder.orderNumber
                                 ) || {}),
                                 delivery: 'completed',
@@ -3631,7 +3631,10 @@ const PointOfSales = () => {
                                         type='text'
                                         placeholder='Select POS Handler'
                                         value={curPosHandler}
-                                        onChange={(e) => { setCurPosHandler(e.target.value) }}
+                                        onChange={(e)=>{
+                                            setCurPosHandler(e.target.value) 
+                                            fetchTables(company)
+                                        }}
                                     >
                                         <option value={''}>
                                             {companyRecord?.access === 'admin' ? 'Super Admin' : getEmployeeName(companyRecord?.emailid)}

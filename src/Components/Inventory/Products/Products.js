@@ -718,6 +718,11 @@ const Products = ({
     const normalMenuUrl = `${QR_MENU_BASE_URL}/menu?inStockOnly=true&priceType=normal`;
     const vipMenuUrl = `${QR_MENU_BASE_URL}/menu?inStockOnly=true&priceType=vip`;
 
+    const buildProductMenuUrl = (productId, priceType = 'normal') => {
+        const pid = productId || ''
+        return `${QR_MENU_BASE_URL}/menu?productId=${encodeURIComponent(pid)}&priceType=${encodeURIComponent(priceType)}`;
+    }
+
     const buildQrSrc = (url) => {
         const encoded = encodeURIComponent(url);
         return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`;
@@ -1105,6 +1110,7 @@ const Products = ({
                                 <div className='product-card-others'>{`[${product.i_d}]`}</div>
                                 <div className='product-card-others'>{`Selling Price: ₦${Number(product.salesPrice).toLocaleString()}`}</div>
                                 <div className='product-card-others'>{`Purchase UOM: ${product.purchaseUom}`}</div>
+
                                 {product.type === 'goods' ? [''].map((args) => {
                                     // var availableQty = 0
                                     // wrhs.forEach((wrh)=>{
@@ -1117,10 +1123,33 @@ const Products = ({
                                     <div className='product-card-others'>{product?.type?.toUpperCase()}</div>
                                 }
                                 <div className='product-card-others-top'>{product?.type?.toUpperCase()}</div>
+                                {(companyRecord?.status === 'admin') && (
+                                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                                        <button
+                                            type='button'
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const url = buildProductMenuUrl(product.i_d, 'normal');
+                                                window.open(buildQrSrc(url), '_blank');
+                                            }}
+                                            style={{
+                                                padding: '4px 8px',
+                                                borderRadius: 4,
+                                                border: '1px solid #ddd',
+                                                background: '#fff',
+                                                fontSize: 11,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            QR
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )
                     })}
                 </div>}
+
                 {!isImportClicked && !isNewProduct && productView === 'list' && <div className='all-product-list'>
                     <div className='product-list product-list-head'>
                         <input type='checkbox' checked={selectedProducts.length === products.length} onClick={() => {
@@ -1168,6 +1197,7 @@ const Products = ({
                                 <div className='product-list-others'>{`[${product.i_d}]`}</div>
                                 <div className='product-list-name'>{product.name}</div>
                                 <div className='product-list-others'>{`₦${Number(product.salesPrice).toLocaleString()}`}</div>
+
                                 {product.type === 'goods' ? [''].map((args) => {
                                     // var availableQty = 0
                                     // wrhs.forEach((wrh)=>{
@@ -1180,10 +1210,33 @@ const Products = ({
                                     <div className='product-list-others'>{product?.type?.toUpperCase()}</div>
                                 }
                                 <div className='product-list-others-top'>{product?.type?.toUpperCase()}</div>
+                                {(companyRecord?.status === 'admin') && (
+                                    <button
+                                        type='button'
+                                        name='qr'
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const url = buildProductMenuUrl(product.i_d, 'normal');
+                                            window.open(buildQrSrc(url), '_blank');
+                                        }}
+                                        style={{
+                                            marginLeft: 'auto',
+                                            padding: '2px 6px',
+                                            borderRadius: 4,
+                                            border: '1px solid #ddd',
+                                            background: '#fff',
+                                            fontSize: 11,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        QR
+                                    </button>
+                                )}
                             </div>
                         )
                     })}
                 </div>}
+
                 {!isImportClicked && !isNewProduct && products.length === 0 &&
                     <div className='noProducts'>
                         Your Products Will Appear Here. Click on the "New" button to add a new product OR click on the "Import Record" button to import products from an excel sheet.
