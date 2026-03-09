@@ -9,6 +9,8 @@ import { MdAdd } from 'react-icons/md'
 import { FaTableCells } from 'react-icons/fa6'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import PurchaseReport from './PurchaseReport/PurchaseReport'
+import heic2any from "heic2any";
+import { uploadFile, deleteFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 
 const Purchase = () => {
 
@@ -51,6 +53,10 @@ const Purchase = () => {
     const [purchaseApprovals, setPurchaseApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
 
+    const [waybillUpload, setWaybillUpload] = useState(null)
+    const [uploadingWaybill, setUploadingWaybill] = useState(false)
+    const [deletingWaybill, setDeletingWaybill] = useState(false)
+
     const defaultFields = {
         purchaseDepartment: '',
         purchaseHandler: '',
@@ -67,6 +73,148 @@ const Purchase = () => {
     const unitsofmeasurements = [
         'PORTIONS', 'PACKETS', 'CRATES', 'CARTONS', 'PACKS'
     ]
+
+    const handleWaybillSelect = async (e) => {
+        const file = e.target.files && e.target.files[0]
+        if (!file) return
+        let blob = file
+        if (file.type === "image/heic" || (file.name || "").toLowerCase().endsWith(".heic")) {
+            try {
+                const converted = await heic2any({
+                    blob: file,
+                    toType: "image/jpeg",
+                    quality: 0.9,
+                })
+                blob = converted
+            } catch (err) {
+                setAlertState('error')
+                setAlert(`Image conversion failed: ${err}`)
+                setAlertTimeout(3000)
+                return
+            }
+        }
+        setWaybillUpload(blob)
+    }
+
+    const handleWaybillUpload = async (fileBlob) => {
+        if (!fileBlob) {
+            setAlertState('error')
+            setAlert('Please select a waybill image first')
+            setAlertTimeout(3000)
+            return
+        }
+        if (!curPurchase?.createdAt) {
+            setAlertState('error')
+            setAlert('Please open a Purchase record before uploading a waybill')
+            setAlertTimeout(3000)
+            return
+        }
+
+        setUploadingWaybill(true)
+        setAlertState('info')
+        setAlert('Uploading Waybill...')
+        setAlertTimeout(100000)
+
+        const collection = 'Purchase'
+        const createdAt = curPurchase.createdAt
+        const res = await uploadFile(
+            fileBlob,
+            company + "/Purchase Waybills",
+            createdAt,
+            company,
+            collection,
+            server
+        )
+
+        if (res?.mess) {
+            setUploadingWaybill(false)
+            setAlertState('error')
+            setAlert(res.mess)
+            setAlertTimeout(3000)
+            return
+        }
+
+        if (res?.downloadLink) {
+            const updated = {
+                waybillImgId: res.imgId,
+                waybillViewLink: res.viewLink,
+                waybillDownloadLink: res.downloadLink,
+                waybillLastUploadedBy: companyRecord?.emailid,
+            }
+
+            const resp = await fetchServer('POST', {
+                database: company,
+                collection: 'Purchase',
+                prop: [{ createdAt }, { ...updated }]
+            }, 'updateOneDoc', server)
+
+            if (resp?.updated) {
+                setCurPurchase((p) => ({ ...p, ...updated }))
+                setFields((f) => ({ ...f, ...updated }))
+                setWaybillUpload(null)
+                setUploadingWaybill(false)
+                setAlertState('success')
+                setAlert('Waybill Uploaded Successfully!')
+                setAlertTimeout(1000)
+                getPurchase(company)
+            } else {
+                setUploadingWaybill(false)
+                setAlertState('error')
+                setAlert('Waybill uploaded but failed to update Purchase record')
+                setAlertTimeout(3000)
+            }
+        } else {
+            setUploadingWaybill(false)
+            setAlertState('error')
+            setAlert('Waybill upload failed. Please try again.')
+            setAlertTimeout(3000)
+        }
+    }
+
+    const handleWaybillDelete = async (imgId) => {
+        if (!curPurchase?.createdAt) return
+        setDeletingWaybill(true)
+        setAlertState('info')
+        setAlert('Deleting Waybill...')
+        setAlertTimeout(100000)
+
+        const res = await deleteFile(imgId, server)
+        if (res?.success) {
+            const updated = {
+                waybillImgId: null,
+                waybillViewLink: null,
+                waybillDownloadLink: null,
+                waybillLastDeletedBy: companyRecord?.emailid,
+            }
+            const resp = await fetchServer('POST', {
+                database: company,
+                collection: 'Purchase',
+                prop: [{ createdAt: curPurchase.createdAt }, { ...updated }]
+            }, 'updateOneDoc', server)
+
+            if (resp?.updated) {
+                setCurPurchase((p) => ({ ...p, ...updated }))
+                setFields((f) => ({ ...f, ...updated }))
+                setWaybillUpload(null)
+                setDeletingWaybill(false)
+                setAlertState('success')
+                setAlert('Waybill Deleted Successfully!')
+                setAlertTimeout(1000)
+                getPurchase(company)
+            } else {
+                setDeletingWaybill(false)
+                setAlertState('error')
+                setAlert('Waybill deleted but failed to update Purchase record')
+                setAlertTimeout(3000)
+            }
+        } else {
+            setDeletingWaybill(false)
+            setAlertState('error')
+            setAlert('Error Deleting Waybill. Check your network!')
+            setAlertTimeout(3000)
+        }
+    }
+
     useEffect(() => {
         storePath('purchase')
     }, [storePath])
@@ -605,7 +753,7 @@ const Purchase = () => {
             setAlertState('info')
             setAlert(`${fields?.stage === 'receipt' ? 'Deleting' : 'Reversing'} Purchase...`)
             if (['posted', null, undefined].includes(fields.stage)) {
-                const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+                const purchaseWrh = wrhs.find((wh)=>wh.purchase)
                 const transactions = await getPurchaseProducts(company, purchase)
                 if (transactions.length) {
                     const entries = []
@@ -1031,7 +1179,6 @@ const Purchase = () => {
                                 className='forminp'
                                 name='purchaseAmount'
                                 type='number'
-                                placeholder='Purchase Amount'
                                 value={fields.purchaseAmount}
                                 disabled={true}
                             />
@@ -1064,6 +1211,57 @@ const Purchase = () => {
                             >
                                 Add Products
                             </div>)}
+
+                        {(isView) && <section className='imgview'>
+
+                            <div className='acpymdt'>Upload Waybill</div>
+
+                            {(fields.waybillImgId || waybillUpload) &&
+                                <a href={fields?.waybillViewLink || ''} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                        className='imgtag'
+                                        src={(fields?.waybillImgId ? `https://drive.google.com/thumbnail?id=${fields.waybillImgId}&sz=w1000` : '') || (waybillUpload ? (URL.createObjectURL(waybillUpload)) : '')}
+                                        alt='waybill'
+                                    />
+                                </a>
+                            }
+
+                            {!waybillUpload && !fields.waybillImgId && <div className='inpcov'>
+                                <div>Upload Image</div>
+                                <input
+                                    className='forminp'
+                                    name='waybillImgId'
+                                    type='file'
+                                    accept='image/*'
+                                    capture="environment"
+                                    onChange={(e) => {
+                                        handleWaybillSelect(e)
+                                    }}
+                                />
+                            </div>}
+
+                            {(waybillUpload) && <button
+                                className='imgupld'
+                                style={{ cursor: uploadingWaybill ? 'not-allowed' : 'pointer' }}
+                                disabled={uploadingWaybill}
+                                onClick={() => {
+                                    handleWaybillUpload(waybillUpload)
+                                }}
+                            > Upload</button>}
+
+                            {(((companyRecord?.status === 'admin') && fields.waybillImgId) || waybillUpload) && <button
+                                className='imgupld'
+                                color='red'
+                                style={{ cursor: deletingWaybill ? 'not-allowed' : 'pointer' }}
+                                disabled={deletingWaybill}
+                                onClick={() => {
+                                    setWaybillUpload(null)
+                                    if (fields.waybillImgId) {
+                                        handleWaybillDelete(fields.waybillImgId)
+                                    }
+                                }}
+                            > Delete</button>}
+                        </section>}
                     </div>
                     {(!isView || curApproval) && <div className='purchasebuttom'>
                         <div className='inpcov'>
@@ -1092,8 +1290,8 @@ const Purchase = () => {
                             style={{ cursor: purchaseEntries.length ? 'pointer' : 'not-allowed' }}
                             onClick={() => {
                                 if (purchaseEntries.length) {
-                                    const purchaseWrh = wrhs.find((wh)=>wh.purchase)
-                                    if (!purchaseWrh && !fields?.location){
+                                    const purchaseWrh = wrhs.find((wh) => wh.purchase)
+                                    if (!purchaseWrh && !fields?.location) {
                                         setAlertState('error')
                                         setAlert('Please Configure a Default Purchase Location, or Select A Purchase Location Before Proceeding!')
                                         setAlertTimeout(3000)
