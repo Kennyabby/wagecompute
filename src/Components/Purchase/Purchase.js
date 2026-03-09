@@ -1212,7 +1212,7 @@ const Purchase = () => {
                                 Add Products
                             </div>)}
 
-                        {(isView) && <section className='imgview'>
+                        {(isView && !curApproval) && <section className='imgview'>
 
                             <div className='acpymdt'>Upload Waybill</div>
 
