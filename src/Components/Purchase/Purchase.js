@@ -1438,7 +1438,7 @@ const AddProduct = ({
                 <div className='add-products'>
                     <div className='add-products-title'>
                         <label>Product Purchase Details</label>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_purchase_report')) && <div
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && <div
                             className='slprwh-print'
                             onClick={() => {
                                 printToPDF()
