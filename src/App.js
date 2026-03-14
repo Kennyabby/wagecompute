@@ -33,7 +33,8 @@ import {
 
 // const SERVER = "http://localhost:3001"
 // const SERVER = ""
-const SERVER = "https://enterpriseserver1.up.railway.app"
+const SERVER = "https://enterpriseserver2.up.railway.app"
+// const SERVER = "https://enterpriseserver1.up.railway.app"
 // const SERVER = "https://enterpriseserver.up.railway.app"
 // const SERVER = "https://enterpriseserver-1.vercel.app"
 // const SERVER = "https://wageserver.onrender.com"

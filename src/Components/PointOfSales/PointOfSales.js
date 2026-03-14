@@ -2679,7 +2679,6 @@ const PointOfSales = () => {
                     setCurrentOrder(newOrder)
                     // createNewOrder(currentTable);
                     setPaymentDetails({ ...payPoints });
-                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     getPosOrders({ company, companyRecord }); // read-only
                     fetchTables(company)
                     if (curPosSettings?.type === 'restaurant') {
@@ -2697,6 +2696,7 @@ const PointOfSales = () => {
                             handleOrderDelivery(newOrder, orderClone);
                         }
                     }
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 } catch (e) {
                     // Leave pending changes in queue; 5‑minute auto-sync will retry
                 }
