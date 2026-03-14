@@ -111,7 +111,7 @@ const Settings = () => {
     ]
     const importExportPermissions = [
         'imports', 'export_inventory_report', 'export_sales_report',
-        'export_pos_report', 'export_purchase_report', 'export_expense_report',
+        'export_pos_report', 'export_purchase_report', 'print_purchase_doc', 'export_expense_report',
         'adjustments'
     ]
     const stockTransferPermissions = [
