@@ -118,6 +118,7 @@ const Sales = () => {
     const getEntriesController = useRef(null)
 
     const [imageUpload, setImageUpload] = useState(null)
+    const [rentalReceiptUpload, setRentalReceiptUpload] = useState(null)
     const [uploadingReceipt, setUploadingReceipt] = useState(false)
     const [deletingReceipt, setDeletingReceipt] = useState(false)
 
@@ -155,6 +156,8 @@ const Sales = () => {
         payPoint: '',
         amountPaid: '',
         rentalReceipt: '',
+        imgId: '',
+        viewLink:'',
         rentalDebt: 0,
         expectedPayment: '',
         paymentAmount: '',
@@ -2178,6 +2181,146 @@ const Sales = () => {
         }
     }
 
+    const handleRentalReceiptSelect = async (e) => {
+        const file = e.target.files && e.target.files[0]
+        if (!file) return
+        let blob = file
+        if (file.type === "image/heic" || (file.name || "").toLowerCase().endsWith(".heic")) {
+            try {
+                const converted = await heic2any({
+                    blob: file,
+                    toType: "image/jpeg",
+                    quality: 0.9,
+                })
+                blob = converted
+            } catch (err) {
+                setAlertState('error')
+                setAlert(`Image conversion failed: ${err}`)
+                setAlertTimeout(3000)
+                return
+            }
+        }
+        setRentalReceiptUpload(blob)
+    }
+
+    const handleRentalReceiptUpload = async (fileBlob) => {
+        if (!fileBlob) {
+            setAlertState('error')
+            setAlert('Please select a rental receipt image first')
+            setAlertTimeout(3000)
+            return
+        }
+        if (!curRent?.createdAt) {
+            setAlertState('error')
+            setAlert('Please open a Rental record before uploading they rental receipt')
+            setAlertTimeout(3000)
+            return
+        }
+
+        setUploadingReceipt(true)
+        setAlertState('info')
+        setAlert('Uploading Rental Receipt...')
+        setAlertTimeout(100000)
+
+        const collection = 'Rentals'
+        const createdAt = curRent.createdAt
+        const res = await uploadFile(
+            fileBlob,
+            company + "/Rental Receipts",
+            createdAt,
+            company,
+            collection,
+            server
+        )
+
+        if (res?.mess) {
+            setUploadingReceipt(false)
+            setAlertState('error')
+            setAlert(res.mess)
+            setAlertTimeout(3000)
+            return
+        }
+
+        if (res?.downloadLink) {
+            const updated = {
+                imgId: res.imgId,
+                viewLink: res.viewLink,
+                downloadLink: res.downloadLink,
+                lastUploadedBy: companyRecord?.emailid,
+            }
+
+            const resp = await fetchServer('POST', {
+                database: company,
+                collection: 'Rentals',
+                prop: [{ createdAt }, { ...updated }]
+            }, 'updateOneDoc', server)
+
+            if (resp?.updated) {
+                setCurRent((p) => ({ ...p, ...updated }))
+                setRentalFields((f) => ({ ...f, ...updated }))
+                setRentalReceiptUpload(null)
+                setUploadingReceipt(false)
+                setAlertState('success')
+                setAlert('Rental Receipt Uploaded Successfully!')
+                setAlertTimeout(1000)
+                getRentals(company)
+            } else {
+                setUploadingReceipt(false)
+                setAlertState('error')
+                setAlert('Rental receipt uploaded but failed to update Rentals record')
+                setAlertTimeout(3000)
+            }
+        } else {
+            setUploadingReceipt(false)
+            setAlertState('error')
+            setAlert('Rental receipt upload failed. Please try again.')
+            setAlertTimeout(3000)
+        }
+    }
+
+    const handleRentalReceiptDelete = async (imgId) => {
+        if (!curRent?.createdAt) return
+        setDeletingReceipt(true)
+        setAlertState('info')
+        setAlert('Deleting Rental Receipt...')
+        setAlertTimeout(100000)
+
+        const res = await deleteFile(imgId, server)
+        if (res?.success) {
+            const updated = {
+                imgId: null,
+                viewLink: null,
+                downloadLink: null,
+                lastDeletedBy: companyRecord?.emailid,
+            }
+            const resp = await fetchServer('POST', {
+                database: company,
+                collection: 'Rentals',
+                prop: [{ createdAt: curRent.createdAt }, { ...updated }]
+            }, 'updateOneDoc', server)
+
+            if (resp?.updated) {
+                setCurRent((p) => ({ ...p, ...updated }))
+                setRentalFields((f) => ({ ...f, ...updated }))
+                setRentalReceiptUpload(null)
+                setDeletingReceipt(false)
+                setAlertState('success')
+                setAlert('Rental Receipt Deleted Successfully!')
+                setAlertTimeout(1000)
+                getRentals(company)
+            } else {
+                setDeletingReceipt(false)
+                setAlertState('error')
+                setAlert('Rental receipt deleted but failed to update Rental record')
+                setAlertTimeout(3000)
+            }
+        } else {
+            setDeletingReceipt(false)
+            setAlertState('error')
+            setAlert('Error Deleting Rental Receipt. Check your network!')
+            setAlertTimeout(3000)
+        }
+    }
     const handleImageSelect = async (e) => {
         const file = e.target.files[0]
         let blob = file;
@@ -3523,6 +3666,56 @@ const Sales = () => {
                                     }}
                                 />
                             </div>
+                            {<section className='imgview'>
+
+                                <div className='acpymdt'>Upload Rental Receipt</div>
+
+                                {(rentalFields.imgId || rentalReceiptUpload) &&
+                                    <a href={rentalFields?.viewLink || ''} target="_blank" rel="noopener noreferrer">
+                                        <img
+                                            className='imgtag'
+                                            src={(rentalFields?.imgId ? `https://drive.google.com/thumbnail?id=${rentalFields?.imgId}&sz=w1000` : '') || (rentalReceiptUpload ? (URL.createObjectURL(rentalReceiptUpload)) : '')}
+                                            alt='Rental receipt'
+                                        />
+                                    </a>
+                                }
+
+                                {!rentalReceiptUpload && !rentalFields?.imgId && <div className='inpcov'>
+                                    <div>Upload Image</div>
+                                    <input
+                                        className='forminp'
+                                        name='imgId'
+                                        type='file'
+                                        accept='image/*'
+                                        capture="environment"
+                                        onChange={(e) => {
+                                            handleRentalReceiptSelect(e)
+                                        }}
+                                    />
+                                </div>}
+
+                                {(rentalReceiptUpload) && <button
+                                    className='imgupld'
+                                    style={{ cursor: uploadingReceipt ? 'not-allowed' : 'pointer' }}
+                                    disabled={uploadingReceipt}
+                                    onClick={() => {
+                                        handleRentalReceiptUpload(rentalReceiptUpload)
+                                    }}
+                                > Upload</button>}
+
+                                {(((companyRecord?.status === 'admin') && rentalFields?.imgId) || rentalReceiptUpload) && <button
+                                    className='imgupld'
+                                    color='red'
+                                    style={{ cursor: deletingReceipt ? 'not-allowed' : 'pointer' }}
+                                    disabled={deletingReceipt}
+                                    onClick={() => {
+                                        setRentalReceiptUpload(null)
+                                        if (rentalFields?.imgId) {
+                                            handleRentalReceiptDelete(rentalFields?.imgId)
+                                        }
+                                    }}
+                                > Delete</button>}
+                            </section>}
                         </div>}
                         {salesOpts === 'sales' && [...accommodationRecords, ...sessionSalesRecords, ...(isView ? [] : kitchenRecords), ...fields].map((field, index) => {
                             let netTotal = Number(field.cashSales) + Number(field.bankSales) + Number(field.debt) + Number(field.shortage)
@@ -4088,10 +4281,10 @@ const Sales = () => {
 
                         {salesOpts === 'rentals' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) ? 'pointer' : 'not-allowed'
+                                cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt && rentalFields?.imgId) ? 'pointer' : 'not-allowed'
                             }}
                             onClick={() => {
-                                if (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) {
+                                if (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt && rentalFields?.imgId) {
                                     if (curApproval && curApproval?.approved) {
                                         if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_rental_posts')) {
                                             setAlertState('error')

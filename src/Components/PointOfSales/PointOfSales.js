@@ -1623,7 +1623,7 @@ const PointOfSales = () => {
                 return itm.i_d === item.i_d;
             });
 
-            if (wrhCategories[wrh].includes(item.category)) {
+            if (wrhCategories[wrh].includes(item.category) && wrh !== 'kitchen') {
                 if (item.delivery !== 'completed') {
                     const depletedQuantity = Number(
                         item.orderQuantity ||
@@ -1634,6 +1634,19 @@ const PointOfSales = () => {
                     itemsToDeplete.push(item);
                 }
             }
+
+            if (wrhCategories['kitchen'].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
+                if (item.delivery !== 'completed') {
+                    const depletedQuantity = Number(
+                        item.orderQuantity ||
+                        item.remainingQuantity ||
+                        item.quantity
+                    );
+                    item.depletedQuantity = depletedQuantity;
+                    itemsToDeplete.push(item);
+                }
+            }
+            
         });
 
         const insufficientProducts = [];
@@ -1676,7 +1689,7 @@ const PointOfSales = () => {
                     return itm.i_d === item.i_d;
                 });
 
-                if (wrhCategories[wrh].includes(item.category)) {
+                if (wrhCategories[wrh].includes(item.category) && wrh !== 'kitchen') {
                     if (item.delivery !== 'completed') {
                         const depletedQuantity = Number(
                             item.orderQuantity ||
@@ -1703,7 +1716,37 @@ const PointOfSales = () => {
                     }
                     deliveredOrderItems.push(previousItemState);
                 }
+                
+                if (wrhCategories['kitchen'].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
+                    if (item.delivery !== 'completed') {
+                        const depletedQuantity = Number(
+                            item.orderQuantity ||
+                            item.remainingQuantity ||
+                            item.quantity
+                        );
+                        // item.depletedQuantity = depletedQuantity;
+                        // itemsToDeplete.push(item);
+                        previousItemState.deliveredQuantity =
+                            Number(previousItemState.deliveredQuantity || 0) +
+                            depletedQuantity;
+                        previousItemState.remainingQuantity =
+                            Number(previousItemState.quantity) -
+                            Number(previousItemState.deliveredQuantity);
+                        previousItemState.lastDeliveredBy = companyRecord.emailid;
+                        previousItemState.lastDeliveredAt =
+                            deliveryDataUpdate.lastDeliveredAt;
+                        previousItemState.lastDeliverySession = curSession.i_d;
+                        previousItemState.lastDelvieredQuantity = depletedQuantity;
+
+                        if (Number(previousItemState.remainingQuantity) === 0) {
+                            previousItemState.delivery = 'completed';
+                        }
+                    }
+                    deliveredOrderItems.push(previousItemState);
+                }
+
             });
+
             const updatedOrderItems = [];
             let totalDelivered = 0;
 
@@ -2681,17 +2724,23 @@ const PointOfSales = () => {
                     setPaymentDetails({ ...payPoints });
                     getPosOrders({ company, companyRecord }); // read-only
                     fetchTables(company)
-                    if (curPosSettings?.type === 'restaurant') {
+                    if (curPosSettings?.type === 'restaurant' && curPosSettings?.automateOrderDelivery) {
                         var totalItems = 0
+                        var kitchenItems = 0
                         var deliveredQuantity = 0
                         const deliveredItems = newOrder.items.filter((item) => {
-                            if (wrhCategories[wrh].includes(item.category)) {
+                            if (wrhCategories[wrh].includes(item.category) && wrh !== 'kitchen') {
                                 totalItems += Number(item.quantity)
                                 deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
                             }
+                            if (wrhCategories["kitchen"].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
+                                kitchenItems += Number(item.quantity)
+                                deliveredQuantity += Number(item?.deliveredQuantity || 0)
+                                return Number(item?.deliveredQuantity || 0) > 0
+                            }
                         })
-                        if (deliveredQuantity < totalItems) {
+                        if (deliveredQuantity < (totalItems + kitchenItems)) {
                             const orderClone = structuredClone({ newOrder }).newOrder
                             handleOrderDelivery(newOrder, orderClone);
                         }
