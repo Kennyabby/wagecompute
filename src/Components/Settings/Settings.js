@@ -76,6 +76,8 @@ const Settings = () => {
         printKitchenReceipt: false,
         printBarReceipt: false,
         printCustomerOrder: false,
+        automateOrderDelivery: false,
+        automateKitchenDelivery: false,
     }
     const [loginDetails, setLoginDetails] = useState({
         email: '',
@@ -1555,6 +1557,30 @@ const Settings = () => {
                                             type='checkbox'
                                             name='printCustomerOrder'
                                             checked={curPropSet.printCustomerOrder}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
+                                    <div>Automate Order Delivery</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='automateOrderDelivery'
+                                            checked={curPropSet.automateOrderDelivery}
+                                            onChange={handlePropSetChange}
+                                        />
+                                        <span className='slider'></span>
+                                    </label>
+                                </div>}
+                                {['posSettings'].includes(currentSetting.name) && curPropSet.type === 'restaurant' && <div className='inpcov formpad'>
+                                    <div>Automate Kitchen Delivery</div>
+                                    <label className='toggle-switch'>
+                                        <input
+                                            type='checkbox'
+                                            name='automateKitchenDelivery'
+                                            checked={curPropSet.automateKitchenDelivery}
                                             onChange={handlePropSetChange}
                                         />
                                         <span className='slider'></span>
