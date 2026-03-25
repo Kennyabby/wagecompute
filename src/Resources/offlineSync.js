@@ -99,6 +99,8 @@ export async function processChange(change, company, fetchServer, server) {
       return syncOrder(change, company, fetchServer, server);
     case 'session':
       return syncSession(change, company, fetchServer, server);
+    case 'sessionManager':
+      return syncSessionManager(change, company, fetchServer, server);
     case 'inventory':
       return syncInventory(change, company, fetchServer, server);
     case 'table':
@@ -148,6 +150,53 @@ async function syncOrder(change, company, fetchServer, server) {
 // =====================================================
 // POS SESSION
 // =====================================================
+
+async function syncSessionManager(change, company, fetchServer, server) {
+  const { op, payload } = change;
+  if (!payload) throw new Error('Missing session manager payload');
+
+  if (op === 'create') {
+    const resp = await fetchServer(
+      'POST',
+      { database: company, collection: 'SessionManager', update: payload },
+      'createDoc',
+      server
+    );
+    assertCreate(resp);
+  }
+
+  if (op === 'update') {
+    if (!payload.start) {
+      throw new Error('Missing start for session manager update');
+    }
+
+    const resp = await fetchServer(
+      'POST',
+      {
+        database: company,
+        collection: 'SessionManager',
+        prop: [{ start: payload.start }, stripId(payload)]
+      },
+      'updateOneDoc',
+      server
+    );
+    assertUpdate(resp);
+  }
+
+  if (op === 'delete') {
+    const resp = await fetchServer(
+      'POST',
+      {
+        database: company,
+        collection: 'SessionManager',
+        update: { start: payload.start }
+      },
+      'removeDoc',
+      server
+    );
+    assertDelete(resp);
+  }
+}
 
 async function syncSession(change, company, fetchServer, server) {
   const { op, payload } = change;

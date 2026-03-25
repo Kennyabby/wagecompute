@@ -87,6 +87,8 @@ function App() {
   const [salesSessions, setSalesSessions] = useState(null)
   const [allSalesSessions, setAllSalesSessions] = useState(null)
   const [allDeliverySessions, setAllDeliverySessions] = useState(null)
+  const [lastActiveSessions, setLastActiveSessions] = useState([])
+  const [sessionManagers, setSessionManagers] = useState([])
 
   const [approvals, setApprovals] = useState([])
   const [approvalStatus, setApprovalStatus] = useState(false)
@@ -743,8 +745,10 @@ function App() {
               getPositions(company)
               getCustomers(company)
               fetchTables(company)
+              getLastActiveSessions(company, companyRecord)
               fetchSessions(company, "sales", companyRecord)
               fetchSessions(company, "delivery", companyRecord)
+              fetchSessionManagers(company, companyRecord)
               fetchAllSessions({ company: company, companyRecord: companyRecord })
               getRentals(company)
               getPurchase(company)
@@ -811,6 +815,8 @@ function App() {
             if (companyRecord?.permissions.includes('access_delivery_sessions')) {
               fetchAllSessions({ company, companyRecord })
               getPosOrders({ company: company, companyRecord: companyRecord })
+              getLastActiveSessions(company, companyRecord)
+              fetchSessionManagers(company, companyRecord)
             }
             fetchProfiles(company)
             fetchSessions(company, "delivery", companyRecord)
@@ -821,6 +827,8 @@ function App() {
             if (companyRecord?.permissions.includes('access_pos_sessions')) {
               fetchAllSessions({ company, companyRecord })
               getPosOrders({ company: company, companyRecord: companyRecord })
+              getLastActiveSessions(company, companyRecord)
+              fetchSessionManagers(company, companyRecord)
             }
             if (!hasDeliveryAccess) {
               fetchProfiles(company)
@@ -1429,8 +1437,116 @@ function App() {
     window.localStorage.setItem('curr-path', path)
   }
 
-  const fetchSessions = async (company, type, companyRecord) => {
+  const getLastActiveSessions = async (company, companyRecord) =>{
+    if (company && companyRecord?.emailid){
+      const sessionDays = 2 * 24 * 60 * 60 * 1000
+      const allowedFromDays = Date.now() - sessionDays
+      const lastSessionStart = getSessionStart(allowedFromDays)
+      const sessionsResponse = await fetchServer("POST", {
+        database: company,
+        collection: "POSSessions",
+        prop: {start: { $gte: lastSessionStart }}
+      }, "getDocsDetails", SERVER);
 
+      if (!sessionsResponse.err){
+        if (Array.isArray(sessionsResponse?.record) && sessionsResponse.record?.length){
+          mergeAndPersistSessions(sessionsResponse.record)
+          setLastActiveSessions(sessionsResponse?.record)          
+        }
+      } else {
+        if (sessionsResponse.mess !== 'Request aborted') {
+          console.log(sessionsResponse.mess)
+          setIsLive(false)
+          setLiveErrorMessages('Slow Network. Check Connection')      
+        }
+      }
+    }
+  }
+
+  const fetchSessionManagers = async (company, companyRecord) => {
+    // console.log('fetching sessions for',type)
+    if (company && companyRecord?.emailid) {
+      const sessionDays = 2 * 24 * 60 * 60 * 1000
+      const allowedFromDays = Date.now() - sessionDays
+      const sessionsResponse = await fetchServer("POST", {
+        database: company,
+        collection: "SessionManagers",
+        prop: {start: { $gte: allowedFromDays }}
+      }, "getDocsDetails", SERVER);
+
+      if (!sessionsResponse.err) {
+        if (Array.isArray(sessionsResponse.record) && sessionsResponse.record?.length){
+          setSessionManagers(sessionsResponse.record)
+        }
+      } else {
+        if (sessionsResponse.mess !== 'Request aborted') {
+          console.log(sessionsResponse.mess)
+          setIsLive(false)
+          setLiveErrorMessages('Slow Network. Check Connection')
+        }
+      }
+    }
+  }
+
+  const fetchSessionsByRange = async (company, companyRecord, dateRange) => {
+    // console.log('fetching sessions for',type)
+    if (company && companyRecord?.emailid) {
+      const {start, end} = dateRange
+      const startDate = new Date(start).getTime()
+      const endDate = new Date(end).getTime()
+      const sessionStart = getSessionStart(startDate)
+      const sessionEnd = getSessionEnd(endDate)
+      const sessionsResponse = await fetchServer("POST", {
+        database: company,
+        collection: "POSSessions",
+        prop: {start: { $gte: sessionStart, $lte: sessionEnd }}
+      }, "getDocsDetails", SERVER);
+
+      if (!sessionsResponse.err) {
+        if (Array.isArray(sessionsResponse.record) && sessionsResponse.record?.length){
+          mergeAndPersistSessions(sessionsResponse.record)
+        }
+      } else {
+        if (sessionsResponse.mess !== 'Request aborted') {
+          console.log(sessionsResponse.mess)
+          setIsLive(false)
+          setLiveErrorMessages('Slow Network. Check Connection')
+        }
+      }
+    }
+  }
+  
+  const fetchOrdersByRange = async (company, companyRecord, dateRange) => {
+    // console.log('fetching sessions for',type)
+    if (company && companyRecord?.emailid) {
+      const {start, end} = dateRange
+      const startDate = new Date(start).getTime()
+      const endDate = new Date(end).getTime()
+      const sessionStart = getSessionStart(startDate)
+      const sessionEnd = getSessionEnd(endDate)
+      const ordersResponse = await fetchServer("POST", {
+        database: company,
+        collection: "Orders",
+        prop: {createdAt: { $gte: sessionStart, $lte: sessionEnd }}
+      }, "getDocsDetails", SERVER);
+
+      if (!ordersResponse.err) {
+        if (Array.isArray(ordersResponse.record) && ordersResponse.record?.length){
+          mergeAndPersistOrders(ordersResponse.record)
+        }
+      } else {
+        if (ordersResponse.mess !== 'Request aborted') {
+          console.log(ordersResponse.mess)
+          setIsLive(false)
+          setLiveErrorMessages('Slow Network. Check Connection')
+        }
+      }
+    }
+  }
+
+
+
+  const fetchSessions = async (company, type, companyRecord) => {
     // console.log('fetching sessions for',type)
     if (company && companyRecord?.emailid) {
       const sessionsResponse = await fetchServer("POST", {
@@ -1476,7 +1592,7 @@ function App() {
         }
       } else {
         if (sessionsResponse.mess !== 'Request aborted') {
-          console.log(sessionsResponse.mess)
+          console.log(sessionsResponse.mess)          
           setIsLive(false)
           setLiveErrorMessages('Slow Network. Check Connection')
         }
@@ -3163,7 +3279,7 @@ function App() {
         loginMessage, setLoginMessage,
         generateCode, generateSeries,
         exportFile, importFile,
-        getSessionEnd,
+        getSessionEnd, getSessionStart,
         companyRecord, setCompanyRecord,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
         profiles, setProfiles, fetchProfiles,
@@ -3174,11 +3290,13 @@ function App() {
         customers, setCustomers, getCustomers,
         attendance, setAttendance, getAttendance,
         allSessions, setAllSessions, getAllSessions,
-        sessions, setSessions, fetchSessions, fetchAllSessions,
+        sessions, setSessions, fetchSessions, fetchAllSessions, fetchSessionsByRange,
         salesSessions, setSalesSessions, allSalesSessions, setAllSalesSessions,
-        posOrders, setPosOrders,
+        posOrders, setPosOrders, fetchOrdersByRange,
         deliverySessions, setDeliverySessions, allDeliverySessions, setAllDeliverySessions,
         getPosOrders, getEmployeeName,
+        sessionManagers, setSessionManagers, fetchSessionManagers,
+        getLastActiveSessions, lastActiveSessions, setLastActiveSessions,
         mergeAndPersistOrders, mergeAndPersistSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         tables, setTables, fetchTables,

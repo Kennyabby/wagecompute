@@ -29,6 +29,7 @@ const Sales = () => {
         employees, setEmployees, getEmployees,
         sales, setSales, getSales, months, years, initialYear,
         allSessions, getAllSessions, getSessionEnd, fetchAllSessions,
+        fetchSessionManagers, sessionManagers,
         accommodations, getAccommodations,
         rentals, setRentals, getRentals,
         products, setProducts, getProducts, getProductsWithStock,
@@ -112,6 +113,7 @@ const Sales = () => {
 
     const [curSaleDate, setCurSaleDate] = useState(null)
     const [activeSessions, setActiveSessions] = useState([])
+    const [activeSessionManager, setActiveSessionManager] = useState(null)
     const [pendingSales, setPendingSales] = useState([])
     const scrollRef = useRef(null)
     const loadRef = useRef(null)
@@ -553,6 +555,12 @@ const Sales = () => {
                     if (!multSessions.includes(kmultSessions) && !multSessions.includes(bmultSessions)) {
                         multSessions = multSessions.concat([kmultSessions, bmultSessions])
                     }
+                }
+            })
+            let activeSessionManager = []
+            sessionManagers.forEach((sessionManager)=>{
+                if (sessionManager.active){
+                    activeSessionManager.push(sessionManager)
                 }
             })
             // console.log(multSessions)
@@ -2207,12 +2215,6 @@ const Sales = () => {
         if (!fileBlob) {
             setAlertState('error')
             setAlert('Please select a rental receipt image first')
-            setAlertTimeout(3000)
-            return
-        }
-        if (!curRent?.createdAt) {
-            setAlertState('error')
-            setAlert('Please open a Rental record before uploading they rental receipt')
             setAlertTimeout(3000)
             return
         }
@@ -4277,7 +4279,7 @@ const Sales = () => {
                                     }
                                 }
                             }}
-                        >{recoveryStatus ? (curApproval?.approved ? recoveryStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Approve Request' : 'Request Approval')}</div>}
+                        >{curApproval ? (curApproval?.approved ? recoveryStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Recovery' : 'Request Approval')}</div>}
 
                         {salesOpts === 'rentals' && <div className='yesbtn salesyesbtn'
                             style={{
@@ -4296,7 +4298,7 @@ const Sales = () => {
                                     runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrentals', rentalFields, postRentals)
                                 }
                             }}
-                        >{curApproval ? (curApproval.approved ? rentalsStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Approve Request' : 'Request Approval')}</div>}
+                        >{curApproval ? (curApproval.approved ? rentalsStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Rental' : 'Request Approval')}</div>}
                     </div>}
                 </div>
             </div>

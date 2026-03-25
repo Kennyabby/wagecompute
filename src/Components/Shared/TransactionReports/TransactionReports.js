@@ -21,6 +21,8 @@ const TransactionReports = ({
     employees = [],
     onClose,
     wrhCategories,
+    fetchSessionsByRange,
+    fetchOrdersByRange
 }) => {
     const {
         company, server, fetchServer, user, companyRecord,
@@ -120,6 +122,17 @@ const TransactionReports = ({
         }, {})
         setPayPointAccounts({ ...payPoints, 'Employee': 'EMPLOYEE' })
     }, [paymentMethods])
+
+    useEffect(()=>{
+        const dateRange = {
+            start: filters.startDate,
+            end: filters.endDate
+        }
+
+        fetchSessionsByRange(dateRange)
+        fetchOrdersByRange(dateRange)
+
+    },[filters.startDate, filters.endDate])
     // Detect Duplicate Orders
     const getDuplicates = (array, prop) => {
         const groupedByProp = array.reduce((acc, elem) => {
