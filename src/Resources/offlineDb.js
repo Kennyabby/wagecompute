@@ -8,6 +8,7 @@ const PENDING_STORE = 'pendingChanges';
 
 const ORDERS_STORE = 'orders';
 const SESSIONS_STORE = 'posSessions';
+const SESSIONMANAGERS_STORE = 'sessionManagers'
 const TABLES_STORE = 'tables';
 const INVENTORY_TXN_STORE = 'inventoryTransactions';
 const APP_CACHE_STORE = 'appCache'; // generic key/value cache for App.js datasets
@@ -279,6 +280,25 @@ export function loadAllSessionsLocal(company, userId) {
       resolve(Array.isArray(req.result) ? req.result : []);
     };
     req.onerror = () => reject(req.error || new Error('Failed to read sessions'));
+  });
+}
+
+export function putSessionManager(company, userId, sessionManager) {
+  return withStore(company, userId, SESSIONMANAGERS_STORE, 'readwrite', (store, resolve, reject) => {
+    try {
+      const req = store.put(sessionManager);
+      req.onsuccess = () => {
+        try { console.debug('offlineDb:putSessionManager success', (sessionManager && sessionManager.start) || null); } catch(e){}
+        resolve();
+      };
+      req.onerror = (e) => {
+        console.warn('offlineDb:putSessionManager failed', { company, userId, sessionManager, error: req.error || e });
+        reject(req.error || new Error('Failed to write session manageer'));
+      };
+    } catch (e) {
+      console.error('offlineDb:putSessionManager threw', { company, userId, sessionManager, error: e });
+      reject(e);
+    }
   });
 }
 

@@ -15,6 +15,7 @@ import {
     putOrder,
     putTable,
     putSession,
+    putSessionManager,
     putInventoryTransactions,
 } from '../../Resources/offlineDb';
 import { syncPendingChanges, processChange } from '../../Resources/offlineSync';
@@ -25,13 +26,16 @@ const PointOfSales = () => {
     // =========================================
     const {
         storePath, intervalPeriod, posSettings, paymentMethods,
-        fetchServer, server, company, companyRecord,
+        fetchServer, server, company, companyRecord, sales,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         alert, alertState, alertTimeout, actionMessage,
         settings, getDate, posWrhAccess, employees,
-        profiles, fetchProfiles, getSessionEnd,
+        profiles, fetchProfiles, getSessionEnd, getSessionStart,
         products, getProducts, setProducts, getEmployeeName,
         fetchSessions, fetchAllSessions, sessions, setSessions, posOrders,
+        fetchSessionManagers, sessionManagers, setSessionManagers,
+        getLastActiveSessions, lastActiveSesisons, 
+        fetchSessionsByRange, fetchOrdersByRange,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
         salesSessions, allSalesSessions, setSalesSessions, setAllSalesSessions,
@@ -46,9 +50,19 @@ const PointOfSales = () => {
     const refreshPOSData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
-        try {
+        try {            
+            if (curSession) {
+                const dateRange = {
+                    start: getSessionStart(curSession?.start),
+                    end: getSessionEnd(curSession?.start)
+                }
+                fetchOrdersByRange(company, companyRecord, dateRange)
+                if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){                    
+                    fetchSessionsByRange(company, companyRecord, dateRange)
+                }
+            }
             await Promise.all([
-                fetchTables(cmp_val),
+                fetchTables(cmp_val),                                
             ]);
         } catch (e) { }
     }
@@ -75,6 +89,8 @@ const PointOfSales = () => {
     const [endSession, setEndSession] = useState(false);
     const [sessionEnded, setSessionEnded] = useState(false);
     const [curSession, setCurrSession] = useState(null);
+    const [currSessionManager, setCurrSessionManager] = useState(null)
+    const [canUpdateSession, setCanUpdateSession] = useState(false)
     const [sessionUser, setSessionUser] = useState(null);
     const [viewSesions, setViewSessions] = useState(false);
     const [loadSession, setLoadSession] = useState(true);
@@ -146,6 +162,7 @@ const PointOfSales = () => {
     }, {}));
     const defaultPaymentDetails = { ...structuredClone({ payPoints }).payPoints }
     const [paymentDetails, setPaymentDetails] = useState(defaultPaymentDetails);
+
 
     // Settings States
     const [uoms, setUoms] = useState([]);
@@ -286,9 +303,31 @@ const PointOfSales = () => {
         if (company && companyRecord) {
             const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
             setHasPosAgentPermissions(isPosAgent)
+            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){                    
+                fetchSessionManagers(company, companyRecord)
+                getLastActiveSessions(company, companyRecord)
+            }
         }
     }, [company, companyRecord])
 
+    useEffect(()=>{
+        let canUpdateSession = false
+        sales.forEach((sale)=>{
+            const saleDate = new Date(sale.postingDate).getTime()
+            let now = new Date()  
+            now.setHours(0,0,0,0)                                                              
+            const yesterday = now.setDate(now.getDate() - 1)
+            if (getDate(saleDate) === getDate(yesterday)){
+                canUpdateSession = true                
+                return
+            }
+        })
+        if (canUpdateSession){
+            setCanUpdateSession(true)
+        }else{
+            setCanUpdateSession(false)
+        }
+    },[sales])
     useEffect(() => {
         loadTableData()
         if (window.localStorage.getItem('pos-wrh')) {
@@ -296,6 +335,12 @@ const PointOfSales = () => {
         } else {
             if (curSession) {
                 setWrh(curSession.wrh || Object.keys(posWrhAccess)[0])
+                const dateRange = {
+                    start: getSessionStart(curSession?.start),
+                    end: getSessionEnd(curSession?.start)
+                }
+                fetchOrdersByRange(company, companyRecord, dateRange)
+                fetchSessionsByRange(company, companyRecord, dateRange)                
             }
         }
     }, [curSession, curPosSettings])
@@ -628,6 +673,157 @@ const PointOfSales = () => {
         return { allSales, totalPendingSales, totalUnattendedSales, totalPendngDeliveries, totalCancelledSales, totalCashChange }
     }
 
+    const createSessionManager = async () => {
+        
+        setAlertState('info');
+        setAlert('Creating Session Manager...');
+        setAlertTimeout(100000);        
+
+        const newDate = new Date().getTime();
+        const newSessionManager = {
+            i_d: newDate,
+            start: newDate,
+            startedBy: companyRecord.emailid,
+            end: null,
+            active: true,            
+        };
+
+        try {
+            // 1) Save session locally
+            if (company && companyRecord?.emailid) {
+                await putSessionManager(company, companyRecord.emailid, newSessionManager);
+            }
+
+            // 3) Queue session create for sync
+            if (company && companyRecord?.emailid) {
+                const change = {
+                    entityType: 'sessionManager',
+                    op: 'create',
+                    clientId: newSessionManager.start,
+                    payload: newSessionManager,
+                }
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
+                
+                // Immediate sync attempt – failures are fine, queue remains
+                try {
+                    // 2) Update React state
+                    setAlertState('success');
+                    setAlert('Session Manager Started Successfully!');
+                    setAlertTimeout(500);
+                    setCurrSessionManager(newSessionManager);
+                    setSessions([...(sessions || []), newSessionManager]);
+                    createSession()
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    fetchSessionManagers(company, companyRecord)
+                } catch (e) {
+                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                }
+            }
+            return;
+        } catch (e) {
+            setAlertState('error');
+            setAlert('Could not create session manager locally. Please try again.');
+            setAlertTimeout(3000);
+            return;
+        }
+    };
+
+    const stopSessionManager = async (activeSessions)=>{
+
+        setAlertState('info');
+        setAlert('Stopping Session Manager...');
+        setAlertTimeout(100000);
+
+        const sessionIds = (activeSessions || [])?.map((session) => {return session.start})
+        const orderNumbers = (allSessionOrders || [])?.filter((order) => {
+            if ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start))){
+                return order.orderNumber
+            }
+        })
+        
+        let handlers = []
+        (allSessionOrders || [])?.forEach((order) => {
+            if ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start))){
+                const handlerId = order.handlerId
+                if (!handlers.includes(handlerId)){
+                    handlers.push(handlerId)
+                }
+            }
+        })
+
+        let agents = []
+        (allSessionOrders || [])?.forEach((order) => {
+            if ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start))){
+                const agent = order.agent
+                if (!agents.includes(agent)){
+                    agents.push(agent)
+                }
+            }
+        })
+
+        const sessionManagerUpdate = {
+            end: new Date().getTime(),
+            endedby: companyRecord.emailid,
+            active: false,
+            sessionIds,
+            orderNumbers,
+            handlers,
+            agents
+        }
+
+        const closedSessionManager = {
+            ...currSessionManager,
+            ...sessionManagerUpdate
+        }
+
+        try{
+            if (company && companyRecord?.emailid){
+                await putSessionManager(company, companyRecord.emailid, closedSessionManager)
+            }
+
+            if (company && companyRecord?.emailid){
+                const change = {
+                    entityType: 'sessionManager',
+                    op: 'update',
+                    clientId: currSessionManager.start,
+                    payload: closedSessionManager,
+                }
+
+                if (curPosSettings?.type === 'restaurant'){
+                    queuePendingChange(company, companyRecord.emailid, change);
+                }else{
+                    await processChange(change, company, fetchServer, server);
+                }
+                try{
+                    setAlertState('success');
+                    setAlert('Session Manager Stopped!');
+                    setAlertTimeout(1000);
+                    setCurrSessionManager(closedSessionManager)
+                    setCountedSales({});
+                    const allUserOrders = allSessionOrders.filter((order) => {
+                        return ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start)) && (order.handlerId === curSession?.startedBy))
+                    })
+                    stopSession(curSession, allUserOrders)
+                    await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
+                    fetchSessionManagers(company, companyRecord)
+                } catch (e) {
+
+                }
+            }
+
+            return;
+
+        }catch{
+            setAlertState('error');
+            setAlert('Could not end session manager locally. Please try again.');
+            setAlertTimeout(3000);
+            return;
+        }
+    }
     const createSession = async (sessionUser) => {
         if (!wrh) {
             setAlertState('info');
@@ -690,9 +886,7 @@ const PointOfSales = () => {
                             setSessions([...(sessions || []), newSession]);
                         }
                     } else {
-                        if (sessions !== null) {
-                            setSessions([...(sessions || []), newSession]);
-                        }
+                        setSessions([...(sessions || []), newSession]);                        
                     }
                     setSessionUser(null);
                     setStartSession(false);
@@ -710,67 +904,6 @@ const PointOfSales = () => {
             setAlertTimeout(3000);
             return;
         }
-
-        // if (curPosSettings?.type === 'shop'){            
-        //     const deliveryDate = new Date().getTime()
-        //     const newSession = {
-        //         employee_id: ![null, undefined].includes(sessionUser)
-        //             ? sessionUser.profile.emailid
-        //             : companyRecord.emailid,
-        //         i_d: deliveryDate,
-        //         type: 'delivery',
-        //         wrh: wrh,
-        //         start: deliveryDate,
-        //         startedBy: companyRecord.emailid,
-        //         end: null,
-        //         active: true,
-        //         shortage: 0,
-        //     };
-
-        //     try {
-        //         // 1) Local write
-        //         if (company && companyRecord?.emailid) {
-        //             await putSession(company, companyRecord.emailid, newSession);
-        //         }            
-
-        //         // 3) Queue for sync
-        //         if (company && companyRecord?.emailid) {
-        //             queuePendingChange(company, companyRecord.emailid, {
-        //                 entityType: 'session',
-        //                 op: 'create',
-        //                 clientId: newSession.start,
-        //                 payload: newSession,
-        //             });
-        //             // Immediate sync attempt – failures are fine, queue remains
-        //             try {
-        //                 // 2) State
-        //                 setAlertState('success');
-        //                 if (![null, undefined].includes(sessionUser)) {
-        //                     setAlert('User Delivery Session Started Successfully!');
-        //                 }
-
-        //                 setAlertTimeout(500);
-        //                 setStartSession(false);
-        //                 setOpeningCash(0);
-        //                 mergeAndPersistSessions([newSession])
-        //                 setSessionUser(null);
-        //                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
-        //                 fetchAllSessions({company, companyRecord})
-        //             } catch (e) {
-        //                 // Leave pending changes in queue; 5‑minute auto-sync will retry
-        //             }
-        //         }
-        //         return;
-        //     } catch (e) {
-        //         setAlertState('error');
-        //         setAlert('Could not start delivery session locally.');
-        //         setAlertTimeout(3000);
-        //         return;
-        //     }
-        // }else{
-        //     return
-        // }
-
     };
 
     const stopSession = async (session, sessionOrders) => {
@@ -917,10 +1050,38 @@ const PointOfSales = () => {
             }
         }
     }
+    
+    const UpdateSessionManagerState = (sessionMangers) => {
+        if (sessionMangers?.length) {
+            const previousSession = sessionManagers.filter((session) => session.active)
+            let lastSessionIndex = 0
+            if (previousSession.length) {
+                lastSessionIndex = previousSession.length - 1
+                setCurrSessionManager(previousSession[lastSessionIndex])            
+            } else {
+                let oldSession = null
+                if (sessionManagers.length) {
+                    let oldSessions = sessionManagers.sort((a, b) => a.start - b.start)
+                    oldSession = oldSessions[sessionManagers.length - 1]
+                    setCurrSessionManager(oldSession)
+                }
+                if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_sessions')) {
+                    // console.log('starting session')
+                    // setStartSession(true)
+                }
+                // setEndSession(false)
+            }
+        }
+    }
 
     useEffect(() => {
         UpdateSessionState(sessions, loadSession)
     }, [loadSession, sessions, companyRecord])
+    useEffect(() =>{
+        if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_session_manager')){
+            UpdateSessionManagerState(sessionManagers)
+        }
+    }, [sessionManagers])
 
     // Helper to derive a product image URL (same pattern as Products/Accommodation)
     const getProductImageUrl = (product) => {
@@ -3814,11 +3975,13 @@ const PointOfSales = () => {
                     setStartSession={setStartSession}
                     setEndSession={setEndSession}
                     curSession={curSession}
+                    sales={sales}
                     sessions={sessions}
                     allSalesSessions={allSalesSessions}
                     setAllSalesSessions={setAllSalesSessions}
                     mergeAndPersistOrders={mergeAndPersistOrders}
                     mergeAndPersistSessions={mergeAndPersistSessions}
+                    canUpdateSession={canUpdateSession}
                     allSessions={allSessions}
                     setAllSessions={setAllSessions}
                     deliverySessions={deliverySessions}
@@ -3826,6 +3989,13 @@ const PointOfSales = () => {
                     setAllSessionOrders={setAllSessionOrders}
                     allOrders={allOrders}
                     setSessionUser={setSessionUser}
+                    currSessionManager={currSessionManager}
+                    createSessionManager={createSessionManager}
+                    stopSessionManager={stopSessionManager}
+                    fetchSessionManagers={fetchSessionManagers}
+                    getLastActiveSessions={getLastActiveSessions}
+                    fetchSessionsByRange={fetchSessionsByRange}
+                    fetchOrdersByRange={fetchOrdersByRange}
                     companyRecord={companyRecord}
                     employees={employees}
                     profiles={profiles}
@@ -4575,10 +4745,11 @@ const OrdersModal = ({
 };
 
 const POSDashboard = ({
-    sessions, allSalesSessions, setAllSalesSessions, profiles, employees, companyRecord,
+    sessions, allSalesSessions, setAllSalesSessions, profiles, employees, companyRecord, sales, canUpdateSession,
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, mergeAndPersistOrders, mergeAndPersistSessions,
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd,
-    setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,
+    setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,currSessionManager, createSessionManager, stopSessionManager,
+    fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange,
     setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories
 }) => {
     const { fetchServer, server, company, wrhs } = useContext(ContextProvider);
@@ -4586,6 +4757,7 @@ const POSDashboard = ({
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
     const [stableSalesSessions, setStableSalesSessions] = useState([]);
+    const [activeSessions, setActiveSessions] = useState([])
     const [filteredSessions, setFilteredSessions] = useState(null);
     const [sessionsState, setSessionsState] = useState('general');
 
@@ -4613,6 +4785,7 @@ const POSDashboard = ({
     useEffect(() => {
         if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
             setStableSalesSessions(allSalesSessions)
+            setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
         }
         // const getSessionsData = async ()=>{
         //     const orderDays = 50 * 24 * 60 * 60 * 1000
@@ -4643,8 +4816,9 @@ const POSDashboard = ({
                     start: { $gte: allowedFromDays1 }
                 }
             }, "getDocsDetails", server);
-            if (!sessionsResponse.err && Array.isArray(sessionsResponse.record)) {
+            if (!sessionsResponse.err && Array.isArray(sessionsResponse?.record)) {
                 setStableSalesSessions(sessionsResponse.record)
+                setActiveSessions((sessionsResponse?.record || []).filter((salesSession)=>{return salesSession.active}))
                 mergeAndPersistSessions(sessionsResponse.record)
             }
         })()
@@ -4719,6 +4893,33 @@ const POSDashboard = ({
                     </div>
                 </div>
                 <div className='pos-sessions-view'>
+                    {companyRecord?.status === 'admin' && <div className='update-sessions-state'>
+                        <label className='session-manager-label'>Session Manager</label>
+                        <div 
+                            className='session-state-label'
+                            onClick={()=>{
+                                if (canUpdateSession){
+                                    if ((currSessionManager === null || currSessionManager?.end) && !activeSessions.length){
+                                        createSessionManager()
+                                    }else{
+                                        if (currSessionManager){
+                                            stopSessionManager(activeSessions)
+                                        }else{
+                                            setAlertState('error')
+                                            setAlert('Session Manager Was Not Started. You can Start it after all sessions have been ended!')
+                                            setAlertTimeout(3000)
+                                        }
+                                    }
+                                }else{
+                                    setAlertState('error')
+                                    setAlert("Please Post Sales For Yesterday to Start Today's Session!")
+                                    setAlertTimeout(3000)  
+                                }
+                            }}
+                        >
+                            {((currSessionManager === null || currSessionManager?.end) && !activeSessions.length) ? 'Start' : 'Stop'}
+                        </div>
+                    </div>}
                     <div className='pos-sessions-list'>
                         {profiles?.map((profile) => {
                             if (profile.status !== 'admin' || companyRecord.status === 'admin') {
@@ -4769,114 +4970,142 @@ const POSDashboard = ({
                                                 <div
                                                     className='pos-sessions-card-action'
                                                     onClick={() => {
-                                                        if (profile.status !== 'admin' || companyRecord.status === 'admin') {
-                                                            var viewModal = true
-                                                            const validateUserSession = async () => {
-                                                                if (!allSessionOrders.length) {
-                                                                    viewModal = false
-                                                                    setAlertState('info')
-                                                                    setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
-                                                                    setAlertTimeout(3000)
-                                                                    const orderDays = 50 * 24 * 60 * 60 * 1000
-                                                                    const allowedFromDays = Date.now() - orderDays
-                                                                    const ordersResponse = await fetchServer("POST", {
-                                                                        database: company,
-                                                                        collection: "Orders",
-                                                                        prop: {
-                                                                            createdAt: { $gte: allowedFromDays }
-                                                                        }
-                                                                    }, "getDocsDetails", server);
-                                                                    if (ordersResponse.err) {
-                                                                        setAlertState('error')
-                                                                        setAlert('Could not load Orders. Please check your network connection!')
+                                                        if (profile.status !== 'admin' || companyRecord.status === 'admin') {                                                            
+                                                            if (canUpdateSession){                                                                
+                                                                var viewModal = true
+                                                                const validateUserSession = async () => {
+                                                                    if (!allSessionOrders.length) {
+                                                                        viewModal = false
+                                                                        setAlertState('info')
+                                                                        setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
                                                                         setAlertTimeout(3000)
-                                                                        return
-                                                                    } else {
-                                                                        if (ordersResponse.record && Array.isArray(ordersResponse.record)) {
-                                                                            mergeAndPersistOrders(ordersResponse.record)
-                                                                            setAlertState('info')
-                                                                            setAlert('Orders Calculated. Please proceed with the ending of user session!')
+                                                                        const orderDays = 50 * 24 * 60 * 60 * 1000
+                                                                        const allowedFromDays = Date.now() - orderDays
+                                                                        const ordersResponse = await fetchServer("POST", {
+                                                                            database: company,
+                                                                            collection: "Orders",
+                                                                            prop: {
+                                                                                createdAt: { $gte: allowedFromDays }
+                                                                            }
+                                                                        }, "getDocsDetails", server);
+                                                                        if (ordersResponse.err) {
+                                                                            setAlertState('error')
+                                                                            setAlert('Could not load Orders. Please check your network connection!')
                                                                             setAlertTimeout(3000)
-                                                                        }
-                                                                    }
-                                                                } else {
-                                                                    const allUserOrders = allSessionOrders.filter((order) => {
-                                                                        return ((getSessionEnd(order.sessionId) === getSessionEnd(employeeSession.i_d)) && (order.handlerId === profile.emailid))
-                                                                    })
-                                                                    const {
-                                                                        totalUnattendedSales,
-                                                                        totalPendngDeliveries
-                                                                    } = getSessionSales(allUserOrders)
-                                                                    if (totalUnattendedSales) {
-                                                                        viewModal = false
-                                                                        setAlertState('error')
-                                                                        setAlert('This User Has Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!',)
-                                                                        setAlertTimeout(3000)
-                                                                    }
-                                                                    if (totalPendngDeliveries) {
-                                                                        viewModal = false
-                                                                        setAlertState('error')
-                                                                        setAlert('This User Still Has Pending Delivery(s) for Order(s) that have been paid for. Please place all deliveries before proceeding!',)
-                                                                        setAlertTimeout(3000)
-                                                                    }
-                                                                }
-                                                            }
-                                                            if (sessionLive) {
-                                                                validateUserSession()
-                                                            } else {
-                                                                if (![null, undefined].includes(employeeSession)) {
-                                                                    if (!employeeSession.end) {
-                                                                        validateUserSession()
-                                                                    }
-                                                                }
-                                                            }
-                                                            if (viewModal) {
-                                                                if (sessionLive) {
-                                                                    setSessionUser({
-                                                                        profile: profile,
-                                                                        curSession: employeeSession
-                                                                    })
-                                                                    setEndSession(true)
-                                                                } else {
-                                                                    setSessionUser({
-                                                                        profile: profile,
-                                                                    })
-                                                                    if ([null, undefined].includes(employeeSession)) {
-                                                                        if (pendingSessions.length) {
-                                                                            showPendingSessionAlert()
+                                                                            return
                                                                         } else {
-                                                                            if (!Array.isArray(filteredSessions)) {
-                                                                                setWrh('')
-                                                                                setStartSession(true)
+                                                                            if (ordersResponse.record && Array.isArray(ordersResponse.record)) {
+                                                                                mergeAndPersistOrders(ordersResponse.record)
+                                                                                setAlertState('info')
+                                                                                setAlert('Orders Calculated. Please proceed with the ending of user session!')
+                                                                                setAlertTimeout(3000)
                                                                             }
                                                                         }
                                                                     } else {
-                                                                        if (employeeSession.end) {
+                                                                        if (currSessionManager && currSessionManager?.active) {
+                                                                            viewModal = false
+                                                                            setAlertState('error')
+                                                                            setAlert('Session Manager is currently active. Stop Session Manager to Continue!')
+                                                                            setAlertTimeout(3000)
+                                                                        }
+                                                                        const allUserOrders = allSessionOrders.filter((order) => {
+                                                                            return ((getSessionEnd(order.sessionId) === getSessionEnd(employeeSession.i_d)) && (order.handlerId === profile.emailid))
+                                                                        })
+                                                                        const {
+                                                                            totalUnattendedSales,
+                                                                            totalPendngDeliveries
+                                                                        } = getSessionSales(allUserOrders)
+                                                                        if (totalUnattendedSales) {
+                                                                            viewModal = false
+                                                                            setAlertState('error')
+                                                                            setAlert('This User Has Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!')
+                                                                            setAlertTimeout(3000)
+                                                                        }
+                                                                        if (totalPendngDeliveries) {
+                                                                            viewModal = false
+                                                                            setAlertState('error')
+                                                                            setAlert('This User Still Has Pending Delivery(s) for Order(s) that have been paid for. Please place all deliveries before proceeding!')
+                                                                            setAlertTimeout(3000)
+                                                                        }
+                                                                    }
+                                                                }
+                                                                if (sessionLive) {
+                                                                    validateUserSession()
+                                                                } else {
+                                                                    if (![null, undefined].includes(employeeSession)) {
+                                                                        if (!employeeSession.end) {
+                                                                            validateUserSession()
+                                                                        }
+                                                                    }
+                                                                }
+                                                                if (viewModal) {
+                                                                    if (sessionLive) {
+                                                                        setSessionUser({
+                                                                            profile: profile,
+                                                                            curSession: employeeSession
+                                                                        })
+                                                                        setEndSession(true)
+                                                                    } else {
+                                                                        let canStartSession = true
+                                                                        if (currSessionManager && currSessionManager?.end) {
+                                                                             canStartSession = false                                                                           
+                                                                        }
+                                                                        setSessionUser({
+                                                                            profile: profile,
+                                                                        })
+                                                                        if ([null, undefined].includes(employeeSession)) {
                                                                             if (pendingSessions.length) {
                                                                                 showPendingSessionAlert()
                                                                             } else {
-                                                                                if (Array.isArray(filteredSessions)) {
-                                                                                    setSessionUser({
-                                                                                        profile: profile,
-                                                                                        curSession: employeeSession
-                                                                                    })
-                                                                                    setEndSession(true)
-                                                                                } else {
-                                                                                    if (!Array.isArray(filteredSessions)) {
+                                                                                if (!Array.isArray(filteredSessions)) {
+                                                                                    if (canStartSession){
                                                                                         setWrh('')
                                                                                         setStartSession(true)
+                                                                                    }else{
+                                                                                        setAlertState('error')
+                                                                                        setAlert('Session Manager is not active. Start Session Manager to Continue!')
+                                                                                        setAlertTimeout(3000)
                                                                                     }
                                                                                 }
                                                                             }
                                                                         } else {
-                                                                            setSessionUser({
-                                                                                profile: profile,
-                                                                                curSession: employeeSession
-                                                                            })
-                                                                            setEndSession(true)
+                                                                            if (employeeSession.end) {
+                                                                                if (pendingSessions.length) {
+                                                                                    showPendingSessionAlert()
+                                                                                } else {
+                                                                                    if (Array.isArray(filteredSessions)) {
+                                                                                        setSessionUser({
+                                                                                            profile: profile,
+                                                                                            curSession: employeeSession
+                                                                                        })
+                                                                                        setEndSession(true)
+                                                                                    } else {
+                                                                                        if (!Array.isArray(filteredSessions)) {
+                                                                                            if(canStartSession){
+                                                                                                setWrh('')
+                                                                                                setStartSession(true)
+                                                                                            }else{
+                                                                                                setAlertState('error')
+                                                                                                setAlert('Session Manager is not active. Start Session Manager to Continue!')
+                                                                                                setAlertTimeout(3000)
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            } else {
+                                                                                setSessionUser({
+                                                                                    profile: profile,
+                                                                                    curSession: employeeSession
+                                                                                })
+                                                                                setEndSession(true)
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
+                                                            }else{
+                                                                setAlertState('error')
+                                                                setAlert("Please Post Sales For Yesterday to Start Today's Session!")
+                                                                setAlertTimeout(3000)    
                                                             }
                                                         } else {
                                                             setAlertState('error')
@@ -4901,12 +5130,18 @@ const POSDashboard = ({
                             if (sessionsState === 'edit') {
                                 setFilteredSessions(processedData)
                             }
-                        }}
+                        }}                        
                         orders={allSessionOrders}
                         tables={tables}
                         employees={employees}
                         onClose={() => setShowReports(false)}
                         wrhCategories={wrhCategories}
+                        fetchSessionsByRange = {(range)=>{
+                            fetchSessionsByRange(company, companyRecord, range)
+                        }}
+                        fetchOrdersByRange = {(range)=>{
+                            fetchOrdersByRange(company, companyRecord, range)
+                        }}
                     />
                 )}
             </div>
