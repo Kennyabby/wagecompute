@@ -74,7 +74,7 @@
     position: relative;
     width: 20%;
     height: 100%;
-    margin: auto;
+    margin: auto 15px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -111,7 +111,7 @@
     display: flex;
     flex-wrap: wrap;    
     gap: 20px;
-    justify-content: center;
+    justify-content: left;
 }
 .pos-sessions-card{
     position: relative;
