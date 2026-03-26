@@ -4898,22 +4898,22 @@ const POSDashboard = ({
                         <div 
                             className='session-state-label'
                             onClick={()=>{
-                                if (canUpdateSession){
-                                    if ((currSessionManager === null || currSessionManager?.end) && !activeSessions.length){
+                                if ((currSessionManager === null || currSessionManager?.end) && !activeSessions.length){
+                                    if (canUpdateSession){
                                         createSessionManager()
                                     }else{
-                                        if (currSessionManager){
-                                            stopSessionManager(activeSessions)
-                                        }else{
-                                            setAlertState('error')
-                                            setAlert('Session Manager Was Not Started. You can Start it after all sessions have been ended!')
-                                            setAlertTimeout(3000)
-                                        }
+                                        setAlertState('error')
+                                        setAlert("Please Post Sales For Yesterday to Start Today's Session!")
+                                        setAlertTimeout(3000)  
                                     }
                                 }else{
-                                    setAlertState('error')
-                                    setAlert("Please Post Sales For Yesterday to Start Today's Session!")
-                                    setAlertTimeout(3000)  
+                                    if (currSessionManager){
+                                        stopSessionManager(activeSessions)
+                                    }else{
+                                        setAlertState('error')
+                                        setAlert('Session Manager Was Not Started. You can Start it after all sessions have been ended!')
+                                        setAlertTimeout(3000)
+                                    }
                                 }
                             }}
                         >
@@ -4971,142 +4971,136 @@ const POSDashboard = ({
                                                     className='pos-sessions-card-action'
                                                     onClick={() => {
                                                         if (profile.status !== 'admin' || companyRecord.status === 'admin') {                                                            
-                                                            if (canUpdateSession){                                                                
-                                                                var viewModal = true
-                                                                const validateUserSession = async () => {
-                                                                    if (!allSessionOrders.length) {
-                                                                        viewModal = false
-                                                                        setAlertState('info')
-                                                                        setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
+                                                            var viewModal = true
+                                                            const validateUserSession = async () => {
+                                                                if (!allSessionOrders.length) {
+                                                                    viewModal = false
+                                                                    setAlertState('info')
+                                                                    setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
+                                                                    setAlertTimeout(3000)
+                                                                    const orderDays = 50 * 24 * 60 * 60 * 1000
+                                                                    const allowedFromDays = Date.now() - orderDays
+                                                                    const ordersResponse = await fetchServer("POST", {
+                                                                        database: company,
+                                                                        collection: "Orders",
+                                                                        prop: {
+                                                                            createdAt: { $gte: allowedFromDays }
+                                                                        }
+                                                                    }, "getDocsDetails", server);
+                                                                    if (ordersResponse.err) {
+                                                                        setAlertState('error')
+                                                                        setAlert('Could not load Orders. Please check your network connection!')
                                                                         setAlertTimeout(3000)
-                                                                        const orderDays = 50 * 24 * 60 * 60 * 1000
-                                                                        const allowedFromDays = Date.now() - orderDays
-                                                                        const ordersResponse = await fetchServer("POST", {
-                                                                            database: company,
-                                                                            collection: "Orders",
-                                                                            prop: {
-                                                                                createdAt: { $gte: allowedFromDays }
-                                                                            }
-                                                                        }, "getDocsDetails", server);
-                                                                        if (ordersResponse.err) {
-                                                                            setAlertState('error')
-                                                                            setAlert('Could not load Orders. Please check your network connection!')
-                                                                            setAlertTimeout(3000)
-                                                                            return
-                                                                        } else {
-                                                                            if (ordersResponse.record && Array.isArray(ordersResponse.record)) {
-                                                                                mergeAndPersistOrders(ordersResponse.record)
-                                                                                setAlertState('info')
-                                                                                setAlert('Orders Calculated. Please proceed with the ending of user session!')
-                                                                                setAlertTimeout(3000)
-                                                                            }
-                                                                        }
+                                                                        return
                                                                     } else {
-                                                                        if (currSessionManager && currSessionManager?.active) {
-                                                                            viewModal = false
-                                                                            setAlertState('error')
-                                                                            setAlert('Session Manager is currently active. Stop Session Manager to Continue!')
-                                                                            setAlertTimeout(3000)
-                                                                        }
-                                                                        const allUserOrders = allSessionOrders.filter((order) => {
-                                                                            return ((getSessionEnd(order.sessionId) === getSessionEnd(employeeSession.i_d)) && (order.handlerId === profile.emailid))
-                                                                        })
-                                                                        const {
-                                                                            totalUnattendedSales,
-                                                                            totalPendngDeliveries
-                                                                        } = getSessionSales(allUserOrders)
-                                                                        if (totalUnattendedSales) {
-                                                                            viewModal = false
-                                                                            setAlertState('error')
-                                                                            setAlert('This User Has Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!')
-                                                                            setAlertTimeout(3000)
-                                                                        }
-                                                                        if (totalPendngDeliveries) {
-                                                                            viewModal = false
-                                                                            setAlertState('error')
-                                                                            setAlert('This User Still Has Pending Delivery(s) for Order(s) that have been paid for. Please place all deliveries before proceeding!')
+                                                                        if (ordersResponse.record && Array.isArray(ordersResponse.record)) {
+                                                                            mergeAndPersistOrders(ordersResponse.record)
+                                                                            setAlertState('info')
+                                                                            setAlert('Orders Calculated. Please proceed with the ending of user session!')
                                                                             setAlertTimeout(3000)
                                                                         }
                                                                     }
-                                                                }
-                                                                if (sessionLive) {
-                                                                    validateUserSession()
                                                                 } else {
-                                                                    if (![null, undefined].includes(employeeSession)) {
-                                                                        if (!employeeSession.end) {
-                                                                            validateUserSession()
-                                                                        }
+                                                                    if (currSessionManager && currSessionManager?.active) {
+                                                                        viewModal = false
+                                                                        setAlertState('error')
+                                                                        setAlert('Session Manager is currently active. Stop Session Manager to Continue!')
+                                                                        setAlertTimeout(3000)
+                                                                    }
+                                                                    const allUserOrders = allSessionOrders.filter((order) => {
+                                                                        return ((getSessionEnd(order.sessionId) === getSessionEnd(employeeSession.i_d)) && (order.handlerId === profile.emailid))
+                                                                    })
+                                                                    const {
+                                                                        totalUnattendedSales,
+                                                                        totalPendngDeliveries
+                                                                    } = getSessionSales(allUserOrders)
+                                                                    if (totalUnattendedSales) {
+                                                                        viewModal = false
+                                                                        setAlertState('error')
+                                                                        setAlert('This User Has Incomplete Sale(s) Pending, they were neither delivered nor paid. Please resolve before proceeding!')
+                                                                        setAlertTimeout(3000)
+                                                                    }
+                                                                    if (totalPendngDeliveries) {
+                                                                        viewModal = false
+                                                                        setAlertState('error')
+                                                                        setAlert('This User Still Has Pending Delivery(s) for Order(s) that have been paid for. Please place all deliveries before proceeding!')
+                                                                        setAlertTimeout(3000)
                                                                     }
                                                                 }
-                                                                if (viewModal) {
-                                                                    if (sessionLive) {
-                                                                        setSessionUser({
-                                                                            profile: profile,
-                                                                            curSession: employeeSession
-                                                                        })
-                                                                        setEndSession(true)
-                                                                    } else {
-                                                                        let canStartSession = true
-                                                                        if (currSessionManager && currSessionManager?.end) {
-                                                                             canStartSession = false                                                                           
+                                                            }
+                                                            if (sessionLive) {
+                                                                validateUserSession()
+                                                            } else {
+                                                                if (![null, undefined].includes(employeeSession)) {
+                                                                    if (!employeeSession.end) {
+                                                                        validateUserSession()
+                                                                    }
+                                                                }
+                                                            }
+                                                            if (viewModal) {
+                                                                if (sessionLive) {
+                                                                    setSessionUser({
+                                                                        profile: profile,
+                                                                        curSession: employeeSession
+                                                                    })
+                                                                    setEndSession(true)
+                                                                } else {
+                                                                    let canStartSession = true
+                                                                    if (currSessionManager && currSessionManager?.end) {
+                                                                         canStartSession = false                                                                           
+                                                                    }
+                                                                    setSessionUser({
+                                                                        profile: profile,
+                                                                    })
+                                                                    if ([null, undefined].includes(employeeSession)) {
+                                                                        if (pendingSessions.length) {
+                                                                            showPendingSessionAlert()
+                                                                        } else {
+                                                                            if (!Array.isArray(filteredSessions)) {
+                                                                                if (canStartSession){
+                                                                                    setWrh('')
+                                                                                    setStartSession(true)
+                                                                                }else{
+                                                                                    setAlertState('error')
+                                                                                    setAlert('Session Manager is not active. Start Session Manager to Continue!')
+                                                                                    setAlertTimeout(3000)
+                                                                                }
+                                                                            }
                                                                         }
-                                                                        setSessionUser({
-                                                                            profile: profile,
-                                                                        })
-                                                                        if ([null, undefined].includes(employeeSession)) {
+                                                                    } else {
+                                                                        if (employeeSession.end) {
                                                                             if (pendingSessions.length) {
                                                                                 showPendingSessionAlert()
                                                                             } else {
-                                                                                if (!Array.isArray(filteredSessions)) {
-                                                                                    if (canStartSession){
-                                                                                        setWrh('')
-                                                                                        setStartSession(true)
-                                                                                    }else{
-                                                                                        setAlertState('error')
-                                                                                        setAlert('Session Manager is not active. Start Session Manager to Continue!')
-                                                                                        setAlertTimeout(3000)
+                                                                                if (Array.isArray(filteredSessions)) {
+                                                                                    setSessionUser({
+                                                                                        profile: profile,
+                                                                                        curSession: employeeSession
+                                                                                    })
+                                                                                    setEndSession(true)
+                                                                                } else {
+                                                                                    if (!Array.isArray(filteredSessions)) {
+                                                                                        if(canStartSession){
+                                                                                            setWrh('')
+                                                                                            setStartSession(true)
+                                                                                        }else{
+                                                                                            setAlertState('error')
+                                                                                            setAlert('Session Manager is not active. Start Session Manager to Continue!')
+                                                                                            setAlertTimeout(3000)
+                                                                                        }
                                                                                     }
                                                                                 }
                                                                             }
                                                                         } else {
-                                                                            if (employeeSession.end) {
-                                                                                if (pendingSessions.length) {
-                                                                                    showPendingSessionAlert()
-                                                                                } else {
-                                                                                    if (Array.isArray(filteredSessions)) {
-                                                                                        setSessionUser({
-                                                                                            profile: profile,
-                                                                                            curSession: employeeSession
-                                                                                        })
-                                                                                        setEndSession(true)
-                                                                                    } else {
-                                                                                        if (!Array.isArray(filteredSessions)) {
-                                                                                            if(canStartSession){
-                                                                                                setWrh('')
-                                                                                                setStartSession(true)
-                                                                                            }else{
-                                                                                                setAlertState('error')
-                                                                                                setAlert('Session Manager is not active. Start Session Manager to Continue!')
-                                                                                                setAlertTimeout(3000)
-                                                                                            }
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            } else {
-                                                                                setSessionUser({
-                                                                                    profile: profile,
-                                                                                    curSession: employeeSession
-                                                                                })
-                                                                                setEndSession(true)
-                                                                            }
+                                                                            setSessionUser({
+                                                                                profile: profile,
+                                                                                curSession: employeeSession
+                                                                            })
+                                                                            setEndSession(true)
                                                                         }
                                                                     }
                                                                 }
-                                                            }else{
-                                                                setAlertState('error')
-                                                                setAlert("Please Post Sales For Yesterday to Start Today's Session!")
-                                                                setAlertTimeout(3000)    
-                                                            }
+                                                            }                                                            
                                                         } else {
                                                             setAlertState('error')
                                                             setAlert('Only the Super Admin can interact with this Session!')
