@@ -271,7 +271,7 @@ function App() {
     try {
       es = createSSE(SERVER, async (payload) => {
         // payload: { database, collection, op, data }
-        if (!company || !companyRecord.emailid || !payload || payload.database !== company) return;
+        if (!company || !companyRecord?.emailid || !payload || payload.database !== company) return;
         const coll = payload.collection
         try {
           switch (coll) {

@@ -317,7 +317,8 @@ const PointOfSales = () => {
             let now = new Date()  
             now.setHours(0,0,0,0)                                                              
             const yesterday = now.setDate(now.getDate() - 1)
-            if (getDate(saleDate) === getDate(yesterday)){
+            const beforeYesterday = now.setDate(now.getDate() - 1)
+            if (getDate(saleDate) === getDate(yesterday) && getDate(saleDate) === getDate(beforeYesterday)){
                 canUpdateSession = true                
                 return
             }
@@ -4903,7 +4904,7 @@ const POSDashboard = ({
                                         createSessionManager()
                                     }else{
                                         setAlertState('error')
-                                        setAlert("Please Post Sales For Yesterday to Start Today's Session!")
+                                        setAlert("Please Post Pending Sales for previous days to Start Today's Session!")
                                         setAlertTimeout(3000)  
                                     }
                                 }else{
@@ -5046,7 +5047,7 @@ const POSDashboard = ({
                                                                     setEndSession(true)
                                                                 } else {
                                                                     let canStartSession = true
-                                                                    if (currSessionManager && currSessionManager?.end) {
+                                                                    if (!currSessionManager || currSessionManager?.end) {
                                                                          canStartSession = false                                                                           
                                                                     }
                                                                     setSessionUser({
