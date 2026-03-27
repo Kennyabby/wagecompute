@@ -2343,7 +2343,7 @@ function App() {
       setProducts(cached);
     }
     const knownFields = [
-      "_id", "i_d", "name", "salesPrice", "costPrice", "category",
+      "_id", "i_d", "name", "salesPrice", "shortRestPrice", "costPrice", "category",
       "purchaseVat", "salesVat", "salesUom", "purchaseUom",
       "buyTo", "createdAt", "type", "markUp", "vipPrice", "imgId", "viewLink", "downloadLink"
     ];
