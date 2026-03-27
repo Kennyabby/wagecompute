@@ -1052,8 +1052,8 @@ const PointOfSales = () => {
         }
     }
     
-    const UpdateSessionManagerState = (sessionMangers) => {
-        if (sessionMangers?.length) {
+    const UpdateSessionManagerState = (sessionManagers) => {
+        if (sessionManagers?.length) {
             const previousSession = sessionManagers.filter((session) => session.active)
             let lastSessionIndex = 0
             if (previousSession.length) {
@@ -1079,7 +1079,7 @@ const PointOfSales = () => {
         UpdateSessionState(sessions, loadSession)
     }, [loadSession, sessions, companyRecord])
     useEffect(() =>{
-        if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_session_manager')){
+        if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
             UpdateSessionManagerState(sessionManagers)
         }
     }, [sessionManagers])
