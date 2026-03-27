@@ -26,7 +26,7 @@ const Sales = () => {
         server, intervalPeriod,
         companyRecord,
         company, recoveryVal, allowBacklogs,
-        employees, setEmployees, getEmployees,
+        employees, setEmployees, getEmployees, getPendingSalesDates,
         sales, setSales, getSales, months, years, initialYear,
         allSessions, getAllSessions, getSessionEnd, fetchAllSessions,
         fetchSessionManagers, sessionManagers,
@@ -177,6 +177,7 @@ const Sales = () => {
     const [isView, setIsView] = useState(false)
     const [isSyncing, setIsSyncing] = useState(false)
     const [autoPostSales, setAutoPostSales] = useState(false)
+    const [pendingSalesDates, setPendingSalesDates] = useState([])
 
     const [postingRecovery, setPostingRecovery] = useState(false)
     // useEffect(()=>{
@@ -218,9 +219,10 @@ const Sales = () => {
     }, [storePath])
 
     useEffect(()=>{
-        const pendingDays = getPendingSalesDates()
-        console.log(pendingDays)
+        const pendingDays = getPendingSalesDates(sales)
+        setPendingSalesDates(pendingDays)
         if (pendingDays.length && window.localStorage.getItem('auto-sales')){
+            setPostingDate('')
             setAlertState('info')
             setAlert(window.localStorage.getItem('auto-sales'))
             setAlertTimeout(100000)
@@ -228,7 +230,7 @@ const Sales = () => {
                 setAutoPostSales(true)
             }, 3000)
         }
-    },[window.localStorage.getItem('auto-sales')])
+    },[window.localStorage.getItem('auto-sales'), sales])
 
     useEffect(() => {
         refreshSalesData();
@@ -258,25 +260,6 @@ const Sales = () => {
         }, {})
         setSalesUnits(sunits)
     }, [paymentMethods, wrhs])
-
-    const getPendingSalesDates = ()=>{
-        const pendingDates = []
-        const salesDates = sales.map((sale)=>{return getDate(sale.postingDate)})
-        const now = new Date()
-        const today = new Date(now)
-        const currDay = today.getDate()
-        for (let i=0; i<=sales.length; i++){
-            let today = new Date(now)
-            const dateDay = today.setDate(currDay - (i+1))
-            const dayCheck = salesDates.find((salesDate)=>{return getDate(dateDay) === salesDate})
-            if (!dayCheck){
-                pendingDates.push(getDate(dateDay))
-            }else{
-                break
-            }
-        }
-        return pendingDates
-    }
 
     const refreshSalesData = async () => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
@@ -360,6 +343,23 @@ const Sales = () => {
     }, [wrhs])
 
     useEffect(() => {
+        calculateAccommodationSales(accommodations, postingDate, isView, saleEmployee)
+    }, [accommodations, postingDate, isView, saleEmployee])
+
+    useEffect(() => {
+        calculatePOSSessionSales(allSessions, postingDate, isView, saleEmployee)
+    }, [allSessions, postingDate, isView, saleEmployee])
+
+    useEffect(()=>{
+        if (autoPostSales && postingDate && allSessions.length){
+            pendingSalesDates.forEach((postingDate)=>{
+                calculateAccommodationSales(accommodations, postingDate, isView, saleEmployee)
+                calculatePOSSessionSales(allSessions, postingDate, isView, saleEmployee)
+            })            
+        }
+    },[postingDate, autoPostSales, allSessions])
+
+    const calculateAccommodationSales = (accommodations, postingDate, isView, saleEmployee)=>{
         var accommodationRecord = []
         const postingDate1 = postingDate
         var ct = 0
@@ -426,9 +426,8 @@ const Sales = () => {
         if (accommodationRecords !== accommodationRecord) {
             setAccommodationRecords(accommodationRecord)
         }
-    }, [accommodations, postingDate, isView, saleEmployee])
-
-    useEffect(() => {
+    }
+    const calculatePOSSessionSales = (allSessions, postingDate, isView, saleEmployee)=>{
         var sessionSalesRecord = []
         var wrhPoints = []
         wrhs.forEach((wh) => {
@@ -788,7 +787,7 @@ const Sales = () => {
         if (sessionSalesRecords !== sessionSalesRecord) {
             setSessionSalesRecords(sessionSalesRecord)
         }
-    }, [allSessions, postingDate, isView, saleEmployee])
+    }    
 
     useEffect(() => {
         const findKitchenField = fields.find((field) => { return field.isSplit })

@@ -27,7 +27,7 @@ const PointOfSales = () => {
     // =========================================
     const {
         storePath, intervalPeriod, posSettings, paymentMethods,
-        fetchServer, server, company, companyRecord, sales,
+        fetchServer, server, company, companyRecord, sales, getPendingSalesDates,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         alert, alertState, alertTimeout, actionMessage,
         settings, getDate, posWrhAccess, employees,
@@ -312,24 +312,17 @@ const PointOfSales = () => {
     }, [company, companyRecord])
 
     useEffect(()=>{
-        let canUpdateSession = false
-        sales.forEach((sale)=>{
-            const saleDate = new Date(sale.postingDate).getTime()
-            let now = new Date()  
-            now.setHours(0,0,0,0)                                                              
-            const yesterday = now.setDate(now.getDate() - 1)
-            const beforeYesterday = now.setDate(now.getDate() - 1)
-            if (getDate(saleDate) === getDate(yesterday) && getDate(saleDate) === getDate(beforeYesterday)){
-                canUpdateSession = true                
-                return
+        if (sales.length){
+            const pendingSalesDates = getPendingSalesDates(sales) 
+            let canUpdateSession = pendingSalesDates?.length === 0
+            if (canUpdateSession){
+                setCanUpdateSession(true)
+            }else{
+                setCanUpdateSession(false)
             }
-        })
-        if (canUpdateSession){
-            setCanUpdateSession(true)
-        }else{
-            setCanUpdateSession(false)
         }
     },[sales])
+
     useEffect(() => {
         loadTableData()
         if (window.localStorage.getItem('pos-wrh')) {
