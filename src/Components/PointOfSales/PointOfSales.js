@@ -783,7 +783,11 @@ const PointOfSales = () => {
 
         try{
             if (company && companyRecord?.emailid){
-                await putSessionManager(company, companyRecord.emailid, closedSessionManager)
+                try{
+                    await putSessionManager(company, companyRecord.emailid, closedSessionManager)
+                }catch{
+
+                }
             }
 
             if (company && companyRecord?.emailid){
@@ -808,7 +812,13 @@ const PointOfSales = () => {
                     const allUserOrders = allSessionOrders.filter((order) => {
                         return ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start)) && (order.handlerId === curSession?.startedBy))
                     })
-                    stopSession(curSession, allUserOrders)
+                    if (allUserOrders.length === 0){                    
+                        stopSession(curSession, allUserOrders)
+                    }else{
+                        setAlertState('info')
+                        setAlert('Orders Found. Please Stop Your Session Manually!')
+                        setAlertTimeout(2000)
+                    }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessionManagers(company, companyRecord)
                 } catch (e) {
@@ -4908,7 +4918,7 @@ const POSDashboard = ({
                                         //     Navigate('/sales')
                                         // }, 3000)
                                         setAlertState('error')
-                                        setAlert("Please Post Pending Sales for previous days to Start Today's Session Manager!")
+                                        setAlert("Please Post Pending Sales for previous days to Start Today's Session Manager! Redirecting ....")
                                         setAlertTimeout(3000)  
                                     }
                                 }else{
