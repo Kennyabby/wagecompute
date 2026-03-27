@@ -45,6 +45,7 @@ const Products = ({
         barcode: '',
         salesPrice: '',
         vipPrice: '',
+        shortRestPrice: '',
         costPrice: '',
         category: 'all',
         purchaseVat: '',
@@ -1000,6 +1001,17 @@ const Products = ({
                                     )
                                 })}
                             </select>
+                        </div>}
+                        {defaultProductType === 'services' && <div className='otherInpCov'>
+                            <label>Short Rest Price</label>
+                            <input
+                                className='otherInp'
+                                type='number'
+                                name='shortRestPrice'
+                                placeholder='0.00'
+                                disabled={(isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details')))}
+                                value={productFields.shortRestPrice}
+                            />
                         </div>}
                         {defaultProductType === 'goods' && <div className='otherInpCov'>
                             <label>Purcahse UOM</label>

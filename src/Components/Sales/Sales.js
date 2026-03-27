@@ -176,6 +176,7 @@ const Sales = () => {
     })
     const [isView, setIsView] = useState(false)
     const [isSyncing, setIsSyncing] = useState(false)
+    const [autoPostSales, setAutoPostSales] = useState(false)
 
     const [postingRecovery, setPostingRecovery] = useState(false)
     // useEffect(()=>{
@@ -216,11 +217,25 @@ const Sales = () => {
         storePath('sales')
     }, [storePath])
 
+    useEffect(()=>{
+        const pendingDays = getPendingSalesDates()
+        console.log(pendingDays)
+        if (pendingDays.length && window.localStorage.getItem('auto-sales')){
+            setAlertState('info')
+            setAlert(window.localStorage.getItem('auto-sales'))
+            setAlertTimeout(100000)
+            setTimeout(()=>{
+                setAutoPostSales(true)
+            }, 3000)
+        }
+    },[window.localStorage.getItem('auto-sales')])
+
     useEffect(() => {
         refreshSalesData();
         const intervalId = setInterval(() => { refreshSalesData(); }, intervalPeriod)
         return () => clearInterval(intervalId);
     }, [window.localStorage.getItem('sessn-cmp')])
+
     useEffect(() => {
         const payAccounts = paymentMethods.reduce((obj, method) => {
             if (method.name !== 'cash') {
@@ -243,6 +258,26 @@ const Sales = () => {
         }, {})
         setSalesUnits(sunits)
     }, [paymentMethods, wrhs])
+
+    const getPendingSalesDates = ()=>{
+        const pendingDates = []
+        const salesDates = sales.map((sale)=>{return getDate(sale.postingDate)})
+        const now = new Date()
+        const today = new Date(now)
+        const currDay = today.getDate()
+        for (let i=0; i<=sales.length; i++){
+            let today = new Date(now)
+            const dateDay = today.setDate(currDay - (i+1))
+            const dayCheck = salesDates.find((salesDate)=>{return getDate(dateDay) === salesDate})
+            if (!dayCheck){
+                pendingDates.push(getDate(dateDay))
+            }else{
+                break
+            }
+        }
+        return pendingDates
+    }
+
     const refreshSalesData = async () => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;

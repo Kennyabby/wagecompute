@@ -19,7 +19,7 @@ const Accommodation = () => {
     const { storePath,
         fetchServer, paymentMethods,
         server, intervalPeriod,
-        companyRecord,
+        companyRecord, products, getProductsWithStock,
         company, recoveryVal, allowBacklogs,
         employees, getEmployees,
         accommodations, setAccommodations, getAccommodations, months,
@@ -58,26 +58,7 @@ const Accommodation = () => {
     const [curSelectedUnPaidAccommodation, setCurSelectedUnPaidAccommodation] = useState('')
     const [curPaymentAmount, setCurPaymentAmount] = useState(0)
     const [payPoints, setPayPoints] = useState({})
-    const rooms = {
-        '1': {
-            price: 15000
-        },
-        '2': {
-            price: 10000
-        },
-        '3': {
-            price: 15000
-        },
-        '4': {
-            price: 15000
-        },
-        '5': {
-            price: 20000
-        },
-        'SHORT REST': {
-            price: 5000
-        }
-    }
+    const [rooms, setRooms] = useState({})
 
     const defaultCustomerFields = {
         i_d: '',
@@ -116,6 +97,24 @@ const Accommodation = () => {
     useEffect(() => {
         storePath('accommodations')
     }, [storePath])
+
+    useEffect(()=>{
+        const rms = {}
+        if (products.length){
+            products.forEach((product, i)=>{
+                if (product.category === 'room'){
+                    const name = product.name
+                    const no = Number(name.length) - 1
+                    const index = name.split('')[no]
+                    rms[index] = {price: Number(product.salesPrice)}
+                    if (product.shortRestPrice){
+                        rms['SHORT REST'] = {price: Number(product.shortRestPrice)}
+                    }
+                }
+            })
+            setRooms(rms)
+        }
+    },[products])
 
     useEffect(() => {
         const payPoints = paymentMethods.reduce((obj, method) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ContextProvider from '../../Resources/ContextProvider';
 import './PointOfSales.css';
 import { MdShoppingBasket } from 'react-icons/md';
@@ -43,7 +44,7 @@ const PointOfSales = () => {
     } = useContext(ContextProvider);
 
     // Core States
-
+    const Navigate = useNavigate()
     const [loading, setLoading] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
 
@@ -4766,7 +4767,7 @@ const POSDashboard = ({
     const [pendingChanges, setPendingChanges] = useState([]);
     const [pendingLoading, setPendingLoading] = useState(false);
     const [pendingError, setPendingError] = useState(null);
-
+    const Navigate = useNavigate()
     useEffect(() => {
         const isAdminUser = companyRecord?.access === 'admin'
         if (!Array.isArray(filteredSessions)) {
@@ -4903,6 +4904,10 @@ const POSDashboard = ({
                                     if (canUpdateSession){
                                         createSessionManager()
                                     }else{
+                                        // window.localStorage.setItem('auto-sales', 'Auto Posting Sales...')
+                                        // setTimeout(() => {
+                                        //     Navigate('/sales')
+                                        // }, 3000)
                                         setAlertState('error')
                                         setAlert("Please Post Pending Sales for previous days to Start Today's Session!")
                                         setAlertTimeout(3000)  
