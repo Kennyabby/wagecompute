@@ -4902,7 +4902,7 @@ const POSDashboard = ({
                                         //     Navigate('/sales')
                                         // }, 3000)
                                         setAlertState('error')
-                                        setAlert("Please Post Pending Sales for previous days to Start Today's Session!")
+                                        setAlert("Please Post Pending Sales for previous days to Start Today's Session Manager!")
                                         setAlertTimeout(3000)  
                                     }
                                 }else{
