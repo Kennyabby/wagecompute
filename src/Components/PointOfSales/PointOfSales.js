@@ -686,7 +686,11 @@ const PointOfSales = () => {
         try {
             // 1) Save session locally
             if (company && companyRecord?.emailid) {
-                await putSessionManager(company, companyRecord.emailid, newSessionManager);
+                try{
+                    await putSessionManager(company, companyRecord.emailid, newSessionManager);
+                }catch{
+
+                }
             }
 
             // 3) Queue session create for sync
@@ -697,6 +701,7 @@ const PointOfSales = () => {
                     clientId: newSessionManager.start,
                     payload: newSessionManager,
                 }
+                // await processChange(change, company, fetchServer, server);
                 if (curPosSettings?.type === 'restaurant'){
                     queuePendingChange(company, companyRecord.emailid, change);
                 }else{
@@ -720,6 +725,7 @@ const PointOfSales = () => {
             }
             return;
         } catch (e) {
+            console.log(e)
             setAlertState('error');
             setAlert('Could not create session manager locally. Please try again.');
             setAlertTimeout(3000);

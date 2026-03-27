@@ -99,7 +99,7 @@ export async function processChange(change, company, fetchServer, server) {
       return syncOrder(change, company, fetchServer, server);
     case 'session':
       return syncSession(change, company, fetchServer, server);
-    case 'sessionManager':
+    case 'sessionManagers':
       return syncSessionManager(change, company, fetchServer, server);
     case 'inventory':
       return syncInventory(change, company, fetchServer, server);
@@ -158,7 +158,7 @@ async function syncSessionManager(change, company, fetchServer, server) {
   if (op === 'create') {
     const resp = await fetchServer(
       'POST',
-      { database: company, collection: 'SessionManager', update: payload },
+      { database: company, collection: 'SessionManagers', update: payload },
       'createDoc',
       server
     );
@@ -174,7 +174,7 @@ async function syncSessionManager(change, company, fetchServer, server) {
       'POST',
       {
         database: company,
-        collection: 'SessionManager',
+        collection: 'SessionManagers',
         prop: [{ start: payload.start }, stripId(payload)]
       },
       'updateOneDoc',
@@ -188,7 +188,7 @@ async function syncSessionManager(change, company, fetchServer, server) {
       'POST',
       {
         database: company,
-        collection: 'SessionManager',
+        collection: 'SessionManagers',
         update: { start: payload.start }
       },
       'removeDoc',

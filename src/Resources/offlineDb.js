@@ -1,7 +1,7 @@
 // Simple IndexedDB helper for offline POS/Delivery snapshots, generic app cache, and pending changes
 // DB is per-company and per-user.
 
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const POS_STORE = 'posSnapshot';
 const DELIVERY_STORE = 'deliverySnapshot';
 const PENDING_STORE = 'pendingChanges';
