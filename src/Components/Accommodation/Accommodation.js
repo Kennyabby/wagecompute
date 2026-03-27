@@ -127,6 +127,7 @@ const Accommodation = () => {
         }, {})
         setPayPoints({ ...payPoints, 'Employee': 'EMPLOYEE' })
     }, [paymentMethods])
+    
     useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')
         getApprovals(cmp_val, companyRecord)

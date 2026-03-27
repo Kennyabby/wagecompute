@@ -1010,7 +1010,7 @@ const Products = ({
                                 name='shortRestPrice'
                                 placeholder='0.00'
                                 disabled={(isProductView && (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('edit_product_details')))}
-                                value={productFields.shortRestPrice}
+                                value={productFields.shortRestPrice || ''}
                             />
                         </div>}
                         {defaultProductType === 'goods' && <div className='otherInpCov'>

@@ -974,6 +974,25 @@ function App() {
     return sessionStart.getTime();
   };
 
+  const getPendingSalesDates = (sales)=>{
+      const pendingDates = []
+      const salesDates = sales.map((sale)=>{return getDate(sale.postingDate)})
+      const now = new Date()
+      const today = new Date(now)
+      const currDay = today.getDate()
+      for (let i=0; i<=sales.length; i++){
+          let today = new Date(now)
+          const dateDay = today.setDate(currDay - (i+1))
+          const dayCheck = salesDates.find((salesDate)=>{return getDate(dateDay) === salesDate})
+          if (!dayCheck){
+              pendingDates.push(getDate(dateDay))
+          }else{
+              break
+          }
+      }
+      return pendingDates
+  }
+
   const shuffleList = (array) => {
     var currentIndex = array.length,
       randomIndex,
@@ -3313,7 +3332,7 @@ function App() {
         saleTo, setSaleTo,
         saleNextFrom, setSaleNextFrom,
         salesLoadCount, setSalesLoadCount,
-        sales, setSales, getSales,
+        sales, setSales, getSales, getPendingSalesDates,
         nextSales, setNextSales,
         products, setProducts, getProducts,
         getProductsWithStock, getProductsStockReport,
