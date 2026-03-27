@@ -692,7 +692,7 @@ const PointOfSales = () => {
             // 3) Queue session create for sync
             if (company && companyRecord?.emailid) {
                 const change = {
-                    entityType: 'sessionManager',
+                    entityType: 'sessionManagers',
                     op: 'create',
                     clientId: newSessionManager.start,
                     payload: newSessionManager,
@@ -782,7 +782,7 @@ const PointOfSales = () => {
 
             if (company && companyRecord?.emailid){
                 const change = {
-                    entityType: 'sessionManager',
+                    entityType: 'sessionManagers',
                     op: 'update',
                     clientId: currSessionManager.start,
                     payload: closedSessionManager,

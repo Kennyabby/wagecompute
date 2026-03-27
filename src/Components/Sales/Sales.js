@@ -178,6 +178,7 @@ const Sales = () => {
     const [isSyncing, setIsSyncing] = useState(false)
     const [autoPostSales, setAutoPostSales] = useState(false)
     const [pendingSalesDates, setPendingSalesDates] = useState([])
+    const [proceedToNextAutomation, setProceedToNextAutomation] = useState(false)
 
     const [postingRecovery, setPostingRecovery] = useState(false)
     // useEffect(()=>{
@@ -353,8 +354,10 @@ const Sales = () => {
     useEffect(()=>{
         if (autoPostSales && postingDate && allSessions.length){
             pendingSalesDates.forEach((postingDate)=>{
-                calculateAccommodationSales(accommodations, postingDate, isView, saleEmployee)
-                calculatePOSSessionSales(allSessions, postingDate, isView, saleEmployee)
+                if (proceedToNextAutomation){
+                    calculateAccommodationSales(accommodations, postingDate, isView, saleEmployee)
+                    calculatePOSSessionSales(allSessions, postingDate, isView, saleEmployee)
+                }
             })            
         }
     },[postingDate, autoPostSales, allSessions])
