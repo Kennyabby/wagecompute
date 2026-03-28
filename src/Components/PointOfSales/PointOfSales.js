@@ -812,12 +812,18 @@ const PointOfSales = () => {
                     const allUserOrders = allSessionOrders.filter((order) => {
                         return ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start)) && (order.handlerId === curSession?.startedBy))
                     })
-                    if (allUserOrders.length === 0){                    
-                        stopSession(curSession, allUserOrders)
+                    if (allUserOrders.length === 0 && !curSession?.end){                    
+                        stopSession(curSession, allUserOrders)   
                     }else{
-                        setAlertState('info')
-                        setAlert('Orders Found. Please Stop Your Session Manually!')
-                        setAlertTimeout(2000)
+                        if (curSession?.end){
+                            setAlertState('info')
+                            setAlert('You have no active POS Session. POS Session already stopped!')
+                            setAlertTimeout(2000)
+                        }else{
+                            setAlertState('info')
+                            setAlert('Orders Found. Please Stop Your POS Session Manually!')
+                            setAlertTimeout(2000)
+                        }
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessionManagers(company, companyRecord)
