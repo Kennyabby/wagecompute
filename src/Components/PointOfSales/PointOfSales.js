@@ -1612,7 +1612,13 @@ const PointOfSales = () => {
             }
 
             const product = products.find((prd) => prd.i_d === item.i_d);
-            const itemWrh = wrh;
+            
+            let itemWrh = wrh;
+            const isKitchenitem = wrhCategories['kitchen'].includes(item.category)
+            if (isKitchenitem){
+                itemWrh = 'kitchen'
+            }
+
 
             const purchaseWrh = wrhs.find((warehouse) => {
                 return warehouse.purchase;
@@ -1789,6 +1795,7 @@ const PointOfSales = () => {
         let edittedOrderItems = currentOrder?.items;
         let deliveredOrderItems = [];
         let itemsToDeplete = [];
+        let kitchenItemsToDeplete = []
 
         edittedOrderItems.forEach((item) => {
             const previousItemState = pendingOrderItems.find((itm) => {
@@ -1806,7 +1813,7 @@ const PointOfSales = () => {
                     itemsToDeplete.push(item);
                 }
             }
-
+            
             if (wrhCategories['kitchen'].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
                 if (item.delivery !== 'completed') {
                     const depletedQuantity = Number(
@@ -1815,7 +1822,7 @@ const PointOfSales = () => {
                         item.quantity
                     );
                     item.depletedQuantity = depletedQuantity;
-                    itemsToDeplete.push(item);
+                    kitchenItemsToDeplete.push(item);
                 }
             }
             
@@ -1838,6 +1845,26 @@ const PointOfSales = () => {
                 }
             }
         }
+        
+        const kitchenInsufficientProducts = [];
+        if (curPosSettings?.automateKitchenDelivery){
+            for (const entry of kitchenItemsToDeplete) {
+                const product = products.find((p) => p.i_d === entry.i_d);
+                if (product) {
+                    // console.log(product, product.locationStock)
+                    let countBaseQuantity = 0;
+                    const { cost, quantity } =
+                        product.locationStock?.['kitchen'] || { cost: 0, quantity: 0 };
+                    countBaseQuantity = Number(quantity || 0);
+                    // console.log(countBaseQuantity, Number(entry.depletedQuantity))
+                    if (countBaseQuantity < Number(entry.depletedQuantity)) {
+                        kitchenInsufficientProducts.push(
+                            `[${entry.i_d}] ${entry.name} (${countBaseQuantity.toLocaleString()})`
+                        );
+                    }
+                }
+            }
+        }
 
         if (insufficientProducts.length > 0) {
             setAlertState('error');
@@ -1855,7 +1882,26 @@ const PointOfSales = () => {
             handleTableSelect(currentTable, 'auto')
             await loadInitialData();
             return;
+        }else if (kitchenInsufficientProducts.length > 0) {
+            setAlertState('error');
+            setAlert(
+                `Insufficient quantity in "kitchen" store, for the following product(s): ${kitchenInsufficientProducts.join(
+                    ', '
+                )}`
+            );
+            setAlertTimeout(3000);
+            setPlacingOrder(false);
+            setCurrentOrder(posCurrentOrder);
+            getProducts(company)
+            refreshPOSData()
+            refreshPOSData2()
+            handleTableSelect(currentTable, 'auto')
+            await loadInitialData();
+            return;
         } else {
+            kitchenItemsToDeplete.forEach((item)=>{
+                itemsToDeplete.push(item)
+            })
             edittedOrderItems.forEach((item) => {
                 const previousItemState = pendingOrderItems.find((itm) => {
                     return itm.i_d === item.i_d;
