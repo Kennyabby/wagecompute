@@ -2170,7 +2170,11 @@ const PointOfSales = () => {
 
         const deliveredItems = order.items.filter((item) => {
             orderItemsQuantity += Number(item.quantity);
-            if (wrhCategories[wrh].includes(item.category)) {
+            if (wrhCategories[wrh].includes(item.category) && wrh !== 'kitchen') {
+                deliveredItemsQuantity += Number(item.deliveredQuantity || 0);
+                return Number(item.deliveredQuantity || 0) > 0;
+            }
+            if (wrhCategories['kitchen'].includes(item.category)){
                 deliveredItemsQuantity += Number(item.deliveredQuantity || 0);
                 return Number(item.deliveredQuantity || 0) > 0;
             }
@@ -4541,8 +4545,8 @@ const OrdersModal = ({
     const [cancelling, setCancelling] = useState(false);
 
     const handleCancelOrder = async (order) => {
-        if (order.delivery !== 'completed' || curPosSettings?.type === 'shop') {
-            
+
+        if (order.delivery !== 'completed' || curPosSettings?.type === 'shop' || true) {            
             const cancelOrder = window.confirm(
                 `Are you sure you want to Cancel Order #${order.orderNumber}?`
             );
@@ -4639,14 +4643,15 @@ const OrdersModal = ({
                             cancelledAt: Date.now(),
                         },
                     }
+
                     if (curPosSettings?.type === 'restaurant'){
                         queuePendingChange(company, companyRecord.emailid, change);
                     }else{
                         await processChange(change, company, fetchServer, server);
                     }
+                    
                     // Immediate sync attempt – failures are fine, queue remains
                     try {
-                        await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                         setAlert('Order cancelled successfully');
                         setAlertState('success');
                         setAlertTimeout(1000);
@@ -4654,25 +4659,26 @@ const OrdersModal = ({
                         // Leave pending changes in queue; 5‑minute auto-sync will retry
                     }
                 }
-
+                
                 // 5) Local success
                 setAlertState('success');
                 setAlert('Order cancelled successfully');
                 setAlertTimeout(1000);
-
-                if (curPosSettings?.type === 'shop' || order.status === 'completed'){
-                    handleCancelDelivery(order)
-                }
-
+                
+                handleCancelDelivery(order)
+                // if (curPosSettings?.type === 'shop' || order.status === 'completed'){
+                    // }
+                    
                 if (currentOrder?.orderNumber === order.orderNumber) {
                     createNewOrder({
                         i_d: currentOrder.tableId,
                         name: currentOrder.tableName,
                     });
                 }
-
+                
                 setCancelling(false);
                 setShowOrdersModal(false);
+                await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 return;
             } catch (e) {
                 setAlertState('error');
@@ -4735,14 +4741,21 @@ const OrdersModal = ({
                                         className="edit-order-btn"
                                         onClick={() => {
                                             var totalItems = 0
+                                            var kitchenItems = 0
                                             var deliveredQuantity = 0
                                             const deliveredItems = order.items.filter((item) => {
-                                                if (wrhCategories[wrh].includes(item.category)) {
+                                                if (wrhCategories[wrh].includes(item.category) && wrh !=='kitchen') {
                                                     totalItems += Number(item.quantity)
                                                     deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                                     return Number(item?.deliveredQuantity || 0) > 0
                                                 }
+                                                if (wrhCategories["kitchen"].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
+                                                    kitchenItems += Number(item.quantity)
+                                                    deliveredQuantity += Number(item?.deliveredQuantity || 0)
+                                                    return Number(item?.deliveredQuantity || 0) > 0
+                                                }
                                             })
+
                                             if (deliveredQuantity){
                                                 handleCancelDelivery(order, 'edit')
                                             }
