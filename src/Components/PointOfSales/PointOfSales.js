@@ -35,7 +35,7 @@ const PointOfSales = () => {
         products, getProducts, setProducts, getEmployeeName,
         fetchSessions, fetchAllSessions, sessions, setSessions, posOrders,
         fetchSessionManagers, sessionManagers, setSessionManagers,
-        getLastActiveSessions, lastActiveSesisons, 
+        getLastActiveSessions, lastActiveSessions, 
         fetchSessionsByRange, fetchOrdersByRange,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         allSessions, setAllSessions, tables, setTables, fetchTables,
@@ -746,7 +746,7 @@ const PointOfSales = () => {
             }
         })
         
-        let handlers = []
+        const handlers = [];
         (allSessionOrders || [])?.forEach((order) => {
             if ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start))){
                 const handlerId = order.handlerId
@@ -756,7 +756,7 @@ const PointOfSales = () => {
             }
         })
 
-        let agents = []
+        const agents = [];
         (allSessionOrders || [])?.forEach((order) => {
             if ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start))){
                 const agent = order.agent
@@ -789,7 +789,6 @@ const PointOfSales = () => {
 
                 }
             }
-
             if (company && companyRecord?.emailid){
                 const change = {
                     entityType: 'sessionManagers',
@@ -803,6 +802,7 @@ const PointOfSales = () => {
                 }else{
                     await processChange(change, company, fetchServer, server);
                 }
+
                 try{
                     setAlertState('success');
                     setAlert('Session Manager Stopped!');
@@ -834,13 +834,15 @@ const PointOfSales = () => {
 
             return;
 
-        }catch{
+        }catch(e){
+            console.log('Stop Session Manager Error: ', e)
             setAlertState('error');
             setAlert('Could not end session manager locally. Please try again.');
             setAlertTimeout(3000);
             return;
         }
-    }
+    };
+
     const createSession = async (sessionUser) => {
         if (!wrh) {
             setAlertState('info');
@@ -4061,6 +4063,7 @@ const PointOfSales = () => {
                     stopSessionManager={stopSessionManager}
                     fetchSessionManagers={fetchSessionManagers}
                     getLastActiveSessions={getLastActiveSessions}
+                    lastActiveSessions={lastActiveSessions}
                     fetchSessionsByRange={fetchSessionsByRange}
                     fetchOrdersByRange={fetchOrdersByRange}
                     companyRecord={companyRecord}
@@ -4825,7 +4828,7 @@ const POSDashboard = ({
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, mergeAndPersistOrders, mergeAndPersistSessions,
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd,
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,currSessionManager, createSessionManager, stopSessionManager,
-    fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange,
+    fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange, lastActiveSessions,
     setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories
 }) => {
     const { fetchServer, server, company, wrhs } = useContext(ContextProvider);
@@ -4858,10 +4861,32 @@ const POSDashboard = ({
     }, [stableSalesSessions, filteredSessions])
 
 
+    // useEffect(() => {
+    //     if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
+    //         setStableSalesSessions(allSalesSessions)
+    //         setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
+    //     }
+    //     // const getSessionsData = async ()=>{
+    //     //     const orderDays = 50 * 24 * 60 * 60 * 1000
+    //     //     const allowedFromDays = Date.now() - orderDays
+    //     //     const ordersResponse = await fetchServer("POST", {
+    //     //         database: company,
+    //     //         collection: "Orders",
+    //     //         prop: {createdAt: {$gte: allowedFromDays}}
+    //     //     }, "getDocsDetails", server); 
+    //     //     if(!ordersResponse.err){
+    //     //         if (Array.isArray(ordersResponse.record)){
+    //     //             mergeAndPersistOrders(ordersResponse.record)
+    //     //         }
+    //     //     }
+    //     // }
+    //     // getSessionsData()
+    // }, [allSalesSessions])
+    
     useEffect(() => {
-        if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
-            setStableSalesSessions(allSalesSessions)
-            setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
+        if (lastActiveSessions?.length && Array.isArray(lastActiveSessions)) {            
+            setStableSalesSessions(lastActiveSessions.filter((session)=>{return session.type === 'sales'}))
+            setActiveSessions(lastActiveSessions?.filter((session)=>{return session.active && session.type === 'sales'}))
         }
         // const getSessionsData = async ()=>{
         //     const orderDays = 50 * 24 * 60 * 60 * 1000
@@ -4878,11 +4903,12 @@ const POSDashboard = ({
         //     }
         // }
         // getSessionsData()
-    }, [allSalesSessions])
+    }, [lastActiveSessions])
 
     useEffect(() => {
         (async () => {
-            const sessionDays = 50 * 24 * 60 * 60 * 1000
+            getLastActiveSessions(company, companyRecord)
+            const sessionDays = 30 * 24 * 60 * 60 * 1000
             const allowedFromDays1 = Date.now() - sessionDays
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
@@ -4974,17 +5000,23 @@ const POSDashboard = ({
                         <div 
                             className='session-state-label'
                             onClick={()=>{
-                                if ((currSessionManager === null || currSessionManager?.end) && !activeSessions.length){
-                                    if (canUpdateSession){
-                                        createSessionManager()
+                                if ((currSessionManager === null || currSessionManager?.end)){
+                                    if (!activeSessions.length){
+                                        if (canUpdateSession){
+                                            createSessionManager()
+                                        }else{
+                                            // window.localStorage.setItem('auto-sales', 'Auto Posting Sales...')
+                                            // setTimeout(() => {
+                                            //     Navigate('/sales')
+                                            // }, 3000)
+                                            setAlertState('error')
+                                            setAlert("Please Post Pending Sales for previous days to Start Today's Session Manager! Redirecting ....")
+                                            setAlertTimeout(3000)  
+                                        }
                                     }else{
-                                        // window.localStorage.setItem('auto-sales', 'Auto Posting Sales...')
-                                        // setTimeout(() => {
-                                        //     Navigate('/sales')
-                                        // }, 3000)
                                         setAlertState('error')
-                                        setAlert("Please Post Pending Sales for previous days to Start Today's Session Manager! Redirecting ....")
-                                        setAlertTimeout(3000)  
+                                        setAlert("Please End all POS Sessions to Start Session Manager!")
+                                        setAlertTimeout(3000)      
                                     }
                                 }else{
                                     if (currSessionManager){
@@ -4997,7 +5029,7 @@ const POSDashboard = ({
                                 }
                             }}
                         >
-                            {((currSessionManager === null || currSessionManager?.end) && !activeSessions.length) ? 'Start' : 'Stop'}
+                            {((currSessionManager === null || currSessionManager?.end)) ? 'Start' : 'Stop'}
                         </div>
                     </div>}
                     <div className='pos-sessions-list'>
