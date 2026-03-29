@@ -1458,7 +1458,7 @@ function App() {
 
   const getLastActiveSessions = async (company, companyRecord) =>{
     if (company && companyRecord?.emailid){
-      const sessionDays = 2 * 24 * 60 * 60 * 1000
+      const sessionDays = 7 * 24 * 60 * 60 * 1000
       const allowedFromDays = Date.now() - sessionDays
       const lastSessionStart = getSessionStart(allowedFromDays)
       const sessionsResponse = await fetchServer("POST", {
@@ -1634,7 +1634,7 @@ function App() {
         // }
       }
 
-      const sessionDays = 50 * 24 * 60 * 60 * 1000
+      const sessionDays = 30 * 24 * 60 * 60 * 1000
       const allowedFromDays = Date.now() - sessionDays
 
       const { resp, resp1, sessionsResponse } = await Promise.all([
@@ -2224,7 +2224,7 @@ function App() {
         return resp
         // return {record: []}
       } else {
-        const orderDays = 50 * 24 * 60 * 60 * 1000
+        const orderDays = 30 * 24 * 60 * 60 * 1000
         const allowedFromDays = Date.now() - orderDays
         const resp = await fetchServer("POST", {
           database: company,
@@ -2331,10 +2331,12 @@ function App() {
     var defaultEndPoint = 'getDocsDetails'
     const salesDays = 60 * 24 * 60 * 60 * 1000
     const allowedFromDays = Date.now() - salesDays
+    const allSalesDays = 365 * 24 * 60 * 60 * 1000
+    const allAllowedFromDays = Date.now() - allSalesDays
     const body = {
       database: company,
       collection: "Sales",
-      ...(scope === 'all' ? { prop: {} } : { prop: { createdAt: { $gte: allowedFromDays } } })
+      ...(scope === 'all' ? { prop: { createdAt: { $gte: allAllowedFromDays } } } : { prop: { createdAt: { $gte: allowedFromDays } } })
     }
 
     const cached = await getCached(company, 'sales', companyRecord?.emailid);
