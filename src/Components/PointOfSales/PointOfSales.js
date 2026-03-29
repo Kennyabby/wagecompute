@@ -2521,6 +2521,7 @@ const PointOfSales = () => {
             ...currentOrder,
             status: 'pending',
             editedAt: new Date().getTime(),
+            edited: true,
             delivery: 'pending',
         };
 
@@ -3061,7 +3062,7 @@ const PointOfSales = () => {
         const table = orderTables.find((table) => { return table.i_d === orderData.tableId })
         const receiptContent = `
             <div class="receipt">
-                <h2>${companyRecord.name} Customer Order</h2>
+                <h2>${companyRecord.name} Customer Order ${orderData.edited ? '(Edited)' : ''}</h2>
                 <p>From: ${table?.name || ''} (${orderData.wrh})</p>
                 <p>Order: #${orderData.orderNumber}</p>
                 <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
@@ -3127,7 +3128,7 @@ const PointOfSales = () => {
             const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
             const receiptContent = `
                 <div class="receipt">
-                    <h2>Kitchen Order Slip</h2>
+                    <h2>Kitchen Order Slip ${orderData.edited ? '(Edited)' : ''}</h2>
                     <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
                     <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
                     <p>Order: #${orderData.orderNumber}</p>
@@ -3144,7 +3145,7 @@ const PointOfSales = () => {
                     <div class="receipt-total">
                         <p>Total: ₦${(Number(orderData.items.reduce((sum, item) =>
                 sum + (wrhCategories['kitchen']?.includes(item.category)
-                    ? Number(item.quantity) * Number(item.salesPrice) : 0)
+                    ? Number(item.quantity) * (wrh === 'vip' ? Number(item.vipPrice) : Number(item.salesPrice)) : 0)
                 , 0)) || 0).toFixed(2)}</p>                    
                     </div>
                     <p>Printed For Kitchen Use Only!</p>
@@ -3195,7 +3196,7 @@ const PointOfSales = () => {
         const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
         const receiptContent = `
             <div class="receipt">
-                <h2>${orderData.wrh} - Order Slip For Bars</h2>
+                <h2>${orderData.wrh} - Order Slip For Bars ${orderData.edited ? '(Edited)' : ''}</h2>
                 <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
                 <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
                 <p>Order: #${orderData.orderNumber}</p>
