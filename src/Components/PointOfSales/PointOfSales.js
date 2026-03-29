@@ -4845,6 +4845,7 @@ const POSDashboard = ({
     const [pendingLoading, setPendingLoading] = useState(false);
     const [pendingError, setPendingError] = useState(null);
     const Navigate = useNavigate()
+
     useEffect(() => {
         const isAdminUser = companyRecord?.access === 'admin'
         if (!Array.isArray(filteredSessions)) {
@@ -4861,32 +4862,10 @@ const POSDashboard = ({
     }, [stableSalesSessions, filteredSessions])
 
 
-    // useEffect(() => {
-    //     if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
-    //         setStableSalesSessions(allSalesSessions)
-    //         setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
-    //     }
-    //     // const getSessionsData = async ()=>{
-    //     //     const orderDays = 50 * 24 * 60 * 60 * 1000
-    //     //     const allowedFromDays = Date.now() - orderDays
-    //     //     const ordersResponse = await fetchServer("POST", {
-    //     //         database: company,
-    //     //         collection: "Orders",
-    //     //         prop: {createdAt: {$gte: allowedFromDays}}
-    //     //     }, "getDocsDetails", server); 
-    //     //     if(!ordersResponse.err){
-    //     //         if (Array.isArray(ordersResponse.record)){
-    //     //             mergeAndPersistOrders(ordersResponse.record)
-    //     //         }
-    //     //     }
-    //     // }
-    //     // getSessionsData()
-    // }, [allSalesSessions])
-    
     useEffect(() => {
-        if (lastActiveSessions?.length && Array.isArray(lastActiveSessions)) {            
-            setStableSalesSessions(lastActiveSessions.filter((session)=>{return session.type === 'sales'}))
-            setActiveSessions(lastActiveSessions?.filter((session)=>{return session.active && session.type === 'sales'}))
+        if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
+            setStableSalesSessions(allSalesSessions)
+            setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
         }
         // const getSessionsData = async ()=>{
         //     const orderDays = 50 * 24 * 60 * 60 * 1000
@@ -4903,7 +4882,35 @@ const POSDashboard = ({
         //     }
         // }
         // getSessionsData()
-    }, [lastActiveSessions])
+    }, [allSalesSessions])
+    
+    useEffect(() => {
+        
+        if (lastActiveSessions?.length && Array.isArray(lastActiveSessions)) {            
+            setStableSalesSessions(lastActiveSessions.filter((session)=>{return session.type === 'sales'}))
+            setActiveSessions(lastActiveSessions?.filter((session)=>{return session.active && session.type === 'sales'}))
+        }else{
+            if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
+                setStableSalesSessions(allSalesSessions)
+                setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
+            }
+        }
+        // const getSessionsData = async ()=>{
+        //     const orderDays = 50 * 24 * 60 * 60 * 1000
+        //     const allowedFromDays = Date.now() - orderDays
+        //     const ordersResponse = await fetchServer("POST", {
+        //         database: company,
+        //         collection: "Orders",
+        //         prop: {createdAt: {$gte: allowedFromDays}}
+        //     }, "getDocsDetails", server); 
+        //     if(!ordersResponse.err){
+        //         if (Array.isArray(ordersResponse.record)){
+        //             mergeAndPersistOrders(ordersResponse.record)
+        //         }
+        //     }
+        // }
+        // getSessionsData()
+    }, [lastActiveSessions, allSalesSessions])
 
     useEffect(() => {
         (async () => {
