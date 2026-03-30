@@ -819,11 +819,11 @@ const PointOfSales = () => {
                         if (curSession?.end){
                             setAlertState('info')
                             setAlert('You have no active POS Session. POS Session already stopped!')
-                            setAlertTimeout(2000)
+                            setAlertTimeout(3000)
                         }else{
                             setAlertState('info')
                             setAlert('Orders Found. Please Stop Your POS Session Manually!')
-                            setAlertTimeout(2000)
+                            setAlertTimeout(3000)
                         }
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
@@ -4895,7 +4895,7 @@ const POSDashboard = ({
     useEffect(() => {
         (async () => {
             getLastActiveSessions(company, companyRecord)
-            const sessionDays = 30 * 24 * 60 * 60 * 1000
+            const sessionDays = 31 * 24 * 60 * 60 * 1000
             const allowedFromDays1 = Date.now() - sessionDays
             const sessionsResponse = await fetchServer("POST", {
                 database: company,
@@ -5006,12 +5006,18 @@ const POSDashboard = ({
                                         setAlertTimeout(3000)      
                                     }
                                 }else{
-                                    if (currSessionManager){
+                                    if (currSessionManager && activeSessions.length){
                                         stopSessionManager(activeSessions)
                                     }else{
-                                        setAlertState('error')
-                                        setAlert('Session Manager Was Not Started. You can Start it after all sessions have been ended!')
-                                        setAlertTimeout(3000)
+                                        if (!activeSessions){
+                                            setAlertState('error')
+                                            setAlert('Please Hold on... Let Active Sessions Load!')
+                                            setAlertTimeout(3000)
+                                        }else{
+                                            setAlertState('error')
+                                            setAlert('Session Manager Was Not Started. You can Start it after all sessions have been ended!')
+                                            setAlertTimeout(3000)
+                                        }
                                     }
                                 }
                             }}
@@ -5077,7 +5083,7 @@ const POSDashboard = ({
                                                                     setAlertState('info')
                                                                     setAlert('Could not Calculate Orders. Please try again in a few moment, while we fetch them for you!')
                                                                     setAlertTimeout(3000)
-                                                                    const orderDays = 50 * 24 * 60 * 60 * 1000
+                                                                    const orderDays = 31 * 24 * 60 * 60 * 1000
                                                                     const allowedFromDays = Date.now() - orderDays
                                                                     const ordersResponse = await fetchServer("POST", {
                                                                         database: company,
