@@ -4866,14 +4866,13 @@ const POSDashboard = ({
     
     useEffect(() => {
         
+        if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
+            setStableSalesSessions(allSalesSessions)
+            setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
+        }
         if (lastActiveSessions?.length && Array.isArray(lastActiveSessions)) {            
-            setStableSalesSessions(lastActiveSessions.filter((session)=>{return session.type === 'sales'}))
+            // setStableSalesSessions(lastActiveSessions.filter((session)=>{return session.type === 'sales'}))
             setActiveSessions(lastActiveSessions?.filter((session)=>{return session.active && session.type === 'sales'}))
-        }else{
-            if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
-                setStableSalesSessions(allSalesSessions)
-                setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
-            }
         }
         // const getSessionsData = async ()=>{
         //     const orderDays = 50 * 24 * 60 * 60 * 1000
