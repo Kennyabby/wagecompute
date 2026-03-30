@@ -740,15 +740,16 @@ const PointOfSales = () => {
         setAlertTimeout(100000);
 
         const sessionIds = (activeSessions || [])?.map((session) => {return session.start})
-        const orderNumbers = (allSessionOrders || [])?.filter((order) => {
-            if ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start))){
+        const firstActiveSession = activeSessions[0]
+        const orderNumbers = (allSessionOrders || [])?.map((order) => {
+            if ((getSessionEnd(order.sessionId) === getSessionEnd((firstActiveSession || curSession)?.start))){
                 return order.orderNumber
             }
         })
         
         const handlers = [];
         (allSessionOrders || [])?.forEach((order) => {
-            if ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start))){
+            if ((getSessionEnd(order.sessionId) === getSessionEnd((firstActiveSession || curSession)?.start))){
                 const handlerId = order.handlerId
                 if (!handlers.includes(handlerId)){
                     handlers.push(handlerId)
@@ -758,7 +759,7 @@ const PointOfSales = () => {
 
         const agents = [];
         (allSessionOrders || [])?.forEach((order) => {
-            if ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start))){
+            if ((getSessionEnd(order.sessionId) === getSessionEnd((firstActiveSession || curSession)?.start))){
                 const agent = order.agent
                 if (!agents.includes(agent)){
                     agents.push(agent)
@@ -4862,28 +4863,6 @@ const POSDashboard = ({
         }
     }, [stableSalesSessions, filteredSessions])
 
-
-    useEffect(() => {
-        if (allSalesSessions?.length && Array.isArray(allSalesSessions)) {
-            setStableSalesSessions(allSalesSessions)
-            setActiveSessions(allSalesSessions?.filter((salesSession)=>{return salesSession.active}))
-        }
-        // const getSessionsData = async ()=>{
-        //     const orderDays = 50 * 24 * 60 * 60 * 1000
-        //     const allowedFromDays = Date.now() - orderDays
-        //     const ordersResponse = await fetchServer("POST", {
-        //         database: company,
-        //         collection: "Orders",
-        //         prop: {createdAt: {$gte: allowedFromDays}}
-        //     }, "getDocsDetails", server); 
-        //     if(!ordersResponse.err){
-        //         if (Array.isArray(ordersResponse.record)){
-        //             mergeAndPersistOrders(ordersResponse.record)
-        //         }
-        //     }
-        // }
-        // getSessionsData()
-    }, [allSalesSessions])
     
     useEffect(() => {
         
