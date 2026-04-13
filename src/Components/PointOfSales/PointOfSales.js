@@ -741,9 +741,10 @@ const PointOfSales = () => {
 
         const sessionIds = (activeSessions || [])?.map((session) => {return session.start})
         const firstActiveSession = activeSessions[0]
-        const orderNumbers = (allSessionOrders || [])?.map((order) => {
+        const orderNumbers = [];
+        (allSessionOrders || [])?.forEach((order) => {
             if ((getSessionEnd(order.sessionId) === getSessionEnd((firstActiveSession || curSession)?.start))){
-                return order.orderNumber
+                orderNumbers.push(order.orderNumber)
             }
         })
         
