@@ -4,6 +4,7 @@ import { useState, useEffect, useContext, useRef } from 'react'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 import html2pdf from 'html2pdf.js';
+import { MdFullscreen, MdFullscreenExit, MdDownload, MdClose } from 'react-icons/md';
 
 const Reports = () => {
     const { storePath,
@@ -24,9 +25,12 @@ const Reports = () => {
     const [filterTo, setFilterTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [pendingFrom, setPendingFrom] = useState(filterFrom)
     const [pendingTo, setPendingTo] = useState(filterTo)
+    const [isFullScreen, setIsFullScreen] = useState(false)
+
     useEffect(() => {
         storePath('reports')
     }, [storePath])
+
     useEffect(() => {
         // fetch COGS mapping for current overall range
         (async () => {
@@ -433,259 +437,300 @@ const Reports = () => {
 
     return (
         <>
-            <div className='reports'>
-                <div className='reports-list' onClick={handleReportSelection}>
-                    {reports.map((report, id) => {
-                        return <div className={'report-card' + (curReport.title === report ? ' report-selected' : '')} name={report} key={id}>
-                            {report}
+            <div className={`reports ${isFullScreen ? 'reports-fullview-active' : ''}`}>
+                {!isFullScreen && (
+                    <div className='reports-sidebar'>
+                        <div className='reports-sidebar-header'>
+                            <div className='reports-kicker'>Insights & Analytics</div>
+                            <h2 className='reports-title'>Reports</h2>
+                            <p className='reports-subtitle'>Generate and analyze financial statements for your organization.</p>
                         </div>
-                    })}
-                </div>
+                        <div className='reports-list' onClick={handleReportSelection}>
+                            {reports.map((report, id) => {
+                                return (
+                                    <div 
+                                        className={'report-card' + (curReport.title === report ? ' report-selected' : '')} 
+                                        name={report} 
+                                        key={id}
+                                    >
+                                        {report}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 <div className='reports-cover'>
-                    <div className='reports-view' ref={reportRef}>
-                        <div className='report-invhead'>
-                            <div className="billfrom">
-                                <h4 className='company report-company' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
-                                <p className='billfromitem report-billfrom'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
-                                <p className='billfromitem report-billfrom'>{`Email: ${companyRecord.emailid}`}</p>
-                            </div>
-                        </div>
-                        {curReport.title ? <div className='reports-onview'>
-                            <div className='report-title'>
-                                {curReport.description + ` YEAR ${new Date(filterTo).getFullYear()}`}
-                            </div>
-                            {cogsLoading && (
-                                <div className='report-loading' style={{ margin: '8px 0', color: '#325aa8' }}>
-                                    Updating cost of goods... Please wait.
-                                </div>
-                            )}
-                            {cogsError && (
-                                <div className='report-error' style={{ margin: '8px 0', color: 'red' }}>
-                                    {cogsError}
-                                    <button style={{ marginLeft: 8 }} onClick={() => fetchCogsForRange(filterFrom, filterTo)}>Retry</button>
-                                </div>
-                            )}
-                            <div className='report-table'>
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            {curReport.columns?.map((col, index) => {
-                                                return <th key={index}>{col}</th>
-                                            })}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {curReport.title === 'PROFIT OR LOSS' && curReport.data.map((report, index) => {
-                                            return <tr key={index}>
-                                                <td>{report.month}</td>
-                                                <td>{'₦' + (report.salesAmount).toLocaleString()}</td>
-                                                <td>{'₦' + (report.cogsAmount || report.purchaseAmount).toLocaleString()}</td>
-                                                <td>{'₦' + (report.salesAmount - (report.cogsAmount || report.purchaseAmount)).toLocaleString()}</td>
-                                                <td>{'₦' + (report.rentalAmount).toLocaleString()}</td>
-                                                <td>{'₦' + (report.expenseAmount).toLocaleString()}</td>
-                                                <td>{'₦' + (report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount).toLocaleString()}</td>
-                                            </tr>
-                                        })}
-                                        {curReport.title === 'TRIAL BALANCE' &&
-                                            <tr>
-                                                <td>{`1ST JANUARY`}</td>
-                                                <td>{`OPENING BALANCE, ${new Date(filterFrom).getFullYear()}`}</td>
-                                                <td></td>
-                                                <td></td>
-                                                <td>{'₦' +
-                                                    cummulativeBalance(
-                                                        getAlldata('2024-01-01',
-                                                            new Date(new Date(filterFrom).getFullYear() - 1,
-                                                                months.indexOf('DECEMBER'),
-                                                                monthDays['DECEMBER'] + 1
-                                                            ).toISOString().slice(0, 10)
-                                                        ), 'DECEMBER'
-                                                    ).toLocaleString()}
-                                                </td>
-                                            </tr>
-                                        }
-                                        {curReport.title === 'TRIAL BALANCE' &&
-                                            [''].map((args, index) => {
-                                                var cummulativeSum = cummulativeBalance(
-                                                    getAlldata('2024-01-01',
-                                                        new Date(new Date(filterTo).getFullYear() - 1,
-                                                            months.indexOf('DECEMBER'),
-                                                            monthDays['DECEMBER'] + 1
-                                                        ).toISOString().slice(0, 10)
-                                                    ), 'DECEMBER'
-                                                )
-                                                return curReport.data.map((report, index) => {
-                                                    return <tr key={index}>
-                                                        <td>{report.month}</td>
-                                                        <td>{'SALES INCOME || ADMIN & OTHER EXPENSES'}</td>
-                                                        <td>{'₦' + (report.salesAmount + report.rentalAmount).toLocaleString()}</td>
-                                                        <td>{'₦' + ((report.cogsAmount || report.purchaseAmount) + report.expenseAmount).toLocaleString()}</td>
-                                                        {[''].map((arg, index) => {
-                                                            cummulativeSum += report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount
-                                                            return <td>{'₦' + (cummulativeSum).toLocaleString()}</td>
+                    <div className='reports-main'>
+                        {curReport.title ? (
+                            <div className='reports-view-wrapper'>
+                                {isFullScreen && (
+                                    <div className='fullview-actions'>
+                                        <button className='fullview-btn download' onClick={printToPDF}>
+                                            <MdDownload size={18} /> Download PDF
+                                        </button>
+                                        <button className='fullview-btn close' onClick={() => setIsFullScreen(false)}>
+                                            <MdClose size={18} /> Exit Full View
+                                        </button>
+                                    </div>
+                                )}
+                                
+                                <div className='reports-view' ref={reportRef}>
+                                    {!isFullScreen && (
+                                        <div className='fullview-guide'>
+                                            <p className='fullview-note'>Download the report after view full screen</p>
+                                            <div 
+                                                className='view-toggle-btn' 
+                                                onClick={() => setIsFullScreen(true)}
+                                            >
+                                                <MdFullscreen size={20} /> Full View
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className='report-invhead'>
+                                        <div className="billfrom">
+                                            <h4 className='company report-company' style={{ color: '#173829' }}>
+                                                <strong>{companyRecord.name.toUpperCase()}</strong>
+                                            </h4>
+                                            <p className='billfromitem report-billfrom'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
+                                            <p className='billfromitem report-billfrom'>{`Email: ${companyRecord.emailid}`}</p>
+                                        </div>
+                                    </div>
+                                    <div className='reports-onview'>
+                                        <div className='report-title'>
+                                            {curReport.description + ` YEAR ${new Date(filterTo).getFullYear()}`}
+                                        </div>
+                                        {cogsLoading && (
+                                            <div className='report-loading'>
+                                                Updating cost of goods... Please wait.
+                                            </div>
+                                        )}
+                                        {cogsError && (
+                                            <div className='report-error'>
+                                                {cogsError}
+                                                <button onClick={() => fetchCogsForRange(filterFrom, filterTo)}>Retry</button>
+                                            </div>
+                                        )}
+                                        <div className='report-table-scroll'>
+                                            <div className='report-table'>
+                                                <table>
+                                                    <thead>
+                                                        <tr>
+                                                            {curReport.columns?.map((col, index) => {
+                                                                return <th key={index}>{col}</th>
+                                                            })}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {curReport.title === 'PROFIT OR LOSS' && curReport.data.map((report, index) => {
+                                                            return (
+                                                                <tr key={index}>
+                                                                    <td>{report.month}</td>
+                                                                    <td>{'₦' + (report.salesAmount).toLocaleString()}</td>
+                                                                    <td>{'₦' + (report.cogsAmount || report.purchaseAmount).toLocaleString()}</td>
+                                                                    <td>{'₦' + (report.salesAmount - (report.cogsAmount || report.purchaseAmount)).toLocaleString()}</td>
+                                                                    <td>{'₦' + (report.rentalAmount).toLocaleString()}</td>
+                                                                    <td>{'₦' + (report.expenseAmount).toLocaleString()}</td>
+                                                                    <td>{'₦' + (report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount).toLocaleString()}</td>
+                                                                </tr>
+                                                            )
                                                         })}
-                                                    </tr>
-                                                })
-                                            })
-                                        }
-                                    </tbody>
-                                    <tfoot>
-                                        {curReport.title === 'PROFIT OR LOSS' && <tr>
-                                            <th>Total Amount</th>
-                                            {curReport.title === 'PROFIT OR LOSS' &&
-                                                [''].map((arg, index) => {
-                                                    var totalSalesAmount = 0
-                                                    curReport.data.forEach((report) => {
-                                                        totalSalesAmount += report.salesAmount
-                                                    })
-                                                    return <th>{'₦' + totalSalesAmount.toLocaleString()}</th>
-                                                })
-                                            }
-                                            {curReport.title === 'PROFIT OR LOSS' &&
-                                                [''].map((arg, index) => {
-                                                    var totalPurchaseAmount = 0
-                                                    curReport.data.forEach((report) => {
-                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
-                                                    })
-                                                    return <th>{'₦' + totalPurchaseAmount.toLocaleString()}</th>
-                                                })
-                                            }
-                                            {curReport.title === 'PROFIT OR LOSS' &&
-                                                [''].map((arg, index) => {
-                                                    var totalSalesAmount = 0
-                                                    var totalPurchaseAmount = 0
-                                                    curReport.data.forEach((report) => {
-                                                        totalSalesAmount += report.salesAmount
-                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
-                                                    })
-                                                    return <th>{'₦' + (totalSalesAmount - totalPurchaseAmount).toLocaleString()}</th>
-                                                })
-                                            }
-                                            {curReport.title === 'PROFIT OR LOSS' &&
-                                                [''].map((arg, index) => {
-                                                    var totalRentalAmount = 0
-                                                    curReport.data.forEach((report) => {
-                                                        totalRentalAmount += report.rentalAmount
-                                                    })
-                                                    return <th>{'₦' + totalRentalAmount.toLocaleString()}</th>
-                                                })
-                                            }
-                                            {curReport.title === 'PROFIT OR LOSS' &&
-                                                [''].map((arg, index) => {
-                                                    var totalExpenseAmount = 0
-                                                    curReport.data.forEach((report) => {
-                                                        totalExpenseAmount += report.expenseAmount
-                                                    })
-                                                    return <th>{'₦' + totalExpenseAmount.toLocaleString()}</th>
-                                                })
-                                            }
-                                            {curReport.title === 'PROFIT OR LOSS' &&
-                                                [''].map((arg, index) => {
-                                                    var totalSalesAmount = 0
-                                                    var totalRentalAmount = 0
-                                                    var totalPurchaseAmount = 0
-                                                    var totalExpenseAmount = 0
-                                                    curReport.data.forEach((report) => {
-                                                        totalSalesAmount += report.salesAmount
-                                                        totalRentalAmount += report.rentalAmount
-                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
-                                                        totalExpenseAmount += report.expenseAmount
-                                                    })
-                                                    return <th>{'₦' + (totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>
-                                                })
-                                            }
-                                        </tr>}
-                                        {curReport.title === 'TRIAL BALANCE' && <tr>
-                                            <th>Total Amount</th>
-                                            {curReport.title === 'TRIAL BALANCE' &&
-                                                <th>{`CLOSING BALANCE, ${new Date(filterTo).getFullYear()}`}</th>
-                                            }
-                                            {curReport.title === 'TRIAL BALANCE' &&
-                                                <th></th>
-                                            }
-                                            {curReport.title === 'TRIAL BALANCE' &&
-                                                <th></th>
-                                            }
-                                            {curReport.title === 'TRIAL BALANCE' &&
-                                                [''].map((arg, index) => {
-                                                    var totalSalesAmount = 0
-                                                    var totalRentalAmount = 0
-                                                    var totalPurchaseAmount = 0
-                                                    var totalExpenseAmount = 0
-                                                    curReport.data.forEach((report) => {
-                                                        totalSalesAmount += report.salesAmount
-                                                        totalRentalAmount += report.rentalAmount
-                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
-                                                        totalExpenseAmount += report.expenseAmount
-                                                    })
-                                                    var cummulativeSum = cummulativeBalance(
-                                                        getAlldata('2024-01-01',
-                                                            new Date(new Date(filterTo).getFullYear() - 1,
-                                                                months.indexOf('DECEMBER'),
-                                                                monthDays['DECEMBER'] + 1
-                                                            ).toISOString().slice(0, 10)
-                                                        ), 'DECEMBER'
-                                                    )
-                                                    return <th>{'₦' + (cummulativeSum + totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>
-                                                })
-                                            }
-                                        </tr>}
-                                    </tfoot>
-                                </table>
+                                                        {curReport.title === 'TRIAL BALANCE' && (
+                                                            <tr>
+                                                                <td>{`1ST JANUARY`}</td>
+                                                                <td>{`OPENING BALANCE, ${new Date(filterFrom).getFullYear()}`}</td>
+                                                                <td></td>
+                                                                <td></td>
+                                                                <td>{'₦' +
+                                                                    cummulativeBalance(
+                                                                        getAlldata('2024-01-01',
+                                                                            new Date(new Date(filterFrom).getFullYear() - 1,
+                                                                                months.indexOf('DECEMBER'),
+                                                                                monthDays['DECEMBER'] + 1
+                                                                            ).toISOString().slice(0, 10)
+                                                                        ), 'DECEMBER'
+                                                                    ).toLocaleString()}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                        {curReport.title === 'TRIAL BALANCE' &&
+                                                            [''].map((args, index) => {
+                                                                var cummulativeSum = cummulativeBalance(
+                                                                    getAlldata('2024-01-01',
+                                                                        new Date(new Date(filterTo).getFullYear() - 1,
+                                                                            months.indexOf('DECEMBER'),
+                                                                            monthDays['DECEMBER'] + 1
+                                                                        ).toISOString().slice(0, 10)
+                                                                    ), 'DECEMBER'
+                                                                )
+                                                                return curReport.data.map((report, index) => {
+                                                                    cummulativeSum += report.salesAmount + report.rentalAmount - (report.cogsAmount || report.purchaseAmount) - report.expenseAmount
+                                                                    return (
+                                                                        <tr key={index}>
+                                                                            <td>{report.month}</td>
+                                                                            <td>{'SALES INCOME || ADMIN & OTHER EXPENSES'}</td>
+                                                                            <td>{'₦' + (report.salesAmount + report.rentalAmount).toLocaleString()}</td>
+                                                                            <td>{'₦' + ((report.cogsAmount || report.purchaseAmount) + report.expenseAmount).toLocaleString()}</td>
+                                                                            <td>{'₦' + (cummulativeSum).toLocaleString()}</td>
+                                                                        </tr>
+                                                                    )
+                                                                })
+                                                            })
+                                                        }
+                                                    </tbody>
+                                                    <tfoot>
+                                                        {curReport.title === 'PROFIT OR LOSS' && (
+                                                            <tr>
+                                                                <th>Total Amount</th>
+                                                                {[''].map((arg, index) => {
+                                                                    var totalSalesAmount = 0
+                                                                    curReport.data.forEach((report) => {
+                                                                        totalSalesAmount += report.salesAmount
+                                                                    })
+                                                                    return <th key={'total-sales'}>{'₦' + totalSalesAmount.toLocaleString()}</th>
+                                                                })}
+                                                                {[''].map((arg, index) => {
+                                                                    var totalPurchaseAmount = 0
+                                                                    curReport.data.forEach((report) => {
+                                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
+                                                                    })
+                                                                    return <th key={'total-purchase'}>{'₦' + totalPurchaseAmount.toLocaleString()}</th>
+                                                                })}
+                                                                {[''].map((arg, index) => {
+                                                                    var totalSalesAmount = 0
+                                                                    var totalPurchaseAmount = 0
+                                                                    curReport.data.forEach((report) => {
+                                                                        totalSalesAmount += report.salesAmount
+                                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
+                                                                    })
+                                                                    return <th key={'total-gross'}>{'₦' + (totalSalesAmount - totalPurchaseAmount).toLocaleString()}</th>
+                                                                })}
+                                                                {[''].map((arg, index) => {
+                                                                    var totalRentalAmount = 0
+                                                                    curReport.data.forEach((report) => {
+                                                                        totalRentalAmount += report.rentalAmount
+                                                                    })
+                                                                    return <th key={'total-rental'}>{'₦' + totalRentalAmount.toLocaleString()}</th>
+                                                                })}
+                                                                {[''].map((arg, index) => {
+                                                                    var totalExpenseAmount = 0
+                                                                    curReport.data.forEach((report) => {
+                                                                        totalExpenseAmount += report.expenseAmount
+                                                                    })
+                                                                    return <th key={'total-expense'}>{'₦' + totalExpenseAmount.toLocaleString()}</th>
+                                                                })}
+                                                                {[''].map((arg, index) => {
+                                                                    var totalSalesAmount = 0
+                                                                    var totalRentalAmount = 0
+                                                                    var totalPurchaseAmount = 0
+                                                                    var totalExpenseAmount = 0
+                                                                    curReport.data.forEach((report) => {
+                                                                        totalSalesAmount += report.salesAmount
+                                                                        totalRentalAmount += report.rentalAmount
+                                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
+                                                                        totalExpenseAmount += report.expenseAmount
+                                                                    })
+                                                                    return <th key={'total-net'}>{'₦' + (totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>
+                                                                })}
+                                                            </tr>
+                                                        )}
+                                                        {curReport.title === 'TRIAL BALANCE' && (
+                                                            <tr>
+                                                                <th>Total Amount</th>
+                                                                <th>{`CLOSING BALANCE, ${new Date(filterTo).getFullYear()}`}</th>
+                                                                <th></th>
+                                                                <th></th>
+                                                                {[''].map((arg, index) => {
+                                                                    var totalSalesAmount = 0
+                                                                    var totalRentalAmount = 0
+                                                                    var totalPurchaseAmount = 0
+                                                                    var totalExpenseAmount = 0
+                                                                    curReport.data.forEach((report) => {
+                                                                        totalSalesAmount += report.salesAmount
+                                                                        totalRentalAmount += report.rentalAmount
+                                                                        totalPurchaseAmount += (report.cogsAmount || report.purchaseAmount)
+                                                                        totalExpenseAmount += report.expenseAmount
+                                                                    })
+                                                                    var cummulativeSum = cummulativeBalance(
+                                                                        getAlldata('2024-01-01',
+                                                                            new Date(new Date(filterTo).getFullYear() - 1,
+                                                                                months.indexOf('DECEMBER'),
+                                                                                monthDays['DECEMBER'] + 1
+                                                                            ).toISOString().slice(0, 10)
+                                                                        ), 'DECEMBER'
+                                                                    )
+                                                                    return <th key={'total-closing'}>{'₦' + (cummulativeSum + totalSalesAmount + totalRentalAmount - totalPurchaseAmount - totalExpenseAmount).toLocaleString()}</th>
+                                                                })}
+                                                            </tr>
+                                                        )}
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className='no-report'>
+                                <div>Select a report from the sidebar to begin.</div>
+                            </div>
+                        )}
+                    </div>
+
+                    {!isFullScreen && (
+                        <div className='reports-right-panel'>
+                            <div className='panel-section'>
+                                <h4 className='panel-section-title'>Reporting Period</h4>
+                                <div className='inp-cov'>
+                                    <div className='inpcov reppad'>
+                                        <div>Date From</div>
+                                        <input
+                                            className='forminp inppad'
+                                            name='salesfrom'
+                                            type='date'
+                                            value={filterFrom}
+                                            disabled={companyRecord.status !== 'admin'}
+                                            onChange={(e) => setFilterFrom(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className='inpcov reppad'>
+                                        <div>Date To</div>
+                                        <input
+                                            className='forminp inppad'
+                                            name='salesto'
+                                            type='date'
+                                            value={filterTo}
+                                            disabled={companyRecord.status !== 'admin'}
+                                            onChange={(e) => setFilterTo(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                        </div>
-                            : <div className='no-report'>
-                                <div>Select Report To View!</div>
-                            </div>}
-                    </div>
-                    <div className='reports-filter'>
-                        <div className='inp-cov'>
-                            <div className='inpcov reppad'>
-                                <div>Date From</div>
-                                <input
-                                    className='forminp inppad'
-                                    name='salesfrom'
-                                    type='date'
-                                    placeholder='From'
-                                    value={filterFrom}
-                                    disabled={companyRecord.status !== 'admin'}
-                                    onChange={(e) => {
-                                        setFilterFrom(e.target.value)
-                                    }}
-                                />
-                            </div>
-                            <div className='inpcov reppad'>
-                                <div>Date To</div>
-                                <input
-                                    className='forminp inppad'
-                                    name='salesto'
-                                    type='date'
-                                    placeholder='To'
-                                    value={filterTo}
-                                    disabled={companyRecord.status !== 'admin'}
-                                    onChange={(e) => {
-                                        setFilterTo(e.target.value)
-                                    }}
-                                />
-                            </div>
-                        </div>
-                        <button className="action-btn" onClick={() => {
-                            // setFilterFrom(pendingFrom)
-                            // setFilterTo(pendingTo)
-                            fetchCogsForRange(filterFrom, filterTo)
-                        }}>Apply Filter</button>
+                            <button 
+                                className="action-btn" 
+                                onClick={() => fetchCogsForRange(filterFrom, filterTo)}
+                            >
+                                Apply Report Filter
+                            </button>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
-                            <button className="action-btn" onClick={handleSyncOfflineReports} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                            <div className='panel-section'>
+                                <h4 className='panel-section-title'>Actions</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <button 
+                                        className="action-btn" 
+                                        style={{ background: '#f8faf9', color: '#173829', border: '1px solid #173829' }}
+                                        onClick={handleSyncOfflineReports} 
+                                        disabled={isSyncing}
+                                    >
+                                        {isSyncing ? 'Syncing...' : 'Sync Offline Data'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div
-                            className='print-report'
-                            onClick={printToPDF}
-                        >
-                            Print Report
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </>

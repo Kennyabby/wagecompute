@@ -1,64 +1,346 @@
-.addblock{
-    width: 90%;
-    margin: auto;
-}
-.formpad{
-    font-size: .8em;
-    width: 100%;
-}
-.inppad{
-    width: 90%;
-    text-indent: 10px;
-    height: 100px;
-    border-radius: 5px;
-    margin: 10px 0px;
-    outline: none;
-    border: none;
-    background: rgb(236, 240, 251);
-}
-.cfm{
-    display: flex;
-    width: 100%;
-    font-size: .8em;
-}
-.nobtn{
-    background: white;
-    color: black;
-    border: solid rgb(151, 5, 5) 2px;
-}
-.popbtn{
-    padding: 5px 15px;
-    margin: 0px;
-    margin-right: 10px;    
+.departments-page {
+    min-height: 100%;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(255, 201, 87, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(61, 153, 112, 0.12), transparent 26%),
+        linear-gradient(180deg, #f7f4eb 0%, #eef3ef 100%);
 }
 
-.dept{
+.departments-shell {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.35fr);
+    gap: 24px;
+    min-height: calc(100vh - 140px);
+}
+
+.departments-sidebar,
+.departments-detail {
+    min-width: 0;
+    border-radius: 28px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 22px 60px rgba(29, 53, 40, 0.08);
+    backdrop-filter: blur(8px);
+}
+
+.departments-sidebar {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    width: 90%;
-    margin: 20px auto;
-    padding: 10px;
-    border-radius: 10px;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.departments-sidebar-header,
+.departments-detail-hero {
+    padding: 28px;
+    border-bottom: 1px solid rgba(29, 53, 40, 0.08);
+    background: linear-gradient(135deg, rgba(255, 250, 236, 0.94), rgba(239, 247, 243, 0.94));
+}
+
+.departments-kicker,
+.departments-panel-label,
+.departments-stat-card span,
+.departments-overview-item span,
+.departments-field span {
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6a7d6f;
+}
+
+.departments-title,
+.departments-detail-hero h2 {
+    margin: 10px 0 8px;
+    color: #173829;
+    line-height: 1;
+}
+
+.departments-title {
+    font-size: clamp(1.9rem, 2vw, 2.5rem);
+}
+
+.departments-subtitle,
+.departments-detail-hero p,
+.departments-list-desc,
+.departments-overview-copy,
+.departments-team-role {
+    color: #607064;
+    line-height: 1.6;
+}
+
+.departments-add-btn,
+.departments-list-action,
+.departments-primary-btn,
+.departments-secondary-btn,
+.departments-delete-btn {
+    font: inherit;
     cursor: pointer;
-    background: whitesmoke;
+    transition: 0.2s ease;
 }
-.deptdesc{
-    font-size: .8em;
-    width: 90%;
-    margin: 10px 0px;
+
+.departments-add-btn,
+.departments-primary-btn {
+    margin-top: 20px;
+    padding: 12px 18px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #173829, #2b6a4b);
+    color: #fffdf7;
+    font-weight: 700;
+    box-shadow: 0 14px 28px rgba(23, 56, 41, 0.18);
 }
-.dets{
-    width: 70%;
+
+.departments-add-btn:hover,
+.departments-primary-btn:hover,
+.departments-delete-btn:hover,
+.departments-list-action:hover {
+    transform: translateY(-1px);
 }
-.edit{
-    font-size: .9em;
-    font-weight: bold;
+
+.departments-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 22px;
 }
-.delbtn{
-    font-size: .6em;
-    height: fit-content;
-    background: rgb(247, 77, 77);
-    border: saddlebrown;
+
+.departments-stat-card,
+.departments-overview-item,
+.departments-team-card {
+    border-radius: 18px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.departments-stat-card {
+    padding: 14px 16px;
+}
+
+.departments-stat-card strong,
+.departments-overview-item strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 1.3rem;
+    color: #173829;
+}
+
+.departments-toolbar {
+    padding: 20px 24px 14px;
+}
+
+.departments-search-input,
+.departments-input,
+.departments-textarea {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid rgba(40, 70, 53, 0.12);
+    background: #f8faf7;
+    color: #173829;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.departments-search-input,
+.departments-input {
+    min-height: 50px;
+    padding: 0 16px;
+}
+
+.departments-textarea {
+    min-height: 150px;
+    padding: 14px 16px;
+    resize: vertical;
+}
+
+.departments-search-input:focus,
+.departments-input:focus,
+.departments-textarea:focus {
+    border-color: rgba(43, 106, 75, 0.5);
+    box-shadow: 0 0 0 4px rgba(43, 106, 75, 0.08);
+}
+
+.departments-list {
+    flex: 1;
+    overflow: auto;
+    padding: 0 18px 18px;
+}
+
+.departments-list-card {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-radius: 22px;
+    border: 1px solid rgba(23, 56, 41, 0.08);
+    background: linear-gradient(180deg, #ffffff, #f8faf8);
+    cursor: pointer;
+}
+
+.departments-list-card:hover,
+.departments-list-card.active {
+    border-color: rgba(43, 106, 75, 0.28);
+    box-shadow: 0 16px 34px rgba(23, 56, 41, 0.08);
+}
+
+.departments-avatar {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+    font-weight: 800;
+    color: #173829;
+    background: linear-gradient(135deg, #ffe5a8, #dff1e6);
+}
+
+.departments-list-name,
+.departments-team-name {
+    font-weight: 700;
+    color: #173829;
+}
+
+.departments-list-desc {
+    margin-top: 4px;
+    font-size: 0.9rem;
+}
+
+.departments-list-meta {
+    margin-top: 10px;
+}
+
+.departments-list-meta span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #eef5f1;
+    color: #345845;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.departments-list-action,
+.departments-secondary-btn,
+.departments-delete-btn {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-weight: 700;
+}
+
+.departments-list-action,
+.departments-secondary-btn {
+    border: 1px solid rgba(40, 70, 53, 0.12);
+    background: #ffffff;
+    color: #173829;
+}
+
+.departments-delete-btn {
+    border: 1px solid rgba(151, 5, 5, 0.18);
+    background: rgba(255, 236, 236, 0.95);
+    color: #8f1f1f;
+}
+
+.departments-detail {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.departments-form-card,
+.departments-overview-card {
+    padding: 24px 28px 28px;
+    overflow: auto;
+}
+
+.departments-form-grid,
+.departments-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.departments-field {
+    display: grid;
+    gap: 8px;
+}
+
+.departments-field-wide {
+    grid-column: 1 / -1;
+}
+
+.departments-form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    margin-top: 24px;
+}
+
+.departments-overview-copy {
+    margin: 20px 0 24px;
+    padding: 20px;
+    border-radius: 22px;
+    background: #f7faf8;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+}
+
+.departments-team-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.departments-team-card {
+    padding: 18px;
+}
+
+.departments-empty-state {
+    padding: 24px;
+    border-radius: 22px;
+    text-align: center;
+    color: #607064;
+    border: 1px dashed rgba(40, 70, 53, 0.18);
+    background: #f9fbf8;
+}
+
+@media (max-width: 1080px) {
+    .departments-shell {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .departments-page {
+        padding: 16px;
+    }
+
+    .departments-sidebar-header,
+    .departments-detail-hero,
+    .departments-form-card,
+    .departments-overview-card {
+        padding: 20px;
+    }
+
+    .departments-stats,
+    .departments-form-grid,
+    .departments-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .departments-list-card {
+        grid-template-columns: 1fr;
+    }
+
+    .departments-form-actions {
+        justify-content: stretch;
+    }
+
+    .departments-form-actions button {
+        width: 100%;
+    }
 }

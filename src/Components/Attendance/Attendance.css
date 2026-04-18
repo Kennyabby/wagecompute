@@ -4,6 +4,16 @@
     justify-content: center;
     align-items: center;
 }
+.attendance-page {
+    gap: 24px;
+    align-items: stretch;
+    min-height: 100%;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(255, 201, 87, 0.16), transparent 24%),
+        radial-gradient(circle at top right, rgba(61, 153, 112, 0.12), transparent 22%),
+        linear-gradient(180deg, #f7f4eb 0%, #eef3ef 100%);
+}
 .attlist{
     width: 30%;
 }
@@ -83,5 +93,180 @@
     cursor: pointer;
     div{
         color: black;
+    }
+}
+
+.attendance-page .emplist,
+.attendance-page .empview {
+    min-width: 0;
+    min-height: calc(100vh - 140px);
+    border-radius: 28px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 22px 60px rgba(29, 53, 40, 0.08);
+    backdrop-filter: blur(8px);
+    overflow: auto;
+}
+
+.attendance-sidebar-intro,
+.attendance-detail-intro {
+    padding: 28px;
+    border-bottom: 1px solid rgba(29, 53, 40, 0.08);
+    background: linear-gradient(135deg, rgba(255, 250, 236, 0.94), rgba(239, 247, 243, 0.94));
+}
+
+.attendance-kicker,
+.attendance-stat-card span {
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6a7d6f;
+}
+
+.attendance-title,
+.attendance-detail-title {
+    margin: 10px 0 8px;
+    color: #173829;
+    line-height: 1;
+}
+
+.attendance-title {
+    font-size: clamp(1.85rem, 2vw, 2.4rem);
+}
+
+.attendance-copy {
+    margin: 0;
+    color: #607064;
+    line-height: 1.6;
+}
+
+.attendance-stat-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.attendance-stat-card {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.attendance-stat-card strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 1.35rem;
+    color: #173829;
+}
+
+.attendance-page .add {
+    position: sticky;
+    top: 18px;
+    right: 18px;
+    margin: 18px 18px 10px auto;
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    font-size: 2.2rem;
+    background: linear-gradient(135deg, #173829, #2b6a4b);
+    color: #fffdf7;
+    box-shadow: 0 16px 30px rgba(23, 56, 41, 0.18);
+}
+
+.attendance-page .dept {
+    width: calc(100% - 36px);
+    margin: 0 18px 12px;
+    padding: 16px;
+    border-radius: 22px;
+    border: 1px solid rgba(23, 56, 41, 0.08);
+    background: linear-gradient(180deg, #ffffff, #f8faf8);
+}
+
+.attendance-page .dept:hover,
+.attendance-page .curview {
+    border-color: rgba(43, 106, 75, 0.28);
+    box-shadow: 0 16px 34px rgba(23, 56, 41, 0.08);
+}
+
+.attendance-page .deptdesc,
+.attendance-page .dets {
+    color: #607064;
+}
+
+.attendance-page .edit,
+.attendance-page .uplbtn,
+.attendance-page .aftupl div,
+.attendance-page button {
+    border-radius: 14px;
+}
+
+.attendance-page .checkbox {
+    width: calc(100% - 56px);
+    margin: 24px auto 0;
+    padding: 22px 24px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: #f9fbf8;
+}
+
+.attendance-page .upldbox {
+    width: calc(100% - 56px);
+    margin: 18px auto 28px;
+}
+
+.attendance-page .uplbtn,
+.attendance-page .aftupl div,
+.attendance-page button {
+    padding: 11px 16px;
+    border: 1px solid rgba(40, 70, 53, 0.12);
+    background: #ffffff;
+    color: #173829;
+    font: inherit;
+    cursor: pointer;
+}
+
+.attendance-page .forminp {
+    min-height: 48px;
+    border-radius: 16px;
+    border: 1px solid rgba(40, 70, 53, 0.12);
+    background: #f8faf7;
+}
+
+.attendance-page .payee {
+    margin: 18px;
+    padding: 18px;
+    border-radius: 20px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: #f9fbf8;
+}
+
+@media (max-width: 1080px) {
+    .attendance-page {
+        flex-direction: column;
+    }
+
+    .attlist,
+    .attview {
+        width: 100%;
+    }
+}
+
+@media (max-width: 720px) {
+    .attendance-page {
+        padding: 16px;
+    }
+
+    .attendance-sidebar-intro,
+    .attendance-detail-intro {
+        padding: 20px;
+    }
+
+    .attendance-stat-row {
+        grid-template-columns: 1fr;
     }
 }

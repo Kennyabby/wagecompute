@@ -24,6 +24,7 @@ const Employees = () => {
     const [curEmployee, setCurEmployee] = useState(null)
     const [editId, setEditId] = useState(null)
     const [editIndex, setEditIndex] = useState(null)
+    const [searchTerm, setSearchTerm] = useState('')
     const initFields = {
         i_d: '',
         firstName: '',
@@ -75,6 +76,18 @@ const Employees = () => {
             setIsView(true)
         }
     }, [editAccess])
+    const resetEmployeeForm = () => {
+        setFields({ ...initFields })
+        setIsView(false)
+        setWriteStatus('New')
+        setCurEmployee(null)
+    }
+    const changeEmployeeType = (name) => {
+        if (name) {
+            setEmployeeType(name)
+        }
+        resetEmployeeForm()
+    }
     const toggleSelForm = (e) => {
         const name = e.target.getAttribute('name')
         if (name) {
@@ -276,92 +289,205 @@ const Employees = () => {
         delete newEmpValue._id
         setFields({ ...newEmpValue })
     }
+    const filteredEmployees = employees.filter((empl) => {
+        const dismissalStatus = empl.dismissalDate ? 'dismissed' : 'current'
+        if (dismissalStatus !== employeeType) {
+            return false
+        }
+
+        const normalizedSearch = searchTerm.trim().toLowerCase()
+        if (!normalizedSearch) {
+            return true
+        }
+
+        const searchableFields = [
+            empl.i_d,
+            empl.firstName,
+            empl.lastName,
+            empl.otherName,
+            empl.department,
+            empl.position,
+            empl.phoneNo
+        ].filter(Boolean).join(' ').toLowerCase()
+
+        return searchableFields.includes(normalizedSearch)
+    })
+    const currentEmployeesCount = employees.filter((empl) => !empl.dismissalDate).length
+    const dismissedEmployeesCount = employees.length - currentEmployeesCount
+    const panelEmployee = curEmployee || fields
+    const panelEmployeeName = [panelEmployee?.firstName, panelEmployee?.otherName, panelEmployee?.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+    const panelEmployeeInitials = [panelEmployee?.firstName, panelEmployee?.lastName]
+        .filter(Boolean)
+        .map((name) => name[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase() || 'EC'
+    const panelTitle = isView ? 'Employee Profile' : (writeStatus === 'New' ? 'Create Employee' : 'Edit Employee')
+    const panelDescription = selform === 'Basic'
+        ? 'Personal identity, contact details, and assigned role.'
+        : selform === 'Hr'
+            ? 'Employment records, salary, and banking information.'
+            : 'Guarantor profile and background details.'
+    const canEditEmployees = companyRecord.status === 'admin' || editAccess.employees
     return (
         <>
-            <div className='employees'>
-                <div className='emplist'>
-                    <div className='add'
-                        onClick={() => {
-                            setFields({ ...initFields })
-                            setIsView(false)
-                            setWriteStatus('New')
-                            setCurEmployee(null)
-                        }}
-                    >{'+'}</div>
-                    <div className='emptypecov'
-                        onClick={(e) => {
-                            const name = e.target.getAttribute('name')
-                            if (name) {
-                                setEmployeeType(name)
-                            }
-                            setFields({ ...initFields })
-                            setIsView(false)
-                            setWriteStatus('New')
-                            setCurEmployee(null)
-                        }}
-                    >
-                        <div name='current' className={employeeType === 'current' ? 'emptype' : ''}>Current</div>
-                        <div name='dismissed' className={employeeType === 'dismissed' ? 'emptype' : ''}>Dismissed</div>
-                    </div>
-                    {employees.filter((empl) => {
-                        var dismissalStatus = ''
-                        if (empl.dismissalDate) {
-                            dismissalStatus = 'dismissed'
-                        } else {
-                            dismissalStatus = 'current'
-                        }
-
-                        if (dismissalStatus === employeeType) {
-                            return empl
-                        }
-                    }).map((employee, index) => {
-                        const { i_d,
-                            firstName, lastName,
-                            department, position,
-                        } = employee
-                        return (
-                            <div className={'dept' + (curEmployee?.i_d === i_d ? ' curview' : '')} key={index} i_d={i_d}
-                                onClick={(e) => {
-                                    handleViewClick(e, index, employee)
-                                }}
-                            >
-                                <div className='dets'>
-                                    <div><b>Employee ID: </b>{i_d}</div>
-                                    <div> <b>Name:</b>{` ${firstName} ${lastName}`}</div>
-                                    <div className='deptdesc'>{`${department} Department`}</div>
-                                    <div className='deptdesc'><b>Position:</b>{` ${position}`}</div>
+            <div className='employees-page'>
+                <div className='employees-shell'>
+                    <div className='employees-sidebar'>
+                        <div className='employees-sidebar-header'>
+                            <div className='employees-kicker'>Workforce Hub</div>
+                            <div className='employees-heading-row'>
+                                <div>
+                                    <h2 className='employees-title'>Employees</h2>
+                                    <p className='employees-subtitle'>A cleaner workspace for browsing, reviewing, and updating staff records.</p>
                                 </div>
-                                {(companyRecord.status === 'admin' || editAccess.employees) && <div
-                                    className='edit'
-                                    name='edit'
+                                <button
+                                    type='button'
+                                    className='employees-add-btn'
+                                    onClick={resetEmployeeForm}
                                 >
-                                    Edit
-                                </div>}
+                                    Add Employee
+                                </button>
                             </div>
-                        )
-                    })}
-                </div>
-                <div className='empview'>
-                    <div className='formtitle padtitle'>
-                        {isView ? <div className={writeStatus === 'New' ? 'frmttle' : ''}>
-                            {`EMPLOYEE FORM`}
-                        </div> :
-                            <div className={writeStatus === 'New' ? 'frmttle' : ''}>
-                                {`${writeStatus.toUpperCase()} EMPLOYEE FORM`}
-                            </div>}
-                        {writeStatus === 'Edit' && !isView && <div className='yesbtn popbtn delbtn'
-                            onClick={deleteEmployee}
-                        >Delete</div>}
+                            <div className='employees-stats'>
+                                <div className='employees-stat-card'>
+                                    <span className='employees-stat-label'>Active</span>
+                                    <strong>{currentEmployeesCount}</strong>
+                                </div>
+                                <div className='employees-stat-card'>
+                                    <span className='employees-stat-label'>Dismissed</span>
+                                    <strong>{dismissedEmployeesCount}</strong>
+                                </div>
+                                <div className='employees-stat-card'>
+                                    <span className='employees-stat-label'>Departments</span>
+                                    <strong>{departments.length}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div className='employees-toolbar'>
+                            <div className='employees-search-box'>
+                                <input
+                                    className='employees-search-input'
+                                    type='text'
+                                    placeholder='Search by name, ID, department, or role'
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value)
+                                    }}
+                                />
+                            </div>
+                            <div className='employees-filter-tabs'>
+                                <button
+                                    type='button'
+                                    className={'employees-filter-btn' + (employeeType === 'current' ? ' active' : '')}
+                                    onClick={() => {
+                                        changeEmployeeType('current')
+                                    }}
+                                >
+                                    Current
+                                </button>
+                                <button
+                                    type='button'
+                                    className={'employees-filter-btn' + (employeeType === 'dismissed' ? ' active' : '')}
+                                    onClick={() => {
+                                        changeEmployeeType('dismissed')
+                                    }}
+                                >
+                                    Dismissed
+                                </button>
+                            </div>
+                        </div>
+                        <div className='employees-list'>
+                            {filteredEmployees.length ? filteredEmployees.map((employee, index) => {
+                                const { i_d, firstName, lastName, otherName, department, position, phoneNo } = employee
+                                const employeeName = [firstName, otherName, lastName].filter(Boolean).join(' ')
+                                const initials = [firstName, lastName].filter(Boolean).map((name) => name[0]).join('').slice(0, 2).toUpperCase() || 'EC'
+                                return (
+                                    <div
+                                        className={'employees-list-card' + (curEmployee?.i_d === i_d ? ' active' : '')}
+                                        key={index}
+                                        i_d={i_d}
+                                        onClick={(e) => {
+                                            handleViewClick(e, index, employee)
+                                        }}
+                                    >
+                                        <div className='employees-list-avatar'>{initials}</div>
+                                        <div className='employees-list-body'>
+                                            <div className='employees-list-top'>
+                                                <div>
+                                                    <div className='employees-list-name'>{employeeName || 'Unnamed Employee'}</div>
+                                                    <div className='employees-list-id'>Employee ID: {i_d}</div>
+                                                </div>
+                                                <span className='employees-status-pill'>{employee.dismissalDate ? 'Dismissed' : 'Active'}</span>
+                                            </div>
+                                            <div className='employees-list-meta'>
+                                                <span>{department || 'No department'}</span>
+                                                <span>{position || 'No position'}</span>
+                                                <span>{phoneNo || 'No phone number'}</span>
+                                            </div>
+                                        </div>
+                                        {canEditEmployees && <button
+                                            type='button'
+                                            className='employees-list-action'
+                                            name='edit'
+                                        >
+                                            Edit
+                                        </button>}
+                                    </div>
+                                )
+                            }) : (
+                                <div className='employees-empty-state'>
+                                    <div className='employees-empty-title'>No employees found</div>
+                                    <p>Try another search term or switch the employee filter.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    <div className='selform' onClick={toggleSelForm}>
-                        <div name='Basic' className={selform === 'Basic' ? 'seltype' : ''}>Basic Info</div>
-                        <div name='Hr' className={selform === 'Hr' ? 'seltype' : ''}>HR Info</div>
-                        <div name='Guarantor' className={selform === 'Guarantor' ? 'seltype' : ''}>Guarantor Info</div>
-                    </div>
-                    <div className='fm' onChange={handleFieldChange}>
+                    <div className='employees-detail'>
+                        <div className='employees-detail-hero'>
+                            <div className='employees-detail-avatar'>{panelEmployeeInitials}</div>
+                            <div className='employees-detail-copy'>
+                                <div className='employees-detail-kicker'>{panelTitle}</div>
+                                <h3>{panelEmployeeName || 'Start a fresh employee record'}</h3>
+                                <p>{panelDescription}</p>
+                                <div className='employees-detail-badges'>
+                                    <span className='employees-detail-badge'>{fields.i_d || 'No employee ID yet'}</span>
+                                    <span className='employees-detail-badge'>{fields.department || 'Department pending'}</span>
+                                    <span className='employees-detail-badge'>{fields.position || 'Role pending'}</span>
+                                </div>
+                            </div>
+                            {writeStatus === 'Edit' && !isView && <button
+                                type='button'
+                                className='employees-delete-btn'
+                                onClick={deleteEmployee}
+                            >
+                                Delete
+                            </button>}
+                        </div>
+                        <div className='employees-section-tabs' onClick={toggleSelForm}>
+                            <button type='button' name='Basic' className={'employees-section-tab' + (selform === 'Basic' ? ' active' : '')}>Basic Info</button>
+                            <button type='button' name='Hr' className={'employees-section-tab' + (selform === 'Hr' ? ' active' : '')}>HR Info</button>
+                            <button type='button' name='Guarantor' className={'employees-section-tab' + (selform === 'Guarantor' ? ' active' : '')}>Guarantor Info</button>
+                        </div>
+                        <div className='employees-detail-panel'>
+                            <div className='employees-panel-topline'>
+                                <div>
+                                    <div className='employees-panel-label'>{isView ? 'Viewing record' : 'Editing mode'}</div>
+                                    <div className='employees-panel-value'>{isView ? 'Read-only mode' : `${writeStatus} employee record`}</div>
+                                </div>
+                                <div className='employees-panel-summary'>
+                                    <span>{fields.gender || 'Gender not set'}</span>
+                                    <span>{fields.salary ? `NGN ${Number(fields.salary).toLocaleString()}` : 'Salary pending'}</span>
+                                    <span>{fields.dismissalDate ? 'Dismissed employee' : 'Current employee'}</span>
+                                </div>
+                            </div>
+                            <div className='fm' onChange={handleFieldChange}>
                         {selform === 'Basic' && <div className='basic'>
                             <div className='inpcov'>
-                                <div>Employee ID</div>
+                                <label className='employees-field-label'>Employee ID</label>
                                 <input
                                     className='forminp'
                                     name='i_d'
@@ -372,7 +498,7 @@ const Employees = () => {
                                 />
                             </div>
                             <div className='inpcov'>
-                                <div>First Name</div>
+                                <label className='employees-field-label'>First Name</label>
                                 <input
                                     className='forminp'
                                     name='firstName'
@@ -383,7 +509,7 @@ const Employees = () => {
                                 />
                             </div>
                             <div className='inpcov'>
-                                <div>Last Name</div>
+                                <label className='employees-field-label'>Last Name</label>
                                 <input
                                     className='forminp'
                                     name='lastName'
@@ -394,7 +520,7 @@ const Employees = () => {
                                 />
                             </div>
                             <div className='inpcov'>
-                                <div>Other Name</div>
+                                <label className='employees-field-label'>Other Name</label>
                                 <input
                                     className='forminp'
                                     name='otherName'
@@ -405,7 +531,7 @@ const Employees = () => {
                                 />
                             </div>
                             <div className='inpcov'>
-                                <div>Address</div>
+                                <label className='employees-field-label'>Address</label>
                                 <input
                                     className='forminp'
                                     name='address'
@@ -416,7 +542,7 @@ const Employees = () => {
                                 />
                             </div>
                             <div className='inpcov'>
-                                <div>Phone Number</div>
+                                <label className='employees-field-label'>Phone Number</label>
                                 <input
                                     className='forminp'
                                     name='phoneNo'
@@ -427,7 +553,7 @@ const Employees = () => {
                                 />
                             </div>
                             <div className='inpcov'>
-                                <div>Date of Birth</div>
+                                <label className='employees-field-label'>Date of Birth</label>
                                 <input
                                     className='forminp'
                                     name='dateOfBirth'
@@ -438,7 +564,7 @@ const Employees = () => {
                                 />
                             </div>
                             <div className='inpcov'>
-                                <div>Gender</div>
+                                <label className='employees-field-label'>Gender</label>
                                 <select
                                     className='forminp'
                                     name='gender'
@@ -452,7 +578,7 @@ const Employees = () => {
                                 </select>
                             </div>
                             <div className='inpcov'>
-                                <div>Department</div>
+                                <label className='employees-field-label'>Department</label>
                                 <select
                                     className='forminp'
                                     name='department'
@@ -469,7 +595,7 @@ const Employees = () => {
                                 </select>
                             </div>
                             <div className='inpcov'>
-                                <div>Position</div>
+                                <label className='employees-field-label'>Position</label>
                                 <select
                                     className='forminp'
                                     name='position'
@@ -489,7 +615,7 @@ const Employees = () => {
                         {selform === 'Hr' &&
                             <div className='hr'>
                                 <div className='inpcov'>
-                                    <div>Hired Date</div>
+                                    <label className='employees-field-label'>Hired Date</label>
                                     <input
                                         className='forminp'
                                         name='hiredDate'
@@ -500,7 +626,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Dismissal Date</div>
+                                    <label className='employees-field-label'>Dismissal Date</label>
                                     <input
                                         className='forminp'
                                         name='dismissalDate'
@@ -511,7 +637,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Dismissal Reason</div>
+                                    <label className='employees-field-label'>Dismissal Reason</label>
                                     <input
                                         className='forminp'
                                         name='dismissalReason'
@@ -522,7 +648,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Bank Name</div>
+                                    <label className='employees-field-label'>Bank Name</label>
                                     <input
                                         className='forminp'
                                         name='bankName'
@@ -533,7 +659,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Bank Branch</div>
+                                    <label className='employees-field-label'>Bank Branch</label>
                                     <input
                                         className='forminp'
                                         name='bankBranch'
@@ -544,7 +670,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Account No</div>
+                                    <label className='employees-field-label'>Account No</label>
                                     <input
                                         className='forminp'
                                         name='accountNo'
@@ -556,7 +682,7 @@ const Employees = () => {
                                 </div>
 
                                 <div className='inpcov'>
-                                    <div>Salary (Naira)</div>
+                                    <label className='employees-field-label'>Salary (Naira)</label>
                                     <input
                                         className='forminp'
                                         name='salary'
@@ -567,7 +693,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 {fields.employeeDebt && <div className='inpcov'>
-                                    <div>Debt (Naira)</div>
+                                    <label className='employees-field-label'>Debt (Naira)</label>
                                     <input
                                         className='forminp'
                                         name='employeeDebt'
@@ -578,7 +704,7 @@ const Employees = () => {
                                     />
                                 </div>}
                                 {fields.employeeDebtRecoverd && <div className='inpcov'>
-                                    <div>Recovered (Naira)</div>
+                                    <label className='employees-field-label'>Recovered (Naira)</label>
                                     <input
                                         className='forminp'
                                         name='employeeDebtRecoverd'
@@ -589,7 +715,7 @@ const Employees = () => {
                                     />
                                 </div>}
                                 <div className='inpcov'>
-                                    <div>Expected Work Days</div>
+                                    <label className='employees-field-label'>Expected Work Days</label>
                                     <input
                                         className='forminp'
                                         name='expectedWorkDays'
@@ -604,7 +730,7 @@ const Employees = () => {
                         {selform === 'Guarantor' &&
                             <div className='hr'>
                                 <div className='inpcov'>
-                                    <div>Full Name</div>
+                                    <label className='employees-field-label'>Full Name</label>
                                     <input
                                         className='forminp'
                                         name='guarantorName'
@@ -615,7 +741,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Address</div>
+                                    <label className='employees-field-label'>Address</label>
                                     <input
                                         className='forminp'
                                         name='guarantorAddress'
@@ -626,7 +752,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Local Government of Origin</div>
+                                    <label className='employees-field-label'>Local Government of Origin</label>
                                     <input
                                         className='forminp'
                                         name='guarantorLGA'
@@ -637,7 +763,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>State of Origin</div>
+                                    <label className='employees-field-label'>State of Origin</label>
                                     <input
                                         className='forminp'
                                         name='guarantorSOA'
@@ -649,7 +775,7 @@ const Employees = () => {
                                 </div>
 
                                 <div className='inpcov'>
-                                    <div>Phone No</div>
+                                    <label className='employees-field-label'>Phone No</label>
                                     <input
                                         className='forminp'
                                         name='guarantorPhoneNo'
@@ -660,7 +786,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Guarantor Gender</div>
+                                    <label className='employees-field-label'>Guarantor Gender</label>
                                     <select
                                         className='forminp'
                                         name='guarantorGender'
@@ -674,7 +800,7 @@ const Employees = () => {
                                     </select>
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Marital Status</div>
+                                    <label className='employees-field-label'>Marital Status</label>
                                     <input
                                         className='forminp'
                                         name='guarantorMaritalStatus'
@@ -685,7 +811,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Guarantor Religion</div>
+                                    <label className='employees-field-label'>Guarantor Religion</label>
                                     <input
                                         className='forminp'
                                         name='guarantorReligion'
@@ -696,7 +822,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Relationship</div>
+                                    <label className='employees-field-label'>Relationship</label>
                                     <input
                                         className='forminp'
                                         name='guarantorRelationship'
@@ -707,7 +833,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>{`Knows ${fields.firstName} ${fields.lastName} For`}</div>
+                                    <label className='employees-field-label'>{`Knows ${fields.firstName} ${fields.lastName} For`}</label>
                                     <input
                                         className='forminp'
                                         name='guarantorKnowsEmploeyeeFor'
@@ -718,7 +844,7 @@ const Employees = () => {
                                     />
                                 </div>
                                 <div className='inpcov'>
-                                    <div>Gurantor Can Vouch</div>
+                                    <label className='employees-field-label'>Gurantor Can Vouch</label>
                                     <select
                                         className='forminp'
                                         name='guarantorStance'
@@ -734,24 +860,34 @@ const Employees = () => {
                                 </div>
                             </div>
                         }
+                            </div>
+                            {!isView && <div className='employees-form-actions'>
+                                {writeStatus === 'Edit' && <button
+                                    type='button'
+                                    className='employees-secondary-btn'
+                                    onClick={() => {
+                                        setIsView(true)
+                                        setFields({ ...curEmployee })
+                                    }}
+                                >
+                                    Discard
+                                </button>}
+                                <button
+                                    type='button'
+                                    className='employees-primary-btn'
+                                    onClick={() => {
+                                        if (writeStatus === 'New') {
+                                            addEmployee()
+                                        } else {
+                                            editEmployee()
+                                        }
+                                    }}
+                                >
+                                    Save Employee
+                                </button>
+                            </div>}
+                        </div>
                     </div>
-                    {!isView && <div className='confirm'>
-                        {writeStatus === 'Edit' && <div className='yesbtn nobtn edbtn'
-                            onClick={() => {
-                                setIsView(true)
-                                setFields({ ...curEmployee })
-                            }}
-                        >Discard</div>}
-                        <div className='yesbtn'
-                            onClick={() => {
-                                if (writeStatus === 'New') {
-                                    addEmployee()
-                                } else {
-                                    editEmployee()
-                                }
-                            }}
-                        >Save</div>
-                    </div>}
                 </div>
             </div>
         </>

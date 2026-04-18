@@ -1086,7 +1086,7 @@ const DashView = () =>{
                 
                 <div className='alert-section'> 
                         {/* Access Payment Receipts Alert */}
-                        <div className='alert-panel payment-receipts-alert' style={{marginBottom: '24px', background: '#e3f2fd', border: '2px solid #1976d2', borderRadius: '10px', cursor: 'pointer', padding: '16px', boxSizing: 'border-box', width: '100%', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'stretch'}} onClick={()=>{
+                        <div className='alert-panel payment-receipts-alert' style={{marginBottom: '24px', background: '#f0f4f2', border: '2px solid #173829', borderRadius: '10px', cursor: 'pointer', padding: '16px', boxSizing: 'border-box', width: '100%', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'stretch'}} onClick={()=>{
                             window.scrollTo({
                                 top: 0,
                                 left: 0,
@@ -1094,16 +1094,16 @@ const DashView = () =>{
                             });
                             setShowReceiptsModal(true)
                         }}>
-                            <h3 style={{display:'flex',alignItems:'center',flexWrap:'wrap',fontSize:'1.15em',marginBottom:'12px'}}><FaInfoCircle style={{color:'#1976d2',marginRight:8}}/> Access Payment Receipts</h3>
+                            <h3 style={{display:'flex',alignItems:'center',flexWrap:'wrap',fontSize:'1.15em',marginBottom:'12px', color: '#173829'}}><FaInfoCircle style={{color:'#173829',marginRight:8}}/> Access Payment Receipts</h3>
                             <div style={{display:'flex',flexWrap:'wrap',gap:'16px',justifyContent:'space-between',marginTop:'4px',marginBottom:'8px'}}>
-                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
-                                            Recovery<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='recovery').length}</span>
+                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#173829',textAlign:'center',padding:'8px 0'}}>
+                                            Recovery<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='recovery').length}</span>
                                     </div>
-                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
-                                            Accommodation<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='accommodation').length}</span>
+                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#173829',textAlign:'center',padding:'8px 0'}}>
+                                            Accommodation<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='accommodation').length}</span>
                                     </div>
-                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#1976d2',textAlign:'center',padding:'8px 0'}}>
-                                            POS<br/><span style={{color:'#333',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule.split(' ').includes('POS')).length}</span>
+                                    <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#173829',textAlign:'center',padding:'8px 0'}}>
+                                            POS<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule.split(' ').includes('POS')).length}</span>
                                     </div>
                             </div>
                             {/* Duplicates by payPoint summary */}
@@ -1419,8 +1419,8 @@ const DashView = () =>{
                                 <AreaChart data={series} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
                                     <defs>
                                         <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#0f62fe" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="#0f62fe" stopOpacity={0}/>
+                                            <stop offset="5%" stopColor="#173829" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#173829" stopOpacity={0}/>
                                         </linearGradient>
                                         <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#da1e28" stopOpacity={0.8}/>
@@ -1431,12 +1431,12 @@ const DashView = () =>{
                                             <stop offset="95%" stopColor="#24a148" stopOpacity={0}/>
                                         </linearGradient>
                                         <linearGradient id="colorAccom" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8a3ffc" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="#8a3ffc" stopOpacity={0}/>
+                                            <stop offset="5%" stopColor="#41755a" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#41755a" stopOpacity={0}/>
                                         </linearGradient>
                                         <linearGradient id="colorRentals" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#007d79" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="#007d79" stopOpacity={0}/>
+                                            <stop offset="5%" stopColor="#739985" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#739985" stopOpacity={0}/>
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -1444,11 +1444,11 @@ const DashView = () =>{
                                     <YAxis width={90} tickFormatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} domain={[0, 'auto']} allowDecimals={false} />
                                     <Tooltip formatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} />
                                     <Legend />
-                                    <Area type="monotone" dataKey="sales" stroke="#0f62fe" fillOpacity={1} fill="url(#colorSales)" name="Sales" />
+                                    <Area type="monotone" dataKey="sales" stroke="#173829" fillOpacity={1} fill="url(#colorSales)" name="Sales" />
                                     <Area type="monotone" dataKey="expenses" stroke="#da1e28" fillOpacity={1} fill="url(#colorExpenses)" name="Expenses" />
                                     <Area type="monotone" dataKey="purchases" stroke="#24a148" fillOpacity={1} fill="url(#colorPurchases)" name="Purchases" />
-                                    <Area type="monotone" dataKey="accommodations" stroke="#8a3ffc" fillOpacity={1} fill="url(#colorAccom)" name="Accommodations" />
-                                    <Area type="monotone" dataKey="rentals" stroke="#007d79" fillOpacity={1} fill="url(#colorRentals)" name="Rentals" />
+                                    <Area type="monotone" dataKey="accommodations" stroke="#41755a" fillOpacity={1} fill="url(#colorAccom)" name="Accommodations" />
+                                    <Area type="monotone" dataKey="rentals" stroke="#739985" fillOpacity={1} fill="url(#colorRentals)" name="Rentals" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -1483,9 +1483,9 @@ const DashView = () =>{
                                         labelFormatter={(label) => `${label} ${new Date(fromDate).getFullYear()}`}
                                     />
                                     <Legend />
-                                    <Bar dataKey="sales" stackId="rev" fill="#0f62fe" name="Sales" />
-                                    <Bar dataKey="accommodations" stackId="rev" fill="#8a3ffc" name="Accommodation" />
-                                    <Bar dataKey="rentals" stackId="rev" fill="#007d79" name="Rentals" />
+                                    <Bar dataKey="sales" stackId="rev" fill="#173829" name="Sales" />
+                                    <Bar dataKey="accommodations" stackId="rev" fill="#41755a" name="Accommodation" />
+                                    <Bar dataKey="rentals" stackId="rev" fill="#739985" name="Rentals" />
                                     <Bar dataKey="purchases" stackId="cost" fill="#24a148" name="Purchases" />
                                     <Bar dataKey="expenses" stackId="cost" fill="#da1e28" name="Expenses" />
                                 </BarChart>
@@ -1541,7 +1541,7 @@ const DashView = () =>{
                                     />
                                     <Bar 
                                         dataKey="amount" 
-                                        fill="#0f62fe" 
+                                        fill="#173829" 
                                         name="Sales Amount"
                                     />
                                 </BarChart>
@@ -1558,7 +1558,7 @@ const DashView = () =>{
                                     <XAxis dataKey="location" interval={0} angle={-20} textAnchor="end" height={60} />
                                     <YAxis width={90} tickFormatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} domain={[0, 'auto']} allowDecimals={false} />
                                     <Tooltip formatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} />
-                                    <Bar dataKey="amount" fill="#0f62fe" name="Amount (₦)" />
+                                    <Bar dataKey="amount" fill="#173829" name="Amount (₦)" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -1573,7 +1573,7 @@ const DashView = () =>{
                                     <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
                                     <YAxis width={90} tickFormatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} domain={[0, 'auto']} allowDecimals={false} />
                                     <Tooltip formatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} />
-                                    <Bar dataKey="amount" fill="#8a3ffc" name="Amount" />
+                                    <Bar dataKey="amount" fill="#41755a" name="Amount" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -1588,7 +1588,7 @@ const DashView = () =>{
                                     <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
                                     <YAxis width={90} tickFormatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} domain={[0, 'auto']} allowDecimals={false} />
                                     <Tooltip formatter={(v)=>`₦ ${Number(v||0).toLocaleString()}`} />
-                                    <Bar dataKey="amount" fill="#a56eff" name="Amount" />
+                                    <Bar dataKey="amount" fill="#739985" name="Amount" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -1602,7 +1602,7 @@ const DashView = () =>{
                                     <Tooltip formatter={(v)=>`₦ ${fmt(v)}`} />
                                     <Legend />
                                     <Pie dataKey="value" data={revenueMix} nameKey="name" outerRadius={80} label>
-                                        {revenueMix.map((e,i)=> <Cell key={`c-${i}`} fill={["#0088FE","#00C49F","#FFBB28"][i%3]} />)}
+                                        {revenueMix.map((e,i)=> <Cell key={`c-${i}`} fill={["#173829","#41755a","#739985"][i%3]} />)}
                                     </Pie>
                                 </PieChart>
                             </ResponsiveContainer>

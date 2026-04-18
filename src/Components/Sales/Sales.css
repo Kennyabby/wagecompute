@@ -5,6 +5,17 @@
     justify-content: flex-start;
     align-items: center;
 }
+.sales-page {
+    gap: 24px;
+    align-items: stretch;
+    min-height: 100%;
+    height: 100%;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(255, 201, 87, 0.16), transparent 24%),
+        radial-gradient(circle at top right, rgba(61, 153, 112, 0.12), transparent 22%),
+        linear-gradient(180deg, #f7f4eb 0%, #eef3ef 100%);
+}
 .saleslist{
     width: 35%;
 }
@@ -119,11 +130,15 @@
         align-items: center;
     }
 }
+.sloptsdef{
+    cursor: pointer;
+}
 .slopts{
     display: flex;
     align-items: center;
     font-weight: bold;
     border-bottom: solid greenyellow 2px;
+    cursor: pointer;
 }
 .navdivicon1{
     font-size: .7em;
@@ -244,9 +259,11 @@
     cursor: pointer;
     z-index: 1;
 }
+
 .salesyesbtn{
     height: fit-content ;
     margin: 7px 10px;
+    padding: 10px 15px;
 }
 .salesinpcov{
     margin: 0px;
@@ -263,6 +280,437 @@
     margin: 100px auto;
     overflow: auto;
     color: purple;
+}
+
+.sales-page .emplist,
+.sales-page .empview {
+    min-height: 0;
+    height: calc(100vh - 48px);
+    border-radius: 28px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 22px 60px rgba(29, 53, 40, 0.08);
+    backdrop-filter: blur(8px);
+    overflow: auto;
+}
+
+.sales-sidebar-intro,
+.sales-detail-intro {
+    padding: 28px;
+    border-bottom: 1px solid rgba(29, 53, 40, 0.08);
+    background: linear-gradient(135deg, rgba(255, 250, 236, 0.94), rgba(239, 247, 243, 0.94));
+}
+
+.sales-page .sales-kicker,
+.sales-page .sales-stat-card span {
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6a7d6f;
+}
+
+.sales-page .sales-title,
+.sales-page .sales-detail-title {
+    margin: 10px 0 8px;
+    color: #173829;
+    line-height: 1;
+}
+
+.sales-page .sales-title {
+    font-size: clamp(1.85rem, 2vw, 2.4rem);
+}
+
+.sales-page .sales-copy {
+    margin: 0;
+    color: #607064;
+    line-height: 1.6;
+}
+
+.sales-page .sales-stat-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.sales-page .sales-stat-card {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.sales-page .sales-stat-card strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 1.35rem;
+    color: #173829;
+}
+.confirm{
+    width: 100%;
+    display: flex;
+    justify-content: space-around;    
+}
+.emptypecov{
+    display: flex;
+    justify-content: space-around;
+}
+.sales-page .payeeinpcov,
+.sales-page .emptypecov,
+.sales-page .fltinpcov,
+.sales-page .salesopts,
+.sales-page .confirm {
+    width: calc(100% - 40px);
+    margin-left: auto;
+    margin-right: auto;
+    padding: 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(29, 53, 40, 0.08);
+    background: #f9fbf8;
+}
+
+.sales-page .emptypecov,
+.sales-page .salesopts {
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+.sales-page .dept {
+    width: calc(100% - 36px);
+    margin: 0 18px 12px;
+    padding: 16px;
+    border-radius: 22px;
+    border: 1px solid rgba(23, 56, 41, 0.08);
+    background: linear-gradient(180deg, #ffffff, #f8faf8);
+}
+
+.sales-page .dept:hover,
+.sales-page .curview {
+    border-color: rgba(43, 106, 75, 0.28);
+    box-shadow: 0 16px 34px rgba(23, 56, 41, 0.08);
+}
+
+.sales-page .salesfm {
+    width: calc(100% - 40px);
+    margin-bottom: 18px;
+}
+
+.sales-page .forminp {
+    min-height: 48px;
+    border-radius: 16px;
+    border: 1px solid rgba(40, 70, 53, 0.12);
+    background: #f8faf7;
+}
+
+.sales-page .salesyesbtn,
+.sales-page .addempsales,
+.sales-page .action-btn,
+.sales-page .slprd,
+.sales-page .slprwh,
+.sales-page .slprwh-print {
+    border-radius: 16px;
+}
+
+.sales-page .salesyesbtn,
+.sales-page .action-btn,
+.sales-page .slsadd {
+    background: linear-gradient(135deg, #173829, #2b6a4b);
+    color: #fffdf7;
+}
+
+.sales-page .addproduct .add-products,
+.sales-page .salesunit {
+    border-radius: 28px;
+}
+
+@media (max-width: 1080px) {
+    .sales-page {
+        padding: 16px;
+    }
+
+    .sales-page .saleslist,
+    .sales-page .salesview {
+        width: 100%;
+    }
+}
+
+@media (max-width: 720px) {
+    .sales-sidebar-intro,
+    .sales-detail-intro {
+        padding: 20px;
+    }
+
+    .sales-page .sales-stat-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sales-page .salesview {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 10px;
+    min-height: 0;
+}
+
+.sales-page .sales-detail-intro {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.sales-active-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.sales-active-meta span {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid rgba(23, 56, 41, 0.08);
+    color: #173829;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.sales-page .dept {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+.sales-page .dept::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: linear-gradient(180deg, #f7c75a, #2b6a4b);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.sales-page .dept:hover::before,
+.sales-page .curview::before {
+    opacity: 1;
+}
+
+.sales-page .sldets {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+    padding-right: 10px;
+    color: #173829;
+}
+
+.sales-page .deptdesc {
+    margin: 0;
+    font-size: 0.86rem;
+}
+
+.sales-page .edit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 92px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(188, 51, 51, 0.18);
+    background: rgba(255, 241, 241, 0.98);
+    color: #9b2525;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.sales-page .slprd {
+    right: 14px;
+    bottom: 14px;
+    padding: 8px 12px;
+    border: 1px solid rgba(23, 56, 41, 0.12);
+    background: rgba(239, 246, 241, 0.96);
+    color: #173829;
+}
+
+.sales-page .formtitle.padtitle {
+    width: calc(100% - 40px);
+    margin: 18px auto 12px;
+    padding: 18px 20px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #fff8ea, #f2f7f2);
+    border: 1px solid rgba(23, 56, 41, 0.08);
+    color: #173829;
+}
+
+.sales-page .salesfm {
+    flex: 1;
+    height: auto;
+    overflow: auto;
+    padding-bottom: 12px;
+    min-height: 0;
+    margin: 0 auto 18px;
+}
+
+.sales-page .confirm {
+    position: sticky;
+    bottom: 18px;
+    z-index: 3;
+    box-shadow: 0 16px 32px rgba(23, 56, 41, 0.08);
+}
+
+.sales-page .salesview > .slsadd,
+.sales-page .salesview > .add.slsadd {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    top: auto;
+    left: auto;
+    z-index: 4;
+    margin: 0;
+}
+
+.sales-page .basic,
+.sales-page .addnewsales,
+.sales-page .addnewrecovery {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.sales-page .inpcov {
+    display: grid;
+    gap: 8px;
+}
+
+.sales-page .empsalesblk,
+.sales-page .recoveryblk {
+    border: 1px solid rgba(23, 56, 41, 0.3);
+    border-radius: 24px;
+    background: #ffffff;
+    padding: 18px;
+}
+
+.sales-page .pdsalesview {
+    top: 16px;
+    left: 16px;
+    border: none;
+    background: #173829;
+    color: #fffdf7;
+}
+
+.sales-page .empsalesttl {
+    margin-top: 52px;
+    color: #173829;
+}
+
+.sales-page .salesdelete,
+.sales-page .recoverydelete {
+    top: 16px;
+    right: 16px;
+}
+
+.sales-page .mobile-detail-trigger,
+.sales-page .detail-mobile-back {
+    display: none;
+}
+
+@media (max-width: 720px) {
+    .sales-page .salesview {
+        padding-bottom: 10px;
+    }
+
+    .sales-page .salesview > .slsadd,
+    .sales-page .salesview > .add.slsadd {
+        right: 18px;
+        bottom: 18px;
+    }
+
+    .sales-page .basic,
+    .sales-page .addnewsales,
+    .sales-page .addnewrecovery {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 1080px) {
+    .sales-page {
+        position: relative;
+    }
+
+    .sales-page .emplist {
+        height: auto;
+        min-height: calc(100vh - 32px);
+        overflow: auto;
+    }
+
+    .sales-page .empview {
+        position: fixed;
+        inset: 16px 12px;
+        width: auto !important;
+        height: calc(100dvh - 32px);
+        max-height: calc(100dvh - 32px);
+        margin: 0;
+        z-index: 3501;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(24px);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .sales-page.mobile-detail-open .empview {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+
+    .sales-page::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: rgba(16, 31, 24, 0);
+        pointer-events: none;
+        transition: background 0.25s ease;
+        z-index: 3500;
+    }
+
+    .sales-page.mobile-detail-open::after {
+        background: rgba(16, 31, 24, 0.42);
+        pointer-events: auto;
+    }
+
+    .sales-page .sales-detail-intro,
+    .sales-page .sales-sidebar-intro {
+        position: relative;
+    }
+
+    .sales-page .mobile-detail-trigger,
+    .sales-page .detail-mobile-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(23, 56, 41, 0.12);
+        background: rgba(255, 255, 255, 0.9);
+        color: #173829;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .sales-page .mobile-detail-trigger {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        z-index: 1;
+    }
+
+    .sales-page .detail-mobile-back {
+        margin-bottom: 14px;
+    }
 }
 
 
