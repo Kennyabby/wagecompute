@@ -11,7 +11,7 @@ import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import { uploadFile, updateFile, getFileUrl, deleteFile, createFolder } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 import { FaTableCells } from "react-icons/fa6";
 import Notify from '../../Resources/Notify/Notify';
-import { MdAdd } from "react-icons/md";
+import { MdAdd, MdArrowBack } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 
@@ -35,6 +35,7 @@ const Accommodation = () => {
     const [showReport, setShowReport] = useState(false)
     const [showReceipt, setShowReceipt] = useState(false)
     const [showReceiptsModal, setShowReceiptsModal] = useState(false)
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
     const [reportSales, setReportSales] = useState(null)
     const [isMultiple, setIsMultiple] = useState(false)
     const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
@@ -176,6 +177,12 @@ const Accommodation = () => {
             setIsView(true)
         }
     }, [curAccommodation, curApproval])
+
+    useEffect(() => {
+        if (isView || curApproval || curAccommodation || curCustomer) {
+            setMobileDetailOpen(true)
+        }
+    }, [isView, curApproval, curAccommodation, curCustomer])
 
     const handleSyncOfflineAccommodation = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -820,7 +827,7 @@ const Accommodation = () => {
     }
     return (
         <>
-            <div className='sales'>
+            <div className={`sales accommodation-page${mobileDetailOpen ? ' mobile-detail-open' : ''}`}>
                 {/* Receipts Modal Trigger State  */}
                 <PaymentReceiptsModal open={showReceiptsModal} onClose={() => setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
                 {showApprovalBox && <ApprovalBox
@@ -866,6 +873,32 @@ const Accommodation = () => {
                     }}
                 />}
                 <div className='emplist saleslist'>
+                    <div className='accommodation-sidebar-intro'>
+                        <button
+                            type='button'
+                            className='mobile-detail-trigger'
+                            onClick={() => {
+                                setMobileDetailOpen(true)
+                            }}
+                        >
+                            Open Workspace
+                        </button>
+                        <div className='accommodation-kicker'>Hospitality Desk</div>
+                        <h2 className='accommodation-title'>Accommodation</h2>
+                        <p className='accommodation-copy'>
+                            Manage room postings, customer records, approvals, and payment follow-up from a friendlier hospitality workspace.
+                        </p>
+                        <div className='accommodation-stat-row'>
+                            <div className='accommodation-stat-card'>
+                                <span>Accommodation Records</span>
+                                <strong>{accommodations.length}</strong>
+                            </div>
+                            <div className='accommodation-stat-card'>
+                                <span>Customers</span>
+                                <strong>{customers.length}</strong>
+                            </div>
+                        </div>
+                    </div>
                     {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'
                         onClick={() => {
@@ -1091,6 +1124,38 @@ const Accommodation = () => {
                     })}
                 </div>
                 <div className='empview salesview'>
+                    <div className='accommodation-detail-intro'>
+                        <button
+                            type='button'
+                            className='detail-mobile-back'
+                            onClick={() => {
+                                setMobileDetailOpen(false)
+                            }}
+                        >
+                            <MdArrowBack />
+                            Back to list
+                        </button>
+                        <div className='accommodation-kicker'>Hospitality Workspace</div>
+                        <h2 className='accommodation-detail-title'>
+                            {salesOpts === 'customers' ? 'Customer Records' : 'Accommodation Posting'}
+                        </h2>
+                        <p className='accommodation-copy'>
+                            {salesOpts === 'customers'
+                                ? 'Create and inspect customer profiles in the refreshed hospitality records panel.'
+                                : 'Handle room postings and payment approval steps without changing the current business rules.'}
+                        </p>
+                        {salesOpts === 'accommodation' && curAccommodation && <div className='accommodation-active-meta'>
+                            <span>{getDate(curAccommodation.postingDate)}</span>
+                            <span>{curAccommodation.roomNo || 'Room'}</span>
+                            <span>{'N' + Number(curAccommodation.accommodationAmount || 0).toLocaleString()}</span>
+                            <span>{curAccommodation.paymentStatus || 'Pending'}</span>
+                        </div>}
+                        {salesOpts === 'customers' && curCustomer && <div className='accommodation-active-meta'>
+                            <span>{curCustomer.fullName}</span>
+                            <span>{curCustomer.phoneNo || 'No phone'}</span>
+                            <span>{curCustomer.email || 'No email'}</span>
+                        </div>}
+                    </div>
                     {isView && salesOpts === 'accommodation' &&
                         <FaReceipt
                             className='slrepicon'
@@ -1101,7 +1166,7 @@ const Accommodation = () => {
                     }
                     {['accommodation', 'customers'].includes(salesOpts) &&
                         <MdAdd
-                            className='add slsadd'
+                            className='slsadd'
                             onClick={() => {
                                 if (salesOpts === 'accommodation') {
                                     setFillMode('')
@@ -1122,13 +1187,13 @@ const Accommodation = () => {
                             }}
                         />
                     }
-                    <div className='formtitle padtitle'>
-                        <div className={'frmttle'}>
-                            {`HOSPITALITY RECORDS`}
-                        </div>
-                    </div>
 
                     <div className='salesfm'>
+                        <div className='formtitle padtitle'>
+                            <div className={'frmttle'}>
+                                {`HOSPITALITY RECORDS`}
+                            </div>
+                        </div>
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='customers' className={salesOpts === 'customers' ? 'slopts' : ''}>Customers</div>
                             <div name='accommodation' className={salesOpts === 'accommodation' ? 'slopts' : ''}>Accommodation</div>
@@ -1286,8 +1351,8 @@ const Accommodation = () => {
                                 />
                             </div>
                         </div>}
+                        <div className='acpymdt'>{`Payment Details (Room No: ${accommodationFields.roomNo}, Date: ${accommodationFields.postingDate})`}</div>
                         {salesOpts === 'accommodation' && fillmode === 'payment' && <div className='addnewsales'>
-                            <div className='acpymdt'>{`Payment Details (Room No: ${accommodationFields.roomNo}, Date: ${accommodationFields.postingDate})`}</div>
                             <div className='inpcov'>
                                 <div>Payment Amount</div>
                                 <input

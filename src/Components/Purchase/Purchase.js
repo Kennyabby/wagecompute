@@ -5,7 +5,7 @@ import { syncPendingChanges } from '../../Resources/offlineSync';
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
 import { useScroll } from 'framer-motion'
-import { MdAdd } from 'react-icons/md'
+import { MdAdd, MdArrowBack } from 'react-icons/md'
 import { FaTableCells } from 'react-icons/fa6'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import PurchaseReport from './PurchaseReport/PurchaseReport'
@@ -37,6 +37,7 @@ const Purchase = () => {
     const [isView, setIsView] = useState(false)
     const [isProductView, setIsProductView] = useState(false)
     const [showReport, setShowReport] = useState(false)
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
     const [purchaseEntries, setPurchaseEntries] = useState([])
     const [postCount, setPostCount] = useState(0)
     const [uoms, setUoms] = useState([])
@@ -331,6 +332,12 @@ const Purchase = () => {
             }
         }
     }, [curPurchase, curApproval])
+
+    useEffect(() => {
+        if (isView || curApproval || curPurchase) {
+            setMobileDetailOpen(true)
+        }
+    }, [isView, curApproval, curPurchase])
 
     useEffect(() => {
         setPurchaseApprovals(approvals.filter((appr) => {
@@ -826,7 +833,7 @@ const Purchase = () => {
     }
     return (
         <>
-            <div className='purchase'>
+            <div className={`purchase purchase-page${mobileDetailOpen ? ' mobile-detail-open' : ''}`}>
                 {showApprovalBox && <ApprovalBox
                     onClose={() => {
                         setShowApprovalBox(false)
@@ -868,6 +875,32 @@ const Purchase = () => {
                     toDate={saleTo}
                 />}
                 <div className='purlst'>
+                    <div className='purchase-sidebar-intro'>
+                        <button
+                            type='button'
+                            className='mobile-detail-trigger'
+                            onClick={() => {
+                                setMobileDetailOpen(true)
+                            }}
+                        >
+                            Open Workspace
+                        </button>
+                        <div className='purchase-kicker'>Direct Cost Flow</div>
+                        <h2 className='purchase-title'>Direct Purchase</h2>
+                        <p className='purchase-copy'>
+                            Track approvals, posted direct costs, and offline sync activity from a clearer purchasing workspace.
+                        </p>
+                        <div className='purchase-stat-row'>
+                            <div className='purchase-stat-card'>
+                                <span>Posted Records</span>
+                                <strong>{purchase.length}</strong>
+                            </div>
+                            <div className='purchase-stat-card'>
+                                <span>Pending Approvals</span>
+                                <strong>{purchaseApprovals.length}</strong>
+                            </div>
+                        </div>
+                    </div>
                     {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'
                         onClick={() => {
@@ -877,17 +910,6 @@ const Purchase = () => {
                             }
                         }}
                     />}
-                    {<MdAdd
-                        className='add slsadd'
-                        onClick={() => {
-                            setIsView(false)
-                            setFields({ ...defaultFields })
-                            setCurPurchase(null)
-                            setCurApproval(null)
-                            setIsApprover(false)
-                        }}
-                    />}
-
                     <div className='payeeinpcov'>
                         <div className='inpcov formpad'>
                             <div>Date From</div>
@@ -1040,8 +1062,37 @@ const Purchase = () => {
                     })}
                 </div>
                 <div className='purinfo'>
-                    <div className='purinfotitle'>DIRECT COST ENTRY</div>
+                    <div className='purchase-detail-intro'>
+                        <button
+                            type='button'
+                            className='detail-mobile-back'
+                            onClick={() => {
+                                setMobileDetailOpen(false)
+                            }}
+                        >
+                            <MdArrowBack />
+                            Back to list
+                        </button>
+                        <div className='purchase-kicker'>Entry Workspace</div>
+                        <h2 className='purchase-detail-title'>{isView ? 'Purchase Details' : 'Post Direct Cost'}</h2>
+                        <p className='purchase-copy'>
+                            {isView
+                                ? 'Inspect the selected purchase record, linked products, and waybill state without touching the logic.'
+                                : 'Capture the direct cost details in the refreshed form and keep the existing posting flow intact.'}
+                        </p>
+                        {curPurchase && <div className='purchase-active-meta'>
+                            <span>{getDate(curPurchase.postingDate)}</span>
+                            <span>{curPurchase.purchaseDepartment || 'No department'}</span>
+                            <span>{'N' + Number(curPurchase.purchaseAmount || 0).toLocaleString()}</span>
+                            <span>{curPurchase.stage || 'posted'}</span>
+                        </div>}
+                    </div>
                     <div className='purinfocontent' onChange={handlePurchaseEntry}>
+                        <div className='formtitle padtitle'>
+                            <div className={'frmttle'}>
+                                {`DIRECT COST ENTRY`}
+                            </div>
+                        </div>
                         <div className='inpcov'>
                             <div>Select Department</div>
                             <select
@@ -1302,6 +1353,16 @@ const Purchase = () => {
                             }}
                         >{curApproval ? (curApproval.approved ? purchaseStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Purchase' : 'Request Approval')}</div>
                     </div>}
+                    <MdAdd
+                        className='add slsadd purchase-detail-add'
+                        onClick={() => {
+                            setIsView(false)
+                            setFields({ ...defaultFields })
+                            setCurPurchase(null)
+                            setCurApproval(null)
+                            setIsApprover(false)
+                        }}
+                    />
                 </div>
             </div>
         </>

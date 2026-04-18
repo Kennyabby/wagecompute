@@ -3,7 +3,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 280px;
+    width: 320px;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -199,6 +199,10 @@
 
 .sidenav.collapsed .navdiv > div:not(.notification-badge):not(.navdivcount) {
     display: none;
+}
+
+.sidenav.collapsed .navdiv > .navdiviconwrap {
+    display: grid !important;
 }
 
 /* Ensure approval indicators are visible when collapsed */
@@ -494,4 +498,313 @@
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+/* Refreshed navigation shell */
+.sidenav {
+    width: 310px;
+    background:
+        radial-gradient(circle at top left, rgba(255, 204, 102, 0.15), transparent 24%),
+        linear-gradient(180deg, #173829 0%, #1f4734 45%, #153324 100%);
+    color: #f4f6ef;
+    box-shadow: 18px 0 48px rgba(12, 28, 20, 0.18);
+}
+
+.navheader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 22px 18px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.navbrand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.navbrand-mark {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ffe29a, #dff1e6);
+    color: #173829;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+}
+
+.navbrand-copy {
+    display: grid;
+    min-width: 0;
+}
+
+.navbrand-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #f7f9f3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.navbrand-subtitle {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(244, 246, 239, 0.68);
+}
+
+.collapse-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 0;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f7f9f3;
+    font-weight: 700;
+}
+
+.collapse-btn::before {
+    content: '<';
+    font-size: 1rem;
+}
+
+.sidenav.collapsed .collapse-btn::before {
+    content: '>';
+}
+
+.collapse-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.navbox {
+    padding: 12px 10px 4px;
+}
+
+.navbarr {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 0;
+}
+
+.navdiv {
+    width: auto;
+    min-height: 74px;
+    margin: 0;
+    padding: 14px 14px 14px 12px;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.06);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    white-space: normal;
+}
+
+.navdiv:hover {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.selected {
+    border: 1px solid rgba(255, 226, 154, 0.38);
+    background: linear-gradient(135deg, rgba(255, 226, 154, 0.18), rgba(223, 241, 230, 0.1));
+    box-shadow: 0 16px 30px rgba(9, 24, 17, 0.18);
+}
+
+.navdiviconwrap {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.navdivicon {
+    margin: 0;
+    font-size: 1.25rem;
+    min-width: auto;
+}
+
+.navdivcopy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.navdivlabel {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f7f9f3;
+}
+
+.navdivmeta {
+    font-size: 0.76rem;
+    color: rgba(244, 246, 239, 0.7);
+}
+
+.navdivcount {
+    top: 10px;
+    right: 10px;
+    min-width: 22px;
+    width: auto;
+    padding: 0 6px;
+    height: 22px;
+    border: 2px solid rgba(23, 56, 41, 0.8);
+    background: #f05d5e;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.navfooter {
+    margin-top: auto;
+    padding: 14px 10px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.navlogout {
+    width: auto;
+    margin: 0;
+    padding: 14px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 12px;
+}
+
+.navlogout:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.navlogoutcopy {
+    display: grid;
+    gap: 3px;
+}
+
+.navlogouttitle {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f7f9f3;
+}
+
+.navlogoutmeta {
+    font-size: 0.76rem;
+    color: rgba(244, 246, 239, 0.68);
+}
+
+.navlogouticon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.mobile-menu-btn {
+    top: 14px;
+    left: 14px;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #173829, #2b6a4b);
+    box-shadow: 0 12px 24px rgba(23, 56, 41, 0.18);
+}
+
+.mobile-menu-badge {
+    border: 2px solid #173829;
+}
+
+.menu-overlay.open {
+    background: rgba(12, 23, 18, 0.42);
+}
+
+.sidenav.collapsed {
+    width: 98px;
+}
+
+.sidenav.collapsed .navheader {
+    justify-content: center;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.sidenav.collapsed .navbrand-copy,
+.sidenav.collapsed .navdivcopy,
+.sidenav.collapsed .navlogoutcopy {
+    display: none;
+}
+
+.sidenav.collapsed .navdiv {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    min-height: 68px;
+    padding: 12px 8px;
+}
+
+.sidenav.collapsed .navdiviconwrap {
+    width: 40px;
+    height: 40px;
+    display: grid;
+}
+
+.sidenav.collapsed .navfooter {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.sidenav.collapsed .navlogout {
+    justify-content: center;
+}
+
+.sidenav.collapsed .navdiv::after {
+    margin-left: 14px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(18, 37, 28, 0.96);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
+}
+
+@media (min-width: 1025px) {
+    .sidenav {
+        position: relative;
+        left: 0;
+        width: 310px;
+    }
+
+    .mobile-menu-btn {
+        display: none;
+    }
+}
+
+@media (max-width: 1024px) {
+    .sidenav {
+        left: -100%;
+        width: 310px;
+    }
+
+    .sidenav.open {
+        left: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidenav {
+        width: 290px;
+    }
+
+    .navheader {
+        padding-top: 18px;
+    }
+
+    .navdiv {
+        min-height: 72px;
+    }
 }

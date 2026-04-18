@@ -3181,7 +3181,7 @@ function App() {
     if (cached) {
       setRentals(cached);
     }
-    const rentalDays = 60 * 24 * 60 * 60 * 1000
+    const rentalDays = 365 * 24 * 60 * 60 * 1000
     const allowedFromDays = Date.now() - rentalDays
     const body = {
       database: company,

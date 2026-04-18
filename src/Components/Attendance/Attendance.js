@@ -34,6 +34,7 @@ const Attendance = () => {
 
     const [attendanceApprovals, setAttendanceApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
+    const selectedAttendance = curApproval?.data || attendance.find((att) => String(att.no) === String(viewNo)) || null
     useEffect(() => {
         storePath('attendance')
     }, [storePath])
@@ -342,7 +343,7 @@ const Attendance = () => {
     }
     return (
         <>
-            <div className='attendance'>
+            <div className='attendance attendance-page'>
                 {showApprovalBox && <ApprovalBox
                     onClose={() => {
                         setShowApprovalBox(false)
@@ -356,6 +357,23 @@ const Attendance = () => {
                     }}
                 />}
                 <div className='emplist attlist'>
+                    <div className='attendance-sidebar-intro'>
+                        <div className='attendance-kicker'>Monthly Imports</div>
+                        <h2 className='attendance-title'>Attendance</h2>
+                        <p className='attendance-copy'>
+                            Import, review, approve, and inspect monthly attendance records from one responsive workspace.
+                        </p>
+                        <div className='attendance-stat-row'>
+                            <div className='attendance-stat-card'>
+                                <span>Loaded Batches</span>
+                                <strong>{attendance.length}</strong>
+                            </div>
+                            <div className='attendance-stat-card'>
+                                <span>Pending Approvals</span>
+                                <strong>{attendanceApprovals.length}</strong>
+                            </div>
+                        </div>
+                    </div>
                     <div className='add'
                         onClick={() => {
                             setAdd(true)
@@ -498,6 +516,17 @@ const Attendance = () => {
                     })}
                 </div>
                 <div className='empview attview'>
+                    <div className='attendance-detail-intro'>
+                        <div className='attendance-kicker'>Attendance Workspace</div>
+                        <h2 className='attendance-detail-title'>
+                            {add ? 'Load New Attendance' : (selectedAttendance ? `${selectedAttendance.month} ${selectedAttendance.year}` : 'Review Attendance')}
+                        </h2>
+                        <p className='attendance-copy'>
+                            {add
+                                ? 'Match spreadsheet columns, choose the period, and submit the batch without disturbing the approval workflow.'
+                                : (selectedAttendance ? `${selectedAttendance.payees?.length || 0} computed pays available for this batch.` : 'Select a record on the left to inspect its computed pay entries.')}
+                        </p>
+                    </div>
                     {add ? <div className='addatt'>
                         <div className='checkbox'>
                             {iCols.length !== 0 && <div onChange={handleFields}>

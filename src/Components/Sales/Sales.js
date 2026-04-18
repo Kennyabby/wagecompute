@@ -14,7 +14,7 @@ import { uploadFile, updateFile, getFileUrl, deleteFile, createFolder } from '..
 import DebtReport from './DebtReport/DebtReport';
 import Notify from '../../Resources/Notify/Notify';
 import { syncPendingChanges } from '../../Resources/offlineSync';
-import { MdAdd } from "react-icons/md";
+import { MdAdd, MdArrowBack } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 import { use } from 'react';
@@ -181,6 +181,7 @@ const Sales = () => {
     const [proceedToNextAutomation, setProceedToNextAutomation] = useState(false)
 
     const [postingRecovery, setPostingRecovery] = useState(false)
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
     // useEffect(()=>{
     //     const divElement = scrollRef.current;
     //     const handleScroll = () => {
@@ -892,6 +893,12 @@ const Sales = () => {
             setRecoveryFields([])
         }
     }, [salesOpts])
+
+    useEffect(() => {
+        if (isView || curApproval || curSale || curRent) {
+            setMobileDetailOpen(true)
+        }
+    }, [isView, curApproval, curSale, curRent])
 
     useEffect(() => {
         if (Array.isArray(approvals)) {
@@ -1727,6 +1734,7 @@ const Sales = () => {
     }
 
     const handleRentalViewClick = (rent) => {
+        console.log(rent)
         setCurRent(rent)
         setCurApproval(null)
         setSalesOpts('rentals')
@@ -2281,6 +2289,7 @@ const Sales = () => {
         }
 
         if (res?.downloadLink) {
+            console.log('uploaded')
             const updated = {
                 imgId: res.imgId,
                 viewLink: res.viewLink,
@@ -2480,7 +2489,7 @@ const Sales = () => {
     }
     return (
         <>
-            <div className='sales'>
+            <div className={`sales sales-page${mobileDetailOpen ? ' mobile-detail-open' : ''}`}>
                 {/* Receipts Modal Trigger State  */}
                 <PaymentReceiptsModal open={showReceiptsModal} onClose={() => setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
                 {showApprovalBox && <ApprovalBox
@@ -2565,6 +2574,32 @@ const Sales = () => {
                     isProductApprover={isProductApprover}
                 />}
                 <div className='emplist saleslist' ref={scrollRef}>
+                    <div className='sales-sidebar-intro'>
+                        <button
+                            type='button'
+                            className='mobile-detail-trigger'
+                            onClick={() => {
+                                setMobileDetailOpen(true)
+                            }}
+                        >
+                            Open Workspace
+                        </button>
+                        <div className='sales-kicker'>Revenue Operations</div>
+                        <h2 className='sales-title'>Sales</h2>
+                        <p className='sales-copy'>
+                            Navigate sales, rentals, recoveries, approvals, and product detail posting from a tidier revenue workspace.
+                        </p>
+                        <div className='sales-stat-row'>
+                            <div className='sales-stat-card'>
+                                <span>Sales Records</span>
+                                <strong>{sales.length}</strong>
+                            </div>
+                            {/* <div className='sales-stat-card'>
+                                <span>Rental Records (last 30 days)</span>
+                                <strong>{rentals.length}</strong>
+                            </div> */}
+                        </div>
+                    </div>
                     {(companyRecord.status === 'admin' || companyRecord?.permissions.includes('export_sales_report')) && <FaTableCells
                         className='allslrepicon'
                         onClick={() => {
@@ -2612,9 +2647,9 @@ const Sales = () => {
                     <div className='emptypecov'
                         onClick={handleSalesOpts1}
                     >
-                        <div name='sales' className={salesOpts1 === 'sales' ? 'slopts' : ''}>Sales</div>
-                        <div name='rentals' className={salesOpts1 === 'rentals' ? 'slopts' : ''}>Rentals</div>
-                        <div name='recovery' className={salesOpts1 === 'recovery' ? 'slopts' : ''}>Recovery</div>
+                        <div name='sales' className={salesOpts1 === 'sales' ? 'slopts' : 'sloptsdef'}>Sales</div>
+                        <div name='rentals' className={salesOpts1 === 'rentals' ? 'slopts' : 'sloptsdef'}>Rentals</div>
+                        <div name='recovery' className={salesOpts1 === 'recovery' ? 'sloptSs' : 'sloptsdef'}>Recovery</div>
                     </div>
                     {salesOpts1 === 'sales' && companyRecord.status === 'admin' && <div className='inpcov fltinpcov'>
                         <select
@@ -2997,6 +3032,44 @@ const Sales = () => {
                     </div>}
                 </div>
                 <div className='empview salesview'>
+                    <div className='sales-detail-intro'>
+                        <button
+                            type='button'
+                            className='detail-mobile-back'
+                            onClick={() => {
+                                setMobileDetailOpen(false)
+                            }}
+                        >
+                            <MdArrowBack />
+                            Back to list
+                        </button>
+                        <div className='sales-kicker'>Revenue Workspace</div>
+                        <h2 className='sales-detail-title'>
+                            {salesOpts === 'sales' ? 'Post Daily Sales' : (salesOpts === 'rentals' ? 'Manage Rentals' : 'Recover Debts')}
+                        </h2>
+                        <p className='sales-copy'>
+                            {salesOpts === 'sales'
+                                ? 'Review the selected sales day, add product detail, and preserve the current approval and posting rules.'
+                                : (salesOpts === 'rentals'
+                                    ? 'Inspect and post rental receipts in the refreshed split layout.'
+                                    : 'Handle recovery entries and follow-up collections without changing the logic.')}
+                        </p>
+                        {salesOpts === 'sales' && curSale && <div className='sales-active-meta'>
+                            <span>{getDate(curSale.postingDate)}</span>
+                            <span>{'N' + Number((curSale.totalCashSales || 0) + (curSale.totalBankSales || 0)).toLocaleString()}</span>
+                            <span>{(curSale.record || []).length + ' entries'}</span>
+                        </div>}
+                        {salesOpts === 'rentals' && curRent && <div className='sales-active-meta'>
+                            <span>{getDate(curRent.paymentDate || curRent.postingDate)}</span>
+                            <span>{curRent.rentalSpace || 'Rental'}</span>
+                            <span>{'N' + Number(curRent.paymentAmount || 0).toLocaleString()}</span>
+                        </div>}
+                        {salesOpts === 'recovery' && curApproval?.data && <div className='sales-active-meta'>
+                            <span>{getDate(curApproval.postingDate)}</span>
+                            <span>{(curApproval.data.recoveryFields || []).length + ' recoveries'}</span>
+                            <span>{curApproval.approved ? 'Approved' : 'Pending approval'}</span>
+                        </div>}
+                    </div>
                     {isView && salesOpts === 'sales' &&
                         (companyRecord.status === 'admin' || companyRecord?.permissions.includes('export_sales_report')) &&
                         <FaTableCells
@@ -3062,13 +3135,13 @@ const Sales = () => {
                             }}
                         />)
                     }
-                    <div className='formtitle padtitle'>
-                        <div className={'frmttle'}>
-                            {`DAILY SALES`}
-                        </div>
-                    </div>
 
                     <div className='salesfm'>
+                        <div className='formtitle padtitle'>
+                            <div className={'frmttle'}>
+                                {`DAILY SALES`}
+                            </div>
+                        </div>
                         {<div className='salesopts' onClick={handleSalesOpts}>
                             <div name='sales' className={salesOpts === 'sales' ? 'slopts' : ''}>
                                 <div name='sales'>Sales</div>

@@ -1,6 +1,6 @@
 import './Payroll.css'
 
-import {useEffect, useState, useRef, useContext } from 'react'
+import {useEffect, useState, useRef, useContext, useMemo } from 'react'
 import Payee from './Payees/Payees';
 import ContextProvider from '../../Resources/ContextProvider'
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
@@ -33,6 +33,17 @@ const Payroll = () =>{
     const [curAtt, setCurAtt] = useState(null)
     const [InvoiceNumber, setInvoiceNumber] = useState('')
     const [date, setDate] = useState('')
+    const eligibleEmployees = useMemo(() => {
+        return employees.filter((ftremp) => {
+            if (selectedMonth && selectedYear) {
+                if (new Date(ftremp.hiredDate).getTime() <= new Date(`${selectedYear}-${months.indexOf(selectedMonth) + 1}-01`).getTime()) {
+                    return ftremp
+                }
+            } else if (!ftremp.dismissalDate) {
+                return ftremp
+            }
+        })
+    }, [employees, months, selectedMonth, selectedYear])
 
     useEffect(()=>{
         storePath('payroll')  
@@ -145,7 +156,7 @@ const Payroll = () =>{
 
     return(
         <>
-            <div className='payroll'>
+            <div className='payroll payroll-page'>
                 {viewPayee && 
                     <Payee
                         setViewPayee={setViewPayee}
@@ -385,6 +396,23 @@ const Payroll = () =>{
                 </div>
                 </div>}
                 <div className='emplist'>
+                <div className='payroll-sidebar-intro'>
+                    <div className='payroll-kicker'>Salary Processing</div>
+                    <h2 className='payroll-title'>Payroll</h2>
+                    <p className='payroll-copy'>
+                        Review staff attendance-linked payroll entries and generate pay slips from a calmer, more readable workspace.
+                    </p>
+                    <div className='payroll-stat-row'>
+                        <div className='payroll-stat-card'>
+                            <span>Eligible Staff</span>
+                            <strong>{eligibleEmployees.length}</strong>
+                        </div>
+                        <div className='payroll-stat-card'>
+                            <span>Attendance Batches</span>
+                            <strong>{attendance.length}</strong>
+                        </div>
+                    </div>
+                </div>
                 <div className='payeeinpcov'>
                     <div className='inpcov formpad'>
                         <div>Month</div>
@@ -439,17 +467,7 @@ const Payroll = () =>{
                     }}
                 >VIEW STAFF PAYROLL</div>
                 
-                {employees.filter((ftremp)=>{
-                    
-                    if (selectedMonth && selectedYear){
-                        if (new Date(ftremp.hiredDate).getTime() <= new Date(`${selectedYear}-${months.indexOf(selectedMonth)+1}-01`).getTime()){
-                            return ftremp
-                        }
-                    }else if (!ftremp.dismissalDate){
-                        return ftremp
-                    }
-                    
-                }).map((employee, index)=>{
+                {eligibleEmployees.map((employee, index)=>{
                     const {i_d, 
                         firstName, lastName,
                         department, position,
@@ -472,6 +490,17 @@ const Payroll = () =>{
                   })}
                 </div>
                 <div className='empview payview'>
+                    <div className='payroll-detail-intro'>
+                        <div className='payroll-kicker'>Payroll Workspace</div>
+                        <h2 className='payroll-detail-title'>
+                            {curEmployee ? `${curEmployee.firstName} ${curEmployee.lastName}` : 'Select a staff record'}
+                        </h2>
+                        <p className='payroll-copy'>
+                            {curEmployee
+                                ? 'Adjust deductions or bonuses, then save and generate the pay slip without changing the current payroll logic.'
+                                : 'Choose a staff member on the left to inspect their attendance-based payroll entries.'}
+                        </p>
+                    </div>
                     {curEmployee && <div className='formtitle'>
                         {`${curEmployee.firstName} ${curEmployee.otherName} ${curEmployee.lastName} (${curEmployee.i_d})`}
                     </div>}

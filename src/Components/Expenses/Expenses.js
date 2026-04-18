@@ -8,7 +8,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 
 import html2pdf from 'html2pdf.js';
 import { useScroll } from 'framer-motion'
-import { MdAdd } from 'react-icons/md'
+import { MdAdd, MdArrowBack } from 'react-icons/md'
 import { FaPlus } from "react-icons/fa";
 import { FaTableCells, FaPrint } from 'react-icons/fa6'
 import { FaAngleDown, FaAngleUp } from "react-icons/fa";
@@ -37,6 +37,7 @@ const Expenses = () => {
     const [isView, setIsView] = useState(false)
     const [showReport, setShowReport] = useState(false)
     const [isSyncing, setIsSyncing] = useState(false)
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
     const [expenseFrom, setExpenseFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
     const [expenseTo, setExpenseTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [reportExpense, setReportExpense] = useState(null)
@@ -231,6 +232,12 @@ const Expenses = () => {
         }
     }
 
+    useEffect(() => {
+        if (isView || curExpense) {
+            setMobileDetailOpen(true)
+        }
+    }, [isView, curExpense])
+
     const addExpenses = async () => {
         if (fields.expensesAmount && fields.expenseCategory &&
             fields.expensesDepartment && fields.expensesHandler &&
@@ -367,7 +374,7 @@ const Expenses = () => {
 
     return (
         <>
-            <div className='expenses'>
+            <div className={`expenses expenses-page${mobileDetailOpen ? ' mobile-detail-open' : ''}`}>
                 {showReport && <ExpensesReport
                     reportExpense={reportExpense}
                     multiple={true}
@@ -380,6 +387,32 @@ const Expenses = () => {
                 // selectedYear={selectedYear}
                 />}
                 <div className='purlst'>
+                    <div className='expenses-sidebar-intro'>
+                        <button
+                            type='button'
+                            className='mobile-detail-trigger'
+                            onClick={() => {
+                                setMobileDetailOpen(true)
+                            }}
+                        >
+                            Open Workspace
+                        </button>
+                        <div className='expenses-kicker'>Admin Costs</div>
+                        <h2 className='expenses-title'>Expenses</h2>
+                        <p className='expenses-copy'>
+                            Review posted costs, sync offline changes, and filter the ledger window from a cleaner split layout.
+                        </p>
+                        <div className='expenses-stat-row'>
+                            <div className='expenses-stat-card'>
+                                <span>Posted Records</span>
+                                <strong>{expenses.length}</strong>
+                            </div>
+                            {/* <div className='expenses-stat-card'>
+                                <span>Salary Entries</span>
+                                <strong>{salaryDetails?.length || 0}</strong>
+                            </div> */}
+                        </div>
+                    </div>
                     {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'
                         onClick={() => {
@@ -387,14 +420,6 @@ const Expenses = () => {
                             if (expenseTo && expenseFrom) {
                                 setShowReport(true)
                             }
-                        }}
-                    />}
-                    {<MdAdd
-                        className='add slsadd'
-                        onClick={() => {
-                            setIsView(false)
-                            setFields({ ...defaultFields })
-                            setCurExpense(null)
                         }}
                     />}
                     <div className='payeeinpcov'>
@@ -534,8 +559,37 @@ const Expenses = () => {
                     })}
                 </div>
                 <div className='purinfo'>
-                    <div className='purinfotitle'>EXPENSES ENTRY</div>
+                    <div className='expenses-detail-intro'>
+                        <button
+                            type='button'
+                            className='detail-mobile-back'
+                            onClick={() => {
+                                setMobileDetailOpen(false)
+                            }}
+                        >
+                            <MdArrowBack />
+                            Back to list
+                        </button>
+                        <div className='expenses-kicker'>Entry Workspace</div>
+                        <h2 className='expenses-detail-title'>{isView ? 'Expense Details' : 'Post New Expense'}</h2>
+                        <p className='expenses-copy'>
+                            {isView
+                                ? 'Inspect the selected expense details without changing the underlying posting behavior.'
+                                : 'Capture vendor, handler, category, and bank details in the refreshed entry form.'}
+                        </p>
+                        {curExpense && <div className='expenses-active-meta'>
+                            <span>{getDate(curExpense.postingDate)}</span>
+                            <span>{curExpense.expenseCategory || 'No category'}</span>
+                            <span>{'N' + Number(curExpense.expensesAmount || 0).toLocaleString()}</span>
+                            <span>{curExpense.expensesDepartment || 'Admin'}</span>
+                        </div>}
+                    </div>
                     <div className='purinfocontent' onChange={handleExpensesEntry}>
+                        <div className='formtitle padtitle'>
+                            <div className={'frmttle'}>
+                                {`EXPENSES ENTRY`}
+                            </div>
+                        </div>
                         <div className='inpcov'>
                             <div>Select Department</div>
                             <select
@@ -677,6 +731,14 @@ const Expenses = () => {
                             onClick={addExpenses}
                         >{expensesStatus}</div>
                     </div>}
+                    <MdAdd
+                        className='add slsadd expenses-detail-add'
+                        onClick={() => {
+                            setIsView(false)
+                            setFields({ ...defaultFields })
+                            setCurExpense(null)
+                        }}
+                    />
                 </div>
             </div>
             {showExpenseModal && <AddExpenseAccount
