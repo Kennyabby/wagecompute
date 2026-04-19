@@ -1,34 +1,131 @@
-.loadingpage{
+.loadingpage {
     display: flex;
     width: 100vw;
     height: 100vh;
     justify-content: center;
     align-items: center;
-    text-align: center;
-    color: black;
-    font-weight: bold;
-    background: rgb(248, 246, 246);
-    h3{
-        margin: 15px;
-        font-size: 1.3em;
-        color: grey;
-        font-family: 'MontserratBold';
-    }
+    background: #f8faf9;
+    flex-direction: column;
+    font-family: 'MontserratRegular', sans-serif;
+    position: relative;
+    overflow: hidden;
 }
 
-.loadinglogocover{
-    width: 45%;
-    height: fit-content;
-    margin: auto;
-    /* margin-top: 50%; */
-    /* transform: translate(0,-50%); */
-    cursor: pointer;
-    justify-content: center;
+.loadingpage::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150%;
+    height: 150%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 50% 50%, rgba(106, 242, 173, 0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
 }
-.loadinglogo{
-    width:60%;
-    margin: auto;
-    margin-left: 50%;
-    transform: translate(-50%,0);
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 48px;
+    z-index: 10;
+}
+
+.loadinglogocover {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.loadinglogo {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    z-index: 5;
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
+    padding: 20px;
     border-radius: 50%;
+    border: 2px solid var(--login-primary);
+}
+
+.logo-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: #173829;
+    z-index: 4;
+}
+
+.logo-ring-outer {
+    position: absolute;
+    width: 140%;
+    height: 140%;
+    border-radius: 50%;
+    border: 1px dashed rgba(23, 56, 41, 0.1);
+    z-index: 3;
+}
+
+.logo-glow {
+    position: absolute;
+    width: 110%;
+    height: 110%;
+    background: radial-gradient(circle, rgba(106, 242, 173, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.loading-text-content {
+    text-align: center;
+}
+
+.loadingpage h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #173829;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-family: 'MontserratBold', sans-serif;
+}
+
+.loading-status {
+    margin-top: 16px;
+    font-size: 13px;
+    color: rgba(23, 56, 41, 0.6);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background: #6af2ad;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(106, 242, 173, 0.8);
+    display: inline-block;
+    animation: blink 1.5s infinite;
+}
+
+.loading-footer {
+    position: absolute;
+    bottom: 40px;
+    font-size: 11px;
+    color: rgba(23, 56, 41, 0.4);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(0.8); }
 }
