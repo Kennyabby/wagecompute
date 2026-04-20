@@ -1352,7 +1352,7 @@ const Accommodation = () => {
                                 />
                             </div>
                         </div>}
-                        <div className='acpymdt'>{`Payment Details (Room No: ${accommodationFields.roomNo}, Date: ${accommodationFields.postingDate})`}</div>
+                        {salesOpts === 'accommodation' && fillmode === 'payment' && <div className='acpymdt'>{`Payment Details (Room No: ${accommodationFields.roomNo}, Date: ${accommodationFields.postingDate})`}</div>}
                         {salesOpts === 'accommodation' && fillmode === 'payment' && <div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Payment Amount</div>
