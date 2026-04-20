@@ -1,9 +1,9 @@
 import "./Login.css";
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoEyeOutline, IoEyeOffOutline, IoFingerPrintOutline } from 'react-icons/io5';
-import { HiLogin, HiLogout, HiCalendar, HiClock, HiShieldCheck } from 'react-icons/hi';
-import { MdOutlineKeyboardAlt } from 'react-icons/md';
+import { HiLogin, HiLogout, HiClock, HiShieldCheck } from 'react-icons/hi';
+import { MdOutlineKeyboardAlt, MdBackspace } from 'react-icons/md';
 import ContextProvider from '../../Resources/ContextProvider';
 import { motion, AnimatePresence } from "framer-motion";
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
@@ -20,12 +20,14 @@ const Login = () => {
   });
   const [signinStatus, setSigninStatus] = useState("Sign In")
   const [showpass, SetShowpass] = useState(false);
-  const [activeInput, setActiveInput] = useState(null);
+  const [activeInput, setActiveInput] = useState('emailid');
   const [capsLock, setCapsLock] = useState(false);
-  const [keypadValue, setKeypadValue] = useState('');
-  
+  const [showSymbols, setShowSymbols] = useState(false);
+
   const Navigate = useNavigate()
-  
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+
   // Update current time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -34,13 +36,41 @@ const Login = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Handle keypad input
-  const handleKeyPress = (key) => {
+  // Keyboard letter rows
+  const letterRows = [
+    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+    ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+  ];
+
+  // Symbol rows
+  const symbolRows = [
+    ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')'],
+    ['-', '_', '=', '+', '[', ']', '{', '}', '|', '\\'],
+    [';', ':', "'", '"', ',', '.', '/', '?', '~']
+  ];
+
+  const numberRow = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
+  // Get display character based on capsLock state
+  const getDisplayChar = (char) => {
+    return capsLock ? char.toUpperCase() : char;
+  };
+
+  // Handle virtual keypad press
+  const handleKeyPress = useCallback((key) => {
+    if (!activeInput) return;
+
     if (key === 'caps') {
-      setCapsLock(!capsLock);
+      setCapsLock(prev => !prev);
       return;
     }
-    
+
+    if (key === 'symbols') {
+      setShowSymbols(prev => !prev);
+      return;
+    }
+
     if (key === 'backspace') {
       setField(prev => ({
         ...prev,
@@ -48,7 +78,7 @@ const Login = () => {
       }));
       return;
     }
-    
+
     if (key === 'space') {
       key = ' ';
     } else if (key === 'clear') {
@@ -57,19 +87,30 @@ const Login = () => {
         [activeInput]: ''
       }));
       return;
+    } else if (key === 'tab') {
+      // Switch between inputs
+      setActiveInput(prev => prev === 'emailid' ? 'password' : 'emailid');
+      return;
     }
-    
+
     setField(prev => ({
       ...prev,
-      [activeInput]: (prev[activeInput] || '') + (capsLock ? key.toUpperCase() : key.toLowerCase())
+      [activeInput]: (prev[activeInput] || '') + key
     }));
+  }, [activeInput]);
+
+  // Handle external keyboard input change
+  const handleExternalInput = (e) => {
+    const name = e.target.getAttribute("name");
+    const value = e.target.value;
+    setField(prev => ({ ...prev, [name]: value }));
   };
 
   // Handle input focus
   const handleInputFocus = (fieldName) => {
     setActiveInput(fieldName);
   };
-  
+
   // Format date as "Day, Month DD, YYYY"
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', {
@@ -79,7 +120,7 @@ const Login = () => {
       day: 'numeric'
     });
   };
-  
+
   // Format time as "HH:MM:SS AM/PM"
   const formatTime = (date) => {
     return date.toLocaleTimeString('en-US', {
@@ -90,65 +131,65 @@ const Login = () => {
     });
   };
 
-  useEffect(()=>{
+  useEffect(() => {
     storePath('login')
-  },[storePath])
+  }, [storePath])
 
-  useEffect(()=>{
-    if(loginMessage){
-      setTimeout(()=>{
+  useEffect(() => {
+    if (loginMessage) {
+      setTimeout(() => {
         setLoginMessage("")
-      },7000)
+      }, 7000)
     }
-  },[loginMessage, setLoginMessage])
+  }, [loginMessage, setLoginMessage])
 
-  useEffect(()=>{
+  useEffect(() => {
     const logoutMessage = window.localStorage.getItem('lgt-mess')
     if (logoutMessage) setLoginMessage(logoutMessage)
-    window.localStorage.removeItem('lgt-mess')  
-    setViewType(window.localStorage.getItem('lgt-vw') || '')  
+    window.localStorage.removeItem('lgt-mess')
+    setViewType(window.localStorage.getItem('lgt-vw') || '')
   }, [setLoginMessage])
 
-  const validateLogin = async ()=> {
-    if (field.emailid==='test' && field.password==='test'){
+  const validateLogin = async () => {
+    if (field.emailid === 'test' && field.password === 'test') {
       Navigate('/test')
-    }else{
+    } else {
       setSigninStatus("Signing In...")
       setLoginMessage("")
       const resp = await fetchServer("POST", {
         database: "WCDatabase",
         collection: "Profiles",
         pass: field.password,
-        prop: {'emailid': field.emailid}
+        prop: { 'emailid': field.emailid }
       }, "authenticateUser", server)
-  
-      if (resp.err){
+
+      if (resp.err) {
         setLoginMessage(resp.mess)
         setSigninStatus("Sign In")
-        setTimeout(()=>{
+        setTimeout(() => {
           setLoginMessage("")
-        },5000)
-      }else{
-        if (resp.mess){
+        }, 5000)
+      } else {
+        if (resp.mess) {
           setLoginMessage(resp.mess)
           setSigninStatus("Sign In")
-          setTimeout(()=>{
+          setTimeout(() => {
             setLoginMessage("")
-          },5000)
-        }else{
+          }, 5000)
+        } else {
           var idVal = resp.id
           var company = resp.db
           var now = Date.now()
           var sess = 0
-          idVal.split('').forEach((chr)=>{
+          idVal.split('').forEach((chr) => {
             sess += chr.codePointAt(0)
           })
           window.localStorage.setItem('sessn-cmp', company)
           window.localStorage.setItem('sess-recg-id', now * sess + "")
           window.localStorage.setItem('idt-curr-usr', now + "")
           window.localStorage.setItem('sessn-id', idVal)
-          setField((field)=>{
-            return({...field, emailid: "", password: ""})
+          setField((field) => {
+            return ({ ...field, emailid: "", password: "" })
           })
           setSigninStatus("Sign In")
           loadPage(idVal, 'dashboard')
@@ -156,7 +197,7 @@ const Login = () => {
       }
     }
   }
-  
+
   const getFieldInput = (e) => {
     const name = e.target.getAttribute("name");
     const value = e.target.value;
@@ -177,42 +218,119 @@ const Login = () => {
   const [showKeypad, setShowKeypad] = useState(false);
   const isLoggedIn = window.localStorage.getItem('sessn-cmp') !== null;
 
+
+
+  // Virtual keyboard component
+  const VirtualKeyboard = () => (
+    <div className="virtual-keypad">
+      {/* Number row - always visible */}
+      <div className="keypad-row">
+        {numberRow.map(num => (
+          <button key={num} className="key" onClick={() => handleKeyPress(num)}>{num}</button>
+        ))}
+      </div>
+
+      {!showSymbols ? (
+        <>
+          {/* Letter rows */}
+          {letterRows.map((row, rowIndex) => (
+            <div className="keypad-row" key={`row-${rowIndex}`}>
+              {rowIndex === 2 && (
+                <button
+                  className={`key ctrl-key ${capsLock ? 'active-ctrl' : ''}`}
+                  onClick={() => handleKeyPress('caps')}
+                >
+                  {capsLock ? '⬆ ABC' : '⬆ abc'}
+                </button>
+              )}
+              {row.map(char => (
+                <button
+                  key={char}
+                  className="key"
+                  onClick={() => handleKeyPress(getDisplayChar(char))}
+                >
+                  {getDisplayChar(char)}
+                </button>
+              ))}
+              {rowIndex === 2 && (
+                <button className="key ctrl-key delete" onClick={() => handleKeyPress('backspace')}>
+                  <MdBackspace />
+                </button>
+              )}
+            </div>
+          ))}
+        </>
+      ) : (
+        <>
+          {/* Symbol rows */}
+          {symbolRows.map((row, rowIndex) => (
+            <div className="keypad-row" key={`sym-${rowIndex}`}>
+              {row.map((sym, i) => (
+                <button key={`${sym}-${i}`} className="key" onClick={() => handleKeyPress(sym)}>{sym}</button>
+              ))}
+              {rowIndex === 2 && (
+                <button className="key ctrl-key delete" onClick={() => handleKeyPress('backspace')}>
+                  <MdBackspace />
+                </button>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Bottom row */}
+      <div className="keypad-row bottom-row">
+        <button
+          className={`key symbol-key ${showSymbols ? 'active-ctrl' : ''}`}
+          onClick={() => handleKeyPress('symbols')}
+        >
+          {showSymbols ? 'ABC' : '#+='}
+        </button>
+        <button className="key tab-key" onClick={() => handleKeyPress('tab')}>TAB</button>
+        <button className="key space-key" onClick={() => handleKeyPress('space')}>SPACE</button>
+        <button className="key dot-key" onClick={() => handleKeyPress('.')}>.</button>
+        <button className="key dot-key" onClick={() => handleKeyPress('@')}>@</button>
+        <button className="key clear-key" onClick={() => handleKeyPress('clear')}>CLR</button>
+      </div>
+    </div>
+  );
+
   const renderUserView = () => (
     <div className="user-login-container">
-      <motion.div 
+      <motion.div
         className="user-login-content"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6 }}
       >
         <div className="user-header">
-            <motion.img 
-              src={applogo} 
-              alt="Logo" 
-              className="user-app-logo"
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            />
-            <motion.h1
-              initial={{ y: -10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              Enterprise Compute
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              System Terminal • Premium Business Solutions
-            </motion.p>
+          <motion.img
+            src={applogo}
+            alt="Logo"
+            className="user-app-logo"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          />
+          <motion.h1
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            Enterprise Compute
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            System Terminal • Premium Business Solutions
+          </motion.p>
         </div>
 
         <div className="user-login-grid">
           {/* Status Card */}
-          <motion.div 
+          <motion.div
             className="user-card info-card"
             whileHover={{ translateY: -5 }}
             transition={{ type: "spring", stiffness: 300 }}
@@ -229,7 +347,7 @@ const Login = () => {
 
           {/* Action Card */}
           {!isLoggedIn ? (
-            <motion.div 
+            <motion.div
               className="user-card action-card login-card"
               onClick={() => setShowKeypad(true)}
               whileHover={{ scale: 1.02 }}
@@ -245,7 +363,7 @@ const Login = () => {
               </div>
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               className="user-card action-card logout-card"
               onClick={handleLogout}
               whileHover={{ scale: 1.02 }}
@@ -262,7 +380,7 @@ const Login = () => {
             </motion.div>
           )}
 
-          <motion.div 
+          <motion.div
             className="user-card system-card"
             whileHover={{ translateY: -5 }}
           >
@@ -280,13 +398,13 @@ const Login = () => {
 
       <AnimatePresence>
         {showKeypad && (
-          <motion.div 
+          <motion.div
             className="keypad-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="keypad-content"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
@@ -297,37 +415,50 @@ const Login = () => {
                   <MdOutlineKeyboardAlt />
                   <h3>Security Terminal</h3>
                 </div>
-                <button 
+                <button
                   className="close-btn"
                   onClick={() => setShowKeypad(false)}
                 >
                   ×
                 </button>
               </div>
-              
+
               <div className="keypad-fields">
                 <div className={`input-field-wrapper ${activeInput === 'emailid' ? 'focused' : ''}`}>
                   <label>User Identity</label>
                   <input
+                    ref={emailRef}
                     type="text"
                     name="emailid"
                     value={field.emailid || ''}
                     onFocus={() => handleInputFocus('emailid')}
+                    onChange={handleExternalInput}
                     placeholder="Enter ID Number"
-                    readOnly
+                    autoComplete="off"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setActiveInput('password');
+                        passwordRef.current?.focus();
+                      }
+                    }}
                   />
                 </div>
-                
+
                 <div className={`input-field-wrapper ${activeInput === 'password' ? 'focused' : ''}`}>
                   <label>Security Pin</label>
                   <div className="pin-input-box">
                     <input
+                      ref={passwordRef}
                       type={showpass ? "text" : "password"}
                       name="password"
                       value={field.password || ''}
                       onFocus={() => handleInputFocus('password')}
+                      onChange={handleExternalInput}
                       placeholder="••••••••"
-                      readOnly
+                      autoComplete="off"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') validateLogin();
+                      }}
                     />
                     <button className="pin-toggle" onClick={() => SetShowpass(!showpass)}>
                       {showpass ? <IoEyeOffOutline /> : <IoEyeOutline />}
@@ -336,38 +467,11 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="virtual-keypad">
-                <div className="keypad-row">
-                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map(num => (
-                    <button key={num} className="key" onClick={() => handleKeyPress(num)}>{num}</button>
-                  ))}
-                </div>
-                <div className="keypad-row">
-                  {['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'].map(char => (
-                    <button key={char} className="key" onClick={() => handleKeyPress(char)}>{char}</button>
-                  ))}
-                </div>
-                <div className="keypad-row">
-                  {['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'].map(char => (
-                    <button key={char} className="key" onClick={() => handleKeyPress(char)}>{char}</button>
-                  ))}
-                </div>
-                <div className="keypad-row">
-                  <button className="key ctrl-key" onClick={() => handleKeyPress('caps')}>{capsLock ? 'abc' : 'ABC'}</button>
-                  {['Z', 'X', 'C', 'V', 'B', 'N', 'M'].map(char => (
-                    <button key={char} className="key" onClick={() => handleKeyPress(char)}>{char}</button>
-                  ))}
-                  <button className="key ctrl-key delete" onClick={() => handleKeyPress('backspace')}>DEL</button>
-                </div>
-                <div className="keypad-row">
-                  <button className="key space-key" onClick={() => handleKeyPress('space')}>SPACE</button>
-                  <button className="key clear-key" onClick={() => handleKeyPress('clear')}>CLEAR</button>
-                </div>
-              </div>
+              <VirtualKeyboard />
 
               <div className="keypad-actions">
                 <button className="cancel-action" onClick={() => setShowKeypad(false)}>Cancel</button>
-                <button 
+                <button
                   className="submit-action"
                   onClick={validateLogin}
                   disabled={!field.emailid || !field.password}
@@ -388,14 +492,21 @@ const Login = () => {
         {renderUserView()}
         <AnimatePresence>
           {loginMessage && (
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="error-toast"
+            <motion.div
+              key="login-toast"
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.95 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="login-toast"
             >
-              <div className="toast-icon">!</div>
-              <span>{loginMessage}</span>
+              <div className="login-toast-accent" />
+              <div className="login-toast-icon">!</div>
+              <span className="login-toast-text">{loginMessage}</span>
+              <button
+                className="login-toast-close"
+                onClick={() => setLoginMessage("")}
+              >×</button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -407,7 +518,7 @@ const Login = () => {
     <div className="login-page">
       <div className="login-container">
         <div className="login-side-form">
-          <motion.div 
+          <motion.div
             className="form-header"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -417,11 +528,11 @@ const Login = () => {
               <img src={applogo} alt="Logo" />
             </div>
             <h2>Welcome Back</h2>
-            <p>Access your enterprise dashbord with secure credentials.</p>
+            <p>Access your enterprise dashboard with secure credentials.</p>
           </motion.div>
 
           <div className="login-form">
-            <motion.div 
+            <motion.div
               className="input-group"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -440,7 +551,7 @@ const Login = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="input-group"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -455,7 +566,7 @@ const Login = () => {
                   type={showpass ? "text" : "password"}
                   value={field.password}
                   onChange={getFieldInput}
-                  onKeyDown={(e)=>{
+                  onKeyDown={(e) => {
                     if (e.key === "Enter") validateLogin()
                   }}
                 />
@@ -466,10 +577,10 @@ const Login = () => {
             </motion.div>
 
             <div className="form-options">
-               <div className="forgot-pass">Forgot Password?</div>
+              <div className="forgot-pass">Forgot Password?</div>
             </div>
 
-            <motion.button 
+            <motion.button
               className="main-login-btn"
               onClick={validateLogin}
               whileHover={{ scale: 1.01 }}
@@ -489,7 +600,7 @@ const Login = () => {
 
         <div className="login-side-visual">
           <div className="visual-overlay"></div>
-          <motion.div 
+          <motion.div
             className="visual-content"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -501,7 +612,7 @@ const Login = () => {
             <h1>Enterprise Compute</h1>
             <div className="visual-divider"></div>
             <p>Advanced Wage Computation & Resource Management System. Powered by The Light Rays Technologies.</p>
-            
+
             <div className="visual-stats">
               <div className="stat-item">
                 <span className="stat-num">99.9%</span>
@@ -518,15 +629,21 @@ const Login = () => {
 
       <AnimatePresence>
         {loginMessage && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="error-toast"
-            style={{ bottom: '40px', left: '40px' }}
+          <motion.div
+            key="login-toast"
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="login-toast"
           >
-            <div className="toast-icon">!</div>
-            <span>{loginMessage}</span>
+            <div className="login-toast-accent" />
+            <div className="login-toast-icon">!</div>
+            <span className="login-toast-text">{loginMessage}</span>
+            <button
+              className="login-toast-close"
+              onClick={() => setLoginMessage("")}
+            >×</button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -535,4 +652,3 @@ const Login = () => {
 };
 
 export default Login;
-
