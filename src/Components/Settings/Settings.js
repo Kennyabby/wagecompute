@@ -1,6 +1,8 @@
 import './Settings.css'
 import { useEffect, useState, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import { motion, AnimatePresence } from 'framer-motion'
+import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff } from 'react-icons/io5'
 
 const Settings = () => {
     const { storePath, company, companyRecord,
@@ -103,19 +105,21 @@ const Settings = () => {
     const postingPermissions = [
         'allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products',
         'allow_recovery_posts', 'allow_rental_posts', 'allow_accommodation_posts',
-        'allow_purchase_posts', 'allow_expense_posts', 'allow_payment_posts'
+        'allow_purchase_posts', 'allow_expense_posts', 'allow_payment_posts',
+        'postAttendance', 'postPayroll'
     ]
     const approvalPermissions = [
         'approve_postsales', 'approve_postaddSalesProduct', 'approve_postrentals',
         'approve_postrecovery', 'approve_postaccommodation', 'approve_postpurchase',
-        'approve_postexpense', 'approve_postpayment'
-
+        'approve_postexpense', 'approve_postpayment',
+        'approve_postattendance', 'approve_postpayroll'
     ]
     const importExportPermissions = [
         'imports', 'export_inventory_report', 'export_sales_report',
         'export_pos_report', 'export_purchase_report', 'print_purchase_doc', 'export_expense_report',
-        'adjustments'
+        'adjustments', 'export_attendance_report', 'export_payroll_report'
     ]
+
     const stockTransferPermissions = [
         'internal_transfer'
     ]
@@ -316,8 +320,16 @@ const Settings = () => {
                     }, "updateOneDoc", server)
                     if (resps.err) {
                         console.log(resps.mess)
+                        setSaveStatus('Error Saving Settings')
+                        setTimeout(() => {
+                            setSaveStatus('')
+                        }, 3000)
                     } else {
+                        setSaveStatus('Saved')
                         getSettings(company, companyRecord)
+                        setTimeout(() => {
+                            setSaveStatus('')
+                        }, 3000)
                     }
                 } else {
                     const updatedWarehouses = wrhs.map((wrh) => {
@@ -519,8 +531,12 @@ const Settings = () => {
                     }
                 }
                 break
+            default:
+                setTimeout(() => setSaveStatus(''), 1000)
+                break
         }
     }
+
 
     const deleteSettingsProp = async () => {
         setSaveStatus('Removing...')
@@ -677,7 +693,7 @@ const Settings = () => {
                         collection: "Profiles",
                         prop: [{ emailid: selectedEmployee.emailid }, { password: loginDetails.password }]
                     }, "updateOneDoc", server)
-                    if (resps.error) {
+                    if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus(resps.mess)
                         setTimeout(() => {
@@ -761,7 +777,9 @@ const Settings = () => {
                 setAlertTimeout(5000)
             }
         }
+        setTimeout(() => setSaveStatus(''), 5000)
     }
+
 
     const deleteProfile = async () => {
         setAlert('')
@@ -851,9 +869,17 @@ const Settings = () => {
 
                 if (resps.err) {
                     console.log(resps.mess)
+                    setSaveStatus('Error Adding Column')
+                    setTimeout(() => {
+                        setSaveStatus('')
+                    }, 3000)
                 } else {
                     setWriteStatus('Add')
                     getSettings(company, companyRecord)
+                    setSaveStatus('Saved')
+                    setTimeout(() => {
+                        setSaveStatus('')
+                    }, 3000)
                 }
             } else {
                 const resps = await fetchServer("POST", {
@@ -863,8 +889,16 @@ const Settings = () => {
                 }, "createDoc", server)
                 if (resps.err) {
                     console.log(resps.mess)
+                    setSaveStatus('Error Adding Column')
+                    setTimeout(() => {
+                        setSaveStatus('')
+                    }, 3000)
                 } else {
                     getSettings(company, companyRecord)
+                    setSaveStatus('Saved')
+                    setTimeout(() => {
+                        setSaveStatus('')
+                    }, 3000)
                 }
             }
         }
@@ -895,357 +929,334 @@ const Settings = () => {
     }
 
     const renderView = () => {
+        const variants = {
+            initial: { opacity: 0, x: 20 },
+            animate: { opacity: 1, x: 0 },
+            exit: { opacity: 0, x: -20 }
+        }
+
         switch (currentView) {
             case 'employees':
                 return (
-                    <div className='employee-settings'>
+                    <motion.div 
+                        className='employee-settings'
+                        initial="initial" animate="animate" exit="exit" variants={variants}
+                        transition={{ duration: 0.4 }}
+                    >
                         <div className='sidebar'>
                             <div className='sidebar-header'>
-                                <button className='add-profile-btn' onClick={addProfile}>Add Profile</button>
+                                <div className="sidebar-title">
+                                    <IoPerson /> Employees
+                                </div>
+                                <button className='add-profile-btn' onClick={addProfile}>
+                                    <IoAdd /> Add Profile
+                                </button>
                             </div>
                             <div className='profile-list'>
-                                {profiles.map((profile, index) => (
-                                    <div key={index} className={'profile-item ' + (selectedEmployee?.emailid === profile.emailid ? 'profile-item-active' : '')} onClick={() => handleProfileSelect(profile)}>
-                                        {employees.map((employee) => {
-                                            if (employee.i_d === profile.emailid) {
-                                                return <>{employee.firstName} {employee.lastName}</>
-                                            }
-                                        })}
-                                        {profile.status === 'admin' && <>Super Admin</>}
-                                    </div>
-                                ))}
+                                {profiles.map((profile, index) => {
+                                    const employee = employees.find(e => e.i_d === profile.emailid);
+                                    const isSuperAdmin = profile.status === 'admin' || profile.access === 'admin';
+                                    return (
+                                        <motion.div 
+                                            whileHover={{ x: 5 }}
+                                            key={index} 
+                                            className={'profile-item ' + (selectedEmployee?.emailid === profile.emailid ? 'profile-item-active' : '')} 
+                                            onClick={() => handleProfileSelect(profile)}
+                                        >
+                                            <div className="profile-item-info">
+                                                <span className="profile-name">
+                                                    {employee ? `${employee.firstName} ${employee.lastName}` : (isSuperAdmin ? 'Super Admin' : profile.emailid)}
+                                                </span>
+                                                <span className="profile-id">{profile.emailid}</span>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
                         </div>
                         <div className='employee-details'>
-                            {selectedEmployee ? (
-                                <div className='employee-form'>
-                                    <div className='formtitle'>Employee Login and Permissions</div>
-                                    <div className='inpcov formpad'>
-                                        <div>EmployeeId</div>
-                                        <select
-                                            className='forminp'
-                                            name='email'
-                                            type='text'
-                                            disabled={true}
-                                            placeholder='Employee ID'
-                                            value={loginDetails.email}
-                                            onChange={handleLoginDetailsChange}
-                                        >
-                                            <option value={'admin'}>Admin</option>
-                                            {employees.map((employee, index) => {
-                                                return (
-                                                    <option key={index} value={employee.i_d}>
-                                                        {employee.firstName} {employee.lastName} {`(${employee.i_d})`}
+                            <AnimatePresence mode='wait'>
+                                <motion.div 
+                                    key={selectedEmployee?.emailid || 'new'}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className='employee-form'
+                                >
+                                    <div className='formtitle'>
+                                        <IoSettings /> {selectedEmployee ? 'Employee Permissions' : 'Create New Profile'}
+                                    </div>
+                                    
+                                    <div className="form-grid">
+                                        <div className='inpcov'>
+                                            <div>Employee Selection</div>
+                                            <select
+                                                className='forminp'
+                                                name='email'
+                                                disabled={!!selectedEmployee}
+                                                value={loginDetails.email}
+                                                onChange={handleLoginDetailsChange}
+                                            >
+                                                {!selectedEmployee && <option value={''}>Select Employee</option>}
+                                                {!selectedEmployee && <option value={'admin'}>Global Admin</option>}
+                                                
+                                                {selectedEmployee ? (
+                                                    <option value={loginDetails.email}>
+                                                        {employees.find(e => e.i_d === loginDetails.email) 
+                                                            ? `${employees.find(e => e.i_d === loginDetails.email).firstName} ${employees.find(e => e.i_d === loginDetails.email).lastName}`
+                                                            : (selectedEmployee.status === 'admin' || selectedEmployee.access === 'admin' ? 'Super Admin' : loginDetails.email)}
                                                     </option>
-                                                )
-                                            })}
-                                        </select>
+                                                ) : (
+                                                    employees.map((employee, index) => {
+                                                        if (!currentProfiles.includes(employee.i_d) && !employee.dismissalDate) {
+                                                            return (
+                                                                <option key={index} value={employee.i_d}>
+                                                                    {employee.firstName} {employee.lastName} ({employee.i_d})
+                                                                </option>
+                                                            )
+                                                        }
+                                                        return null
+                                                    })
+                                                )}
+                                            </select>
+                                        </div>
+
+                                         <div className='inpcov'>
+                                            <div>Access Password</div>
+                                            <div className="input-with-action">
+                                                <input
+                                                    className='forminp'
+                                                    name='password'
+                                                    type={showPass ? 'text' : 'password'}
+                                                    placeholder='••••••••'
+                                                    value={loginDetails.password}
+                                                    onChange={handleLoginDetailsChange}
+                                                />
+                                                {selectedEmployee && (
+                                                    <button className="view-pass-btn" onClick={() => setShowPass(!showPass)}>
+                                                        {showPass ? <IoEyeOff /> : <IoEye />}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {selectedEmployee && (
+                                                <div className="pass-display-section" onClick={() => setShowPass(!showPass)}>
+                                                    <span className="pass-toggle-text">{showPass ? 'Hide Password' : 'View Current Password'}</span>
+                                                    {showPass && <span className="actual-pass"> : {DBProfiles.find(p => p.emailid === selectedEmployee.emailid)?.password || 'Not found in database'}</span>}
+                                                </div>
+                                            )}
+                                         </div>
                                     </div>
-                                    <div className='inpcov formpad'>
-                                        <div>Update Password</div>
-                                        <input
-                                            className='forminp'
-                                            name='password'
-                                            type='password'
-                                            placeholder='Password'
-                                            value={loginDetails.password}
-                                            onChange={handleLoginDetailsChange}
-                                        />
-                                    </div>
-                                    {DBProfiles.length > 0 && <div className='pass-detail'>
-                                        <span
-                                            onClick={() => {
-                                                setShowPass(!showPass)
-                                            }}
-                                        >
-                                            {showPass ? 'Hide Password ' : 'View Password '}
-                                        </span>
-                                        {`${showPass ? (DBProfiles.find((profile => { return profile.emailid === loginDetails.email }))['password'] || 'loading..') : '************'}`}
-                                    </div>}
-                                    <div className='inpcov formpad'>
-                                        <div>Module Permissions</div>
-                                        <div className='permissions'>
-                                            {modulePermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
+
+
+
+                                    <div className="permissions-container">
+                                        <div className="permission-group">
+                                            <div className="group-label">Module Access</div>
+                                            <div className='permissions'>
+                                                {modulePermissions.map((p, i) => (
+                                                    <label key={i} className='permission-label'>
+                                                        <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                        <span className='permission-text'>{p}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
-                                        <div>Sales Posts Permissions</div>
-                                        <div className='permissions'>
-                                            {salesPostsPermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
+
+                                        <div className="permission-grid">
+                                            <div className="permission-group">
+                                                <div className="group-label">Sales Channels</div>
+                                                <div className='permissions'>
+                                                    {salesPostsPermissions.map((p, i) => (
+                                                        <label key={i} className='permission-label'>
+                                                            <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                            <span className='permission-text'>{p}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="permission-group">
+                                                <div className="group-label">Delivery Control</div>
+                                                <div className='permissions'>
+                                                    {deliveryPostsPermissions.map((p, i) => (
+                                                        <label key={i} className='permission-label'>
+                                                            <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                            <span className='permission-text'>{p}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>Delivery Posts Permissions</div>
-                                        <div className='permissions'>
-                                            {deliveryPostsPermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
+
+                                        <div className="permission-grid">
+                                            <div className="permission-group">
+                                                <div className="group-label">Operational Posting</div>
+                                                <div className='permissions'>
+                                                    {postingPermissions.map((p, i) => (
+                                                        <label key={i} className='permission-label'>
+                                                            <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                            <span className='permission-text'>{p}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="permission-group">
+                                                <div className="group-label">Approval Authority</div>
+                                                <div className='permissions'>
+                                                    {approvalPermissions.map((p, i) => (
+                                                        <label key={i} className='permission-label'>
+                                                            <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                            <span className='permission-text'>{p}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <br />
-                                        <h4>Other Permissions</h4>
-                                        <br />
-                                        <div>Edit / Delete Permissions</div>
-                                        <div className='permissions'>
-                                            {editDeletePermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
+
+                                        <div className="permission-grid">
+                                            <div className="permission-group">
+                                                <div className="group-label">System Security</div>
+                                                <div className='permissions'>
+                                                    {editDeletePermissions.map((p, i) => (
+                                                        <label key={i} className='permission-label'>
+                                                            <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                            <span className='permission-text'>{p}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="permission-group">
+                                                <div className="group-label">POS Management</div>
+                                                <div className='permissions'>
+                                                    {posAdminPermissions.map((p, i) => (
+                                                        <label key={i} className='permission-label'>
+                                                            <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                            <span className='permission-text'>{p}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>POS Admin Permissions</div>
-                                        <div className='permissions'>
-                                            {posAdminPermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <div>Posting Permissions</div>
-                                        <div className='permissions'>
-                                            {postingPermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <div>Approval Permissions</div>
-                                        <div className='permissions'>
-                                            {approvalPermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <div> Import/Export Permissions</div>
-                                        <div className='permissions'>
-                                            {importExportPermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <div> Stock transfer Permissions</div>
-                                        <div className='permissions'>
-                                            {stockTransferPermissions.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission) || loginDetails.permissions.includes('all')}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className='inpcov formpad'>
-                                        <div>Enable Login Access</div>
-                                        <label className='toggle-switch'>
-                                            <input
-                                                type='checkbox'
-                                                name='enableLogin'
-                                                checked={loginDetails.enableLogin}
-                                                onChange={handleLoginDetailsChange}
-                                            />
-                                            <span className='slider'></span>
-                                        </label>
-                                    </div>
-                                    <div className='inpcov formpad'>
-                                        <div>Enable Debt Recovery</div>
-                                        <label className='toggle-switch'>
-                                            <input
-                                                type='checkbox'
-                                                name='enableDebtRecovery'
-                                                checked={loginDetails.enableDebtRecovery}
-                                                onChange={handleLoginDetailsChange}
-                                            />
-                                            <span className='slider'></span>
-                                        </label>
-                                    </div>
-                                    <div style={{ display: 'flex' }}>
-                                        {selectedEmployee.access !== 'admin' && <div className='savebtn' onClick={saveLoginDetails}>Save</div>}
-                                        {selectedEmployee.status !== 'admin' && <div className='deletebtn' onClick={deleteProfile}>Delete</div>}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className='employee-form'>
-                                    <div className='formtitle'>Add New Employee</div>
-                                    <div className='inpcov formpad'>
-                                        <div>EmployeeId</div>
-                                        <select
-                                            className='forminp'
-                                            name='email'
-                                            type='text'
-                                            placeholder='Employee ID'
-                                            value={loginDetails.email}
-                                            onChange={handleLoginDetailsChange}
-                                        >
-                                            <option value={''}>Select Employee</option>
-                                            {employees.map((employee, index) => {
-                                                if (!currentProfiles.includes(employee.i_d) && !employee.dismissalDate) {
-                                                    return (
-                                                        <option key={index} value={employee.i_d}>
-                                                            {employee.firstName} {employee.lastName} {`(${employee.i_d})`}
-                                                        </option>
-                                                    )
-                                                }
-                                            })}
-                                        </select>
-                                    </div>
-                                    <div className='inpcov formpad'>
-                                        <div>New Password</div>
-                                        <input
-                                            className='forminp'
-                                            name='password'
-                                            type='password'
-                                            placeholder='Password'
-                                            value={loginDetails.password}
-                                            onChange={handleLoginDetailsChange}
-                                        />
-                                    </div>
-                                    <div className='inpcov formpad'>
-                                        <div>Module Permissions</div>
-                                        <div className='permissions'>
-                                            {dashList.map((permission, index) => (
-                                                <label key={index} className='permission-label'>
-                                                    <input
-                                                        type='checkbox'
-                                                        value={permission}
-                                                        checked={loginDetails.permissions.includes(permission)}
-                                                        onChange={handlePermissionsChange}
-                                                    />
-                                                    <span className='permission-text'>{permission}</span>
-                                                </label>
-                                            ))}
+
+                                        <div className="permission-grid">
+                                            <div className="permission-group">
+                                                <div className="group-label">Inventory Logistics</div>
+                                                <div className='permissions'>
+                                                    {stockTransferPermissions.map((p, i) => (
+                                                        <label key={i} className='permission-label'>
+                                                            <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                            <span className='permission-text'>{p}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="permission-group">
+                                                <div className="group-label">Data Handling</div>
+                                                <div className='permissions'>
+                                                    {importExportPermissions.map((p, i) => (
+                                                        <label key={i} className='permission-label'>
+                                                            <input type='checkbox' value={p} checked={loginDetails.permissions.includes(p) || loginDetails.permissions.includes('all')} onChange={handlePermissionsChange} />
+                                                            <span className='permission-text'>{p}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className='inpcov formpad'>
-                                        <div>Enable Login Access</div>
-                                        <label className='toggle-switch'>
-                                            <input
-                                                type='checkbox'
-                                                name='enableLogin'
-                                                checked={loginDetails.enableLogin}
-                                                onChange={handleLoginDetailsChange}
-                                            />
-                                            <span className='slider'></span>
-                                        </label>
+
+                                    <div className="form-toggles">
+                                        <div className='inpcov'>
+                                            <div>Login Access</div>
+                                            <label className='toggle-switch'>
+                                                <input type='checkbox' name='enableLogin' checked={loginDetails.enableLogin} onChange={handleLoginDetailsChange} />
+                                                <span className='slider'></span>
+                                            </label>
+                                        </div>
+                                        <div className='inpcov'>
+                                            <div>Debt Recovery</div>
+                                            <label className='toggle-switch'>
+                                                <input type='checkbox' name='enableDebtRecovery' checked={loginDetails.enableDebtRecovery} onChange={handleLoginDetailsChange} />
+                                                <span className='slider'></span>
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div className='inpcov formpad'>
-                                        <div>Enable Debt Recovery</div>
-                                        <label className='toggle-switch'>
-                                            <input
-                                                type='checkbox'
-                                                name='enableDebtRecovery'
-                                                checked={loginDetails.enableDebtRecovery}
-                                                onChange={handleLoginDetailsChange}
-                                            />
-                                            <span className='slider'></span>
-                                        </label>
+
+                                    <div className="form-actions">
+                                        {(selectedEmployee?.access !== 'admin' || !selectedEmployee) && (
+                                            <button className='savebtn' onClick={saveLoginDetails}>
+                                                <IoSave /> Save Changes
+                                            </button>
+                                        )}
+                                        {selectedEmployee && selectedEmployee.status !== 'admin' && (
+                                            <button className='deletebtn' onClick={deleteProfile}>
+                                                <IoTrash /> {deleteCount === selectedEmployee.emailid ? 'Confirm Delete' : 'Remove Profile'}
+                                            </button>
+                                        )}
                                     </div>
-                                    <div className='savebtn' onClick={saveLoginDetails}>Save</div>
-                                </div>
-                            )}
+                                </motion.div>
+                            </AnimatePresence>
                         </div>
-                    </div>
+                    </motion.div>
                 )
             case 'payroll':
                 return (
-                    <div className='payroll-settings'>
-                        <div className='formtitle'>Payroll Settings</div>
-                        <div className='inpcov formpad'>
-                            <div>Column Name</div>
-                            <div className='addsection'>
-                                <input
-                                    className='forminp'
-                                    name='colname'
-                                    type='text'
-                                    placeholder={`${writeStatus} Import Column`}
-                                    value={colname}
-                                    onChange={(e) => setColname(e.target.value)}
-                                />
-                                <div className='addcolumn' onClick={addColumn}>{writeStatus}</div>
-                                {writeStatus === 'Edit' && <div className='addcolumn dcol' onClick={() => {
-                                    setEditCol(null)
-                                    setColname('')
-                                    setWriteStatus('Add')
-                                }}>Discard</div>}
+                    <motion.div 
+                        className='payroll-settings'
+                        initial="initial" animate="animate" exit="exit" variants={variants}
+                    >
+                        <div className="form-card">
+                            <div className='formtitle'><IoCard /> Column Management</div>
+                            <div className='inpcov'>
+                                <div>New Column Name</div>
+                                <div className='addsection'>
+                                    <input
+                                        className='forminp'
+                                        name='colname'
+                                        type='text'
+                                        placeholder='Enter label name...'
+                                        value={colname}
+                                        onChange={(e) => setColname(e.target.value)}
+                                    />
+                                    <button className='addcolumn' onClick={addColumn}>
+                                        {writeStatus === 'Edit' ? 'Update' : 'Add Column'}
+                                    </button>
+                                    {writeStatus === 'Edit' && (
+                                        <button className='addcolumn dcol' onClick={() => { setEditCol(null); setColname(''); setWriteStatus('Add'); }}>
+                                            Cancel
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className='columnsbox'>
+                                {colSettings.import_columns?.map((col, id) => (
+                                    <motion.div 
+                                        whileHover={{ scale: 1.02 }}
+                                        className='col' 
+                                        key={id} 
+                                        onClick={() => { setWriteStatus('Edit'); setColname(col); setEditCol(col); }}
+                                    >
+                                        {col}
+                                        <div className='delcol' onClick={(e) => { e.stopPropagation(); delColumn({ target: { getAttribute: () => id } }); }}>
+                                            <IoTrash />
+                                        </div>
+                                    </motion.div>
+                                ))}
                             </div>
                         </div>
-                        <div className='columnsbox'>
-                            {colSettings.import_columns?.map((col, id) => (
-                                <div className='col' key={id} name={id} onClick={() => {
-                                    setWriteStatus('Edit')
-                                    setColname(col)
-                                    setEditCol(col)
-                                }}>
-                                    {col}
-                                    <div className='delcol' name={id} onClick={delColumn}>X</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    </motion.div>
                 )
             case 'general':
                 return (
-                    <div className='general-settings'>
+                    <motion.div 
+                        className='general-settings'
+                        initial="initial" animate="animate" exit="exit" variants={variants}
+                    >
                         <div className='sidebar'>
-                            <div className='formtitle'>General Settings</div>
+                            <div className='sidebar-header'>
+                                <div className="sidebar-title"><IoOptions /> Categories</div>
+                            </div>
                             <div className='profile-list'>
                                 {settingGroups.map((setting, index) => (
                                     <div key={index} className={'profile-item ' + (currentSetting?.name === setting.name ? 'profile-item-active' : '')} onClick={() => handleSettingSelect(setting)}>
@@ -1255,353 +1266,233 @@ const Settings = () => {
                             </div>
                         </div>
                         <div className='general-details'>
-                            {currentSetting[currentSetting.prop]?.length ? <div className='general-body'>
-                                {!['posSettings'].includes(currentSetting.name) && <div
-                                    className='general-propSet-add'
-                                    onClick={() => { resetToDefault(currentSetting) }}
-                                >Add +</div>}
-                                {currentSetting[currentSetting.prop].map((propSet, id) => {
-                                    return <div
-                                        className={`general-propSet ${curPropSet?.name === propSet.name ? 'active-propSet' : ''}`}
-                                        key={id}
-                                        onClick={() => {
-                                            if (currentSetting.name === 'warehouses') {
-                                                setSelectedCategories(propSet.productCategories || [])
-                                                setSelectedPaymentMethods(propSet.paymentMethods || [])
-                                            }
-                                            setPropState('view')
-                                            setCurPropSet(propSet)
-                                        }}
-                                    >{propSet.name}</div>
-                                })}
-                            </div>
-                                : <div>
-                                    'No settings available for this group.'
-                                </div>}
-                            {<div>
-                                {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>ID</label>
-                                    <input
-                                        className='forminp'
-                                        name='i_d'
-                                        placeholder={`Enter Id`}
-                                        value={curPropSet?.i_d}
-                                        onChange={handlePropSetChange}
-                                    />
-                                </div>}
-                                {['uom', 'product_categories', ''].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>Code</label>
-                                    <input
-                                        className='forminp'
-                                        name='code'
-                                        placeholder={`Enter Code`}
-                                        value={curPropSet?.code}
-                                        onChange={handlePropSetChange}
-                                    />
-                                </div>}
-                                <div className='inpcov formpad'>
-                                    <label>Name</label>
-                                    <input
-                                        className='forminp'
-                                        name='name'
-                                        placeholder={`Enter Name`}
-                                        value={curPropSet.name}
-                                        onChange={handlePropSetChange}
-                                    />
+                            <div className="form-card">
+                                <div className='formtitle'><IoSettings /> {currentSetting?.desc} Configuration</div>
+                                
+                                <div className='general-body'>
+                                    {!['posSettings'].includes(currentSetting.name) && (
+                                        <button className='general-propSet-add' onClick={() => resetToDefault(currentSetting)}>
+                                            <IoAdd /> Create New
+                                        </button>
+                                    )}
+                                    {currentSetting[currentSetting.prop]?.map((propSet, id) => (
+                                        <div
+                                            className={`general-propSet ${curPropSet?.name === propSet.name ? 'active-propSet' : ''}`}
+                                            key={id}
+                                            onClick={() => {
+                                                if (currentSetting.name === 'warehouses') {
+                                                    setSelectedCategories(propSet.productCategories || [])
+                                                    setSelectedPaymentMethods(propSet.paymentMethods || [])
+                                                }
+                                                setPropState('view')
+                                                setCurPropSet(propSet)
+                                            }}
+                                        >
+                                            {propSet.name}
+                                        </div>
+                                    ))}
                                 </div>
-                                {['warehouses'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <div>Purchase Location</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='purchase'
-                                            checked={curPropSet.purchase}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <div>Active</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='active'
-                                            checked={curPropSet.active}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['warehouses'].includes(currentSetting.name) && <>
-                                    <div> Product Categories</div>
-                                    <div className='permissions'>
-                                        {categories.map((cat, index) => (
-                                            <label key={index} className='permission-label'>
-                                                <input
-                                                    type='checkbox'
-                                                    value={cat.code}
-                                                    name='productCategories'
-                                                    checked={selectedCategories.includes(cat.code)}
-                                                    onChange={() => {
-                                                        setSelectedCategories((prev) => {
-                                                            if (prev.includes(cat.code)) {
-                                                                return prev.filter((c) => c !== cat.code)
-                                                            } else {
-                                                                return [...prev, cat.code]
-                                                            }
-                                                        })
-                                                    }}
-                                                />
-                                                <span className='permission-text'>{cat.name}</span>
-                                            </label>
-                                        ))}
+
+                                <div className="form-fields-container">
+                                    {['paymentMethods'].includes(currentSetting.name) && (
+                                        <div className='inpcov'>
+                                            <div>Payment ID</div>
+                                            <input className='forminp' name='i_d' value={curPropSet?.i_d} onChange={handlePropSetChange} />
+                                        </div>
+                                    )}
+                                    {['uom', 'product_categories'].includes(currentSetting.name) && (
+                                        <div className='inpcov'>
+                                            <div>Reference Code</div>
+                                            <input className='forminp' name='code' value={curPropSet?.code} onChange={handlePropSetChange} />
+                                        </div>
+                                    )}
+                                    <div className='inpcov'>
+                                        <div>Display Name</div>
+                                        <input className='forminp' name='name' value={curPropSet.name} onChange={handlePropSetChange} />
                                     </div>
-                                </>}
-                                {['warehouses'].includes(currentSetting.name) && <>
-                                    <div> Payment Methods</div>
-                                    <div className='permissions'>
-                                        {paymentMethods.map((pay, index) => (
-                                            <label key={index} className='permission-label'>
-                                                <input
-                                                    type='checkbox'
-                                                    name='paymentMethods'
-                                                    value={pay.name}
-                                                    checked={selectedPaymentMethods.includes(pay.name)}
-                                                    onChange={() => {
-                                                        setSelectedPaymentMethods((prev) => {
-                                                            if (prev.includes(pay.name)) {
-                                                                return prev.filter((p) => p !== pay.name)
-                                                            } else {
-                                                                return [...prev, pay.name]
-                                                            }
-                                                        })
-                                                    }}
-                                                />
-                                                <span className='permission-text'>{pay.name}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </>}
-                                {['uom'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>Base</label>
-                                    <select
-                                        className='forminp'
-                                        name='base'
-                                        placeholder={`Select Base`}
-                                        value={curPropSet.base}
-                                        onChange={handlePropSetChange}
-                                    >
-                                        <option value={''}>Select Base</option>
-                                        {currentSetting?.bases?.map((base, index) => {
-                                            return (
-                                                <option key={index} value={base}>
-                                                    {base}
-                                                </option>
-                                            )
-                                        })}
-                                    </select>
-                                </div>}
-                                {['uom'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>Multiple</label>
-                                    <input
-                                        className='forminp'
-                                        name='multiple'
-                                        placeholder={`Enter Name`}
-                                        value={curPropSet.multiple}
-                                        onChange={handlePropSetChange}
-                                    />
-                                </div>}
-                                {['uom', 'product_categories', 'paymentMethods', 'posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>Type</label>
-                                    <select
-                                        className='forminp'
-                                        name='type'
-                                        placeholder={`Select Type`}
-                                        value={curPropSet.type}
-                                        onChange={handlePropSetChange}
-                                    >
-                                        <option value={''}>Select Type</option>
-                                        {currentSetting?.types?.map((type, index) => {
-                                            return (
-                                                <option key={index} value={type}>
-                                                    {type}
-                                                </option>
-                                            )
-                                        })}
-                                    </select>
-                                </div>}
-                                {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <div>Sales Account</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='isSalesAccount'
-                                            checked={curPropSet.isSalesAccount}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <div>Expense Account</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='isExpenseAccount'
-                                            checked={curPropSet.isExpenseAccount}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['paymentMethods'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>Account</label>
-                                    <input
-                                        className='forminp'
-                                        name='account'
-                                        placeholder={`Enter Account No`}
-                                        value={curPropSet.account}
-                                        onChange={handlePropSetChange}
-                                    />
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>Size</label>
-                                    <input
-                                        className='forminp'
-                                        name='size'
-                                        type='number'
-                                        placeholder={`Enter Size`}
-                                        value={curPropSet.size}
-                                        onChange={handlePropSetChange}
-                                    />
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>Capacity</label>
-                                    <input
-                                        className='forminp'
-                                        name='capacity'
-                                        type='number'
-                                        placeholder={`Enter Capacity`}
-                                        value={curPropSet.capacity}
-                                        onChange={handlePropSetChange}
-                                    />
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <label>Session-End Hour (Automatic)</label>
-                                    <select
-                                        className='forminp'
-                                        name='sessHour'
-                                        placeholder={`Select Session-End Hour`}
-                                        value={curPropSet.sessHour}
-                                        onChange={handlePropSetChange}
-                                    >
-                                        <option>Select Session-End Hour</option>
-                                        {sessionPeriods.map((hour, id) => {
-                                            return <option key={id} value={hour}>{hour}</option>
-                                        })}
-                                    </select>
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <div>Allow Sales Mark-Up</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='useMarkUp'
-                                            checked={curPropSet.useMarkUp}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <div>Allow Print Payment Receipts</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='printPaymentReceipt'
-                                            checked={curPropSet.printPaymentReceipt}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && curPropSet.type === 'restaurant' && <div className='inpcov formpad'>
-                                    <div>Allow Print Kitchen Receipts</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='printKitchenReceipt'
-                                            checked={curPropSet.printKitchenReceipt}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && curPropSet.type === 'restaurant' && <div className='inpcov formpad'>
-                                    <div>Allow Print Bar Receipts</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='printBarReceipt'
-                                            checked={curPropSet.printBarReceipt}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && curPropSet.type === 'restaurant' && <div className='inpcov formpad'>
-                                    <div>Allow Print Customer Order</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='printCustomerOrder'
-                                            checked={curPropSet.printCustomerOrder}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && <div className='inpcov formpad'>
-                                    <div>Automate Order Delivery</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='automateOrderDelivery'
-                                            checked={curPropSet.automateOrderDelivery}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {['posSettings'].includes(currentSetting.name) && curPropSet.type === 'restaurant' && <div className='inpcov formpad'>
-                                    <div>Automate Kitchen Delivery</div>
-                                    <label className='toggle-switch'>
-                                        <input
-                                            type='checkbox'
-                                            name='automateKitchenDelivery'
-                                            checked={curPropSet.automateKitchenDelivery}
-                                            onChange={handlePropSetChange}
-                                        />
-                                        <span className='slider'></span>
-                                    </label>
-                                </div>}
-                                {<div style={{ display: 'flex' }}>
-                                    {<div className='savebtn' onClick={saveSettings}>Save</div>}
-                                    {companyRecord?.access === 'admin' && propState !== 'new' && <div className='deletebtn' onClick={deleteSettingsProp}>Delete</div>}
-                                </div>}
-                                {/* {settingGroups.map((set)=>{
-                                    if (currentSetting?.name === set.name){
-                                        return (
-                                            <div>
-                                                
+
+                                    {/* Type Specific Fields */}
+                                    <div className="type-options-grid">
+                                        {['uom', 'product_categories', 'paymentMethods', 'posSettings'].includes(currentSetting.name) && (
+                                            <div className='inpcov'>
+                                                <div>Classification Type</div>
+                                                <select className='forminp' name='type' value={curPropSet.type} onChange={handlePropSetChange}>
+                                                    <option value=''>Select Type</option>
+                                                    {currentSetting?.types?.map((t, i) => <option key={i} value={t}>{t}</option>)}
+                                                </select>
                                             </div>
-                                        )
-                                    }
-                                    })} */}
-                            </div>}
+                                        )}
+                                        {['uom'].includes(currentSetting.name) && (
+                                            <>
+                                                <div className='inpcov'>
+                                                    <div>Base Unit</div>
+                                                    <select className='forminp' name='base' value={curPropSet.base} onChange={handlePropSetChange}>
+                                                        <option value=''>Fixed Base</option>
+                                                        {currentSetting?.bases?.map((b, i) => <option key={i} value={b}>{b}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Multiplier</div>
+                                                    <input className='forminp' name='multiple' type="number" value={curPropSet.multiple} onChange={handlePropSetChange} />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Warehouse Specific */}
+                                    {['warehouses'].includes(currentSetting.name) && (
+                                        <>
+                                            <div className='inpcov toggle-row'>
+                                                <div>Primary Purchase Location</div>
+                                                <label className='toggle-switch'>
+                                                    <input type='checkbox' name='purchase' checked={curPropSet.purchase} onChange={handlePropSetChange} />
+                                                    <span className='slider'></span>
+                                                </label>
+                                            </div>
+                                            <div className="section-divider">Allowed Categories</div>
+                                            <div className='permissions'>
+                                                {categories.map((cat, i) => (
+                                                    <label key={i} className='permission-label'>
+                                                        <input type='checkbox' checked={selectedCategories.includes(cat.code)} onChange={() => setSelectedCategories(prev => prev.includes(cat.code) ? prev.filter(c => c !== cat.code) : [...prev, cat.code])} />
+                                                        <span className='permission-text'>{cat.name}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <div className="section-divider">Allowed Payment Methods</div>
+                                            <div className='permissions'>
+                                                {paymentMethods.map((pay, i) => (
+                                                    <label key={i} className='permission-label'>
+                                                        <input type='checkbox' checked={selectedPaymentMethods.includes(pay.name)} onChange={() => setSelectedPaymentMethods(prev => prev.includes(pay.name) ? prev.filter(p => p !== pay.name) : [...prev, pay.name])} />
+                                                        <span className='permission-text'>{pay.name}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Payment Method Specific */}
+                                    {['paymentMethods'].includes(currentSetting.name) && (
+                                        <div className="type-options-grid" style={{ marginTop: '20px' }}>
+                                            <div className='inpcov toggle-row'>
+                                                <div>Sales Account</div>
+                                                <label className='toggle-switch'>
+                                                    <input type='checkbox' name='isSalesAccount' checked={curPropSet.isSalesAccount} onChange={handlePropSetChange} />
+                                                    <span className='slider'></span>
+                                                </label>
+                                            </div>
+                                            <div className='inpcov toggle-row'>
+                                                <div>Expense Account</div>
+                                                <label className='toggle-switch'>
+                                                    <input type='checkbox' name='isExpenseAccount' checked={curPropSet.isExpenseAccount} onChange={handlePropSetChange} />
+                                                    <span className='slider'></span>
+                                                </label>
+                                            </div>
+                                            <div className='inpcov' style={{ gridColumn: 'span 2' }}>
+                                                <div>Linked Account Number</div>
+                                                <input className='forminp' name='account' placeholder="Enter account no." value={curPropSet.account} onChange={handlePropSetChange} />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* POS Settings Specific */}
+                                    {['posSettings'].includes(currentSetting.name) && (
+                                        <div className="pos-settings-grid">
+                                            <div className='inpcov toggle-row'>
+                                                <div>Active Status</div>
+                                                <label className='toggle-switch'>
+                                                    <input type='checkbox' name='active' checked={curPropSet.active} onChange={handlePropSetChange} />
+                                                    <span className='slider'></span>
+                                                </label>
+                                            </div>
+                                            <div className="form-grid">
+                                                <div className='inpcov'>
+                                                    <div>Terminal Size</div>
+                                                    <input className='forminp' name='size' type="number" value={curPropSet.size} onChange={handlePropSetChange} />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Terminal Capacity</div>
+                                                    <input className='forminp' name='capacity' type="number" value={curPropSet.capacity} onChange={handlePropSetChange} />
+                                                </div>
+                                                <div className='inpcov' style={{ gridColumn: 'span 2' }}>
+                                                    <div>Session-End Hour (Auto)</div>
+                                                    <select className='forminp' name='sessHour' value={curPropSet.sessHour} onChange={handlePropSetChange}>
+                                                        <option>Select Session-End Hour</option>
+                                                        {sessionPeriods.map((hour, id) => <option key={id} value={hour}>{hour}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="section-divider">Operation & Printing</div>
+                                            <div className="toggles-grid">
+                                                <div className='inpcov toggle-row'>
+                                                    <div>Enable Sales Mark-Up</div>
+                                                    <label className='toggle-switch'>
+                                                        <input type='checkbox' name='useMarkUp' checked={curPropSet.useMarkUp} onChange={handlePropSetChange} />
+                                                        <span className='slider'></span>
+                                                    </label>
+                                                </div>
+                                                <div className='inpcov toggle-row'>
+                                                    <div>Print Payment Receipts</div>
+                                                    <label className='toggle-switch'>
+                                                        <input type='checkbox' name='printPaymentReceipt' checked={curPropSet.printPaymentReceipt} onChange={handlePropSetChange} />
+                                                        <span className='slider'></span>
+                                                    </label>
+                                                </div>
+                                                {curPropSet.type === 'restaurant' && (
+                                                    <>
+                                                        <div className='inpcov toggle-row'>
+                                                            <div>Print Kitchen Receipts</div>
+                                                            <label className='toggle-switch'>
+                                                                <input type='checkbox' name='printKitchenReceipt' checked={curPropSet.printKitchenReceipt} onChange={handlePropSetChange} />
+                                                                <span className='slider'></span>
+                                                            </label>
+                                                        </div>
+                                                        <div className='inpcov toggle-row'>
+                                                            <div>Print Bar Receipts</div>
+                                                            <label className='toggle-switch'>
+                                                                <input type='checkbox' name='printBarReceipt' checked={curPropSet.printBarReceipt} onChange={handlePropSetChange} />
+                                                                <span className='slider'></span>
+                                                            </label>
+                                                        </div>
+                                                        <div className='inpcov toggle-row'>
+                                                            <div>Print Customer Order</div>
+                                                            <label className='toggle-switch'>
+                                                                <input type='checkbox' name='printCustomerOrder' checked={curPropSet.printCustomerOrder} onChange={handlePropSetChange} />
+                                                                <span className='slider'></span>
+                                                            </label>
+                                                        </div>
+                                                    </>
+                                                )}
+                                                <div className='inpcov toggle-row'>
+                                                    <div>Automate Order Delivery</div>
+                                                    <label className='toggle-switch'>
+                                                        <input type='checkbox' name='automateOrderDelivery' checked={curPropSet.automateOrderDelivery} onChange={handlePropSetChange} />
+                                                        <span className='slider'></span>
+                                                    </label>
+                                                </div>
+                                                {curPropSet.type === 'restaurant' && (
+                                                    <div className='inpcov toggle-row'>
+                                                        <div>Automate Kitchen Delivery</div>
+                                                        <label className='toggle-switch'>
+                                                            <input type='checkbox' name='automateKitchenDelivery' checked={curPropSet.automateKitchenDelivery} onChange={handlePropSetChange} />
+                                                            <span className='slider'></span>
+                                                        </label>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="form-actions" style={{ marginTop: '40px' }}>
+                                        <button className='savebtn' onClick={saveSettings}><IoSave /> Save Configuration</button>
+                                        {companyRecord?.access === 'admin' && propState !== 'new' && (
+                                            <button className='deletebtn' onClick={deleteSettingsProp}><IoTrash /> Delete</button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )
             default:
                 return null
@@ -1615,16 +1506,40 @@ const Settings = () => {
                 name='access'
                 value={accessValue}
                 onChange={handleSecretAccess}
-                autoComplete={false}
                 disabled={accessValue === magicWord || accessValue === activationWord}
             />
-            {saveStatus && <div className='save-status'>{saveStatus}</div>}
-            <div className='settings-nav'>
-                <div className={`settings-nav-item ${currentView === 'employees' ? 'active' : ''}`} onClick={() => setCurrentView('employees')}>Employees</div>
-                <div className={`settings-nav-item ${currentView === 'general' ? 'active' : ''}`} onClick={() => setCurrentView('general')}>General</div>
-                <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>Payroll</div>
-            </div>
-            {renderView()}
+            <AnimatePresence>
+                {saveStatus && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className='save-status'
+                    >
+                        {saveStatus}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <header className="settings-header">
+                <div className="settings-nav">
+                    <div className={`settings-nav-item ${currentView === 'employees' ? 'active' : ''}`} onClick={() => setCurrentView('employees')}>
+                         <IoPerson /> Team Access
+                    </div>
+                    <div className={`settings-nav-item ${currentView === 'general' ? 'active' : ''}`} onClick={() => setCurrentView('general')}>
+                        <IoOptions /> General Config
+                    </div>
+                    <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>
+                        <IoCard /> Payroll Labels
+                    </div>
+                </div>
+            </header>
+
+            <main className="settings-content">
+                <AnimatePresence mode='wait'>
+                    {renderView()}
+                </AnimatePresence>
+            </main>
         </div>
     )
 }

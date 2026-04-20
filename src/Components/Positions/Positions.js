@@ -16,6 +16,7 @@ const Positions = () => {
     const [viewName, setViewName] = useState(null)
     const [addBlock, setAddBlock] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
     const [fields, setFields] = useState({ ...initialFields })
     const {
         storePath,
@@ -53,6 +54,12 @@ const Positions = () => {
             setPositions(postns)
         });
     }, [employees])
+
+    useEffect(() => {
+        if (viewName || addBlock) {
+            setMobileDetailOpen(true)
+        }
+    }, [viewName, addBlock])
 
     const resetForm = () => {
         setFields({ ...initialFields })
@@ -156,7 +163,7 @@ const Positions = () => {
     const largestPosition = [...positions].sort((a, b) => (b.employees?.length || 0) - (a.employees?.length || 0))[0]
 
     return (
-        <div className='positions-page'>
+        <div className={`positions-page ${mobileDetailOpen ? 'mobile-detail-open' : ''}`}>
             <div className='positions-shell'>
                 <aside className='positions-sidebar'>
                     <div className='positions-sidebar-header'>
@@ -258,6 +265,9 @@ const Positions = () => {
                 </aside>
 
                 <section className='positions-detail'>
+                    <button type='button' className='detail-mobile-back' onClick={() => setMobileDetailOpen(false)}>
+                        &larr; Back to Positions
+                    </button>
                     <div className='positions-detail-hero'>
                         <div className='positions-panel-label'>Role Workspace</div>
                         <h2>{addBlock ? `${writeStatus} Position` : (viewedPosition?.name || 'Select a position')}</h2>

@@ -41,6 +41,8 @@ const Inventory = ()=>{
     const [settingsDrop, setSettingsDrop] = useState(false)
     const [productView,setProductView] = useState('list')
     const [curProduct, setCurProduct] = useState(null)
+    const [searchQuery, setSearchQuery] = useState('')
+
     const [dropLabel, setDropLabel] = useState(null)
     const dropMenu = {
         Overview:[],
@@ -108,6 +110,7 @@ const Inventory = ()=>{
             postingDate={postingDate}
             setPostingDate={setPostingDate}
             setCurProduct={setCurProduct}
+            searchQuery={searchQuery}
         />,
         'Adjustments': <Adjustments
             isNewEntry={isNewView === clickedLabel}
@@ -122,6 +125,7 @@ const Inventory = ()=>{
             setIsImportValue={setIsImportValue} 
             postingDate={postingDate}
             setPostingDate={setPostingDate} 
+            searchQuery={searchQuery}
         />,
         'Stock': <Stock
             isNewEntry={isNewView === clickedLabel}
@@ -134,6 +138,7 @@ const Inventory = ()=>{
             setIsTransferValue={setIsTransferValue}
             postingDate={postingDate}
             setPostingDate={setPostingDate}
+            searchQuery={searchQuery}
         />,
         'Transaction History': <TransactionHistory />,
         'Overview': <TransactionHistory />,
@@ -143,6 +148,7 @@ const Inventory = ()=>{
             setPostingDate={setPostingDate}
         />
     }
+
 
     useEffect(()=>{
         storePath('inventory')  
@@ -162,51 +168,65 @@ const Inventory = ()=>{
         isNewView, productView, curProduct
     ])
     
-    const handleLabelClick = (e)=>{
-        const name = e.target.getAttribute('name')
-        const innerHTML = e.target.innerHTML
-        if (dropMenu[innerHTML]?.length){
-            if (name && !isNewView) {
-                setIsNewView(false)
-                setIsSaveValue(false)
-                setIsImportValue(false)
-                setIsDeleteValue(false)
-                setIsTransferValue(false)
-                setCurProduct(null)
-            }
-            if (name!==dropLabel){
-                setDropLabel(name)
-            }else{
-                setDropLabel(null)
-            }
-        }else{
-            setDropLabel(null)
-            if (name){
-                if (name!==clickedLabel){
-                    setIsNewView(false)
-                    setIsSaveValue(false)
-                    setIsImportValue(false)
-                    setIsDeleteValue(false)
-                    setIsTransferValue(false)
-                    setCurProduct(null)
-                }
-                if (Object.keys(dropMenu).includes(innerHTML)){
-                    setClickedLabel(name)
-                    setDropLabel(name)
-                }else{
-                    if (!popModals.includes(innerHTML)){
-                        setClickedLabel(innerHTML)
-                    }else{
-                        setPopModal(
-                            views[innerHTML]
-                        )
-                    }
-                    // setDropLabel(name)
-                }
-            }
-            
+    const handleLabelClick = (e) => {
+        const isMenuLabel = e.target.classList.contains('inventoryLabel');
+        const isSubMenuLabel = e.target.parentElement?.classList.contains('inventoryDropMenu');
+        
+        let target = null;
+        if (isMenuLabel || isSubMenuLabel) {
+            target = e.target;
+        } else {
+            target = e.target.closest('.inventoryLabelCover')?.querySelector('.inventoryLabel');
         }
-    }
+
+        if (!target) return;
+
+        const name = target.getAttribute('name');
+        const innerHTML = target.innerHTML;
+
+        if (!isSubMenuLabel && (dropMenu[name]?.length || dropMenu[innerHTML]?.length)) {
+            if (!isNewView) {
+                setIsNewView(false);
+                setIsSaveValue(false);
+                setIsImportValue(false);
+                setIsDeleteValue(false);
+                setIsTransferValue(false);
+                setCurProduct(null);
+            }
+            if (name !== dropLabel) {
+                setDropLabel(name);
+            } else {
+                setDropLabel(null);
+            }
+        } else {
+            setDropLabel(null);
+            if (name || innerHTML) {
+                const labelToSet = isSubMenuLabel ? innerHTML : (name || innerHTML);
+                if (labelToSet !== clickedLabel) {
+                    setIsNewView(false);
+                    setIsSaveValue(false);
+                    setIsImportValue(false);
+                    setIsDeleteValue(false);
+                    setIsTransferValue(false);
+                    setCurProduct(null);
+                }
+                
+                if (!isSubMenuLabel && (Object.keys(dropMenu).includes(innerHTML) || Object.keys(dropMenu).includes(name))) {
+                    setClickedLabel(name || innerHTML);
+                    setDropLabel(name || innerHTML);
+                } else {
+                    if (!popModals.includes(labelToSet)) {
+                        setClickedLabel(labelToSet);
+                    } else {
+                        setPopModal(views[labelToSet]);
+                    }
+                }
+            }
+        }
+    };
+
+
+
 
     const handleClickedLabel = () =>{
         setIsNewView(false)
@@ -302,6 +322,18 @@ const Inventory = ()=>{
                                 setIsImportValue(false)
                                 setIsTransferValue(false)
                             }}>New</button>}
+
+                            {['Products', 'Adjustments', 'Stock'].includes(clickedLabel) && (
+                                <div className='inventory-search-box'>
+                                    <input 
+                                        type='text' 
+                                        placeholder='Search ID or Name...' 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className='inv-search-input'
+                                    />
+                                </div>
+                            )}
 
                             {isTransferValue && <button onClick={()=>{
                                 setIsSaveValue('Stock')

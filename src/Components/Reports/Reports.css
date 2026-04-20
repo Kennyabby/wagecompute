@@ -20,7 +20,7 @@
     background: var(--reports-bg);
     overflow: hidden;
     color: var(--reports-text);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'MontserratRegular', sans-serif;
     position: relative;
 }
 

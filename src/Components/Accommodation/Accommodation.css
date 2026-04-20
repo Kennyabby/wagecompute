@@ -23,6 +23,34 @@
     padding: 5px;
     border-radius: 5px;
 }
+
+.slrepicon {
+    position: absolute;
+    right: 28px;
+    top: 28px;
+    font-size: 1.4rem;
+    cursor: pointer;
+    background: white;
+    color: #173829;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+    z-index: 10;
+    border: 1px solid rgba(23, 56, 41, 0.12);
+}
+
+.slrepicon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    background: #f0f7f2;
+    color: #2b6a4b;
+}
+
+.slrepicon:active {
+    transform: translateY(0);
+}
+
 .acpymdt{
     width: 100%;
     margin: 30px auto;

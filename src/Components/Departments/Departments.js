@@ -16,6 +16,7 @@ const Departments = () => {
     const [viewName, setViewName] = useState(null)
     const [addBlock, setAddBlock] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
     const [fields, setFields] = useState({ ...initialFields })
     const {
         storePath,
@@ -53,6 +54,12 @@ const Departments = () => {
             setDepartments(depts)
         });
     }, [employees])
+
+    useEffect(() => {
+        if (viewName || addBlock) {
+            setMobileDetailOpen(true)
+        }
+    }, [viewName, addBlock])
 
     const resetForm = () => {
         setFields({ ...initialFields })
@@ -157,7 +164,7 @@ const Departments = () => {
     const largestDepartment = [...departments].sort((a, b) => (b.employees?.length || 0) - (a.employees?.length || 0))[0]
 
     return (
-        <div className='departments-page'>
+        <div className={`departments-page ${mobileDetailOpen ? 'mobile-detail-open' : ''}`}>
             <div className='departments-shell'>
                 <aside className='departments-sidebar'>
                     <div className='departments-sidebar-header'>
@@ -259,6 +266,9 @@ const Departments = () => {
                 </aside>
 
                 <section className='departments-detail'>
+                    <button type='button' className='detail-mobile-back' onClick={() => setMobileDetailOpen(false)}>
+                        &larr; Back to Departments
+                    </button>
                     <div className='departments-detail-hero'>
                         <div className='departments-panel-label'>Department Workspace</div>
                         <h2>{addBlock ? `${writeStatus} Department` : (viewedDepartment?.name || 'Select a department')}</h2>

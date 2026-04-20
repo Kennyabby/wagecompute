@@ -3069,35 +3069,38 @@ const Sales = () => {
                             <span>{(curApproval.data.recoveryFields || []).length + ' recoveries'}</span>
                             <span>{curApproval.approved ? 'Approved' : 'Pending approval'}</span>
                         </div>}
+                        {isView && salesOpts === 'sales' &&
+                            (companyRecord.status === 'admin' || companyRecord?.permissions.includes('export_sales_report')) &&
+                            <FaTableCells
+                                className='slrepicon'
+                                title="Sales Report"
+                                onClick={() => {
+                                    setReportSales(curSale)
+                                    setIsMultiple(false)
+                                    setShowReport(true)
+                                }}
+                            />
+                        }
+                        {salesOpts === 'recovery' &&
+                            (companyRecord.status === 'admin' || companyRecord?.permissions.includes('export_sales_report')) &&
+                            <FaTableCells
+                                className='slrepicon'
+                                title="Debt Report"
+                                onClick={() => {
+                                    setShowDebtReport(true)
+                                }}
+                            />
+                        }
+                        {isView && salesOpts === 'rentals' &&
+                            <FaReceipt
+                                className='slrepicon'
+                                title="Rental Receipt"
+                                onClick={() => {
+                                    setShowReceipt(true)
+                                }}
+                            />
+                        }
                     </div>
-                    {isView && salesOpts === 'sales' &&
-                        (companyRecord.status === 'admin' || companyRecord?.permissions.includes('export_sales_report')) &&
-                        <FaTableCells
-                            className='slrepicon'
-                            onClick={() => {
-                                setReportSales(curSale)
-                                setIsMultiple(false)
-                                setShowReport(true)
-                            }}
-                        />
-                    }
-                    {salesOpts === 'recovery' &&
-                        (companyRecord.status === 'admin' || companyRecord?.permissions.includes('export_sales_report')) &&
-                        <FaTableCells
-                            className='slrepicon'
-                            onClick={() => {
-                                setShowDebtReport(true)
-                            }}
-                        />
-                    }
-                    {isView && salesOpts === 'rentals' &&
-                        <FaReceipt
-                            className='slrepicon'
-                            onClick={() => {
-                                setShowReceipt(true)
-                            }}
-                        />
-                    }
                     {['sales', 'rentals'].includes(salesOpts) && ((fields.length && !isView) ?
                         <RxReset
                             className='slsadd'
