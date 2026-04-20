@@ -10,7 +10,9 @@ const Adjustments = ({
     clickedLabel, isSaveClicked, setIsSaveValue, postingDate,
     isDeleteClicked, setIsDeleteValue,
     isImportClicked, setIsImportValue,
+    searchQuery
 }) => {
+
     const {
         server, fetchServer, generateSeries, intervalPeriod,
         setAlert, setAlertState, setAlertTimeout, getProductsWithStock,
@@ -48,6 +50,7 @@ const Adjustments = ({
 
     const [adjustmentEntries, setAdjustmentEntries] = useState([])
     const [isSyncing, setIsSyncing] = useState(false)
+    const [searchTerm, setSearchTerm] = useState('')
 
     const refreshAdjustmentsData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
@@ -282,63 +285,88 @@ const Adjustments = ({
     return (
         <>
             <div className='adjustments'>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
-                    <button className="action-btn" onClick={handleSyncOfflineAdjustments} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
-                </div>
-                <div className='adj-left'>
-                    <div className='adj-title'>Warehouses</div>
-                    <div className='adj-list' onClick={(e) => {
-                        const name = e.target.getAttribute('name')
-                        if (name) {
-                            resetCount()
-                            if (name === 'all') {
-                                setColumns((columns) => {
-                                    columns.forEach((column) => {
-                                        if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)) {
-                                            column.show = false
+                <div className='filter-section'>
+                    <div className="export-controls">
+                        <button className="export-button" onClick={handleSyncOfflineAdjustments} disabled={isSyncing}>
+                            {isSyncing ? 'Syncing...' : 'Sync()'}
+                        </button>
+                    </div>
+                    <div className='filter-header'>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        Filters
+                    </div>
+                    <div className='filter-row'>
+                        <div className='filter-group'>
+                            <label>Warehouse</label>
+                            <div className='filter-select-container'>
+                                <select className='filter-select' value={curWarehouse} onChange={(e) => {
+                                    const name = e.target.value;
+                                    if (name) {
+                                        resetCount();
+                                        if (name === 'all') {
+                                            setColumns((columns) => {
+                                                columns.forEach((column) => {
+                                                    if (['difference', 'differenceCost', 'counted quantity'].includes(column.reference)) {
+                                                        column.show = false;
+                                                    }
+                                                });
+                                                return [...columns];
+                                            });
+                                        } else {
+                                            if (isNewEntry) {
+                                                setColumns([...defaultColumns]);
+                                            }
                                         }
-                                    })
-                                    return [...columns]
-                                })
-                            } else {
-                                if (isNewEntry) {
-                                    setColumns([...defaultColumns])
-                                }
-                            }
-                            setCurWarehouse(name)
-                        }
-                    }}>
-                        <div className={(curWarehouse === 'all' ? 'opt-active' : '')} name='all'>All</div>
-                        {wrhs.map((wrh) => {
-                            return <div
-                                className={(wrh.name === curWarehouse) ? 'opt-active' : ''}
-                                name={wrh.name}>{wrh.name.toUpperCase()}
+                                        setCurWarehouse(name);
+                                    }
+                                }}>
+                                    <option value='all'>All Warehouses</option>
+                                    {wrhs.map((wrh) => (
+                                        <option key={wrh.name} value={wrh.name}>{wrh.name.toUpperCase()}</option>
+                                    ))}
+                                </select>
                             </div>
-                        })}
-                    </div>
-                    <div className='adj-title'>Categories</div>
-                    <div className='adj-list' onClick={(e) => {
-                        const name = e.target.getAttribute('name')
-                        if (name) {
-                            setCurCategory(name)
-                        }
-                    }}>
-                        <div className={(curCategory === 'all' ? 'opt-active' : '')} name='all'>All</div>
-                        {categories.map((category) => {
-                            if (category.type === 'goods') {
-                                return <div
-                                    className={(category.code === curCategory) ? 'opt-active' : ''}
-                                    name={category.code}> {category.name}
-                                </div>
-                            }
-                        })}
+                        </div>
+
+                        <div className='filter-group'>
+                            <label>Category</label>
+                            <div className='filter-select-container'>
+                                <select className='filter-select' value={curCategory} onChange={(e) => {
+                                    setCurCategory(e.target.value);
+                                }}>
+                                    <option value='all'>All Categories</option>
+                                    {categories.map((category) => {
+                                        if (category.type === 'goods') {
+                                            return <option key={category.code} value={category.code}>{category.name}</option>
+                                        }
+                                        return null;
+                                    })}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className='filter-group'>
+                            <label>Search Product</label>
+                            <input
+                                className='filter-input'
+                                type='text'
+                                placeholder='Search by name or ID...'
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                     </div>
                 </div>
-                <div className='adj-right'>
-                    {columns.map((col, index) => {
-                        return col.show && <div className='adj-right-content' key={index}>
-                            <div className='colname'>{col.name}</div>
-                            {products.filter((prflt) => {
+                <div className='adj-right-header'>
+                    <div className='adj-right'>
+                        {(() => {
+                            const effectiveSearch = (searchQuery || searchTerm).toLowerCase();
+                            const filteredProducts = products.filter((prflt) => {
+                                if (effectiveSearch && !((prflt.name || '').toLowerCase().includes(effectiveSearch) || (prflt.i_d || '').toLowerCase().includes(effectiveSearch))) {
+                                    return false;
+                                }
                                 if (curCategory === 'all') {
                                     return prflt.type === 'goods'
                                 } else {
@@ -346,51 +374,60 @@ const Adjustments = ({
                                         return prflt.category === curCategory
                                     }
                                 }
-                            }).map((product, index1) => {
-                                const purchaseWrh = wrhs.find((warehouse) => {
-                                    return warehouse.purchase
-                                })
-                                const { cost, quantity } = product.locationStock?.[purchaseWrh?.name] || { cost: 0, quantity: 0 }
-                                let cummulativeUnitCostPrice = 0
-                                cummulativeUnitCostPrice = quantity ? parseFloat(Math.abs(Number(cost / quantity))).toFixed(2) : 0
+                                return false;
+                            });
 
-                                product.costPrice = cummulativeUnitCostPrice
-                                let availableQty = 0;
-                                if (['available quantity', 'difference', 'differenceCost', 'counted quantity'].includes(col.reference)) {
-                                    wrhs.forEach((wrh) => {
-                                        if (curWarehouse === 'all') {
-                                            availableQty = Number(product.totalStock || 0)
-                                        } else {
-                                            if (wrh.name === curWarehouse) {
-                                                const { cost, quantity } = product.locationStock?.[curWarehouse] || { cost: 0, quantity: 0 }
-                                                availableQty = Number(quantity || 0);
+                            return columns.map((col, index) => {
+                                return col.show && <div className='adj-right-content' key={index}>
+                                    <div className='colname'>{col.name}</div>
+                                    {filteredProducts.map((product, index1) => {
+                                        const purchaseWrh = wrhs.find((warehouse) => {
+                                            return warehouse.purchase
+                                        })
+                                        const { cost, quantity } = product.locationStock?.[purchaseWrh?.name] || { cost: 0, quantity: 0 }
+                                        let cummulativeUnitCostPrice = 0
+                                        cummulativeUnitCostPrice = quantity ? parseFloat(Math.abs(Number(cost / quantity))).toFixed(2) : 0
+
+                                        product.costPrice = cummulativeUnitCostPrice
+                                        let availableQty = 0;
+                                        if (['available quantity', 'difference', 'differenceCost', 'counted quantity'].includes(col.reference)) {
+                                            wrhs.forEach((wrh) => {
+                                                if (curWarehouse === 'all') {
+                                                    availableQty = Number(product.totalStock || 0)
+                                                } else {
+                                                    if (wrh.name === curWarehouse) {
+                                                        const { cost, quantity } = product.locationStock?.[curWarehouse] || { cost: 0, quantity: 0 }
+                                                        availableQty = Number(quantity || 0);
+                                                    }
+                                                }
+                                            })
+                                            if (col.reference === 'available quantity') {
+                                                return <div className='colrows' key={index1}>{availableQty}</div>
+                                            } else if (col.reference === 'counted quantity') {
+                                                return <input
+                                                    key={index1}
+                                                    type='number'
+                                                    className='countedInp'
+                                                    name='counted'
+                                                    placeholder={product.name}
+                                                    value={adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.counted}
+                                                    onChange={(e) => { handleInputChange({ e, availableQty, productId: product.i_d }) }}
+                                                />
+                                            } else if (col.reference === 'difference') {
+                                                return <div className='colrows' key={index1}>{Number(adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.difference)?.toLocaleString()}</div>
+                                            } else {
+                                                return <div className='colrows' key={index1}>{(Number(adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.difference) * Number(product.costPrice)).toLocaleString()}</div>
                                             }
+                                        } else {
+                                            return <div className='colrows' key={index1}>{(col.reference === 'costPrice' ? Number(product[col.reference]).toLocaleString() : product[col.reference])}</div>
                                         }
-                                    })
-                                    if (col.reference === 'available quantity') {
-                                        return <div className='colrows' key={index1}>{availableQty}</div>
-                                    } else if (col.reference === 'counted quantity') {
-                                        return <input
-                                            key={index1}
-                                            type='number'
-                                            className='countedInp'
-                                            name='counted'
-                                            placeholder={product.name}
-                                            value={adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.counted}
-                                            onChange={(e) => { handleInputChange({ e, availableQty, productId: product.i_d }) }}
-                                        />
-                                    } else if (col.reference === 'difference') {
-                                        return <div className='colrows' key={index1}>{Number(adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.difference)?.toLocaleString()}</div>
-                                    } else {
-                                        return <div className='colrows' key={index1}>{(Number(adjustmentEntries.filter(entry => product.i_d === entry.i_d)[0]?.difference) * Number(product.costPrice)).toLocaleString()}</div>
-                                    }
-                                } else {
-                                    return <div className='colrows' key={index1}>{(col.reference === 'costPrice' ? Number(product[col.reference]).toLocaleString() : product[col.reference])}</div>
-                                }
-                            })}
-                        </div>
-                    })}
+                                    })}
+                                </div>
+                            })
+                        })()}
+                    </div>
                 </div>
+
             </div>
         </>
     )

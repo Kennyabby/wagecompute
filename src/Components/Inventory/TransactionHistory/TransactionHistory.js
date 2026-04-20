@@ -35,6 +35,9 @@ const TransactionHistory = () => {
   const [exporting, setExporting] = useState(false);
   const [showColumnManager, setShowColumnManager] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsInputValue, setRowsInputValue] = useState('25');
   const [modalData, setModalData] = useState({
     show: false,
     title: '',
@@ -1527,6 +1530,41 @@ const TransactionHistory = () => {
       : transactions;
   }, [transactions, showDuplicatesOnly]);
 
+  // Client-side pagination
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(displayedTransactions.length / rowsPerPage)), [displayedTransactions.length, rowsPerPage]);
+
+  // Reset to page 1 when data or rowsPerPage changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [displayedTransactions.length, rowsPerPage]);
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return displayedTransactions.slice(start, start + rowsPerPage);
+  }, [displayedTransactions, currentPage, rowsPerPage]);
+
+  const getPageNumbers = useMemo(() => {
+    const pages = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage + 1 < maxVisible) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }, [currentPage, totalPages]);
+
+  const handleRowsPerPageChange = (val) => {
+    const num = parseInt(val, 10);
+    if (!isNaN(num) && num > 0 && num <= 1000) {
+      setRowsPerPage(num);
+      setRowsInputValue(String(num));
+    }
+  };
+
   const csvData = useMemo(() => {
     return displayedTransactions.map(tx => ({
       'Date': tx.formattedDate,
@@ -2097,7 +2135,7 @@ const TransactionHistory = () => {
                   </td>
                 </tr>
               ) : (
-                displayedTransactions.map((tx) => (
+                paginatedTransactions.map((tx) => (
                   <tr key={tx._id} className={`tx-type-${getTransactionType(tx).toLowerCase().replace(/\s+/g, '-')}`}>
                     {isAdmin && (
                       <td>
@@ -2146,21 +2184,79 @@ const TransactionHistory = () => {
         </div>
 
         <div className="pagination">
-          <button
-            onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
-            disabled={filters.page === 1 || loading}
-            className="pagination-btn"
-          >
-            Previous
-          </button>
-          <span>Page {filters.page}</span>
-          <button
-            onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
-            disabled={transactions.length < filters.limit || loading}
-            className="pagination-btn"
-          >
-            Next
-          </button>
+          <div className="pagination-info">
+            Showing <strong>{Math.min((currentPage - 1) * rowsPerPage + 1, displayedTransactions.length)}</strong> - <strong>{Math.min(currentPage * rowsPerPage, displayedTransactions.length)}</strong> of <strong>{displayedTransactions.length.toLocaleString()}</strong> transactions
+          </div>
+
+          <div className="pagination-controls">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1 || loading}
+              className="pagination-btn"
+              title="First page"
+            >
+              «
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || loading}
+              className="pagination-btn"
+            >
+              ‹
+            </button>
+            {getPageNumbers.map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                disabled={loading}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages || loading}
+              className="pagination-btn"
+            >
+              ›
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages || loading}
+              className="pagination-btn"
+              title="Last page"
+            >
+              »
+            </button>
+          </div>
+
+          <div className="pagination-rows-selector">
+            <span>Rows</span>
+            <select
+              className="rows-per-page-select"
+              value={rowsPerPage}
+              onChange={(e) => handleRowsPerPageChange(e.target.value)}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={250}>250</option>
+              <option value={500}>500</option>
+            </select>
+            <span>or</span>
+            <input
+              type="number"
+              className="rows-per-page-input"
+              value={rowsInputValue}
+              min={1}
+              max={1000}
+              onChange={(e) => setRowsInputValue(e.target.value)}
+              onBlur={() => handleRowsPerPageChange(rowsInputValue)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleRowsPerPageChange(rowsInputValue); }}
+            />
+          </div>
         </div>
       </div>
     </div>

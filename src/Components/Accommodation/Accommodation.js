@@ -1155,15 +1155,16 @@ const Accommodation = () => {
                             <span>{curCustomer.phoneNo || 'No phone'}</span>
                             <span>{curCustomer.email || 'No email'}</span>
                         </div>}
+                        {isView && salesOpts === 'accommodation' &&
+                            <FaReceipt
+                                className='slrepicon'
+                                title="Accommodation Receipt"
+                                onClick={() => {
+                                    setShowReceipt(true)
+                                }}
+                            />
+                        }
                     </div>
-                    {isView && salesOpts === 'accommodation' &&
-                        <FaReceipt
-                            className='slrepicon'
-                            onClick={() => {
-                                setShowReceipt(true)
-                            }}
-                        />
-                    }
                     {['accommodation', 'customers'].includes(salesOpts) &&
                         <MdAdd
                             className='slsadd'

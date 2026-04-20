@@ -1,98 +1,143 @@
 .inventory{
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
     width: 100%;
     height: 100%;
-    background: white;
+    background: #f8faf9;
+    font-family: 'MontserratRegular', sans-serif;
 }
 .inventoryTop{
     width: 100%;
     display: block;
-    padding: 20px 10px;
+    padding: 0;
+    background: white;
+    border-bottom: 1px solid rgba(23, 56, 41, 0.06);
 }
 .inv-top1{
     display: flex;
     flex-wrap: wrap;
-    width: 70%;
-    margin-right: auto;
-    justify-content: space-around;
+    gap: 8px;
+    padding: 16px 32px;
 }
 .inventoryLabelCover{
     position: relative;
 }
 .inventoryLabel{
-    font-size: .9em;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
-    height: fit-content;
+    padding: 8px 18px;
+    border-radius: 10px;
+    color: rgba(23, 56, 41, 0.5);
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
-.inventoryLabelClicked, .inventoryLabel:hover{
-    font-weight: 700;
-    background: whitesmoke;
-    border-radius: 5px;
-    padding: 0px 15px;
-    height: fit-content;
+.inventoryLabel:hover{
+    color: #173829;
+    background: rgba(23, 56, 41, 0.04);
+}
+.inventoryLabelClicked{
+    font-weight: 800;
+    background: #173829;
+    color: white;
+    border-radius: 10px;
+    padding: 8px 18px;
+    box-shadow: 0 4px 12px rgba(23, 56, 41, 0.15);
+}
+.inventoryLabelClicked:hover{
+    background: #2b6a4b;
+    color: white;
 }
 .inventoryDropMenu{
     position: absolute;
-    display: block;
+    display: flex;
+    flex-direction: column;
     left: 0px;
-    top: 30px;
+    top: 42px;
     background: white;
-    border: solid black 0.3px;
-    border-radius: 5px;
-    padding: 15px;
-    label{
-        width: max-content;
-        font-size: .9em;
-        margin: 5px auto;
-        cursor: pointer;
-    }
-    z-index: 1;
+    border: 1px solid rgba(23, 56, 41, 0.08);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 10px 30px rgba(23, 56, 41, 0.12);
+    z-index: 100;
+    min-width: 180px;
+}
+.inventoryDropMenu label{
+    width: 100%;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 16px;
+    margin: 0;
+    cursor: pointer;
+    border-radius: 8px;
+    color: #173829;
+    transition: all 0.15s ease;
+}
+.inventoryDropMenu label:hover{
+    background: rgba(23, 56, 41, 0.04);
 }
 .inv-top2{
-    width: 98%;
-    margin: 20px auto;
-    margin-bottom: 0px;
+    width: 100%;
+    padding: 12px 32px;
     display: flex;
     justify-content: space-between;
-    .new{
-        display: inline-flex;
-        gap: 10px;
-        button{
-            padding: 5px 20px;
-            background: rgb(13, 181, 13);
-            color: white;
-            font-weight: 600;
-            height: fit-content;
-            font-size: .9em;
-            outline: none;
-            border: solid black 0px;
-            border-radius: 10px;
-        }
-        label{
-            margin: auto;
-            font-size: .8em;
-        }
-    }
+    align-items: center;
+    border-top: 1px solid rgba(23, 56, 41, 0.05);
+    background: #fafcfb;
+}
+.inv-top2 .new{
+    display: inline-flex;
+    gap: 12px;
+    align-items: center;
+}
+.inv-top2 .new button{
+    padding: 8px 20px;
+    background: #6af2ad;
+    color: #173829;
+    font-weight: 800;
+    height: fit-content;
+    font-size: 13px;
+    outline: none;
+    border: none;
+    border-radius: 10px;
+    font-family: 'MontserratBold', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.inv-top2 .new button:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(106, 242, 173, 0.3);
+}
+.inv-top2 .new label{
+    margin: auto;
+    font-size: 13px;
+    font-weight: 700;
+    color: #173829;
 }
 .invdate{
     margin: 0px;
-    font-size: .8em;
+    font-size: 13px;
     padding: 0px;
-    input{
-        margin: 0px;
-        padding: 0px
-    }
+}
+.invdate input{
+    margin: 0px;
+    padding: 6px 12px;
+    border: 1.5px solid rgba(23, 56, 41, 0.1);
+    border-radius: 8px;
+    font-family: 'MontserratRegular', sans-serif;
+    font-size: 13px;
+    outline: none;
+}
+.invdate input:focus{
+    border-color: #2b6a4b;
+    box-shadow: 0 0 0 3px rgba(43, 106, 75, 0.06);
 }
 .inventoryView{
     width: 100%;
     height: 100%;
     overflow: auto;
-    border-top: solid rgba(0,0,0,.3) .1em;
+    border-top: none;
 }
-
 
 .settingsDrop{
     display: flex;
@@ -100,55 +145,154 @@
     position: absolute;
     left: 0;
     bottom: -10;
-    font-size: .8em;
+    font-size: 13px;
     width: max-content;
-    border: solid black 1px;
-    padding: 5px 10px;
+    border: 1px solid rgba(23, 56, 41, 0.08);
+    padding: 8px;
     background: white;
-    border-radius: 10px;
-    span{
-        width: fit-content;
-        margin: 5px 0px;
-        cursor: pointer;
-    }
-    z-index: 1;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(23, 56, 41, 0.12);
+    z-index: 100;
+}
+.settingsDrop span{
+    width: fit-content;
+    padding: 8px 14px;
+    margin: 2px 0px;
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #173829;
+    transition: all 0.15s ease;
+}
+.settingsDrop span:hover{
+    background: rgba(23, 56, 41, 0.04);
 }
 
+.pr-settings{
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.pr-icon{
+    font-size: 1.3em;
+    cursor: pointer;
+    color: rgba(23, 56, 41, 0.5);
+    transition: color 0.2s ease;
+}
+.pr-icon:hover{
+    color: #173829;
+}
 
 .filter{
     display: flex;
     width: fit-content;
     height: fit-content;
     margin: auto 0px;
-    gap: 10px;
+    gap: 12px;
+    align-items: center;
 }
 
 .filterArrow{
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
 }
 
 .filterIndex{
-    font-size: .8em;
-    /* cursor: pointer; */
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(23, 56, 41, 0.6);
 }
 .filterViewMode{
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
 }
 .filterViewIcon{
-    font-size: 1.3em;
+    font-size: 1.2em;
     cursor: pointer;
-    width: fit-content;    
+    width: fit-content;
+    padding: 6px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    color: rgba(23, 56, 41, 0.4);
+}
+.filterViewIcon:hover{
+    background: rgba(23, 56, 41, 0.04);
+    color: #173829;
 }
 .filterArrowIcon{
-    font-size: 1.2em;
-    /* padding: 5px; */
+    font-size: 1.6em;
     cursor: pointer;
-    background: rgb(242, 254, 238);
+    padding: 10px;
+    border-radius: 50%;
+    color: #173829;
+    background: rgba(23, 56, 41, 0.05);
+    transition: all 0.2s ease;
+}
+.filterArrowIcon:hover{
+    background: rgba(43, 106, 75, 0.15);
+    color: #2b6a4b;
+    transform: scale(1.05);
 }
 .viewActive{
-    color: rgb(103, 167, 7);
+    color: #2b6a4b !important;
+    background: rgba(43, 106, 75, 0.08);
+}
+
+.slprwh-print{
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 8px;
+    background: #173829;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.slprwh-print:hover{
+    background: #2b6a4b;
+    transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .inv-top1 {
+        padding: 12px 16px;
+    }
+    .inv-top2 {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+}
+.inventory-search-box {
+    margin: 0 16px;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    max-width: 300px;
+}
+.inv-search-input {
+    width: 100%;
+    padding: 8px 16px;
+    border: 1.5px solid rgba(23, 56, 41, 0.1);
+    border-radius: 10px;
+    font-size: 13px;
+    font-family: 'MontserratRegular', sans-serif;
+    outline: none;
+    transition: all 0.2s ease;
+}
+.inv-search-input:focus {
+    border-color: #2b6a4b;
+    box-shadow: 0 0 0 3px rgba(43, 106, 75, 0.08);
+}
+@media (max-width: 768px) {
+    .inventory-search-box {
+        max-width: none;
+        width: 100%;
+        margin: 8px 0;
+        order: 3;
+    }
 }

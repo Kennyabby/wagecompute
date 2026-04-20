@@ -25,6 +25,7 @@ const Employees = () => {
     const [editId, setEditId] = useState(null)
     const [editIndex, setEditIndex] = useState(null)
     const [searchTerm, setSearchTerm] = useState('')
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
     const initFields = {
         i_d: '',
         firstName: '',
@@ -76,6 +77,13 @@ const Employees = () => {
             setIsView(true)
         }
     }, [editAccess])
+    
+    useEffect(() => {
+        if (isView || curEmployee) {
+            setMobileDetailOpen(true)
+        }
+    }, [isView, curEmployee])
+    
     const resetEmployeeForm = () => {
         setFields({ ...initFields })
         setIsView(false)
@@ -334,8 +342,10 @@ const Employees = () => {
     const canEditEmployees = companyRecord.status === 'admin' || editAccess.employees
     return (
         <>
-            <div className='employees-page'>
+            <div className={`employees-page ${mobileDetailOpen ? 'mobile-detail-open' : ''}`}>
+                <div className='detail-overlay' onClick={resetEmployeeForm}></div>
                 <div className='employees-shell'>
+
                     <div className='employees-sidebar'>
                         <div className='employees-sidebar-header'>
                             <div className='employees-kicker'>Workforce Hub</div>
@@ -347,10 +357,14 @@ const Employees = () => {
                                 <button
                                     type='button'
                                     className='employees-add-btn'
-                                    onClick={resetEmployeeForm}
+                                    onClick={() => {
+                                        resetEmployeeForm()
+                                        setMobileDetailOpen(true)
+                                    }}
                                 >
                                     Add Employee
                                 </button>
+
                             </div>
                             <div className='employees-stats'>
                                 <div className='employees-stat-card'>
@@ -447,6 +461,9 @@ const Employees = () => {
                         </div>
                     </div>
                     <div className='employees-detail'>
+                        <button type='button' className='detail-mobile-back' onClick={() => setMobileDetailOpen(false)}>
+                            &larr; Back to Employees
+                        </button>
                         <div className='employees-detail-hero'>
                             <div className='employees-detail-avatar'>{panelEmployeeInitials}</div>
                             <div className='employees-detail-copy'>

@@ -16,8 +16,10 @@ const Stock = ({
     setIsSaveValue,
     isTransferClicked,
     setIsTransferValue,
-    postingDate
+    postingDate,
+    searchQuery
 }) => {
+
     const {
         server, fetchServer, getProducts, getProductsWithStock, getProductsStockReport,
         setAlert, setAlertState, setAlertTimeout, intervalPeriod,
@@ -89,6 +91,7 @@ const Stock = ({
     const [toWarehouse, setToWarehouse] = useState('');
     const [curWarehouse, setCurWarehouse] = useState('all');
     const [curCategory, setCurCategory] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
     const [transferEntries, setTransferEntries] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [showColumnManager, setShowColumnManager] = useState(false);
@@ -189,70 +192,7 @@ const Stock = ({
         return acc;
     }, {});
 
-    // Column Manager Component
-    const ColumnManagerModal = () => (
-        showColumnManager && (
-            <div className="column-manager-overlay" onClick={() => setShowColumnManager(false)}>
-                <div className="column-manager" onClick={e => e.stopPropagation()}>
-                    <div className="column-manager-header">
-                        <h3 className="column-manager-title">Manage Columns</h3>
-                        <button
-                            className="column-manager-close"
-                            onClick={() => setShowColumnManager(false)}
-                        >
-                            &times;
-                        </button>
-                    </div>
-                    <div className="column-manager-body">
-                        {Object.entries(columnsByCategory).map(([category, columns]) => (
-                            <div key={category} className="column-category">
-                                <h4 className="column-category-title">
-                                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                                </h4>
-                                <div className="column-list">
-                                    {columns.map(column => (
-                                        <div key={column.id} className="column-item">
-                                            <input
-                                                type="checkbox"
-                                                id={`col-${column.id}`}
-                                                checked={column.visible}
-                                                onChange={() => toggleColumnVisibility(column.id)}
-                                                disabled={column.required}
-                                                className="column-checkbox"
-                                            />
-                                            <label
-                                                htmlFor={`col-${column.id}`}
-                                                className="column-label"
-                                            >
-                                                {column.name}
-                                                {column.required && (
-                                                    <span className="column-required">(required)</span>
-                                                )}
-                                            </label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="column-manager-footer">
-                        <button
-                            className="column-manager-button"
-                            onClick={resetToDefaultColumns}
-                        >
-                            Reset to Default
-                        </button>
-                        <button
-                            className="column-manager-button primary"
-                            onClick={() => setShowColumnManager(false)}
-                        >
-                            Apply
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )
-    );
+
 
 
 
@@ -579,9 +519,12 @@ const Stock = ({
     };
 
     const prepareExportData = () => {
+        const searchLower = searchTerm.toLowerCase();
         return products
             .filter(prflt => {
                 if (curCategory !== 'all' && prflt.category !== curCategory) return false;
+                if (curWarehouse !== 'all' && prflt.locationStockDetails?.[curWarehouse] === undefined) return false;
+                if (searchTerm && !((prflt.name || '').toLowerCase().includes(searchLower) || (prflt.i_d || '').toLowerCase().includes(searchLower))) return false;
                 return prflt.type === 'goods';
             })
             .map(item => {
@@ -795,10 +738,47 @@ const Stock = ({
 
     return (
         <div className='adjustments'>
-            {/* <div className='filter-section'>
-            </div> */}
-            <ColumnManagerModal />
+            {showColumnManager && (
+                <div className="column-manager-overlay" onClick={() => setShowColumnManager(false)}>
+                    <div className="column-manager" onClick={e => e.stopPropagation()}>
+                        <div className="column-manager-header">
+                            <h3 className="column-manager-title">Manage Columns</h3>
+                            <button className="column-manager-close" onClick={() => setShowColumnManager(false)}>&times;</button>
+                        </div>
+                        <div className="column-manager-body">
+                            {Object.entries(columnsByCategory).map(([category, columns]) => (
+                                <div key={category} className="column-category">
+                                    <h4 className="column-category-title">{category}</h4>
+                                    <div className="column-list">
+                                        {columns.map(column => (
+                                            <div key={column.id} className="column-item">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`col-${column.id}`}
+                                                    checked={column.visible}
+                                                    onChange={() => toggleColumnVisibility(column.id)}
+                                                    disabled={column.required}
+                                                    className="column-checkbox"
+                                                />
+                                                <label htmlFor={`col-${column.id}`} className="column-label">
+                                                    {column.name}
+                                                    {column.required && <span className="column-required">(required)</span>}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="column-manager-footer">
+                            <button className="column-manager-button" onClick={resetToDefaultColumns}>Reset to Default</button>
+                            <button className="column-manager-button primary" onClick={() => setShowColumnManager(false)}>Apply</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className='filter-section'>
+
                 <div className="export-controls">
                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_inventory_report')) && <>
                         <button
@@ -949,59 +929,84 @@ const Stock = ({
                             </select>
                         </div>
                     </div>
+                    
+                    <div className='filter-group'>
+                        <label>Search Product</label>
+                        <input
+                            className='filter-input'
+                            type='text'
+                            placeholder='Search by name or ID...'
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
             </div>
 
             <div className='adj-right-header'>
-                {isTransferClicked && <div className='transfer-section'>
-                    <h4><b>Internal Transfer</b></h4>
+            {isTransferClicked && <div className='transfer-section'>
+                <div className="transfer-header-group">
+                    <h4>Internal Transfer</h4>
+                    <span className="transfer-subtitle">Move products between warehouses</span>
+                </div>
+                <div className='transfer-inputs-row'>
                     <div className='otherInpCov'>
-                        <label>From Warehouse:</label>
+                        <label>From Warehouse</label>
                         <select className='otherInp stockOtherInp' value={fromWarehouse} onChange={(e) => {
                             setFromWarehouse(e.target.value)
                             setCurWarehouse(e.target.value)
                         }}>
-                            <option value=''>Select Warehouse</option>
+                            <option value=''>Select Origin</option>
                             {wrhs.map(wrh => (
                                 <option key={wrh.name} value={wrh.name}>{wrh.name}</option>
                             ))}
                         </select>
+                    </div>
+                    <div className="transfer-arrow-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
                     </div>
                     <div className='otherInpCov'>
-                        <label>To Warehouse:</label>
+                        <label>To Warehouse</label>
                         <select className='otherInp stockOtherInp' value={toWarehouse} onChange={(e) => setToWarehouse(e.target.value)}>
-                            <option value=''>Select Warehouse</option>
+                            <option value=''>Select Destination</option>
                             {wrhs.map(wrh => (
                                 <option key={wrh.name} value={wrh.name}>{wrh.name}</option>
                             ))}
                         </select>
                     </div>
-                </div>}
-                <div className='adj-right'>
-                    {visibleColumns.map((col) => {
-                        // Skip if column is not visible
-                        if (!col.visible) return null;
+                </div>
+            </div>}
 
-                        // Filter and map products once to avoid duplicate calculations
+                <div className='adj-right'>
+                    {(() => {
+                        const effectiveSearch = (searchQuery || searchTerm).toLowerCase();
                         const filteredProducts = isLoading ? [] : products.filter(prflt => {
                             if (curCategory !== 'all' && prflt.category !== curCategory) return false;
                             if (curWarehouse !== 'all' && prflt.locationStockDetails?.[curWarehouse] === undefined) return false;
+                            if (effectiveSearch && !((prflt.name || '').toLowerCase().includes(effectiveSearch) || (prflt.i_d || '').toLowerCase().includes(effectiveSearch))) return false;
                             return prflt.type === 'goods';
                         });
 
-                        // Calculate totals for numeric columns
-                        let columnTotal = 0;
-                        if (!isLoading && col.id) {
-                            columnTotal = filteredProducts.reduce((sum, product) => {
-                                let stockData = { ...(product.stockSummary || {}) };
-                                if (curWarehouse !== 'all') {
-                                    const locationData = product.locationStockDetails?.[curWarehouse] || {};
-                                    stockData = { ...stockData, ...locationData };
-                                }
-                                const value = stockData[col.id] || 0;
-                                return sum + (typeof value === 'number' ? value : 0);
-                            }, 0);
-                        }
+                        return visibleColumns.map((col) => {
+                            if (!col.visible) return null;
+                            
+                            // Calculate totals for numeric columns
+                            let columnTotal = 0;
+                            if (!isLoading && col.id) {
+                                columnTotal = filteredProducts.reduce((sum, product) => {
+                                    let stockData = { ...(product.stockSummary || {}) };
+                                    if (curWarehouse !== 'all') {
+                                        const locationData = product.locationStockDetails?.[curWarehouse] || {};
+                                        stockData = { ...stockData, ...locationData };
+                                    }
+                                    const value = stockData[col.id] || 0;
+                                    return sum + (typeof value === 'number' ? value : 0);
+                                }, 0);
+                            }
+
 
                         return (
                             <div className='adj-right-content' key={col.id}>
@@ -1076,8 +1081,10 @@ const Stock = ({
                                 )}
                             </div>
                         );
-                    })}
+                        })
+                    })()}
                 </div>
+
             </div>
         </div>
     );

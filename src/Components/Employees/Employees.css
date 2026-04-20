@@ -480,19 +480,97 @@
     background: #f5f8f6;
 }
 
+.detail-mobile-back {
+    display: none;
+}
+
 @media (max-width: 1180px) {
+    .employees-page {
+        position: relative;
+    }
+
     .employees-shell {
         grid-template-columns: 1fr;
     }
 
-    .employees-sidebar,
-    .employees-detail {
-        min-height: auto;
+    .employees-sidebar {
+        height: auto;
+        min-height: calc(100vh - 32px);
+    }
+    
+    .employees-list {
+        max-height: none;
     }
 
-    .employees-list {
-        max-height: 460px;
+    .employees-detail {
+        position: fixed;
+        inset: 16px 12px;
+        width: auto !important;
+        height: calc(100dvh - 32px);
+        max-height: calc(100dvh - 32px);
+        margin: 0;
+        z-index: 3501;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(24px);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        overflow-y: auto; /* Header/tabs stay fixed, panel scrolls */
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        padding: 0;
+        display: flex;
+        flex-direction: column;
     }
+
+    .employees-page.mobile-detail-open .employees-detail {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+
+    .employees-detail-panel {
+        flex: 1;
+        /* overflow-y: auto; */
+        -webkit-overflow-scrolling: touch;
+        padding: 18px 24px 24px;
+    }
+
+    .employees-page .fm {
+        overflow: visible; /* Let panel handle scroll */
+    }
+
+
+    .detail-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(16, 31, 24, 0.42);
+        backdrop-filter: blur(8px);
+        z-index: 3500;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .mobile-detail-open .detail-overlay {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .detail-mobile-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(23, 56, 41, 0.12);
+        background: rgba(255, 255, 255, 0.9);
+        color: #173829;
+        font-weight: 700;
+        cursor: pointer;
+        margin: 18px 28px 0;
+    }
+
 }
 
 @media (max-width: 760px) {

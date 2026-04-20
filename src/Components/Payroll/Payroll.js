@@ -33,6 +33,7 @@ const Payroll = () =>{
     const [curAtt, setCurAtt] = useState(null)
     const [InvoiceNumber, setInvoiceNumber] = useState('')
     const [date, setDate] = useState('')
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
     const eligibleEmployees = useMemo(() => {
         return employees.filter((ftremp) => {
             if (selectedMonth && selectedYear) {
@@ -48,6 +49,12 @@ const Payroll = () =>{
     useEffect(()=>{
         storePath('payroll')  
     },[storePath])
+
+    useEffect(() => {
+        if (curEmployee) {
+            setMobileDetailOpen(true)
+        }
+    }, [curEmployee])
 
     useEffect(()=>{
         var cmp_val = window.localStorage.getItem('sessn-cmp')
@@ -156,7 +163,7 @@ const Payroll = () =>{
 
     return(
         <>
-            <div className='payroll payroll-page'>
+            <div className={`payroll payroll-page ${mobileDetailOpen ? 'mobile-detail-open' : ''}`}>
                 {viewPayee && 
                     <Payee
                         setViewPayee={setViewPayee}
@@ -490,6 +497,9 @@ const Payroll = () =>{
                   })}
                 </div>
                 <div className='empview payview'>
+                    <button type='button' className='detail-mobile-back' onClick={() => setMobileDetailOpen(false)}>
+                        &larr; Back to Payroll
+                    </button>
                     <div className='payroll-detail-intro'>
                         <div className='payroll-kicker'>Payroll Workspace</div>
                         <h2 className='payroll-detail-title'>

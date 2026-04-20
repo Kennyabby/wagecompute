@@ -31,10 +31,17 @@ const Attendance = () => {
     const [year, setYear] = useState('')
     const [durationFormat, setDurationFormat] = useState('fmt2')
     const [viewNo, setViewNo] = useState(null)
+    const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
 
     const [attendanceApprovals, setAttendanceApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
     const selectedAttendance = curApproval?.data || attendance.find((att) => String(att.no) === String(viewNo)) || null
+
+    useEffect(() => {
+        if (add || viewNo) {
+            setMobileDetailOpen(true)
+        }
+    }, [add, viewNo])
     useEffect(() => {
         storePath('attendance')
     }, [storePath])
@@ -340,16 +347,23 @@ const Attendance = () => {
             })
             setSelectedCols([...filtSelection])
         }
-    }
+    };
+
+
+
+
+
     return (
         <>
-            <div className='attendance attendance-page'>
+            <div className={`attendance attendance-page ${mobileDetailOpen ? 'mobile-detail-open' : ''}`}>
+                <div className='detail-overlay' onClick={() => {
+                    setAdd(false)
+                    setViewNo(null)
+                    setCurApproval(null)
+                    setMobileDetailOpen(false)
+                }}></div>
                 {showApprovalBox && <ApprovalBox
-                    onClose={() => {
-                        setShowApprovalBox(false)
-                        setApprovalStatus(false)
-                        setApprovalMessage('')
-                    }}
+
                     module={'attendance'}
                     section={'postattendance'}
                     postApprovalUpdate={() => {
@@ -516,6 +530,9 @@ const Attendance = () => {
                     })}
                 </div>
                 <div className='empview attview'>
+                    <button type='button' className='detail-mobile-back' onClick={() => setMobileDetailOpen(false)}>
+                        &larr; Back to Attendance
+                    </button>
                     <div className='attendance-detail-intro'>
                         <div className='attendance-kicker'>Attendance Workspace</div>
                         <h2 className='attendance-detail-title'>

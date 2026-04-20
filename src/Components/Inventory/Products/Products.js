@@ -733,20 +733,22 @@ const Products = ({
         <>
             <div className='pr-products'>
                 {companyRecord?.status === 'admin' && curPosSettings?.type === 'restaurant' && !isImportClicked && !isNewProduct && productView === 'list' && (
-                    <div style={{ marginBottom: 12, padding: 12, border: '1px solid #ddd', borderRadius: 4, background: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                        <div style={{ fontWeight: 600 }}>Customer Menu QR Codes</div>
+                    <div style={{ marginBottom: 0, padding: '14px 24px', borderBottom: '1px solid rgba(23,56,41,0.05)', background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: '#173829', fontFamily: 'MontserratBold, sans-serif' }}>Customer Menu QR Codes</div>
                         <button
                             type='button'
                             onClick={() => setIsQrModalOpen(true)}
                             style={{
-                                padding: '6px 12px',
-                                borderRadius: 4,
+                                padding: '8px 18px',
+                                borderRadius: 10,
                                 border: 'none',
-                                background: '#007bff',
+                                background: '#173829',
                                 color: '#fff',
                                 fontSize: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer'
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                fontFamily: 'MontserratBold, sans-serif',
+                                transition: 'all 0.2s ease'
                             }}
                         >
                             View QR Codes
@@ -854,71 +856,7 @@ const Products = ({
                                 )}
                             </section>
                         </div>
-                        <div className='pr-details'>
-                            <div className='stock-cov'>
-                                <h3>Stock</h3>
-                                <div className='stock-table'>
-                                    <div className='stock-table-head'>
-                                        <div>Location</div>
-                                        <div>Quantity</div>
-                                    </div>
-                                    {Object.keys(productFields.locationStock || {}).map((location, index) => (
-                                        <div className='stock-table-body' key={index}>
-                                            <div>{location}</div>
-                                            <div>{productFields.locationStock[location].quantity}</div>
-                                        </div>
-                                    ))}
-                                    <div className='stock-table-body'>
-                                        <div>All Locations</div>
-                                        <div>{Object.values(productFields.locationStock || {}).reduce((sum, item) => sum + item.quantity, 0)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className='stock-cov' style={{ marginTop: 12 }}>
-                                <h3>Monthly Overview</h3>
-                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '6px 0' }}>
-                                    <label>Select Month:</label>
-                                    <input
-                                        type='month'
-                                        value={selectedMonth}
-                                        onChange={(e) => setSelectedMonth(e.target.value)}
-                                        style={{ padding: '6px' }}
-                                    />
-                                </div>
-                                <div className='stock-table'>
-                                    <div className='stock-table-head'>
-                                        <div>Metric</div>
-                                        <div>Value</div>
-                                    </div>
-                                    {monthLoading ? (
-                                        <div className='stock-table-body'>
-                                            <div>Loading...</div>
-                                            <div>—</div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className='stock-table-body'>
-                                                <div>Sales Quantity</div>
-                                                <div>{Number(monthStats.salesQty).toLocaleString()}</div>
-                                            </div>
-                                            <div className='stock-table-body'>
-                                                <div>Sales Amount (₦)</div>
-                                                <div>{Number(monthStats.salesAmount).toLocaleString()}</div>
-                                            </div>
-                                            <div className='stock-table-body'>
-                                                <div>Purchase Quantity</div>
-                                                <div>{Number(monthStats.purchaseQty).toLocaleString()}</div>
-                                            </div>
-                                            <div className='stock-table-body'>
-                                                <div>Purchase Cost (₦)</div>
-                                                <div>{Number(monthStats.purchaseCost).toLocaleString()}</div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
 
-                        </div>
                     </div>
                     <div className='pr-right'>
                         <div className='otherInpCov'>
@@ -1095,17 +1033,92 @@ const Products = ({
                         </div>
 
                     </div>
+                    <div className='pr-details'>
+                        <div className='stock-cov'>
+                            <h3>Stock</h3>
+                            <div className='stock-table'>
+                                <div className='stock-table-head'>
+                                    <div>Location</div>
+                                    <div>Quantity</div>
+                                </div>
+                                {Object.keys(productFields.locationStock || {}).map((location, index) => (
+                                    <div className='stock-table-body' key={index}>
+                                        <div>{location}</div>
+                                        <div>{productFields.locationStock[location].quantity}</div>
+                                    </div>
+                                ))}
+                                <div className='stock-table-body'>
+                                    <div>All Locations</div>
+                                    <div>{Object.values(productFields.locationStock || {}).reduce((sum, item) => sum + item.quantity, 0)}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className='stock-cov' style={{ marginTop: 20 }}>
+                            <h3>Monthly Overview</h3>
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '8px 0' }}>
+                                <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(23,56,41,0.6)' }}>Select Month:</label>
+                                <input
+                                    type='month'
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                />
+                            </div>
+                            <div className='stock-table'>
+                                <div className='stock-table-head'>
+                                    <div>Metric</div>
+                                    <div>Value</div>
+                                </div>
+                                {monthLoading ? (
+                                    <div className='stock-table-body'>
+                                        <div>Loading...</div>
+                                        <div>—</div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className='stock-table-body'>
+                                            <div>Sales Quantity</div>
+                                            <div>{Number(monthStats.salesQty).toLocaleString()}</div>
+                                        </div>
+                                        <div className='stock-table-body'>
+                                            <div>Sales Amount (₦)</div>
+                                            <div>{Number(monthStats.salesAmount).toLocaleString()}</div>
+                                        </div>
+                                        <div className='stock-table-body'>
+                                            <div>Purchase Quantity</div>
+                                            <div>{Number(monthStats.purchaseQty).toLocaleString()}</div>
+                                        </div>
+                                        <div className='stock-table-body'>
+                                            <div>Purchase Cost (₦)</div>
+                                            <div>{Number(monthStats.purchaseCost).toLocaleString()}</div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>}
-                {!isImportClicked && !isNewProduct && <div style={{width: '100%'}}>
+                {!isImportClicked && !isNewProduct && <div style={{width: '100%', padding: '12px 16px'}}>
                     <input
-                        placeholder='Search Product'
+                        placeholder='Search products by name or ID...'
                         style={{
-                            padding: '5px', borderRadius: '5px',
-                            outline: 'none', fontSize: '12px',
-                            marginRight: 'auto', marginLeft: '5px'
+                            padding: '10px 16px',
+                            borderRadius: 10,
+                            outline: 'none',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            width: '100%',
+                            maxWidth: 400,
+                            border: '1.5px solid rgba(23,56,41,0.08)',
+                            background: 'white',
+                            fontFamily: 'MontserratRegular, sans-serif',
+                            color: '#173829',
+                            transition: 'border-color 0.2s ease',
+                            boxSizing: 'border-box'
                         }}
                         value={productSearch}
                         onChange={(e) => { setProductSearch(e.target.value) }}
+                        onFocus={(e) => { e.target.style.borderColor = '#2b6a4b' }}
+                        onBlur={(e) => { e.target.style.borderColor = 'rgba(23,56,41,0.08)' }}
                     />
                 </div>}
                 {!isImportClicked && !isNewProduct && productView === 'card' && <div className='pr-all-products'>
@@ -1145,12 +1158,15 @@ const Products = ({
                                                 window.open(buildQrSrc(url), '_blank');
                                             }}
                                             style={{
-                                                padding: '4px 8px',
-                                                borderRadius: 4,
-                                                border: '1px solid #ddd',
-                                                background: '#fff',
+                                                padding: '4px 10px',
+                                                borderRadius: 8,
+                                                border: '1.5px solid rgba(23,56,41,0.08)',
+                                                background: 'rgba(106,242,173,0.1)',
                                                 fontSize: 11,
-                                                cursor: 'pointer'
+                                                fontWeight: 700,
+                                                color: '#2b6a4b',
+                                                cursor: 'pointer',
+                                                fontFamily: 'MontserratBold, sans-serif'
                                             }}
                                         >
                                             QR
@@ -1233,12 +1249,15 @@ const Products = ({
                                         }}
                                         style={{
                                             marginLeft: 'auto',
-                                            padding: '2px 6px',
-                                            borderRadius: 4,
-                                            border: '1px solid #ddd',
-                                            background: '#fff',
+                                            padding: '4px 10px',
+                                            borderRadius: 8,
+                                            border: '1.5px solid rgba(23,56,41,0.08)',
+                                            background: 'rgba(106,242,173,0.1)',
                                             fontSize: 11,
-                                            cursor: 'pointer'
+                                            fontWeight: 700,
+                                            color: '#2b6a4b',
+                                            cursor: 'pointer',
+                                            fontFamily: 'MontserratBold, sans-serif'
                                         }}
                                     >
                                         QR
@@ -1347,7 +1366,8 @@ const Products = ({
                         style={{
                             position: 'fixed',
                             inset: 0,
-                            background: 'rgba(0,0,0,0.45)',
+                            background: 'rgba(23,56,41,0.4)',
+                            backdropFilter: 'blur(4px)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -1358,58 +1378,66 @@ const Products = ({
                         <div
                             style={{
                                 background: '#fff',
-                                padding: 20,
-                                borderRadius: 8,
+                                padding: 28,
+                                borderRadius: 20,
                                 maxWidth: 480,
                                 width: '90%',
-                                boxShadow: '0 10px 30px rgba(0,0,0,0.25)'
+                                boxShadow: '0 20px 60px rgba(23,56,41,0.2)'
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                <div style={{ fontWeight: 600 }}>The Plantain Planet Customer Menu QR Codes</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <div style={{ fontWeight: 800, fontSize: 15, color: '#173829', fontFamily: 'MontserratBold, sans-serif' }}>Customer Menu QR Codes</div>
                                 <button
                                     type='button'
                                     onClick={() => setIsQrModalOpen(false)}
                                     style={{
                                         border: 'none',
-                                        background: 'transparent',
+                                        background: '#f0f4f2',
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 10,
                                         fontSize: 18,
                                         cursor: 'pointer',
+                                        color: 'rgba(23,56,41,0.5)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s ease'
                                     }}
                                 >
                                     ×
                                 </button>
                             </div>
-                            {curPosSettings?.type === 'restaurant' && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-                                    <span style={{ fontSize: 12, fontWeight: 600 }}>Normal Prices</span>
+                            {curPosSettings?.type === 'restaurant' && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, justifyContent: 'center' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+                                    <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(23,56,41,0.5)', textTransform: 'uppercase', letterSpacing: 1 }}>Normal Prices</span>
                                     <img
                                         src={buildQrSrc(normalMenuUrl)}
                                         alt='Normal Menu QR'
-                                        style={{ width: 140, height: 140, borderRadius: 4, border: '1px solid #ddd' }}
+                                        style={{ width: 150, height: 150, borderRadius: 12, border: '2px solid rgba(23,56,41,0.06)' }}
                                     />
                                     <a
                                         href={buildQrSrc(normalMenuUrl)}
                                         download='plantainplanet-menu-normal.png'
-                                        style={{ color: '#007bff', textDecoration: 'underline', fontSize: 12 }}
+                                        style={{ color: '#2b6a4b', textDecoration: 'none', fontSize: 12, fontWeight: 700 }}
                                     >
-                                        Download Normal Menu QR
+                                        ↓ Download
                                     </a>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-                                    <span style={{ fontSize: 12, fontWeight: 600 }}>VIP Prices</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+                                    <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(23,56,41,0.5)', textTransform: 'uppercase', letterSpacing: 1 }}>VIP Prices</span>
                                     <img
                                         src={buildQrSrc(vipMenuUrl)}
                                         alt='VIP Menu QR'
-                                        style={{ width: 140, height: 140, borderRadius: 4, border: '1px solid #ddd' }}
+                                        style={{ width: 150, height: 150, borderRadius: 12, border: '2px solid rgba(23,56,41,0.06)' }}
                                     />
                                     <a
                                         href={buildQrSrc(vipMenuUrl)}
                                         download='plantainplanet-menu-vip.png'
-                                        style={{ color: '#007bff', textDecoration: 'underline', fontSize: 12 }}
+                                        style={{ color: '#2b6a4b', textDecoration: 'none', fontSize: 12, fontWeight: 700 }}
                                     >
-                                        Download VIP Menu QR
+                                        ↓ Download
                                     </a>
                                 </div>
                             </div>}
