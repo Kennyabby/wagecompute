@@ -537,7 +537,7 @@
     padding: 24px;
     gap: 20px;
     height: calc(100vh - 120px);
-    overflow: hidden;
+    overflow: auto;
     border: 1px solid rgba(23, 56, 41, 0.05);
 }
 
