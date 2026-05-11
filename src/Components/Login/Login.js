@@ -191,7 +191,7 @@ const Login = () => {
             sess += chr.codePointAt(0)
           })
           window.localStorage.setItem('sessn-cmp', company)
-          window.localStorage.setItem('sess-recg-id', now * sess + "")
+          window.localStorage.setItem('sess-recg-id', now + "-" + sess)
           window.localStorage.setItem('idt-curr-usr', now + "")
           window.localStorage.setItem('sessn-id', idVal)
           setField((field) => {

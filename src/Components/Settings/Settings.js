@@ -1808,9 +1808,11 @@ const Settings = () => {
                     <div className={`settings-nav-item ${currentView === 'accounting' ? 'active' : ''}`} onClick={() => setCurrentView('accounting')}>
                         <IoSettings /> Accounting Links
                     </div>
-                    <div className={`settings-nav-item ${currentView === 'billing' ? 'active' : ''}`} onClick={() => setCurrentView('billing')}>
-                        <IoCard /> Billing & Plan
-                    </div>
+                    {companyRecord?.access === 'admin' && (
+                        <div className={`settings-nav-item ${currentView === 'billing' ? 'active' : ''}`} onClick={() => setCurrentView('billing')}>
+                            <IoCard /> Billing & Plan
+                        </div>
+                    )}
                     <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>
                         <IoCard /> Payroll Labels
                     </div>
