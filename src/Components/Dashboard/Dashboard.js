@@ -98,12 +98,12 @@ const Dashboard = ()=>{
                                       : `Current plan ends on ${subscriptionState?.expiresAt ? new Date(Number(subscriptionState.expiresAt)).toLocaleDateString() : '--'}.`)}
                                 </span>
                             </div>
-                            <button
+                            {companyRecord?.status === 'admin' && <button
                                 className='subscription-top-banner-btn'
                                 onClick={() => Navigate('/settings')}
                             >
                                 Open Billing
-                            </button>
+                            </button>}
                         </div>
                     )}
                     {view}
