@@ -36,3 +36,66 @@
     transform: rotate(360deg);
   }
 }
+
+.subscription-top-banner {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  z-index: 5000000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(14, 27, 21, 0.18);
+}
+
+.subscription-top-banner.warning {
+  background: linear-gradient(135deg, #174f3a, #1f7a57);
+}
+
+.subscription-top-banner.critical {
+  background: linear-gradient(135deg, #7d1f24, #b23b3f);
+}
+
+.subscription-top-banner-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subscription-top-banner-copy strong {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.subscription-top-banner-copy span {
+  font-size: 12px;
+  opacity: 0.92;
+}
+
+.subscription-top-banner-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  color: #173829;
+  background: #f4fff9;
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .subscription-top-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 16px;
+  }
+
+  .subscription-top-banner-btn {
+    width: 100%;
+  }
+}

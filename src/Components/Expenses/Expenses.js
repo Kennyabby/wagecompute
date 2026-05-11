@@ -422,11 +422,11 @@ const Expenses = () => {
                             }
                         }}
                     />}
-                    <div className='payeeinpcov'>
-                        <div className='inpcov formpad'>
-                            <div>Date From</div>
+                    <div className='expenses-left-filter-bar'>
+                        <div className='expenses-left-filter-card'>
+                            <div className='expenses-left-filter-label'>Date From</div>
                             <input
-                                className='forminp prinps'
+                                className='expenses-left-date-input'
                                 name='expensesfrom'
                                 type='date'
                                 placeholder='From'
@@ -437,10 +437,10 @@ const Expenses = () => {
                                 }}
                             />
                         </div>
-                        <div className='inpcov formpad'>
-                            <div>Date To</div>
+                        <div className='expenses-left-filter-card'>
+                            <div className='expenses-left-filter-label'>Date To</div>
                             <input
-                                className='forminp prinps'
+                                className='expenses-left-date-input'
                                 name='expensesto'
                                 type='date'
                                 placeholder='To'
@@ -452,12 +452,12 @@ const Expenses = () => {
                             />
                         </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
-                        <button className="action-btn" onClick={handleSyncOfflineExpenses} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                    <div className='expenses-left-action-row'>
+                        <button className="expenses-left-sync-btn" onClick={handleSyncOfflineExpenses} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
-                    {companyRecord.status === 'admin' && <div className='inpcov fltinpcov'>
+                    {companyRecord.status === 'admin' && <div className='expenses-left-select-wrap'>
                         <select
-                            className='forminp'
+                            className='expenses-left-select'
                             name='employeeId'
                             type='text'
                             value={expenseFilter}

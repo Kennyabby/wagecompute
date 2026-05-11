@@ -95,6 +95,25 @@ const Accommodation = () => {
     const [imageUpload, setImageUpload] = useState(null)
     const [uploadingReceipt, setUploadingReceipt] = useState(false)
     const [deletingReceipt, setDeletingReceipt] = useState(false)
+
+    const buildPaymentHistoryEntry = (record) => {
+        const amount = Number(record?.paymentAmount || 0)
+        if (!(amount > 0) || !record?.payPoint) return null
+
+        return {
+            id: `${record.createdAt || Date.now()}-${record.payPoint}-${amount}`,
+            paymentDate: record.postingDate || postingDate || new Date(Date.now()).toISOString().slice(0, 10),
+            paymentAmount: amount,
+            payPoint: record.payPoint,
+            paymentReceipt: record.paymentReceipt || '',
+            imgId: record.imgId || null,
+            viewLink: record.viewLink || null,
+            downloadLink: record.downloadLink || null,
+            postedBy: companyRecord?.emailid || '',
+            createdAt: Date.now()
+        }
+    }
+
     useEffect(() => {
         storePath('accommodations')
     }, [storePath])
@@ -361,6 +380,10 @@ const Accommodation = () => {
             postingDate: postingDate,
             createdAt: new Date().getTime(),
         }
+        const initialPaymentEvent = buildPaymentHistoryEntry(newAccommodation)
+        if (initialPaymentEvent) {
+            newAccommodation.paymentHistory = [initialPaymentEvent]
+        }
 
         const newAccommodations = [newAccommodation, ...accommodations]
         const resps = await fetchServer("POST", {
@@ -408,6 +431,19 @@ const Accommodation = () => {
             viewLink: accommodationFields.viewLink,
             downloadLink: accommodationFields.downloadLink,
             paymentStatus: paymentStatus
+        }
+        const existingHistory = Array.isArray(accommodationFields.paymentHistory)
+            ? accommodationFields.paymentHistory
+            : Array.isArray(curAccommodation?.paymentHistory)
+                ? curAccommodation.paymentHistory
+                : []
+        const paymentEvent = buildPaymentHistoryEntry({
+            ...accommodationFields,
+            postingDate: postingDate || accommodationFields.postingDate,
+            createdAt: accommodationFields.createdAt
+        })
+        if (paymentEvent) {
+            updatedPayment.paymentHistory = [...existingHistory, paymentEvent]
         }
 
         const resps = await fetchServer("POST", {
@@ -908,11 +944,11 @@ const Accommodation = () => {
                             }
                         }}
                     />}
-                    <div className='payeeinpcov'>
-                        <div className='inpcov formpad'>
-                            <div>Date From</div>
+                    <div className='accommodation-left-filter-bar'>
+                        <div className='accommodation-left-filter-card'>
+                            <div className='accommodation-left-filter-label'>Date From</div>
                             <input
-                                className='forminp prinps'
+                                className='accommodation-left-date-input'
                                 name='salesfrom'
                                 type='date'
                                 placeholder='From'
@@ -924,10 +960,10 @@ const Accommodation = () => {
                                 }}
                             />
                         </div>
-                        <div className='inpcov formpad'>
-                            <div>Date To</div>
+                        <div className='accommodation-left-filter-card'>
+                            <div className='accommodation-left-filter-label'>Date To</div>
                             <input
-                                className='forminp prinps'
+                                className='accommodation-left-date-input'
                                 name='salesto'
                                 type='date'
                                 placeholder='To'
@@ -940,18 +976,18 @@ const Accommodation = () => {
                             />
                         </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
-                        <button className="action-btn" onClick={handleSyncOfflineAccommodation} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                    <div className='accommodation-left-action-row'>
+                        <button className="accommodation-left-sync-btn" onClick={handleSyncOfflineAccommodation} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
-                    <div className='emptypecov'
+                    <div className='accommodation-left-toggle-bar'
                         onClick={handleSalesOpts1}
                     >
-                        <div name='customers' className={salesOpts1 === 'customers' ? 'slopts' : ''}>Customers</div>
-                        <div name='accommodation' className={salesOpts1 === 'accommodation' ? 'slopts' : ''}>Accommodation</div>
+                        <div name='customers' className={salesOpts1 === 'customers' ? 'accommodation-left-toggle-chip active' : 'accommodation-left-toggle-chip'}>Customers</div>
+                        <div name='accommodation' className={salesOpts1 === 'accommodation' ? 'accommodation-left-toggle-chip active' : 'accommodation-left-toggle-chip'}>Accommodation</div>
                     </div>
-                    {salesOpts1 === 'accommodation' && companyRecord.status === 'admin' && <div className='inpcov fltinpcov'>
+                    {salesOpts1 === 'accommodation' && companyRecord.status === 'admin' && <div className='accommodation-left-select-wrap'>
                         <select
-                            className='forminp'
+                            className='accommodation-left-select'
                             name='accommodationCustomer'
                             type='text'
                             value={accommodationCustomer}

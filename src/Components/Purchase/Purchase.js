@@ -579,7 +579,6 @@ const Purchase = () => {
                                                     }
                                                 }
                                                 const rep = await fetchServer("POST", {
-                                                    database: company,
                                                     collection: "ProductCostLogs",
                                                     markUp: curPosSettings?.useMarkUp,
                                                     markUpValue: 30,
@@ -731,7 +730,6 @@ const Purchase = () => {
                     setPurchaseEntries([...entries])
                 }
                 const rep = await fetchServer("POST", {
-                    database: company,
                     collection: "ProductCostLogs",
                     markUp: curPosSettings?.useMarkUp,
                     markUpValue: 30,
@@ -910,11 +908,11 @@ const Purchase = () => {
                             }
                         }}
                     />}
-                    <div className='payeeinpcov'>
-                        <div className='inpcov formpad'>
-                            <div>Date From</div>
+                    <div className='purchase-left-filter-bar'>
+                        <div className='purchase-left-filter-card'>
+                            <div className='purchase-left-filter-label'>Date From</div>
                             <input
-                                className='forminp prinps'
+                                className='purchase-left-date-input'
                                 name='salesfrom'
                                 type='date'
                                 placeholder='From'
@@ -925,10 +923,10 @@ const Purchase = () => {
                                 }}
                             />
                         </div>
-                        <div className='inpcov formpad'>
-                            <div>Date To</div>
+                        <div className='purchase-left-filter-card'>
+                            <div className='purchase-left-filter-label'>Date To</div>
                             <input
-                                className='forminp prinps'
+                                className='purchase-left-date-input'
                                 name='salesto'
                                 type='date'
                                 placeholder='To'
@@ -940,8 +938,8 @@ const Purchase = () => {
                             />
                         </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
-                        <button className="action-btn" onClick={handleSyncOfflinePurchase} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                    <div className='purchase-left-action-row'>
+                        <button className="purchase-left-sync-btn" onClick={handleSyncOfflinePurchase} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
                     {[...purchaseApprovals, ...purchase].filter((purfltr) => {
                         if (purfltr.postingDate >= saleFrom && purfltr.postingDate <= saleTo) {

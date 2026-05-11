@@ -2609,11 +2609,11 @@ const Sales = () => {
                             }
                         }}
                     />}
-                    <div className='payeeinpcov'>
-                        <div className='inpcov formpad'>
-                            <div>Date From</div>
+                    <div className='sales-left-filter-bar'>
+                        <div className='sales-left-filter-card'>
+                            <div className='sales-left-filter-label'>Date From</div>
                             <input
-                                className='forminp prinps'
+                                className='sales-left-date-input'
                                 name='salesfrom'
                                 type='date'
                                 placeholder='From'
@@ -2625,10 +2625,10 @@ const Sales = () => {
                                 }}
                             />
                         </div>
-                        <div className='inpcov formpad'>
-                            <div>Date To</div>
+                        <div className='sales-left-filter-card'>
+                            <div className='sales-left-filter-label'>Date To</div>
                             <input
-                                className='forminp prinps'
+                                className='sales-left-date-input'
                                 name='salesto'
                                 type='date'
                                 placeholder='To'
@@ -2641,19 +2641,19 @@ const Sales = () => {
                             />
                         </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: 4 }}>
-                        <button className="action-btn" onClick={handleSyncOfflineSales} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
+                    <div className='sales-left-action-row'>
+                        <button className="sales-left-sync-btn" onClick={handleSyncOfflineSales} disabled={isSyncing}>{isSyncing ? 'Syncing...' : 'Sync()'}</button>
                     </div>
-                    <div className='emptypecov'
+                    <div className='sales-left-toggle-bar'
                         onClick={handleSalesOpts1}
                     >
-                        <div name='sales' className={salesOpts1 === 'sales' ? 'slopts' : 'sloptsdef'}>Sales</div>
-                        <div name='rentals' className={salesOpts1 === 'rentals' ? 'slopts' : 'sloptsdef'}>Rentals</div>
-                        <div name='recovery' className={salesOpts1 === 'recovery' ? 'sloptSs' : 'sloptsdef'}>Recovery</div>
+                        <div name='sales' className={salesOpts1 === 'sales' ? 'sales-left-toggle-chip active' : 'sales-left-toggle-chip'}>Sales</div>
+                        <div name='rentals' className={salesOpts1 === 'rentals' ? 'sales-left-toggle-chip active' : 'sales-left-toggle-chip'}>Rentals</div>
+                        <div name='recovery' className={salesOpts1 === 'recovery' ? 'sales-left-toggle-chip active' : 'sales-left-toggle-chip'}>Recovery</div>
                     </div>
-                    {salesOpts1 === 'sales' && companyRecord.status === 'admin' && <div className='inpcov fltinpcov'>
+                    {salesOpts1 === 'sales' && companyRecord.status === 'admin' && <div className='sales-left-select-wrap'>
                         <select
-                            className='forminp'
+                            className='sales-left-select'
                             name='employeeId'
                             type='text'
                             value={saleEmployee}

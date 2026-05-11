@@ -3,6 +3,7 @@ import { useEffect, useState, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff } from 'react-icons/io5'
+import BillingSettingsPanel from './BillingSettingsPanel'
 
 const Settings = () => {
     const { storePath, company, companyRecord,
@@ -10,9 +11,10 @@ const Settings = () => {
         recoveryVal, setRecoveryVal, changingSettings,
         setChangingSettings, colSettings, setColSettings,
         enableBlockVal, setEnableBlockVal,
-        genDb, DBProfiles, setDBProfiles, fetchDBProfiles,
+        DBProfiles, setDBProfiles, fetchDBProfiles,
         profiles, setProfiles,
         employees, getEmployees, dashList, fetchProfiles,
+        chartOfAccounts, getChartOfAccounts,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
 
@@ -37,6 +39,9 @@ const Settings = () => {
     const [currentProfiles, setCurrentProfiles] = useState([])
     const [deleteCount, setDeleteCount] = useState(0)
     const [accessValue, setAccessValue] = useState('')
+    const [accountingMappings, setAccountingMappings] = useState(null)
+    const [isAccountingLoading, setIsAccountingLoading] = useState(false)
+    const [isAccountingSaving, setIsAccountingSaving] = useState(false)
     const magicWord = 'oh ye server. deny all '
     const activationWord = 'oh ye server. allow all into your world '
 
@@ -90,6 +95,20 @@ const Settings = () => {
     })
 
     const [sessionPeriods, setSessionPeriods] = useState([])
+    const paymentMethodAccounts = (chartOfAccounts || [])
+        .flatMap((section) => section?.accounts || [])
+        .filter((account) => {
+            const headerType = String(account?.['header-type'] || '').toLowerCase()
+            return !['header', 'sub-header'].includes(headerType) && String(account?.category || '').toLowerCase() === 'asset'
+        })
+        .sort((first, second) => Number(first?.['g/l code'] || 0) - Number(second?.['g/l code'] || 0))
+    const postingAccounts = (chartOfAccounts || [])
+        .flatMap((section) => section?.accounts || [])
+        .filter((account) => {
+            const headerType = String(account?.['header-type'] || '').toLowerCase()
+            return !['header', 'sub-header'].includes(headerType)
+        })
+        .sort((first, second) => Number(first?.['g/l code'] || 0) - Number(second?.['g/l code'] || 0))
     const modulePermissions = [
         ...dashList
     ]
@@ -224,6 +243,16 @@ const Settings = () => {
             getEmployees(cmp_val, companyRecord)
             fetchProfiles(cmp_val, companyRecord)
             fetchDBProfiles(cmp_val, companyRecord)
+            if (!chartOfAccounts?.length) {
+                getChartOfAccounts(cmp_val, companyRecord)
+            }
+        }
+    }, [])
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('paystack') === 'settings') {
+            setCurrentView('billing')
         }
     }, [])
 
@@ -238,10 +267,8 @@ const Settings = () => {
             if (accessValue === magicWord || accessValue === activationWord) {
                 setAccessValue('updating activation....')
                 const resps = await fetchServer("POST", {
-                    database: company,
-                    collection: "Profile",
-                    prop: [{ name: 'activation' }, { pauseDB: accessValue === magicWord }]
-                }, "updateOneDoc", server)
+                    prop: [{ db: company }, { manualPauseDB: accessValue === magicWord }]
+                }, "updateDBProfileDoc", server)
                 if (resps.err) {
                     console.log(resps.mess)
                 } else {
@@ -262,6 +289,87 @@ const Settings = () => {
             setAccessValue(value)
         } else {
             setAccessValue('')
+        }
+    }
+
+    useEffect(() => {
+        if (currentView === 'accounting' && company && chartOfAccounts?.length) {
+            loadAccountingMappings()
+        }
+    }, [currentView, company, chartOfAccounts?.length])
+
+    const loadAccountingMappings = async () => {
+        if (!company) return
+        setIsAccountingLoading(true)
+        try {
+            const resp = await fetchServer("POST", {}, "getAccountingMappings", server)
+            if (resp.err || !resp.ok) {
+                throw new Error(resp.mess || 'Failed to load accounting links')
+            }
+            setAccountingMappings(resp.mappings || null)
+        } catch (error) {
+            setAlertState('error')
+            setAlert(error.message || 'Failed to load accounting links')
+            setAlertTimeout(3000)
+        } finally {
+            setIsAccountingLoading(false)
+        }
+    }
+
+    const updateAccountingField = (moduleName, field, value) => {
+        setAccountingMappings((prev) => ({
+            ...prev,
+            modules: {
+                ...(prev?.modules || {}),
+                [moduleName]: {
+                    ...(prev?.modules?.[moduleName] || {}),
+                    [field]: value
+                }
+            }
+        }))
+    }
+
+    const updateAccountingListField = (moduleName, listField, index, field, value) => {
+        setAccountingMappings((prev) => {
+            const list = [...(prev?.modules?.[moduleName]?.[listField] || [])]
+            list[index] = {
+                ...list[index],
+                [field]: value
+            }
+            return {
+                ...prev,
+                modules: {
+                    ...(prev?.modules || {}),
+                    [moduleName]: {
+                        ...(prev?.modules?.[moduleName] || {}),
+                        [listField]: list
+                    }
+                }
+            }
+        })
+    }
+
+    const saveAccountingMappings = async () => {
+        if (!accountingMappings) return
+        setIsAccountingSaving(true)
+        setSaveStatus('Saving Accounting Links...')
+        try {
+            const resp = await fetchServer("POST", {
+                mappings: accountingMappings
+            }, "updateAccountingMappings", server)
+            if (resp.err || !resp.ok) {
+                throw new Error(resp.mess || 'Failed to save accounting links')
+            }
+            setAccountingMappings(resp.mappings || accountingMappings)
+            setSaveStatus('Accounting Links Saved')
+            setTimeout(() => setSaveStatus(''), 2500)
+        } catch (error) {
+            setSaveStatus('')
+            setAlertState('error')
+            setAlert(error.message || 'Failed to save accounting links')
+            setAlertTimeout(3000)
+        } finally {
+            setIsAccountingSaving(false)
         }
     }
 
@@ -311,13 +419,11 @@ const Settings = () => {
                         paymentMethods: selectedPaymentMethods
                     }
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'warehouses' }, {
                             ...currentSetting,
                             warehouses: [...wrhs, newWarehouse]
                         }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -343,10 +449,8 @@ const Settings = () => {
                         return wrh
                     })
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'warehouses' }, { ...currentSetting, warehouses: updatedWarehouses }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -365,10 +469,8 @@ const Settings = () => {
             case 'uom':
                 if (propState === 'new') {
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'uom' }, { ...currentSetting, mearsures: [...uoms, curPropSet] }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -390,10 +492,8 @@ const Settings = () => {
                         return uom
                     })
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'uom' }, { ...currentSetting, mearsures: updatedUoms }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -412,10 +512,8 @@ const Settings = () => {
             case 'product_categories':
                 if (propState === 'new') {
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'product_categories' }, { ...currentSetting, categories: [...categories, curPropSet] }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -437,10 +535,8 @@ const Settings = () => {
                         return category
                     })
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'product_categories' }, { ...currentSetting, categories: updatedCategories }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -459,10 +555,8 @@ const Settings = () => {
             case 'paymentMethods':
                 if (propState === 'new') {
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: [...paymentMethods, curPropSet] }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -484,10 +578,8 @@ const Settings = () => {
                         return method
                     })
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: updatedPaymentMethods }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -512,10 +604,8 @@ const Settings = () => {
                         return pos
                     })
                     const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "Settings",
                         prop: [{ name: 'posSettings' }, { ...currentSetting, posSettings: updatedPosSetting }]
-                    }, "updateOneDoc", server)
+                    }, "updateSettings", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus('Error Saving Settings')
@@ -544,10 +634,8 @@ const Settings = () => {
             case 'warehouses':
                 const filteredWarehouses = wrhs.filter((wrh) => wrh.name !== curPropSet.name)
                 const resps = await fetchServer("POST", {
-                    database: company,
-                    collection: "Settings",
                     prop: [{ name: 'warehouses' }, { ...currentSetting, warehouses: filteredWarehouses }]
-                }, "updateOneDoc", server)
+                }, "updateSettings", server)
                 if (resps.err) {
                     console.log(resps.mess)
                     setSaveStatus('Error Deleting Settings')
@@ -565,10 +653,8 @@ const Settings = () => {
             case 'uom':
                 const filteredUoms = uoms.filter((uom) => uom.code !== curPropSet.code)
                 const resps1 = await fetchServer("POST", {
-                    database: company,
-                    collection: "Settings",
                     prop: [{ name: 'uom' }, { ...currentSetting, mearsures: filteredUoms }]
-                }, "updateOneDoc", server)
+                }, "updateSettings", server)
                 if (resps1.err) {
                     console.log(resps1.mess)
                     setSaveStatus('Error Deleting Settings')
@@ -586,10 +672,8 @@ const Settings = () => {
             case 'product_categories':
                 const filteredCategories = categories.filter((category) => category.code !== curPropSet.code)
                 const resps2 = await fetchServer("POST", {
-                    database: company,
-                    collection: "Settings",
                     prop: [{ name: 'product_categories' }, { ...currentSetting, categories: filteredCategories }]
-                }, "updateOneDoc", server)
+                }, "updateSettings", server)
                 if (resps2.err) {
                     console.log(resps2.mess)
                     setSaveStatus('Error Deleting Settings')
@@ -607,10 +691,8 @@ const Settings = () => {
             case 'paymentMethods':
                 const filteredPaymentMethods = paymentMethods.filter((method) => method.i_d !== curPropSet.i_d)
                 const resps3 = await fetchServer("POST", {
-                    database: company,
-                    collection: "Settings",
                     prop: [{ name: 'paymentMethods' }, { ...currentSetting, paymentMethods: filteredPaymentMethods }]
-                }, "updateOneDoc", server)
+                }, "updateSettings", server)
                 if (resps3.err) {
                     console.log(resps3.mess)
                     setSaveStatus('Error Deleting Settings')
@@ -689,10 +771,8 @@ const Settings = () => {
             } else {
                 if (loginDetails.password) {
                     const resps = await fetchServer("POST", {
-                        database: genDb,
-                        collection: "Profiles",
                         prop: [{ emailid: selectedEmployee.emailid }, { password: loginDetails.password }]
-                    }, "updateOneDoc", server)
+                    }, "updateDBProfiles", server)
                     if (resps.err) {
                         console.log(resps.mess)
                         setSaveStatus(resps.mess)
@@ -926,6 +1006,188 @@ const Settings = () => {
             setWriteStatus('Add')
             setChangingSettings(false)
         }
+    }
+
+    const renderAccountingSelect = (label, value, onChange) => (
+        <div className='inpcov settings-accounting-field'>
+            <div>{label}</div>
+            <select className='forminp' value={value || ''} onChange={(e) => onChange(e.target.value)}>
+                <option value=''>Select G/L account</option>
+                {postingAccounts.map((account) => (
+                    <option key={account['g/l code']} value={account['g/l code']}>
+                        {`${account['g/l code']} - ${account.name}`}
+                    </option>
+                ))}
+            </select>
+        </div>
+    )
+
+    const renderAccountingList = (title, rows = [], field, onChange) => (
+        <div className='settings-accounting-card'>
+            <div className='settings-accounting-card-header'>
+                <h3>{title}</h3>
+                <span>{rows.length} item{rows.length === 1 ? '' : 's'}</span>
+            </div>
+            <div className='settings-accounting-table'>
+                {rows.map((row, index) => (
+                    <div className='settings-accounting-row' key={`${title}-${row.key}-${index}`}>
+                        <div className='settings-accounting-row-label'>{row.label || row.key}</div>
+                        <select className='forminp' value={row[field] || ''} onChange={(e) => onChange(index, e.target.value)}>
+                            <option value=''>Select G/L account</option>
+                            {postingAccounts.map((account) => (
+                                <option key={account['g/l code']} value={account['g/l code']}>
+                                    {`${account['g/l code']} - ${account.name}`}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+
+    const renderAccountingView = (variants) => {
+        const modules = accountingMappings?.modules || {}
+
+        return (
+            <motion.div
+                className='accounting-settings'
+                initial="initial" animate="animate" exit="exit" variants={variants}
+                transition={{ duration: 0.4 }}
+            >
+                <div className='general-details settings-accounting-layout'>
+                    <div className='form-card settings-accounting-shell'>
+                        <div className='settings-accounting-hero'>
+                            <div>
+                                <div className='formtitle'><IoSettings /> Operational G/L Linking</div>
+                                <p className='settings-accounting-copy'>
+                                    Link each operational area to the G/L accounts it should affect. These links stay separate from the payment-method account number field and are preserved during COA re-initialization unless you change them.
+                                </p>
+                            </div>
+                            <div className='settings-accounting-actions'>
+                                <button className='savebtn' onClick={loadAccountingMappings} disabled={isAccountingLoading}>
+                                    {isAccountingLoading ? 'Refreshing...' : 'Refresh Links'}
+                                </button>
+                                <button className='savebtn' onClick={saveAccountingMappings} disabled={isAccountingSaving || isAccountingLoading}>
+                                    <IoSave /> {isAccountingSaving ? 'Saving...' : 'Save Links'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {isAccountingLoading && !accountingMappings ? (
+                            <div className='settings-accounting-empty'>Loading accounting links...</div>
+                        ) : (
+                            <div className='settings-accounting-grid'>
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Orders</h3>
+                                        <span>Default order posting</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Revenue Account', modules.orders?.revenueAccount, (value) => updateAccountingField('orders', 'revenueAccount', value))}
+                                        {renderAccountingSelect('Receivable Account', modules.orders?.receivableAccount, (value) => updateAccountingField('orders', 'receivableAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Inventory and Costing</h3>
+                                        <span>Stock movement links</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Inventory Account', modules.inventory?.inventoryAccount, (value) => updateAccountingField('inventory', 'inventoryAccount', value))}
+                                        {renderAccountingSelect('Inventory Payable', modules.inventory?.payableAccount, (value) => updateAccountingField('inventory', 'payableAccount', value))}
+                                        {renderAccountingSelect('Cost of Sales', modules.inventory?.costOfSalesAccount, (value) => updateAccountingField('inventory', 'costOfSalesAccount', value))}
+                                        {renderAccountingSelect('Adjustment Account', modules.inventory?.adjustmentAccount, (value) => updateAccountingField('inventory', 'adjustmentAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Direct Purchase</h3>
+                                        <span>Default purchase links</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Default Purchase Account', modules.purchase?.directExpenseAccount, (value) => updateAccountingField('purchase', 'directExpenseAccount', value))}
+                                        {renderAccountingSelect('Purchase Payable', modules.purchase?.payableAccount, (value) => updateAccountingField('purchase', 'payableAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Expenses</h3>
+                                        <span>Default expense liabilities</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Expense Payable', modules.expenses?.payableAccount, (value) => updateAccountingField('expenses', 'payableAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Sales and Recovery</h3>
+                                        <span>Credit sales and employee debt</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Product Revenue', modules.sales?.productRevenueAccount, (value) => updateAccountingField('sales', 'productRevenueAccount', value))}
+                                        {renderAccountingSelect('Service Revenue', modules.sales?.serviceRevenueAccount, (value) => updateAccountingField('sales', 'serviceRevenueAccount', value))}
+                                        {renderAccountingSelect('Employee Receivable', modules.sales?.employeeReceivableAccount, (value) => updateAccountingField('sales', 'employeeReceivableAccount', value))}
+                                        {renderAccountingSelect('Salary Payable', modules.sales?.salaryPayableAccount, (value) => updateAccountingField('sales', 'salaryPayableAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Accommodation</h3>
+                                        <span>Room revenue and receivables</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Default Revenue', modules.accommodations?.revenueAccount, (value) => updateAccountingField('accommodations', 'revenueAccount', value))}
+                                        {renderAccountingSelect('Receivable Account', modules.accommodations?.receivableAccount, (value) => updateAccountingField('accommodations', 'receivableAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Rentals</h3>
+                                        <span>Rental revenue and receivables</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Default Revenue', modules.rentals?.revenueAccount, (value) => updateAccountingField('rentals', 'revenueAccount', value))}
+                                        {renderAccountingSelect('Receivable Account', modules.rentals?.receivableAccount, (value) => updateAccountingField('rentals', 'receivableAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Payroll</h3>
+                                        <span>Attendance and salary flows</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Salary Expense', modules.payroll?.salaryExpenseAccount, (value) => updateAccountingField('payroll', 'salaryExpenseAccount', value))}
+                                        {renderAccountingSelect('Salary Payable', modules.payroll?.salaryPayableAccount, (value) => updateAccountingField('payroll', 'salaryPayableAccount', value))}
+                                        {renderAccountingSelect('Employee Receivable', modules.payroll?.employeeReceivableAccount, (value) => updateAccountingField('payroll', 'employeeReceivableAccount', value))}
+                                    </div>
+                                </div>
+
+                                {renderAccountingList('Payment Methods G/L Links', modules.paymentMethods || [], 'accountCode', (index, value) => {
+                                    setAccountingMappings((prev) => {
+                                        const list = [...(prev?.modules?.paymentMethods || [])]
+                                        list[index] = { ...list[index], accountCode: value }
+                                        return { ...prev, modules: { ...(prev?.modules || {}), paymentMethods: list } }
+                                    })
+                                })}
+                                {renderAccountingList('Sales Points', modules.sales?.salesPointMappings || [], 'revenueAccount', (index, value) => updateAccountingListField('sales', 'salesPointMappings', index, 'revenueAccount', value))}
+                                {renderAccountingList('Purchase Categories', modules.purchase?.categoryMappings || [], 'accountCode', (index, value) => updateAccountingListField('purchase', 'categoryMappings', index, 'accountCode', value))}
+                                {renderAccountingList('Expense Categories', modules.expenses?.categoryMappings || [], 'accountCode', (index, value) => updateAccountingListField('expenses', 'categoryMappings', index, 'accountCode', value))}
+                                {renderAccountingList('Accommodation Rooms', modules.accommodations?.roomMappings || [], 'revenueAccount', (index, value) => updateAccountingListField('accommodations', 'roomMappings', index, 'revenueAccount', value))}
+                                {renderAccountingList('Rental Spaces', modules.rentals?.spaceMappings || [], 'revenueAccount', (index, value) => updateAccountingListField('rentals', 'spaceMappings', index, 'revenueAccount', value))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </motion.div>
+        )
     }
 
     const renderView = () => {
@@ -1200,6 +1462,10 @@ const Settings = () => {
                         </div>
                     </motion.div>
                 )
+            case 'billing':
+                return <BillingSettingsPanel variants={variants} />
+            case 'accounting':
+                return renderAccountingView(variants)
             case 'payroll':
                 return (
                     <motion.div 
@@ -1389,7 +1655,17 @@ const Settings = () => {
                                             </div>
                                             <div className='inpcov' style={{ gridColumn: 'span 2' }}>
                                                 <div>Linked Account Number</div>
-                                                <input className='forminp' name='account' placeholder="Enter account no." value={curPropSet.account} onChange={handlePropSetChange} />
+                                                <select className='forminp' name='account' value={curPropSet.account} onChange={handlePropSetChange}>
+                                                    <option value=''>Select linked asset account</option>
+                                                    {curPropSet.account && !paymentMethodAccounts.some((account) => String(account['g/l code']) === String(curPropSet.account)) && (
+                                                        <option value={curPropSet.account}>{`${curPropSet.account} - Current linked account`}</option>
+                                                    )}
+                                                    {paymentMethodAccounts.map((account, index) => (
+                                                        <option key={index} value={account['g/l code']}>
+                                                            {`${account['g/l code']} - ${account.name}`}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
                                     )}
@@ -1528,6 +1804,12 @@ const Settings = () => {
                     </div>
                     <div className={`settings-nav-item ${currentView === 'general' ? 'active' : ''}`} onClick={() => setCurrentView('general')}>
                         <IoOptions /> General Config
+                    </div>
+                    <div className={`settings-nav-item ${currentView === 'accounting' ? 'active' : ''}`} onClick={() => setCurrentView('accounting')}>
+                        <IoSettings /> Accounting Links
+                    </div>
+                    <div className={`settings-nav-item ${currentView === 'billing' ? 'active' : ''}`} onClick={() => setCurrentView('billing')}>
+                        <IoCard /> Billing & Plan
                     </div>
                     <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>
                         <IoCard /> Payroll Labels

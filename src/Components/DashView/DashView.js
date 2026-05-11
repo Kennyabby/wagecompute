@@ -27,14 +27,14 @@ const DashView = () =>{
     const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const {
         storePath,
-        fetchServer, server, company, companyRecord, fetchAllSessions,
+        fetchServer, server, company, companyRecord,
         products, getProducts, getProductsStockReport,
         sales, getSales, saleFrom, saleTo,
         purchase, getPurchase,
         expenses, getExpenses,
         accommodations, getAccommodations,
         rentals, getRentals,
-        employees, getEmployees, paymentReceipts
+        employees, getEmployees
     } = useContext(ContextProvider)
     // Default date range (current month)
     const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10)
@@ -129,6 +129,16 @@ const DashView = () =>{
         lastActiveSessions: [],
         lastDeliverySessions: []
     })
+    const [dashboardReceipts, setDashboardReceipts] = useState([])
+    const [dashboardSummaryKey, setDashboardSummaryKey] = useState('')
+    const [dashboardMeta, setDashboardMeta] = useState({
+        productCatalog: [],
+        employeeCatalog: [],
+        priceIssues: [],
+        locationOptions: [],
+        productOptions: [],
+        employeeOptions: [],
+    })
 
     // Build a cache key for the current dashboard filters
     const makeDashCacheKey = () => {
@@ -145,6 +155,18 @@ const DashView = () =>{
             seasonFilter || 'all',
         ].join(':');
     };
+
+    const makeDashSummaryKey = () => {
+        if (!company) return ''
+        return [
+            fromDate,
+            toDate,
+            locationFilter || 'all',
+            productFilter || 'all',
+            employeeFilter || 'all',
+            seasonFilter || 'all',
+        ].join('|')
+    }
 
     // Apply a cached or freshly-computed snapshot into React state
     const applyDashSnapshot = (snap) => {
@@ -163,6 +185,22 @@ const DashView = () =>{
         if (Array.isArray(snap.topEmployeesSales)) setTopEmployeesSales(snap.topEmployeesSales);
         if (Array.isArray(snap.topEmployeesServices)) setTopEmployeesServices(snap.topEmployeesServices);
         if (Array.isArray(snap.topExpenseCategories)) setTopExpenseCategories(snap.topExpenseCategories);
+        if (Array.isArray(snap.paymentReceipts)) setDashboardReceipts(snap.paymentReceipts);
+        if (snap.posSessions) {
+            setPosSessions({
+                activeSessions: Array.isArray(snap.posSessions.activeSessions) ? snap.posSessions.activeSessions : [],
+                lastActiveSessions: Array.isArray(snap.posSessions.lastActiveSessions) ? snap.posSessions.lastActiveSessions : [],
+                lastDeliverySessions: Array.isArray(snap.posSessions.lastDeliverySessions) ? snap.posSessions.lastDeliverySessions : [],
+            });
+        }
+        setDashboardMeta({
+            productCatalog: Array.isArray(snap.productCatalog) ? snap.productCatalog : [],
+            employeeCatalog: Array.isArray(snap.employeeCatalog) ? snap.employeeCatalog : [],
+            priceIssues: Array.isArray(snap.priceIssues) ? snap.priceIssues : [],
+            locationOptions: Array.isArray(snap.locationOptions) ? snap.locationOptions : [],
+            productOptions: Array.isArray(snap.productOptions) ? snap.productOptions : [],
+            employeeOptions: Array.isArray(snap.employeeOptions) ? snap.employeeOptions : [],
+        });
     };
 
     useEffect(()=>{
@@ -198,59 +236,6 @@ const DashView = () =>{
         })
     }
 
-    useEffect(()=>{
-        if (company && products.length){
-            getProductsStockReport(company, products, {
-                startDate: fromDate,
-                endDate: toDate,
-                location: locationFilter,
-                productId: productFilter
-            })   
-        }
-    },[company])
-    
-    // Ensure base data
-    useEffect(()=>{
-        const cmp_val = window.localStorage.getItem('sessn-cmp')
-        if (cmp_val && company){
-            if (!products?.length){
-                getProducts(company)
-            }
-            if (products.length && !products[0]?.stockSummary){
-                getProductsStockReport(cmp_val, products, {
-                    startDate: fromDate,
-                    endDate: toDate,
-                    location: locationFilter,
-                    productId: productFilter
-                })
-            }
-        }
-    },[company, products, fromDate, toDate, locationFilter, productFilter, seasonFilter])
-
-    useEffect(()=>{
-        const cmp_val = window.localStorage.getItem('sessn-cmp')
-        if (cmp_val && company){
-            if (!purchase?.length){
-                getPurchase(cmp_val, 'all')
-            }
-            if (!expenses?.length){
-                getExpenses(cmp_val, 'all')
-            }
-            if (!sales?.length){
-                getSales(cmp_val, 'all')
-            }
-            if (!accommodations?.length){
-                getAccommodations(cmp_val, 'all')
-            }
-            if (!rentals?.length){
-                getRentals(cmp_val, 'all')
-            }
-            if (!employees?.length){
-                getEmployees(cmp_val, 'all')
-            }
-        }
-    },[window.localStorage.getItem('sessn-cmp')])
-
     const loadDashData = async()=>{
         if (!company) return
 
@@ -258,11 +243,12 @@ const DashView = () =>{
         setDashErr('')
 
         const cacheKey = makeDashCacheKey();
+        const summaryCacheKey = `dashboard-summary-${makeDashSummaryKey()}`
 
         // 1) Try to hydrate from IndexedDB app cache first (for snappy UI)
-        if (cacheKey) {
+        if (summaryCacheKey) {
             try {
-                const cached = await getAppCache(company, companyRecord?.emailid, cacheKey);
+                const cached = await getAppCache(company, companyRecord?.emailid, summaryCacheKey);
                 if (cached && cached.data) {
                     applyDashSnapshot(cached.data);
                 }
@@ -272,6 +258,29 @@ const DashView = () =>{
         }
 
         try{
+            const summaryResponse = await fetchServer('POST', {
+                fromDate,
+                toDate,
+                locationFilter,
+                productFilter,
+                employeeFilter,
+                seasonFilter
+            }, 'getDashboardSummary', server)
+
+            if (summaryResponse?.ok && summaryResponse?.snapshot) {
+                applyDashSnapshot(summaryResponse.snapshot)
+                setDashboardSummaryKey(summaryResponse.summaryKey || makeDashSummaryKey())
+                if (summaryResponse.summaryKey) {
+                    try {
+                        await setAppCache(company, companyRecord?.emailid, `dashboard-summary-${summaryResponse.summaryKey}`, summaryResponse.snapshot)
+                    } catch (cacheError) {
+                        console.warn('DashView: setAppCache failed', cacheError)
+                    }
+                }
+                setLoading(false)
+                return
+            }
+
             // Format dates for MongoDB query
             const formattedStartDate = new Date(fromDate).toISOString().split('T')[0];
             const formattedEndDate = new Date(toDate).toISOString().split('T')[0];
@@ -857,59 +866,74 @@ const DashView = () =>{
 
     useEffect(() => {
         loadDashData();
-        fetchAllSessions({company, setState: (prop)=>{
-            setPosSessions({...prop})
-        }, companyRecord});
-        // Refresh sessions every 5 minutes
-        const interval = setInterval(()=>{
-            fetchAllSessions({company, setState: (prop)=>{
-                setPosSessions({...prop})
-            }, companyRecord});
-        }, 60 * 60 * 1000);
-        return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fromDate, toDate, locationFilter, productFilter, employeeFilter, company, products, sales, accommodations, rentals])
+    }, [fromDate, toDate, locationFilter, productFilter, employeeFilter, seasonFilter, company])
+
+    useEffect(() => {
+        const handleDashboardSummaryUpdate = (event) => {
+            const summary = event?.detail?.summary
+            if (!summary || event?.detail?.company !== company) return
+            const expectedKey = makeDashSummaryKey()
+            if (summary.summaryKey !== expectedKey) return
+            setDashboardSummaryKey(summary.summaryKey)
+            applyDashSnapshot(summary.snapshot || {})
+        }
+
+        window.addEventListener('wc:dashboard-summary-update', handleDashboardSummaryUpdate)
+        return () => window.removeEventListener('wc:dashboard-summary-update', handleDashboardSummaryUpdate)
+    }, [company, fromDate, toDate, locationFilter, productFilter, employeeFilter, seasonFilter])
 
     // Helpers to map names
     const productName = useMemo(()=>{
         const map = new Map()
+        ;(dashboardMeta.productCatalog || []).forEach(p=>{
+            map.set(p.value, p.label || 'Product')
+        })
         ;(products||[]).forEach(p=>{
-            map.set(p.i_d || p.productId, p.name || p.productName || p.description || 'Product')
+            if (!map.has(p.i_d || p.productId)) {
+                map.set(p.i_d || p.productId, p.name || p.productName || p.description || 'Product')
+            }
         })
         return (id)=> map.get(id) || id
-    },[products])
+    },[dashboardMeta.productCatalog, products])
 
     const employeeName = useMemo(()=>{
         const byId = new Map()
         const byEmail = new Map()
+        ;(dashboardMeta.employeeCatalog || []).forEach(e=>{
+            if (e?.value) byId.set(String(e.value), e.label || e.value)
+        })
         ;(employees||[]).forEach(e=>{
             const parts = [e.firstName, e.otherName, e.lastName].filter(Boolean)
             const fallback = e.fullName || e.name
             const nm = (parts.length ? parts.join(' ') : (fallback||'Employee')).trim()
-            if (e.i_d) byId.set(String(e.i_d), `${nm} (${e.i_d})`)
-            if (e.emailid) byEmail.set(String(e.emailid).toLowerCase(), `${nm} (${e.i_d||e.emailid})`)
+            if (e.i_d && !byId.has(String(e.i_d))) byId.set(String(e.i_d), `${nm} (${e.i_d})`)
+            if (e.emailid && !byEmail.has(String(e.emailid).toLowerCase())) byEmail.set(String(e.emailid).toLowerCase(), `${nm} (${e.i_d||e.emailid})`)
         })
         return (id)=>{
             if (id === undefined || id === null) return 'N/A'
             const k = String(id)
             return byId.get(k) || byEmail.get(k.toLowerCase()) || k
         }
-    },[employees])
+    },[dashboardMeta.employeeCatalog, employees])
 
     // Resolve any given employee identifier to canonical employee i_d when possible
     const employeeIdResolver = useMemo(()=>{
         const byId = new Map()
         const byEmail = new Map()
+        ;(dashboardMeta.employeeCatalog || []).forEach(e=>{
+            if (e?.value) byId.set(String(e.value), String(e.value))
+        })
         ;(employees||[]).forEach(e=>{
-            if (e.i_d) byId.set(String(e.i_d), String(e.i_d))
-            if (e.emailid) byEmail.set(String(e.emailid).toLowerCase(), String(e.i_d||e.emailid))
+            if (e.i_d && !byId.has(String(e.i_d))) byId.set(String(e.i_d), String(e.i_d))
+            if (e.emailid && !byEmail.has(String(e.emailid).toLowerCase())) byEmail.set(String(e.emailid).toLowerCase(), String(e.i_d||e.emailid))
         })
         return (raw)=>{
             if (raw === undefined || raw === null) return undefined
             const k = String(raw)
             return byId.get(k) || byEmail.get(k.toLowerCase()) || k
         }
-    },[employees])
+    },[dashboardMeta.employeeCatalog, employees])
 
     // Best/Worst sales days based    // Find best and worst days by revenue with detailed analysis
     const { best: bestDay, worst: worstDay, bestDaySales, worstDaySales } = useMemo(()=>{
@@ -992,6 +1016,9 @@ const DashView = () =>{
 
     // Build filter option lists
     const locationOptions = useMemo(()=>{
+        if (dashboardMeta.locationOptions?.length) {
+            return dashboardMeta.locationOptions
+        }
         const set = new Set()
         // from products stock map
         ;(products||[]).forEach(p=>{
@@ -1003,26 +1030,32 @@ const DashView = () =>{
         ;(accommodations||[]).forEach(a=>{ if (a.location) set.add(a.location) })
         ;(rentals||[]).forEach(r=>{ if (r.location) set.add(r.location) })
         return Array.from(set).sort()
-    },[products, sales, accommodations, rentals])
+    },[dashboardMeta.locationOptions, products, sales, accommodations, rentals])
 
     const productOptions = useMemo(()=>{
+        if (dashboardMeta.productOptions?.length) {
+            return dashboardMeta.productOptions
+        }
         return (products||[]).map(p=>({ value: p.i_d || p.productId, label: p.name || p.productName || p.description || 'Product' }))
-    },[products])
+    },[dashboardMeta.productOptions, products])
 
     const employeeOptions = useMemo(()=>{
+        if (dashboardMeta.employeeOptions?.length) {
+            return dashboardMeta.employeeOptions
+        }
         return (employees||[]).map(emp=>{
             const parts = [emp.firstName, emp.otherName, emp.lastName].filter(Boolean)
             const fallback = emp.fullName || emp.name
             const label = (parts.length ? parts.join(' ') : (fallback||'Employee')).trim()
             return { value: String(emp.i_d || ''), label: `${label} (${emp.i_d||emp.emailid||''})` }
         }).filter(e=> e.value)
-    },[employees])
+    },[dashboardMeta.employeeOptions, employees])
 
     return(
         <>
             <div className='dashview'>
                 {/* Receipts Modal Trigger State */}
-                <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={paymentReceipts} />
+                <PaymentReceiptsModal open={showReceiptsModal} onClose={()=>setShowReceiptsModal(false)} paymentReceipts={dashboardReceipts} />
                 {/* Filters */}
                 <div className='dash-filters'>
                     <div className='filter-group1'>
@@ -1097,13 +1130,13 @@ const DashView = () =>{
                             <h3 style={{display:'flex',alignItems:'center',flexWrap:'wrap',fontSize:'1.15em',marginBottom:'12px', color: '#173829'}}><FaInfoCircle style={{color:'#173829',marginRight:8}}/> Access Payment Receipts</h3>
                             <div style={{display:'flex',flexWrap:'wrap',gap:'16px',justifyContent:'space-between',marginTop:'4px',marginBottom:'8px'}}>
                                     <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#173829',textAlign:'center',padding:'8px 0'}}>
-                                            Recovery<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='recovery').length}</span>
+                                            Recovery<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{dashboardReceipts.filter(r=>r.paymentModule==='recovery').length}</span>
                                     </div>
                                     <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#173829',textAlign:'center',padding:'8px 0'}}>
-                                            Accommodation<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule==='accommodation').length}</span>
+                                            Accommodation<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{dashboardReceipts.filter(r=>r.paymentModule==='accommodation').length}</span>
                                     </div>
                                     <div style={{flex:'1 1 120px',minWidth:'120px',fontWeight:'bold',color:'#173829',textAlign:'center',padding:'8px 0'}}>
-                                            POS<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{paymentReceipts.filter(r=>r.paymentModule.split(' ').includes('POS')).length}</span>
+                                            POS<br/><span style={{color:'#173829',fontWeight:'600',fontSize:'1.2em'}}>{dashboardReceipts.filter(r=>String(r.paymentModule || '').split(' ').includes('POS')).length}</span>
                                     </div>
                             </div>
                             {/* Duplicates by payPoint summary */}
@@ -1111,7 +1144,7 @@ const DashView = () =>{
                                 {(() => {
                                     // Group by payPoint and count duplicate receipts
                                     const payPointMap = {};
-                                    paymentReceipts.forEach(r => {
+                                    dashboardReceipts.forEach(r => {
                                         if (!r.paymentReceipt || !(r.payPoint || r.paymentPoint)) return;
                                         const key = r.payPoint || r.paymentPoint;
                                         if (!payPointMap[key]) payPointMap[key] = {};
@@ -1188,9 +1221,11 @@ const DashView = () =>{
 
                             {/* Price Discrepancy Alerts */}
                             {(() => {
-                                const priceIssues = products?.filter(p => 
-                                    p.costPrice > 0 && p.salesPrice > 0 && p.costPrice > p.salesPrice
-                                ).slice(0, 5) || [];
+                                const priceIssues = dashboardMeta.priceIssues?.length
+                                    ? dashboardMeta.priceIssues
+                                    : (products?.filter(p => 
+                                        p.costPrice > 0 && p.salesPrice > 0 && p.costPrice > p.salesPrice
+                                    ).slice(0, 5) || []);
                                 
                                 return priceIssues.length > 0 ? (
                                     <div className='alert-category'>
@@ -1198,7 +1233,7 @@ const DashView = () =>{
                                         <div className='alert-items'>
                                             {priceIssues.map((item, idx) => (
                                                 <div key={`price-issue-${idx}`} className='alert-item warning'>
-                                                    <span className='alert-item-name'>{item.name || 'Unnamed Product'}</span>
+                                                    <span className='alert-item-name'>{item.label || item.name || 'Unnamed Product'}</span>
                                                     <span className='alert-item-detail'>
                                                         {`Cost: ₦${fmt(item.costPrice)} > Sales: ₦${fmt(item.salesPrice)}`}
                                                     </span>

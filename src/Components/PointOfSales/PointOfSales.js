@@ -105,6 +105,7 @@ const PointOfSales = () => {
     const [curPosHandler, setCurPosHandler] = useState('')
     useEffect(() => {
         storePath('pos')
+        document.title = 'Point of Sales | WageCompute Enterprise'
     }, [storePath])
 
     // =========================================
@@ -3423,7 +3424,7 @@ const PointOfSales = () => {
                 )}
                 {startSession && (
                     <div className='openingsession'>
-                        <div className="session-entry">
+                        <div className="pos-session-entry">
                             <div className="modal-header">
                                 <h2>Start Session {
                                     [''].map((args) => {
@@ -3433,6 +3434,7 @@ const PointOfSales = () => {
                                 }</h2>
                                 {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_sessions')) &&
                                     <button
+                                        className="close-btn"
                                         onClick={() => {
                                             setStartSession(false)
                                             setSessionUser(null)
@@ -3441,41 +3443,44 @@ const PointOfSales = () => {
                                 }
                             </div>
                             <div className="form-group">
-                                <label>Opening Cash</label>
-                                <input
-                                    type="number"
-                                    value={openingCash}
-                                    onChange={(e) => setOpeningCash(parseFloat(e.target.value) || 0)}
-                                    disabled={loading}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Sales Post</label>
-                                <select
-                                    value={wrh}
-                                    onChange={(e) => {
-                                        setWrh(e.target.value)
-                                        window.localStorage.setItem('pos-wrh', e.target.value)
-                                    }}
-                                    disabled={loading}
-                                >
-                                    <option value={''}>Select Sales Post</option>
-                                    {sessionUser === null ? wrhs.map((warehouse, index) => (
-                                        posWrhAccess[warehouse.name] && warehouse?.productCategories?.length && <option key={index} value={warehouse.name}>
-                                            {warehouse.name}
-                                        </option>
-                                    )) :
-                                        posSalesAccess.map((warehouse, index) => (
-                                            <option key={index} value={warehouse}>
-                                                {warehouse}
+                                <div className="entry-row">
+                                    <label>Opening Cash</label>
+                                    <input
+                                        type="number"
+                                        value={openingCash}
+                                        onChange={(e) => setOpeningCash(parseFloat(e.target.value) || 0)}
+                                        disabled={loading}
+                                        placeholder="Enter starting cash amount"
+                                    />
+                                </div>
+                                <div className="entry-row">
+                                    <label>Sales Post</label>
+                                    <select
+                                        value={wrh}
+                                        onChange={(e) => {
+                                            setWrh(e.target.value)
+                                            window.localStorage.setItem('pos-wrh', e.target.value)
+                                        }}
+                                        disabled={loading}
+                                    >
+                                        <option value={''}>Select Sales Post</option>
+                                        {sessionUser === null ? wrhs.map((warehouse, index) => (
+                                            posWrhAccess[warehouse.name] && warehouse?.productCategories?.length && <option key={index} value={warehouse.name}>
+                                                {warehouse.name}
                                             </option>
-                                        ))
-                                    }
-                                </select>
+                                        )) :
+                                            posSalesAccess.map((warehouse, index) => (
+                                                <option key={index} value={warehouse}>
+                                                    {warehouse}
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
+                                </div>
                             </div>
-                            <div className="session-actions">
+                            <div className="pos-session-actions">
                                 <button
-                                    className="session-btn start"
+                                    className="pos-session-btn start"
                                     onClick={handleStartSession}
                                     disabled={loading}
                                 >
@@ -3487,15 +3492,16 @@ const PointOfSales = () => {
                 )}
                 {endSession && (
                     <div className='closingsession'>
-                        <div className="session-entry">
+                        <div className="pos-session-entry">
                             <div className="modal-header">
                                 <h2>End Session {
                                     [''].map((args) => {
                                         const userProfile = employees.find((employee) => { return (employee.i_d === ((sessionUser === null) ? curSession.employee_id : sessionUser.profile.emailid)) })
-                                        return (userProfile ? <span>{`(${userProfile.firstName})`}</span> : <span>(Admin)</span>)
+                                        return (userProfile ? <span key={userProfile.i_d}>{`(${userProfile.firstName})`}</span> : <span>(Admin)</span>)
                                     })
                                 }</h2>
                                 <button
+                                    className="close-btn"
                                     onClick={() => {
                                         setEndSession(false)
                                         setSessionUser(null)
@@ -3504,132 +3510,130 @@ const PointOfSales = () => {
                                     }}
                                 >×</button>
                             </div>
-                            <div className="form-group">
-                                <label>Total Bank Sales</label>
-                                {Object.keys(allSales).map((payPoint) => {
-                                    if (payPoint !== 'cash') {
-                                        return (
-                                            <div key={payPoint}>
-                                                <label>{payPoint.toUpperCase()}</label>
-                                                <div className='session-entry-inputs'>
-                                                    <input
-                                                        style={{ cursor: 'not-allowed' }}
-                                                        type="number"
-                                                        value={allSales[payPoint] || 0}
-                                                        disabled={true}
-                                                        readOnly
-                                                    />
-                                                    <span>{'->'}</span>
-                                                    <input
-                                                        type="number"
-                                                        name={payPoint}
-                                                        value={countedSales[payPoint]}
-                                                        placeholder={'Counted Amount'}
-                                                        onChange={(e) => handleCountedSalesEntry(e)}
-                                                        disabled={loading}
-                                                    />
+                            <div className="form-group" style={{ maxHeight: '60vh', overflow: 'auto', paddingRight: '8px' }}>
+                                <div className="entry-row">
+                                    <label>Digital Sales Breakdown</label>
+                                    {Object.keys(allSales).map((payPoint) => {
+                                        if (payPoint !== 'cash') {
+                                            return (
+                                                <div key={payPoint} style={{ marginBottom: '16px' }}>
+                                                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>{payPoint.toUpperCase()}</label>
+                                                    <div className='session-entry-inputs'>
+                                                        <input
+                                                            style={{ cursor: 'not-allowed', background: '#f0f4f1' }}
+                                                            type="number"
+                                                            value={allSales[payPoint] || 0}
+                                                            disabled={true}
+                                                            readOnly
+                                                        />
+                                                        <span>→</span>
+                                                        <input
+                                                            type="number"
+                                                            name={payPoint}
+                                                            value={countedSales[payPoint]}
+                                                            placeholder={'Counted'}
+                                                            onChange={(e) => handleCountedSalesEntry(e)}
+                                                            disabled={loading}
+                                                        />
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontSize: '0.7rem', color: 'var(--pos-ink-soft)' }}>Difference:</span>
+                                                        <span style={{ 
+                                                            fontWeight: 'bold', 
+                                                            color: (posSalesDifference[payPoint] || 0) < 0 ? 'var(--pos-danger)' : 'var(--pos-success)',
+                                                            fontSize: '0.9rem'
+                                                        }}>
+                                                            {posSalesDifference[payPoint] || 0}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <input
-                                                    style={{ cursor: 'not-allowed' }}
-                                                    type="number"
-                                                    value={posSalesDifference[payPoint] || 0}
-                                                    disabled={true}
-                                                    readOnly
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                })}
-                            </div>
-                            <div className="form-group">
-                                <label>Total Cash Sales</label>
-                                <div>
-                                    <input
-                                        style={{ cursor: 'not-allowed' }}
-                                        type="number"
-                                        value={
-                                            ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash)
-                                            + (allSales['cash'] || 0)
-                                            - totalCashChange
+                                            );
                                         }
-                                        disabled={true}
-                                        readOnly
-                                    />
-                                    <span>{'->'}</span>
-                                    <input
-                                        type="number"
-                                        value={countedSales['cash']}
-                                        name='cash'
-                                        placeholder={'Counted Cash Amount'}
-                                        onChange={(e) => handleCountedSalesEntry(e)}
-                                        disabled={loading}
-                                    />
+                                        return null;
+                                    })}
                                 </div>
-                                <input
-                                    style={{ cursor: 'not-allowed' }}
-                                    type="number"
-                                    value={
-                                        (posSalesDifference['cash'] || 0)
-                                        - ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash)
-                                        + totalCashChange
-                                    }
-                                    disabled={true}
-                                    readOnly
-                                />
+
+                                <div className="entry-row">
+                                    <label>Cash Reconciliation</label>
+                                    <div className='session-entry-inputs'>
+                                        <input
+                                            style={{ cursor: 'not-allowed', background: '#f0f4f1' }}
+                                            type="number"
+                                            value={
+                                                ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash)
+                                                + (allSales['cash'] || 0)
+                                                - totalCashChange
+                                            }
+                                            disabled={true}
+                                            readOnly
+                                        />
+                                        <span>→</span>
+                                        <input
+                                            type="number"
+                                            value={countedSales['cash']}
+                                            name='cash'
+                                            placeholder={'Counted Cash'}
+                                            onChange={(e) => handleCountedSalesEntry(e)}
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--pos-ink-soft)' }}>Cash Difference:</span>
+                                        <span style={{ 
+                                            fontWeight: 'bold', 
+                                            color: ((posSalesDifference['cash'] || 0) - ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash) + totalCashChange) < 0 ? 'var(--pos-danger)' : 'var(--pos-success)',
+                                            fontSize: '0.9rem'
+                                        }}>
+                                            {(posSalesDifference['cash'] || 0) - ((sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash) + totalCashChange}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div className="entry-row" style={{ padding: '12px' }}>
+                                        <label style={{ fontSize: '0.7rem' }}>Opening Cash</label>
+                                        <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                            {(sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash}
+                                        </div>
+                                    </div>
+                                    <div className="entry-row" style={{ padding: '12px' }}>
+                                        <label style={{ fontSize: '0.7rem' }}>Total Change</label>
+                                        <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                            {totalCashChange}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div className="entry-row" style={{ padding: '12px', borderLeft: '4px solid var(--pos-warning)' }}>
+                                        <label style={{ fontSize: '0.7rem' }}>Pending Sales</label>
+                                        <div style={{ fontWeight: 'bold' }}>{totalPendingSales}</div>
+                                    </div>
+                                    <div className="entry-row" style={{ padding: '12px', borderLeft: '4px solid var(--pos-danger)' }}>
+                                        <label style={{ fontSize: '0.7rem' }}>Cancelled Sales</label>
+                                        <div style={{ fontWeight: 'bold' }}>{totalCancelledSales}</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="form-group">
-                                <label>Opening Cash</label>
-                                <input
-                                    style={{ cursor: 'not-allowed' }}
-                                    type="number"
-                                    value={(sessionUser === null) ? curSession.openingCash : sessionUser.curSession.openingCash}
-                                    readOnly
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Total Cash Change</label>
-                                <input
-                                    style={{ cursor: 'not-allowed' }}
-                                    type="number"
-                                    value={totalCashChange}
-                                    readOnly
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Total Pending Sales</label>
-                                <input
-                                    style={{ cursor: 'not-allowed' }}
-                                    type="number"
-                                    value={totalPendingSales}
-                                    readOnly
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Total Cancelled Sales</label>
-                                <input
-                                    style={{ cursor: 'not-allowed' }}
-                                    type="number"
-                                    value={totalCancelledSales}
-                                    readOnly
-                                />
-                            </div>
-                            <div className="session-actions">
+                            <div className="pos-session-actions" style={{ marginTop: '20px' }}>
                                 <button
-                                    className="session-btn end"
+                                    className="pos-session-btn end"
                                     onClick={() => {
+                                        // const { shortages } = handleSalesUdpate()
                                         handleEndSession()
                                     }}
                                     disabled={loading}
                                 >
-                                    {loading ? 'Ending...' : 'End Session'}
+                                    {loading ? 'Ending...' : 'Confirm & End Session'}
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
             </>
-        );
-    };
+        )
+    }
+
     const renderKeypad = () => (
         <div className="keypad-section">
             <div className="quantity-display">{quantity || '0'}</div>
@@ -3757,7 +3761,7 @@ const PointOfSales = () => {
                 >
                     Print For Bar
                 </button>}
-                {currentOrder.items?.length
+                {currentOrder.items?.length > 0
                 && ((currentOrder.handlerId === (curPosHandler || companyRecord.emailid))
                     || companyRecord?.status === 'admin'
                     || companyRecord?.permissions?.includes('access_pos_sessions')
@@ -4086,7 +4090,7 @@ const PointOfSales = () => {
                     setAlertTimeout={setAlertTimeout}
                     wrhCategories={wrhCategories}
                 /> :
-                <div>
+                <div className="pos-main-shell">
                     {activeScreen === 'order' && (
                         <div className="pos-mini-header">
                             <div className="header-info">
@@ -4935,8 +4939,8 @@ const POSDashboard = ({
 
     return (
         <>
-            <div className='pos-sessions'>
-                <div className='pos-sessions-nav'>
+            <div className='pos-session-board'>
+                <div className='pos-session-board-nav'>
                     <div className={'live-nav'}>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <select
                             className="action-btn"
@@ -4948,7 +4952,6 @@ const POSDashboard = ({
                                     setFilteredSessions(null)
                                 }
                             }}
-                            style={{ marginRight: '10px' }}
                             disabled={!companyRecord?.status === 'admin' && !companyRecord?.permissions.includes('edit_ended_sessions')}
                         >
                             <option value={'general'}>General</option>
@@ -4957,7 +4960,6 @@ const POSDashboard = ({
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_pos_report')) && <button
                             className="action-btn"
                             onClick={() => setShowReports(true)}
-                            style={{ marginRight: '10px' }}
                         >
                             View Reports
                         </button>}
@@ -4971,7 +4973,6 @@ const POSDashboard = ({
                                 setViewSessions(false)
                                 fetchTables(company)
                             }}
-                            style={{ marginRight: '10px' }}
                         >
                             POS Tables
                         </button>}
@@ -4981,11 +4982,11 @@ const POSDashboard = ({
                         </span>
                     </div>
                 </div>
-                <div className='pos-sessions-view'>
-                    {companyRecord?.status === 'admin' && <div className='update-sessions-state'>
-                        <label className='session-manager-label'>Session Manager</label>
+                <div className='pos-session-board-view'>
+                    {companyRecord?.status === 'admin' && <div className='pos-session-manager-panel'>
+                        <label className='pos-session-manager-label'>Session Manager</label>
                         <div 
-                            className='session-state-label'
+                            className='pos-session-manager-toggle'
                             onClick={()=>{
                                 if ((currSessionManager === null || currSessionManager?.end)){
                                     if (!activeSessions.length){
@@ -5025,7 +5026,7 @@ const POSDashboard = ({
                             {((currSessionManager === null || currSessionManager?.end)) ? 'Start' : 'Stop'}
                         </div>
                     </div>}
-                    <div className='pos-sessions-list'>
+                    <div className='pos-session-card-list' style={{ display: 'flex', flexWrap: 'wrap' }}>
                         {profiles?.map((profile) => {
                             if (profile.status !== 'admin' || companyRecord.status === 'admin') {
                                 var hasPosSalesAccess = false
@@ -5067,13 +5068,13 @@ const POSDashboard = ({
                                         }
                                     }
                                     return (
-                                        <div className='pos-sessions-card' key={profile.emailid}>
-                                            <span className='pos-sessions-card-name'>{`${firstName} ${lastName} ${employeeSession ? `(${employeeSession.wrh})` : ''}`}</span>
-                                            <span className='pos-sessions-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
+                                        <div className='pos-session-card' key={profile.emailid}>
+                                            <span className='pos-session-card-name'>{`${firstName} ${lastName} ${employeeSession ? `(${employeeSession.wrh})` : ''}`}</span>
+                                            <span className='pos-session-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
                                             <div>
-                                                <h4 className='pos-sessions-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
+                                                <h4 className='pos-session-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
                                                 <div
-                                                    className='pos-sessions-card-action'
+                                                    className='pos-session-card-action'
                                                     onClick={() => {
                                                         if (profile.status !== 'admin' || companyRecord.status === 'admin') {                                                            
                                                             var viewModal = true
