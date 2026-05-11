@@ -3461,7 +3461,14 @@ function App() {
           const sesn = window.localStorage.getItem('sess-recg-id')
           const session = window.localStorage.getItem('idt-curr-usr')
           if (sesn !== null && session != null) {
-            if (sesn / session === sess) {
+            let isValid = false;
+            if (sesn.includes('-')) {
+              const [timestamp, expectedSess] = sesn.split('-');
+              isValid = (timestamp === session && Number(expectedSess) === sess);
+            } else {
+              isValid = (Math.round(Number(sesn) / Number(session)) === sess || Number(sesn) / Number(session) === sess);
+            }
+            if (isValid) {
               loadPage(sid, currPath)
             } else {
               removeSessions()
