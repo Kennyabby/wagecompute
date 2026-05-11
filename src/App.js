@@ -49,13 +49,6 @@ import {
 const SERVER = "https://api.epxcentral.com"
 // const SERVER = "http://localhost:3001"
 // const SERVER = ""
-// const SERVER = "https://enterpriseserver2.up.railway.app"
-// const SERVER = "https://enterpriseserver1.up.railway.app"
-// const SERVER = "https://enterpriseserver.up.railway.app"
-// const SERVER = "https://enterpriseserver-1.vercel.app"
-// const SERVER = "https://wageserver.onrender.com"
-// const SERVER = "https://hserver.techpros.com.ng"
-// const SERVER = "http://3.251.76.94"
 
 // App-level cache helpers now backed by IndexedDB (appCache store)
 const CACHE_TTL_MS = 1 * 60 * 1000; // 1 minute TTL
