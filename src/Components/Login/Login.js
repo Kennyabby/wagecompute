@@ -1,6 +1,6 @@
 import "./Login.css";
 import { useState, useEffect, useContext, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { IoEyeOutline, IoEyeOffOutline, IoFingerPrintOutline } from 'react-icons/io5';
 import { HiLogin, HiLogout, HiClock, HiShieldCheck } from 'react-icons/hi';
 import { MdOutlineKeyboardAlt, MdBackspace } from 'react-icons/md';
@@ -25,8 +25,10 @@ const Login = () => {
   const [showSymbols, setShowSymbols] = useState(false);
 
   const Navigate = useNavigate()
+  const location = useLocation()
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
+  const requestedNext = new URLSearchParams(location.search).get('next') === 'settings' ? 'settings' : 'dashboard'
 
   // Update current time every second
   useEffect(() => {
@@ -133,6 +135,8 @@ const Login = () => {
 
   useEffect(() => {
     storePath('login')
+    // set page title
+    document.title = "Login - Enterprise Compute"
   }, [storePath])
 
   useEffect(() => {
@@ -157,8 +161,6 @@ const Login = () => {
       setSigninStatus("Signing In...")
       setLoginMessage("")
       const resp = await fetchServer("POST", {
-        database: "WCDatabase",
-        collection: "Profiles",
         pass: field.password,
         prop: { 'emailid': field.emailid }
       }, "authenticateUser", server)
@@ -171,7 +173,11 @@ const Login = () => {
         }, 5000)
       } else {
         if (resp.mess) {
-          setLoginMessage(resp.mess)
+          if (resp.mess === 'Invalid Tenant'){
+            setLoginMessage("Invalid User ID or Password") 
+          }else{
+            setLoginMessage(resp.mess)
+          }
           setSigninStatus("Sign In")
           setTimeout(() => {
             setLoginMessage("")
@@ -192,7 +198,8 @@ const Login = () => {
             return ({ ...field, emailid: "", password: "" })
           })
           setSigninStatus("Sign In")
-          loadPage(idVal, 'dashboard')
+          console.log("loading page with idVal: ", idVal)
+          loadPage(idVal, requestedNext)
         }
       }
     }
@@ -577,7 +584,7 @@ const Login = () => {
             </motion.div>
 
             <div className="form-options">
-              <div className="forgot-pass">Forgot Password?</div>
+              <div className="forgot-pass" onClick={() => Navigate('/forgot-password')} style={{ cursor: 'pointer' }}>Forgot Password?</div>
             </div>
 
             <motion.button
@@ -594,6 +601,10 @@ const Login = () => {
 
             <div className="form-footer-note">
               <p><b>Security Note:</b> Never share your security pin or password with anyone. We'll never ask for your private data via email or call.</p>
+            </div>
+            
+            <div className="form-footer-note" style={{ textAlign: 'center', marginTop: '16px' }}>
+              <p>Don't have an account? <span onClick={() => Navigate('/signup')} style={{ color: 'var(--ec-secondary)', cursor: 'pointer', fontWeight: 'bold' }}>Sign up</span></p>
             </div>
           </div>
         </div>

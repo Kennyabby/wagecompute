@@ -297,7 +297,7 @@ const Employees = () => {
         delete newEmpValue._id
         setFields({ ...newEmpValue })
     }
-    const filteredEmployees = employees.filter((empl) => {
+    const filteredEmployees = (employees || [])?.filter((empl) => {
         const dismissalStatus = empl.dismissalDate ? 'dismissed' : 'current'
         if (dismissalStatus !== employeeType) {
             return false

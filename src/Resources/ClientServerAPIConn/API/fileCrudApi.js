@@ -16,7 +16,6 @@ function fileToBase64(file) {
 export async function uploadFile(file, folderPath, createdAt, company, collection, server /* folderPAth: e.g. "/Payment Receipts" */) {
   const base64 = await fileToBase64(file);
   const res = fetchServer('POST',{
-        database: company,
         collection: collection,
         prop:[{createdAt: createdAt}],
         imageInfo: {
@@ -36,7 +35,6 @@ export async function uploadFile(file, folderPath, createdAt, company, collectio
 export async function updateFile(fileId, file, createdAt, company, collection, server) {
   const base64 = await fileToBase64(file);
   const res = fetchServer('POST',{
-        database: company,
         collection: collection,
         prop:[{createdAt: createdAt}],
         imageInfo: {

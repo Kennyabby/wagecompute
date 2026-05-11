@@ -1941,7 +1941,7 @@ const Delivery = () => {
                 )}
                 {startSession && (
                     <div className='openingsession'>
-                        <div className="session-entry">
+                        <div className="delivery-session-entry">
                             <div className="modal-header">
                                 <h2>Start Session {
                                     [''].map((args) => {
@@ -1982,9 +1982,9 @@ const Delivery = () => {
                                     }
                                 </select>
                             </div>
-                            <div className="session-actions">
+                            <div className="delivery-session-actions">
                                 <button
-                                    className="session-btn start"
+                                    className="delivery-session-btn start"
                                     onClick={handleStartSession}
                                     disabled={loading}
                                 >
@@ -1996,7 +1996,7 @@ const Delivery = () => {
                 )}
                 {endSession && (
                     <div className='closingsession'>
-                        <div className="session-entry">
+                        <div className="delivery-session-entry">
                             <div className="modal-header">
                                 <h2>End Session {
                                     [''].map((args) => {
@@ -2024,9 +2024,9 @@ const Delivery = () => {
                                     readOnly
                                 />
                             </div>
-                            <div className="session-actions">
+                            <div className="delivery-session-actions">
                                 <button
-                                    className="session-btn end"
+                                    className="delivery-session-btn end"
                                     onClick={() => {
                                         handleEndSession(salesShortages)
                                     }}
@@ -2187,14 +2187,14 @@ const Delivery = () => {
                             {
                                 <div className={'live-nav'}>
                                     {<button
-                                        className="action-btn"
+                                        className="delivery-page-action-btn"
                                         onClick={handleSyncOfflineDelivery}
                                         disabled={isSyncing}
                                     >
                                         {isSyncing ? 'Syncing...' : 'Sync()'}
                                     </button>}
                                     {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button
-                                        className="action-btn"
+                                        className="delivery-page-action-btn"
                                         onClick={() => setViewSessions(true)}
                                     >
                                         All Sessions
@@ -2388,7 +2388,7 @@ const Delivery = () => {
                             </div>
                             <div className="header-actions">
                                 {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('place_multiple_deliveries')) && <button
-                                    className="action-btn"
+                                    className="delivery-page-action-btn"
                                     disabled={placingOrder}
                                     onClick={() => {
                                         postAllDeliveries()
@@ -2398,7 +2398,7 @@ const Delivery = () => {
                                 </button>}
                                 <button
                                     name="prevTable"
-                                    className='action-btn'
+                                    className='delivery-page-action-btn'
                                     onClick={switchTable}
                                 >
                                     {'<'}
@@ -2406,13 +2406,13 @@ const Delivery = () => {
                                 <span style={{ margin: "auto" }}>{'.'}</span>
                                 <button
                                     name="nextTable"
-                                    className='action-btn'
+                                    className='delivery-page-action-btn'
                                     onClick={switchTable}
                                 >
                                     {'>'}
                                 </button>
                                 <button
-                                    className="action-btn"
+                                    className="delivery-page-action-btn"
                                     // disabled={makingPayment}
                                     onClick={() => {
                                         fetchTables(company)
@@ -3097,18 +3097,18 @@ const DeliveryDashboard = ({
     }
     return (
         <>
-            <div className='pos-sessions'>
-                <div className='pos-sessions-nav'>
+            <div className='pos-container'>
+                <div className='pos-session-board-nav'>
                     <div className={'live-nav'}>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reconcile_inventory')) && <button
-                            className="action-btn"
+                            className="pos-session-card-action"
                             onClick={() => setProductAdd(true)}
                             style={{ marginRight: '10px' }}
                         >
                             Reconcile Inventory
                         </button>}
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button
-                            className="action-btn"
+                            className="pos-session-card-action"
                             onClick={() => {
                                 var wrhAccess = Object.keys(deliveryWrhAccess).filter((wrh) => {
                                     return deliveryWrhAccess[wrh]
@@ -3126,8 +3126,8 @@ const DeliveryDashboard = ({
                     </div>
                 </div>
 
-                <div className='pos-sessions-view'>
-                    <div className='pos-sessions-list'>
+                <div className='pos-session-board-view'>
+                    <div className='pos-session-card-list'>
                         {profiles?.map((profile) => {
                             if (profile.status !== 'admin' || companyRecord.status === 'admin') {
                                 var hasPosDeliveryAccess = false
@@ -3171,13 +3171,13 @@ const DeliveryDashboard = ({
                                         }
                                     }
                                     return (
-                                        <div className='pos-sessions-card' key={profile.emailid}>
-                                            <span className='pos-sessions-card-name'>{`${firstName} ${lastName} ${employeeSession ? `(${employeeSession.wrh})` : ''}`}</span>
-                                            <span className='pos-sessions-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
+                                        <div className='pos-session-card' key={profile.emailid}>
+                                            <span className='pos-session-card-name'>{`${firstName} ${lastName} ${employeeSession ? `(${employeeSession.wrh})` : ''}`}</span>
+                                            <span className='pos-session-card-time'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? `Started: ${new Date(employeeSession.start).toLocaleString()}` : (employeeSession.end ? `Ended: ${new Date(employeeSession.end).toLocaleString()}` : `Started: ${new Date(employeeSession.start).toLocaleString()}`))}</span>
                                             <div>
-                                                <h4 className='pos-sessions-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
+                                                <h4 className='pos-session-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
                                                 <div
-                                                    className='pos-sessions-card-action'
+                                                    className='pos-session-card-action'
                                                     onClick={() => {
                                                         if (profile.status !== 'admin' || companyRecord?.status === 'admin') {
                                                             var viewModal = true

@@ -131,8 +131,6 @@ const SideNav = () => {
     const logout = async () => {
         setLogStatus('Ending Session')
         const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Profile",
             record: companyRecord
         }, "closeSession", server)
 
@@ -192,7 +190,12 @@ const SideNav = () => {
 
     const navItems = [
         hasPermission('dashboard') && { name: 'dashboard', label: 'Dashboard', meta: 'Overview', icon: BiSolidDashboard },
-        hasPermission('reports') && { name: 'reports', label: 'Reports', meta: 'Insights', icon: BsTable },
+        (hasPermission('journals') || hasPermission('reports')) && {
+            name: 'journals',
+            label: 'Journals & COA',
+            meta: 'Accounting',
+            icon: BsTable
+        },
         hasPermission('employees') && { name: 'employees', label: 'Employees', meta: 'People', icon: FaUsers },
         hasPermission('departments') && { name: 'departments', label: 'Departments', meta: 'Teams', icon: MdSubject },
         hasPermission('positions') && { name: 'positions', label: 'Positions', meta: 'Roles', icon: CgArrangeBack },
@@ -289,7 +292,7 @@ const SideNav = () => {
             <div className={`menu-overlay ${isMenuOpen ? 'open' : ''}`} onClick={toggleMenu}></div>
             <div className={`sidenav ${isMenuOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className='navheader'>
-                    <div className='navbrand'>
+                    <div className='navbrand' style={{cursor: 'pointer'}} onClick={()=>{Navigate('/')}}>
                         <div className='navbrand-mark'>{companyInitials || 'CO'}</div>
                         {!isCollapsed && <div className='navbrand-copy'>
                             <span className='navbrand-title'>{companyName.toUpperCase()}</span>

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import CentralAdminApp from './Components/CentralAdmin/CentralAdminApp';
 // import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter } from 'react-router-dom';
@@ -18,7 +19,10 @@ const render = (Component) => {
 };
 
 // Initial render
-render(App);
+const hostname = window.location.hostname.toLowerCase();
+const isCentralAdminHost = hostname === 'admin.localhost' || hostname === 'admin.epxcentral.com';
+
+render(isCentralAdminHost ? CentralAdminApp : App);
 
 // Register the service worker and set up the onUpdate callback
 // serviceWorkerRegistration.register({

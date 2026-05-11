@@ -1,19 +1,36 @@
-import { useContext } from "react"
-import ContextProvider from "../../Resources/ContextProvider"
 const fetchServer = async (method, body, endpoint, server, signal) => {
     // Skip auth checks for login and token endpoints
-    const isAuthEndpoint = ['login', 'token', 'authenticateUser'].includes(endpoint);
-    
+    const isAuthEndpoint = ['login', 'token', 'authenticateUser', 'admin/auth/login'].includes(endpoint);
+    const normalizedMethod = String(method || 'GET').toUpperCase();
+    const supportsRequestBody = !['GET', 'HEAD'].includes(normalizedMethod);
+    const requestUrl = server
+        ? new URL(`${server}/${endpoint}`)
+        : new URL(`/${endpoint}`, window.location.origin);
+
+    if (!supportsRequestBody && body && typeof body === 'object') {
+        Object.entries(body).forEach(([key, value]) => {
+            if (value === undefined || value === null || value === '') return;
+            requestUrl.searchParams.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+        });
+    }
+
+    // Attach stored access token (if any) to Authorization header for cross-origin requests
+    const storedToken = typeof window !== 'undefined' ? window.localStorage.getItem('accessToken') : null;
+
     const data = {
-        method,
+        method: normalizedMethod,
         credentials: 'include',
-        headers: {
+        headers: supportsRequestBody ? {
             'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            ...body
-        }),
+            ...(storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {})
+        } : (storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {}),
     };
+
+    if (supportsRequestBody) {
+        data.body = JSON.stringify({
+            ...(body || {})
+        });
+    }
     
     if (signal) {
         data.signal = signal;
@@ -21,7 +38,7 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
         delete data.signal;
     }
     try {
-        let resp = await fetch(server + '/' + endpoint, data);
+        let resp = await fetch(requestUrl.toString(), data);
         
         // Skip token refresh for auth-related endpoints
         if ((resp.status === 403 || resp.status === 401) && !isAuthEndpoint) {
@@ -39,7 +56,7 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
                 }
 
                 // Retry the original request with new token
-                resp = await fetch(server + '/' + endpoint, data);
+                resp = await fetch(requestUrl.toString(), data);
                 
                 // If we get another 401 after refresh, session is truly expired
                 if (resp.status === 401) {
@@ -47,6 +64,10 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
                 }
                 
                 const responseData = await resp.json();
+                // If token refresh returned a token in body, store it
+                if (responseData && responseData.accessToken) {
+                    window.localStorage.setItem('accessToken', responseData.accessToken);
+                }
                 return { err: false, ...responseData };
                 
             } catch (error) {
@@ -56,6 +77,7 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
                 window.localStorage.removeItem('sess-recg-id');
                 window.localStorage.removeItem('idt-curr-usr');
                 window.localStorage.removeItem('sessn-id');
+                window.localStorage.removeItem('accessToken');
                 
                 // Only redirect if not already on login page to prevent loops
                 if (!window.location.pathname.includes('/login')) {
@@ -73,8 +95,15 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
         }
 
         const response = await resp.json()
+        // On login (authenticateUser) store returned accessToken for Authorization header use
+        if (!response.err && response.accessToken) {
+            window.localStorage.setItem('accessToken', response.accessToken);
+        }
+        if (!resp.ok) {
+            return { err: true, status: resp.status, ...response }
+        }
 
-        return {err: false, ...response}
+        return { err: false, status: resp.status, ...response }
 
     } catch (error) {
         // Handle different types of errors

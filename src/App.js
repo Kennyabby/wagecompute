@@ -1,15 +1,30 @@
 import { useEffect, useState, useCallback } from 'react';
 import './App.css';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import ContextProvider from './Resources/ContextProvider';
 import PauseView from './Components/PauseView/PauseView';
 import LoadingPage from './Components/LoadingPage/LoadingPage';
+import LandingPage from './Components/LandingPage/LandingPage';
+import PricingPage from './Components/LandingPage/PricingPage';
+import CommunityPage from './Components/LandingPage/CommunityPage';
+import PaymentConfirmPage from './Components/LandingPage/PaymentConfirmPage';
+import HelpPage from './Components/LandingPage/HelpPage';
 import Login from './Components/Login/Login';
+import Signup from './Components/Login/Signup';
+import ForgotPassword from './Components/Login/ForgotPassword';
+import DatabaseNotFound from './Components/LandingPage/DatabaseNotFound';
+import LicenseExpired from './Components/LandingPage/LicenseExpired';
 import Profile from './Components/Profile/Profile';
 import Dashboard from './Components/Dashboard/Dashboard';
 import DashView from './Components/DashView/DashView';
 import FormPage from './Components/FormPage/FormPage';
 import Notify from './Resources/Notify/Notify';
+import AboutPage from './Components/LandingPage/AboutPage';
+import CareersPage from './Components/LandingPage/CareersPage';
+import PartnersPage from './Components/LandingPage/PartnersPage';
+import DocsPage from './Components/LandingPage/DocsPage';
+import LegalPage from './Components/LandingPage/LegalPage';
+
 import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
@@ -68,11 +83,65 @@ const clearCache = (companyKey, resource, emailid) => {
   clearAppCache(companyKey, emailid, resource);
 };
 
+const getCollectionItemKey = (item = {}) =>
+  item?._id ||
+  item?.i_d ||
+  item?.orderNumber ||
+  item?.start ||
+  item?.emailid ||
+  item?.name ||
+  item?.no ||
+  null;
+
+const matchesSseFilter = (item = {}, filter = {}) => {
+  if (!filter || typeof filter !== 'object') return false;
+  return Object.entries(filter).every(([key, value]) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return true;
+    }
+    return String(item?.[key]) === String(value);
+  });
+};
+
+const applySseCollectionChange = (existing = [], payload = {}) => {
+  const current = Array.isArray(existing) ? existing : [];
+  const op = payload?.op;
+  const data = payload?.data;
+
+  if (op === 'remove') {
+    const filter = data?.filter || data || {};
+    return current.filter((item) => !matchesSseFilter(item, filter));
+  }
+
+  if ((op === 'update' || op === 'updateMany') && Array.isArray(data) && data.length === 2 && !getCollectionItemKey(data[0])) {
+    const [filter, patch] = data;
+    return current.map((item) => (matchesSseFilter(item, filter) ? { ...item, ...patch } : item));
+  }
+
+  const incoming = Array.isArray(data) ? data : data ? [data] : [];
+  const map = {};
+  current.forEach((item) => {
+    const key = getCollectionItemKey(item);
+    if (key) map[key] = item;
+  });
+  incoming.forEach((item) => {
+    const key = getCollectionItemKey(item);
+    if (key) map[key] = item;
+  });
+
+  if (Object.keys(map).length > 0) {
+    return Object.values(map);
+  }
+
+  return current;
+};
+
 function App() {
 
+  const [showLoading, setShowLoading] = useState(true)
   const [viewAccess, setViewAccess] = useState(null)
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
-
+  const [showSubscriptionBanner, setShowSubscriptionBanner] = useState(false)
   const [saleNextFrom, setSaleNextFrom] = useState(null)
   const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
   const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
@@ -128,6 +197,7 @@ function App() {
   const [changingSettings, setChangingSettings] = useState(false)
 
   const [chartOfAccounts, setChartOfAccounts] = useState([])
+  const [accountingLiveBalances, setAccountingLiveBalances] = useState(null)
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
   const [salesLoadCount, setSalesLoadCount] = useState(0)
@@ -140,10 +210,13 @@ function App() {
   const [rentals, setRentals] = useState([])
   const [company, setCompany] = useState(null)
   const [loadedCurPath, setLoadedCurPath] = useState('')
+  const [loadingState, setLoadingState] = useState(true)
   const [path, setPath] = useState('')
   const [isHydrated, setIsHydrated] = useState(false)
   const [isSSEConnected, setIsSSEConnected] = useState(false)
   const [isInitialSyncDone, setIsInitialSyncDone] = useState(false)
+  const [isProduction, setIsProduction] = useState(false)
+  const [subscriptionState, setSubscriptionState] = useState(null)
 
   const intervalPeriod = 3600000; // 60 minutes
   // Guarded fetchServer: when SSE is connected and initial sync done,
@@ -207,10 +280,11 @@ function App() {
     // default: call original fetchServer
     return await fetchServer(method, body, endpoint, serverParam, signal)
   }
+
   const pathList = ['', 'login', 'profile', 'dashboard',
-    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'accommodations', 'purchase', 'expenses', 'reports', 'settings', 'test']
+    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
   const dashList = ['dashboard',
-    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'accommodations', 'purchase', 'expenses', 'reports', 'settings']
+    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
   const months = [
     'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
     'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
@@ -224,9 +298,40 @@ function App() {
 
   const initialYear = '2025'
 
-  const [hostDb, setHostDb] = useState('The_Plantain_Planet')
-  const genDb = 'WCDatabase'
   const Navigate = useNavigate()
+  const location = useLocation()
+
+  const refreshSubscriptionState = async (seedStatus = null) => {
+    if (seedStatus) {
+      setSubscriptionState(seedStatus)
+      if (seedStatus.isSuspended) {
+        window.localStorage.removeItem('ps-vw')
+      } else {
+        window.localStorage.setItem('ps-vw', 'true')
+      }
+      setPauseView(false)
+      setShowLoading(false)
+      return seedStatus
+    }
+
+    const response = await fetchServer("POST", {
+      prop: {}
+    }, "getActivationDetails", SERVER)
+
+    if (!response.err && response.currentStatus) {
+      setSubscriptionState(response.currentStatus)
+      if (response.currentStatus.isSuspended) {
+        window.localStorage.removeItem('ps-vw')
+      } else {
+        window.localStorage.setItem('ps-vw', 'true')
+      }
+      setPauseView(false)
+      setShowLoading(false)
+      return response.currentStatus
+    }
+
+    return null
+  }
 
   useEffect(() => {
     if (!company || !companyRecord?.emailid) return;
@@ -421,24 +526,11 @@ function App() {
               break;
             case 'Products':
               try {
-                if (Array.isArray(payload.data)) {
-                  const existing = Array.isArray(products) ? [...products] : [];
-                  const map = {};
-                  existing.forEach(p => { if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
-                  payload.data.forEach(p => { if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
-                  const merged = Object.values(map);
-                  setProducts(merged);
+                setProducts((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
                   setCached(company, 'products', merged, companyRecord?.emailid);
-                } else if (payload.data && typeof payload.data === 'object') {
-                  const p = payload.data;
-                  const existing = Array.isArray(products) ? [...products] : [];
-                  const map = {};
-                  existing.forEach(pp => { if (pp && (pp._id || pp.i_d)) map[pp._id || pp.i_d] = pp });
-                  map[p._id || p.i_d] = p;
-                  const merged = Object.values(map);
-                  setProducts(merged);
-                  setCached(company, 'products', merged, companyRecord?.emailid);
-                }
+                  return merged;
+                });
               } catch (e) {
                 console.error('SSE Products apply error', e);
                 setReloadCount(c => c + 1)
@@ -446,24 +538,11 @@ function App() {
               break;
             case 'Sales':
               try {
-                if (Array.isArray(payload.data)) {
-                  const existing = Array.isArray(sales) ? [...sales] : [];
-                  const map = {};
-                  existing.forEach(s => { if (s && (s._id || s.i_d)) map[s._id || s.i_d] = s });
-                  payload.data.forEach(s => { if (s && (s._id || s.i_d)) map[s._id || s.i_d] = s });
-                  const merged = Object.values(map);
-                  setSales(merged);
+                setSales((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
                   setCached(company, 'sales', merged, companyRecord?.emailid);
-                } else if (payload.data && typeof payload.data === 'object') {
-                  const item = payload.data;
-                  const existing = Array.isArray(sales) ? [...sales] : [];
-                  const map = {};
-                  existing.forEach(s => { if (s && (s._id || s.i_d)) map[s._id || s.i_d] = s });
-                  map[item._id || item.i_d] = item;
-                  const merged = Object.values(map);
-                  setSales(merged);
-                  setCached(company, 'sales', merged, companyRecord?.emailid);
-                }
+                  return merged;
+                });
               } catch (e) {
                 console.error('SSE Sales apply error', e);
                 setReloadCount(c => c + 1)
@@ -471,24 +550,11 @@ function App() {
               break;
             case 'Purchase':
               try {
-                if (Array.isArray(payload.data)) {
-                  const existing = Array.isArray(purchase) ? [...purchase] : [];
-                  const map = {};
-                  existing.forEach(p => { if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
-                  payload.data.forEach(p => { if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
-                  const merged = Object.values(map);
-                  setPurchase(merged);
+                setPurchase((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
                   setCached(company, 'purchase', merged, companyRecord?.emailid);
-                } else if (payload.data && typeof payload.data === 'object') {
-                  const it = payload.data;
-                  const existing = Array.isArray(purchase) ? [...purchase] : [];
-                  const map = {};
-                  existing.forEach(p => { if (p && (p._id || p.i_d)) map[p._id || p.i_d] = p });
-                  map[it._id || it.i_d] = it;
-                  const merged = Object.values(map);
-                  setPurchase(merged);
-                  setCached(company, 'purchase', merged, companyRecord?.emailid);
-                }
+                  return merged;
+                });
               } catch (e) {
                 console.error('SSE Purchase apply error', e);
                 setReloadCount(c => c + 1)
@@ -496,24 +562,11 @@ function App() {
               break;
             case 'Expenses':
               try {
-                if (Array.isArray(payload.data)) {
-                  const existing = Array.isArray(expenses) ? [...expenses] : [];
-                  const map = {};
-                  existing.forEach(x => { if (x && (x._id || x.i_d)) map[x._id || x.i_d] = x });
-                  payload.data.forEach(x => { if (x && (x._id || x.i_d)) map[x._id || x.i_d] = x });
-                  const merged = Object.values(map);
-                  setExpenses(merged);
+                setExpenses((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
                   setCached(company, 'expenses', merged, companyRecord?.emailid);
-                } else if (payload.data && typeof payload.data === 'object') {
-                  const it = payload.data;
-                  const existing = Array.isArray(expenses) ? [...expenses] : [];
-                  const map = {};
-                  existing.forEach(x => { if (x && (x._id || x.i_d)) map[x._id || x.i_d] = x });
-                  map[it._id || it.i_d] = it;
-                  const merged = Object.values(map);
-                  setExpenses(merged);
-                  setCached(company, 'expenses', merged, companyRecord?.emailid);
-                }
+                  return merged;
+                });
               } catch (e) {
                 console.error('SSE Expenses apply error', e);
                 setReloadCount(c => c + 1)
@@ -521,27 +574,154 @@ function App() {
               break;
             case 'Accommodations':
               try {
-                if (Array.isArray(payload.data)) {
-                  const existing = Array.isArray(accommodations) ? [...accommodations] : [];
-                  const map = {};
-                  existing.forEach(a => { if (a && (a._id || a.i_d)) map[a._id || a.i_d] = a });
-                  payload.data.forEach(a => { if (a && (a._id || a.i_d)) map[a._id || a.i_d] = a });
-                  const merged = Object.values(map);
-                  setAccommodations(merged);
+                setAccommodations((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
                   setCached(company, 'accommodations', merged, companyRecord?.emailid);
-                } else if (payload.data && typeof payload.data === 'object') {
-                  const it = payload.data;
-                  const existing = Array.isArray(accommodations) ? [...accommodations] : [];
-                  const map = {};
-                  existing.forEach(a => { if (a && (a._id || a.i_d)) map[a._id || a.i_d] = a });
-                  map[it._id || it.i_d] = it;
-                  const merged = Object.values(map);
-                  setAccommodations(merged);
-                  setCached(company, 'accommodations', merged, companyRecord?.emailid);
-                }
+                  return merged;
+                });
               } catch (e) {
                 console.error('SSE Accommodations apply error', e);
                 setReloadCount(c => c + 1)
+              }
+              break;
+            case 'Rentals':
+              try {
+                setRentals((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
+                  setCached(company, 'rentals', merged, companyRecord?.emailid);
+                  return merged;
+                });
+              } catch (e) {
+                console.error('SSE Rentals apply error', e);
+                setReloadCount(c => c + 1)
+              }
+              break;
+            case 'Attendance':
+              try {
+                setAttendance((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
+                  setCached(company, 'attendance', merged, companyRecord?.emailid);
+                  return merged;
+                });
+              } catch (e) {
+                console.error('SSE Attendance apply error', e);
+                setReloadCount(c => c + 1)
+              }
+              break;
+            case 'Settings':
+              try {
+                setSettings((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
+                  setCached(company, 'settings', merged, companyRecord?.emailid);
+                  return merged;
+                });
+              } catch (e) {
+                console.error('SSE Settings apply error', e);
+                setReloadCount(c => c + 1)
+              }
+              break;
+            case 'ChartOfAccounts':
+              try {
+                setChartOfAccounts((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
+                  setCached(company, 'chartOfAccounts', merged, companyRecord?.emailid);
+                  return merged;
+                });
+              } catch (e) {
+                console.error('SSE ChartOfAccounts apply error', e);
+                setReloadCount(c => c + 1)
+              }
+              break;
+            case 'Approvals':
+              try {
+                setApprovals((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
+                  setCached(company, 'approvals', merged, companyRecord?.emailid);
+                  return merged;
+                });
+              } catch (e) {
+                console.error('SSE Approvals apply error', e);
+                setReloadCount(c => c + 1)
+              }
+              break;
+            case 'AccountingLiveBalances':
+              try {
+                const liveSnapshot = payload.data || null;
+                setAccountingLiveBalances(liveSnapshot);
+                setCached(company, 'accountingLiveBalances', liveSnapshot, companyRecord?.emailid);
+                if (liveSnapshot?.fromDate && liveSnapshot?.toDate) {
+                  const liveSnapshotKey = `journal-snapshot-${liveSnapshot.fromDate}-${liveSnapshot.toDate}`;
+                  setCached(company, liveSnapshotKey, {
+                    balances: liveSnapshot.balances || {},
+                    rawLedger: liveSnapshot.rawLedger || {},
+                    reports: liveSnapshot.reports || {},
+                  }, companyRecord?.emailid);
+                }
+                window.dispatchEvent(new CustomEvent('wc:accounting-live-update', {
+                  detail: {
+                    company,
+                    snapshot: liveSnapshot,
+                  }
+                }));
+              } catch (e) {
+                console.error('SSE AccountingLiveBalances apply error', e);
+              }
+              break;
+            case 'AccountingSummaries':
+              try {
+                const summaryDoc = payload.data || null;
+                if (summaryDoc?.fromDate && summaryDoc?.toDate) {
+                  const summaryKey = `journal-snapshot-${summaryDoc.fromDate}-${summaryDoc.toDate}`;
+                  setCached(company, summaryKey, {
+                    balances: summaryDoc.balances || {},
+                    rawLedger: summaryDoc.rawLedger || {},
+                    reports: summaryDoc.reports || {},
+                  }, companyRecord?.emailid);
+                }
+                window.dispatchEvent(new CustomEvent('wc:accounting-live-update', {
+                  detail: {
+                    company,
+                    snapshot: summaryDoc,
+                  }
+                }));
+              } catch (e) {
+                console.error('SSE AccountingSummaries apply error', e);
+              }
+              break;
+            case 'DashboardSummaries':
+              try {
+                const summaryDoc = payload.data || null;
+                if (summaryDoc?.summaryKey) {
+                  setCached(company, `dashboard-summary-${summaryDoc.summaryKey}`, summaryDoc.snapshot || {}, companyRecord?.emailid);
+                }
+                window.dispatchEvent(new CustomEvent('wc:dashboard-summary-update', {
+                  detail: {
+                    company,
+                    summary: summaryDoc,
+                  }
+                }));
+              } catch (e) {
+                console.error('SSE DashboardSummaries apply error', e);
+              }
+              break;
+            case 'SubscriptionStatus':
+              try {
+                const nextStatus = payload.data || null;
+                if (nextStatus) {
+                  setSubscriptionState(nextStatus);
+                  if (nextStatus.isSuspended) {
+                    window.localStorage.removeItem('ps-vw');
+                    const currentPath = window.location.pathname || '';
+                    if (!currentPath.endsWith('/settings')) {
+                      Navigate('/settings');
+                    }
+                  } else {
+                    window.localStorage.setItem('ps-vw', 'true');
+                  }
+                  setPauseView(false);
+                }
+              } catch (e) {
+                console.error('SSE SubscriptionStatus apply error', e);
               }
               break;
             case 'InventoryTransactions':
@@ -605,19 +785,20 @@ function App() {
     return () => { if (es) { try { es.close() } catch (e) { } setIsSSEConnected(false) } }
   }, [company, companyRecord])
 
-  useEffect(() => {
-    var cmp_val = window.localStorage.getItem('sessn-cmp')
-    getViewAccess(hostDb)
-    getSettings(cmp_val, companyRecord)
-    getChartOfAccounts(cmp_val, companyRecord)
-    const intervalId = setInterval(() => {
-      if (cmp_val) {
-        getSettings(cmp_val)
-        getChartOfAccounts(cmp_val)
-        getViewAccess(hostDb)
-      }
-    }, intervalPeriod)
-    return () => clearInterval(intervalId);
+  useEffect(() => {    
+    getViewAccess()
+    var cmp_val = window.localStorage.getItem('sessn-cmp')    
+    if (cmp_val){
+      getSettings(cmp_val, companyRecord)
+      getChartOfAccounts(cmp_val, companyRecord)
+      const intervalId = setInterval(() => {
+        if (cmp_val && companyRecord?.emailid) {
+          getSettings(cmp_val)
+          getChartOfAccounts(cmp_val)
+        }
+      }, intervalPeriod)
+      return () => clearInterval(intervalId);
+    }
   }, [window.localStorage.getItem('sessn-cmp')])
 
   useEffect(() => {
@@ -633,15 +814,13 @@ function App() {
   }, [window.localStorage.getItem('sessn-cmp'), companyRecord])
 
   useEffect(() => {
-    if (settings?.length) {
+    if (settings?.length && window.localStorage.getItem('sessn-id')) {
       const updateThisUserState = async () => {
         if (companyRecord?.status !== 'admin') {
           var sid = window.localStorage.getItem('sessn-id')
           const resp = await fetchServer("POST", {
-            database: company,
-            collection: "Profile",
             sessionId: sid
-          }, "getDocDetails", SERVER)
+          }, "getUserProfileDetails", SERVER)
           if (![null, undefined].includes(resp.record)) {
             setCompanyRecord(resp.record)
             setRecoveryVal(resp.record.enableDebtRecovery)
@@ -684,7 +863,7 @@ function App() {
       delete wrhSetFilt[0]?._id
       setWrhs(wrhSetFilt[0]?.name ? [...wrhSetFilt[0].warehouses] : [])
     }
-  }, [settings, changingSettings])
+  }, [settings, changingSettings, window.localStorage.getItem('sessn-id')])
 
   useEffect(() => {
     if (wrhs.length && companyRecord?.emailid) {
@@ -708,9 +887,10 @@ function App() {
       })
     }
   }, [companyRecord, wrhs])
+
   // On First Mount: hydrate quickly, subscribe to SSE (above), flush local pending changes, then fetch authoritative data
   useEffect(() => {
-    if (company && companyRecord?.emailid && loadedCurPath) {
+    if (company && companyRecord?.emailid && loadedCurPath && window.location.pathname !== '/payment/confirm') {
       (async () => {
         try {
           // quick hydrate from cached getters so UI shows something fast
@@ -754,7 +934,10 @@ function App() {
               getPurchase(company)
               getExpenses(company)
               getAttendance(company)
-              Navigate('/' + loadedCurPath)
+              const targetPath = '/' + loadedCurPath;
+              if (window.location.pathname !== targetPath) {
+                Navigate(targetPath + window.location.search);
+              }
               setTimeout(() => { setLoadedCurPath('') }, 500);
             }
           } catch (e) { console.warn('Initial authoritative fetch failed', e) }
@@ -768,7 +951,7 @@ function App() {
   }, [company, companyRecord, loadedCurPath])
 
   useEffect(() => {
-    if (companyRecord?.status !== 'admin') {
+    if (companyRecord?.status !== 'admin' && window.location.pathname !== '/payment/confirm') {
       if (enableBlockVal) {
         logout()
       } else {
@@ -787,29 +970,29 @@ function App() {
             getDepartments(company)
             getPositions(company)
             window.localStorage.removeItem('lgt-vw')
-            Navigate('/employees')
+            if (window.location.pathname !== '/employees') Navigate('/employees' + window.location.search)
           }
           if (companyRecord?.permissions.includes('attendance')) {
             getAttendance(company)
             window.localStorage.removeItem('lgt-vw')
-            Navigate('/attendance')
+            if (window.location.pathname !== '/attendance') Navigate('/attendance' + window.location.search)
           }
           if (companyRecord?.permissions.includes('purchase')) {
             getPurchase(company)
             window.localStorage.removeItem('lgt-vw')
-            Navigate('/purchase')
+            if (window.location.pathname !== '/purchase') Navigate('/purchase' + window.location.search)
           }
           if (companyRecord?.permissions.includes('expenses')) {
             getExpenses(company)
             window.localStorage.removeItem('lgt-vw')
-            Navigate('/expenses')
+            if (window.location.pathname !== '/expenses') Navigate('/expenses' + window.location.search)
           }
           if (companyRecord?.permissions.includes('inventory') ||
             companyRecord?.permissions.includes('pos') ||
             companyRecord?.permissions.includes('delivery')
           ) {
             getProducts(company)
-            Navigate('/inventory')
+            if (window.location.pathname !== '/inventory') Navigate('/inventory' + window.location.search)
           }
           if (companyRecord?.permissions.includes('delivery')) {
             if (companyRecord?.permissions.includes('access_delivery_sessions')) {
@@ -821,7 +1004,7 @@ function App() {
             fetchProfiles(company)
             fetchSessions(company, "delivery", companyRecord)
             fetchTables(company)
-            Navigate('/delivery')
+            if (window.location.pathname !== '/delivery') Navigate('/delivery' + window.location.search)
           }
           if (companyRecord?.permissions.includes('pos')) {
             if (companyRecord?.permissions.includes('access_pos_sessions')) {
@@ -835,12 +1018,12 @@ function App() {
               fetchTables(company)
             }
             fetchSessions(company, "sales", companyRecord)
-            Navigate('/pos')
+            if (window.location.pathname !== '/pos') Navigate('/pos' + window.location.search)
           }
           if (companyRecord?.permissions.includes('accommodations')) {
             getCustomers(company)
             getAccommodations(company)
-            Navigate('/accommodations')
+            if (window.location.pathname !== '/accommodations') Navigate('/accommodations' + window.location.search)
           }
           if (companyRecord?.permissions.includes('sales')) {
             if (!hasAccomAccess) {
@@ -858,7 +1041,7 @@ function App() {
             }
             // getSales(company, 'first', saleFrom, saleTo, 10)
             window.localStorage.removeItem('lgt-vw')
-            Navigate('/sales')
+            if (window.location.pathname !== '/sales') Navigate('/sales' + window.location.search)
           }
         }
       }
@@ -871,11 +1054,11 @@ function App() {
 
   useEffect(() => {
     if (pauseView) {
-      if (companyRecord) {
+      if (companyRecord && viewAccess === '405') {
         logout()
       }
     }
-  }, [pauseView, companyRecord])
+  }, [pauseView, companyRecord, viewAccess])
 
   useEffect(() => {
     setPauseView(!window.localStorage.getItem('ps-vw'))
@@ -883,8 +1066,6 @@ function App() {
 
   const logout = async () => {
     const resps = await fetchServer("POST", {
-      database: company,
-      collection: "Profile",
       record: companyRecord
     }, "closeSession", SERVER)
     if (resps.err) {
@@ -1712,7 +1893,6 @@ function App() {
         const lastDeliverySessions = deliverySessions.slice(0, 5);
         setAllSessions(allSessions)
 
-
         if (setState !== null) {
           setState({
             activeSessions,
@@ -1766,25 +1946,32 @@ function App() {
     window.localStorage.removeItem('sessn-cmp')
     window.localStorage.removeItem('pos-wrh')
     setSessID(null)
-    Navigate("/")
+    // Only redirect to root if we are not on a public/payment page
+    const isPublicPath = ['/payment/confirm', '/login', '/signup', '/forgot-password', '/pricing'].includes(window.location.pathname);
+    if (!isPublicPath) Navigate("/")
     setTimeout(() => {
-      if (path !== undefined) {
-        Navigate("/" + path)
-      } else {
-        Navigate("/login")
+      var currPath = window.localStorage.getItem('curr-path')
+      if (currPath){
+        Navigate("/" + currPath)
+      }else{
+        Navigate("/")
       }
+      // if (path !== undefined) {
+      //   Navigate("/" + path)
+      // } else {
+      // }
     }, 5000)
   }
 
   const loadPage = async (propVal, currPath) => {
-    Navigate('/')
+    // Removed destructive Navigate('/') that was stripping paths on refresh
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     setCompany(cmp_val)
+    console.log("propVal", propVal)
     const resp = await fetchServer("POST", {
-      database: cmp_val,
-      collection: "Profile",
       sessionId: propVal
-    }, "getDocDetails", SERVER)
+    }, "getUserProfileDetails", SERVER)
+    console.log("resp", resp)
     if ([null, undefined].includes(resp.record)) {
       removeSessions()
     } else {
@@ -1792,20 +1979,7 @@ function App() {
       setCompanyRecord(resp.record)
       setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
         resp.record.permissions.includes('all')
-      )
-      // let wrhsPosObj = {}
-      // let wrhsDeliveryObj = {}
-      // wrhs.forEach((wrh)=>{
-      //   wrhsPosObj[wrh.name] = (resp.record.permissions.includes(`pos_${wrh.name}`) || resp.record.permissions.includes('all'))
-      //   wrhsDeliveryObj[wrh.name] = (resp.record.permissions.includes(`delivery_${wrh.name}`) || resp.record.permissions.includes('all'))
-      // })
-      // setPosWrhAccess((posWrhAccess)=>{
-      //   return {...posWrhAccess, ...wrhsPosObj}
-      // })
-      // setDeliveryWrhAccess((deliveryWrhAccess)=>{
-      //   return {...deliveryWrhAccess, 
-      //     ...wrhsDeliveryObj}
-      // })      
+      )     
       if (resp.record.status !== 'admin') {
         setEditAccess((editAccess) => {
           return {
@@ -1820,30 +1994,54 @@ function App() {
     }
   }
 
-  const getViewAccess = async (company) => {
+  const getViewAccess = async () => {
     if (!window.localStorage.getItem('acc-vw')) {
       const resps = await fetchServer("POST", {
-        database: company,
-        collection: "Profile",
-        prop: { 'name': 'activation' }
+        prop: {}
       }, "getActivationDetails", SERVER)
+
+      if (resps.isProduction !== undefined) {
+        setIsProduction(resps.isProduction)
+      }
+
       if (resps.err) {
-        console.log(resps.mess)
-        setViewAccess('405')
+        if (resps.status === 404 || resps.mess === "Invalid Tenant") {
+          setShowLoading(false)
+          setPauseView(false)          
+          Navigate('/database-not-found')
+        } else {
+          setShowLoading(false)
+          setViewAccess('405')
+        }
       } else {
-        if (!resps.mess && ![null, undefined].includes(resps.record[0]) && Array.isArray(resps.record)) {
-          setViewAccess(resps.record[0].pauseDB)
-          if (resps.record[0].pauseDB) {
-            window.localStorage.removeItem('ps-vw')
-          } else {
-            window.localStorage.setItem('ps-vw', 'true')
+        if (resps.currentStatus) {
+          setSubscriptionState(resps.currentStatus)
+        }
+        const workspaceSuspended = !!(resps.currentStatus?.isSuspended || !resps.isActive)
+        const isConfirming = window.location.pathname === '/payment/confirm'
+
+        if (workspaceSuspended && !isConfirming) {
+          window.localStorage.removeItem('ps-vw')
+          setViewAccess(false)
+          setShowLoading(false)
+          setPauseView(false)
+          if (window.location.pathname !== '/license-expired') {
+            Navigate('/license-expired')
           }
-          setPauseView(resps.record[0].pauseDB)
+        } else if (!resps.mess) {
+          setViewAccess(!resps.isActive)
+          window.localStorage.setItem('ps-vw', 'true')
+          setShowLoading(false)
+          setPauseView(false)
         } else {
           setPauseView(false)
           setViewAccess(false)
+          setShowLoading(false)
         }
       }
+    } else {
+      setShowLoading(false)
+      setPauseView(false)
     }
   }
 
@@ -1975,10 +2173,8 @@ function App() {
         setDBProfiles(cached);
       }
       const resps = await fetchServer("POST", {
-        database: genDb,
-        collection: "Profiles",
         prop: { 'db': company }
-      }, "getDocsDetails", SERVER)
+      }, "fetchDBProfiles", SERVER)
       if (resps.err) {
         console.log(resps.mess)
       } else if (Array.isArray(resps.record)) {
@@ -3204,7 +3400,6 @@ function App() {
       setSettings(cached);
     }
     const resp = await fetchServer("POST", {
-      database: company,
       collection: "Settings",
       prop: {}
     }, "getDocsDetails", SERVER)
@@ -3289,13 +3484,24 @@ function App() {
     }
   }, [sessId])
 
+  useEffect(()=>{
+    const showSubscriptionBanner = !!(
+      companyRecord?.emailid &&
+      subscriptionState &&
+      !['/', '/pricing', '/community', '/help', '/login', '/signup', '/forgot-password', '/license-expired', '/database-not-found', '/payment/confirm'].includes(location.pathname) &&
+      (subscriptionState.warningActive || subscriptionState.isSuspended || (subscriptionState.trialActive && !subscriptionState.hasConfiguredSubscription))
+    )
+    setShowSubscriptionBanner(showSubscriptionBanner)
+  },[companyRecord, subscriptionState, location.pathname])
+
 
   return (
     <>
       <ContextProvider.Provider value={{
         fetchServer: guardedFetchServer,
-        server: SERVER, viewAccess, intervalPeriod,
-        genDb,
+        server: SERVER, viewAccess, getViewAccess, 
+        intervalPeriod,
+        showLoading, setShowLoading,
         pauseView, setPauseView,
         loginMessage, setLoginMessage,
         generateCode, generateSeries,
@@ -3303,6 +3509,9 @@ function App() {
         getSessionEnd, getSessionStart,
         companyRecord, setCompanyRecord,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
+        accountingLiveBalances, setAccountingLiveBalances,
+        showSubscriptionBanner, setShowSubscriptionBanner,
+        subscriptionState, setSubscriptionState, refreshSubscriptionState,
         profiles, setProfiles, fetchProfiles,
         DBProfiles, setDBProfiles, fetchDBProfiles,
         departments, setDepartments, getDepartments,
@@ -3373,15 +3582,34 @@ function App() {
         removeSessions,
         sessId,
         company
-      }}>
+      }}>        
         {!actionMessage && <Notify
           notifyMessage={alert}
           notifyState={alertState}
           timeout={alertTimeout}
         />}
         {!pauseView ? <Routes>
-          <Route path='/' element={<LoadingPage />}></Route>
+          <Route path='/' element={<LandingPage />}></Route>
+          <Route path='/loading' element={<LoadingPage />}></Route>
+          <Route path='/pricing' element={<PricingPage />}></Route>
+          <Route path='/payment/confirm' element={<PaymentConfirmPage />}></Route>
+          <Route path='/community' element={<CommunityPage />}></Route>
+          <Route path='/help' element={<HelpPage />}></Route>
+          <Route path='/about' element={<AboutPage />}></Route>
+          <Route path='/careers' element={<CareersPage />}></Route>
+          <Route path='/partners' element={<PartnersPage />}></Route>
+          <Route path='/docs' element={<DocsPage />}></Route>
+          <Route path='/tutorials' element={<DocsPage />}></Route>
+          <Route path='/api' element={<DocsPage />}></Route>
+          <Route path='/privacy' element={<LegalPage type="privacy" />}></Route>
+          <Route path='/terms' element={<LegalPage type="terms" />}></Route>
+          <Route path='/cookie-policy' element={<LegalPage type="cookies" />}></Route>
+          <Route path='/security' element={<LegalPage type="security" />}></Route>
           <Route path='/login' element={<Login />}></Route>
+          <Route path='/signup' element={<Signup />}></Route>
+          <Route path='/forgot-password' element={<ForgotPassword />}></Route>
+          <Route path='/database-not-found' element={<DatabaseNotFound isProduction={isProduction} />}></Route>
+          <Route path='/license-expired' element={<LicenseExpired />}></Route>
           <Route path='/profile' element={<Profile />}></Route>
           <Route path='/test' element={<FormPage />}></Route>
           <Route path='/dash' element={<DashView />}></Route>

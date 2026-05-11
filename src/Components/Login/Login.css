@@ -80,7 +80,24 @@
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-grid.triple {
+  grid-template-columns: 1.5fr 1fr 1fr;
+}
+
+@media (max-width: 768px) {
+  .form-grid, .form-grid.triple {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
 }
 
 .input-group {
@@ -89,12 +106,13 @@
 
 .input-group label {
   display: block;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 800;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: var(--login-primary);
   text-transform: uppercase;
   letter-spacing: 1px;
+  opacity: 0.7;
 }
 
 .input-with-icon {
@@ -115,12 +133,12 @@
 
 .input-with-icon input {
   width: 100%;
-  height: 56px;
+  height: 52px;
   padding: 0 52px;
   background: #f8faf9;
   border: 1.5px solid rgba(23, 56, 41, 0.08);
-  border-radius: 14px;
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 14px;
   font-family: 'MontserratRegular', sans-serif;
   outline: none;
   transition: all 0.3s ease;
@@ -160,7 +178,7 @@
 }
 
 .main-login-btn {
-  height: 60px;
+  height: 56px;
   background: var(--login-primary);
   color: white;
   border: none;
@@ -170,10 +188,11 @@
   cursor: pointer;
   box-shadow: 0 10px 20px rgba(23, 56, 41, 0.2);
   font-family: 'MontserratBold', sans-serif;
+  margin-top: 10px;
 }
 
 .form-footer-note {
-  margin-top: 32px;
+  margin-top: 24px;
   background: #f8faf9;
   padding: 16px;
   border-radius: 12px;
