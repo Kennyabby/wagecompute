@@ -59,7 +59,7 @@ const CommunityPage = () => {
   useEffect(() => {
     storePath('community')
     // set page title
-    document.title = "Community & Ecosystem - Enterprise Compute"
+    document.title = "Community & Ecosystem | Enterprise Compute Central"
   }, [storePath])
 
   return (

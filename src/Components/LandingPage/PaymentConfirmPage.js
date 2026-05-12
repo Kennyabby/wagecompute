@@ -13,7 +13,7 @@ const PaymentConfirmPage = () => {
 
   useEffect(() => {
     storePath('payment-confirm')
-    document.title = 'Payment confirmation - Enterprise Compute'
+    document.title = 'Payment Confirmation | Enterprise Compute Central'
     const params = new URLSearchParams(location.search)
     const reference = params.get('reference') || params.get('trxref') || ''
     const checkout = params.get('checkout') || (params.get('paystack') === 'callback' ? 'public-pricing' : '')

@@ -116,6 +116,7 @@ const Accommodation = () => {
 
     useEffect(() => {
         storePath('accommodations')
+        document.title = 'Accommodations | Enterprise Compute Central'
     }, [storePath])
 
     useEffect(()=>{

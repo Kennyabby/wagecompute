@@ -218,7 +218,9 @@ const Purchase = () => {
 
     useEffect(() => {
         storePath('purchase')
+        document.title = 'Purchase | Enterprise Compute Central'
     }, [storePath])
+
     useEffect(() => {
         const curPosSet = posSettings?.posSettings?.find((sett) => sett.active)
         setCurPosSettings(curPosSet)

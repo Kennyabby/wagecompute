@@ -10,8 +10,13 @@ const Journals = () => {
     const {
         server, fetchServer, company, companyRecord,
         setAlertState, setAlert, setAlertTimeout,
-        chartOfAccounts, getChartOfAccounts
+        chartOfAccounts, getChartOfAccounts, storePath,
     } = useContext(ContextProvider)
+
+    useEffect(() => {
+        storePath('journals')
+        document.title = 'Accounting > Journals | Enterprise Compute Central'
+    }, [storePath])
 
     const [activeTab, setActiveTab] = useState('COA') // 'COA', 'JOURNALS', or 'REPORTS'
     

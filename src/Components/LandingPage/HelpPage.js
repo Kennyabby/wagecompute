@@ -89,7 +89,7 @@ const HelpPage = () => {
   useEffect(() => {
     storePath('help')
     // set page title
-    document.title = "Help & Support - Enterprise Compute"
+    document.title = "Help & Support | Enterprise Compute Central"
   }, [storePath])
 
   return (

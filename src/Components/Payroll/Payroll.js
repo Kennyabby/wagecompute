@@ -48,6 +48,7 @@ const Payroll = () =>{
 
     useEffect(()=>{
         storePath('payroll')  
+        document.title = 'Payroll | Enterprise Compute Central'
     },[storePath])
 
     useEffect(() => {

@@ -9,7 +9,7 @@ const AboutPage = () => {
 
   useEffect(() => {
     storePath('about')
-    document.title = "About Us - Enterprise Compute"
+    document.title = "About Us | Enterprise Compute Central"
     window.scrollTo(0, 0)
   }, [storePath])
 

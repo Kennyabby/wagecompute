@@ -61,6 +61,7 @@ const Employees = () => {
     const [fields, setFields] = useState({ ...initFields })
     useEffect(() => {
         storePath('employees')
+        document.title = 'Employees | Enterprise Compute Central'   
     }, [storePath])
     useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')

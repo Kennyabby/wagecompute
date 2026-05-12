@@ -144,6 +144,7 @@ const Settings = () => {
     ]
     useEffect(() => {
         storePath('settings')
+        document.title = 'Settings | Enterprise Compute Central'
     }, [storePath])
 
     useEffect(() => {

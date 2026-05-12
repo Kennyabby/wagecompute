@@ -65,6 +65,7 @@ const Expenses = () => {
 
     useEffect(() => {
         storePath('expenses')
+        document.title = 'Expenses | Enterprise Compute Central'
     }, [storePath])
 
     useEffect(() => {
