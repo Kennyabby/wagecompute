@@ -237,7 +237,7 @@ const DashView = () =>{
         })
     }
 
-    const loadDashData = async()=>{
+    const loadDashData = async(force = false)=>{
         if (!company) return
 
         setLoading(true)
@@ -247,7 +247,7 @@ const DashView = () =>{
         const summaryCacheKey = `dashboard-summary-${makeDashSummaryKey()}`
 
         // 1) Try to hydrate from IndexedDB app cache first (for snappy UI)
-        if (summaryCacheKey) {
+        if (summaryCacheKey && !force) {
             try {
                 const cached = await getAppCache(company, companyRecord?.emailid, summaryCacheKey);
                 if (cached && cached.data) {
@@ -265,7 +265,8 @@ const DashView = () =>{
                 locationFilter,
                 productFilter,
                 employeeFilter,
-                seasonFilter
+                seasonFilter,
+                forceRefresh: !!force
             }, 'getDashboardSummary', server)
 
             if (summaryResponse?.ok && summaryResponse?.snapshot) {
@@ -1108,7 +1109,7 @@ const DashView = () =>{
                             <option value='Q4'>Q4 (Oct-Dec)</option>
                         </select>
                     </div>
-                    <button className='btn-primary' onClick={loadDashData} disabled={loading}>{loading?'Loading...':'Refresh'}</button>
+                    <button className='btn-primary' onClick={() => loadDashData(true)} disabled={loading}>{loading?'Loading...':'Refresh'}</button>
                 </div>
 
                 {dashErr && <div className='dash-error'>{dashErr}</div>}
