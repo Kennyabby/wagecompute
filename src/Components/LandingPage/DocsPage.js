@@ -9,7 +9,7 @@ const DocsPage = () => {
 
   useEffect(() => {
     storePath('docs')
-    document.title = "Documentation - Enterprise Compute"
+    document.title = "Documentation | Enterprise Compute Central"
     window.scrollTo(0, 0)
   }, [storePath])
 

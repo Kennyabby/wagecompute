@@ -218,6 +218,7 @@ const Sales = () => {
 
     useEffect(() => {
         storePath('sales')
+        document.title = 'Sales | Enterprise Compute Central'
     }, [storePath])
 
     useEffect(()=>{

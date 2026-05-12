@@ -113,6 +113,7 @@ const ForgotPassword = () => {
 
   useEffect(() => {
     storePath('forgot-password')
+    document.title = 'Forgot Password | Enterprise Compute Central'
   }, [storePath])
   
   return (

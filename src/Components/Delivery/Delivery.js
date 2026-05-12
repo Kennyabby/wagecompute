@@ -72,6 +72,7 @@ const Delivery = () => {
     const [tableFetchCount, setTableFetchCount] = useState(0)
     useEffect(() => {
         storePath('delivery')
+        document.title = 'Delivery | Enterprise Compute Central' 
     }, [storePath])
 
     // =========================================
@@ -1941,7 +1942,7 @@ const Delivery = () => {
                 )}
                 {startSession && (
                     <div className='openingsession'>
-                        <div className="delivery-session-entry">
+                        <div className="pos-session-entry">
                             <div className="modal-header">
                                 <h2>Start Session {
                                     [''].map((args) => {
@@ -1951,6 +1952,7 @@ const Delivery = () => {
                                 }</h2>
                                 {(companyRecord.status === 'admin' || companyRecord.permissions?.includes('access_pos_deliveries')) &&
                                     <button
+                                        className="close-btn"
                                         onClick={() => {
                                             setStartSession(false)
                                             setSessionUser(null)
@@ -1959,32 +1961,34 @@ const Delivery = () => {
                                 }
                             </div>
                             <div className="form-group">
-                                <label>Sales Post</label>
-                                <select
-                                    value={wrh}
-                                    onChange={(e) => {
-                                        setWrh(e.target.value)
-                                        window.localStorage.setItem('pos-wrh', e.target.value)
-                                    }}
-                                    disabled={loading}
-                                >
-                                    <option value={''}>Select Sales Post</option>
-                                    {sessionUser === null ? wrhs.map((warehouse, index) => (
-                                        deliveryWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
-                                            {warehouse.name}
-                                        </option>
-                                    )) :
-                                        posDeliveryAccess.map((warehouse, index) => (
-                                            <option key={index} value={warehouse}>
-                                                {warehouse}
+                                <div className='entry-row'>
+                                    <label>Sales Post</label>
+                                    <select
+                                        value={wrh}
+                                        onChange={(e) => {
+                                            setWrh(e.target.value)
+                                            window.localStorage.setItem('pos-wrh', e.target.value)
+                                        }}
+                                        disabled={loading}
+                                    >
+                                        <option value={''}>Select Sales Post</option>
+                                        {sessionUser === null ? wrhs.map((warehouse, index) => (
+                                            deliveryWrhAccess[warehouse.name] && <option key={index} value={warehouse.name}>
+                                                {warehouse.name}
                                             </option>
-                                        ))
-                                    }
-                                </select>
+                                        )) :
+                                            posDeliveryAccess.map((warehouse, index) => (
+                                                <option key={index} value={warehouse}>
+                                                    {warehouse}
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
+                                </div>
                             </div>
-                            <div className="delivery-session-actions">
+                            <div className="pos-session-actions">
                                 <button
-                                    className="delivery-session-btn start"
+                                    className="pos-session-btn start"
                                     onClick={handleStartSession}
                                     disabled={loading}
                                 >
@@ -1996,7 +2000,7 @@ const Delivery = () => {
                 )}
                 {endSession && (
                     <div className='closingsession'>
-                        <div className="delivery-session-entry">
+                        <div className="pos-session-entry">
                             <div className="modal-header">
                                 <h2>End Session {
                                     [''].map((args) => {
@@ -2005,6 +2009,7 @@ const Delivery = () => {
                                     })
                                 }</h2>
                                 <button
+                                    className="close-btn"
                                     onClick={() => {
                                         setEndSession(false)
                                         setSessionUser(null)
@@ -2013,20 +2018,21 @@ const Delivery = () => {
                                     }}
                                 >×</button>
                             </div>
-
                             <div className="form-group">
-                                <label>Total Product Shortages</label>
-                                <input
-                                    style={{ cursor: 'not-allowed' }}
-                                    type="number"
-                                    value={salesShortages}
-                                    disabled={true}
-                                    readOnly
-                                />
+                                <div className='entry-row'>
+                                    <label>Total Product Shortages</label>
+                                    <input
+                                        style={{ cursor: 'not-allowed' }}
+                                        type="number"
+                                        value={salesShortages}
+                                        disabled={true}
+                                        readOnly
+                                    />
+                                </div>
                             </div>
-                            <div className="delivery-session-actions">
+                            <div className="pos-session-actions">
                                 <button
-                                    className="delivery-session-btn end"
+                                    className="pos-session-btn end"
                                     onClick={() => {
                                         handleEndSession(salesShortages)
                                     }}
@@ -3101,14 +3107,14 @@ const DeliveryDashboard = ({
                 <div className='pos-session-board-nav'>
                     <div className={'live-nav'}>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('reconcile_inventory')) && <button
-                            className="pos-session-card-action"
+                            className="action-btn"
                             onClick={() => setProductAdd(true)}
                             style={{ marginRight: '10px' }}
                         >
                             Reconcile Inventory
                         </button>}
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button
-                            className="pos-session-card-action"
+                            className="action-btn"
                             onClick={() => {
                                 var wrhAccess = Object.keys(deliveryWrhAccess).filter((wrh) => {
                                     return deliveryWrhAccess[wrh]

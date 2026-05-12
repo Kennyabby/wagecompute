@@ -29,6 +29,7 @@ const Positions = () => {
 
     useEffect(() => {
         storePath('positions')
+        document.title = 'Positions | Enterprise Compute Central'
     }, [storePath])
 
     useEffect(() => {

@@ -56,7 +56,8 @@ const FormPage = ()=>{
     const workHours = 8
     const Navigate = useNavigate()
     useEffect(()=>{
-        storePath('test')  
+        storePath('test') 
+        document.title = 'Biometric Data | Enterprise Compute Central' 
     },[storePath])
 
     const uploadFile = async(e)=>{        

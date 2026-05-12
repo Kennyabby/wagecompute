@@ -8,6 +8,7 @@ const Profile = ()=>{
     
     useEffect(()=>{
         storePath('profile')
+        document.title = 'Profile | Enterprise Compute Central'
     },[storePath])
     
     

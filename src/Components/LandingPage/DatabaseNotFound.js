@@ -11,7 +11,7 @@ const DatabaseNotFound = ({ isProduction }) => {
   useEffect(() => {
     storePath('database-not-found')
     // set page title
-    document.title = "Database Not Found - Enterprise Compute"
+    document.title = "Database Not Found | Enterprise Compute Central"
   }, [storePath])
   return (
     <div className="error-page">

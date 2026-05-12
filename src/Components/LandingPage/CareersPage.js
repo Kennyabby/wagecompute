@@ -9,7 +9,7 @@ const CareersPage = () => {
 
   useEffect(() => {
     storePath('careers')
-    document.title = "Careers - Enterprise Compute"
+    document.title = "Careers | Enterprise Compute Central"
     window.scrollTo(0, 0)
   }, [storePath])
 

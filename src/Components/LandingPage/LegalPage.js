@@ -107,7 +107,7 @@ const LegalPage = ({ type = 'privacy' }) => {
 
   useEffect(() => {
     storePath(`legal-${type}`)
-    document.title = `${active.title} - Enterprise Compute`
+    document.title = `${active.title} | Enterprise Compute Central`
     window.scrollTo(0, 0)
   }, [storePath, type, active.title])
 

@@ -105,7 +105,7 @@ const PointOfSales = () => {
     const [curPosHandler, setCurPosHandler] = useState('')
     useEffect(() => {
         storePath('pos')
-        document.title = 'Point of Sales | WageCompute Enterprise'
+        document.title = 'Point of Sales | Enterprise Compute Central'
     }, [storePath])
 
     // =========================================

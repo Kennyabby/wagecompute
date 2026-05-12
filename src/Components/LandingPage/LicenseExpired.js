@@ -1,12 +1,19 @@
-import React from 'react';
+import { useEffect, useContext } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { HiOutlineClock, HiArrowLeft, HiOutlineShieldExclamation } from 'react-icons/hi';
+import ContextProvider from '../../Resources/ContextProvider';
 import './ErrorPages.css';
 
 const LicenseExpired = () => {
   const navigate = useNavigate();
+  const { storePath } = useContext(ContextProvider)
 
+  useEffect(() => {
+    storePath('license-expired')
+    document.title = 'License Expired | Enterprise Compute Central'
+  }, [storePath])
+  
   return (
     <div className="error-page">
       <div className="error-container">

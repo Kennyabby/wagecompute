@@ -10,6 +10,7 @@ const currencyFormatter = new Intl.NumberFormat('en-NG', {
   maximumFractionDigits: 2,
 })
 
+
 const dateFormatter = new Intl.DateTimeFormat('en-NG', {
   year: 'numeric',
   month: 'short',
@@ -29,7 +30,7 @@ const formatStatus = (value) => String(value || 'unconfigured').replace(/_/g, ' 
 const getStoredAdminToken = () => window.localStorage.getItem(ADMIN_TOKEN_KEY) || ''
 const storeAdminToken = (token = '') => {
   if (token) window.localStorage.setItem(ADMIN_TOKEN_KEY, token)
-}
+  }
 const clearAdminToken = () => window.localStorage.removeItem(ADMIN_TOKEN_KEY)
 
 const requestAdmin = async (method, endpoint, body) => {
@@ -43,7 +44,7 @@ const requestAdmin = async (method, endpoint, body) => {
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   })
-
+  
   const payload = await response.json().catch(() => ({}))
   return {
     ok: response.ok,
@@ -97,6 +98,11 @@ const CentralAdminApp = () => {
     trialStartAt: new Date().toISOString().slice(0, 10),
     note: '',
   })
+  
+  useEffect(()=>{
+      document.title = 'Central Admin | Enterprise Compute Central'
+  },[])
+
   const [globalSettingsForm, setGlobalSettingsForm] = useState({
     defaultFreeTrialDays: 14,
   })

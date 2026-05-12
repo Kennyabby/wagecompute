@@ -136,7 +136,7 @@ const Login = () => {
   useEffect(() => {
     storePath('login')
     // set page title
-    document.title = "Login - Enterprise Compute"
+    document.title = "Login | Enterprise Compute Central"
   }, [storePath])
 
   useEffect(() => {

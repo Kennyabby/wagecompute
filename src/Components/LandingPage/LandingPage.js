@@ -15,6 +15,7 @@ const LandingPage = () => {
   useEffect(() => {
     if (!showLoading) {
       storePath('')
+      document.title = 'Enterprise Compute Central | Home'
     }
   }, [storePath, showLoading])
 

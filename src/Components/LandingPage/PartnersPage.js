@@ -9,7 +9,7 @@ const PartnersPage = () => {
 
   useEffect(() => {
     storePath('partners')
-    document.title = "Partners - Enterprise Compute"
+    document.title = "Partners | Enterprise Compute Central"
     window.scrollTo(0, 0)
   }, [storePath])
 

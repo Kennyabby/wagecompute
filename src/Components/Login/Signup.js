@@ -186,7 +186,7 @@ const Signup = () => {
   useEffect(() => {
     storePath('signup')
     // set page title
-    document.title = "Signup - Enterprise Compute"
+    document.title = "Signup | Enterprise Compute Central"
   }, [storePath])
 
   return (

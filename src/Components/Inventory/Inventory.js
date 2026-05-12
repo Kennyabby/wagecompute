@@ -152,6 +152,7 @@ const Inventory = ()=>{
 
     useEffect(()=>{
         storePath('inventory')  
+        document.title = 'Inventory | Enterprise Compute Central'
     },[storePath])
 
     useEffect(()=>{

@@ -205,6 +205,7 @@ const DashView = () =>{
 
     useEffect(()=>{
         storePath('dashboard')  
+        document.title = 'Dashboard | Enterprise Compute Central'
     },[storePath])
 
     // Helper: filter arbitrary records by date range using common date fields

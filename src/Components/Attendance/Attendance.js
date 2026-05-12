@@ -44,6 +44,7 @@ const Attendance = () => {
     }, [add, viewNo])
     useEffect(() => {
         storePath('attendance')
+        document.title = 'Attendance | Enterprise Compute Central'
     }, [storePath])
     useEffect(() => {
         var cmp_val = window.localStorage.getItem('sessn-cmp')

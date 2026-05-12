@@ -287,7 +287,7 @@ const PricingPage = () => {
 
   useEffect(() => {
     storePath('pricing')
-    document.title = 'Pricing - Enterprise Compute'
+    document.title = 'Pricing | Enterprise Compute Central'
   }, [storePath])
 
   useEffect(() => {
