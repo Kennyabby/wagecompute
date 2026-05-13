@@ -2719,6 +2719,11 @@ function App() {
       const formattedStartDate = startDate.toISOString().split('T')[0];
       const formattedEndDate = endDate.toISOString().split('T')[0];
 
+      // Get all products that have a salesPrice or vipPrice (to match TransactionHistory logic)
+      const productIds = products
+        .filter(product => product.salesPrice || product.vipPrice || product.i_d)
+        .map(product => product.i_d || product.productId);
+
       // 1. Get opening stock (stock before start date)
       const openingStockResp = await fetchServer(
         "POST",
@@ -2760,8 +2765,7 @@ function App() {
                     $cond: [
                       {
                         $and: [
-                          { $eq: ["$entryType", "Purchase"] },
-                          { $gt: ["$baseQuantity", 0] }
+                          { $eq: ["$entryType", "Purchase"] }
                         ]
                       },
                       {
@@ -2781,7 +2785,7 @@ function App() {
                       {
                         $and: [
                           { $eq: ["$entryType", "Purchase"] },
-                          { $gte: ["$totalCost", 0] }
+                          { $in: ["$productId", productIds] }
                         ]
                       },
                       {
@@ -2862,8 +2866,7 @@ function App() {
                     $cond: [
                       {
                         $and: [
-                          { $eq: ["$entryType", "Purchase"] },
-                          { $gt: ["$baseQuantity", 0] }
+                          { $eq: ["$entryType", "Purchase"] }
                         ]
                       },
                       {
@@ -2882,8 +2885,7 @@ function App() {
                     $cond: [
                       {
                         $and: [
-                          { $eq: ["$entryType", "Purchase"] },
-                          { $gt: ["$totalCost", 0] }
+                          { $eq: ["$entryType", "Purchase"] }
                         ]
                       },
                       {
