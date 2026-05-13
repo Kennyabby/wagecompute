@@ -1,7 +1,8 @@
 import './CentralAdmin.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-const SERVER = "http://localhost:3001"
+const SERVER = "https://api.epxcentral.com"
+// const SERVER = "http://localhost:3001"
 const ADMIN_TOKEN_KEY = 'central-admin-access-token'
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
@@ -34,23 +35,33 @@ const storeAdminToken = (token = '') => {
 const clearAdminToken = () => window.localStorage.removeItem(ADMIN_TOKEN_KEY)
 
 const requestAdmin = async (method, endpoint, body) => {
-  const token = getStoredAdminToken()
-  const response = await fetch(`${SERVER}/${endpoint}`, {
-    method,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  })
-  
-  const payload = await response.json().catch(() => ({}))
-  return {
-    ok: response.ok,
-    status: response.status,
-    err: !response.ok,
-    ...payload,
+  try {
+    const token = getStoredAdminToken()
+    const response = await fetch(`${SERVER}/${endpoint}`, {
+      method,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    })
+    
+    const payload = await response.json().catch(() => ({}))
+    return {
+      ok: response.ok,
+      status: response.status,
+      err: !response.ok,
+      ...payload,
+    }
+  } catch (err) {
+    console.error('Request Admin Error:', err)
+    return {
+      ok: false,
+      status: 0,
+      err: true,
+      mess: 'Network error or CORS failure. Check console for details.',
+    }
   }
 }
 
@@ -137,6 +148,7 @@ const CentralAdminApp = () => {
   const [selectedEnquiry, setSelectedEnquiry] = useState(null)
   const [replyText, setReplyText] = useState('')
   const chatBottomRef = useRef(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // Auto-scroll to latest message whenever replies update
   useEffect(() => {
@@ -707,7 +719,14 @@ const CentralAdminApp = () => {
 
   return (
     <div className='ca-shell'>
-      <aside className='ca-sidebar'>
+      <div className='ca-mobile-header'>
+        <button className='ca-menu-toggle' onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          {isSidebarOpen ? '✕' : '☰'}
+        </button>
+        <strong>Central Admin</strong>
+      </div>
+
+      <aside className={`ca-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className='ca-brand'>
           <div className='ca-brand-mark'>EC</div>
           <div>
@@ -737,6 +756,7 @@ const CentralAdminApp = () => {
               className={`ca-nav-item ${activeTab === key ? 'active' : ''}`}
               onClick={() => {
                 setActiveTab(key);
+                setIsSidebarOpen(false); // Close on mobile
                 if (key === 'support') loadEnquiries();
                 if (key === 'sessions' || key === 'connectivity') loadSessions();
                 if (key === 'health') loadPlatformHealth();
@@ -1756,7 +1776,7 @@ const CentralAdminApp = () => {
                   </div>
 
                   <div className='ca-table-wrap logs-table-container'>
-                    <table className='ca-table logs-table wide'>
+                    <table className='ca-table logs-table'>
                       <thead>
                         <tr>
                           <th>Timestamp</th>
