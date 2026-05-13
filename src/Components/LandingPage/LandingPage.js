@@ -21,7 +21,7 @@ const LandingPage = () => {
 
   useEffect(() => {
     getViewAccess()
-  }, [getViewAccess])
+  }, [])
 
   if (showLoading) return <LoadingPage />
 
