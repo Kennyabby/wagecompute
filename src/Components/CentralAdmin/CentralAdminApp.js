@@ -58,6 +58,13 @@ const CentralAdminApp = () => {
   const [adminUser, setAdminUser] = useState(null)
   const [isAuthChecking, setIsAuthChecking] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
+  const [sessionsData, setSessionsData] = useState({ activeSessions: [], recentHistory: [] })
+  const [sessionFilter, setSessionFilter] = useState({ database: '', emailid: '' })
+  const [isSessionsLoading, setIsSessionsLoading] = useState(false)
+  const [platformLogs, setPlatformLogs] = useState({ logs: [], total: 0 })
+  const [logFilter, setLogFilter] = useState({ level: '', source: '', tenant: '', search: '', skip: 0 })
+  const [healthSummary, setHealthSummary] = useState({ errorTrend: [], sourceBreakdown: [], topTenants: [] })
+  const [isHealthLoading, setIsHealthLoading] = useState(false)
   const [snapshot, setSnapshot] = useState({
     generatedAt: 0,
     summary: {},
@@ -178,6 +185,39 @@ const CentralAdminApp = () => {
       console.error('Refresh error', err)
     } finally {
       setIsBusy(false)
+    }
+  }
+
+  const loadSessions = async (db = '', email = '') => {
+    setIsSessionsLoading(true)
+    try {
+      const response = await requestAdmin('POST', 'admin/tenant/user-sessions', { database: db, emailid: email })
+      if (!response.err && response.ok) {
+        setSessionsData({
+          activeSessions: response.activeSessions || [],
+          recentHistory: response.recentHistory || []
+        })
+      }
+    } catch (err) {
+      console.error('Failed to load sessions', err)
+    } finally {
+      setIsSessionsLoading(false)
+    }
+  }
+
+  const loadPlatformHealth = async () => {
+    setIsHealthLoading(true)
+    try {
+      const [logsRes, healthRes] = await Promise.all([
+        requestAdmin('POST', 'admin/platform/logs', logFilter),
+        requestAdmin('GET', 'admin/platform/health-summary')
+      ])
+      if (!logsRes.err && logsRes.ok) setPlatformLogs({ logs: logsRes.logs, total: logsRes.total })
+      if (!healthRes.err && healthRes.ok) setHealthSummary(healthRes)
+    } catch (err) {
+      console.error('Failed to load health data', err)
+    } finally {
+      setIsHealthLoading(false)
     }
   }
 
@@ -567,6 +607,13 @@ const CentralAdminApp = () => {
     { label: 'Trial Workspaces', value: snapshot.summary.trialTenants || 0, note: 'Tenants currently operating on the free-trial window.' },
     { label: 'Workspace Users', value: snapshot.summary.totalUsers || 0, note: 'All user records connected across the tenant estate.' },
     { label: 'Employees on Record', value: snapshot.summary.totalEmployees || 0, note: 'Live employee footprints across tenant databases.' },
+    { label: 'Live Active Sessions', value: snapshot.summary.totalActiveSessions || 0, note: 'Users currently logged into the platform estate.' },
+    { 
+      label: 'Platform Health', 
+      value: snapshot.summary.health?.toUpperCase() || 'HEALTHY', 
+      note: `Detected ${snapshot.summary.totalErrors24h || 0} issues in last 24h.`,
+      status: snapshot.summary.health 
+    },
   ]), [snapshot.summary])
 
   const loadTenantDetails = async (database) => {
@@ -646,6 +693,8 @@ const CentralAdminApp = () => {
           {[
             ['overview', 'Overview'],
             ['tenants', 'Tenants'],
+            ['sessions', 'User Sessions'],
+            ['health', 'System Health'],
             ['subscriptions', 'Subscriptions'],
             ['support', 'Help & Support'],
             ['settings', 'Settings'],
@@ -656,6 +705,8 @@ const CentralAdminApp = () => {
               onClick={() => {
                 setActiveTab(key);
                 if (key === 'support') loadEnquiries();
+                if (key === 'sessions') loadSessions();
+                if (key === 'health') loadPlatformHealth();
               }}
             >
               {label}
@@ -1408,6 +1459,263 @@ const CentralAdminApp = () => {
               </div>
             </section>
           </>
+        )}
+
+        {activeTab === 'sessions' && (
+          <div className='ca-sessions-container'>
+            <div className='ca-sessions-header'>
+              <div className='ca-form-grid'>
+                <label>
+                  <span>Filter by Tenant</span>
+                  <select 
+                    value={sessionFilter.database} 
+                    onChange={(e) => {
+                      const db = e.target.value;
+                      setSessionFilter(prev => ({ ...prev, database: db }));
+                      loadSessions(db, sessionFilter.emailid);
+                    }}
+                  >
+                    <option value=''>All Tenants</option>
+                    {snapshot.tenants.map(t => <option key={t.database} value={t.database}>{t.companyName}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Filter by User ID</span>
+                  <input 
+                    type='text' 
+                    placeholder='Email address'
+                    value={sessionFilter.emailid}
+                    onChange={(e) => setSessionFilter(prev => ({ ...prev, emailid: e.target.value }))}
+                    onBlur={() => loadSessions(sessionFilter.database, sessionFilter.emailid)}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className='ca-grid-two'>
+              <section className='ca-panel'>
+                <div className='ca-panel-head'>
+                  <h3>Active User Sessions ({sessionsData.activeSessions.length})</h3>
+                </div>
+                <div className='ca-table-wrap'>
+                  <table className='ca-table'>
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Tenant</th>
+                        <th>Login At</th>
+                        <th>Last Activity</th>
+                        <th>IP / Device</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {isSessionsLoading ? (
+                        <tr><td colSpan='5' className='ca-empty'>Loading sessions...</td></tr>
+                      ) : sessionsData.activeSessions.length ? sessionsData.activeSessions.map((s) => (
+                        <tr key={s._id}>
+                          <td>
+                            <strong>{s.userName}</strong>
+                            <div style={{fontSize: '11px', color: 'var(--ca-text-muted)'}}>{s.userId}</div>
+                          </td>
+                          <td>{s.tenant || s.db}</td>
+                          <td>{formatDateTime(s.loginAt)}</td>
+                          <td>{formatDateTime(s.lastActivityAt)}</td>
+                          <td>
+                            <div style={{fontSize: '11px'}}>{s.ip}</div>
+                            <div style={{fontSize: '10px', color: 'var(--ca-text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{s.userAgent}</div>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan='5' className='ca-empty'>No active sessions found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className='ca-panel'>
+                <div className='ca-panel-head'>
+                  <h3>Recent Session History ({sessionsData.recentHistory.length})</h3>
+                </div>
+                <div className='ca-table-wrap'>
+                  <table className='ca-table'>
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Tenant</th>
+                        <th>Duration</th>
+                        <th>Logout At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {isSessionsLoading ? (
+                        <tr><td colSpan='4' className='ca-empty'>Loading history...</td></tr>
+                      ) : sessionsData.recentHistory.length ? sessionsData.recentHistory.map((s) => (
+                        <tr key={s._id}>
+                          <td>
+                            <strong>{s.userName}</strong>
+                            <div style={{fontSize: '11px', color: 'var(--ca-text-muted)'}}>{s.userId}</div>
+                          </td>
+                          <td>{s.tenant || s.db}</td>
+                          <td>{Math.round(((s.logoutAt - s.loginAt) / 60000))} mins</td>
+                          <td>{formatDateTime(s.logoutAt)}</td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan='4' className='ca-empty'>No recent session history.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+        )}
+        {activeTab === 'health' && (
+          <div className='ca-health-container'>
+            <div className='ca-health-stats-grid'>
+              <div className='ca-card ca-health-card'>
+                <span>System Status</span>
+                <strong className={`status-${snapshot.summary.health}`}>{snapshot.summary.health?.toUpperCase() || 'HEALTHY'}</strong>
+                <p>Global platform integrity level based on recent telemetry.</p>
+              </div>
+              <div className='ca-card ca-health-card'>
+                <span>24h Error Count</span>
+                <strong>{snapshot.summary.totalErrors24h || 0}</strong>
+                <p>Total warning and error events captured from all sources.</p>
+              </div>
+              <div className='ca-card ca-health-card'>
+                <span>Active Data Sources</span>
+                <strong>{healthSummary.sourceBreakdown?.length || 0}</strong>
+                <p>Unique platform modules reporting health data.</p>
+              </div>
+            </div>
+
+            <div className='ca-health-layout'>
+              <section className='ca-panel ca-logs-panel'>
+                <div className='ca-panel-head'>
+                  <h3>Intelligence Logs</h3>
+                  <div className='ca-log-filters'>
+                    <select value={logFilter.level} onChange={(e) => {
+                      const newFilter = { ...logFilter, level: e.target.value, skip: 0 };
+                      setLogFilter(newFilter);
+                      requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
+                    }}>
+                      <option value=''>All Severities</option>
+                      <option value='info'>Info</option>
+                      <option value='warn'>Warning</option>
+                      <option value='error'>Error</option>
+                      <option value='critical'>Critical</option>
+                    </select>
+                    <select value={logFilter.source} onChange={(e) => {
+                      const newFilter = { ...logFilter, source: e.target.value, skip: 0 };
+                      setLogFilter(newFilter);
+                      requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
+                    }}>
+                      <option value=''>All Sources</option>
+                      <option value='mongo'>Database (Mongo)</option>
+                      <option value='auth'>Authentication</option>
+                      <option value='sse'>Real-time (SSE)</option>
+                      <option value='api'>API Engine</option>
+                    </select>
+                    <input 
+                      type='text' 
+                      placeholder='Search logs or collections...' 
+                      value={logFilter.search} 
+                      onChange={(e) => setLogFilter({...logFilter, search: e.target.value})}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const newFilter = { ...logFilter, skip: 0 };
+                          requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className='ca-table-wrap logs-table'>
+                  <table className='ca-table'>
+                    <thead>
+                      <tr>
+                        <th>Time</th>
+                        <th>Level</th>
+                        <th>Source</th>
+                        <th>Collection</th>
+                        <th>Message</th>
+                        <th>Context</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {isHealthLoading ? (
+                        <tr><td colSpan='6' className='ca-empty'>Loading system telemetry...</td></tr>
+                      ) : platformLogs.logs.length ? platformLogs.logs.map((log) => (
+                        <tr key={log._id} className={`log-row level-${log.level}`}>
+                          <td style={{whiteSpace: 'nowrap'}}>{formatDateTime(log.timestamp)}</td>
+                          <td><span className={`ca-badge log-badge ${log.level}`}>{log.level}</span></td>
+                          <td>{log.source}</td>
+                          <td><code className='ca-log-coll'>{log.collection || '-'}</code></td>
+                          <td className='log-message-cell' title={log.message}>{log.message}</td>
+                          <td>
+                            <div className='log-context-mini'>
+                              <span>{log.tenant}</span>
+                              {log.userId && <span>{log.userId}</span>}
+                              <span>{log.env?.ip}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan='6' className='ca-empty'>No logs found matching your criteria.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className='ca-pagination'>
+                  <button 
+                    disabled={logFilter.skip === 0}
+                    onClick={() => {
+                      const newSkip = Math.max(0, logFilter.skip - 100);
+                      const newFilter = { ...logFilter, skip: newSkip };
+                      setLogFilter(newFilter);
+                      requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
+                    }}
+                  >Previous</button>
+                  <span>Showing {logFilter.skip + 1} - {Math.min(logFilter.skip + 100, platformLogs.total)} of {platformLogs.total}</span>
+                  <button 
+                    disabled={logFilter.skip + 100 >= platformLogs.total}
+                    onClick={() => {
+                      const newSkip = logFilter.skip + 100;
+                      const newFilter = { ...logFilter, skip: newSkip };
+                      setLogFilter(newFilter);
+                      requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
+                    }}
+                  >Next</button>
+                </div>
+              </section>
+
+              <aside className='ca-health-sidebar'>
+                <div className='ca-panel'>
+                  <div className='ca-panel-head'><h3>Issue Breakdown</h3></div>
+                  <div className='ca-health-summary-list'>
+                    {healthSummary.sourceBreakdown?.map(item => (
+                      <div className='ca-health-summary-item' key={item._id}>
+                        <span>{item._id || 'unlabeled'}</span>
+                        <strong>{item.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className='ca-panel' style={{marginTop: '20px'}}>
+                  <div className='ca-panel-head'><h3>High-Error Tenants</h3></div>
+                  <div className='ca-health-summary-list'>
+                    {healthSummary.topTenants?.map(item => (
+                      <div className='ca-health-summary-item' key={item._id}>
+                        <span>{item._id || 'platform'}</span>
+                        <strong className='text-danger'>{item.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
         )}
 
         {activeTab === 'support' && (
