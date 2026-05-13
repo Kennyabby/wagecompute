@@ -30,6 +30,9 @@ body {
   display: grid;
   grid-template-columns: 280px 1fr;
   min-height: 100vh;
+  width: 100vw;
+  max-width: 100%;
+  overflow-x: hidden;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -147,8 +150,10 @@ body {
 .ca-main {
   padding: 40px;
   /* max-width: 1400px; */
-  margin: 0 auto;
+  margin: 0;
   width: 100%;
+  height: 100vh;
+  min-width: 0;
   overflow-y: auto;
   scroll-behavior: smooth;
   scrollbar-width: thin;
@@ -339,6 +344,8 @@ body {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
+  overflow: auto;
+  width: 50%;
 }
 
 .ca-table.wide {
@@ -1186,8 +1193,14 @@ body {
 .ca-health-grid {
   display: grid;
   grid-template-columns: 1fr 340px;
-  gap: 32px;
+  gap: 24px;
   align-items: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.ca-logs-section {
+  min-width: 0;
 }
 
 @media (max-width: 1280px) {
@@ -1245,11 +1258,15 @@ body {
 
 .logs-table-container {
   max-height: 800px;
+  width: 100%;
   overflow: auto;
   position: relative;
   border-bottom: 1px solid var(--ca-border);
 }
 
+.logs-table {
+  width: 100%;
+}
 .logs-table th {
   position: sticky;
   top: 0;
@@ -1579,8 +1596,114 @@ body {
   cursor: help;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 992px) {
+  .ca-shell {
+    flex-direction: column;
+  }
+
+  .ca-mobile-header {
+    display: flex;
+  }
+
+  .ca-sidebar {
+    position: fixed;
+    top: 60px;
+    left: -280px;
+    bottom: 0;
+    width: 280px;
+    z-index: 999;
+    transition: left 0.3s ease;
+  }
+
+  .ca-sidebar.open {
+    left: 0;
+  }
+
+  .ca-main {
+    padding: 16px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .ca-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .ca-header-actions {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .ca-health-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .ca-log-filter-bar {
+    padding: 16px;
+  }
+
+  .ca-filter-group {
+    flex-direction: column;
+  }
+
+  .ca-filter-group select, .ca-filter-group input {
+    width: 100%;
+  }
+
+  .ca-health-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ca-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .ca-table {
+    min-width: 800px; /* Force scroll for wide data */
+  }
+
+  .ca-metrics-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ca-form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .ca-connectivity-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* --- MOBILE HEADER STYLES --- */
+.ca-mobile-header {
+  display: none;
+  height: 60px;
+  background: var(--ca-sidebar-bg);
+  color: #fff;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.ca-menu-toggle {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
