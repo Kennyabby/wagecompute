@@ -796,7 +796,7 @@ const TransactionHistory = () => {
 
       // Quantity
       doc.text(
-        formatNumber(product.quantity),
+        formatNumber(product.quantity, true),
         margin + colWidths[0] + colWidths[1] / 2,
         currentY + 5,
         { align: 'right' }
@@ -844,7 +844,7 @@ const TransactionHistory = () => {
           );
           // Location quantity
           doc.text(
-            formatNumber(locData.quantity),
+            formatNumber(locData.quantity, true),
             margin + colWidths[0] + colWidths[1] / 2,
             currentY + 5,
             { align: 'right' }
@@ -944,8 +944,14 @@ const TransactionHistory = () => {
   };
 
   // Format number with thousands separators
-  const formatNumber = (num) => {
+  const formatNumber = (num, showSign = false) => {
     if (num === null || num === undefined) return '0';
+    const formatted = new Intl.NumberFormat('en-US').format(Math.abs(num));
+    if (showSign) {
+      if (num > 0) return `+${formatted}`;
+      if (num < 0) return `-${formatted}`;
+      return formatted;
+    }
     return new Intl.NumberFormat('en-US').format(num);
   };
 
@@ -1011,7 +1017,6 @@ const TransactionHistory = () => {
                     {
                       $and: [
                         { $eq: ["$entryType", "Purchase"] },
-                        { $gt: ["$baseQuantity", 0] },
                         { $in: ["$productId", productIds] }
                       ]
                     },
@@ -1047,7 +1052,6 @@ const TransactionHistory = () => {
                     {
                       $and: [
                         { $eq: ["$entryType", "Purchase"] },
-                        { $gte: ["$totalCost", 0] },
                         { $in: ["$productId", productIds] }
                       ]
                     },
@@ -1738,95 +1742,6 @@ const TransactionHistory = () => {
     }).format(num);
   };
 
-  // Modal component
-  const DetailModal = ({ show, onClose, data, title, type, summary, startDate, endDate }) => {
-    if (!show || !data) return null;
-
-    const { totalQuantity, totalValue, totalCost, averageUnitCost } = summary || {};
-
-    const handleExportPDF = () => {
-      exportToPDF(title, type, data, summary, startDate, endDate);
-    };
-
-    return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={e => e.stopPropagation()}>
-          <div className="modal-header">
-            <h3>{title}</h3>
-            <div className="modal-actions">
-              <button
-                className="export-pdf-button"
-                onClick={handleExportPDF}
-                title="Export to PDF"
-              >
-                <FaFilePdf /> Export PDF
-              </button>
-              <button className="close-button" onClick={onClose}>&times;</button>
-            </div>
-          </div>
-
-          <div className="modal-body">
-            <table className="table table-striped table-hover table-sm">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th className="text-end">Quantity</th>
-                  <th className="text-end">% of Total</th>
-                  {type === 'sales' && <th className="text-end">Total Value</th>}
-                  {type === 'sales' && <th className="text-end">% of Value</th>}
-                  <th className="text-end">Unit Cost</th>
-                  <th className="text-end">Total Cost</th>
-                  <th className="text-end">% of Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.map((product) => (
-                  <tr key={product.productId}>
-                    <td>
-                      <div className="fw-bold">{product.productName}</div>
-                      <div className="text-muted small">
-                        {product.locations?.map((loc, idx) => (
-                          <div key={idx}>
-                            {loc.name}: {formatNumber(loc.quantity)} ({loc.percentage?.toFixed(1)}%)
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="text-end">{formatNumber(product.quantity)}</td>
-                    <td className="text-end">{product.percentage?.toFixed(1)}%</td>
-                    {type === 'sales' && <td className="text-end">{formatCurrency(product.value)}</td>}
-                    {type === 'sales' && <td className="text-end">{product.valuePercentage?.toFixed(1)}%</td>}
-                    <td className="text-end">{formatCurrency(product.unitCost)}</td>
-                    <td className="text-end">{formatCurrency(product.cost)}</td>
-                    <td className="text-end">
-                      {product.costPercentage?.toFixed(1)}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="table-group-divider">
-                <tr className="table-active">
-                  <th>Total</th>
-                  <th className="text-end">{formatNumber(totalQuantity || 0)}</th>
-                  <th className="text-end">100%</th>
-                  {type === 'sales' && <td className="text-end">{formatCurrency(totalValue || 0)}</td>}
-                  {type === 'sales' && <td className="text-end">100%</td>}
-                  <th className="text-end">{formatCurrency(averageUnitCost || 0)}</th>
-                  <th className="text-end">{formatCurrency(totalCost || 0)}</th>
-                  <th className="text-end">100%</th>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-secondary" onClick={onClose}>
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // Remove the duplicate handleSummaryCardClick function
 
@@ -1841,6 +1756,10 @@ const TransactionHistory = () => {
         summary={modalData.summary}
         startDate={filters.startDate}
         endDate={filters.endDate}
+        formatNumber={formatNumber}
+        formatCurrency={formatCurrency}
+        FaFilePdf={FaFilePdf}
+        exportToPDF={exportToPDF}
       />
       <div className="filters-container">
         <div className="filter-group">
@@ -2257,6 +2176,96 @@ const TransactionHistory = () => {
               onKeyDown={(e) => { if (e.key === 'Enter') handleRowsPerPageChange(rowsInputValue); }}
             />
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modal component
+const DetailModal = ({ show, onClose, data, title, type, summary, startDate, endDate, formatNumber, formatCurrency, FaFilePdf, exportToPDF }) => {
+  if (!show || !data) return null;
+
+  const { totalQuantity, totalValue, totalCost, averageUnitCost } = summary || {};
+
+  const handleExportPDF = () => {
+    exportToPDF(title, type, data, summary, startDate, endDate);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{title}</h3>
+          <div className="modal-actions">
+            <button
+              className="export-pdf-button"
+              onClick={handleExportPDF}
+              title="Export to PDF"
+            >
+              <FaFilePdf /> Export PDF
+            </button>
+            <button className="close-button" onClick={onClose}>&times;</button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <table className="table table-striped table-hover table-sm">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th className="text-end">Quantity</th>
+                <th className="text-end">% of Total</th>
+                {type === 'sales' && <th className="text-end">Total Value</th>}
+                {type === 'sales' && <th className="text-end">% of Value</th>}
+                <th className="text-end">Unit Cost</th>
+                <th className="text-end">Total Cost</th>
+                <th className="text-end">% of Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data?.map((product) => (
+                <tr key={product.productId}>
+                  <td>
+                    <div className="fw-bold">{product.productName}</div>
+                    <div className="text-muted small">
+                      {product.locations?.map((loc, idx) => (
+                        <div key={idx}>
+                          {loc.name}: {formatNumber(loc.quantity)} ({loc.percentage?.toFixed(1)}%)
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="text-end">{formatNumber(product.quantity, true)}</td>
+                  <td className="text-end">{product.percentage?.toFixed(1)}%</td>
+                  {type === 'sales' && <td className="text-end">{formatCurrency(product.value)}</td>}
+                  {type === 'sales' && <td className="text-end">{product.valuePercentage?.toFixed(1)}%</td>}
+                  <td className="text-end">{formatCurrency(product.unitCost)}</td>
+                  <td className="text-end">{formatCurrency(product.cost)}</td>
+                  <td className="text-end">
+                    {product.costPercentage?.toFixed(1)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="table-group-divider">
+              <tr className="table-active">
+                <th>Total</th>
+                <th className="text-end">{formatNumber(totalQuantity || 0)}</th>
+                <th className="text-end">100%</th>
+                {type === 'sales' && <td className="text-end">{formatCurrency(totalValue || 0)}</td>}
+                {type === 'sales' && <td className="text-end">100%</td>}
+                <th className="text-end">{formatCurrency(averageUnitCost || 0)}</th>
+                <th className="text-end">{formatCurrency(totalCost || 0)}</th>
+                <th className="text-end">100%</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>
