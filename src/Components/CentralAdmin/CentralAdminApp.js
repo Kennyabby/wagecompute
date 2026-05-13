@@ -62,7 +62,18 @@ const CentralAdminApp = () => {
   const [sessionFilter, setSessionFilter] = useState({ database: '', emailid: '' })
   const [isSessionsLoading, setIsSessionsLoading] = useState(false)
   const [platformLogs, setPlatformLogs] = useState({ logs: [], total: 0 })
-  const [logFilter, setLogFilter] = useState({ level: '', source: '', tenant: '', search: '', skip: 0 })
+  const [logFilter, setLogFilter] = useState({ 
+    level: '', 
+    source: '', 
+    tenant: '', 
+    collection: '',
+    userId: '',
+    device: '',
+    fromDate: '',
+    toDate: '',
+    search: '', 
+    skip: 0 
+  })
   const [healthSummary, setHealthSummary] = useState({ errorTrend: [], sourceBreakdown: [], topTenants: [] })
   const [isHealthLoading, setIsHealthLoading] = useState(false)
   const [snapshot, setSnapshot] = useState({
@@ -202,6 +213,17 @@ const CentralAdminApp = () => {
       console.error('Failed to load sessions', err)
     } finally {
       setIsSessionsLoading(false)
+    }
+  }
+
+  const fetchLogs = async (filter) => {
+    try {
+      const response = await requestAdmin('POST', 'admin/platform/logs', filter)
+      if (!response.err && response.ok) {
+        setPlatformLogs({ logs: response.logs, total: response.total })
+      }
+    } catch (err) {
+      console.error('Log fetch error', err)
     }
   }
 
@@ -601,6 +623,16 @@ const CentralAdminApp = () => {
     ))
   }, [snapshot.tenants, tenantFilter])
 
+  const tenantConnectionGroups = useMemo(() => {
+    const groups = (sessionsData.activeSessions || []).reduce((acc, session) => {
+      const db = session.tenant || session.db || 'unknown';
+      if (!acc[db]) acc[db] = [];
+      acc[db].push(session);
+      return acc;
+    }, {});
+    return Object.entries(groups);
+  }, [sessionsData.activeSessions]);
+
   const overviewMetrics = useMemo(() => ([
     { label: 'Tracked Tenants', value: snapshot.summary.totalTenants || 0, note: 'All registered workspaces the central admin can inspect.' },
     { label: 'Active Subscriptions', value: snapshot.summary.activeTenants || 0, note: 'Currently active and available to use.' },
@@ -694,6 +726,7 @@ const CentralAdminApp = () => {
             ['overview', 'Overview'],
             ['tenants', 'Tenants'],
             ['sessions', 'User Sessions'],
+            ['connectivity', 'Live Connectivity'],
             ['health', 'System Health'],
             ['subscriptions', 'Subscriptions'],
             ['support', 'Help & Support'],
@@ -705,7 +738,7 @@ const CentralAdminApp = () => {
               onClick={() => {
                 setActiveTab(key);
                 if (key === 'support') loadEnquiries();
-                if (key === 'sessions') loadSessions();
+                if (key === 'sessions' || key === 'connectivity') loadSessions();
                 if (key === 'health') loadPlatformHealth();
               }}
             >
@@ -1571,150 +1604,334 @@ const CentralAdminApp = () => {
           </div>
         )}
         {activeTab === 'health' && (
-          <div className='ca-health-container'>
-            <div className='ca-health-stats-grid'>
-              <div className='ca-card ca-health-card'>
-                <span>System Status</span>
-                <strong className={`status-${snapshot.summary.health}`}>{snapshot.summary.health?.toUpperCase() || 'HEALTHY'}</strong>
-                <p>Global platform integrity level based on recent telemetry.</p>
+          <div className='ca-health-view'>
+            <section className='ca-health-stats'>
+              <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon status'></div>
+                <div className='ca-stat-info'>
+                  <span>System Integrity</span>
+                  <strong className={`status-${snapshot.summary.health}`}>{snapshot.summary.health?.toUpperCase() || 'HEALTHY'}</strong>
+                  <p>Overall platform performance level</p>
+                </div>
               </div>
-              <div className='ca-card ca-health-card'>
-                <span>24h Error Count</span>
-                <strong>{snapshot.summary.totalErrors24h || 0}</strong>
-                <p>Total warning and error events captured from all sources.</p>
+              <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon errors'></div>
+                <div className='ca-stat-info'>
+                  <span>Active Anomalies</span>
+                  <strong>{snapshot.summary.totalErrors24h || 0}</strong>
+                  <p>Critical events in the last 24 hours</p>
+                </div>
               </div>
-              <div className='ca-card ca-health-card'>
-                <span>Active Data Sources</span>
-                <strong>{healthSummary.sourceBreakdown?.length || 0}</strong>
-                <p>Unique platform modules reporting health data.</p>
+              <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon sources'></div>
+                <div className='ca-stat-info'>
+                  <span>Telemetry Sources</span>
+                  <strong>{healthSummary.sourceBreakdown?.length || 0}</strong>
+                  <p>Connected monitoring nodes</p>
+                </div>
               </div>
-            </div>
+              <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon active-users'></div>
+                <div className='ca-stat-info'>
+                  <span>Active Connections</span>
+                  <strong>{sessionsData.activeSessions?.length || 0}</strong>
+                  <p>Users currently online across all tenants</p>
+                </div>
+              </div>
+            </section>
 
-            <div className='ca-health-layout'>
-              <section className='ca-panel ca-logs-panel'>
-                <div className='ca-panel-head'>
-                  <h3>Intelligence Logs</h3>
-                  <div className='ca-log-filters'>
-                    <select value={logFilter.level} onChange={(e) => {
-                      const newFilter = { ...logFilter, level: e.target.value, skip: 0 };
-                      setLogFilter(newFilter);
-                      requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
-                    }}>
-                      <option value=''>All Severities</option>
-                      <option value='info'>Info</option>
-                      <option value='warn'>Warning</option>
-                      <option value='error'>Error</option>
-                      <option value='critical'>Critical</option>
-                    </select>
-                    <select value={logFilter.source} onChange={(e) => {
-                      const newFilter = { ...logFilter, source: e.target.value, skip: 0 };
-                      setLogFilter(newFilter);
-                      requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
-                    }}>
-                      <option value=''>All Sources</option>
-                      <option value='mongo'>Database (Mongo)</option>
-                      <option value='auth'>Authentication</option>
-                      <option value='sse'>Real-time (SSE)</option>
-                      <option value='api'>API Engine</option>
-                    </select>
-                    <input 
-                      type='text' 
-                      placeholder='Search logs or collections...' 
-                      value={logFilter.search} 
-                      onChange={(e) => setLogFilter({...logFilter, search: e.target.value})}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const newFilter = { ...logFilter, skip: 0 };
-                          requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className='ca-table-wrap logs-table'>
-                  <table className='ca-table'>
-                    <thead>
-                      <tr>
-                        <th>Time</th>
-                        <th>Level</th>
-                        <th>Source</th>
-                        <th>Collection</th>
-                        <th>Message</th>
-                        <th>Context</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {isHealthLoading ? (
-                        <tr><td colSpan='6' className='ca-empty'>Loading system telemetry...</td></tr>
-                      ) : platformLogs.logs.length ? platformLogs.logs.map((log) => (
-                        <tr key={log._id} className={`log-row level-${log.level}`}>
-                          <td style={{whiteSpace: 'nowrap'}}>{formatDateTime(log.timestamp)}</td>
-                          <td><span className={`ca-badge log-badge ${log.level}`}>{log.level}</span></td>
-                          <td>{log.source}</td>
-                          <td><code className='ca-log-coll'>{log.collection || '-'}</code></td>
-                          <td className='log-message-cell' title={log.message}>{log.message}</td>
-                          <td>
-                            <div className='log-context-mini'>
-                              <span>{log.tenant}</span>
-                              {log.userId && <span>{log.userId}</span>}
-                              <span>{log.env?.ip}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      )) : (
-                        <tr><td colSpan='6' className='ca-empty'>No logs found matching your criteria.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <div className='ca-pagination'>
-                  <button 
-                    disabled={logFilter.skip === 0}
-                    onClick={() => {
-                      const newSkip = Math.max(0, logFilter.skip - 100);
-                      const newFilter = { ...logFilter, skip: newSkip };
-                      setLogFilter(newFilter);
-                      requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
-                    }}
-                  >Previous</button>
-                  <span>Showing {logFilter.skip + 1} - {Math.min(logFilter.skip + 100, platformLogs.total)} of {platformLogs.total}</span>
-                  <button 
-                    disabled={logFilter.skip + 100 >= platformLogs.total}
-                    onClick={() => {
-                      const newSkip = logFilter.skip + 100;
-                      const newFilter = { ...logFilter, skip: newSkip };
-                      setLogFilter(newFilter);
-                      requestAdmin('POST', 'admin/platform/logs', newFilter).then(res => !res.err && setPlatformLogs({ logs: res.logs, total: res.total }));
-                    }}
-                  >Next</button>
-                </div>
-              </section>
-
-              <aside className='ca-health-sidebar'>
+            <div className='ca-health-grid'>
+              <div className='ca-logs-section'>
                 <div className='ca-panel'>
-                  <div className='ca-panel-head'><h3>Issue Breakdown</h3></div>
-                  <div className='ca-health-summary-list'>
+                  <div className='ca-panel-head'>
+                    <div className='ca-panel-title'>
+                      <h3>Operational Intelligence Logs</h3>
+                      <p>Unified diagnostic telemetry from all platform modules</p>
+                    </div>
+                    <button className='ca-inline-btn' onClick={loadPlatformHealth} disabled={isHealthLoading}>
+                      {isHealthLoading ? 'Refreshing...' : '🔄 Refresh Data'}
+                    </button>
+                  </div>
+
+                  <div className='ca-log-filter-bar'>
+                    <div className='ca-filter-group'>
+                      <select value={logFilter.level} onChange={(e) => {
+                        const newFilter = { ...logFilter, level: e.target.value, skip: 0 };
+                        setLogFilter(newFilter);
+                        fetchLogs(newFilter);
+                      }}>
+                        <option value=''>All Severities</option>
+                        <option value='info'>Info</option>
+                        <option value='warn'>Warning</option>
+                        <option value='error'>Error</option>
+                        <option value='critical'>Critical</option>
+                      </select>
+
+                      <select value={logFilter.source} onChange={(e) => {
+                        const newFilter = { ...logFilter, source: e.target.value, skip: 0 };
+                        setLogFilter(newFilter);
+                        fetchLogs(newFilter);
+                      }}>
+                        <option value=''>All Sources</option>
+                        <option value='mongo'>Database (Mongo)</option>
+                        <option value='auth'>Authentication</option>
+                        <option value='sse'>Real-time (SSE)</option>
+                        <option value='api'>API Engine</option>
+                        <option value='accounting'>Accounting</option>
+                        <option value='poller'>Poller Service</option>
+                      </select>
+                      <select value={logFilter.tenant} onChange={(e) => {
+                        const newFilter = { ...logFilter, tenant: e.target.value, skip: 0 };
+                        setLogFilter(newFilter);
+                        fetchLogs(newFilter);
+                      }}>
+                        <option value=''>All Tenants</option>
+                        {snapshot.tenants.map(t => (
+                          <option key={t.database} value={t.database}>{t.companyName}</option>
+                        ))}
+                      </select>
+
+                      {logFilter.tenant && (
+                        <input 
+                          type='text' 
+                          placeholder='Filter Collection...' 
+                          value={logFilter.collection}
+                          onChange={(e) => setLogFilter({...logFilter, collection: e.target.value})}
+                          onBlur={() => fetchLogs({...logFilter, skip: 0})}
+                        />
+                      )}
+                    </div>
+
+                    <div className='ca-filter-group'>
+                      <input 
+                        type='date' 
+                        title='From Date'
+                        value={logFilter.fromDate}
+                        onChange={(e) => {
+                          const newFilter = { ...logFilter, fromDate: e.target.value, skip: 0 };
+                          setLogFilter(newFilter);
+                          fetchLogs(newFilter);
+                        }}
+                      />
+                      <input 
+                        type='date' 
+                        title='To Date'
+                        value={logFilter.toDate}
+                        onChange={(e) => {
+                          const newFilter = { ...logFilter, toDate: e.target.value, skip: 0 };
+                          setLogFilter(newFilter);
+                          fetchLogs(newFilter);
+                        }}
+                      />
+                      {logFilter.tenant && (
+                        <input 
+                          type='text' 
+                          placeholder='Filter User ID...' 
+                          value={logFilter.userId}
+                          onChange={(e) => setLogFilter({...logFilter, userId: e.target.value})}
+                          onBlur={() => fetchLogs({...logFilter, skip: 0})}
+                        />
+                      )}
+                      <input 
+                        type='text' 
+                        placeholder='Filter Device/Browser...' 
+                        value={logFilter.device}
+                        onChange={(e) => setLogFilter({...logFilter, device: e.target.value})}
+                        onBlur={() => fetchLogs({...logFilter, skip: 0})}
+                      />
+                      <input 
+                        type='text' 
+                        placeholder='Search Messages, IP, Device, User...' 
+                        value={logFilter.search}
+                        className='ca-search-large'
+                        onChange={(e) => setLogFilter({...logFilter, search: e.target.value})}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const newFilter = { ...logFilter, skip: 0 };
+                            fetchLogs(newFilter);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className='ca-table-wrap logs-table-container'>
+                    <table className='ca-table logs-table wide'>
+                      <thead>
+                        <tr>
+                          <th>Timestamp</th>
+                          <th>Level</th>
+                          <th>Source</th>
+                          <th>Tenant</th>
+                          <th>Collection</th>
+                          <th>User</th>
+                          <th>IP & Device</th>
+                          <th>Message</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {isHealthLoading ? (
+                          <tr><td colSpan='8' className='ca-empty'>Acquiring platform telemetry...</td></tr>
+                        ) : platformLogs.logs.length ? platformLogs.logs.map((log) => (
+                          <tr key={log._id} className={`log-row level-${log.level}`}>
+                            <td className='log-time'>{formatDateTime(log.timestamp)}</td>
+                            <td><span className={`ca-badge log-badge ${log.level}`}>{log.level}</span></td>
+                            <td><strong className='ca-log-source-text'>{log.source || 'system'}</strong></td>
+                            <td><span className='ca-log-tenant-text'>{log.tenant || 'global'}</span></td>
+                            <td>{log.collection ? <code className='ca-mini-tag'>{log.collection}</code> : '-'}</td>
+                            <td><span className='ca-log-user-text'>{log.userId || '-'}</span></td>
+                            <td>
+                              <div className='log-env-info'>
+                                <span className='log-ip'>{log.env?.ip || '-'}</span>
+                                <small className='log-ua' title={log.env?.userAgent}>{log.env?.userAgent ? (log.env.userAgent.length > 20 ? log.env.userAgent.slice(0, 20) + '...' : log.env.userAgent) : '-'}</small>
+                              </div>
+                            </td>
+                            <td className='log-message-cell'>
+                              <div className='log-msg-wrap'>
+                                <p>{log.message}</p>
+                              </div>
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr><td colSpan='8' className='ca-empty'>No diagnostic logs match the current filters.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className='ca-pagination-modern'>
+                    <div className='ca-pag-info'>
+                      Showing <strong>{logFilter.skip + 1}</strong> - <strong>{Math.min(logFilter.skip + 100, platformLogs.total)}</strong> of <strong>{platformLogs.total}</strong> events
+                    </div>
+                    <div className='ca-pag-actions'>
+                      <button 
+                        className='ca-inline-btn'
+                        disabled={logFilter.skip === 0}
+                        onClick={() => {
+                          const newSkip = Math.max(0, logFilter.skip - 100);
+                          const newFilter = { ...logFilter, skip: newSkip };
+                          setLogFilter(newFilter);
+                          fetchLogs(newFilter);
+                        }}
+                      >Previous</button>
+                      <button 
+                        className='ca-inline-btn'
+                        disabled={logFilter.skip + 100 >= platformLogs.total}
+                        onClick={() => {
+                          const newSkip = logFilter.skip + 100;
+                          const newFilter = { ...logFilter, skip: newSkip };
+                          setLogFilter(newFilter);
+                          fetchLogs(newFilter);
+                        }}
+                      >Next Page</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <aside className='ca-health-metrics'>
+                <div className='ca-panel'>
+                  <div className='ca-panel-head'><h3>Anomalies by Source</h3></div>
+                  <div className='ca-metrics-list'>
                     {healthSummary.sourceBreakdown?.map(item => (
-                      <div className='ca-health-summary-item' key={item._id}>
-                        <span>{item._id || 'unlabeled'}</span>
-                        <strong>{item.count}</strong>
+                      <div className='ca-metric-row' key={item._id}>
+                        <span className='ca-metric-label'>{item._id || 'unknown'}</span>
+                        <div className='ca-metric-bar-wrap'>
+                          <div className='ca-metric-bar' style={{width: `${Math.min(100, (item.count / (snapshot.summary.totalErrors24h || 1)) * 100)}%`}}></div>
+                        </div>
+                        <span className='ca-metric-value'>{item.count}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className='ca-panel' style={{marginTop: '20px'}}>
-                  <div className='ca-panel-head'><h3>High-Error Tenants</h3></div>
-                  <div className='ca-health-summary-list'>
+
+                <div className='ca-panel' style={{marginTop: '24px'}}>
+                  <div className='ca-panel-head'><h3>Impacted Tenants</h3></div>
+                  <div className='ca-metrics-list'>
                     {healthSummary.topTenants?.map(item => (
-                      <div className='ca-health-summary-item' key={item._id}>
-                        <span>{item._id || 'platform'}</span>
-                        <strong className='text-danger'>{item.count}</strong>
+                      <div className='ca-metric-row' key={item._id}>
+                        <span className='ca-metric-label'>{item._id || 'Platform'}</span>
+                        <span className='ca-metric-value text-danger'>{item.count} alerts</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className='ca-panel' style={{marginTop: '24px'}}>
+                  <div className='ca-panel-head'><h3>Live Monitors</h3></div>
+                  <div className='ca-monitors'>
+                    <div className='ca-monitor-item'>
+                      <div className='ca-monitor-dot active'></div>
+                      <span>Database Engine</span>
+                      <strong className='text-success'>Online</strong>
+                    </div>
+                    <div className='ca-monitor-item'>
+                      <div className='ca-monitor-dot active'></div>
+                      <span>SSE Broadcast</span>
+                      <strong className='text-success'>Healthy</strong>
+                    </div>
+                    <div className='ca-monitor-item'>
+                      <div className='ca-monitor-dot active'></div>
+                      <span>Mail Transport</span>
+                      <strong className='text-success'>Ready</strong>
+                    </div>
                   </div>
                 </div>
               </aside>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'connectivity' && (
+          <div className='ca-connectivity-view'>
+            <section className='ca-panel'>
+              <div className='ca-panel-head'>
+                <div className='ca-panel-title'>
+                  <h3>Connected Tenants & Active Users</h3>
+                  <p>Real-time view of current platform utilization across all workspaces</p>
+                </div>
+                <button className='ca-inline-btn' onClick={loadSessions} disabled={isSessionsLoading}>
+                   {isSessionsLoading ? 'Scanning...' : '🔄 Refresh Connectivity'}
+                </button>
+              </div>
+              
+              <div className='ca-connectivity-grid'>
+                {tenantConnectionGroups.map(([db, users]) => {
+                    const tenantInfo = snapshot.tenants.find(t => t.database === db);
+                    return (
+                      <div className='ca-tenant-con-card' key={db}>
+                        <div className='ca-tenant-con-head'>
+                          <div>
+                            <strong>{tenantInfo?.companyName || db}</strong>
+                            <span>{db}</span>
+                          </div>
+                          <div className='ca-con-badge'>{users.length} Active</div>
+                        </div>
+                        <div className='ca-tenant-con-users'>
+                          {users.map(u => (
+                            <div className='ca-con-user-row' key={u._id}>
+                              <div className='ca-con-user-info'>
+                                <strong>{u.userName}</strong>
+                                <span>{u.userId}</span>
+                              </div>
+                              <div className='ca-con-user-meta'>
+                                <span>{u.ip}</span>
+                                <span>{formatDateTime(u.lastActivityAt)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                
+                {sessionsData.activeSessions.length === 0 && (
+                  <div className='ca-empty' style={{gridColumn: '1/-1'}}>
+                    No active connections detected at the moment.
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
         )}
 
