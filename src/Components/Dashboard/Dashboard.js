@@ -33,42 +33,42 @@ const Dashboard = ()=>{
                 setView(<LicenseExpired />)
                 return
             }
-            if (path === 'dashboard' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('dashboard'))){
+            if (path === 'dashboard' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('dashboard'))){
                 setView(<DashView/>)
-            }else if (path === 'employees' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('employees'))){
+            }else if (path === 'employees' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('employees'))){
                 setView(<Employees/>)
-            }else if (path === 'departments' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('departments'))){
+            }else if (path === 'departments' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('departments'))){
                 setView(<Departments/>)
             }
-            else if (path === 'positions' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('positions'))){
+            else if (path === 'positions' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('positions'))){
                 setView(<Positions/>)
             }
-            else if (path === 'attendance' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('attendance'))){
+            else if (path === 'attendance' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('attendance'))){
                 setView(<Attendance/>)
             }
-            else if (path === 'payroll' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('payroll'))){
+            else if (path === 'payroll' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('payroll'))){
                 setView(<Payroll/>)
-            }else if (path === 'pos' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('pos'))){
+            }else if (path === 'pos' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('pos'))){
                 setView(<PointOfSales/>)            
-            }else if (path === 'delivery' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('delivery'))){
+            }else if (path === 'delivery' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('delivery'))){
                 setView(<Delivery/>)
-            }else if (path === 'sales' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('sales'))){
+            }else if (path === 'sales' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('sales'))){
                 setView(<Sales/>)
-            }else if (path === 'inventory' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('inventory'))){
+            }else if (path === 'inventory' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('inventory'))){
                 setView(<Inventory/>)
-            }else if (path === 'accommodations' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('accommodations'))){
+            }else if (path === 'accommodations' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('accommodations'))){
                 setView(<Accommodation/>)            
-            }else if (path === 'purchase' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('purchase'))){
+            }else if (path === 'purchase' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('purchase'))){
                 setView(<Purchase/>)
-            }else if (path === 'expenses' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('expenses'))){
+            }else if (path === 'expenses' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('expenses'))){
                 setView(<Expenses/>)
             }else if ((path === 'journals' || path === 'reports') && (
                 companyRecord?.status === 'admin'
-                || companyRecord?.permissions.includes('journals')
-                || companyRecord?.permissions.includes('reports')
+                || companyRecord?.permissions?.includes('journals')
+                || companyRecord?.permissions?.includes('reports')
             )){
                 setView(<Journals/>)
-            }else if (path === 'settings' && (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('settings'))){
+            }else if (path === 'settings' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('settings'))){
                 setView(<Settings/>)
             }else{
                 setView('')

@@ -149,6 +149,7 @@ const CentralAdminApp = () => {
   const [replyText, setReplyText] = useState('')
   const chatBottomRef = useRef(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Auto-scroll to latest message whenever replies update
   useEffect(() => {
@@ -718,7 +719,7 @@ const CentralAdminApp = () => {
   }
 
   return (
-    <div className='ca-shell'>
+    <div className={`ca-shell ${isSidebarCollapsed ? 'collapsed' : ''} ${isSidebarOpen ? 'mob-open' : ''}`}>
       <div className='ca-mobile-header'>
         <button className='ca-menu-toggle' onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
           {isSidebarOpen ? '✕' : '☰'}
@@ -726,34 +727,43 @@ const CentralAdminApp = () => {
         <strong>Central Admin</strong>
       </div>
 
-      <aside className={`ca-sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      <aside className={`ca-sidebar ${isSidebarOpen ? 'open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <button className='ca-collapse-toggle' onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
+          {isSidebarCollapsed ? '→' : '←'}
+        </button>
+
         <div className='ca-brand'>
           <div className='ca-brand-mark'>EC</div>
-          <div>
-            <strong>Central Admin</strong>
-            <span>admin.localhost / admin.epxcentral.com</span>
-          </div>
+          {!isSidebarCollapsed && (
+            <div>
+              <strong>Central Admin</strong>
+              <span>admin.localhost / admin.epxcentral.com</span>
+            </div>
+          )}
         </div>
 
-        <div className='ca-admin-badge'>
-          <strong>{adminUser.displayName || adminUser.username}</strong>
-          <span>{adminUser.mustChangePassword ? 'Password change recommended' : 'Access verified'}</span>
-        </div>
+        {!isSidebarCollapsed && (
+          <div className='ca-admin-badge'>
+            <strong>{adminUser.displayName || adminUser.username}</strong>
+            <span>{adminUser.mustChangePassword ? 'Password change recommended' : 'Access verified'}</span>
+          </div>
+        )}
 
         <nav className='ca-nav'>
           {[
-            ['overview', 'Overview'],
-            ['tenants', 'Tenants'],
-            ['sessions', 'User Sessions'],
-            ['connectivity', 'Live Connectivity'],
-            ['health', 'System Health'],
-            ['subscriptions', 'Subscriptions'],
-            ['support', 'Help & Support'],
-            ['settings', 'Settings'],
-          ].map(([key, label]) => (
+            ['overview', 'Overview', '📊'],
+            ['tenants', 'Tenants', '🏢'],
+            ['sessions', 'User Sessions', '👥'],
+            ['connectivity', 'Live Connectivity', '📡'],
+            ['health', 'System Health', '🩺'],
+            ['subscriptions', 'Subscriptions', '💳'],
+            ['support', 'Help & Support', '💬'],
+            ['settings', 'Settings', '⚙️'],
+          ].map(([key, label, icon]) => (
             <button
               key={key}
               className={`ca-nav-item ${activeTab === key ? 'active' : ''}`}
+              title={isSidebarCollapsed ? label : ''}
               onClick={() => {
                 setActiveTab(key);
                 setIsSidebarOpen(false); // Close on mobile
@@ -762,16 +772,18 @@ const CentralAdminApp = () => {
                 if (key === 'health') loadPlatformHealth();
               }}
             >
-              {label}
+              <span className='ca-nav-icon'>{icon}</span>
+              {!isSidebarCollapsed && <span className='ca-nav-label'>{label}</span>}
             </button>
           ))}
         </nav>
 
         <div className='ca-sidebar-footer'>
-          <button className='ca-ghost-btn' onClick={loadSnapshot} disabled={isBusy}>
-            {isBusy ? 'Refreshing...' : 'Refresh Central Data'}
+          <button className='ca-ghost-btn' onClick={loadSnapshot} disabled={isBusy} title={isSidebarCollapsed ? "Refresh" : ""}>
+             {isSidebarCollapsed ? '🔄' : (isBusy ? 'Refreshing...' : 'Refresh Central Data')}
           </button>
-          <button className='ca-logout-btn' onClick={handleLogout}>Log out</button>
+          {!isSidebarCollapsed && <button className='ca-logout-btn' onClick={handleLogout}>Log out</button>}
+          {isSidebarCollapsed && <button className='ca-logout-btn' onClick={handleLogout} title="Logout">🚪</button>}
         </div>
       </aside>
 
