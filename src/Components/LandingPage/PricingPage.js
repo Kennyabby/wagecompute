@@ -41,7 +41,7 @@ const APPS = [
 
 const formatCurrency = (value) => `NGN ${Number(value || 0).toLocaleString()}`
 
-const RESERVED_SUBDOMAINS = new Set(['www', 'api', 'app', 'server', 'wcdatabase', 'docs', 'doc', 'admin', 'localhost', 'demo'])
+const RESERVED_SUBDOMAINS = new Set(['www', 'api', 'app', 'server', 'wcdatabase', 'docs', 'doc', 'admin', 'localhost'])
 
 const detectWorkspaceSubdomain = () => {
   const hostname = window.location.hostname || ''
