@@ -269,6 +269,13 @@ const DashView = () =>{
                 forceRefresh: !!force
             }, 'getDashboardSummary', server)
 
+            if (summaryResponse && !summaryResponse.ok) {
+                console.error('🔴 [DASHBOARD] Server aggregation failed:', summaryResponse.mess || summaryResponse.error);
+                setDashErr(summaryResponse.mess || summaryResponse.error || 'Server-side dashboard aggregation failed.');
+                setLoading(false);
+                return;
+            }
+
             if (summaryResponse?.ok && summaryResponse?.snapshot) {
                 applyDashSnapshot(summaryResponse.snapshot)
                 setDashboardSummaryKey(summaryResponse.summaryKey || makeDashSummaryKey())
@@ -787,7 +794,8 @@ const DashView = () =>{
             }
 
         }catch(err){
-            setDashErr('Failed to load dashboard data')
+            console.error('[DASHBOARD] Failed to load dashboard data:', err);
+            setDashErr('Failed to load dashboard data. Please try again or check the console for details.')
         }finally{
             setLoading(false)
         }
@@ -1112,7 +1120,23 @@ const DashView = () =>{
                     <button className='btn-primary' onClick={() => loadDashData(true)} disabled={loading}>{loading?'Loading...':'Refresh'}</button>
                 </div>
 
-                {dashErr && <div className='dash-error'>{dashErr}</div>}
+                {dashErr && (
+                    <div className='dash-error' style={{
+                        background: '#fff1f0', 
+                        border: '1px solid #ffa39e', 
+                        padding: '12px 16px', 
+                        borderRadius: '8px', 
+                        color: '#cf1322',
+                        marginBottom: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontWeight: '500'
+                    }}>
+                        <FaExclamationTriangle style={{fontSize: '20px'}} />
+                        <span>{dashErr}</span>
+                    </div>
+                )}
 
                 {/* Alerts & Notifications Section */}
                 <div className='section-header'>
