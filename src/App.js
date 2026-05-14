@@ -819,13 +819,13 @@ function App() {
             setCompanyRecord(resp.record)
             setRecoveryVal(resp.record.enableDebtRecovery)
             setEnableBlockVal(!resp.record.enableLogin)
-            setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
-              resp.record.permissions.includes('all')
+            setAllowBacklogs(resp.record.permissions?.includes('allowBacklogs') ||
+              resp.record.permissions?.includes('all')
             )
             setEditAccess((editAccess) => {
               return {
                 ...editAccess,
-                employees: (resp.record.permissions.includes('edit_employees') || resp.record.permissions.includes('all'))
+                employees: (resp.record.permissions?.includes('edit_employees') || resp.record.permissions?.includes('all'))
               }
             })
           }
@@ -1971,18 +1971,18 @@ function App() {
     } else {
       window.localStorage.setItem('lgt-vw', 'user')
       setCompanyRecord(resp.record)
-      setAllowBacklogs(resp.record.permissions.includes('allowBacklogs') ||
-        resp.record.permissions.includes('all')
+      setAllowBacklogs(resp.record?.permissions?.includes('allowBacklogs') ||
+        resp.record?.permissions?.includes('all')
       )     
-      if (resp.record.status !== 'admin') {
+      if (resp.record?.status !== 'admin') {
         setEditAccess((editAccess) => {
           return {
             ...editAccess,
-            employees: resp.record.permissions.includes('edit_employees')
+            employees: resp.record?.permissions?.includes('edit_employees')
           }
         })
-        setRecoveryVal(resp.record.enableDebtRecovery)
-        setEnableBlockVal(!resp.record.enableLogin)
+        setRecoveryVal(resp.record?.enableDebtRecovery)
+        setEnableBlockVal(!resp.record?.enableLogin)
       }
       setLoadedCurPath(currPath)
     }
