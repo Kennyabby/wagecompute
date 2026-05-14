@@ -1804,7 +1804,7 @@ const CentralAdminApp = () => {
                       <tbody>
                         {isHealthLoading ? (
                           <tr><td colSpan='8' className='ca-empty'>Acquiring platform telemetry...</td></tr>
-                        ) : platformLogs.logs.length ? platformLogs.logs.map((log) => (
+                        ) : platformLogs?.logs?.length ? (platformLogs?.logs || [])?.map((log) => (
                           <tr key={log._id} className={`log-row level-${log.level}`}>
                             <td className='log-time'>{formatDateTime(log.timestamp)}</td>
                             <td><span className={`ca-badge log-badge ${log.level}`}>{log.level}</span></td>

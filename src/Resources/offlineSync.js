@@ -23,12 +23,16 @@ export async function syncPendingChanges(
 
     while (attempt < retries && !synced) {
       try {
-        await processChange(change, company, fetchServer, server);
+        const resp = await processChange(change, company, fetchServer, server);
 
-        // ✅ mark ONLY after server confirms success
+        if (resp?.isDuplicate) {
+          console.warn(`[OfflineSync] Duplicate detected for ${change.entityType}:${change.op}. Removing from queue.`, change.id);
+        }
+
+        // ✅ mark ONLY after server confirms success (or duplicate resolution)
         await markPendingChangeSynced(company, userId, change.id);
 
-        results.push({ id: change.id, status: 'ok' });
+        results.push({ id: change.id, status: resp?.isDuplicate ? 'duplicate_resolved' : 'ok' });
         synced = true;
       } catch (err) {
         attempt++;
