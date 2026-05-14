@@ -215,10 +215,6 @@ const PricingPage = () => {
       a: `Yes. New tenants start with a ${liveTrialDays}-day free Standard trial. During that window the platform shows a warning banner as expiry approaches, and payment becomes required after the trial ends.`,
     },
     {
-      q: 'Can Paystack run in test mode or live mode?',
-      a: 'Yes. The platform now supports both Paystack test keys and live keys so billing can be validated safely before going live in production.',
-    },
-    {
       q: 'How is billing handled?',
       a: 'Existing tenants are routed into their own workspace billing flow, where Paystack checkout is verified against the tenant order and can still be reconciled later if a network issue delayed the first update.',
     },
@@ -500,7 +496,7 @@ const PricingPage = () => {
             <span className="sp-plan-chip">14-day free trial</span>
             <span className="sp-plan-chip">Multiple users</span>
             <span className="sp-plan-chip">All apps included</span>
-            <span className="sp-plan-chip">Test and live Paystack support</span>
+            <span className="sp-plan-chip">Paystack support</span>
           </div>
         </div>
       </section>
