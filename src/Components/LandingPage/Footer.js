@@ -9,7 +9,7 @@ const Footer = () => {
       <div className="ec-footer-inner">
         <div className="ec-footer-grid">
           <div className="ec-footer-brand">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="logo-link" style={{ display: 'flex', alignItems: 'center', gap: 12 }} onClick={() => Navigate('/')}>
               <img src={applogo} alt="EC" style={{ height: 40, width: 40, borderRadius: 12 }} />
               <span style={{ fontFamily: "'MontserratBold',sans-serif", fontSize: '1.1rem' }}>Enterprise Compute</span>
             </div>

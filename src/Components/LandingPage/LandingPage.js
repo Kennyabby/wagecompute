@@ -130,7 +130,9 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="ec-hero-visual">
-            <img src={applogo} alt="Enterprise Compute Dashboard" className="ec-hero-mockup" />
+            <div className="logo-link" onClick={() => navigate('/')}>
+              <img src={applogo} alt="Enterprise Compute Dashboard" className="ec-hero-mockup" />
+            </div>
           </div>
         </div>
       </section>

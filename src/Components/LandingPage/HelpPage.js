@@ -1,15 +1,26 @@
 import './SubPages.css'
+import "../Login/Login.css";
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from './NavBar'
 import Footer from './Footer'
 import ContextProvider from '../../Resources/ContextProvider'
+import { motion, AnimatePresence } from "framer-motion";
 
 const HelpPage = () => {
-  const { storePath, server, company, viewAccess } = useContext(ContextProvider)
+  const { storePath, server, company, viewAccess, setAlert, setAlertState, setAlertTimeout } = useContext(ContextProvider)
   const Navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [openFaq, setOpenFaq] = useState(null)
+  
+  const [message, setMessage] = useState("")
+  const [messageType, setMessageType] = useState("error") // 'success' | 'info' | 'error' | 'warning'
+
+  const showMsg = (msg, type = 'error') => {
+    setMessage(msg)
+    setMessageType(type)
+    setTimeout(() => setMessage(""), 5000)
+  }
 
   const categories = [
     { icon: '🚀', title: 'Getting Started', desc: 'First steps with Enterprise Compute', count: 12, color: 'rgba(43,106,75,0.1)' },
@@ -53,7 +64,7 @@ const HelpPage = () => {
   const handleSubmitEnquiry = async (e) => {
     e.preventDefault()
     if (!contactForm.name || !contactForm.email || !contactForm.message) {
-      alert('Please fill in all required fields.')
+      showMsg('Please fill in all required fields.', 'warning')
       return
     }
 
@@ -73,14 +84,14 @@ const HelpPage = () => {
 
       const data = await response.json()
       if (data.ok) {
-        alert('Your enquiry has been sent successfully. We will get back to you soon!')
+        showMsg('Your enquiry has been sent successfully. We will get back to you soon!', 'success')
         setContactForm({ name: '', email: '', subject: '', category: 'General Support', message: '' })
       } else {
-        alert('Failed to send enquiry: ' + (data.error || 'Unknown error'))
+        showMsg('Failed to send enquiry: ' + (data.error || 'Unknown error'), 'error')
       }
     } catch (err) {
       console.error(err)
-      alert('Network error. Please try again later.')
+      showMsg('Network error. Please try again later.', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -194,6 +205,29 @@ const HelpPage = () => {
       </section>
 
       <Footer />
+
+      <AnimatePresence>
+        {message && (
+          <motion.div
+            key="login-toast"
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className={`login-toast ${messageType}`}
+          >
+            <div className="login-toast-accent" />
+            <div className="login-toast-icon">
+              {messageType === 'success' ? '✓' : messageType === 'info' ? 'ℹ' : '!'}
+            </div>
+            <span className="login-toast-text">{message}</span>
+            <button
+              className="login-toast-close"
+              onClick={() => setMessage("")}
+            >×</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -1915,7 +1915,7 @@ const Accommodation = () => {
                             onClick={() => {
                                 if (customerFields.fullName && customerFields.phoneNo) {
                                     if (String(customerFields.phoneNo).split('').length === 11) {
-                                        if ((customers.map((customer) => { return customer.phoneNo })).includes(customerFields.phoneNo)) {
+                                        if (((customers || [])?.map((customer) => { return customer.phoneNo })).includes(customerFields.phoneNo)) {
                                             setActionMessage('')
                                             setAlertState('error')
                                             setAlert(

@@ -158,6 +158,20 @@ const CentralAdminApp = () => {
     }
   }, [selectedEnquiry?.replies?.length, selectedEnquiry?._id])
 
+  const getUnreadCount = (enq) => {
+    if (!enq) return 0;
+    let count = 0;
+    // If the enquiry itself is unread (main message)
+    if (enq.read === false || enq.read === undefined) count++;
+    // Add unread replies from visitor
+    if (enq.replies) {
+      count += enq.replies.filter(r => r.repliedBy === 'visitor' && !r.read).length;
+    }
+    return count;
+  }
+
+  const totalSupportUnread = enquiries.reduce((acc, enq) => acc + getUnreadCount(enq), 0);
+
   const setNotice = (type, message) => {
     setFeedback({ type, message });
     setTimeout(()=>{
@@ -681,7 +695,19 @@ const CentralAdminApp = () => {
   }
 
   if (isAuthChecking) {
-    return <div className='ca-loading'>Loading central admin...</div>
+    return (
+      <div className='ca-loading-view'>
+        <div className='ca-loading-content'>
+          <div className='ca-loading-mark'>EC</div>
+          <h2>Initialising Control Plane</h2>
+          <p>Connecting to secure infrastructure...</p>
+          <div className='ca-loading-bar'>
+            <div className='ca-loading-progress'></div>
+          </div>
+          <span className='ca-loading-status'>Authenticating administrator...</span>
+        </div>
+      </div>
+    )
   }
 
   if (!adminUser) {
@@ -772,7 +798,12 @@ const CentralAdminApp = () => {
                 if (key === 'health') loadPlatformHealth();
               }}
             >
-              <span className='ca-nav-icon'>{icon}</span>
+              <span className='ca-nav-icon'>
+                {icon}
+                {key === 'support' && totalSupportUnread > 0 && (
+                  <span className='ca-nav-badge'>{totalSupportUnread}</span>
+                )}
+              </span>
               {!isSidebarCollapsed && <span className='ca-nav-label'>{label}</span>}
             </button>
           ))}
@@ -787,7 +818,7 @@ const CentralAdminApp = () => {
         </div>
       </aside>
 
-      <main className='ca-main'>
+      <main className={`ca-main ca-${activeTab}-active`}>
         <header className='ca-header'>
           <div>
             <div className='ca-page-kicker'>Central admin platform</div>
@@ -1968,7 +1999,7 @@ const CentralAdminApp = () => {
         )}
 
         {activeTab === 'support' && (
-          <div className='ca-support-layout'>
+          <div className={`ca-support-layout ${!!selectedEnquiry ? 'has-selection' : ''}`}>
             <div className='ca-support-sidebar'>
               <div className='ca-panel-head'>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -1989,11 +2020,36 @@ const CentralAdminApp = () => {
                   <div 
                     key={enq._id} 
                     className={`ca-support-item ${selectedEnquiry?._id === enq._id ? 'active' : ''} ${enq.status}`}
-                    onClick={() => setSelectedEnquiry(enq)}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedEnquiry(enq);
+                      setNotice('info', `Viewing enquiry from ${enq.name}`);
+                      
+                      // Mark as read in backend
+                      if (getUnreadCount(enq) > 0) {
+                        try {
+                          await requestAdmin('POST', 'central/support/mark-as-read', { enquiryId: enq._id });
+                          // Update local state to reflect read status
+                          setEnquiries(prev => prev.map(item => 
+                            item._id === enq._id 
+                              ? { ...item, read: true, replies: (item.replies || []).map(r => r.repliedBy === 'visitor' ? { ...r, read: true } : r) } 
+                              : item
+                          ));
+                        } catch (err) {
+                          console.error('Failed to mark as read', err);
+                        }
+                      }
+                    }}
                   >
                     <div className='ca-support-item-head'>
                       <strong>{enq.name}</strong>
-                      <span className={`ca-badge ${enq.status}`}>{enq.status}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {getUnreadCount(enq) > 0 && (
+                          <span className='ca-unread-pill'>{getUnreadCount(enq)}</span>
+                        )}
+                        <span className={`ca-badge ${enq.status}`}>{enq.status}</span>
+                      </div>
                     </div>
                     <p className='ca-support-item-sub'>{enq.subject}</p>
                     <span className='ca-support-item-time'>{formatDateTime(enq.createdAt)}</span>
@@ -2007,7 +2063,13 @@ const CentralAdminApp = () => {
                 <div className='ca-support-conversation'>
                   <div className='ca-panel-head'>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <button 
+                          className='ca-back-btn'
+                          onClick={() => setSelectedEnquiry(null)}
+                        >
+                          ← Back
+                        </button>
                         <h3>{selectedEnquiry.subject}</h3>
                         <button 
                           className='ca-inline-btn' 
@@ -2070,8 +2132,9 @@ const CentralAdminApp = () => {
                         className='ca-primary-btn' 
                         onClick={handleSendReply}
                         disabled={isBusy || !replyText.trim()}
+                        title="Send Reply"
                       >
-                        {isBusy ? 'Sending...' : 'Send Reply'}
+                        {isBusy ? '...' : '➤'}
                       </button>
                     </div>
                   </div>

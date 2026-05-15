@@ -20,6 +20,8 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
         monthDays,
         employees,
         attendance, 
+        setAlert,
+        setAlertState
     } = useContext(ContextProvider)
 
     const getInvoiceNumber = () =>{
@@ -303,7 +305,8 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
             
         } catch (error) {
             console.error('Error generating PDF:', error);
-            alert('Error generating PDF. Please check console for details.');
+            setAlertState('error');
+            setAlert('Error generating PDF. Please check console for details.');
         }
     }, [employees, attendance, selectedMonth, selectedYear, companyRecord, monthDays]);
 

@@ -15,7 +15,8 @@
 .sp-hero p { font-size: 1.1rem; color: #607064; line-height: 1.7; max-width: 560px; margin: 0 auto 32px; }
 
 /* ===== PRICING PAGE ===== */
-.sp-billing-toggle { display: inline-flex; gap: 4px; background: #fff; padding: 4px; border-radius: 14px; border: 1px solid rgba(23,56,41,0.08); box-shadow: 0 4px 12px rgba(23,56,41,0.04); }
+.sp-billing-toggle { display: inline-flex; gap: 4px; background: #fff; padding: 4px; border-radius: 14px; border: 1px solid rgba(23,56,41,0.08); box-shadow: 0 4px 12px rgba(23,56,41,0.04); margin: 0 auto; }
+.sp-billing-toggle-wrapper { display: flex; justify-content: center; margin-bottom: 32px; }
 .sp-billing-toggle button { padding: 10px 24px; border: none; border-radius: 10px; background: transparent; font-weight: 700; font-size: 0.9rem; cursor: pointer; color: var(--ec-muted); transition: 0.2s; font-family: 'MontserratRegular', sans-serif; }
 .sp-billing-toggle button.active { background: var(--ec-primary); color: #fff; box-shadow: 0 4px 12px rgba(23,56,41,0.15); }
 .sp-save-badge { display: inline-block; padding: 2px 8px; background: rgba(106,242,173,0.2); color: var(--ec-secondary); border-radius: 6px; font-size: 0.75rem; margin-left: 6px; }
@@ -42,8 +43,8 @@
 .sp-plan-cta.primary { background: linear-gradient(135deg, #173829, #2b6a4b); color: #fff; border: none; box-shadow: 0 8px 20px rgba(23,56,41,0.18); }
 .sp-plan-cta:hover { transform: translateY(-1px); }
 .sp-feature-list { list-style: none; padding: 0; display: grid; gap: 12px; }
-.sp-feature-list li { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: var(--ec-text); }
-.sp-check { width: 22px; height: 22px; border-radius: 8px; background: rgba(106,242,173,0.15); color: var(--ec-secondary); display: grid; place-items: center; font-size: 0.72rem; font-weight: 800; flex-shrink: 0; }
+.sp-feature-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem; color: var(--ec-text); line-height: 1.4; }
+.sp-check { width: 22px; height: 22px; border-radius: 8px; background: rgba(106,242,173,0.15); color: var(--ec-secondary); display: grid; place-items: center; font-size: 0.72rem; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
 
 .sp-status-banner {
   max-width: 1100px;
@@ -518,28 +519,36 @@
 
 /* ===== RESPONSIVE ===== */
 @media(max-width: 1024px) {
-  .sp-pricing-grid { grid-template-columns: 1fr; max-width: 420px; }
-  .sp-pricing-card.featured { transform: none; }
-  .sp-checkout-grid-layout { grid-template-columns: 1fr; }
-  .sp-calculator-summary-grid { grid-template-columns: 1fr; }
+  .sp-pricing-grid { grid-template-columns: 1fr; max-width: 480px; padding: 0 20px; gap: 32px; }
+  .sp-pricing-card.featured { transform: none; margin: 0; }
+  .sp-checkout-grid-layout { grid-template-columns: 1fr; gap: 24px; padding: 10px; }
+  .sp-calculator-summary-grid { grid-template-columns: 1fr; gap: 16px; }
   .sp-plan-meta { grid-template-columns: 1fr; }
-  .sp-checkout-highlights { grid-template-columns: 1fr; }
+  .sp-checkout-highlights { grid-template-columns: repeat(2, 1fr); }
   .sp-checkout-grid { grid-template-columns: 1fr; }
   .sp-confirm-grid { grid-template-columns: 1fr; }
   .sp-stats-row { grid-template-columns: repeat(2, 1fr); }
-  .sp-community-block, .sp-community-block.reverse { grid-template-columns: 1fr; gap: 32px; direction: ltr; }
+  .sp-community-block, .sp-community-block.reverse { grid-template-columns: 1fr; gap: 32px; direction: ltr; padding: 30px; }
   .sp-help-grid { grid-template-columns: repeat(2, 1fr); }
   .sp-contact-grid { grid-template-columns: 1fr; max-width: 400px; }
 }
 @media(max-width: 640px) {
   .sp-hero { padding: calc(var(--ec-nav-height) + 32px) 20px 60px; }
-  .sp-checkout-card { padding: 24px 20px; }
-  .sp-status-banner { padding: 18px; }
+  .sp-hero h1 { font-size: 2.2rem; }
+  .sp-pricing-grid { padding: 0 16px; gap: 24px; }
+  .sp-pricing-card { padding: 32px 24px; border-radius: 20px; }
+  .sp-checkout-shell { border-radius: 24px; padding: 4px; }
+  .sp-checkout-card { padding: 28px 20px; border-radius: 20px; }
+  .sp-checkout-highlights { grid-template-columns: 1fr; }
+  .sp-status-banner { padding: 18px; border-radius: 16px; }
   .sp-confirm-card { padding: 24px 20px; }
   .sp-stats-row, .sp-help-grid { grid-template-columns: 1fr; }
   .sp-community-links { grid-template-columns: 1fr; }
   .sp-search-box { flex-direction: column; }
   .sp-comparison-table { font-size: 0.82rem; }
+  .sp-amount { font-size: 2.5rem; }
+  .sp-calculator-slider-card { padding: 16px; }
+  .sp-calculator-summary-card { padding: 18px; }
 }
 
 /* App selector cards for pricing page */

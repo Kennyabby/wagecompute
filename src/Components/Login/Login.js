@@ -311,14 +311,16 @@ const Login = () => {
         transition={{ duration: 0.6 }}
       >
         <div className="user-header">
-          <motion.img
-            src={applogo}
-            alt="Logo"
-            className="user-app-logo"
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          />
+          <motion.div className="logo-link" onClick={() => Navigate('/')}>
+            <motion.img
+              src={applogo}
+              alt="Logo"
+              className="user-app-logo"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            />
+          </motion.div>
           <motion.h1
             initial={{ y: -10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -532,7 +534,9 @@ const Login = () => {
             transition={{ delay: 0.1 }}
           >
             <div className="mobile-logo">
-              <img src={applogo} alt="Logo" />
+              <div className="logo-link" onClick={() => Navigate('/')}>
+                <img src={applogo} alt="Logo" />
+              </div>
             </div>
             <h2>Welcome Back</h2>
             <p>Access your enterprise dashboard with secure credentials.</p>
@@ -618,7 +622,9 @@ const Login = () => {
             transition={{ duration: 1 }}
           >
             <div className="visual-logo-box">
-              <img src={applogo} alt="Enterprise Compute" />
+              <div className="logo-link" onClick={() => Navigate('/')}>
+                <img src={applogo} alt="Enterprise Compute" />
+              </div>
             </div>
             <h1>Enterprise Compute</h1>
             <div className="visual-divider"></div>

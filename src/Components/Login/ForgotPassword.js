@@ -18,11 +18,17 @@ const ForgotPassword = () => {
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: Password
   const [status, setStatus] = useState("Reset Password")
   const [message, setMessage] = useState("")
+  const [messageType, setMessageType] = useState("error") // 'success' | 'info' | 'error'
   const [loading, setLoading] = useState(false)
+
+  const showMsg = (msg, type = 'error') => {
+    setMessage(msg)
+    setMessageType(type)
+  }
 
   const handleRequestOTP = async () => {
     if (!emailid) {
-      setMessage("Please enter your registered email.")
+      showMsg("Please enter your registered email.", 'error')
       return
     }
 
@@ -38,12 +44,12 @@ const ForgotPassword = () => {
       
       if (response.ok) {
         setStep(2)
-        setMessage("Verification code sent to your email.")
+        showMsg("Verification code sent to your email.", 'info')
       } else {
-        setMessage(data.error || "Failed to send code.")
+        showMsg(data.error || "Failed to send code.", 'error')
       }
     } catch (err) {
-      setMessage("Network error. Please try again.")
+      showMsg("Network error. Please try again.", 'error')
     } finally {
       setLoading(false)
     }
@@ -51,7 +57,7 @@ const ForgotPassword = () => {
 
   const handleVerifyOTP = async () => {
     if (!otp) {
-      setMessage("Please enter the 6-digit code.")
+      showMsg("Please enter the 6-digit code.", 'error')
       return
     }
 
@@ -67,12 +73,12 @@ const ForgotPassword = () => {
       
       if (data.ok) {
         setStep(3)
-        setMessage("Code verified. Please set your new password.")
+        showMsg("Code verified. Please set your new password.", 'success')
       } else {
-        setMessage(data.error || "Invalid verification code.")
+        showMsg(data.error || "Invalid verification code.", 'error')
       }
     } catch (err) {
-      setMessage("Network error. Please try again.")
+      showMsg("Network error. Please try again.", 'error')
     } finally {
       setLoading(false)
     }
@@ -80,11 +86,11 @@ const ForgotPassword = () => {
 
   const handleFinalReset = async () => {
     if (!newPassword || newPassword.length < 6) {
-      setMessage("Password must be at least 6 characters.")
+      showMsg("Password must be at least 6 characters.", 'error')
       return
     }
     if (newPassword !== confirmPassword) {
-      setMessage("Passwords do not match.")
+      showMsg("Passwords do not match.", 'error')
       return
     }
 
@@ -99,13 +105,13 @@ const ForgotPassword = () => {
       const data = await response.json()
       
       if (data.ok) {
-        setMessage("Password updated successfully! Redirecting...")
+        showMsg("Password updated successfully! Redirecting...", 'success')
         setTimeout(() => Navigate('/login'), 2000)
       } else {
-        setMessage(data.error || "Failed to reset password.")
+        showMsg(data.error || "Failed to reset password.", 'error')
       }
     } catch (err) {
-      setMessage("Network error. Please try again.")
+      showMsg("Network error. Please try again.", 'error')
     } finally {
       setLoading(false)
     }
@@ -127,7 +133,9 @@ const ForgotPassword = () => {
             transition={{ delay: 0.1 }}
           >
             <div className="mobile-logo">
-              <img src={applogo} alt="Logo" />
+              <div className="logo-link" onClick={() => Navigate('/')}>
+                <img src={applogo} alt="Logo" />
+              </div>
             </div>
             <h2>Account Recovery</h2>
             <p>
@@ -143,6 +151,7 @@ const ForgotPassword = () => {
                 className="input-group"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
+                style={{ width: '100%' }}
               >
                 <label>Registered Email</label>
                 <div className="input-with-icon">
@@ -162,59 +171,75 @@ const ForgotPassword = () => {
 
             {step === 2 && (
               <motion.div
-                className="input-group"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
+                className="recovery-card-wrap"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
               >
-                <label>Verification Code</label>
-                <div className="input-with-icon">
-                  <HiShieldCheck className="icon" />
+                <label style={{ display: 'block', marginBottom: '15px', fontWeight: 700, fontSize: '13px', color: 'var(--login-primary)' }}>
+                  Enter Recovery Code
+                </label>
+                <div className="otp-input-container">
                   <input
-                    placeholder="6-digit code"
+                    className="otp-field"
+                    placeholder="000000"
                     type="text"
                     maxLength={6}
-                    style={{ letterSpacing: '4px', fontWeight: 'bold', textAlign: 'center' }}
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                    autoFocus
                   />
                 </div>
-                <button className="main-login-btn" onClick={handleVerifyOTP} disabled={loading} style={{ marginTop: '24px' }}>
-                  {loading ? "Verifying..." : "Verify Code"}
+                <button 
+                  className="main-login-btn" 
+                  onClick={handleVerifyOTP} 
+                  disabled={loading || otp.length < 6}
+                  style={{ width: '100%', marginTop: '20px' }}
+                >
+                  {loading ? "Verifying..." : "Verify Identity"}
                 </button>
-                <p style={{ textAlign: 'center', fontSize: '0.85rem', marginTop: '16px', color: 'var(--ec-muted)' }}>
-                  Didn't get the code? <span onClick={handleRequestOTP} style={{ color: 'var(--ec-secondary)', cursor: 'pointer', fontWeight: 600 }}>Resend</span>
-                </p>
+                <div className="resend-box">
+                  Didn't get the code? <span className="resend-link" onClick={handleRequestOTP}>Resend</span>
+                </div>
               </motion.div>
             )}
 
             {step === 3 && (
               <motion.div
-                className="input-group"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
+                className="login-form"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
               >
-                <label>New Password</label>
-                <div className="input-with-icon" style={{ marginBottom: '16px' }}>
-                  <HiShieldCheck className="icon" />
-                  <input
-                    placeholder="New Password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
+                <div className="input-group">
+                  <label>New Password</label>
+                  <div className="input-with-icon">
+                    <HiShieldCheck className="icon" />
+                    <input
+                      placeholder="Enter new secure password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <label>Confirm Password</label>
-                <div className="input-with-icon">
-                  <HiShieldCheck className="icon" />
-                  <input
-                    placeholder="Confirm Password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
+                <div className="input-group">
+                  <label>Confirm Password</label>
+                  <div className="input-with-icon">
+                    <HiShieldCheck className="icon" />
+                    <input
+                      placeholder="Confirm your new password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <button className="main-login-btn" onClick={handleFinalReset} disabled={loading} style={{ marginTop: '24px' }}>
-                  {loading ? "Updating..." : "Update Password"}
+                <button 
+                  className="main-login-btn" 
+                  onClick={handleFinalReset} 
+                  disabled={loading}
+                  style={{ marginTop: '24px' }}
+                >
+                  {loading ? "Saving Password..." : "Reset Password & Access Terminal"}
                 </button>
               </motion.div>
             )}
@@ -234,7 +259,9 @@ const ForgotPassword = () => {
             transition={{ duration: 1 }}
           >
             <div className="visual-logo-box">
-              <img src={applogo} alt="Enterprise Compute" />
+              <div className="logo-link" onClick={() => Navigate('/')}>
+                <img src={applogo} alt="Enterprise Compute" />
+              </div>
             </div>
             <h1>Super Admin Recovery</h1>
             <div className="visual-divider"></div>
@@ -250,10 +277,12 @@ const ForgotPassword = () => {
             initial={{ opacity: 0, y: 30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            className="login-toast"
+            className={`login-toast ${messageType}`}
           >
             <div className="login-toast-accent" />
-            <div className="login-toast-icon">!</div>
+            <div className="login-toast-icon">
+              {messageType === 'success' ? '✓' : messageType === 'info' ? 'ℹ' : '!'}
+            </div>
             <span className="login-toast-text">{message}</span>
             <button className="login-toast-close" onClick={() => setMessage("")}>×</button>
           </motion.div>

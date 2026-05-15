@@ -1061,32 +1061,49 @@ input:checked + .slider:before {
 
 @media (max-width: 1000px) {
     .billing-settings {
-        overflow: visible;
+        overflow-x: hidden;
     }
 
     .settings-billing-shell {
-        padding: 24px;
+        padding: 24px 20px;
+        gap: 32px;
     }
 
-    .settings-billing-hero,
-    .settings-billing-platform-header {
+    .settings-billing-hero {
         flex-direction: column;
+        gap: 20px;
+        align-items: stretch;
+        text-align: left;
+    }
+
+    .settings-billing-hero h2 {
+        font-size: 24px;
     }
 
     .settings-billing-actions {
         width: 100%;
-        justify-content: stretch;
+        flex-direction: column;
+        gap: 12px;
     }
 
-    .settings-billing-actions .savebtn,
-    .settings-billing-actions .settings-billing-secondary-btn {
-        width: 100%;
+    .settings-billing-actions button {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .settings-billing-summary-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .settings-billing-summary-card {
+        padding: 20px;
     }
 }
 
 @media (max-width: 640px) {
     .settings-billing-shell {
-        padding: 18px;
+        padding: 20px 16px;
     }
 
     .settings-billing-summary-grid,
@@ -1096,13 +1113,18 @@ input:checked + .slider:before {
 
     .settings-billing-panel,
     .settings-billing-platform {
-        padding: 18px;
-        border-radius: 18px;
+        padding: 20px 16px;
+        border-radius: 16px;
     }
 
     .settings-billing-hero h2,
     .settings-billing-platform-header h3,
     .settings-billing-panel-header h3 {
-        font-size: 22px;
+        font-size: 20px;
+    }
+    
+    .settings-billing-table th, .settings-billing-table td {
+        padding: 12px 8px;
+        font-size: 13px;
     }
 }

@@ -1,84 +1,110 @@
-import './Notify.css'
-import { useEffect, useState, useContext, useRef } from "react";
+import './Notify.css';
+import { useEffect, useContext, useRef } from "react";
 import ContextProvider from '../ContextProvider';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiCheckCircle, FiAlertCircle, FiInfo, FiX } from 'react-icons/fi';
+
 const Notify = ({
-    notifyMessage,notifyState,
-    timeout,
-    action,actionMessage, cancel
-})=>{
-    const timeoutRef = useRef(null)
+    notifyMessage, 
+    notifyState,
+    timeout = 5000,
+    action, 
+    actionMessage, 
+    cancel
+}) => {
+    const timeoutRef = useRef(null);
     const {
         setAlert, setAlertState, setActionMessage
-    } = useContext(ContextProvider)
-    const [icon, setIcon] = useState('Error:')
-    const [color, setColor] = useState('red')
-   
-    useEffect(()=>{
-        if (notifyState === 'error'){
-            setIcon('Error:')
-            setColor('red')
-        }else if (notifyState === 'info'){
-            setIcon('Info:')
-            setColor('rgb(62, 83, 243)')
-        }else if (notifyState === 'success'){
-            setIcon('Success:')
-            setColor('rgb(19, 214, 26)')
-        }
-    },[notifyState])
-    useEffect(()=>{
-        if (notifyMessage || actionMessage){
-            if (timeoutRef.current){
-                clearTimeout(timeoutRef.current)
-            }
-            timeoutRef.current = setTimeout(()=>{
-                setAlert('')
-                setAlertState(null)
-                setActionMessage('')                                
-            },[timeout])
-        }        
-    },[notifyMessage])
-    
-    const takeAction = ()=>{
-        if (actionMessage){
-            action()
-            setAlert('')
-            setAlertState(null)
-            setActionMessage('')
-        }
-    }
-    return (    
-        <>
-            {notifyMessage && <div className='notify-overlay'>
-                <div className='notify' style={{border: `solid ${color} 1.5px`}}>
-                    <div className='notifymess'>                    
-                        <div style={{color:color, marginRight: '5px', fontWeight:'bold'}}>{icon}</div>
-                        <div>
-                            {notifyMessage}
-                        </div>
-                    </div>
-                    {actionMessage && <div className='notifyactn'>
-                        <div 
-                            className='notifycl'
-                            aria-disabled={actionMessage}
-                            onClick={()=>{
-                                setAlert('')
-                                setAlertState(null)
-                                setActionMessage('')                                
-                                cancel()
-                            }}
-                        >Cancel</div>
-                        <div 
-                            className='notifyacp'
-                            aria-disabled={actionMessage}
-                            onClick={()=>{
-                                takeAction()
-                            }}
-                        >{actionMessage}</div>
-                    </div>}
-                </div>
-            </div>}
-        </>
-    )
-}
+    } = useContext(ContextProvider);
 
-export default Notify
+    const closeToast = () => {
+        setAlert('');
+        setAlertState(null);
+        if (setActionMessage) setActionMessage('');
+    };
+
+    useEffect(() => {
+        if (notifyMessage) {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+            timeoutRef.current = setTimeout(() => {
+                closeToast();
+            }, timeout || 5000);
+        }
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, [notifyMessage, timeout]);
+
+    const handleAction = () => {
+        if (action) {
+            action();
+            closeToast();
+        }
+    };
+
+    const handleCancel = () => {
+        if (cancel) cancel();
+        closeToast();
+    };
+
+    const getIcon = () => {
+        switch (notifyState) {
+            case 'success': return <FiCheckCircle className="toast-icon" />;
+            case 'error': return <FiAlertCircle className="toast-icon" />;
+            case 'info': return <FiInfo className="toast-icon" />;
+            case 'warning': return <FiAlertCircle className="toast-icon" />;
+            default: return <FiInfo className="toast-icon" />;
+        }
+    };
+
+    return (
+        <div className="toast-container">
+            <AnimatePresence>
+                {notifyMessage && (
+                    <motion.div
+                        key="toast"
+                        initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                        className="toast-wrapper"
+                    >
+                        <div className={`toast ${notifyState || 'info'}`}>
+                            <div className="toast-accent" />
+                            <div className="toast-icon-container">
+                                {getIcon()}
+                            </div>
+                            <div className="toast-content">
+                                <p className="toast-message">{notifyMessage}</p>
+                                {actionMessage && (
+                                    <div className="toast-actions">
+                                        <button className="toast-btn toast-btn-primary" onClick={handleAction}>
+                                            {actionMessage}
+                                        </button>
+                                        <button className="toast-btn toast-btn-secondary" onClick={handleCancel}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <button className="toast-close" onClick={closeToast}>
+                                <FiX />
+                            </button>
+                            <div className="toast-progress">
+                                <motion.div 
+                                    className="toast-progress-bar"
+                                    initial={{ scaleX: 1 }}
+                                    animate={{ scaleX: 0 }}
+                                    transition={{ duration: (timeout || 5000) / 1000, ease: "linear" }}
+                                />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+export default Notify;
