@@ -114,6 +114,7 @@ const NavBar = () => {
 
           <div className="ec-nav-item" onClick={() => Navigate('/community')}>Community</div>
           <div className="ec-nav-item" onClick={() => Navigate('/pricing')}>Pricing</div>
+          <div className="ec-nav-item" onClick={() => Navigate('/about')}>About</div>
           <div className="ec-nav-item" onClick={() => Navigate('/help')}>Help</div>
         </div>
         <div className="ec-nav-right">
@@ -134,6 +135,7 @@ const NavBar = () => {
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/') }}>Home</div>
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/community') }}>Community</div>
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/pricing') }}>Pricing</div>
+        <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/about') }}>About</div>
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/help') }}>Help</div>
         {isAuthenticated ? (
           <button className="ec-nav-cta" onClick={() => { setMobileOpen(false); handleDashboardRedirect(); }}>Dashboard</button>

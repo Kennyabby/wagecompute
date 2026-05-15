@@ -28,6 +28,12 @@ const Signup = () => {
   const [signupStatus, setSignupStatus] = useState("Create Account")
   const [showpass, SetShowpass] = useState(false);
   const [signupMessage, setSignupMessage] = useState("")
+  const [signupMessageType, setSignupMessageType] = useState("error") // 'success' | 'info' | 'error' | 'warning'
+
+  const showMsg = (msg, type = 'error') => {
+    setSignupMessage(msg)
+    setSignupMessageType(type)
+  }
 
   const getFieldInput = (e) => {
     const name = e.target.getAttribute("name");
@@ -79,7 +85,7 @@ const Signup = () => {
 
   const handleSendSignupOTP = async () => {
     if (!field.emailid || !field.emailid.includes('@')) {
-      setSignupMessage("Please enter a valid email address.")
+      showMsg("Please enter a valid email address.", 'error')
       return
     }
 
@@ -94,12 +100,12 @@ const Signup = () => {
       
       if (data.ok) {
         setShowOtpStep(true)
-        setSignupMessage("Verification code sent to your email.")
+        showMsg("Verification code sent to your email.", 'info')
       } else {
-        setSignupMessage(data.error || "Failed to send code.")
+        showMsg(data.error || "Failed to send code.", 'error')
       }
     } catch (err) {
-      setSignupMessage("Network error. Please try again.")
+      showMsg("Network error. Please try again.", 'error')
     } finally {
       setSignupStatus("Create Account")
     }
@@ -107,7 +113,7 @@ const Signup = () => {
 
   const handleVerifySignupOTP = async () => {
     if (!signupOtp) {
-      setSignupMessage("Please enter the 6-digit code.")
+      showMsg("Please enter the 6-digit code.", 'error')
       return
     }
 
@@ -123,12 +129,12 @@ const Signup = () => {
       if (data.ok) {
         setIsEmailVerified(true)
         setShowOtpStep(false)
-        setSignupMessage("Email verified successfully! Please complete your registration.")
+        showMsg("Email verified successfully! Please complete your registration.", 'success')
       } else {
-        setSignupMessage(data.error || "Invalid code.")
+        showMsg(data.error || "Invalid code.", 'error')
       }
     } catch (err) {
-      setSignupMessage("Network error. Please try again.")
+      showMsg("Network error. Please try again.", 'error')
     } finally {
       setIsVerifying(false)
     }
@@ -136,18 +142,18 @@ const Signup = () => {
 
   const validateSignup = async () => {
     if (!isEmailVerified) {
-      setSignupMessage("Please verify your email first.")
+      showMsg("Please verify your email first.", 'error')
       return
     }
     
     if (!field.emailid || !field.password || !field.companyName || !field.subdomain || !field.fullName || !field.address || !field.city || !field.state) {
-      setSignupMessage("Please fill in all fields")
+      showMsg("Please fill in all fields", 'error')
       setTimeout(() => setSignupMessage(""), 5000)
       return
     }
 
     if (subdomainAvailable === false) {
-      setSignupMessage("Please choose an available subdomain")
+      showMsg("Please choose an available subdomain", 'error')
       setTimeout(() => setSignupMessage(""), 5000)
       return
     }
@@ -156,17 +162,17 @@ const Signup = () => {
     
     const signupResp = await fetchServer("POST", {
       ...field,
-      otp: signupOtp // Include OTP in final signup to confirm verification on backend
+      otp: signupOtp
     }, "signupNewCompany", server)
 
     if (signupResp.err || !signupResp.success) {
-      setSignupMessage(signupResp.mess || "Failed to create account. Please try again.")
+      showMsg(signupResp.mess || "Failed to create account. Please try again.", 'error')
       setTimeout(() => setSignupMessage(""), 5000)
       setSignupStatus("Create Account")
       return
     }
 
-    setSignupMessage("Account created successfully! Redirecting to your workspace...")
+    showMsg("Account created successfully! Redirecting to your workspace...", 'success')
     setTimeout(() => {
       const protocol = window.location.protocol;
       let targetUrl;
@@ -200,7 +206,9 @@ const Signup = () => {
             transition={{ delay: 0.1 }}
           >
             <div className="mobile-logo">
-              <img src={applogo} alt="Logo" />
+              <div className="logo-link" onClick={() => Navigate('/')}>
+                <img src={applogo} alt="Logo" />
+              </div>
             </div>
             <h2>Create an Account</h2>
             <p>
@@ -212,61 +220,66 @@ const Signup = () => {
 
           <div className="login-form">
             {/* Step 1: Email Verification */}
-            <div className="form-grid">
-              <motion.div
-                className="input-group"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <label>Email Address</label>
-                <div className="input-with-icon">
-                  <HiMail className="icon" />
-                  <input
-                    name="emailid"
-                    placeholder="work@company.com"
-                    type="email"
-                    readOnly={isEmailVerified}
-                    style={isEmailVerified ? { backgroundColor: 'rgba(23,56,41,0.05)', color: '#555' } : {}}
-                    value={field.emailid}
-                    onChange={getFieldInput}
-                  />
-                  {isEmailVerified && <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#2b6a4b', fontWeight: 'bold', fontSize: '0.8rem' }}>Verified ✓</span>}
-                </div>
-                {!isEmailVerified && !showOtpStep && (
-                  <button className="main-login-btn" onClick={handleSendSignupOTP} style={{ marginTop: '16px' }}>
-                    {signupStatus === "Sending Code..." ? "Sending..." : "Verify Email"}
-                  </button>
-                )}
-              </motion.div>
-            </div>
+            <motion.div
+              className="input-group"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              style={{ width: '100%' }}
+            >
+              <label>Email Address</label>
+              <div className="input-with-icon">
+                <HiMail className="icon" />
+                <input
+                  name="emailid"
+                  placeholder="work@company.com"
+                  type="email"
+                  readOnly={isEmailVerified}
+                  style={isEmailVerified ? { backgroundColor: 'rgba(23,56,41,0.05)', color: '#555' } : {}}
+                  value={field.emailid}
+                  onChange={getFieldInput}
+                />
+                {isEmailVerified && <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#2b6a4b', fontWeight: 'bold', fontSize: '0.8rem' }}>Verified ✓</span>}
+              </div>
+              {!isEmailVerified && !showOtpStep && (
+                <button className="main-login-btn" onClick={handleSendSignupOTP} style={{ marginTop: '16px' }}>
+                  {signupStatus === "Sending Code..." ? "Sending..." : "Verify Email Address"}
+                </button>
+              )}
+            </motion.div>
 
             {/* Step 2: OTP Entry */}
             {showOtpStep && !isEmailVerified && (
               <motion.div
-                className="input-group"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{ background: 'rgba(23,56,41,0.03)', padding: '20px', borderRadius: '12px', marginTop: '10px' }}
+                className="recovery-card-wrap"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
               >
-                <label style={{ textAlign: 'center', display: 'block' }}>Enter Verification Code</label>
-                <div className="input-with-icon">
-                  <HiShieldCheck className="icon" />
+                <label style={{ display: 'block', marginBottom: '15px', fontWeight: 700, fontSize: '13px', color: 'var(--login-primary)' }}>
+                  Enter 6-Digit Verification Code
+                </label>
+                <div className="otp-input-container">
                   <input
-                    placeholder="6-digit code"
+                    className="otp-field"
+                    placeholder="000000"
                     type="text"
                     maxLength={6}
-                    style={{ letterSpacing: '4px', fontWeight: 'bold', textAlign: 'center' }}
                     value={signupOtp}
-                    onChange={(e) => setSignupOtp(e.target.value)}
+                    onChange={(e) => setSignupOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                    autoFocus
                   />
                 </div>
-                <button className="main-login-btn" onClick={handleVerifySignupOTP} disabled={isVerifying} style={{ marginTop: '16px' }}>
-                  {isVerifying ? "Verifying..." : "Confirm Code"}
+                <button 
+                  className="main-login-btn" 
+                  onClick={handleVerifySignupOTP} 
+                  disabled={isVerifying || signupOtp.length < 6} 
+                  style={{ marginTop: '20px' }}
+                >
+                  {isVerifying ? "Verifying..." : "Confirm Verification Code"}
                 </button>
-                <p style={{ textAlign: 'center', fontSize: '0.8rem', marginTop: '12px' }}>
-                  Didn't get it? <span onClick={handleSendSignupOTP} style={{ color: 'var(--ec-secondary)', cursor: 'pointer', fontWeight: 'bold' }}>Resend</span>
-                </p>
+                <div className="resend-box">
+                  Didn't get the code? <span className="resend-link" onClick={handleSendSignupOTP}>Resend Code</span>
+                </div>
               </motion.div>
             )}
 
@@ -431,7 +444,9 @@ const Signup = () => {
             transition={{ duration: 1 }}
           >
             <div className="visual-logo-box">
-              <img src={applogo} alt="Enterprise Compute" />
+              <div className="logo-link" onClick={() => Navigate('/')}>
+                <img src={applogo} alt="Enterprise Compute" />
+              </div>
             </div>
             <h1>Join Enterprise Compute</h1>
             <div className="visual-divider"></div>
@@ -459,10 +474,12 @@ const Signup = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="login-toast"
+            className={`login-toast ${signupMessageType}`}
           >
             <div className="login-toast-accent" />
-            <div className="login-toast-icon">!</div>
+            <div className="login-toast-icon">
+              {signupMessageType === 'success' ? '✓' : signupMessageType === 'info' ? 'ℹ' : '!'}
+            </div>
             <span className="login-toast-text">{signupMessage}</span>
             <button
               className="login-toast-close"

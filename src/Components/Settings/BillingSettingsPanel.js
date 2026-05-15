@@ -134,7 +134,6 @@ const BillingSettingsPanel = ({ variants }) => {
   const handleSubscribe = async () => {
     if (disablePaystackPayment) {
       const msg = 'Paystack automated checkout is temporarily suspended. Contact the Enterprise Compute Central Admin for Manual activation of subscription after proof payment is sent to them.'
-      window.alert(msg)
       setAlertState('error')
       setAlert(msg)
       setAlertTimeout(7000)

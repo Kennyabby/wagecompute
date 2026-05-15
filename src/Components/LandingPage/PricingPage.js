@@ -1,9 +1,11 @@
 import './SubPages.css'
+import "../Login/Login.css";
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from './NavBar'
 import Footer from './Footer'
 import ContextProvider from '../../Resources/ContextProvider'
+import { motion, AnimatePresence } from "framer-motion";
 
 const FALLBACK_STANDARD_PRICE = 92000
 const FREE_TRIAL_DAYS = 14
@@ -101,7 +103,7 @@ const getAppInitials = (name) => {
 }
 
 const PricingPage = () => {
-  const { storePath, fetchServer, server } = useContext(ContextProvider)
+  const { storePath, fetchServer, server, setAlert, setAlertState, setAlertTimeout } = useContext(ContextProvider)
   const navigate = useNavigate()
   const [openFaq, setOpenFaq] = useState(null)
   const [selectedPlan, setSelectedPlan] = useState('standard')
@@ -110,6 +112,15 @@ const PricingPage = () => {
   const [checkoutForm, setCheckoutForm] = useState({
     workspaceSubdomain: '',
   })
+  
+  const [message, setMessage] = useState("")
+  const [messageType, setMessageType] = useState("error") // 'success' | 'info' | 'error' | 'warning'
+
+  const showMsg = (msg, type = 'error') => {
+    setMessage(msg)
+    setMessageType(type)
+    setTimeout(() => setMessage(""), 5000)
+  }
   const [selectedOptionalApps, setSelectedOptionalApps] = useState([])
   const [checkoutState, setCheckoutState] = useState({
     loading: false,
@@ -354,7 +365,7 @@ const PricingPage = () => {
     const subdomain = String(checkoutForm.workspaceSubdomain || '').trim().toLowerCase()
     if (disablePaystackPayment) {
       const msg = 'Paystack automated checkout is temporarily suspended. Contact the Enterprise Compute Central Admin for Manual activation of subscription after proof payment is sent to them.'
-      window.alert(msg)
+      showMsg(msg, 'warning')
       setCheckoutState({
         loading: false,
         verifying: false,
@@ -575,21 +586,22 @@ const PricingPage = () => {
                   </button>
                 </div>
 
-                <div className="sp-billing-toggle">
-                  <button
-                    className={billingCycle === 'monthly' ? 'active' : ''}
-                    onClick={() => setBillingCycle('monthly')}
-                    type="button"
-                  >
-                    Monthly View
-                  </button>
-                  <button
-                    className={billingCycle === 'yearly' ? 'active' : ''}
-                    onClick={() => setBillingCycle('yearly')}
-                    type="button"
-                  >
-                    Annual View
-                  </button>
+                <div className="sp-billing-toggle-wrapper">
+                  <div className="sp-billing-toggle">
+                    <button 
+                      className={billingCycle === 'monthly' ? 'active' : ''} 
+                      onClick={() => setBillingCycle('monthly')}
+                    >
+                      Monthly
+                    </button>
+                    <button 
+                      className={billingCycle === 'annually' ? 'active' : ''} 
+                      onClick={() => setBillingCycle('annually')}
+                    >
+                      Annually
+                      <span className="sp-save-badge">Save 20%</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -832,6 +844,29 @@ const PricingPage = () => {
       </section>
 
       <Footer />
+
+      <AnimatePresence>
+        {message && (
+          <motion.div
+            key="login-toast"
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className={`login-toast ${messageType}`}
+          >
+            <div className="login-toast-accent" />
+            <div className="login-toast-icon">
+              {messageType === 'success' ? '✓' : messageType === 'info' ? 'ℹ' : '!'}
+            </div>
+            <span className="login-toast-text">{message}</span>
+            <button
+              className="login-toast-close"
+              onClick={() => setMessage("")}
+            >×</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
