@@ -6,6 +6,7 @@ import { HiShieldCheck, HiMail } from 'react-icons/hi';
 import ContextProvider from '../../Resources/ContextProvider';
 import { motion, AnimatePresence } from "framer-motion";
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
+import AuthNotify from '../../Resources/Notify/AuthNotify';
 
 const Signup = () => {
   const { server, fetchServer, storePath } = useContext(ContextProvider)
@@ -466,28 +467,11 @@ const Signup = () => {
         </div>
       </div>
 
-      <AnimatePresence>
-        {signupMessage && (
-          <motion.div
-            key="login-toast"
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className={`login-toast ${signupMessageType}`}
-          >
-            <div className="login-toast-accent" />
-            <div className="login-toast-icon">
-              {signupMessageType === 'success' ? '✓' : signupMessageType === 'info' ? 'ℹ' : '!'}
-            </div>
-            <span className="login-toast-text">{signupMessage}</span>
-            <button
-              className="login-toast-close"
-              onClick={() => setSignupMessage("")}
-            >×</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AuthNotify 
+        message={signupMessage} 
+        type={signupMessageType} 
+        onClose={() => setSignupMessage("")} 
+      />
     </div>
   );
 };

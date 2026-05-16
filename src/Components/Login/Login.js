@@ -7,6 +7,7 @@ import { MdOutlineKeyboardAlt, MdBackspace } from 'react-icons/md';
 import ContextProvider from '../../Resources/ContextProvider';
 import { motion, AnimatePresence } from "framer-motion";
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
+import AuthNotify from '../../Resources/Notify/AuthNotify';
 
 const Login = () => {
   const { server, fetchServer, storePath,
@@ -499,26 +500,11 @@ const Login = () => {
     return (
       <div className="login-wrapper">
         {renderUserView()}
-        <AnimatePresence>
-          {loginMessage && (
-            <motion.div
-              key="login-toast"
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 30, scale: 0.95 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="login-toast"
-            >
-              <div className="login-toast-accent" />
-              <div className="login-toast-icon">!</div>
-              <span className="login-toast-text">{loginMessage}</span>
-              <button
-                className="login-toast-close"
-                onClick={() => setLoginMessage("")}
-              >×</button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <AuthNotify 
+          message={loginMessage} 
+          type={loginMessage.toLowerCase().includes('success') || loginMessage.toLowerCase().includes('welcome') ? 'success' : 'error'}
+          onClose={() => setLoginMessage("")} 
+        />
       </div>
     )
   }
@@ -644,26 +630,11 @@ const Login = () => {
         </div>
       </div>
 
-      <AnimatePresence>
-        {loginMessage && (
-          <motion.div
-            key="login-toast"
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="login-toast"
-          >
-            <div className="login-toast-accent" />
-            <div className="login-toast-icon">!</div>
-            <span className="login-toast-text">{loginMessage}</span>
-            <button
-              className="login-toast-close"
-              onClick={() => setLoginMessage("")}
-            >×</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AuthNotify 
+        message={loginMessage} 
+        type={loginMessage.toLowerCase().includes('success') || loginMessage.toLowerCase().includes('welcome') ? 'success' : 'error'}
+        onClose={() => setLoginMessage("")} 
+      />
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { HiShieldCheck } from 'react-icons/hi';
 import ContextProvider from '../../Resources/ContextProvider';
 import { motion, AnimatePresence } from "framer-motion";
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
+import AuthNotify from '../../Resources/Notify/AuthNotify';
 
 const ForgotPassword = () => {
   const { server, storePath } = useContext(ContextProvider)
@@ -270,24 +271,11 @@ const ForgotPassword = () => {
         </div>
       </div>
 
-      <AnimatePresence>
-        {message && (
-          <motion.div
-            key="login-toast"
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            className={`login-toast ${messageType}`}
-          >
-            <div className="login-toast-accent" />
-            <div className="login-toast-icon">
-              {messageType === 'success' ? '✓' : messageType === 'info' ? 'ℹ' : '!'}
-            </div>
-            <span className="login-toast-text">{message}</span>
-            <button className="login-toast-close" onClick={() => setMessage("")}>×</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AuthNotify 
+        message={message} 
+        type={messageType} 
+        onClose={() => setMessage("")} 
+      />
     </div>
   );
 };

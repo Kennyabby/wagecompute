@@ -19,6 +19,7 @@ import Dashboard from './Components/Dashboard/Dashboard';
 import DashView from './Components/DashView/DashView';
 import FormPage from './Components/FormPage/FormPage';
 import Notify from './Resources/Notify/Notify';
+import AuthNotify from './Resources/Notify/AuthNotify';
 import AboutPage from './Components/LandingPage/AboutPage';
 import CareersPage from './Components/LandingPage/CareersPage';
 import PartnersPage from './Components/LandingPage/PartnersPage';
@@ -165,6 +166,8 @@ function App() {
   const [alertTimeout, setAlertTimeout] = useState(100000)
   const [actionMessage, setActionMessage] = useState('')
   const [action, setAction] = useState('')
+  const location = useLocation();
+  const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(location.pathname);
   const [cancel, setCancel] = useState('')
 
   const [sessId, setSessID] = useState(null)
@@ -212,7 +215,9 @@ function App() {
   const [isInitialSyncDone, setIsInitialSyncDone] = useState(false)
   const [isProduction, setIsProduction] = useState(false)
   const [subscriptionState, setSubscriptionState] = useState(null)
-
+  
+  const Navigate = useNavigate()
+  
   const intervalPeriod = 3600000; // 60 minutes
   // Guarded fetchServer: when SSE is connected and initial sync done,
   // serve getDocsDetails requests from in-memory state/cache to avoid redundant network calls.
@@ -293,8 +298,6 @@ function App() {
 
   const initialYear = '2025'
 
-  const Navigate = useNavigate()
-  const location = useLocation()
 
   const refreshSubscriptionState = async (seedStatus = null) => {
     if (seedStatus) {
@@ -3617,14 +3620,24 @@ function App() {
         </Routes> :
           <PauseView />
         }
-        {!actionMessage && <Notify
-          notifyMessage={alert}
-          notifyState={alertState}
-          timeout={alertTimeout}
-          actionMessage={actionMessage}
-          action={action}
-          cancel={cancel}
-        />}
+        {!actionMessage && (
+          isAuthPage ? (
+            <AuthNotify
+              notifyMessage={alert}
+              notifyState={alertState}
+              timeout={alertTimeout}
+            />
+          ) : (
+            <Notify
+              notifyMessage={alert}
+              notifyState={alertState}
+              timeout={alertTimeout}
+              actionMessage={actionMessage}
+              action={action}
+              cancel={cancel}
+            />
+          )
+        )}
       </ContextProvider.Provider>
     </>
   );
