@@ -4344,6 +4344,7 @@ const PaymentModal = ({
                     }
                 }
             })
+            console.log('no receipt number.')
             setAlertState('error')
             setAlert(`Please Enter Receipt Number for the following Pay Points: ${errmess} !`)
             setAlertTimeout(3000)
@@ -4425,7 +4426,7 @@ const PaymentModal = ({
                     setLoading(false)
                 }}
                 action={async () => {
-                    setActionMessage('')
+                    // setActionMessage('')
                     setLoading(true)
                     await handlePayment()
                     setPaymentDetails(defaultPaymentDetails)

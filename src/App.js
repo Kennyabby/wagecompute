@@ -165,6 +165,7 @@ function App() {
   const [alertTimeout, setAlertTimeout] = useState(100000)
   const [actionMessage, setActionMessage] = useState('')
   const [action, setAction] = useState('')
+  const [cancel, setCancel] = useState('')
 
   const [sessId, setSessID] = useState(null)
   const [companyRecord, setCompanyRecord] = useState(null)
@@ -3586,11 +3587,7 @@ function App() {
         sessId,
         company
       }}>        
-        {!actionMessage && <Notify
-          notifyMessage={alert}
-          notifyState={alertState}
-          timeout={alertTimeout}
-        />}
+
         {!pauseView ? <Routes>
           <Route path='/' element={<LandingPage />}></Route>
           <Route path='/loading' element={<LoadingPage />}></Route>
@@ -3620,6 +3617,14 @@ function App() {
         </Routes> :
           <PauseView />
         }
+        {!actionMessage && <Notify
+          notifyMessage={alert}
+          notifyState={alertState}
+          timeout={alertTimeout}
+          actionMessage={actionMessage}
+          action={action}
+          cancel={cancel}
+        />}
       </ContextProvider.Provider>
     </>
   );
