@@ -20,7 +20,7 @@ const Notify = ({
     const closeToast = () => {
         setAlert('');
         setAlertState(null);
-        if (setActionMessage) setActionMessage('');
+        if (actionMessage) setActionMessage('');
     };
 
     useEffect(() => {
@@ -28,9 +28,11 @@ const Notify = ({
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
             }
-            timeoutRef.current = setTimeout(() => {
-                closeToast();
-            }, timeout || 5000);
+            if (timeout !== 100000) {
+                timeoutRef.current = setTimeout(() => {
+                    closeToast();
+                }, timeout || 5000);
+            }
         }
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -38,14 +40,12 @@ const Notify = ({
     }, [notifyMessage, timeout]);
 
     const handleAction = () => {
-        if (action) {
-            action();
-            closeToast();
-        }
+        if (typeof action === 'function') action();
+        closeToast();        
     };
-
+    
     const handleCancel = () => {
-        if (cancel) cancel();
+        if (typeof cancel === 'function') cancel();
         closeToast();
     };
 
@@ -59,50 +59,50 @@ const Notify = ({
         }
     };
 
-    return (
-        <div className="toast-container">
-            <AnimatePresence>
-                {notifyMessage && (
-                    <motion.div
-                        key="toast"
-                        initial={{ opacity: 0, x: 50, scale: 0.9 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: 20, scale: 0.95 }}
-                        className="toast-wrapper"
-                    >
-                        <div className={`toast ${notifyState || 'info'}`}>
-                            <div className="toast-accent" />
-                            <div className="toast-icon-container">
-                                {getIcon()}
-                            </div>
-                            <div className="toast-content">
-                                <p className="toast-message">{notifyMessage}</p>
-                                {actionMessage && (
-                                    <div className="toast-actions">
-                                        <button className="toast-btn toast-btn-primary" onClick={handleAction}>
-                                            {actionMessage}
-                                        </button>
-                                        <button className="toast-btn toast-btn-secondary" onClick={handleCancel}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            <button className="toast-close" onClick={closeToast}>
+    return ( (notifyMessage || actionMessage) && 
+        <div className="notify-container">
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={notifyMessage}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0}}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="notify-toast-wrapper"                    
+                >
+                    <div className={`notify-toast ${notifyState || 'info'}`}>
+                        <div className="notify-toast-accent" />
+                        {!actionMessage && <div className="notify-toast-icon-container">
+                            {getIcon()}
+                        </div>}
+                        <div className="notify-toast-content">
+                            <p className="notify-toast-message">{notifyMessage}</p>
+                            {actionMessage && (
+                                <div className="notify-toast-actions">
+                                    <button className="notify-toast-btn toast-btn-primary" onClick={()=>{handleAction()}}>
+                                        {actionMessage}
+                                    </button>
+                                    <button className="notify-toast-btn toast-btn-secondary" onClick={()=>{handleCancel()}}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        {!actionMessage && <>
+                            <button className="notify-toast-close" onClick={()=>{closeToast()}}>
                                 <FiX />
                             </button>
-                            <div className="toast-progress">
+                            <div className="notify-toast-progress">
                                 <motion.div 
-                                    className="toast-progress-bar"
+                                    className="notify-toast-progress-bar"
                                     initial={{ scaleX: 1 }}
                                     animate={{ scaleX: 0 }}
                                     transition={{ duration: (timeout || 5000) / 1000, ease: "linear" }}
                                 />
                             </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        </>}
+                    </div>
+                </motion.div>
+            </AnimatePresence>            
         </div>
     );
 };
