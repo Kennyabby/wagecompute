@@ -28,6 +28,7 @@ const SideNav = () => {
     const [attendanceApprovals, setAttendanceApprovals] = useState([])
     const [accommodationApprovals, setAccommodationApprovals] = useState([])
     const [expenseApprovals, setExpenseApprovals] = useState([])
+    const [inventoryApprovals, setInventoryApprovals] = useState([])
     const [allApprovals, setAllApprovals] = useState([])
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [offlinePendingCount, setOfflinePendingCount] = useState(0);
@@ -42,7 +43,10 @@ const SideNav = () => {
 
     useEffect(() => {
         setAllApprovals(approvals.filter((appr) => {
-            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approve_post' + appr.module)) {
+            const permissionKey = appr.module === 'inventory' && appr.section === 'posttransfer'
+                ? 'approve_posttransfer'
+                : 'approve_post' + appr.module
+            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes(permissionKey)) {
                 return (
                     !appr.approved && !appr.message
                 )
@@ -72,6 +76,11 @@ const SideNav = () => {
         setExpenseApprovals(approvals.filter((appr) => {
             return (
                 (appr.module === 'expense' && (!appr.approved && !appr.message))
+            )
+        }))
+        setInventoryApprovals(approvals.filter((appr) => {
+            return (
+                (appr.module === 'inventory' && (!appr.approved && !appr.message))
             )
         }))
     }, [approvals])
@@ -111,7 +120,7 @@ const SideNav = () => {
         refreshOfflinePendingCount()
         const id = setInterval(() => {
             refreshOfflinePendingCount()
-        }, 800); // every 0.8 milliseconds
+        }, 30000);
         return () => clearInterval(id);
     }, [company, companyRecord?.emailid])
 
@@ -207,7 +216,13 @@ const SideNav = () => {
             badge: hasPermission('approve_postattendance') ? attendanceApprovals.length : 0
         },
         hasPermission('payroll') && { name: 'payroll', label: 'Payroll', meta: 'Payouts', icon: SiPayloadcms },
-        hasPermission('inventory') && { name: 'inventory', label: 'Inventory', meta: 'Stock', icon: MdInventory },
+        hasPermission('inventory') && {
+            name: 'inventory',
+            label: 'Inventory',
+            meta: 'Stock',
+            icon: MdInventory,
+            badge: hasPermission('approve_posttransfer') ? inventoryApprovals.length : 0
+        },
         hasPermission('sales') && {
             name: 'sales',
             label: 'Sales',

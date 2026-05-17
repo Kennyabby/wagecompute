@@ -7,6 +7,8 @@
     font-family: 'MontserratRegular', sans-serif;
 }
 .inventoryTop{
+    position: relative;
+    z-index: 60;
     width: 100%;
     display: block;
     padding: 0;
@@ -59,7 +61,7 @@
     border-radius: 12px;
     padding: 8px;
     box-shadow: 0 10px 30px rgba(23, 56, 41, 0.12);
-    z-index: 100;
+    z-index: 250;
     min-width: 180px;
 }
 .inventoryDropMenu label{
@@ -133,6 +135,7 @@
     box-shadow: 0 0 0 3px rgba(43, 106, 75, 0.06);
 }
 .inventoryView{
+    position: relative;
     width: 100%;
     height: 100%;
     overflow: auto;
@@ -143,8 +146,8 @@
     display: flex;
     flex-direction: column;
     position: absolute;
-    left: 0;
-    bottom: -10;
+    right: 0;
+    top: 30px;
     font-size: 13px;
     width: max-content;
     border: 1px solid rgba(23, 56, 41, 0.08);
@@ -152,7 +155,7 @@
     background: white;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(23, 56, 41, 0.12);
-    z-index: 100;
+    z-index: 250;
 }
 .settingsDrop span{
     width: fit-content;

@@ -29,7 +29,22 @@ const Login = () => {
   const location = useLocation()
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
+  const handoffRedeemRef = useRef('');
   const requestedNext = new URLSearchParams(location.search).get('next') === 'settings' ? 'settings' : 'dashboard'
+  const hostname = window.location.hostname
+  const isLocalRootLogin = ['localhost', '127.0.0.1'].includes(hostname)
+  const isProductionRootLogin = ['epxcentral.com', 'www.epxcentral.com'].includes(hostname)
+  const isRootDomainLogin = isProductionRootLogin || isLocalRootLogin
+
+  const buildTenantRedirectUrl = (subdomain, handoffCode) => {
+    const protocol = window.location.protocol
+    const port = window.location.port ? `:${window.location.port}` : ''
+    const next = encodeURIComponent(requestedNext || 'dashboard')
+    if (isLocalRootLogin) {
+      return `${protocol}//${subdomain}.localhost${port}/login?adminHandoff=${encodeURIComponent(handoffCode)}&next=${next}`
+    }
+    return `${protocol}//${subdomain}.epxcentral.com/login?adminHandoff=${encodeURIComponent(handoffCode)}&next=${next}`
+  }
 
   // Update current time every second
   useEffect(() => {
@@ -155,16 +170,55 @@ const Login = () => {
     setViewType(window.localStorage.getItem('lgt-vw') || '')
   }, [setLoginMessage])
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const handoffCode = params.get('adminHandoff')
+    if (!handoffCode) return
+    const redeemKey = `tenant-admin-handoff-${handoffCode}`
+    if (handoffRedeemRef.current === handoffCode || window.sessionStorage.getItem(redeemKey) === 'redeeming') return
+    handoffRedeemRef.current = handoffCode
+    window.sessionStorage.setItem(redeemKey, 'redeeming')
+
+    const redeemHandoff = async () => {
+      setSigninStatus('Completing Sign In...')
+      const resp = await fetchServer('POST', { handoffCode }, 'redeemTenantAdminHandoff', server)
+      if (resp.err || !resp.ok || !resp.sessionId || !resp.db) {
+        window.sessionStorage.removeItem(redeemKey)
+        handoffRedeemRef.current = ''
+        setLoginMessage(resp.mess || 'Admin login handoff expired. Please sign in again.')
+        setSigninStatus('Sign In')
+        return
+      }
+
+      var now = Date.now()
+      var sess = 0
+      resp.sessionId.split('').forEach((chr) => {
+        sess += chr.codePointAt(0)
+      })
+      window.localStorage.setItem('sessn-cmp', resp.db)
+      window.localStorage.setItem('sess-recg-id', now + '-' + sess)
+      window.localStorage.setItem('idt-curr-usr', now + '')
+      window.localStorage.setItem('sessn-id', resp.sessionId)
+      window.sessionStorage.removeItem(redeemKey)
+      window.history.replaceState(null, '', '/login')
+      setSigninStatus('Sign In')
+      loadPage(resp.sessionId, requestedNext)
+    }
+
+    redeemHandoff()
+  }, [location.search, fetchServer, server, loadPage, requestedNext, setLoginMessage])
+
   const validateLogin = async () => {
     if (field.emailid === 'test' && field.password === 'test') {
       Navigate('/test')
     } else {
       setSigninStatus("Signing In...")
       setLoginMessage("")
+      const endpoint = isRootDomainLogin ? "authenticateTenantAdmin" : "authenticateUser"
       const resp = await fetchServer("POST", {
         pass: field.password,
         prop: { 'emailid': field.emailid }
-      }, "authenticateUser", server)
+      }, endpoint, server)
 
       if (resp.err) {
         setLoginMessage(resp.mess)
@@ -184,6 +238,10 @@ const Login = () => {
             setLoginMessage("")
           }, 5000)
         } else {
+          if (isRootDomainLogin && resp.handoffCode && resp.subdomain) {
+            window.location.href = buildTenantRedirectUrl(resp.subdomain, resp.handoffCode)
+            return
+          }
           var idVal = resp.id
           var company = resp.db
           var now = Date.now()

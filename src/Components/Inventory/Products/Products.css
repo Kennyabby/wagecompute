@@ -1,5 +1,6 @@
 /* Products - Premium Design */
 .pr-products{
+    position: relative;
     display: flex;
     width: 100%;
     height: 100%;
@@ -641,5 +642,307 @@ select.otherInp {
     .imp-left {
         border-right: none;
         border-bottom: 1px solid rgba(23, 56, 41, 0.05);
+    }
+}
+.product-bom-panel {
+    position: absolute;
+    
+    z-index: 5000;
+    border: 1.5px solid rgba(23, 56, 41, 0.08);
+}
+
+.product-bom-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 50000; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(106, 242, 173, 0.16), transparent 32%),
+        rgba(10, 28, 20, 0.42);
+    backdrop-filter: blur(8px);
+}
+
+.product-bom-modal {
+    width: min(1080px, 96vw);
+    max-height: min(88vh, 820px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(23, 56, 41, 0.08);
+    border-radius: 26px;
+    background: #ffffff;
+    box-shadow: 0 26px 70px rgba(10, 28, 20, 0.24);
+}
+
+.product-bom-modal-head,
+.product-bom-modal-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 22px 26px;
+    background:
+        radial-gradient(circle at top right, rgba(106, 242, 173, 0.18), transparent 36%),
+        linear-gradient(135deg, #ffffff 0%, #f5fbf8 100%);
+}
+
+.product-bom-modal-head {
+    border-bottom: 1px solid rgba(23, 56, 41, 0.07);
+}
+
+.product-bom-modal-head span {
+    display: inline-flex;
+    width: fit-content;
+    margin-bottom: 8px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(43, 106, 75, 0.08);
+    color: #2b6a4b;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.product-bom-modal-head h2 {
+    margin: 0;
+    color: #173829;
+    font-family: 'MontserratBold', sans-serif;
+    font-size: clamp(22px, 3vw, 30px);
+}
+
+.product-bom-modal-head p {
+    max-width: 620px;
+    margin: 7px 0 0;
+    color: rgba(23, 56, 41, 0.6);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.product-bom-modal-head button,
+.product-bom-cancel,
+.product-bom-save {
+    border: none;
+    border-radius: 12px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-family: 'MontserratBold', sans-serif;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.product-bom-modal-head button,
+.product-bom-cancel {
+    background: rgba(23, 56, 41, 0.07);
+    color: #173829;
+}
+
+.product-bom-save {
+    background: #173829;
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(23, 56, 41, 0.16);
+}
+
+.product-bom-modal-head button:hover,
+.product-bom-cancel:hover,
+.product-bom-save:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.product-bom-save:disabled,
+.product-bom-add:disabled,
+.product-bom-line button:disabled,
+.product-bom-line input:disabled,
+.product-bom-line select:disabled,
+.product-bom-notes:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.product-bom-modal-body {
+    padding: 24px 26px;
+    overflow: auto;
+    background: #fbfdfc;
+}
+
+.product-bom-picker {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.2fr) minmax(220px, 0.8fr);
+    gap: 14px;
+    align-items: end;
+    margin-bottom: 18px;
+    padding: 16px;
+    border: 1px solid rgba(23, 56, 41, 0.07);
+    border-radius: 18px;
+    background: #ffffff;
+}
+
+.product-bom-picker label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.product-bom-picker label span {
+    color: rgba(23, 56, 41, 0.58);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.product-bom-picker strong {
+    display: block;
+    color: #173829;
+    font-family: 'MontserratBold', sans-serif;
+    font-size: 15px;
+}
+
+.product-bom-picker small {
+    display: block;
+    margin-top: 5px;
+    color: rgba(23, 56, 41, 0.52);
+    font-size: 12px;
+}
+
+.product-bom-empty {
+    padding: 16px;
+    border: 1px dashed rgba(23, 56, 41, 0.16);
+    border-radius: 14px;
+    background: #ffffff;
+    color: rgba(23, 56, 41, 0.58);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.product-bom-modal-foot {
+    justify-content: flex-end;
+    border-top: 1px solid rgba(23, 56, 41, 0.07);
+    background: #ffffff;
+}
+
+.product-bom-help {
+    margin: 4px 0 14px;
+    color: rgba(23, 56, 41, 0.55);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.product-bom-lines {
+    display: grid;
+    gap: 10px;
+}
+
+.product-production-setup {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 16px;
+    border: 1px solid rgba(23, 56, 41, 0.07);
+    border-radius: 18px;
+    background: #ffffff;
+}
+
+.product-production-setup label {
+    display: grid;
+    gap: 6px;
+    color: rgba(23, 56, 41, 0.6);
+    font-size: 11px;
+    font-family: 'MontserratBold', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+}
+
+.product-bom-line {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(140px, 0.8fr) 90px 110px 100px auto;
+    gap: 8px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid rgba(23, 56, 41, 0.07);
+    border-radius: 16px;
+    background: #ffffff;
+}
+
+.product-bom-line select,
+.product-bom-line input,
+.product-bom-picker select,
+.product-production-setup select,
+.product-production-setup input,
+.product-bom-notes {
+    width: 100%;
+    border: 1.5px solid rgba(23, 56, 41, 0.1);
+    border-radius: 10px;
+    padding: 9px 10px;
+    outline: none;
+    color: #173829;
+    font-family: 'MontserratRegular', sans-serif;
+    box-sizing: border-box;
+}
+
+.product-bom-line button,
+.product-bom-add {
+    border: none;
+    border-radius: 10px;
+    padding: 9px 12px;
+    cursor: pointer;
+    font-family: 'MontserratBold', sans-serif;
+    font-size: 12px;
+}
+
+.product-bom-line button {
+    background: #fff1f2;
+    color: #be123c;
+}
+
+.product-bom-add {
+    margin-top: 10px;
+    background: #173829;
+    color: #fff;
+}
+
+.product-bom-notes {
+    margin-top: 12px;
+    min-height: 72px;
+    resize: vertical;
+}
+
+@media (max-width: 900px) {
+    .product-bom-modal-backdrop {
+        align-items: flex-start;
+        padding: 14px;
+    }
+
+    .product-bom-modal {
+        max-height: 94vh;
+        border-radius: 20px;
+    }
+
+    .product-bom-modal-head,
+    .product-bom-modal-foot {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px;
+    }
+
+    .product-bom-modal-foot {
+        align-items: stretch;
+    }
+
+    .product-bom-modal-body {
+        padding: 16px;
+    }
+
+    .product-bom-picker,
+    .product-production-setup,
+    .product-bom-line {
+        grid-template-columns: 1fr;
     }
 }

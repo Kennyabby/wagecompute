@@ -1,6 +1,13 @@
 const fetchServer = async (method, body, endpoint, server, signal) => {
     // Skip auth checks for login and token endpoints
-    const isAuthEndpoint = ['login', 'token', 'authenticateUser', 'admin/auth/login'].includes(endpoint);
+    const isAuthEndpoint = [
+        'login',
+        'token',
+        'authenticateUser',
+        'authenticateTenantAdmin',
+        'redeemTenantAdminHandoff',
+        'admin/auth/login'
+    ].includes(endpoint);
     const normalizedMethod = String(method || 'GET').toUpperCase();
     const supportsRequestBody = !['GET', 'HEAD'].includes(normalizedMethod);
     const requestUrl = server
@@ -55,6 +62,15 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
                     throw new Error('Token refresh failed');
                 }
 
+                const tokenResponse = await resp.json();
+                if (tokenResponse?.accessToken) {
+                    window.localStorage.setItem('accessToken', tokenResponse.accessToken);
+                    data.headers = {
+                        ...(data.headers || {}),
+                        'Authorization': `Bearer ${tokenResponse.accessToken}`
+                    };
+                }
+
                 // Retry the original request with new token
                 resp = await fetch(requestUrl.toString(), data);
                 
@@ -64,10 +80,6 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
                 }
                 
                 const responseData = await resp.json();
-                // If token refresh returned a token in body, store it
-                if (responseData && responseData.accessToken) {
-                    window.localStorage.setItem('accessToken', responseData.accessToken);
-                }
                 return { err: false, ...responseData };
                 
             } catch (error) {

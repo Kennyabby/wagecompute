@@ -20,6 +20,7 @@ const Adjustments = ({
         settings, exportFile, importFile,
     } = useContext(ContextProvider)
     const intervalRef = useRef(null);
+    const productsRef = useRef(products);
     const [wrhs, setWrhs] = useState([])
     const [categories, setCategories] = useState([])
     const [curWarehouse, setCurWarehouse] = useState('all')
@@ -50,22 +51,55 @@ const Adjustments = ({
 
     const [adjustmentEntries, setAdjustmentEntries] = useState([])
     const [isSyncing, setIsSyncing] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [hasLoadedAdjustments, setHasLoadedAdjustments] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [dateRange, setDateRange] = useState({
+        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
+        endDate: new Date().toISOString().slice(0, 10)
+    })
+
+    const withRequestTimeout = (promise, timeoutMs = 25000) => {
+        let timeoutId;
+        const timeout = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+        });
+        return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+    }
 
     const refreshAdjustmentsData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
-        if (!cmp_val) return;
+        const latestProducts = productsRef.current || []
+        if (!cmp_val) {
+            setIsLoading(false)
+            setHasLoadedAdjustments(true)
+            return;
+        }
         try {
-            await getProductsWithStock(cmp_val, products)
-        } catch (e) { }
+            setIsLoading(true)
+            await withRequestTimeout(getProductsWithStock(cmp_val, latestProducts))
+            setHasLoadedAdjustments(true)
+        } catch (e) {
+            setHasLoadedAdjustments(true)
+        } finally {
+            setIsLoading(false)
+        }
     }
+
+    useEffect(() => {
+        productsRef.current = products
+    }, [products])
 
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');
         if (products.length) {
             if (!products[0]?.stockSummary) {
-                getProductsWithStock(cmp_val, products)
+                refreshAdjustmentsData()
+            } else {
+                setHasLoadedAdjustments(true)
             }
+        } else {
+            setHasLoadedAdjustments(true)
         }
     }, [products])
 
@@ -112,7 +146,7 @@ const Adjustments = ({
             const cmp_val = window.localStorage.getItem('sessn-cmp');
             if (!products) return
             await Promise.all([
-                getProductsWithStock(cmp_val, products)
+                withRequestTimeout(getProductsWithStock(cmp_val, products))
             ]).catch(() => { });
             if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
@@ -194,6 +228,7 @@ const Adjustments = ({
                 let val = Number(entry.difference) / absVal
                 let entryIndex = entry.index
                 entry.baseQuantity = Number(entry.difference)
+                entry.quantity = Math.abs(Number(entry.difference))
                 entry.entryType = (val === -1 ? 'Nagative Entry' : 'Positive Entry')
                 entry.documentType = (val === -1 ? 'Negative Adjustment' : 'Positive Adjustment')
                 entry.totalCost = Number(entry.difference) * Number(entry.costPrice)
@@ -202,6 +237,7 @@ const Adjustments = ({
                 entry.postingDate = postingDate
                 entry.postingStamp = new Date(postingDate)
                 entry.location = curWarehouse
+                entry.warehouse = curWarehouse
                 delete entry.index
                 // const adjustedProduct = [...products[entryIndex][curWarehouse], {...entry}]                
                 entct++
@@ -237,6 +273,8 @@ const Adjustments = ({
                 const entry = {}
                 entry.i_d = product.i_d
                 entry.productId = product.i_d
+                entry.name = product.name || product.i_d
+                entry.productName = product.name || product.i_d
                 entry.costPrice = product.costPrice
                 entry.index = index
                 entry.difference = ''
@@ -272,7 +310,7 @@ const Adjustments = ({
         } else {
             setIsOnView(clickedLabel)
             setIsNewView(false)
-            getProductsWithStock(company, products)
+            refreshAdjustmentsData()
             if (count === length) {
                 setAlertState('success')
                 setAlert(`Adjustments Posted Successfully!`)
@@ -298,6 +336,25 @@ const Adjustments = ({
                         Filters
                     </div>
                     <div className='filter-row'>
+                        <div className='filter-group'>
+                            <label>Date Range</label>
+                            <div className='date-range'>
+                                <input
+                                    className='date-input'
+                                    type='date'
+                                    value={dateRange.startDate}
+                                    onChange={(e) => setDateRange((prev) => ({ ...prev, startDate: e.target.value }))}
+                                />
+                                <span>to</span>
+                                <input
+                                    className='date-input'
+                                    type='date'
+                                    value={dateRange.endDate}
+                                    min={dateRange.startDate}
+                                    onChange={(e) => setDateRange((prev) => ({ ...prev, endDate: e.target.value }))}
+                                />
+                            </div>
+                        </div>
                         <div className='filter-group'>
                             <label>Warehouse</label>
                             <div className='filter-select-container'>
@@ -360,7 +417,13 @@ const Adjustments = ({
                     </div>
                 </div>
                 <div className='adj-right-header'>
-                    <div className='adj-right'>
+                    <div className='adj-right stock-table-shell'>
+                        {isLoading && (
+                            <div className='stock-loading-banner'>
+                                <span className='stock-loading-dot'></span>
+                                {hasLoadedAdjustments ? 'Refreshing adjustment stock...' : 'Loading adjustment stock...'}
+                            </div>
+                        )}
                         {(() => {
                             const effectiveSearch = (searchQuery || searchTerm).toLowerCase();
                             const filteredProducts = products.filter((prflt) => {

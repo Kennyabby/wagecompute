@@ -8,3 +8,141 @@
     width: 100%;
     overflow: auto;
 }
+
+.ledger-setup-block{
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    background:
+        linear-gradient(135deg, rgba(17, 24, 39, 0.05), rgba(14, 116, 144, 0.08)),
+        #f8fafc;
+}
+
+.ledger-setup-dialog{
+    width: min(720px, 100%);
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+    padding: 28px;
+}
+
+.ledger-setup-kicker{
+    width: fit-content;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0e7490;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    margin-bottom: 14px;
+}
+
+.ledger-setup-dialog h2{
+    margin: 0;
+    color: #0f172a;
+    font-size: clamp(1.35rem, 2vw, 2rem);
+    line-height: 1.2;
+}
+
+.ledger-setup-dialog > p{
+    margin: 12px 0 0;
+    color: #475569;
+    line-height: 1.65;
+    max-width: 62ch;
+}
+
+.ledger-setup-missing{
+    display: grid;
+    gap: 10px;
+    margin-top: 22px;
+    max-height: 310px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.ledger-setup-missing-row{
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    align-items: start;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.ledger-setup-missing-row span{
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.ledger-setup-missing-row p{
+    margin: 0;
+    color: #334155;
+    line-height: 1.45;
+    font-weight: 600;
+}
+
+.ledger-setup-more{
+    padding: 10px 12px;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.ledger-setup-actions{
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.ledger-setup-actions button{
+    border: none;
+    border-radius: 8px;
+    min-height: 42px;
+    padding: 0 16px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.ledger-setup-secondary{
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.ledger-setup-primary{
+    background: #0f766e;
+    color: #ffffff;
+    box-shadow: 0 10px 22px rgba(15, 118, 110, 0.22);
+}
+
+@media (max-width: 720px){
+    .ledger-setup-block{
+        padding: 18px;
+        align-items: start;
+    }
+
+    .ledger-setup-dialog{
+        padding: 20px;
+    }
+
+    .ledger-setup-actions{
+        flex-direction: column;
+    }
+
+    .ledger-setup-actions button{
+        width: 100%;
+    }
+}

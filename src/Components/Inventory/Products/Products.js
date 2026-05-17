@@ -12,6 +12,7 @@ const Products = ({
     clickedLabel, isSaveClicked, setIsSaveValue,
     isDeleteClicked, setIsDeleteValue,
     isImportClicked, setIsImportValue,
+    isBomClicked, setIsBomValue,
     productView, setCurProduct, curProduct
 }) => {
     const {
@@ -23,6 +24,7 @@ const Products = ({
     } = useContext(ContextProvider)
     const loadRef = useRef(null)
     const intervalRef = useRef(null)
+    const productsRef = useRef(products)
     const [isSyncing, setIsSyncing] = useState(false)
     const [wrhs, setWrhs] = useState([])
     const [uoms, setUoms] = useState([])
@@ -55,7 +57,14 @@ const Products = ({
         restockLevel: '',
         markUp: '',
         buyTo: '',
-        type: ''
+        type: '',
+        billOfMaterials: [],
+        productionNotes: '',
+        productionSetup: {
+            defaultOrderType: 'production',
+            defaultOutputWarehouse: '',
+            batchSize: '',
+        },
     })
     const productExportFormat = {
         name: '',
@@ -158,17 +167,21 @@ const Products = ({
     const refreshProductsData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
-        try { await getProductsWithStock(cmp_val, products); } catch (e) { }
+        try { await getProductsWithStock(cmp_val, productsRef.current || []); } catch (e) { }
     }
+
+    useEffect(() => {
+        productsRef.current = products
+    }, [products])
 
     useEffect(() => {
         const curPosSet = posSettings?.posSettings?.find((sett) => sett.active)
         setCurPosSettings(curPosSet)
     }, [posSettings])
     useEffect(() => {
-        getProducts(cmp_val)
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (cmp_val) getProducts(cmp_val)
         if (!curProduct) {
-            var cmp_val = window.localStorage.getItem('sessn-cmp')
             intervalRef.current = setInterval(() => { refreshProductsData(); }, intervalPeriod)
             // run once
             refreshProductsData();
@@ -407,6 +420,7 @@ const Products = ({
 
     const handleProductFieldChange = (e) => {
         const { name, value } = e.target
+        if (!name) return
         if (!['goods', 'services'].includes(name)) {
             setProductFields((productFields) => {
                 return { ...productFields, [name]: value }
@@ -418,6 +432,76 @@ const Products = ({
             }
         }
     }
+
+    const updateBomLine = (index, field, value) => {
+        setProductFields((fields) => {
+            const lines = Array.isArray(fields.billOfMaterials) ? [...fields.billOfMaterials] : []
+            const current = { ...(lines[index] || {}) }
+            current[field] = value
+            if (field === 'productId') {
+                const product = products.find((item) => item.i_d === value)
+                current.productName = product?.name || ''
+                current.costPrice = product?.stockSummary?.averageCost || product?.costPrice || current.costPrice || current.unitCost || ''
+            }
+            const qty = Number(current.quantity || 0)
+            const costPrice = Number(current.costPrice || current.unitCost || 0)
+            current.totalCost = qty * costPrice
+            delete current.unitCost
+            lines[index] = current
+            return { ...fields, billOfMaterials: lines }
+        })
+    }
+
+    const addBomLine = () => {
+        setProductFields((fields) => ({
+            ...fields,
+            billOfMaterials: [
+                ...(Array.isArray(fields.billOfMaterials) ? fields.billOfMaterials : []),
+                { productId: '', productName: '', location: '', quantity: '', costPrice: '', totalCost: 0 }
+            ]
+        }))
+    }
+
+    const removeBomLine = (index) => {
+        setProductFields((fields) => ({
+            ...fields,
+            billOfMaterials: (fields.billOfMaterials || []).filter((_, lineIndex) => lineIndex !== index)
+        }))
+    }
+
+    const updateProductionSetup = (field, value) => {
+        setProductFields((fields) => ({
+            ...fields,
+            productionSetup: {
+                ...(fields.productionSetup || {}),
+                [field]: value,
+            }
+        }))
+    }
+
+    const handleBomProductSelect = (productId) => {
+        const product = products.find((item) => item.i_d === productId)
+        if (!product) return
+        setCurProduct(product)
+        setProductFields({
+            ...defaultProductFields,
+            ...product,
+            billOfMaterials: Array.isArray(product.billOfMaterials) ? product.billOfMaterials : [],
+            productionSetup: {
+                ...(defaultProductFields.productionSetup || {}),
+                ...(product.productionSetup || {}),
+            },
+        })
+        setDefaultProductType(product.type || 'goods')
+        setIsNewView(false)
+        setIsOnView(clickedLabel)
+    }
+
+    const closeBomModal = () => {
+        setIsBomValue(false)
+    }
+
+    const bomProductIsSelected = products.some((product) => product.type === 'goods' && product.i_d === productFields.i_d)
 
     const handleProductImageSelect = async (e) => {
         const file = e.target.files[0];
@@ -548,6 +632,16 @@ const Products = ({
             const newProduct = {
                 ...productFields,
             }
+            if (Array.isArray(newProduct.billOfMaterials)) {
+                newProduct.billOfMaterials = newProduct.billOfMaterials.map((line) => ({
+                    productId: line.productId || '',
+                    productName: line.productName || '',
+                    location: line.location || '',
+                    quantity: line.quantity || '',
+                    costPrice: line.costPrice ?? line.unitCost ?? '',
+                    totalCost: Number(line.totalCost || 0) || Number(line.quantity || 0) * Number(line.costPrice || line.unitCost || 0),
+                }))
+            }
 
             if (!isProductView) {
                 newProduct.createdAt = new Date().getTime()
@@ -567,14 +661,10 @@ const Products = ({
             if (!isProductView) {
                 newProducts = [newProduct, ...products]
             } else {
-                var filtindex = 0
-                products.forEach((product, index) => {
-                    if (product.i_d !== newProduct.i_d) {
-                        filtindex = index
-                        return
-                    }
-                })
-                newProducts[filtindex] = newProduct
+                const filtindex = products.findIndex((product) => product.i_d === newProduct.i_d)
+                if (filtindex >= 0) {
+                    newProducts[filtindex] = { ...products[filtindex], ...newProduct }
+                }
             }
 
             var resps
@@ -606,9 +696,32 @@ const Products = ({
                 return
             } else {
                 // console.log('product added successfully')
+                const bomLines = Array.isArray(newProduct.billOfMaterials)
+                    ? newProduct.billOfMaterials
+                        .filter((line) => line.productId && Number(line.quantity || 0) > 0)
+                        .map((line) => ({
+                            productId: line.productId,
+                            productName: line.productName || '',
+                            location: line.location || '',
+                            quantity: Number(line.quantity || 0),
+                            costPrice: Number(line.costPrice || line.unitCost || 0),
+                            totalCost: Number(line.totalCost || 0) || Number(line.quantity || 0) * Number(line.costPrice || line.unitCost || 0),
+                        }))
+                    : []
+                if (newProduct.type === 'goods') {
+                    fetchServer("POST", {
+                        bom: {
+                            productId: newProduct.i_d,
+                            productName: newProduct.name,
+                            components: bomLines,
+                            notes: newProduct.productionNotes || '',
+                        }
+                    }, "upsertBillOfMaterials", server).catch(() => {})
+                }
                 if (!productData.length) {
+                    setProducts(newProducts)
                     if (!productView) {
-                        getProductsWithStock(company, products)
+                        getProductsWithStock(company, newProducts)
                     } else {
                         getProducts(company)
                     }
@@ -626,6 +739,7 @@ const Products = ({
                     setAlertState('success')
                     setAlert(`Updated [${productFields.i_d}] Successfully!`)
                     setAlertTimeout(1000)
+                    setIsBomValue(false)
                     setIsSaveValue(false)
                     // getProducts(company)
                     return
@@ -732,6 +846,134 @@ const Products = ({
     return (
         <>
             <div className='pr-products'>
+                {isBomClicked && (
+                    <div className='product-bom-modal-backdrop' onMouseDown={closeBomModal}>
+                        <div className='product-bom-modal' onMouseDown={(e) => e.stopPropagation()}>
+                            <div className='product-bom-modal-head'>
+                                <div>
+                                    <span>Inventory setup</span>
+                                    <h2>Bill of Materials</h2>
+                                    <p>Define the raw materials, source locations, and costing used by production and assembly orders.</p>
+                                </div>
+                                <button type='button' onClick={closeBomModal}>Close</button>
+                            </div>
+                            <div className='product-bom-modal-body'>
+                                <div className='product-bom-picker'>
+                                    <label>
+                                        <span>Finished product</span>
+                                        <select value={productFields.i_d || curProduct?.i_d || ''} onChange={(e) => handleBomProductSelect(e.target.value)}>
+                                            <option value=''>Select product</option>
+                                            {products.filter((product) => product.type === 'goods').map((product) => (
+                                                <option key={product.i_d} value={product.i_d}>{product.i_d} - {product.name}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <div>
+                                        <strong>{bomProductIsSelected ? productFields.name : 'Choose a finished goods product'}</strong>
+                                        <small>{bomProductIsSelected ? `Product code: ${productFields.i_d}` : 'The BOM will be saved to the selected product.'}</small>
+                                    </div>
+                                </div>
+                                <div className='product-production-setup'>
+                                    <label>
+                                        <span>Default operation</span>
+                                        <select
+                                            value={productFields.productionSetup?.defaultOrderType || 'production'}
+                                            onChange={(e) => updateProductionSetup('defaultOrderType', e.target.value)}
+                                            disabled={!bomProductIsSelected}
+                                        >
+                                            <option value='production'>Production</option>
+                                            <option value='assembly'>Assembly</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>Output warehouse</span>
+                                        <select
+                                            value={productFields.productionSetup?.defaultOutputWarehouse || ''}
+                                            onChange={(e) => updateProductionSetup('defaultOutputWarehouse', e.target.value)}
+                                            disabled={!bomProductIsSelected}
+                                        >
+                                            <option value=''>Use selected warehouse</option>
+                                            {wrhs.map((wrh) => <option key={wrh.name} value={wrh.name}>{wrh.name}</option>)}
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>Batch size</span>
+                                        <input
+                                            type='number'
+                                            value={productFields.productionSetup?.batchSize || ''}
+                                            onChange={(e) => updateProductionSetup('batchSize', e.target.value)}
+                                            placeholder='Optional'
+                                            disabled={!bomProductIsSelected}
+                                        />
+                                    </label>
+                                </div>
+                                <div className='product-bom-lines'>
+                                    {(productFields.billOfMaterials || []).map((line, index) => (
+                                        <div className='product-bom-line' key={index}>
+                                            <select
+                                                value={line.productId || ''}
+                                                onChange={(e) => updateBomLine(index, 'productId', e.target.value)}
+                                                disabled={!bomProductIsSelected}
+                                            >
+                                                <option value=''>Select component</option>
+                                                {products.filter((product) => product.type === 'goods' && product.i_d !== productFields.i_d).map((product) => (
+                                                    <option key={product.i_d} value={product.i_d}>{product.i_d} - {product.name}</option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                value={line.location || ''}
+                                                onChange={(e) => updateBomLine(index, 'location', e.target.value)}
+                                                disabled={!bomProductIsSelected}
+                                            >
+                                                <option value=''>Source location</option>
+                                                {wrhs.map((wrh) => <option key={wrh.name} value={wrh.name}>{wrh.name}</option>)}
+                                            </select>
+                                            <input
+                                                type='number'
+                                                placeholder='Qty'
+                                                value={line.quantity || ''}
+                                                onChange={(e) => updateBomLine(index, 'quantity', e.target.value)}
+                                                disabled={!bomProductIsSelected}
+                                            />
+                                            <input
+                                                type='number'
+                                                placeholder='Cost price'
+                                                value={line.costPrice ?? line.unitCost ?? ''}
+                                                onChange={(e) => updateBomLine(index, 'costPrice', e.target.value)}
+                                                disabled={!bomProductIsSelected}
+                                            />
+                                            <strong>₦{Number(line.totalCost || 0).toLocaleString()}</strong>
+                                            <button type='button' disabled={!bomProductIsSelected} onClick={() => removeBomLine(index)}>Remove</button>
+                                        </div>
+                                    ))}
+                                    {!(productFields.billOfMaterials || []).length && (
+                                        <div className='product-bom-empty'>No components added yet. Add the raw materials consumed by this finished product.</div>
+                                    )}
+                                </div>
+                                <button type='button' className='product-bom-add' disabled={!bomProductIsSelected} onClick={addBomLine}>+ Add Component</button>
+                                <textarea
+                                    className='product-bom-notes'
+                                    name='productionNotes'
+                                    placeholder='Production or assembly notes...'
+                                    value={productFields.productionNotes || ''}
+                                    onChange={handleProductFieldChange}
+                                    disabled={!bomProductIsSelected}
+                                />
+                            </div>
+                            <div className='product-bom-modal-foot'>
+                                <button type='button' className='product-bom-cancel' onClick={closeBomModal}>Cancel</button>
+                                <button
+                                    type='button'
+                                    className='product-bom-save'
+                                    disabled={!bomProductIsSelected}
+                                    onClick={() => setIsSaveValue(clickedLabel)}
+                                >
+                                    Save BOM
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {companyRecord?.status === 'admin' && curPosSettings?.type === 'restaurant' && !isImportClicked && !isNewProduct && productView === 'list' && (
                     <div style={{ marginBottom: 0, padding: '14px 24px', borderBottom: '1px solid rgba(23,56,41,0.05)', background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                         <div style={{ fontWeight: 800, fontSize: 13, color: '#173829', fontFamily: 'MontserratBold, sans-serif' }}>Customer Menu QR Codes</div>
@@ -1095,6 +1337,108 @@ const Products = ({
                                 )}
                             </div>
                         </div>
+                        {false && defaultProductType === 'goods' && (
+                            <div className='stock-cov product-bom-panel' style={{ marginTop: 20 }}>
+                                <h3>Bill of Materials</h3>
+                                <p className='product-bom-help'>Define the components consumed when this product is produced or assembled.</p>
+                                <div className='product-production-setup'>
+                                    <label>
+                                        <span>Default operation</span>
+                                        <select
+                                            value={productFields.productionSetup?.defaultOrderType || 'production'}
+                                            onChange={(e) => {
+                                                e.stopPropagation()
+                                                updateProductionSetup('defaultOrderType', e.target.value)
+                                            }}
+                                        >
+                                            <option value='production'>Production</option>
+                                            <option value='assembly'>Assembly</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>Output warehouse</span>
+                                        <select
+                                            value={productFields.productionSetup?.defaultOutputWarehouse || ''}
+                                            onChange={(e) => {
+                                                e.stopPropagation()
+                                                updateProductionSetup('defaultOutputWarehouse', e.target.value)
+                                            }}
+                                        >
+                                            <option value=''>Use selected warehouse</option>
+                                            {wrhs.map((wrh) => <option key={wrh.name} value={wrh.name}>{wrh.name}</option>)}
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>Batch size</span>
+                                        <input
+                                            type='number'
+                                            value={productFields.productionSetup?.batchSize || ''}
+                                            onChange={(e) => {
+                                                e.stopPropagation()
+                                                updateProductionSetup('batchSize', e.target.value)
+                                            }}
+                                            placeholder='Optional'
+                                        />
+                                    </label>
+                                </div>
+                                <div className='product-bom-lines'>
+                                    {(productFields.billOfMaterials || []).map((line, index) => (
+                                        <div className='product-bom-line' key={index}>
+                                            <select
+                                                value={line.productId || ''}
+                                                onChange={(e) => {
+                                                    e.stopPropagation()
+                                                    updateBomLine(index, 'productId', e.target.value)
+                                                }}
+                                            >
+                                                <option value=''>Select component</option>
+                                                {products.filter((product) => product.type === 'goods' && product.i_d !== productFields.i_d).map((product) => (
+                                                    <option key={product.i_d} value={product.i_d}>{product.i_d} - {product.name}</option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                value={line.location || ''}
+                                                onChange={(e) => {
+                                                    e.stopPropagation()
+                                                    updateBomLine(index, 'location', e.target.value)
+                                                }}
+                                            >
+                                                <option value=''>Source location</option>
+                                                {wrhs.map((wrh) => <option key={wrh.name} value={wrh.name}>{wrh.name}</option>)}
+                                            </select>
+                                            <input
+                                                type='number'
+                                                placeholder='Qty'
+                                                value={line.quantity || ''}
+                                                onChange={(e) => {
+                                                    e.stopPropagation()
+                                                    updateBomLine(index, 'quantity', e.target.value)
+                                                }}
+                                            />
+                                            <input
+                                                type='number'
+                                                placeholder='Cost price'
+                                                value={line.costPrice ?? line.unitCost ?? ''}
+                                                onChange={(e) => {
+                                                    e.stopPropagation()
+                                                    updateBomLine(index, 'costPrice', e.target.value)
+                                                }}
+                                            />
+                                            <strong>₦{Number(line.totalCost || 0).toLocaleString()}</strong>
+                                            <button type='button' onClick={(e) => { e.stopPropagation(); removeBomLine(index) }}>Remove</button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button type='button' className='product-bom-add' onClick={(e) => { e.stopPropagation(); addBomLine() }}>+ Add Component</button>
+                                <textarea
+                                    className='product-bom-notes'
+                                    name='productionNotes'
+                                    placeholder='Production or assembly notes...'
+                                    value={productFields.productionNotes || ''}
+                                    onChange={handleProductFieldChange}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>}
                 {!isImportClicked && !isNewProduct && <div style={{width: '100%', padding: '12px 16px'}}>
