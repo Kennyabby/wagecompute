@@ -6,6 +6,7 @@ import html2pdf from 'html2pdf.js';
 import ContextProvider from "../../Resources/ContextProvider";
 import Products from './Products/Products';
 import Adjustments from './Operations/Adjustments/Adjustments';
+import ProductionOrders from './Operations/ProductionOrders/ProductionOrders';
 import Measures from './Settings/Measures/Measures';
 import TransactionHistory from './TransactionHistory/TransactionHistory';
 import { MdArrowBackIosNew, MdArrowForwardIos } from "react-icons/md";
@@ -38,6 +39,7 @@ const Inventory = ()=>{
     const [isDeleteValue, setIsDeleteValue] = useState(false)
     const [isImportValue, setIsImportValue] = useState(false)
     const [isTransferValue, setIsTransferValue] = useState(false)
+    const [isBomValue, setIsBomValue] = useState(false)
     const [settingsDrop, setSettingsDrop] = useState(false)
     const [productView,setProductView] = useState('list')
     const [curProduct, setCurProduct] = useState(null)
@@ -46,50 +48,29 @@ const Inventory = ()=>{
     const [dropLabel, setDropLabel] = useState(null)
     const dropMenu = {
         Overview:[],
-        Operations:['Adjustments','Receipts','Deliveries','Internal'],
+        Operations:['Adjustments','Production Orders','Assembly Orders','Damage/Loss Notes','Receipts','Deliveries','Internal'],
         Products:[],
         Reporting:['Stock','Transaction History','Locations','Moves History'],
         Settings:['Warehouses','Locations','Unit of Measures']
     }
     
     const popModals = ['Unit of Measures', 'Warehouses', 'Locations']
+    const isInventoryAdmin = companyRecord?.status === 'admin' || companyRecord?.access === 'admin'
+    const canImport = isInventoryAdmin || companyRecord?.permissions?.includes('imports')
+    const canTransfer = isInventoryAdmin || ['internal_transfer', 'stock_transfer', 'transfer_order', 'inventory_transfer'].some((permission) => companyRecord?.permissions?.includes(permission))
     const settingsMenu = {
-        Products:[
-            {
-                name:'import record',
-                status: 'other'
-            },
-            {
-                name:'delete',
-                status: 'other'
-            },
-            {
-                name:'delete',
-                status: 'view'
-            }
+        Products: [
+            { name: 'bill of materials', status: 'always' },
+            ...(canImport ? [{ name: 'import record', status: 'other' }] : []),
+            { name: 'delete', status: 'other' },
+            { name: 'delete', status: 'view' },
         ],
-        Adjustments:[
-            {
-                name:'import record',
-                status: 'other'
-            }
-        ],
-        Stock:[
-            {
-                name:'internal transfer',
-                status: 'other'
-            },            
-        ]
-    }
-
-    if (!companyRecord?.permissions.includes('imports') && 
-        companyRecord?.status !== 'admin'){
-        delete settingsMenu['Products']
-        delete settingsMenu['Adjustments']
-    }
-    if (!companyRecord?.permissions.includes('internal_transfer') && 
-        companyRecord?.status !== 'admin'){
-        delete settingsMenu['Stock']
+        Adjustments: canImport ? [
+            { name: 'import record', status: 'other' },
+        ] : [],
+        Stock: canTransfer ? [
+            { name: 'internal transfer', status: 'other' },
+        ] : [],
     }
 
     const views = {
@@ -105,6 +86,8 @@ const Inventory = ()=>{
             setIsDeleteValue={setIsDeleteValue}
             isImportClicked={isImportValue === 'Products'}
             setIsImportValue={setIsImportValue}
+            isBomClicked={isBomValue === 'Products'}
+            setIsBomValue={setIsBomValue}
             productView={productView}
             curProduct={curProduct}
             postingDate={postingDate}
@@ -140,6 +123,21 @@ const Inventory = ()=>{
             setPostingDate={setPostingDate}
             searchQuery={searchQuery}
         />,
+        'Production Orders': <ProductionOrders
+            mode='production'
+            postingDate={postingDate}
+            searchQuery={searchQuery}
+        />,
+        'Assembly Orders': <ProductionOrders
+            mode='assembly'
+            postingDate={postingDate}
+            searchQuery={searchQuery}
+        />,
+        'Damage/Loss Notes': <ProductionOrders
+            mode='damage'
+            postingDate={postingDate}
+            searchQuery={searchQuery}
+        />,
         'Transaction History': <TransactionHistory />,
         'Overview': <TransactionHistory />,
         'Unit of Measures': <Measures
@@ -165,7 +163,7 @@ const Inventory = ()=>{
         }
         setSettingsDrop(false)
     },[clickedLabel, isSaveValue, 
-        isDeleteValue, isImportValue, isTransferValue,
+        isDeleteValue, isImportValue, isTransferValue, isBomValue,
         isNewView, productView, curProduct
     ])
     
@@ -191,8 +189,9 @@ const Inventory = ()=>{
                 setIsSaveValue(false);
                 setIsImportValue(false);
                 setIsDeleteValue(false);
-                setIsTransferValue(false);
-                setCurProduct(null);
+            setIsTransferValue(false);
+            setIsBomValue(false);
+            setCurProduct(null);
             }
             if (name !== dropLabel) {
                 setDropLabel(name);
@@ -209,6 +208,7 @@ const Inventory = ()=>{
                     setIsImportValue(false);
                     setIsDeleteValue(false);
                     setIsTransferValue(false);
+                    setIsBomValue(false);
                     setCurProduct(null);
                 }
                 
@@ -234,7 +234,7 @@ const Inventory = ()=>{
         setIsOnView(false)   
         setIsImportValue(false)
         setIsTransferValue(false)
-        setIsTransferValue(false)
+        setIsBomValue(false)
         setCurProduct(null)
     }
 
@@ -257,14 +257,28 @@ const Inventory = ()=>{
             // setIsNewView(clickedLabel)
             setIsNewView(false)
             setIsOnView(false)
+            setIsBomValue(false)
             setIsImportValue(clickedLabel)
         }
         if (name === 'internal transfer'){
             setIsNewView(false)
             setIsOnView(false)
+            setIsBomValue(false)
             setIsTransferValue(clickedLabel)
         }
+        if (name === 'bill of materials'){
+            setIsImportValue(false)
+            setIsTransferValue(false)
+            setIsBomValue(clickedLabel)
+        }
         setSettingsDrop(false)
+    }
+
+    const shouldShowSettingsAction = (menu) => {
+        if (!menu) return false
+        if (menu.status === 'always') return true
+        if (isOnView) return menu.status === 'view'
+        return menu.status === 'other'
     }
 
     const printToPDF = () => {
@@ -308,11 +322,11 @@ const Inventory = ()=>{
                             )
                         })}
                     </div>
-                    {['Products', 'Adjustments', 'Stock'].includes(clickedLabel) && <div className='inv-top2'>
+                    {['Products', 'Adjustments', 'Stock', 'Production Orders', 'Assembly Orders', 'Damage/Loss Notes'].includes(clickedLabel) && <div className='inv-top2'>
                         <div 
                             className='new'                             
                         >
-                            {!isNewView && <button onClick={()=>{
+                            {['Products', 'Adjustments', 'Stock'].includes(clickedLabel) && !isNewView && <button onClick={()=>{
                                 if (clickedLabel === 'Stock'){
                                     setClickedLabel('Products')
                                     setIsNewView('Products')
@@ -322,9 +336,10 @@ const Inventory = ()=>{
                                 setIsOnView(false)
                                 setIsImportValue(false)
                                 setIsTransferValue(false)
+                                setIsBomValue(false)
                             }}>New</button>}
 
-                            {['Products', 'Adjustments', 'Stock'].includes(clickedLabel) && (
+                            {['Products', 'Adjustments', 'Stock', 'Production Orders', 'Assembly Orders', 'Damage/Loss Notes'].includes(clickedLabel) && (
                                 <div className='inventory-search-box'>
                                     <input 
                                         type='text' 
@@ -363,23 +378,7 @@ const Inventory = ()=>{
                                             {settingsDrop && 
                                                 <div className='settingsDrop' onClick={handleSettingAction}>
                                                     {settingsMenu[clickedLabel]?.map((menu, id)=>{
-                                                        if (isOnView){
-                                                            return (
-                                                                (menu.status === 'view') && <span key={id} name={menu.name}>{menu.name}</span>
-                                                            )
-                                                        }else{
-                                                            if (menu.status === 'other'){
-                                                                if (productView === 'list'){
-                                                                    return (
-                                                                        (menu.name === 'delete' || menu.name === 'import record' || menu.name === 'internal transfer') && <span key={id} name={menu.name}>{menu.name}</span>
-                                                                    )
-                                                                }else{
-                                                                    return (
-                                                                        (['import record', 'internal transfer'].includes(menu.name)) && <span key={id} name={menu.name}>{menu.name}</span>
-                                                                    )                                                        
-                                                                }
-                                                            }
-                                                        }
+                                                        return shouldShowSettingsAction(menu) ? <span key={id} name={menu.name}>{menu.name}</span> : null
                                                     })}
                                                 </div>
                                             }
@@ -395,7 +394,7 @@ const Inventory = ()=>{
                                     
                                 </div>                       
                             </label>
-                            {(isNewView || isTransferValue) &&<div className='inpcov invdate'>
+                            {(isNewView || isTransferValue || ['Production Orders', 'Assembly Orders', 'Damage/Loss Notes'].includes(clickedLabel)) &&<div className='inpcov invdate'>
                                 <input 
                                     className='forminp'
                                     name='postingDate'

@@ -995,7 +995,7 @@ const Stock = ({
                             
                             // Calculate totals for numeric columns
                             let columnTotal = 0;
-                            if (!isLoading && col.id) {
+                            if (col.id) {
                                 columnTotal = filteredProducts.reduce((sum, product) => {
                                     let stockData = { ...(product.stockSummary || {}) };
                                     if (curWarehouse !== 'all') {
@@ -1011,7 +1011,7 @@ const Stock = ({
                         return (
                             <div className='adj-right-content' key={col.id}>
                                 <div className='colname stockColname'>{col.name}</div>
-                                {isLoading ? (
+                                {(isLoading && filteredProducts.length === 0) ? (
                                     <div className='colrows'>Loading...</div>
                                 ) : filteredProducts.map((product, index1) => {
 
@@ -1068,7 +1068,7 @@ const Stock = ({
                                     }
                                 })}
                                 {/* Totals Row */}
-                                {!isLoading && filteredProducts.length > 0 && (
+                                {filteredProducts.length > 0 && (
                                     <div className='colrows total-row'>
                                         {['openingCost', 'purchaseCost', 'salesValue', 'costOfGoodsSold',
                                             'netAdjustmentCost', 'closingCost', 'closingSalesValue'].includes(col.reference)

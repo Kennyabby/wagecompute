@@ -5,6 +5,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
 
+const DEFAULT_APPROVAL_CONFIG = {
+    name: 'approvalConfig',
+    desc: 'Approval Configuration',
+    modules: {
+        sales: { finalLevel: 1, type: 'rank', approverIds: { '65': { rank: 0, sections: ['postsales'] }, '1': { rank: 1, sections: ['all'] }, 'theplantainplanet22@gmail.com': { rank: 1, sections: ['all'] }, 'admin@hypercityng.com': { rank: 1, sections: ['all'] } } },
+        accommodation: { finalLevel: 1, type: 'rank', approverIds: { '65': { rank: 0, sections: ['postaccommodation'] }, '1': { rank: 1, sections: ['all'] }, 'theplantainplanet22@gmail.com': { rank: 1, sections: ['all'] }, 'admin@hypercityng.com': { rank: 1, sections: ['all'] } } },
+        purchase: { finalLevel: 1, type: 'rank', approverIds: { '65': { rank: 0, sections: ['postpurchase'] }, '1': { rank: 1, sections: ['all'] }, 'theplantainplanet22@gmail.com': { rank: 1, sections: ['all'] }, 'admin@hypercityng.com': { rank: 1, sections: ['all'] } } },
+        attendance: { finalLevel: 0, type: 'rank', approverIds: { '1': { rank: 0, sections: ['all'] }, 'theplantainplanet22@gmail.com': { rank: 0, sections: ['all'] }, 'admin@hypercityng.com': { rank: 1, sections: ['all'] } } },
+        inventory: { finalLevel: 0, type: 'rank', approverIds: { '1': { rank: 0, sections: ['all'] }, 'theplantainplanet22@gmail.com': { rank: 0, sections: ['all'] }, 'admin@hypercityng.com': { rank: 0, sections: ['all'] } } },
+    },
+}
+
 const Settings = () => {
     const { storePath, company, companyRecord,
         settings, getSettings, server, fetchServer,
@@ -34,6 +46,7 @@ const Settings = () => {
     const [selectedPaymentMethods, setSelectedPaymentMethods] = useState([])
     const [selectedEmployee, setSelectedEmployee] = useState(null)
     const [currentSetting, setCurrentSetting] = useState(null)
+    const [approvalConfig, setApprovalConfig] = useState(DEFAULT_APPROVAL_CONFIG)
     const [propState, setPropState] = useState('new')
     const [curPropSet, setCurPropSet] = useState(null)
     const [currentProfiles, setCurrentProfiles] = useState([])
@@ -95,13 +108,6 @@ const Settings = () => {
     })
 
     const [sessionPeriods, setSessionPeriods] = useState([])
-    const paymentMethodAccounts = (chartOfAccounts || [])
-        .flatMap((section) => section?.accounts || [])
-        .filter((account) => {
-            const headerType = String(account?.['header-type'] || '').toLowerCase()
-            return !['header', 'sub-header'].includes(headerType) && String(account?.category || '').toLowerCase() === 'asset'
-        })
-        .sort((first, second) => Number(first?.['g/l code'] || 0) - Number(second?.['g/l code'] || 0))
     const postingAccounts = (chartOfAccounts || [])
         .flatMap((section) => section?.accounts || [])
         .filter((account) => {
@@ -131,7 +137,7 @@ const Settings = () => {
         'approve_postsales', 'approve_postaddSalesProduct', 'approve_postrentals',
         'approve_postrecovery', 'approve_postaccommodation', 'approve_postpurchase',
         'approve_postexpense', 'approve_postpayment',
-        'approve_postattendance', 'approve_postpayroll'
+        'approve_postattendance', 'approve_postpayroll', 'approve_posttransfer', 'configure_approvals'
     ]
     const importExportPermissions = [
         'imports', 'export_inventory_report', 'export_sales_report',
@@ -207,6 +213,11 @@ const Settings = () => {
             })
             delete posSetFilt[0]?._id
             setPosSettings(posSetFilt[0]?.name ? [...posSetFilt[0].posSettings] : [])
+
+            const approvalSet = settings.find((setting) => setting.name === 'approvalConfig')
+            if (approvalSet?.modules) {
+                setApprovalConfig({ ...DEFAULT_APPROVAL_CONFIG, ...approvalSet, modules: { ...DEFAULT_APPROVAL_CONFIG.modules, ...approvalSet.modules } })
+            }
         }
     }, [settings])
 
@@ -252,8 +263,10 @@ const Settings = () => {
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search)
-        if (params.get('paystack') === 'settings') {
+        if (params.get('paystack') === 'settings' || params.get('view') === 'billing') {
             setCurrentView('billing')
+        } else if (params.get('view') === 'accounting') {
+            setCurrentView('accounting')
         }
     }, [])
 
@@ -372,6 +385,99 @@ const Settings = () => {
         } finally {
             setIsAccountingSaving(false)
         }
+    }
+
+    const canConfigureApprovals = companyRecord?.access === 'admin' || companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('configure_approvals')
+
+    const saveApprovalConfig = async () => {
+        if (!canConfigureApprovals) {
+            setAlertState('error')
+            setAlert('Approval configuration is restricted to admins.')
+            setAlertTimeout(3000)
+            return
+        }
+        setSaveStatus('Saving Approval Configuration...')
+        try {
+            const payload = {
+                ...approvalConfig,
+                name: 'approvalConfig',
+                desc: 'Approval Configuration',
+                updatedAt: Date.now(),
+            }
+            const resp = await fetchServer("POST", {
+                prop: [{ name: 'approvalConfig' }, payload]
+            }, "updateSettings", server)
+            if (resp.err || resp.updated === false) {
+                throw new Error(resp.mess || 'Failed to save approval configuration')
+            }
+            setApprovalConfig(payload)
+            getSettings(company, companyRecord)
+            setSaveStatus('Approval Configuration Saved')
+            setTimeout(() => setSaveStatus(''), 2500)
+        } catch (error) {
+            setSaveStatus('')
+            setAlertState('error')
+            setAlert(error.message || 'Failed to save approval configuration')
+            setAlertTimeout(4000)
+        }
+    }
+
+    const updateApprovalModule = (moduleName, field, value) => {
+        setApprovalConfig((prev) => ({
+            ...prev,
+            modules: {
+                ...(prev.modules || {}),
+                [moduleName]: {
+                    ...((prev.modules || {})[moduleName] || {}),
+                    [field]: field === 'finalLevel' ? Number(value || 0) : value,
+                }
+            }
+        }))
+    }
+
+    const updateApprovalApprover = (moduleName, approverId, field, value) => {
+        setApprovalConfig((prev) => {
+            const moduleConfig = (prev.modules || {})[moduleName] || {}
+            const approvers = moduleConfig.approverIds || {}
+            const current = approvers[approverId] || { rank: 0, sections: ['all'] }
+            return {
+                ...prev,
+                modules: {
+                    ...(prev.modules || {}),
+                    [moduleName]: {
+                        ...moduleConfig,
+                        approverIds: {
+                            ...approvers,
+                            [approverId]: {
+                                ...current,
+                                [field]: field === 'rank' ? Number(value || 0) : String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    const addApprovalApprover = (moduleName) => {
+        const approverId = window.prompt('Enter approver employee ID or email')
+        if (!approverId) return
+        updateApprovalApprover(moduleName, approverId.trim(), 'sections', 'all')
+    }
+
+    const removeApprovalApprover = (moduleName, approverId) => {
+        setApprovalConfig((prev) => {
+            const moduleConfig = (prev.modules || {})[moduleName] || {}
+            const approvers = { ...(moduleConfig.approverIds || {}) }
+            delete approvers[approverId]
+            return {
+                ...prev,
+                modules: {
+                    ...(prev.modules || {}),
+                    [moduleName]: { ...moduleConfig, approverIds: approvers }
+                }
+            }
+        })
     }
 
     const resetToDefault = (setting) => {
@@ -1100,6 +1206,8 @@ const Settings = () => {
                                         {renderAccountingSelect('Inventory Payable', modules.inventory?.payableAccount, (value) => updateAccountingField('inventory', 'payableAccount', value))}
                                         {renderAccountingSelect('Cost of Sales', modules.inventory?.costOfSalesAccount, (value) => updateAccountingField('inventory', 'costOfSalesAccount', value))}
                                         {renderAccountingSelect('Adjustment Account', modules.inventory?.adjustmentAccount, (value) => updateAccountingField('inventory', 'adjustmentAccount', value))}
+                                        {renderAccountingSelect('Production WIP', modules.inventory?.workInProgressAccount, (value) => updateAccountingField('inventory', 'workInProgressAccount', value))}
+                                        {renderAccountingSelect('Production Variance', modules.inventory?.productionVarianceAccount, (value) => updateAccountingField('inventory', 'productionVarianceAccount', value))}
                                     </div>
                                 </div>
 
@@ -1467,6 +1575,65 @@ const Settings = () => {
                 return <BillingSettingsPanel variants={variants} />
             case 'accounting':
                 return renderAccountingView(variants)
+            case 'approvals':
+                return (
+                    <motion.div
+                        className='settings-accounting'
+                        initial="initial" animate="animate" exit="exit" variants={variants}
+                    >
+                        <div className='settings-accounting-hero'>
+                            <div>
+                                <span>Approval Control</span>
+                                <h2>Workflow Approvals</h2>
+                                <p>Configure approvers, approval ranks, and protected sections per module. Sections are comma-separated, for example: <b>posttransfer, all</b>.</p>
+                            </div>
+                            <button className='settings-accounting-save' onClick={saveApprovalConfig} disabled={!canConfigureApprovals}>
+                                <IoSave /> Save Approval Rules
+                            </button>
+                        </div>
+                        {!canConfigureApprovals && (
+                            <div className='settings-accounting-card'>
+                                <div className='settings-accounting-card-header'>
+                                    <h3>Restricted Area</h3>
+                                    <span>Only admins or users with configure_approvals can edit this section.</span>
+                                </div>
+                            </div>
+                        )}
+                        <div className='settings-accounting-grid'>
+                            {Object.entries(approvalConfig.modules || {}).map(([moduleName, moduleConfig]) => (
+                                <div className='settings-accounting-card' key={moduleName}>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>{moduleName.toUpperCase()}</h3>
+                                        <span>{Object.keys(moduleConfig.approverIds || {}).length} approver{Object.keys(moduleConfig.approverIds || {}).length === 1 ? '' : 's'}</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        <div className='inpcov settings-accounting-field'>
+                                            <div>Approval Type</div>
+                                            <select className='forminp' value={moduleConfig.type || 'rank'} onChange={(e) => updateApprovalModule(moduleName, 'type', e.target.value)} disabled={!canConfigureApprovals}>
+                                                <option value='rank'>Rank</option>
+                                            </select>
+                                        </div>
+                                        <div className='inpcov settings-accounting-field'>
+                                            <div>Final Level</div>
+                                            <input className='forminp' type='number' value={moduleConfig.finalLevel ?? 0} onChange={(e) => updateApprovalModule(moduleName, 'finalLevel', e.target.value)} disabled={!canConfigureApprovals} />
+                                        </div>
+                                    </div>
+                                    <div className='settings-accounting-list'>
+                                        {Object.entries(moduleConfig.approverIds || {}).map(([approverId, approver]) => (
+                                            <div className='settings-accounting-list-row' key={approverId}>
+                                                <strong>{approverId}</strong>
+                                                <input className='forminp' type='number' value={approver.rank ?? 0} onChange={(e) => updateApprovalApprover(moduleName, approverId, 'rank', e.target.value)} disabled={!canConfigureApprovals} />
+                                                <input className='forminp' value={(approver.sections || []).join(', ')} onChange={(e) => updateApprovalApprover(moduleName, approverId, 'sections', e.target.value)} disabled={!canConfigureApprovals} />
+                                                {canConfigureApprovals && <button className='deletebtn' onClick={() => removeApprovalApprover(moduleName, approverId)}><IoTrash /></button>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {canConfigureApprovals && <button className='general-propSet-add' onClick={() => addApprovalApprover(moduleName)}><IoAdd /> Add Approver</button>}
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )
             case 'payroll':
                 return (
                     <motion.div 
@@ -1655,18 +1822,14 @@ const Settings = () => {
                                                 </label>
                                             </div>
                                             <div className='inpcov' style={{ gridColumn: 'span 2' }}>
-                                                <div>Linked Account Number</div>
-                                                <select className='forminp' name='account' value={curPropSet.account} onChange={handlePropSetChange}>
-                                                    <option value=''>Select linked asset account</option>
-                                                    {curPropSet.account && !paymentMethodAccounts.some((account) => String(account['g/l code']) === String(curPropSet.account)) && (
-                                                        <option value={curPropSet.account}>{`${curPropSet.account} - Current linked account`}</option>
-                                                    )}
-                                                    {paymentMethodAccounts.map((account, index) => (
-                                                        <option key={index} value={account['g/l code']}>
-                                                            {`${account['g/l code']} - ${account.name}`}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                <div>Bank/Account Number</div>
+                                                <input
+                                                    className='forminp'
+                                                    name='account'
+                                                    value={curPropSet.account}
+                                                    placeholder='Enter bank account number or wallet reference'
+                                                    onChange={handlePropSetChange}
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -1809,6 +1972,11 @@ const Settings = () => {
                     <div className={`settings-nav-item ${currentView === 'accounting' ? 'active' : ''}`} onClick={() => setCurrentView('accounting')}>
                         <IoSettings /> Accounting Links
                     </div>
+                    {canConfigureApprovals && (
+                        <div className={`settings-nav-item ${currentView === 'approvals' ? 'active' : ''}`} onClick={() => setCurrentView('approvals')}>
+                            <IoSettings /> Approval Rules
+                        </div>
+                    )}
                     {companyRecord?.access === 'admin' && (
                         <div className={`settings-nav-item ${currentView === 'billing' ? 'active' : ''}`} onClick={() => setCurrentView('billing')}>
                             <IoCard /> Billing & Plan

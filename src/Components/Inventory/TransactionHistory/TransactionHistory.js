@@ -21,7 +21,10 @@ const TransactionHistory = () => {
     setAlertTimeout,
     products,
     companyRecord,
-    getProductsStockReport
+    getProductsStockReport,
+    approvals,
+    updateApproval,
+    getApprovals,
   } = useContext(ContextProvider);
 
   const [transactions, setTransactions] = useState([]);
@@ -45,6 +48,7 @@ const TransactionHistory = () => {
     data: [],
     summary: {}
   });
+  const [showTransferApprovals, setShowTransferApprovals] = useState(false);
   const [filters, setFilters] = useState({
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10), // 1st of current month
     endDate: new Date().toISOString().slice(0, 10), // Today
@@ -56,6 +60,15 @@ const TransactionHistory = () => {
   });
 
   const [locations, setLocations] = useState([]);
+  const pendingTransferApprovals = useMemo(() => {
+    return (approvals || []).filter((approval) => (
+      approval.module === 'inventory' &&
+      approval.section === 'posttransfer' &&
+      !approval.approved &&
+      !approval.message
+    ));
+  }, [approvals]);
+  const canApproveTransfers = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('approve_posttransfer');
   const [summary, setSummary] = useState({
     // Quantities
     openingStock: 0,
@@ -254,6 +267,14 @@ const TransactionHistory = () => {
       console.warn('setTxCached failed', e);
     }
   }, [makeTxCacheKey, companyRecord?.emailid]);
+
+  const withRequestTimeout = (promise, timeoutMs = 25000) => {
+    let timeoutId;
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+  };
 
   // Fetch locations from settings
   useEffect(() => {
@@ -955,14 +976,23 @@ const TransactionHistory = () => {
     return new Intl.NumberFormat('en-US').format(num);
   };
 
-  // Get opening balance for the selected period
   const getOpeningBalance = useCallback(async (startDate, location, productId, transactionType) => {
     try {
-      // Format the date to match the database format (ISO string)
-      const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
+      // Format the date to match the database format (ISO string) safely
+      let formattedStartDate;
+      try {
+        const d = new Date(startDate);
+        if (isNaN(d.getTime())) {
+          formattedStartDate = new Date().toISOString().split('T')[0];
+        } else {
+          formattedStartDate = d.toISOString().split('T')[0];
+        }
+      } catch (e) {
+        formattedStartDate = new Date().toISOString().split('T')[0];
+      }
 
       // Get all products that have a salesPrice or vipPrice
-      const productIds = products
+      const productIds = (products || [])
         .filter(product => product.salesPrice || product.vipPrice)
         .map(product => product.i_d);
 
@@ -1071,7 +1101,7 @@ const TransactionHistory = () => {
         ]
       };
 
-      const result = await fetchServer('POST', query, 'aggregateDocs', server);
+      const result = await withRequestTimeout(fetchServer('POST', query, 'aggregateDocs', server));
       return result.record?.[0] || { openingStock: 0, openingStockCost: 0, openingStockForSales: 0, openingPurchaseCost: 0 };
     } catch (error) {
       setAlertState('error');
@@ -1084,21 +1114,27 @@ const TransactionHistory = () => {
   // Helper function to fetch transactions data
   const fetchTransactionsData = useCallback(async (startDate, endDate, filters) => {
     try {
-      // Format dates to match the database format (ISO strings)
-      const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
-      const formattedEndDate = new Date(endDate).toISOString().split('T')[0];
+      // Format dates to match the database format (ISO strings) safely
+      let formattedStartDate, formattedEndDate;
+      try {
+        const dStart = new Date(startDate);
+        formattedStartDate = isNaN(dStart.getTime()) ? new Date().toISOString().split('T')[0] : dStart.toISOString().split('T')[0];
+      } catch (e) {
+        formattedStartDate = new Date().toISOString().split('T')[0];
+      }
+      try {
+        const dEnd = new Date(endDate);
+        formattedEndDate = isNaN(dEnd.getTime()) ? new Date().toISOString().split('T')[0] : dEnd.toISOString().split('T')[0];
+      } catch (e) {
+        formattedEndDate = new Date().toISOString().split('T')[0];
+      }
 
       // Build the transactions query
       const transactionsQuery = {
         database: company,
         collection: 'InventoryTransactions',
         prop: {
-          $expr: {
-            $and: [
-              { $gte: ["$postingDate", formattedStartDate] },
-              { $lte: ["$postingDate", formattedEndDate] }
-            ],
-          },
+          postingDate: { $gte: formattedStartDate, $lte: formattedEndDate },
           ...(filters.location !== 'all' && { location: filters.location }),
           ...(filters.productId && { productId: filters.productId }),
           ...(filters.transactionType !== 'all' && {
@@ -1132,9 +1168,7 @@ const TransactionHistory = () => {
       };
 
       // Fetch data in parallel
-      const [transactionsResp] = await Promise.all([
-        fetchServer('POST', transactionsQuery, 'getDocsDetails', server),
-      ]);
+      const transactionsResp = await withRequestTimeout(fetchServer('POST', transactionsQuery, 'getDocsDetails', server));
 
       // Process transactions
       const transactions = transactionsResp?.record || [];
@@ -1179,7 +1213,7 @@ const TransactionHistory = () => {
         totalOutCost: 0
       };
 
-      products.forEach(product => {
+      (products || []).forEach(product => {
         summaryData.openingStock += product.stockSummary?.openingQuantity || 0;
         summaryData.purchases += product.stockSummary?.purchasedQty || 0;
         summaryData.sales += product.stockSummary?.soldQty || 0;
@@ -1226,6 +1260,17 @@ const TransactionHistory = () => {
   const fetchTransactionHistory = useCallback(async () => {
     if (!company) return;
     let usedCache = false;
+    setLoading(true);
+
+    try {
+      const cached = await getTxCached(company, filters);
+      if (cached && Array.isArray(cached.transactions) && cached.summary) {
+        applyTxSnapshot(cached);
+        usedCache = true;
+      }
+    } catch (e) {
+      console.warn('TransactionHistory cache lookup failed', e);
+    }
 
     if (products && products.length && products[0].stockSummary) {
       const summaryData = {
@@ -1300,7 +1345,10 @@ const TransactionHistory = () => {
         netAdjustmentCost,
       };
 
-      setSummary(summaryForState);
+      const hasLiveValues = Object.values(summaryForState).some((value) => Number(value || 0) !== 0);
+      if (hasLiveValues) {
+        setSummary(summaryForState);
+      }
     }
 
     // try {
@@ -1390,13 +1438,6 @@ const TransactionHistory = () => {
     //   console.warn('TransactionHistory cache lookup failed', e);
     // }
 
-    // If cache was used, we already kicked off a silent background refresh
-    if (usedCache) {
-      return;
-    }
-
-    setLoading(true);
-
     try {
       const [openingBalance, transactionsData] = await Promise.all([
         getOpeningBalance(filters.startDate, filters.location, filters.productId),
@@ -1460,13 +1501,16 @@ const TransactionHistory = () => {
 
       setTransactions(txWithFlags);
       setDuplicateCount(duplicateCount);
-      setTotalCount(totalCount);
-      setSummary(summaryForState);
-      // setTxCached(company, filters, {
-      //   transactions: txWithFlags,
-      //   summary: summaryForState,
-      //   totalCount,
-      // });
+      setTotalCount(totalCount || txWithFlags.length);
+      const hasFreshValues = Object.values(summaryForState).some((value) => Number(value || 0) !== 0);
+      if (hasFreshValues || !usedCache) {
+        setSummary((prev) => (hasFreshValues ? summaryForState : prev));
+      }
+      setTxCached(company, filters, {
+        transactions: txWithFlags,
+        summary: hasFreshValues ? summaryForState : summary,
+        totalCount: totalCount || txWithFlags.length,
+      });
 
     } catch (error) {
       console.log(error);
@@ -1482,8 +1526,10 @@ const TransactionHistory = () => {
     getOpeningBalance,
     fetchTransactionsData,
     // getTxCached,
-    // setTxCached,
-    // applyTxSnapshot,
+    getTxCached,
+    setTxCached,
+    applyTxSnapshot,
+    summary,
   ]);
 
 
@@ -1703,13 +1749,13 @@ const TransactionHistory = () => {
     const formattedEndDate = new Date(endDate).toISOString().split('T')[0];
 
     // Trigger the stock report (which has its own caching in App.js)
-    getProductsStockReport(company, products, {
+    withRequestTimeout(getProductsStockReport(company, products, {
       startDate: formattedStartDate,
       endDate: formattedEndDate,
       ...(location !== 'all' && { location }),
       ...(productId && { productId }),
       ...(transactionType !== 'all' && { transactionType })
-    });
+    })).catch(() => {});
 
     // Always refresh transaction history for the current filters
     fetchTransactionHistory();
@@ -1747,6 +1793,23 @@ const TransactionHistory = () => {
 
   return (
     <div className="transaction-history">
+      <TransferApprovalModal
+        show={showTransferApprovals}
+        approvals={pendingTransferApprovals}
+        canApprove={canApproveTransfers}
+        onClose={() => setShowTransferApprovals(false)}
+        onApprove={async (approval) => {
+          await updateApproval(company, 'inventory', 'posttransfer', {
+            createdAt: approval.createdAt,
+            approvers: [...(approval.approvers || []), companyRecord?.emailid],
+            approved: true,
+            approvedBy: companyRecord?.emailid,
+            message: '',
+            lastUpdatedBy: companyRecord?.emailid,
+          })
+          getApprovals(company, companyRecord)
+        }}
+      />
       <DetailModal
         show={modalData.show}
         onClose={() => setModalData(prev => ({ ...prev, show: false }))}
@@ -1898,6 +1961,9 @@ const TransactionHistory = () => {
         {/* Transfers */}
         <div className="summary-card clickable" onClick={() => handleSummaryCardClick('transfers')}>
           <div className="summary-label">Transfers</div>
+          {pendingTransferApprovals.length > 0 && (
+            <div className='summary-approval-badge'>{pendingTransferApprovals.length} pending</div>
+          )}
           <div className="summary-value">
             <div className="transfer-row">
               <span className="transfer-in">+{formatNumber(summary.transfersIn)}</span>
@@ -1909,6 +1975,16 @@ const TransactionHistory = () => {
             <div>In: ₦{formatNumber(summary.transfersInCost)}</div>
             <div>Out: ₦{formatNumber(summary.transfersOutCost)}</div>
             <div>Net: ₦{formatNumber(summary.netTransferCost)}</div>
+            <button
+              type='button'
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowTransferApprovals(true);
+              }}
+              disabled={!pendingTransferApprovals.length}
+            >
+              Show Approval Requests
+            </button>
           </div>
         </div>
 
@@ -2181,6 +2257,52 @@ const TransactionHistory = () => {
     </div>
   );
 };
+
+const TransferApprovalModal = ({ show, approvals, canApprove, onClose, onApprove }) => {
+  if (!show) return null;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content transfer-approval-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Transfer Approval Requests</h2>
+          <button className="modal-close" onClick={onClose}>x</button>
+        </div>
+        <div className='transfer-approval-list'>
+          {!approvals.length && <div className='transfer-approval-empty'>No pending transfer approval requests.</div>}
+          {approvals.map((approval) => {
+            const data = approval.data || {};
+            const entries = data.entries || [];
+            return (
+              <div className='transfer-approval-card' key={approval.createdAt}>
+                <div className='transfer-approval-head'>
+                  <div>
+                    <strong>{data.fromWarehouse || 'Source'} to {data.toWarehouse || 'Destination'}</strong>
+                    <span>{approval.postingDate} by {approval.handlerId}</span>
+                  </div>
+                  <span>{entries.length} item{entries.length === 1 ? '' : 's'}</span>
+                </div>
+                <div className='transfer-approval-lines'>
+                  {entries.map((entry, index) => (
+                    <div className='transfer-approval-line' key={`${entry.productId}-${index}`}>
+                      <span>{entry.productName || entry.productId}</span>
+                      <strong>{Number(entry.quantityToTransfer || 0).toLocaleString()}</strong>
+                      <span>Cost: ₦{Number(entry.transferCost || 0).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+                {canApprove && (
+                  <button className='btn btn-primary' onClick={() => onApprove(approval)}>
+                    Approve Request
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // Modal component
 const DetailModal = ({ show, onClose, data, title, type, summary, startDate, endDate, formatNumber, formatCurrency, FaFilePdf, exportToPDF }) => {

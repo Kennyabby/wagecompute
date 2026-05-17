@@ -51,6 +51,60 @@ const SERVER = "https://api.epxcentral.com"
 // const SERVER = "http://localhost:3001"
 // const SERVER = ""
 
+const DEFAULT_APPROVAL_CONFIG = {
+  name: 'approvalConfig',
+  modules: {
+    sales: {
+      finalLevel: 1,
+      type: 'rank',
+      approverIds: {
+        '65': { rank: 0, sections: ['postsales'] },
+        '1': { rank: 1, sections: ['all'] },
+        'theplantainplanet22@gmail.com': { rank: 1, sections: ['all'] },
+        'admin@hypercityng.com': { rank: 1, sections: ['all'] },
+      },
+    },
+    accommodation: {
+      finalLevel: 1,
+      type: 'rank',
+      approverIds: {
+        '65': { rank: 0, sections: ['postaccommodation'] },
+        '1': { rank: 1, sections: ['all'] },
+        'theplantainplanet22@gmail.com': { rank: 1, sections: ['all'] },
+        'admin@hypercityng.com': { rank: 1, sections: ['all'] },
+      },
+    },
+    purchase: {
+      finalLevel: 1,
+      type: 'rank',
+      approverIds: {
+        '65': { rank: 0, sections: ['postpurchase'] },
+        '1': { rank: 1, sections: ['all'] },
+        'theplantainplanet22@gmail.com': { rank: 1, sections: ['all'] },
+        'admin@hypercityng.com': { rank: 1, sections: ['all'] },
+      },
+    },
+    attendance: {
+      finalLevel: 0,
+      type: 'rank',
+      approverIds: {
+        '1': { rank: 0, sections: ['all'] },
+        'theplantainplanet22@gmail.com': { rank: 0, sections: ['all'] },
+        'admin@hypercityng.com': { rank: 1, sections: ['all'] },
+      },
+    },
+    inventory: {
+      finalLevel: 0,
+      type: 'rank',
+      approverIds: {
+        '1': { rank: 0, sections: ['all'] },
+        'theplantainplanet22@gmail.com': { rank: 0, sections: ['all'] },
+        'admin@hypercityng.com': { rank: 0, sections: ['all'] },
+      },
+    },
+  },
+};
+
 // App-level cache helpers now backed by IndexedDB (appCache store)
 const CACHE_TTL_MS = 1 * 60 * 1000; // 1 minute TTL
 
@@ -651,7 +705,6 @@ function App() {
                   const liveSnapshotKey = `journal-snapshot-${liveSnapshot.fromDate}-${liveSnapshot.toDate}`;
                   setCached(company, liveSnapshotKey, {
                     balances: liveSnapshot.balances || {},
-                    rawLedger: liveSnapshot.rawLedger || {},
                     reports: liveSnapshot.reports || {},
                   }, companyRecord?.emailid);
                 }
@@ -672,7 +725,6 @@ function App() {
                   const summaryKey = `journal-snapshot-${summaryDoc.fromDate}-${summaryDoc.toDate}`;
                   setCached(company, summaryKey, {
                     balances: summaryDoc.balances || {},
-                    rawLedger: summaryDoc.rawLedger || {},
                     reports: summaryDoc.reports || {},
                   }, companyRecord?.emailid);
                 }
@@ -798,18 +850,6 @@ function App() {
       return () => clearInterval(intervalId);
     }
   }, [window.localStorage.getItem('sessn-cmp')])
-
-  useEffect(() => {
-    var cmp_val = window.localStorage.getItem('sessn-cmp')
-    const intervalId = setInterval(() => {
-      if (cmp_val && companyRecord?.emailid) {
-        setReloadCount((prevCount) => {
-          return prevCount + 1
-        })
-      }
-    }, 3000)
-    return () => clearInterval(intervalId);
-  }, [window.localStorage.getItem('sessn-cmp'), companyRecord])
 
   useEffect(() => {
     if (settings?.length && window.localStorage.getItem('sessn-id')) {
@@ -1234,100 +1274,12 @@ function App() {
   }
 
   const getApprovalConfig = (module, section, approverId) => {
-    const moduleApprovers = {
-      'sales': {
-        finalLevel: 1,
-        type: 'rank',
-        approverIds: {
-          '65': {
-            rank: 0,
-            sections: ['postsales']
-          },
-          '1': {
-            rank: 1,
-            sections: ['all']
-          },
-          'theplantainplanet22@gmail.com': {
-            rank: 1,
-            sections: ['all']
-          },
-          'admin@hypercityng.com': {
-            rank: 1,
-            sections: ['all']
-          }
-        },
-      },
-
-      'accommodation': {
-        finalLevel: 1,
-        type: 'rank',
-        approverIds: {
-          '65': {
-            rank: 0,
-            sections: ['postaccommodation']
-          },
-          '1': {
-            rank: 1,
-            sections: ['all']
-          },
-          'theplantainplanet22@gmail.com': {
-            rank: 1,
-            sections: ['all']
-          },
-          'admin@hypercityng.com': {
-            rank: 1,
-            sections: ['all']
-          }
-        },
-      },
-
-      'purchase': {
-        finalLevel: 1,
-        type: 'rank',
-        approverIds: {
-          '65': {
-            rank: 0,
-            sections: ['postpurchase']
-          },
-          '1': {
-            rank: 1,
-            sections: ['all']
-          },
-          'theplantainplanet22@gmail.com': {
-            rank: 1,
-            sections: ['all']
-          },
-          'admin@hypercityng.com': {
-            rank: 1,
-            sections: ['all']
-          }
-        },
-      },
-
-      'attendance': {
-        finalLevel: 0,
-        type: 'rank',
-        approverIds: {
-          '1': {
-            rank: 0,
-            sections: ['all']
-          },
-          'theplantainplanet22@gmail.com': {
-            rank: 0,
-            sections: ['all']
-          },
-          'admin@hypercityng.com': {
-            rank: 1,
-            sections: ['all']
-          }
-        },
-      }
-    }
-
     const respConfig = {
       isApprover: false
     }
 
+    const approvalDoc = settings?.find((setting) => setting?.name === 'approvalConfig')
+    const moduleApprovers = approvalDoc?.modules || DEFAULT_APPROVAL_CONFIG.modules
     const moduleApproval = moduleApprovers[module]
     const canApprove = ![null, undefined].includes(moduleApproval?.approverIds?.[approverId])
     if (canApprove) {
@@ -2554,7 +2506,7 @@ function App() {
 
   const getProducts = async (company) => {
     const cached = await getCached(company, 'products', companyRecord?.emailid);
-    if (cached && cached.length) {
+    if ((!products || !products.length) && cached && cached.length) {
       setProducts(cached);
     }
     const knownFields = [
@@ -2614,7 +2566,7 @@ function App() {
                   $cond: [
                     { $isNumber: "$baseQuantity" },
                     "$baseQuantity",
-                    { $toDouble: "$baseQuantity" }
+                    mongoNumber("$baseQuantity")
                   ]
                 }
               },
@@ -2623,7 +2575,7 @@ function App() {
                   $cond: [
                     { $isNumber: "$totalCost" },
                     "$totalCost",
-                    { $toDouble: "$totalCost" }
+                    mongoNumber("$totalCost")
                   ]
                 }
               },
@@ -2632,7 +2584,7 @@ function App() {
                   $cond: [
                     { $isNumber: "$totalSales" },
                     "$totalSales",
-                    { $toDouble: "$totalSales" }
+                    mongoNumber("$totalSales")
                   ]
                 }
               }
@@ -2643,7 +2595,7 @@ function App() {
       "aggregateDocs",
       SERVER
     );
-    if (stockResp.record && stockResp.record.length) {
+    if (stockResp.record) {
       const stockData = stockResp.record || [];
       // 2. Organize stock by productId and location
       const stockMap = {}; // { productId: { locationA: { qty, cost }, ... } }
@@ -2659,7 +2611,7 @@ function App() {
       });
 
       // 3. Enrich products with location-wise stock and cost
-      const enrichedProducts = products.map(product => {
+      const enrichedProducts = (products || []).map(product => {
         const stockInfo = stockMap[product.i_d] || {};
 
         // Sum up total stock and total cost across all locations
@@ -2695,6 +2647,10 @@ function App() {
     return `productsStockReport:${JSON.stringify(keyPayload)}`;
   };
 
+  const mongoNumber = (field) => ({
+    $convert: { input: field, to: 'double', onError: 0, onNull: 0 },
+  });
+
   /**
    * Get a comprehensive stock report with detailed movement information
    * @param {string} company - Company database name
@@ -2706,6 +2662,7 @@ function App() {
     if (!company || !companyRecord?.emailid) {
       return products;
     }
+    const safeProducts = Array.isArray(products) ? products : [];
     try {
       const cacheKey = makeStockReportCacheKey(dateRange);
       const cached = await getCached(company, cacheKey, companyRecord?.emailid);
@@ -2724,7 +2681,7 @@ function App() {
       const formattedEndDate = endDate.toISOString().split('T')[0];
 
       // Get all products that have a salesPrice or vipPrice (to match TransactionHistory logic)
-      const productIds = products
+      const productIds = safeProducts
         .filter(product => product.salesPrice || product.vipPrice || product.i_d)
         .map(product => product.i_d || product.productId);
 
@@ -2759,7 +2716,7 @@ function App() {
                     $cond: [
                       { $isNumber: "$baseQuantity" },
                       "$baseQuantity",
-                      { $toDouble: "$baseQuantity" }
+                      mongoNumber("$baseQuantity")
                     ]
                   }
                 },
@@ -2776,7 +2733,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$baseQuantity" },
                           "$baseQuantity",
-                          { $toDouble: "$baseQuantity" }
+                          mongoNumber("$baseQuantity")
                         ]
                       },
                       0
@@ -2796,7 +2753,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$totalCost" },
                           "$totalCost",
-                          { $toDouble: "$totalCost" }
+                          mongoNumber("$totalCost")
                         ]
                       },
                       0
@@ -2808,7 +2765,7 @@ function App() {
                     $cond: [
                       { $isNumber: "$totalCost" },
                       "$totalCost",
-                      { $toDouble: "$totalCost" }
+                      mongoNumber("$totalCost")
                     ]
                   }
                 }
@@ -2877,7 +2834,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$baseQuantity" },
                           "$baseQuantity",
-                          { $toDouble: "$baseQuantity" }
+                          mongoNumber("$baseQuantity")
                         ]
                       },
                       0
@@ -2896,7 +2853,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$totalCost" },
                           "$totalCost",
-                          { $toDouble: "$totalCost" }
+                          mongoNumber("$totalCost")
                         ]
                       },
                       0
@@ -2912,7 +2869,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$baseQuantity" },
                           "$baseQuantity",
-                          { $toDouble: "$baseQuantity" }
+                          mongoNumber("$baseQuantity")
                         ]
                       },
                       0
@@ -2927,7 +2884,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$totalSales" },
                           "$totalSales",
-                          { $toDouble: "$totalSales" }
+                          mongoNumber("$totalSales")
                         ]
                       },
                       0
@@ -2942,7 +2899,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$totalCost" },
                           "$totalCost",
-                          { $toDouble: "$totalCost" }
+                          mongoNumber("$totalCost")
                         ]
                       },
                       0
@@ -2963,7 +2920,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$baseQuantity" },
                           "$baseQuantity",
-                          { $toDouble: "$baseQuantity" }
+                          mongoNumber("$baseQuantity")
                         ]
                       },
                       0
@@ -2983,7 +2940,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$totalCost" },
                           "$totalCost",
-                          { $toDouble: "$totalCost" }
+                          mongoNumber("$totalCost")
                         ]
                       },
                       0
@@ -3003,7 +2960,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$baseQuantity" },
                           "$baseQuantity",
-                          { $toDouble: "$baseQuantity" }
+                          mongoNumber("$baseQuantity")
                         ]
                       },
                       0
@@ -3023,7 +2980,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$totalCost" },
                           "$totalCost",
-                          { $toDouble: "$totalCost" }
+                          mongoNumber("$totalCost")
                         ]
                       },
                       0
@@ -3044,7 +3001,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$baseQuantity" },
                           "$baseQuantity",
-                          { $toDouble: "$baseQuantity" }
+                          mongoNumber("$baseQuantity")
                         ]
                       },
                       0
@@ -3064,7 +3021,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$totalCost" },
                           "$totalCost",
-                          { $toDouble: "$totalCost" }
+                          mongoNumber("$totalCost")
                         ]
                       },
                       0
@@ -3077,7 +3034,7 @@ function App() {
                     $cond: [
                       {
                         $and: [
-                          { $eq: ["$documentType", "Negative Adjustment"] },
+                          { $in: ["$documentType", ["Negative Adjustment", "Damage/Loss Note"]] },
                           { $lt: ["$baseQuantity", 0] }
                         ]
                       },
@@ -3085,7 +3042,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$baseQuantity" },
                           "$baseQuantity",
-                          { $toDouble: "$baseQuantity" }
+                          mongoNumber("$baseQuantity")
                         ]
                       },
                       0
@@ -3097,7 +3054,7 @@ function App() {
                     $cond: [
                       {
                         $and: [
-                          { $eq: ["$documentType", "Negative Adjustment"] },
+                          { $in: ["$documentType", ["Negative Adjustment", "Damage/Loss Note"]] },
                           { $lt: ["$baseQuantity", 0] }
                         ]
                       },
@@ -3105,7 +3062,7 @@ function App() {
                         $cond: [
                           { $isNumber: "$totalCost" },
                           "$totalCost",
-                          { $toDouble: "$totalCost" }
+                          mongoNumber("$totalCost")
                         ]
                       },
                       0
@@ -3208,12 +3165,12 @@ function App() {
 
           locationData.averageCost = totalQty !== 0 ? totalCost / totalQty : 0;
           locationData.closingCost = true ? (locationData.closingQty * locationData.averageCost) : 0;
-          locationData.closingSalesValue = locationData.closingQty * (products.find(p => p.i_d === productId)?.salesPrice || 0);
+          locationData.closingSalesValue = locationData.closingQty * (safeProducts.find(p => p.i_d === productId)?.salesPrice || 0);
         });
       }
 
       // 4. Enrich products with the calculated stock data
-      const enrichedProducts = products.map(product => {
+      const enrichedProducts = safeProducts.map(product => {
         const locationData = stockMap[product.i_d] || {};
 
         // Calculate totals across all locations
@@ -3626,6 +3583,7 @@ function App() {
               notifyMessage={alert}
               notifyState={alertState}
               timeout={alertTimeout}
+              onClose={() => setAlert('')}
             />
           ) : (
             <Notify

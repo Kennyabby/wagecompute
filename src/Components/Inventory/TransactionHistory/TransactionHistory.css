@@ -1,5 +1,7 @@
 /* Transaction History - Premium Design */
 .transaction-history {
+  position: relative;
+  min-height: 100%;
   padding: 32px;
   background-color: #f8faf9;
   font-family: 'MontserratRegular', sans-serif;
@@ -193,6 +195,20 @@
   letter-spacing: 1.5px;
 }
 
+.summary-approval-badge {
+  align-self: flex-start;
+  margin: -4px 0 8px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 10px;
+  font-family: 'MontserratBold', sans-serif;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
 .summary-value {
   font-size: 24px;
   font-weight: 800;
@@ -235,6 +251,71 @@
 
 .summary-subtext button:hover {
   background: #e8f0eb;
+}
+
+.transfer-approval-modal {
+  max-width: 760px;
+}
+
+.transfer-approval-list {
+  display: grid;
+  gap: 14px;
+  max-height: 68vh;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.transfer-approval-card {
+  border: 1.5px solid rgba(23, 56, 41, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fbfdfc;
+}
+
+.transfer-approval-head,
+.transfer-approval-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.transfer-approval-head {
+  margin-bottom: 12px;
+}
+
+.transfer-approval-head strong {
+  display: block;
+  color: #173829;
+  font-family: 'MontserratBold', sans-serif;
+}
+
+.transfer-approval-head span,
+.transfer-approval-line span {
+  color: rgba(23, 56, 41, 0.55);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.transfer-approval-lines {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.transfer-approval-line {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: white;
+}
+
+.transfer-approval-empty {
+  padding: 24px;
+  text-align: center;
+  border-radius: 16px;
+  background: #f8faf9;
+  color: rgba(23, 56, 41, 0.55);
+  font-weight: 700;
 }
 
 /* Transfer and Adjustment Rows */
@@ -473,18 +554,19 @@
 
 /* Modal Overlay */
 .modal-overlay {
-  position: fixed;
-  top: 0;
+  position: sticky;
+  top: 16px;
   left: 0;
   right: 0;
-  bottom: 0;
+  min-height: calc(100vh - 32px);
   background-color: rgba(23, 56, 41, 0.4);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
-  align-items: center;
-  z-index: 5000;
+  align-items: flex-start;
+  z-index: 2000;
   padding: 20px;
+  margin-bottom: calc(-100vh + 32px);
 }
 
 .modal-content {
@@ -494,6 +576,7 @@
   max-width: 1000px;
   max-height: 90vh;
   overflow-y: auto;
+  margin-top: 0;
   box-shadow: 0 20px 60px rgba(23, 56, 41, 0.2);
   position: relative;
 }

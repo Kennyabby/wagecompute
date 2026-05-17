@@ -217,6 +217,14 @@
     width: 100%;
 }
 
+.settings-accounting {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 32px;
+    box-sizing: border-box;
+}
+
 .settings-accounting-shell {
     max-width: 1240px;
 }
@@ -251,10 +259,13 @@
 }
 
 .settings-accounting-card {
-    background: #f8faf9;
+    background:
+        radial-gradient(circle at top right, rgba(106, 242, 173, 0.1), transparent 34%),
+        #ffffff;
     border: 1px solid rgba(23, 56, 41, 0.06);
     border-radius: 18px;
     padding: 24px;
+    box-shadow: 0 10px 28px rgba(23, 56, 41, 0.05);
 }
 
 .settings-accounting-card-header {
@@ -283,6 +294,67 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
+    margin-bottom: 18px;
+}
+
+.settings-accounting-save {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 14px;
+    background: var(--settings-primary);
+    color: #ffffff;
+    cursor: pointer;
+    font-family: 'MontserratBold', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow: 0 10px 22px rgba(23, 56, 41, 0.16);
+}
+
+.settings-accounting-save:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.settings-accounting-list {
+    display: grid;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.settings-accounting-list-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) 84px minmax(180px, 1.2fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid rgba(23, 56, 41, 0.07);
+    border-radius: 14px;
+    background: #f8faf9;
+}
+
+.settings-accounting-list-row strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--settings-primary);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.settings-accounting-list-row .deletebtn {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    margin-left: 0;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .settings-accounting-table {
@@ -750,13 +822,33 @@ input:checked + .slider:before {
     .settings-accounting-hero,
     .settings-accounting-fields,
     .settings-accounting-grid,
-    .settings-accounting-row {
+    .settings-accounting-row,
+    .settings-accounting-list-row {
         grid-template-columns: 1fr;
         flex-direction: column;
     }
 
     .settings-accounting-hero {
         display: flex;
+    }
+
+    .settings-accounting {
+        padding: 24px 20px;
+    }
+
+    .settings-accounting-card {
+        padding: 20px;
+    }
+
+    .settings-accounting-save,
+    .settings-accounting-list-row .forminp,
+    .settings-accounting-list-row .deletebtn,
+    .settings-accounting-card .general-propSet-add {
+        width: 100%;
+    }
+
+    .settings-accounting-list-row strong {
+        white-space: normal;
     }
 
     .settings-accounting-actions {
@@ -786,6 +878,26 @@ input:checked + .slider:before {
     .settings-nav-item {
         padding: 10px 16px;
         font-size: 13px;
+    }
+}
+
+@media (max-width: 640px) {
+    .settings-accounting {
+        padding: 18px 14px;
+    }
+
+    .settings-accounting-hero {
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .settings-accounting-card-header {
+        flex-direction: column;
+    }
+
+    .settings-accounting-card {
+        border-radius: 16px;
+        padding: 16px;
     }
 }
 

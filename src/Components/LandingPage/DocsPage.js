@@ -4,7 +4,7 @@ import { useEffect, useContext, useState } from 'react'
 import NavBar from './NavBar'
 import Footer from './Footer'
 import ContextProvider from '../../Resources/ContextProvider'
-import { FiBook, FiLock, FiSettings, FiUsers, FiShoppingBag, FiCreditCard, FiCheckCircle } from 'react-icons/fi'
+import { FiLock, FiSettings, FiUsers, FiShoppingBag, FiCheckCircle } from 'react-icons/fi'
 
 const DocsPage = () => {
   const { storePath } = useContext(ContextProvider)
@@ -23,6 +23,7 @@ const DocsPage = () => {
       icon: <FiLock />,
       topics: [
         { id: 'login', title: 'Login Process' },
+        { id: 'tenant-admin-login', title: 'Tenant Admin Root Login' },
         { id: 'signup', title: 'Sign Up' },
         { id: 'forgot-password', title: 'Forgot Password' },
       ]
@@ -45,6 +46,7 @@ const DocsPage = () => {
         { id: 'chart-of-accounts', title: 'Chart of Accounts' },
         { id: 'account-mapping', title: 'Account Mapping' },
         { id: 'settings-guide', title: 'Settings Masterclass' },
+        { id: 'billing-admin', title: 'Billing & Central Admin' },
       ]
     },
     {
@@ -64,6 +66,7 @@ const DocsPage = () => {
       topics: [
         { id: 'pos-ops', title: 'POS Operations' },
         { id: 'inventory', title: 'Inventory Management' },
+        { id: 'production-orders', title: 'Production & Assembly' },
         { id: 'sales-purchase', title: 'Sales & Purchases' },
         { id: 'logistics-expenses', title: 'Delivery & Expenses' },
         { id: 'accommodation', title: 'Accommodation' },
@@ -86,12 +89,40 @@ const DocsPage = () => {
 
             <div className="docs-step">
               <h4><span className="docs-step-number">2</span> Tenant Validation</h4>
-              <p>Upon entering your email, the system identifies your company workspace. If your company uses a dedicated subdomain, ensure you are on the correct URL (e.g., <code>company.enterprisecompute.com</code>).</p>
+              <p>Normal users should sign in through their tenant workspace URL, such as <code>company.epxcentral.com</code> or <code>company.localhost:3000</code> during local development.</p>
             </div>
 
             <div className="docs-note">
               <h4>Note on Session Security</h4>
               <p>Sessions are valid for 24 hours. After this period, or upon explicit logout, you will need to re-authenticate.</p>
+            </div>
+          </article>
+        )
+
+      case 'tenant-admin-login':
+        return (
+          <article className="docs-article">
+            <h1>Tenant Admin Root Login</h1>
+            <p>Tenant administrators can sign in from the root platform address and be routed safely into their company workspace.</p>
+
+            <div className="docs-step">
+              <h4><span className="docs-step-number">1</span> Start From Root Platform</h4>
+              <p>Admins may log in from <code>epxcentral.com/login</code>. In local development, <code>localhost:3000/login</code> behaves the same way.</p>
+            </div>
+
+            <div className="docs-step">
+              <h4><span className="docs-step-number">2</span> Admin-Only Verification</h4>
+              <p>The server checks the central profile and confirms the matching tenant profile is an administrator. Non-admins and wrong credentials receive the same safe invalid-login message.</p>
+            </div>
+
+            <div className="docs-step">
+              <h4><span className="docs-step-number">3</span> Secure Workspace Handoff</h4>
+              <p>After verification, the system creates a short-lived handoff code and redirects the admin to <code>tenant.epxcentral.com</code> or <code>tenant.localhost:3000</code>. The handoff is redeemed inside the tenant workspace and the dashboard opens from there.</p>
+            </div>
+
+            <div className="docs-note">
+              <h4>Security Note</h4>
+              <p>Sub-users must log in through their tenant subdomain. The root platform login is reserved for tenant administrators only.</p>
             </div>
           </article>
         )
@@ -197,21 +228,21 @@ const DocsPage = () => {
         return (
           <article className="docs-article">
             <h1>Live Paystack Payments</h1>
-            <p>We integrate with Paystack for secure, automated subscription management.</p>
+            <p>Enterprise Compute integrates with Paystack for secure subscription checkout, payment verification, invoices, and tenant billing records.</p>
             
             <div className="docs-step">
               <h4>Initiating Payment</h4>
-              <p>When choosing a plan or upgrading, the Paystack checkout modal will appear.</p>
+              <p>Payments can begin from the public pricing page or from the tenant Settings Billing section. Tenants can use configured Paystack test or live mode depending on platform settings.</p>
             </div>
 
             <div className="docs-step">
               <h4>Verification</h4>
-              <p>Upon success, Paystack sends a webhook to our server. Your license is updated instantly, and a receipt is generated in your billing history.</p>
+              <p>After checkout, the confirmation page verifies the transaction with Paystack before marking the order as paid. Webhooks and manual verification flows reconcile pending orders if a network interruption delays the first update.</p>
             </div>
 
             <div className="docs-note">
-              <h4>Auto-Renewal</h4>
-              <p>Recurring billing can be toggled in the Billing Settings. Ensure your card has sufficient balance 24 hours before expiry.</p>
+              <h4>Trial and Expiry</h4>
+              <p>New tenants receive a 14-day Standard trial. Warning banners appear before expiry, and expired or unconfigured tenants are guided to billing or setup before continuing.</p>
             </div>
           </article>
         )
@@ -233,7 +264,7 @@ const DocsPage = () => {
 
             <div className="docs-note">
               <h4>Setup Tip</h4>
-              <p>We provide a "Standard COA Template" that you can import with one click to save time.</p>
+              <p>We provide a standard COA template with operating accounts such as Cash, Bank, Inventory, Receivables, Payables, Salary Payable, Work in Progress Inventory, Production Variance, Revenue, and Cost of Sales.</p>
             </div>
           </article>
         )
@@ -264,8 +295,21 @@ const DocsPage = () => {
                   <td>Inventory Purchase</td>
                   <td>Debit Stock, Credit Accounts Payable</td>
                 </tr>
+                <tr>
+                  <td>Production Consumption</td>
+                  <td>Debit Work in Progress, Credit Inventory</td>
+                </tr>
+                <tr>
+                  <td>Production Output</td>
+                  <td>Debit Inventory, Credit Work in Progress</td>
+                </tr>
               </tbody>
             </table>
+
+            <div className="docs-note">
+              <h4>Usage Gate</h4>
+              <p>Operational pages that post financial activity are blocked until their required G/L links are configured. Core setup pages such as Settings, Journals & COA, Employees, Departments, and Positions remain available.</p>
+            </div>
           </article>
         )
 
@@ -294,7 +338,30 @@ const DocsPage = () => {
             <p>Define Units of Measurement (e.g., Kg, Litre, Pcs) and group your products for easier reporting and filtering.</p>
 
             <h3>7. Advanced Operational Linking</h3>
-            <p>Map your operational activities (like Payroll payments or Inventory adjustments) to specific Expense and Asset accounts to ensure your Balance Sheet is always accurate.</p>
+            <p>Map your operational activities to G/L accounts so the computed ledger can produce correct Trial Balance, Balance Sheet, Profit and Loss, ledgers, and dashboard summaries.</p>
+          </article>
+        )
+
+      case 'billing-admin':
+        return (
+          <article className="docs-article">
+            <h1>Billing & Central Admin</h1>
+            <p>The platform separates tenant billing from central administration so each company sees its own subscriptions while the developer can monitor all tenants centrally.</p>
+
+            <h3>Tenant Billing</h3>
+            <ul>
+              <li><strong>Settings Billing:</strong> Tenant admins can view subscription status, invoices, orders, payments, and Paystack checkout actions.</li>
+              <li><strong>Expiry Banner:</strong> A top-layer warning appears before trial or subscription expiry and links directly to Billing.</li>
+              <li><strong>Automatic Recovery:</strong> Pending Paystack orders can be verified again if a webhook or network callback was missed.</li>
+            </ul>
+
+            <h3>Central Admin</h3>
+            <ul>
+              <li><strong>Independent Portal:</strong> Central admin is accessed separately from tenant workspaces.</li>
+              <li><strong>Tenant Control:</strong> Admins can inspect tenant usage, users, subscriptions, payments, orders, and activity.</li>
+              <li><strong>Trial Controls:</strong> Trials can be started, extended, suspended, ended, or resumed for a tenant.</li>
+              <li><strong>Payment Reconciliation:</strong> Central admin can trigger verification for pending orders that Paystack has already settled.</li>
+            </ul>
           </article>
         )
 
@@ -412,6 +479,28 @@ const DocsPage = () => {
               <li><strong>Internal Transfers:</strong> Moving items from a Main Store to a specific POS Outlet.</li>
               <li><strong>Reorder Levels:</strong> Automated alerts when stock is running low.</li>
             </ul>
+          </article>
+        )
+
+      case 'production-orders':
+        return (
+          <article className="docs-article">
+            <h1>Production, Assembly & Deassembly</h1>
+            <p>Production operations are designed to use the same inventory transaction source of truth as purchases, transfers, POS shipments, and adjustments.</p>
+
+            <h3>How Posting Works</h3>
+            <ul>
+              <li><strong>Bill of Materials:</strong> Define finished goods and their component inputs.</li>
+              <li><strong>Consumption:</strong> Components issued into production debit Work in Progress and credit Inventory.</li>
+              <li><strong>Output:</strong> Finished goods received from production debit Inventory and credit Work in Progress.</li>
+              <li><strong>Variance:</strong> Any production difference posts to Production Variance and clears against WIP.</li>
+              <li><strong>Average Cost:</strong> Affected products can be recalculated after posting so inventory valuation remains aligned.</li>
+            </ul>
+
+            <div className="docs-note">
+              <h4>Accounting Requirement</h4>
+              <p>Inventory, Work in Progress, Cost of Sales, Inventory Adjustment, and Production Variance accounts must be linked before production-heavy inventory workflows are used.</p>
+            </div>
           </article>
         )
 
