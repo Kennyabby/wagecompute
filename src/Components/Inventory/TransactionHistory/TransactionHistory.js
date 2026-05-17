@@ -268,7 +268,7 @@ const TransactionHistory = () => {
     }
   }, [makeTxCacheKey, companyRecord?.emailid]);
 
-  const withRequestTimeout = (promise, timeoutMs = 25000) => {
+  const withRequestTimeout = (promise, timeoutMs = 45000) => {
     let timeoutId;
     const timeout = new Promise((_, reject) => {
       timeoutId = setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
@@ -1240,20 +1240,8 @@ const TransactionHistory = () => {
         summaryData
       };
     } catch (error) {
-      // Return empty data structure on error
-      setAlertState('error');
-      setAlert('Failed to load transactions. Please try again.');
-      setAlertTimeout(5000)
-      return {
-        transactions: [],
-        totalCount: 0,
-        summaryData: {
-          totalIn: 0,
-          totalOut: 0,
-          totalInCost: 0,
-          totalOutCost: 0
-        }
-      };
+      console.log('failed to load transactions error:', error);
+      throw error;
     }
   }, [company, fetchServer, products]);
 
@@ -1513,10 +1501,14 @@ const TransactionHistory = () => {
       });
 
     } catch (error) {
-      console.log(error);
-      setAlertState('error');
-      setAlert('Failed to load transaction history');
-      setAlertTimeout(5000);
+      console.log('fetchTransactionHistory error:', error);
+      if (!usedCache) {
+        setAlertState('error');
+        setAlert('Failed to load transaction history. Please try again.');
+        setAlertTimeout(5000);
+      } else {
+        console.warn('Silent refresh failed, retaining cached data:', error);
+      }
     } finally {
       setLoading(false);
     }

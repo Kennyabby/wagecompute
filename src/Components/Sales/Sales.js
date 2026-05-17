@@ -4400,7 +4400,7 @@ const Sales = () => {
                                 cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt && rentalFields?.imgId) ? 'pointer' : 'not-allowed'
                             }}
                             onClick={() => {
-                                if (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt && rentalFields?.imgId) {
+                                if (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) {
                                     if (curApproval && curApproval?.approved) {
                                         if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_rental_posts')) {
                                             setAlertState('error')
@@ -4410,6 +4410,10 @@ const Sales = () => {
                                         }
                                     }
                                     runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postrentals', rentalFields, postRentals)
+                                }else{
+                                    setAlertState('error')
+                                    setAlert('Please fill in all fields!')
+                                    setAlertTimeout(3000)
                                 }
                             }}
                         >{curApproval ? (curApproval.approved ? rentalsStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Rental' : 'Request Approval')}</div>}
