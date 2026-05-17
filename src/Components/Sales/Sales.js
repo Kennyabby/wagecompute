@@ -4397,7 +4397,7 @@ const Sales = () => {
 
                         {salesOpts === 'rentals' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt && rentalFields?.imgId) ? 'pointer' : 'not-allowed'
+                                cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) ? 'pointer' : 'not-allowed'
                             }}
                             onClick={() => {
                                 if (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) {
