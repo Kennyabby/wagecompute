@@ -2946,13 +2946,13 @@ const PointOfSales = () => {
                 // Immediate sync attempt – failures are fine, queue remains
                 try {
                     setMakingPayment(false);
+                    setShowPaymentModal(false);
                     setAlertState('success');
                     setAlert('Payment processed successfully');
                     setAlertTimeout(1000);
                     if (curPosSettings?.printPaymentReceipt) {
                         printReceipt(newOrder);
                     }
-                    setShowPaymentModal(false);
                     setCurrentOrder(newOrder)
                     // createNewOrder(currentTable);
                     setPaymentDetails({ ...payPoints });
