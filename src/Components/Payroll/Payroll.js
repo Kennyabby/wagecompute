@@ -38,7 +38,7 @@ const Payroll = () =>{
         return employees.filter((ftremp) => {
             if (selectedMonth && selectedYear) {
                 if (new Date(ftremp.hiredDate).getTime() <= new Date(`${selectedYear}-${months.indexOf(selectedMonth) + 1}-01`).getTime()) {
-                    return ftremp
+                    return !ftremp.dismissalDate || new Date(ftremp.dismissalDate).getTime() > new Date(`${selectedYear}-${months.indexOf(selectedMonth)}-${monthDays[months[months.indexOf(selectedMonth) - 1]]}`).getTime()
                 }
             } else if (!ftremp.dismissalDate) {
                 return ftremp
@@ -415,10 +415,6 @@ const Payroll = () =>{
                             <span>Eligible Staff</span>
                             <strong>{eligibleEmployees.length}</strong>
                         </div>
-                        <div className='payroll-stat-card'>
-                            <span>Attendance Batches</span>
-                            <strong>{attendance.length}</strong>
-                        </div>
                     </div>
                 </div>
                 <div className='payeeinpcov'>
@@ -492,7 +488,7 @@ const Payroll = () =>{
                                 <div className='deptdesc'>{`${department} Department`}</div>
                                 <div className='deptdesc'><b>Position:</b>{` ${position}`}</div>
                             </div>
-                            <div className='edit' name='edit'>Edit</div>
+                            {/* <div className='edit' name='edit'>Edit</div> */}
                         </div>
                     )
                   })}
