@@ -12,8 +12,9 @@ const DEFAULT_APPROVAL_CONFIG = {
         sales: { finalLevel: 1, type: 'rank', approverIds: { 'emailid': { rank: 1, sections: ['all'] }} },
         accommodation: { finalLevel: 1, type: 'rank', approverIds: { 'emailid': { rank: 1, sections: ['all'] }} },
         purchase: { finalLevel: 1, type: 'rank', approverIds: { 'emailid': { rank: 1, sections: ['all'] }} },
+        expense: { finalLevel: 1, type: 'rank', approverIds: { 'emailid': { rank: 1, sections: ['all'] }} },
         attendance: { finalLevel: 0, type: 'rank', approverIds: { 'emailid': { rank: 0, sections: ['all'] }} },
-        inventory: { finalLevel: 0, type: 'rank', approverIds: { 'emailid': { rank: 0, sections: ['all'] }} },
+        inventory: { finalLevel: 1, type: 'rank', approverIds: { 'emailid': { rank: 1, sections: ['all'] }} },
     },
 }
 
@@ -131,7 +132,7 @@ const Settings = () => {
         'allowBacklogs', 'allow_sales_posts', 'allow_add_sales_products',
         'allow_recovery_posts', 'allow_rental_posts', 'allow_accommodation_posts',
         'allow_purchase_posts', 'allow_expense_posts', 'allow_payment_posts',
-        'postAttendance', 'postPayroll'
+        'allow_transfer_posts', 'allow_asset_posts', 'allow_depreciation_posts', 'postAttendance', 'postPayroll'
     ]
     const approvalPermissions = [
         'approve_postsales', 'approve_postaddSalesProduct', 'approve_postrentals',
@@ -1170,6 +1171,10 @@ const Settings = () => {
                                 <p className='settings-accounting-copy'>
                                     Link each operational area to the G/L accounts it should affect. These links stay separate from the payment-method account number field and are preserved during COA re-initialization unless you change them.
                                 </p>
+                                <div className='settings-accounting-help'>
+                                    <strong>How this works:</strong>
+                                    <span>Operational modules post source documents only. The backend accounting engine reads those source documents, combines them with manual journals and closings, then produces COA balances, Trial Balance, Balance Sheet, Profit & Loss, and ledger drill-downs.</span>
+                                </div>
                             </div>
                             <div className='settings-accounting-actions'>
                                 <button className='savebtn' onClick={loadAccountingMappings} disabled={isAccountingLoading}>
@@ -1276,6 +1281,21 @@ const Settings = () => {
                                         {renderAccountingSelect('Salary Expense', modules.payroll?.salaryExpenseAccount, (value) => updateAccountingField('payroll', 'salaryExpenseAccount', value))}
                                         {renderAccountingSelect('Salary Payable', modules.payroll?.salaryPayableAccount, (value) => updateAccountingField('payroll', 'salaryPayableAccount', value))}
                                         {renderAccountingSelect('Employee Receivable', modules.payroll?.employeeReceivableAccount, (value) => updateAccountingField('payroll', 'employeeReceivableAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Assets</h3>
+                                        <span>Register, depreciation, and disposal links</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Fixed Asset Account', modules.assets?.fixedAssetAccount, (value) => updateAccountingField('assets', 'fixedAssetAccount', value))}
+                                        {renderAccountingSelect('Accumulated Depreciation', modules.assets?.accumulatedDepreciationAccount, (value) => updateAccountingField('assets', 'accumulatedDepreciationAccount', value))}
+                                        {renderAccountingSelect('Depreciation Expense', modules.assets?.depreciationExpenseAccount, (value) => updateAccountingField('assets', 'depreciationExpenseAccount', value))}
+                                        {renderAccountingSelect('Asset Payable', modules.assets?.payableAccount, (value) => updateAccountingField('assets', 'payableAccount', value))}
+                                        {renderAccountingSelect('Disposal Gain', modules.assets?.disposalGainAccount, (value) => updateAccountingField('assets', 'disposalGainAccount', value))}
+                                        {renderAccountingSelect('Disposal Loss', modules.assets?.disposalLossAccount, (value) => updateAccountingField('assets', 'disposalLossAccount', value))}
                                     </div>
                                 </div>
 

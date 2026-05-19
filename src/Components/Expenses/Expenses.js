@@ -13,6 +13,7 @@ import { FaPlus } from "react-icons/fa";
 import { FaTableCells, FaPrint } from 'react-icons/fa6'
 import { FaAngleDown, FaAngleUp } from "react-icons/fa";
 import ExpensesReport from './ExpensesReport/ExpensesReport'
+import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 
 const Expenses = () => {
 
@@ -26,6 +27,8 @@ const Expenses = () => {
         expenses, setExpenses, getExpenses,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
         attendance, getAttendance, months, monthDays, employees, getEmployees,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow,
+        showApprovalBox, setShowApprovalBox,
         removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
 
@@ -47,6 +50,10 @@ const Expenses = () => {
     const [salaryDetails, setSalaryDetails] = useState(null)
     const [expenseFilter, setExpenseFilter] = useState('')
     const [expenseAccount, setExpenseAccount] = useState({})
+    const [expenseApprovals, setExpenseApprovals] = useState([])
+    const isExpenseApprover = companyRecord?.status === 'admin'
+        || companyRecord?.permissions?.includes('all')
+        || companyRecord?.permissions?.includes('approve_postexpense')
 
     const defaultFields = {
         expensesDepartment: '',
@@ -103,6 +110,15 @@ const Expenses = () => {
         }, intervalPeriod)
         return () => clearInterval(intervalId);
     }, [window.localStorage.getItem('sessn-cmp')])
+
+    useEffect(() => {
+        setExpenseApprovals((approvals || []).filter((approval) => (
+            approval.module === 'expense' &&
+            approval.section === 'postexpense' &&
+            !approval.approved &&
+            !approval.message
+        )))
+    }, [approvals])
 
     const handleSyncOfflineExpenses = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -226,6 +242,11 @@ const Expenses = () => {
 
     const handleViewClick = (exp) => {
         setIsView(true)
+        if (exp?.approval) {
+            setCurApproval(exp.approval)
+        } else {
+            setCurApproval(null)
+        }
         if (curExpense === null || exp.createdAt !== curExpense?.createdAt) {
             setCurExpense(exp)
             setFields({ ...exp })
@@ -252,31 +273,39 @@ const Expenses = () => {
                 postingDate: expensesDate,
                 createdAt: Date.now()
             }
-            const newExpenses = [newExpense, ...expenses]
+            const postExpense = async () => {
+                const newExpenses = [newExpense, ...expenses]
+                const resps = await fetchServer("POST", {
+                    database: company,
+                    collection: "Expenses",
+                    update: {
+                        ...newExpense,
+                        approvedBy: curApproval?.approvedBy || companyRecord?.emailid
+                    }
+                }, "createDoc", server)
 
-            const resps = await fetchServer("POST", {
-                database: company,
-                collection: "Expenses",
-                update: newExpense
-            }, "createDoc", server)
-
-            if (resps.err) {
-                console.log(resps.mess)
-                setAlertState('info')
-                setAlert(resps.mess)
-                setAlertTimeout(5000)
-                setExpensesStatus('Post Expenses')
-            } else {
-                setExpensesStatus('Post Expenses')
-                setExpenses(newExpenses)
-                setCurExpense(newExpense)
-                setIsView(true)
-                setFields({ ...newExpense })
-                setAlertState('success')
-                setAlert('Expenses Record Posted Successfully!')
-                setAlertTimeout(1000)
-                getExpenses(company)
+                if (resps.err) {
+                    console.log(resps.mess)
+                    setAlertState('info')
+                    setAlert(resps.mess)
+                    setAlertTimeout(5000)
+                    setExpensesStatus('Post Expenses')
+                } else {
+                    setExpensesStatus('Post Expenses')
+                    setExpenses(newExpenses)
+                    setCurExpense(newExpense)
+                    setIsView(true)
+                    setFields({ ...newExpense })
+                    setCurApproval(null)
+                    setAlertState('success')
+                    setAlert('Expenses Record Posted Successfully!')
+                    setAlertTimeout(1000)
+                    getExpenses(company)
+                    getApprovals(company, companyRecord)
+                }
             }
+            await runApprovalWorkFlow(expensesDate, curApproval, 'expense', 'postexpense', newExpense, postExpense)
+            setExpensesStatus('Post Expenses')
         } else {
             setAlertState('error')
             setAlert('All Fields Are Required! Kindly Fill All.')
@@ -373,9 +402,30 @@ const Expenses = () => {
         html2pdf().set(options).from(element).save();
     };
 
+    const approvalExpenseRecords = expenseApprovals.map((approval) => ({
+        ...(approval.data || {}),
+        createdAt: approval.createdAt,
+        postingDate: approval.postingDate || approval.data?.postingDate,
+        approval,
+        isApprovalRequest: true,
+    }))
+    const displayExpenses = [...approvalExpenseRecords, ...(salaryDetails || []), ...expenses]
+
     return (
         <>
             <div className={`expenses expenses-page${mobileDetailOpen ? ' mobile-detail-open' : ''}`}>
+                {showApprovalBox && <ApprovalBox
+                    onClose={() => {
+                        setShowApprovalBox(false)
+                        setApprovalStatus(false)
+                        setApprovalMessage('')
+                    }}
+                    module={'expense'}
+                    section={'postexpense'}
+                    postApprovalUpdate={() => {
+                        postApprovalUpdate(company, 'expense', 'postexpense', curApproval)
+                    }}
+                />}
                 {showReport && <ExpensesReport
                     reportExpense={reportExpense}
                     multiple={true}
@@ -474,7 +524,7 @@ const Expenses = () => {
                             })}
                         </select>
                     </div>}
-                    {[...(salaryDetails || []), ...expenses].filter((expfltr) => {
+                    {displayExpenses.filter((expfltr) => {
                         if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo) {
                             if (expenseFilter) {
                                 if (expfltr.expenseCategory === expenseFilter) {
@@ -532,6 +582,9 @@ const Expenses = () => {
                                             }}
                                         />)}
                                     <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                    {exp.approval && <div className='deptdesc' style={{ color: '#b45309', fontWeight: 'bold' }}>
+                                        {isExpenseApprover ? 'Pending approval request' : 'Awaiting approval'}
+                                    </div>}
                                     <div>Expenses Department: <b>{expensesDepartment}</b></div>
                                     <div>Expenses Category: <b>{expenseCategory}</b></div>
                                     <div>Expenses Amount: <b>{'₦' + (Number(expensesAmount)).toLocaleString()}</b></div>
@@ -572,7 +625,7 @@ const Expenses = () => {
                             Back to list
                         </button>
                         <div className='expenses-kicker'>Entry Workspace</div>
-                        <h2 className='expenses-detail-title'>{isView ? 'Expense Details' : 'Post New Expense'}</h2>
+                        <h2 className='expenses-detail-title'>{curApproval ? 'Expense Approval Request' : (isView ? 'Expense Details' : 'Post New Expense')}</h2>
                         <p className='expenses-copy'>
                             {isView
                                 ? 'Inspect the selected expense details without changing the underlying posting behavior.'
@@ -714,7 +767,7 @@ const Expenses = () => {
                             </select>
                         </div>
                     </div>
-                    {!isView && <div className='expensesbuttom'>
+                    {(!isView || curApproval) && <div className='expensesbuttom'>
                         <div className='inpcov'>
                             <input
                                 className='forminp'
@@ -730,7 +783,7 @@ const Expenses = () => {
                         <div
                             className='expensesbutton'
                             onClick={addExpenses}
-                        >{expensesStatus}</div>
+                        >{curApproval ? (isExpenseApprover ? 'Approve Request' : 'Request Approval') : (isExpenseApprover ? expensesStatus : 'Request Approval')}</div>
                     </div>}
                     <MdAdd
                         className='add slsadd expenses-detail-add'

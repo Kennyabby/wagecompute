@@ -5,7 +5,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BiSolidDashboard, BiMenu } from "react-icons/bi";
 import { BsTable } from "react-icons/bs";
-import { FaUsers, FaHotel } from "react-icons/fa";
+import { FaUsers, FaHotel, FaBoxes } from "react-icons/fa";
 import { SiPayloadcms } from "react-icons/si";
 import { MdInventory, MdClose, MdSubject, MdDeliveryDining, MdLogout } from "react-icons/md";
 import { GiPayMoney, GiPlayerTime, GiBuyCard, GiExpense } from "react-icons/gi";
@@ -46,7 +46,7 @@ const SideNav = () => {
             const permissionKey = appr.module === 'inventory' && appr.section === 'posttransfer'
                 ? 'approve_posttransfer'
                 : 'approve_post' + appr.module
-            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes(permissionKey)) {
+            if (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes(permissionKey)) {
                 return (
                     !appr.approved && !appr.message
                 )
@@ -223,6 +223,7 @@ const SideNav = () => {
             icon: MdInventory,
             badge: hasPermission('approve_posttransfer') ? inventoryApprovals.length : 0
         },
+        hasPermission('assets') && { name: 'assets', label: 'Assets', meta: 'Fixed assets', icon: FaBoxes },
         hasPermission('sales') && {
             name: 'sales',
             label: 'Sales',

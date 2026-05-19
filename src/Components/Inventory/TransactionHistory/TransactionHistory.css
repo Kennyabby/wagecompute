@@ -309,6 +309,26 @@
   background: white;
 }
 
+.transfer-approval-actions {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.transfer-approval-message {
+  min-height: 42px;
+  resize: vertical;
+  border: 1px solid rgba(23, 56, 41, 0.14);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #173829;
+  background: rgba(23, 56, 41, 0.03);
+}
+
 .transfer-approval-empty {
   padding: 24px;
   text-align: center;
@@ -804,6 +824,10 @@
 }
 
 @media (max-width: 768px) {
+  .transfer-approval-actions {
+    grid-template-columns: 1fr;
+  }
+
   .summary-cards {
     grid-template-columns: 1fr 1fr;
   }

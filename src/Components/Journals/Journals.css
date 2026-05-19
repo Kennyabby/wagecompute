@@ -980,6 +980,20 @@
     font-size: 14px;
 }
 
+.dd-empty strong,
+.dd-empty span {
+    display: block;
+}
+
+.dd-empty strong {
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.dd-empty span {
+    margin-top: 6px;
+}
+
 .dd-table {
     width: 100%;
     border-collapse: separate;
@@ -1408,10 +1422,13 @@
     gap: 24px;
     height: calc(100vh - 200px);
     animation: fadeIn 0.4s ease;
+    min-width: 0;
+    width: 100%;
 }
 
 .reports-nav {
     width: 200px;
+    flex: 0 0 200px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1444,6 +1461,7 @@
 
 .report-content-card {
     flex: 1;
+    min-width: 0;
     background: white;
     border-radius: 16px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
@@ -1476,6 +1494,7 @@
 .report-btns {
     display: flex;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 .pl-body, .tb-body {
@@ -1532,6 +1551,27 @@
     border-collapse: collapse;
 }
 
+.report-ledger-link {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    padding: 4px 6px;
+    margin: -4px -6px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: right;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.report-ledger-link:hover,
+.report-ledger-link:focus-visible {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    outline: none;
+}
+
 .report-grid th {
     text-align: left;
     padding: 12px 16px;
@@ -1553,6 +1593,170 @@
 }
 
 .num { text-align: right; }
+
+.accounting-actions-help {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.accounting-actions-help summary {
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+    color: #166534;
+}
+
+.accounting-actions-help-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.accounting-actions-help-card {
+    padding: 12px;
+    border: 1px solid #dbe7df;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.accounting-actions-help-card strong,
+.accounting-actions-help-card span {
+    display: block;
+}
+
+.accounting-actions-help-card strong {
+    color: #0f3d2b;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.accounting-actions-help-card span {
+    color: #64746b;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+    .reports-wrapper {
+        flex-direction: column;
+        gap: 16px;
+        height: auto;
+        min-height: calc(100vh - 220px);
+        overflow: visible;
+    }
+
+    .reports-nav {
+        width: 100%;
+        flex: none;
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: thin;
+    }
+
+    .reports-nav button {
+        flex: 1 0 160px;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .report-content-card {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .report-card-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 16px;
+        padding: 22px;
+    }
+
+    .report-btns {
+        width: 100%;
+    }
+
+    .report-btns button {
+        flex: 1 1 145px;
+        justify-content: center;
+    }
+
+    .pl-body,
+    .tb-body {
+        padding: 22px;
+        max-height: none;
+    }
+
+    .tb-body {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .report-grid {
+        min-width: 620px;
+    }
+}
+
+@media (max-width: 560px) {
+    .reports-wrapper {
+        gap: 12px;
+        min-height: 0;
+    }
+
+    .reports-nav {
+        gap: 8px;
+    }
+
+    .reports-nav button {
+        flex-basis: 132px;
+        padding: 11px 14px;
+        font-size: 13px;
+    }
+
+    .report-card-header {
+        padding: 18px;
+    }
+
+    .report-titles h2 {
+        font-size: 18px;
+        line-height: 1.25;
+    }
+
+    .report-period {
+        font-size: 12px;
+    }
+
+    .pl-body,
+    .tb-body {
+        padding: 18px;
+    }
+
+    .pl-line,
+    .pl-subtotal,
+    .pl-major-row {
+        gap: 14px;
+        align-items: flex-start;
+    }
+
+    .pl-line span:first-child,
+    .pl-subtotal span:first-child,
+    .pl-major-row span:first-child {
+        min-width: 0;
+        word-break: break-word;
+    }
+
+    .report-ledger-link {
+        white-space: nowrap;
+    }
+
+    .accounting-actions-help-grid {
+        grid-template-columns: 1fr;
+    }
+}
 
 /* Categorical Analysis Modal styles */
 .categorical-analysis {

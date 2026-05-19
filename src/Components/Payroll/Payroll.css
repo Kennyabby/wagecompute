@@ -99,6 +99,15 @@
     }
     
 }
+
+.payroll-employee-photo {
+    width: 86px;
+    height: 86px;
+    object-fit: cover;
+    border-radius: 14px;
+    border: 1px solid #dbe7df;
+    margin-bottom: 8px;
+}
 .deptetr{
     width: 90%;
     margin: auto;

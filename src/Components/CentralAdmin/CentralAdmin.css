@@ -933,6 +933,28 @@ body {
   color: var(--ca-text);
 }
 
+.ca-control-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--ca-border);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(248, 250, 249, 0.95), rgba(235, 245, 239, 0.72));
+}
+
+.ca-control-strip strong,
+.ca-control-strip span {
+  display: block;
+}
+
+.ca-control-strip span {
+  margin-top: 4px;
+  color: var(--ca-muted);
+  font-size: 12px;
+}
+
 /* Tenant detail stack */
 .ca-detail-stack {
   display: flex;

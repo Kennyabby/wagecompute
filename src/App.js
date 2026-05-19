@@ -75,6 +75,13 @@ const DEFAULT_APPROVAL_CONFIG = {
         'emailid': { rank: 1, sections: ['all'] }
       },
     },
+    expense: {
+      finalLevel: 1,
+      type: 'rank',
+      approverIds: {
+        'emailid': { rank: 1, sections: ['all'] }
+      },
+    },
     attendance: {
       finalLevel: 0,
       type: 'rank',
@@ -83,10 +90,10 @@ const DEFAULT_APPROVAL_CONFIG = {
       },
     },
     inventory: {
-      finalLevel: 0,
+      finalLevel: 1,
       type: 'rank',
       approverIds: {
-        'emailid': { rank: 0, sections: ['all'] }
+        'emailid': { rank: 1, sections: ['all'] }
       },
     },
   },
@@ -323,9 +330,9 @@ function App() {
   }
 
   const pathList = ['', 'login', 'profile', 'dashboard',
-    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
+    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
   const dashList = ['dashboard',
-    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
+    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
   const months = [
     'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
     'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
@@ -990,6 +997,7 @@ function App() {
           const hasPurchaseAccess = companyRecord?.permissions.includes('purchase')
           const hasExpensesAccess = companyRecord?.permissions.includes('expenses')
           const hasInventoryAccess = companyRecord?.permissions.includes('inventory')
+          const hasAssetsAccess = companyRecord?.permissions.includes('assets')
           if (companyRecord?.permissions.includes('employees')) {
             getEmployees(company)
             getDepartments(company)
@@ -1018,6 +1026,10 @@ function App() {
           ) {
             getProducts(company)
             if (window.location.pathname !== '/inventory') Navigate('/inventory' + window.location.search)
+          }
+          if (hasAssetsAccess && !hasInventoryAccess && !hasPosAccess && !hasDeliveryAccess) {
+            window.localStorage.removeItem('lgt-vw')
+            if (window.location.pathname !== '/assets') Navigate('/assets' + window.location.search)
           }
           if (companyRecord?.permissions.includes('delivery')) {
             if (companyRecord?.permissions.includes('access_delivery_sessions')) {
@@ -1342,6 +1354,15 @@ function App() {
   }
 
   const runApprovalWorkFlow = async (postingDate, curApproval, module, section, data, runApproval, link) => {
+    const directPostPermission = section === 'posttransfer'
+      ? 'allow_transfer_posts'
+      : /^post/i.test(section)
+        ? `allow_${section.replace(/^post/i, '').toLowerCase()}_posts`
+        : ''
+    const canPostWithoutApproval = companyRecord?.permissions?.includes('approve_' + section)
+      || companyRecord?.permissions?.includes(directPostPermission)
+      || companyRecord?.permissions?.includes('all')
+      || companyRecord?.status === 'admin'
 
     const executePostAction = async () => {
       await runApproval()
@@ -1355,8 +1376,8 @@ function App() {
     }
 
     const executeApprovalAction = async (previous) => {
-      if (companyRecord?.permissions.includes('approve_' + section) || companyRecord?.status === 'admin') {
-        executePostAction()
+      if (canPostWithoutApproval) {
+        await executePostAction()
         return true
       } else {
         setAlertState('info')
@@ -1369,7 +1390,7 @@ function App() {
           isApproval: true,
           handlerId: companyRecord?.emailid,
           messages: previous?.createdAt ? [
-            ...previous.messages,
+            ...(Array.isArray(previous.messages) ? previous.messages : []),
             { message: previous.message, createdAt: new Date().getTime() }
           ] : []
         }
@@ -1405,7 +1426,7 @@ function App() {
         return true
       } else {
         if (!curApproval.message) {
-          if (companyRecord?.permissions.includes('approve_' + section) || companyRecord?.status === 'admin') {
+          if (canPostWithoutApproval) {
             setShowApprovalBox(true)
           } else {
             setAlertState('info')
@@ -1435,6 +1456,17 @@ function App() {
       }
     }, "createDoc", SERVER)
     if (!resp.err) {
+      const adminEmail = companyRecord?.email || companyRecord?.companyEmail || companyRecord?.contactEmail || ''
+      if (adminEmail) {
+        fetchServer("POST", {
+          details: {
+            to: adminEmail,
+            subject: `Approval request: ${module} / ${section}`,
+            type: 'html',
+            message: `<p>A new approval request has been submitted in ${company}.</p><p><b>Module:</b> ${module}</p><p><b>Section:</b> ${section}</p><p><b>Requested by:</b> ${companyRecord?.emailid || ''}</p>`
+          }
+        }, "mailUser", SERVER).catch(() => { })
+      }
       return { completed: resp.isDelivered, mess: resp.mess }
     } else {
       return { completed: false, mess: resp.mess }

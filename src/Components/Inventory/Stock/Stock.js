@@ -24,6 +24,7 @@ const Stock = ({
         server, fetchServer, getProducts, getProductsWithStock, getProductsStockReport,
         setAlert, setAlertState, setAlertTimeout, intervalPeriod,
         products, setProducts, settings, company, companyRecord,
+        runApprovalWorkFlow, approvals, getApprovals,
     } = useContext(ContextProvider);
     const intervalRef = useRef(null);
     const [warehouses, setWarehouses] = useState([]);
@@ -97,6 +98,18 @@ const Stock = ({
     const [showColumnManager, setShowColumnManager] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const transferApproval = useMemo(() => {
+        return (approvals || []).find((approval) => (
+            approval.module === 'inventory' &&
+            approval.section === 'posttransfer' &&
+            approval.handlerId === companyRecord?.emailid &&
+            !approval.message
+        )) || null;
+    }, [approvals, companyRecord?.emailid]);
+    const canPostTransferDirectly = companyRecord?.status === 'admin'
+        || companyRecord?.permissions?.includes('all')
+        || companyRecord?.permissions?.includes('approve_posttransfer')
+        || companyRecord?.permissions?.includes('allow_transfer_posts');
     const refreshStockData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         try {
@@ -401,57 +414,72 @@ const Stock = ({
                 return;
             }
 
-            // Proceed with the transfer if all validations pass
-            setAlertState('info');
-            setAlert('Transferring products...');
-            setAlertTimeout(100000)
-            let countSuccess = 0;
-            for (const entry of validEntries) {
+            const transferReference = `TRF-${Date.now()}`;
+            const transferDocuments = validEntries.flatMap((entry) => {
                 const { productId, quantityToTransfer, transferCost } = entry;
                 const product = products.find(p => p.i_d === productId);
-                if (product) {
-                    const createdAt = new Date().getTime();
-                    const fromWarehouseData = {
+                if (!product) return [];
+                const createdAt = new Date().getTime();
+                const costPrice = Number(quantityToTransfer || 0) ? Number(transferCost || 0) / Number(quantityToTransfer || 1) : Number(product.costPrice || 0);
+                return [
+                    {
                         productId: productId,
+                        name: product.name || product.productName || productId,
+                        productName: product.name || product.productName || productId,
                         location: fromWarehouse,
+                        warehouse: fromWarehouse,
                         entryType: 'Shipment',
                         documentType: 'Transfer Shipment',
                         transferTo: toWarehouse,
+                        quantity: Number(quantityToTransfer || 0) * -1,
                         baseQuantity: quantityToTransfer * -1,
+                        costPrice,
                         totalCost: transferCost * -1,
                         createdAt: createdAt,
                         handlerId: companyRecord?.emailid,
                         postingDate: postingDate,
-                        postingStamp: new Date(postingDate)
-                    }
-
-                    const toWarehouseData = {
+                        postingStamp: new Date(postingDate),
+                        referenceNo: transferReference,
+                        source: 'internal-transfer',
+                    },
+                    {
                         productId: productId,
+                        name: product.name || product.productName || productId,
+                        productName: product.name || product.productName || productId,
                         location: toWarehouse,
+                        warehouse: toWarehouse,
                         entryType: 'Receipt',
                         documentType: 'Transfer Receipt',
                         tranferFrom: fromWarehouse,
+                        transferFrom: fromWarehouse,
+                        quantity: Number(quantityToTransfer || 0),
                         baseQuantity: quantityToTransfer,
+                        costPrice,
                         totalCost: transferCost,
                         createdAt: createdAt,
                         handlerId: companyRecord?.emailid,
                         postingDate: postingDate,
-                        postingStamp: new Date(postingDate)
+                        postingStamp: new Date(postingDate),
+                        referenceNo: transferReference,
+                        source: 'internal-transfer',
                     }
+                ];
+            });
 
-                    const resps1 = await fetchServer("POST", {
-                        database: company,
-                        collection: "InventoryTransactions",
-                        update: fromWarehouseData
-                    }, "createDoc", server);
+            const postTransferDocuments = async () => {
+                setAlertState('info');
+                setAlert('Transferring products...');
+                setAlertTimeout(100000)
+                let countSuccess = 0;
+                for (const transferDocument of transferDocuments) {
                     const resps = await fetchServer("POST", {
                         database: company,
                         collection: "InventoryTransactions",
-                        update: toWarehouseData
+                        update: transferDocument
                     }, "createDoc", server);
-                    if (resps.error) {
-                        setAlertState('info');
-                        setAlert(resps.message);
+                    if (resps.err || resps.error) {
+                        setAlertState('error');
+                        setAlert(resps.mess || resps.message || 'Transfer posting failed');
                         setAlertTimeout(3000);
                         setIsOnView(false);
                         setIsSaveValue(false);
@@ -462,12 +490,11 @@ const Stock = ({
                     } else {
                         countSuccess++;
                         setAlertState('success');
-                        setAlert(`${countSuccess}/${validEntries.length} product(s) transferred successfully`);
+                        setAlert(`${Math.ceil(countSuccess / 2)}/${validEntries.length} product(s) transferred successfully`);
                         setAlertTimeout(100000);
                     }
                 }
-            }
-            if (countSuccess === validEntries.length) {
+                if (countSuccess !== transferDocuments.length) return;
                 setAlertState('success');
                 setAlert('All Products Transfered Successful!');
                 setAlertTimeout(1000);
@@ -476,12 +503,38 @@ const Stock = ({
                 setIsTransferValue(false);
                 setFromWarehouse('');
                 setToWarehouse('');
-                getProductsWithStock(company, products, {
+                getProductsStockReport(company, products, {
                     startDate: dateRange.startDate,
                     endDate: dateRange.endDate
                 })
+                getApprovals(company, companyRecord)
                 resetCount();
             }
+
+            const approvalPayload = {
+                fromWarehouse,
+                toWarehouse,
+                referenceNo: transferReference,
+                entries: validEntries.map((entry) => {
+                    const product = products.find((product) => product.i_d === entry.productId) || {};
+                    return {
+                        ...entry,
+                        productName: product.name || product.productName || entry.productId,
+                    };
+                }),
+                transactions: transferDocuments,
+            };
+
+            await runApprovalWorkFlow(
+                postingDate,
+                transferApproval,
+                'inventory',
+                'posttransfer',
+                approvalPayload,
+                postTransferDocuments,
+                transferReference
+            );
+            setIsSaveValue(false);
         } else {
             setAlertState('error');
             setAlert('Please fill all fields!');
@@ -948,6 +1001,7 @@ const Stock = ({
                 <div className="transfer-header-group">
                     <h4>Internal Transfer</h4>
                     <span className="transfer-subtitle">Move products between warehouses</span>
+                    <span className="transfer-subtitle">{canPostTransferDirectly ? 'You can post transfers directly.' : 'Your transfer will be routed for approval before posting.'}</span>
                 </div>
                 <div className='transfer-inputs-row'>
                     <div className='otherInpCov'>

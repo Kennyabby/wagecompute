@@ -45,6 +45,7 @@ const DocsPage = () => {
       topics: [
         { id: 'chart-of-accounts', title: 'Chart of Accounts' },
         { id: 'account-mapping', title: 'Account Mapping' },
+        { id: 'accounting-operations', title: 'Journals, Closings & Reports' },
         { id: 'settings-guide', title: 'Settings Masterclass' },
         { id: 'billing-admin', title: 'Billing & Central Admin' },
       ]
@@ -67,6 +68,7 @@ const DocsPage = () => {
         { id: 'pos-ops', title: 'POS Operations' },
         { id: 'inventory', title: 'Inventory Management' },
         { id: 'production-orders', title: 'Production & Assembly' },
+        { id: 'assets', title: 'Asset Management' },
         { id: 'sales-purchase', title: 'Sales & Purchases' },
         { id: 'logistics-expenses', title: 'Delivery & Expenses' },
         { id: 'accommodation', title: 'Accommodation' },
@@ -342,6 +344,47 @@ const DocsPage = () => {
           </article>
         )
 
+      case 'accounting-operations':
+        return (
+          <article className="docs-article">
+            <h1>Journals, Closings & Reports</h1>
+            <p>The accounting module uses a computed-ledger design. Operational modules keep their own source records, manual journals stay in General Ledger entries, and reports read from the computed COA balances.</p>
+
+            <h3>Daily Workflow</h3>
+            <ol>
+              <li><strong>Initialize COA:</strong> Use the predefined Chart of Accounts template or update your accounts before posting operations.</li>
+              <li><strong>Configure G/L Links:</strong> In Settings, map each module to the accounts it affects. Payment methods use a separate G/L link from their bank/account number field.</li>
+              <li><strong>Post Operations:</strong> Sales, POS, purchases, payroll, inventory, accommodations, assets, and expenses post their own source documents.</li>
+              <li><strong>Use Journals for Adjustments:</strong> Manual journal entries should only be used for direct accounting adjustments not already represented by operational documents.</li>
+              <li><strong>Review Reports:</strong> Trial Balance, Balance Sheet, Profit & Loss, and ledger drill-downs are generated from the computed COA view.</li>
+            </ol>
+
+            <h3>Closings</h3>
+            <p>Closings store balances by date so the system does not recompute from the beginning every time. When reports start from a date with a prior closing, the engine uses that closing as opening balance and computes only the missing period.</p>
+
+            <h3>Closing Action Buttons</h3>
+            <ul>
+              <li><strong>Build Closing:</strong> Computes and saves monthly closing balances for the selected period end without storing detailed raw ledger lines.</li>
+              <li><strong>Build with Ledger:</strong> Computes the closing and includes ledger trace details for audit. It is heavier, so use it when you need proof lines.</li>
+              <li><strong>Confirm Closing:</strong> Marks a closing as reviewed while still allowing correction before final lock.</li>
+              <li><strong>Lock Closing:</strong> Prevents normal recomputation of that period. Locked closings require admin override to change.</li>
+              <li><strong>Rebuild Closing:</strong> Recomputes the latest closing from current operational and journal records.</li>
+              <li><strong>Find Late Changes:</strong> Detects changed or backdated transactions that may affect old closings and queues those dates for review.</li>
+              <li><strong>Review Queue:</strong> Opens the list of closing dates waiting to be reprocessed.</li>
+              <li><strong>Run Queue:</strong> Processes queued closings that are not locked.</li>
+              <li><strong>Admin Override Run:</strong> Allows an admin to process queued closings even when locked periods are involved.</li>
+            </ul>
+
+            <h3>Ledger Drill-Down</h3>
+            <p>Click any debit, credit, net, or report balance to view the source ledger lines behind the amount. If a balance came from a previous closing, the drill-down shows the current period lines available for that date range while the opening amount remains represented by the stored closing.</p>
+
+            <div className="docs-note">
+              <h4>Late Transactions</h4>
+              <p>If a backdated purchase, asset, expense, payroll, or journal affects a prior closing, use the Journals page recompute tools to detect and reprocess affected closings. Locked closings require admin override.</p>
+            </div>
+          </article>
+        )
+
       case 'billing-admin':
         return (
           <article className="docs-article">
@@ -500,6 +543,34 @@ const DocsPage = () => {
             <div className="docs-note">
               <h4>Accounting Requirement</h4>
               <p>Inventory, Work in Progress, Cost of Sales, Inventory Adjustment, and Production Variance accounts must be linked before production-heavy inventory workflows are used.</p>
+            </div>
+          </article>
+        )
+
+      case 'assets':
+        return (
+          <article className="docs-article">
+            <h1>Asset Management</h1>
+            <p>The Asset module manages fixed assets from acquisition to depreciation and disposal, while the accounting engine reflects every posted asset movement in the COA.</p>
+
+            <h3>Asset Setup</h3>
+            <ol>
+              <li><strong>Configure G/L Links:</strong> In Settings Accounting Links, map Fixed Asset, Accumulated Depreciation, Depreciation Expense, Asset Payable, Disposal Gain, and Disposal Loss.</li>
+              <li><strong>Create Asset Groups:</strong> Define groups such as Buildings, Furniture, Equipment, or Vehicles. Each group can carry default useful life, residual rate, and depreciation type.</li>
+              <li><strong>Choose Depreciation Type:</strong> Supported types include Straight Line, Reducing Balance, Manual Only, and No Depreciation.</li>
+              <li><strong>Register Assets:</strong> Add acquisition cost, supplier, custodian, location, purchase date, payment status, payment method, and paid amount.</li>
+              <li><strong>Post the Asset:</strong> Posting debits the fixed asset account and credits either payment method cash/bank or asset payable for unpaid balances.</li>
+            </ol>
+
+            <h3>Depreciation</h3>
+            <p>Manual depreciation posts a selected amount for one asset. Automatic depreciation processes all active assets due up to the selected date. Straight Line spreads depreciable value across useful life. Reducing Balance applies the annual depreciation rate monthly to the net book value.</p>
+
+            <h3>Disposal</h3>
+            <p>Disposal clears the asset cost, clears accumulated depreciation, records sale proceeds when applicable, and posts the resulting gain or loss to the configured G/L accounts.</p>
+
+            <div className="docs-note">
+              <h4>Accounting Impact</h4>
+              <p>Asset records are not converted into manual journals. They remain operational source documents and are read by the accounting engine alongside inventory, sales, payroll, purchases, expenses, and manual journals.</p>
             </div>
           </article>
         )

@@ -24,6 +24,7 @@ const TransactionHistory = () => {
     getProductsStockReport,
     approvals,
     updateApproval,
+    removeApproval,
     getApprovals,
   } = useContext(ContextProvider);
 
@@ -69,6 +70,38 @@ const TransactionHistory = () => {
     ));
   }, [approvals]);
   const canApproveTransfers = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('approve_posttransfer');
+  const postApprovedTransfer = async (approval) => {
+    const transactions = approval?.data?.transactions || [];
+    if (!Array.isArray(transactions) || !transactions.length) {
+      throw new Error('The approval request has no transfer transactions to post.');
+    }
+    for (const transaction of transactions) {
+      const resp = await fetchServer('POST', {
+        database: company,
+        collection: 'InventoryTransactions',
+        update: {
+          ...transaction,
+          approvedBy: companyRecord?.emailid,
+          approvedAt: Date.now(),
+        },
+      }, 'createDoc', server);
+      if (resp?.err || resp?.error) {
+        throw new Error(resp.mess || resp.message || 'Unable to post approved transfer.');
+      }
+    }
+    await removeApproval(company, 'inventory', 'posttransfer', {
+      createdAt: approval.createdAt,
+      postingDate: approval.postingDate,
+    });
+    await getApprovals(company, companyRecord);
+    if (typeof getProductsStockReport === 'function') {
+      await getProductsStockReport(company, products, {
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+      });
+    }
+    await fetchTransactionHistory();
+  };
   const [summary, setSummary] = useState({
     // Quantities
     openingStock: 0,
@@ -1791,15 +1824,38 @@ const TransactionHistory = () => {
         canApprove={canApproveTransfers}
         onClose={() => setShowTransferApprovals(false)}
         onApprove={async (approval) => {
-          await updateApproval(company, 'inventory', 'posttransfer', {
-            createdAt: approval.createdAt,
-            approvers: [...(approval.approvers || []), companyRecord?.emailid],
-            approved: true,
-            approvedBy: companyRecord?.emailid,
-            message: '',
-            lastUpdatedBy: companyRecord?.emailid,
-          })
-          getApprovals(company, companyRecord)
+          try {
+            setLoading(true);
+            await postApprovedTransfer(approval);
+            setAlertState('success');
+            setAlert('Transfer request approved and posted successfully.');
+            setAlertTimeout(1500);
+          } catch (error) {
+            setAlertState('error');
+            setAlert(error.message || 'Unable to approve transfer request.');
+            setAlertTimeout(5000);
+          } finally {
+            setLoading(false);
+          }
+        }}
+        onReject={async (approval, message) => {
+          try {
+            await updateApproval(company, 'inventory', 'posttransfer', {
+              createdAt: approval.createdAt,
+              approvers: approval.approvers || [],
+              approved: false,
+              message: message || 'Transfer request rejected.',
+              lastUpdatedBy: companyRecord?.emailid,
+            });
+            await getApprovals(company, companyRecord);
+            setAlertState('success');
+            setAlert('Transfer request rejected.');
+            setAlertTimeout(1500);
+          } catch (error) {
+            setAlertState('error');
+            setAlert(error.message || 'Unable to reject transfer request.');
+            setAlertTimeout(5000);
+          }
         }}
       />
       <DetailModal
@@ -2250,7 +2306,8 @@ const TransactionHistory = () => {
   );
 };
 
-const TransferApprovalModal = ({ show, approvals, canApprove, onClose, onApprove }) => {
+const TransferApprovalModal = ({ show, approvals, canApprove, onClose, onApprove, onReject }) => {
+  const [rejectMessages, setRejectMessages] = useState({});
   if (!show) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -2283,9 +2340,23 @@ const TransferApprovalModal = ({ show, approvals, canApprove, onClose, onApprove
                   ))}
                 </div>
                 {canApprove && (
-                  <button className='btn btn-primary' onClick={() => onApprove(approval)}>
-                    Approve Request
-                  </button>
+                  <div className='transfer-approval-actions'>
+                    <textarea
+                      className='transfer-approval-message'
+                      placeholder='Optional rejection message'
+                      value={rejectMessages[approval.createdAt] || ''}
+                      onChange={(event) => setRejectMessages((prev) => ({
+                        ...prev,
+                        [approval.createdAt]: event.target.value,
+                      }))}
+                    />
+                    <button className='btn btn-primary' onClick={() => onApprove(approval)}>
+                      Approve Request
+                    </button>
+                    <button className='btn btn-secondary' onClick={() => onReject(approval, rejectMessages[approval.createdAt])}>
+                      Reject
+                    </button>
+                  </div>
                 )}
               </div>
             )
