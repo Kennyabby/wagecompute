@@ -245,6 +245,26 @@
     font-size: 14px;
 }
 
+.settings-accounting-help {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    max-width: 880px;
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(106, 242, 173, 0.08);
+    border: 1px solid rgba(43, 106, 75, 0.12);
+    color: var(--settings-text-muted);
+    line-height: 1.55;
+    font-size: 13px;
+}
+
+.settings-accounting-help strong {
+    flex-shrink: 0;
+    color: var(--settings-primary);
+}
+
 .settings-accounting-actions {
     display: flex;
     gap: 12px;
@@ -856,6 +876,10 @@ input:checked + .slider:before {
         justify-content: stretch;
     }
 
+    .settings-accounting-help {
+        flex-direction: column;
+    }
+
     .settings-accounting-actions .savebtn {
         width: 100%;
     }
@@ -912,6 +936,8 @@ input:checked + .slider:before {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .settings-billing-hero,
@@ -953,6 +979,23 @@ input:checked + .slider:before {
     gap: 12px;
     flex-wrap: wrap;
     justify-content: flex-end;
+}
+
+.settings-billing-autorenew {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
+    border: 1px solid rgba(23, 56, 41, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    color: #173829;
+    font-size: 12px;
+    font-family: 'MontserratBold', sans-serif;
+}
+
+.settings-billing-autorenew input {
+    accent-color: #2b6a4b;
 }
 
 .settings-billing-secondary-btn,
@@ -1022,10 +1065,44 @@ input:checked + .slider:before {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
+    min-width: 0;
 }
 
 .settings-billing-panel {
     padding: 24px;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.settings-billing-card-panel {
+    margin: 18px 0;
+}
+
+.settings-billing-card-list {
+    display: grid;
+    gap: 12px;
+}
+
+.settings-billing-card-token {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(23, 56, 41, 0.1);
+    background: linear-gradient(135deg, rgba(248, 250, 249, 0.95), rgba(235, 245, 239, 0.72));
+}
+
+.settings-billing-card-token strong,
+.settings-billing-card-token span {
+    display: block;
+}
+
+.settings-billing-card-token span {
+    margin-top: 5px;
+    color: rgba(23, 56, 41, 0.62);
+    font-size: 12px;
 }
 
 .settings-billing-panel-header {
@@ -1037,7 +1114,13 @@ input:checked + .slider:before {
 }
 
 .settings-billing-table-wrap {
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+    border-radius: 16px;
 }
 
 .settings-billing-table {
@@ -1174,11 +1257,13 @@ input:checked + .slider:before {
 @media (max-width: 1000px) {
     .billing-settings {
         overflow-x: hidden;
+        width: 100%;
     }
 
     .settings-billing-shell {
         padding: 24px 20px;
         gap: 32px;
+        width: 100%;
     }
 
     .settings-billing-hero {
@@ -1206,6 +1291,7 @@ input:checked + .slider:before {
     .settings-billing-summary-grid {
         grid-template-columns: 1fr;
         gap: 16px;
+        min-width: 0;
     }
 
     .settings-billing-summary-card {
@@ -1215,7 +1301,7 @@ input:checked + .slider:before {
 
 @media (max-width: 640px) {
     .settings-billing-shell {
-        padding: 20px 16px;
+        padding: 20px 12px;
     }
 
     .settings-billing-summary-grid,
@@ -1225,8 +1311,19 @@ input:checked + .slider:before {
 
     .settings-billing-panel,
     .settings-billing-platform {
-        padding: 20px 16px;
+        padding: 18px 12px;
         border-radius: 16px;
+    }
+
+    .settings-billing-card-token,
+    .settings-billing-panel-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .settings-billing-card-token .settings-billing-inline-btn,
+    .settings-billing-panel-header .settings-billing-secondary-btn {
+        width: 100%;
     }
 
     .settings-billing-hero h2,
@@ -1238,5 +1335,16 @@ input:checked + .slider:before {
     .settings-billing-table th, .settings-billing-table td {
         padding: 12px 8px;
         font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .settings-billing-table-wrap::after {
+        content: 'Swipe sideways to view more';
+        display: block;
+        padding: 8px 2px 0;
+        color: var(--settings-text-muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-align: right;
     }
 }

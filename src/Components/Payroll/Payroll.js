@@ -205,6 +205,7 @@ const Payroll = () =>{
                                        </div>
                                         <div className='billtoview'>
                                             <div className="billto">
+                                                {curEmployee.profilePhotoUrl && <img src={curEmployee.profilePhotoUrl} alt='Employee profile' className='payroll-employee-photo' />}
                                                 <br />
                                                 <p className='billtoitem'><b>{`Employee ID: `}</b>{curEmployee.i_d}</p>
                                                 <p className='billtoitem'><b>{`Bank Name: `}</b>{curEmployee.bankName}</p>

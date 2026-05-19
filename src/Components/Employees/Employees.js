@@ -3,6 +3,7 @@ import './Employees.css'
 import { useEffect, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
+import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 
 const Employees = () => {
     const { storePath,
@@ -56,9 +57,14 @@ const Employees = () => {
         guarantorRelationship: '',
         guarantorKnowsEmploeyeeFor: '',
         guarantorStance: '',
-        guarantorFormCreatedAt: ''
+        guarantorFormCreatedAt: '',
+        profilePhotoId: '',
+        profilePhotoUrl: '',
+        guarantorPhotoId: '',
+        guarantorPhotoUrl: '',
     }
     const [fields, setFields] = useState({ ...initFields })
+    const [pendingPhotos, setPendingPhotos] = useState({ profile: null, guarantor: null })
     useEffect(() => {
         storePath('employees')
         document.title = 'Employees | Enterprise Compute Central'   
@@ -90,6 +96,8 @@ const Employees = () => {
         setIsView(false)
         setWriteStatus('New')
         setCurEmployee(null)
+        setPendingPhotos({ profile: null, guarantor: null })
+        setMobileDetailOpen(false)
     }
     const changeEmployeeType = (name) => {
         if (name) {
@@ -109,12 +117,11 @@ const Employees = () => {
             `Adding Employee...`
         )
         if (fields.i_d) {
+            const createdAt = Date.now()
             const newEmployee = {
                 ...fields,
-                createdAt: Date.now()
+                createdAt
             }
-            const newEmployees = [...employees, newEmployee]
-
             const resps = await fetchServer("POST", {
                 database: company,
                 collection: "Employees",
@@ -129,10 +136,19 @@ const Employees = () => {
                 )
                 setAlertTimeout(5000)
             } else {
-                setEmployees(newEmployees)
-                setCurEmployee(newEmployee)
+                const employeeWithPhotos = await uploadEmployeePhotos(newEmployee)
+                if (employeeWithPhotos !== newEmployee) {
+                    await fetchServer("POST", {
+                        database: company,
+                        collection: "Employees",
+                        prop: [{ i_d: newEmployee.i_d }, employeeWithPhotos]
+                    }, "updateOneDoc", server)
+                }
+                setEmployees([...employees, employeeWithPhotos])
+                setCurEmployee(employeeWithPhotos)
                 setIsView(true)
-                setFields({ ...newEmployee })
+                setFields({ ...employeeWithPhotos })
+                setPendingPhotos({ profile: null, guarantor: null })
                 setAlertState('success')
                 setAlert(
                     'Employee Added Successfully!'
@@ -155,14 +171,15 @@ const Employees = () => {
                 ...fields,
                 createdAt: employees[index].createdAt
             }
+            const employeeWithPhotos = await uploadEmployeePhotos(updatedEmployee)
             const filteredEmp = employees.filter((emp) => {
                 return emp.i_d !== i_d
             })
-            const updatedEmployees = [...filteredEmp, updatedEmployee]
+            const updatedEmployees = [...filteredEmp, employeeWithPhotos]
             const resps = await fetchServer("POST", {
                 database: company,
                 collection: "Employees",
-                prop: [{ i_d: i_d }, updatedEmployee]
+                prop: [{ i_d: i_d }, employeeWithPhotos]
             }, "updateOneDoc", server)
 
             if (resps.err) {
@@ -174,9 +191,10 @@ const Employees = () => {
                 setAlertTimeout(5000)
             } else {
                 setEmployees(updatedEmployees)
-                setCurEmployee(updatedEmployee)
+                setCurEmployee(employeeWithPhotos)
                 setIsView(true)
-                setFields({ ...updatedEmployee })
+                setFields({ ...employeeWithPhotos })
+                setPendingPhotos({ profile: null, guarantor: null })
                 setAlertState('success')
                 setAlert(
                     'Employee Details Updated Successfully!'
@@ -284,6 +302,113 @@ const Employees = () => {
             }
         })
     }
+    const uploadEmployeePhotos = async (employee) => {
+        let nextEmployee = { ...employee }
+        const uploadOne = async (file, kind) => {
+            if (!file) return
+            const folderPath = `/Employees/${kind}`
+            const res = await uploadFile(file, folderPath, nextEmployee.createdAt, company, 'Employees', server)
+            const fileId = res?.fileId || res?.id || res?.imageId || res?.imgId || res?.data?.id || res?.data?.imgId || ''
+            const fileUrl = res?.url || res?.downloadLink || res?.viewLink || res?.webViewLink || res?.webContentLink || res?.data?.url || res?.data?.downloadLink || res?.data?.viewLink || ''
+            if (fileId || fileUrl) {
+                nextEmployee = {
+                    ...nextEmployee,
+                    [kind === 'profile' ? 'profilePhotoId' : 'guarantorPhotoId']: fileId,
+                    [kind === 'profile' ? 'profilePhotoUrl' : 'guarantorPhotoUrl']: fileUrl,
+                }
+            }
+        }
+        await uploadOne(pendingPhotos.profile, 'profile')
+        await uploadOne(pendingPhotos.guarantor, 'guarantor')
+        return nextEmployee
+    }
+    const handlePhotoChange = (event, kind) => {
+        const file = event.target.files?.[0]
+        if (!file) return
+        const previewUrl = URL.createObjectURL(file)
+        setPendingPhotos((current) => ({ ...current, [kind]: file }))
+        setFields((current) => ({
+            ...current,
+            [kind === 'profile' ? 'profilePhotoUrl' : 'guarantorPhotoUrl']: previewUrl,
+        }))
+    }
+    const safeText = (value) => String(value || '--')
+    const printEmployeeDocument = (type) => {
+        const employee = curEmployee || fields
+        const employeeName = [employee.firstName, employee.otherName, employee.lastName].filter(Boolean).join(' ')
+        const titleMap = {
+            details: 'Employee Basic and HR Details',
+            appointment: 'Appointment Letter',
+            guarantor: 'Employee Guarantor Form',
+        }
+        const rows = [
+            ['Employee ID', employee.i_d],
+            ['Full Name', employeeName],
+            ['Department', employee.department],
+            ['Position', employee.position],
+            ['Gender', employee.gender],
+            ['Phone Number', employee.phoneNo],
+            ['Address', employee.address],
+            ['Hired Date', employee.hiredDate],
+            ['Bank Name', employee.bankName],
+            ['Account Number', employee.accountNo],
+            ['Salary', employee.salary ? `N${Number(employee.salary).toLocaleString()}` : ''],
+            ['Expected Work Days', employee.expectedWorkDays],
+        ]
+        const guarantorRows = [
+            ['Guarantor Name', employee.guarantorName],
+            ['Address', employee.guarantorAddress],
+            ['Phone Number', employee.guarantorPhoneNo],
+            ['Relationship', employee.guarantorRelationship],
+            ['Knows Employee For', employee.guarantorKnowsEmploeyeeFor],
+            ['Can Vouch', employee.guarantorStance],
+        ]
+        const appointment = `
+            <p>Dear ${safeText(employeeName)},</p>
+            <p>We are pleased to confirm your appointment as <strong>${safeText(employee.position)}</strong> in the <strong>${safeText(employee.department)}</strong> department.</p>
+            <p>Your appointment takes effect from <strong>${safeText(employee.hiredDate)}</strong>. Your monthly salary is <strong>${employee.salary ? `N${Number(employee.salary).toLocaleString()}` : '--'}</strong>, subject to company policies and applicable deductions.</p>
+            <p>Kindly accept this appointment by signing below.</p>
+        `
+        const printWindow = window.open('', '_blank', 'width=950,height=760')
+        if (!printWindow) return
+        const photo = employee.profilePhotoUrl ? `<img class="photo" src="${employee.profilePhotoUrl}" alt="Employee" />` : ''
+        const guarantorPhoto = employee.guarantorPhotoUrl ? `<img class="photo" src="${employee.guarantorPhotoUrl}" alt="Guarantor" />` : ''
+        const table = (list) => list.map(([label, value]) => `<tr><th>${label}</th><td>${safeText(value)}</td></tr>`).join('')
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>${titleMap[type] || titleMap.details}</title>
+                    <style>
+                        body { font-family: Montserrat, Arial, sans-serif; color: #173829; margin: 30px; }
+                        .sheet { border: 1px solid #dbe7df; border-radius: 20px; padding: 28px; }
+                        .head { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; border-bottom:1px solid #e8f0eb; padding-bottom:18px; margin-bottom:20px; }
+                        h1 { margin:0; font-size:24px; }
+                        p { line-height:1.7; }
+                        .photo { width:112px; height:112px; object-fit:cover; border-radius:18px; border:1px solid #dbe7df; }
+                        table { width:100%; border-collapse:collapse; margin-top:16px; }
+                        th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #edf4ef; font-size:13px; }
+                        th { width:30%; color:#6b8175; text-transform:uppercase; font-size:11px; letter-spacing:.06em; }
+                        .sign { display:grid; grid-template-columns:1fr 1fr; gap:34px; margin-top:50px; }
+                        .line { border-top:1px solid #173829; padding-top:8px; font-size:12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="sheet">
+                        <div class="head">
+                            <div><h1>${titleMap[type] || titleMap.details}</h1><p>${safeText(companyRecord?.name || company)}</p></div>
+                            <div>${type === 'guarantor' ? guarantorPhoto : photo}</div>
+                        </div>
+                        ${type === 'appointment' ? appointment : `<table>${table(type === 'guarantor' ? guarantorRows : rows)}</table>`}
+                        ${type === 'guarantor' ? `<table>${table(guarantorRows)}</table>` : ''}
+                        <div class="sign"><div class="line">Employee Signature / Date</div><div class="line">Authorized Signature / Date</div></div>
+                    </div>
+                </body>
+            </html>
+        `)
+        printWindow.document.close()
+        printWindow.focus()
+        printWindow.print()
+    }
     const handleViewClick = (e, index, employee) => {
         const name = e.target.getAttribute('name')
         if (name === 'edit') {
@@ -334,6 +459,10 @@ const Employees = () => {
         .join('')
         .slice(0, 2)
         .toUpperCase() || 'EC'
+    const activePanelPhotoUrl = selform === 'Guarantor'
+        ? fields.guarantorPhotoUrl
+        : fields.profilePhotoUrl
+    const activePanelPhotoAlt = selform === 'Guarantor' ? 'Guarantor profile' : 'Employee profile'
     const panelTitle = isView ? 'Employee Profile' : (writeStatus === 'New' ? 'Create Employee' : 'Edit Employee')
     const panelDescription = selform === 'Basic'
         ? 'Personal identity, contact details, and assigned role.'
@@ -466,7 +595,11 @@ const Employees = () => {
                             &larr; Back to Employees
                         </button>
                         <div className='employees-detail-hero'>
-                            <div className='employees-detail-avatar'>{panelEmployeeInitials}</div>
+                            <div className='employees-detail-avatar'>
+                                {activePanelPhotoUrl
+                                    ? <img src={activePanelPhotoUrl} alt={activePanelPhotoAlt} />
+                                    : panelEmployeeInitials}
+                            </div>
                             <div className='employees-detail-copy'>
                                 <div className='employees-detail-kicker'>{panelTitle}</div>
                                 <h3>{panelEmployeeName || 'Start a fresh employee record'}</h3>
@@ -476,14 +609,21 @@ const Employees = () => {
                                     <span className='employees-detail-badge'>{fields.department || 'Department pending'}</span>
                                     <span className='employees-detail-badge'>{fields.position || 'Role pending'}</span>
                                 </div>
+                                <div className='employees-document-actions'>
+                                    <button type='button' onClick={() => printEmployeeDocument('details')} disabled={!fields.i_d}>Print Details</button>
+                                    <button type='button' onClick={() => printEmployeeDocument('appointment')} disabled={!fields.i_d}>Appointment Letter</button>
+                                    <button type='button' onClick={() => printEmployeeDocument('guarantor')} disabled={!fields.i_d}>Guarantor Form</button>
+                                </div>
                             </div>
-                            {writeStatus === 'Edit' && !isView && <button
-                                type='button'
-                                className='employees-delete-btn'
-                                onClick={deleteEmployee}
-                            >
-                                Delete
-                            </button>}
+                            <div className='employees-detail-actions'>
+                                {writeStatus === 'Edit' && !isView && <button
+                                    type='button'
+                                    className='employees-delete-btn'
+                                    onClick={deleteEmployee}
+                                >
+                                    Delete
+                                </button>}
+                            </div>
                         </div>
                         <div className='employees-section-tabs' onClick={toggleSelForm}>
                             <button type='button' name='Basic' className={'employees-section-tab' + (selform === 'Basic' ? ' active' : '')}>Basic Info</button>
@@ -504,6 +644,16 @@ const Employees = () => {
                             </div>
                             <div className='fm' onChange={handleFieldChange}>
                         {selform === 'Basic' && <div className='basic'>
+                            <div className='inpcov employees-photo-upload'>
+                                <label className='employees-field-label'>Employee Profile Photo</label>
+                                <input
+                                    className='forminp'
+                                    type='file'
+                                    accept='image/*'
+                                    disabled={isView}
+                                    onChange={(event) => handlePhotoChange(event, 'profile')}
+                                />
+                            </div>
                             <div className='inpcov'>
                                 <label className='employees-field-label'>Employee ID</label>
                                 <input
@@ -747,6 +897,16 @@ const Employees = () => {
                         }
                         {selform === 'Guarantor' &&
                             <div className='hr'>
+                                <div className='inpcov employees-photo-upload'>
+                                    <label className='employees-field-label'>Guarantor Profile Photo</label>
+                                    <input
+                                        className='forminp'
+                                        type='file'
+                                        accept='image/*'
+                                        disabled={isView}
+                                        onChange={(event) => handlePhotoChange(event, 'guarantor')}
+                                    />
+                                </div>
                                 <div className='inpcov'>
                                     <label className='employees-field-label'>Full Name</label>
                                     <input

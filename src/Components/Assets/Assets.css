@@ -1,0 +1,437 @@
+.asset-module {
+    min-height: 100%;
+    padding: 40px;
+    box-sizing: border-box;
+    background:
+        radial-gradient(circle at top left, rgba(239, 215, 151, 0.32), transparent 32%),
+        linear-gradient(135deg, #f8f6ec 0%, #eef5ef 100%);
+    color: #153d2c;
+    font-family: 'MontserratRegular', sans-serif;
+}
+
+.asset-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 20px;
+}
+
+.asset-kicker {
+    display: inline-flex;
+    margin-bottom: 10px;
+    color: #6b7f69;
+    font-family: 'MontserratBold', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.asset-hero h1,
+.asset-panel-head h2,
+.asset-form-head h2 {
+    margin: 0;
+    font-size: clamp(26px, 4vw, 48px);
+    font-weight: 500;
+    color: #143c2b;
+}
+
+.asset-hero p,
+.asset-panel-head p,
+.asset-form-head p,
+.asset-guide span {
+    margin: 10px 0 0;
+    max-width: 720px;
+    color: rgba(21, 61, 44, 0.68);
+    line-height: 1.65;
+}
+
+.asset-hero-actions,
+.asset-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.asset-main-btn,
+.asset-soft-btn,
+.asset-icon-btn {
+    min-height: 48px;
+    border: none;
+    border-radius: 16px;
+    padding: 0 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'MontserratBold', sans-serif;
+    cursor: pointer;
+}
+
+.asset-main-btn {
+    background: #194a35;
+    color: #fff;
+    box-shadow: 0 16px 34px rgba(25, 74, 53, 0.18);
+}
+
+.asset-soft-btn,
+.asset-icon-btn {
+    background: rgba(255, 255, 255, 0.82);
+    color: #194a35;
+    border: 1px solid rgba(25, 74, 53, 0.12);
+}
+
+.asset-main-btn:disabled,
+.asset-soft-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.asset-guide {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(25, 74, 53, 0.09);
+}
+
+.asset-guide strong {
+    flex-shrink: 0;
+    font-family: 'MontserratBold', sans-serif;
+}
+
+.asset-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.asset-kpi-grid div,
+.asset-list-panel,
+.asset-detail-panel,
+.asset-form-card {
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(25, 74, 53, 0.08);
+    border-radius: 28px;
+    box-shadow: 0 18px 48px rgba(25, 74, 53, 0.08);
+}
+
+.asset-kpi-grid div {
+    padding: 22px;
+}
+
+.asset-kpi-grid span {
+    display: block;
+    color: rgba(21, 61, 44, 0.62);
+    font-size: 12px;
+    font-family: 'MontserratBold', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.asset-kpi-grid strong {
+    display: block;
+    margin-top: 12px;
+    font-size: 24px;
+}
+
+.asset-layout {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.92fr) minmax(0, 1.5fr);
+    gap: 22px;
+    min-width: 0;
+}
+
+.asset-list-panel,
+.asset-detail-panel {
+    min-width: 0;
+    padding: 22px;
+}
+
+.asset-panel-head,
+.asset-form-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.asset-form-head {
+    justify-content: flex-start;
+}
+
+.asset-form-head svg {
+    width: 54px;
+    height: 54px;
+    padding: 14px;
+    border-radius: 18px;
+    background: #eef5ef;
+    color: #194a35;
+    box-sizing: border-box;
+}
+
+.asset-table-wrap {
+    width: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 18px;
+}
+
+.asset-table {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: collapse;
+}
+
+.asset-table th,
+.asset-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid rgba(25, 74, 53, 0.08);
+    text-align: left;
+}
+
+.asset-table th {
+    color: rgba(21, 61, 44, 0.58);
+    font-size: 11px;
+    font-family: 'MontserratBold', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.asset-table tr {
+    cursor: pointer;
+}
+
+.asset-table tr.selected,
+.asset-table tr:hover {
+    background: rgba(25, 74, 53, 0.045);
+}
+
+.asset-table td strong,
+.asset-table td span {
+    display: block;
+}
+
+.asset-table td span {
+    margin-top: 4px;
+    color: rgba(21, 61, 44, 0.62);
+    font-size: 12px;
+}
+
+.asset-status {
+    width: fit-content;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(25, 74, 53, 0.1);
+    color: #194a35;
+    font-family: 'MontserratBold', sans-serif;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.asset-status.disposed {
+    background: rgba(209, 18, 18, 0.1);
+    color: #a51d1d;
+}
+
+.asset-empty {
+    text-align: center !important;
+    padding: 30px !important;
+    color: rgba(21, 61, 44, 0.58);
+}
+
+.asset-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.asset-tabs button {
+    border: 1px solid rgba(25, 74, 53, 0.11);
+    background: #fff;
+    color: #194a35;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-family: 'MontserratBold', sans-serif;
+    cursor: pointer;
+}
+
+.asset-tabs button.active {
+    background: #194a35;
+    color: #fff;
+}
+
+.asset-form-card {
+    padding: 24px;
+}
+
+.asset-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.asset-form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.asset-form-grid label span {
+    color: rgba(21, 61, 44, 0.62);
+    font-family: 'MontserratBold', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.asset-form-grid input,
+.asset-form-grid select,
+.asset-form-grid textarea {
+    width: 100%;
+    min-height: 50px;
+    border: 1px solid rgba(25, 74, 53, 0.12);
+    border-radius: 14px;
+    padding: 0 15px;
+    background: #f8faf6;
+    color: #153d2c;
+    font-family: inherit;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.asset-form-grid textarea {
+    min-height: 104px;
+    padding-top: 14px;
+    resize: vertical;
+}
+
+.asset-form-grid input:focus,
+.asset-form-grid select:focus,
+.asset-form-grid textarea:focus {
+    border-color: #194a35;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(25, 74, 53, 0.06);
+}
+
+.asset-wide {
+    grid-column: 1 / -1;
+}
+
+.asset-actions {
+    justify-content: flex-start;
+    margin-top: 20px;
+}
+
+.asset-chip-list,
+.asset-mini-history {
+    display: grid;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.asset-chip-list button,
+.asset-mini-history div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid rgba(25, 74, 53, 0.1);
+    border-radius: 16px;
+    background: #f8faf6;
+    padding: 13px 15px;
+    color: #153d2c;
+    font-family: inherit;
+    text-align: left;
+}
+
+.asset-chip-list button span,
+.asset-mini-history span {
+    color: rgba(21, 61, 44, 0.6);
+    font-size: 12px;
+}
+
+@media print {
+    .asset-hero-actions,
+    .asset-detail-panel,
+    .asset-guide {
+        display: none !important;
+    }
+
+    .asset-module {
+        padding: 0;
+        background: #fff;
+    }
+
+    .asset-layout,
+    .asset-kpi-grid {
+        display: block;
+    }
+}
+
+@media (max-width: 1180px) {
+    .asset-layout,
+    .asset-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .asset-module {
+        padding: 22px 12px;
+    }
+
+    .asset-hero,
+    .asset-panel-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .asset-hero-actions,
+    .asset-actions {
+        flex-direction: column;
+    }
+
+    .asset-hero-actions button,
+    .asset-actions button {
+        width: 100%;
+    }
+
+    .asset-list-panel,
+    .asset-detail-panel,
+    .asset-form-card {
+        padding: 16px 12px;
+        border-radius: 20px;
+    }
+
+    .asset-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .asset-guide {
+        flex-direction: column;
+    }
+
+    .asset-table th,
+    .asset-table td {
+        white-space: nowrap;
+    }
+
+    .asset-table-wrap::after {
+        content: 'Swipe sideways to view the full asset register';
+        display: block;
+        padding: 8px 2px 0;
+        color: rgba(21, 61, 44, 0.58);
+        font-size: 11px;
+        font-family: 'MontserratBold', sans-serif;
+        text-align: right;
+    }
+}

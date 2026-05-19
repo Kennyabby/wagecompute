@@ -89,12 +89,15 @@ const BillingSettingsPanel = ({ variants }) => {
     currentStatus: null,
     orders: [],
     payments: [],
+    cards: [],
     companyProfile: null,
     plan: null,
   })
   const [isSnapshotLoading, setIsSnapshotLoading] = useState(false)
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false)
   const [disablePaystackPayment, setDisablePaystackPayment] = useState(false)
+  const [subscriptionMode, setSubscriptionMode] = useState(true)
+  const [cardActionLoading, setCardActionLoading] = useState('')
 
   const currentStatus = snapshot.currentStatus || subscriptionState || null
 
@@ -110,6 +113,7 @@ const BillingSettingsPanel = ({ variants }) => {
         currentStatus: response.currentStatus || null,
         orders: response.orders || [],
         payments: response.payments || [],
+        cards: response.cards || [],
         companyProfile: response.companyProfile || null,
         plan: response.plan || null,
       }
@@ -141,7 +145,7 @@ const BillingSettingsPanel = ({ variants }) => {
     }
     setIsCheckoutLoading(true)
     try {
-      const response = await fetchServer('POST', { months: 1 }, 'billing/initializeTenantSubscription', server)
+      const response = await fetchServer('POST', { months: 1, subscriptionMode }, 'billing/initializeTenantSubscription', server)
       if (response.err || !response.ok || !response.authorizationUrl) {
         throw new Error(response.mess || 'Unable to initialize Paystack checkout.')
       }
@@ -151,6 +155,42 @@ const BillingSettingsPanel = ({ variants }) => {
       setAlert(error.message || 'Unable to initialize Paystack checkout.')
       setAlertTimeout(3500)
       setIsCheckoutLoading(false)
+    }
+  }
+
+  const handleCancelAutoRenewal = async () => {
+    setCardActionLoading('cancel')
+    try {
+      const response = await fetchServer('POST', {}, 'billing/requestSubscriptionCancellation', server)
+      if (response.err || !response.ok) throw new Error(response.mess || 'Unable to cancel auto-renewal.')
+      setAlertState('success')
+      setAlert('Subscription auto-renewal has been cancelled.')
+      setAlertTimeout(2500)
+      await loadTenantSnapshot(false)
+    } catch (error) {
+      setAlertState('error')
+      setAlert(error.message || 'Unable to cancel auto-renewal.')
+      setAlertTimeout(4000)
+    } finally {
+      setCardActionLoading('')
+    }
+  }
+
+  const handleRemoveCard = async (authorizationCode = '') => {
+    setCardActionLoading('remove')
+    try {
+      const response = await fetchServer('POST', { authorizationCode }, 'billing/requestCardRemoval', server)
+      if (response.err || !response.ok) throw new Error(response.mess || 'Unable to remove card.')
+      setAlertState('success')
+      setAlert('Card removal request has been processed.')
+      setAlertTimeout(2500)
+      await loadTenantSnapshot(false)
+    } catch (error) {
+      setAlertState('error')
+      setAlert(error.message || 'Unable to remove card.')
+      setAlertTimeout(4000)
+    } finally {
+      setCardActionLoading('')
     }
   }
 
@@ -209,6 +249,14 @@ const BillingSettingsPanel = ({ variants }) => {
             </p>
           </div>
           <div className='settings-billing-actions'>
+            <label className='settings-billing-autorenew'>
+              <input
+                type='checkbox'
+                checked={subscriptionMode}
+                onChange={(event) => setSubscriptionMode(event.target.checked)}
+              />
+              <span>Save card for monthly auto-renewal</span>
+            </label>
             <button className='savebtn' onClick={handleSubscribe} disabled={isCheckoutLoading}>
               {isCheckoutLoading ? 'Opening Paystack...' : (currentStatus?.trialActive ? 'Upgrade Before Trial Ends' : 'Subscribe with Paystack')}
             </button>
@@ -255,6 +303,35 @@ const BillingSettingsPanel = ({ variants }) => {
             <p>{currentStatus?.lastPaymentAt ? `Paid ${formatDate(currentStatus.lastPaymentAt)}` : 'No subscription payment recorded yet.'}</p>
           </div>
         </div>
+
+        <section className='settings-billing-panel settings-billing-card-panel'>
+          <div className='settings-billing-panel-header'>
+            <div>
+              <h3>Card subscription</h3>
+              <p>Auto-renewal is optional. You can still use normal Paystack checkout or bank transfer for future renewals.</p>
+            </div>
+            {currentStatus?.subscriptionAutoRenew && (
+              <button className='settings-billing-secondary-btn' onClick={handleCancelAutoRenewal} disabled={cardActionLoading === 'cancel'}>
+                {cardActionLoading === 'cancel' ? 'Cancelling...' : 'Cancel Auto-renewal'}
+              </button>
+            )}
+          </div>
+          <div className='settings-billing-card-list'>
+            {snapshot.cards?.length ? snapshot.cards.map((card) => (
+              <div className='settings-billing-card-token' key={card.authorizationCode}>
+                <div>
+                  <strong>{card.bank || 'Paystack Card'} {card.last4 ? `•••• ${card.last4}` : ''}</strong>
+                  <span>{card.cardType || 'card'} · {formatStatus(card.status)} · {card.autoRenew ? 'Auto-renewal on' : 'Auto-renewal off'}</span>
+                </div>
+                <button className='settings-billing-inline-btn' onClick={() => handleRemoveCard(card.authorizationCode)} disabled={cardActionLoading === 'remove'}>
+                  {cardActionLoading === 'remove' ? 'Removing...' : 'Remove Card'}
+                </button>
+              </div>
+            )) : (
+              <div className='settings-billing-empty'>No reusable Paystack card is linked yet.</div>
+            )}
+          </div>
+        </section>
 
         <div className='settings-billing-panels'>
           <section className='settings-billing-panel'>

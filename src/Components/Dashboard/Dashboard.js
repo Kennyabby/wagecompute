@@ -14,6 +14,7 @@ import Sales from '../Sales/Sales'
 import PointOfSales from '../PointOfSales/PointOfSales'
 import Delivery from '../Delivery/Delivery'
 import Inventory from '../Inventory/Inventory'
+import Assets from '../Assets/Assets'
 import Accommodation from '../Accommodation/Accommodation'
 import Purchase from '../Purchase/Purchase'
 import Expenses from '../Expenses/Expenses'
@@ -74,6 +75,20 @@ const LEDGER_REQUIREMENTS = {
             ['inventory', 'adjustmentAccount', 'Inventory adjustment'],
             ['inventory', 'workInProgressAccount', 'Production WIP'],
             ['inventory', 'productionVarianceAccount', 'Production variance'],
+        ],
+    },
+    assets: {
+        title: 'Assets',
+        fields: [
+            ['assets', 'fixedAssetAccount', 'Fixed asset account'],
+            ['assets', 'accumulatedDepreciationAccount', 'Accumulated depreciation account'],
+            ['assets', 'depreciationExpenseAccount', 'Depreciation expense account'],
+            ['assets', 'payableAccount', 'Asset payable account'],
+            ['assets', 'disposalGainAccount', 'Asset disposal gain account'],
+            ['assets', 'disposalLossAccount', 'Asset disposal loss account'],
+        ],
+        lists: [
+            ['paymentMethods', null, 'accountCode', 'Payment method'],
         ],
     },
     pos: {
@@ -293,6 +308,8 @@ const Dashboard = ()=>{
                 setView(guardPage(path, <Sales/>))
             }else if (path === 'inventory' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('inventory'))){
                 setView(guardPage(path, <Inventory/>))
+            }else if (path === 'assets' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('assets'))){
+                setView(guardPage(path, <Assets/>))
             }else if (path === 'accommodations' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('accommodations'))){
                 setView(guardPage(path, <Accommodation/>))
             }else if (path === 'purchase' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('purchase'))){

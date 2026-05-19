@@ -522,6 +522,29 @@ const CentralAdminApp = () => {
     setActionDatabase('')
   }
 
+  const handleTenantBillingControl = async (database, action, authorizationCode = '') => {
+    if (!database) {
+      setNotice('error', 'Select a tenant database first.')
+      return
+    }
+    setActionDatabase(database)
+    const endpoint = action === 'remove-card'
+      ? 'billing/adminRemoveCompanyCard'
+      : 'billing/adminCancelCompanySubscription'
+    const response = await requestAdmin('POST', endpoint, { database, authorizationCode })
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || 'Unable to update tenant Paystack subscription settings.')
+      setActionDatabase('')
+      return
+    }
+    setNotice('success', action === 'remove-card' ? 'Tenant card removal processed.' : 'Tenant auto-renewal cancelled.')
+    await loadSnapshot()
+    if (selectedTenant === database) {
+      await loadTenantDetails(database)
+    }
+    setActionDatabase('')
+  }
+
   const handleVerifyPendingPayments = async () => {
     setIsReconcilingPending(true)
     setNotice('', '')
@@ -993,6 +1016,29 @@ const CentralAdminApp = () => {
                       <div className='ca-mini-card'><span>Expires</span><strong>{formatDateTime(tenantDetails.subscriptionStatus?.expiresAt)}</strong></div>
                       <div className='ca-mini-card'><span>Trial status</span><strong>{formatStatus(tenantDetails.subscriptionStatus?.trialSuspended ? 'trial_suspended' : (tenantDetails.subscriptionStatus?.trialActive ? 'trial_active' : tenantDetails.subscriptionStatus?.trialExpired ? 'trial_expired' : 'not_on_trial'))}</strong></div>
                       <div className='ca-mini-card'><span>Trial expiry</span><strong>{formatDateTime(tenantDetails.subscriptionStatus?.trialExpiresAt)}</strong></div>
+                    </div>
+
+                    <div className='ca-control-strip'>
+                      <div>
+                        <strong>Paystack card subscription</strong>
+                        <span>{tenantDetails.subscriptionStatus?.subscriptionAutoRenew ? 'Auto-renewal is enabled for this tenant.' : 'No active auto-renewal is currently enabled.'}</span>
+                      </div>
+                      <div className='ca-inline-action-row'>
+                        <button
+                          className='ca-inline-btn danger'
+                          onClick={() => handleTenantBillingControl(selectedTenant, 'cancel-subscription')}
+                          disabled={actionDatabase === selectedTenant}
+                        >
+                          {actionDatabase === selectedTenant ? 'Updating...' : 'Cancel Auto-renewal'}
+                        </button>
+                        <button
+                          className='ca-inline-btn danger'
+                          onClick={() => handleTenantBillingControl(selectedTenant, 'remove-card', tenantDetails.subscriptionCards?.[0]?.authorizationCode || '')}
+                          disabled={actionDatabase === selectedTenant || !tenantDetails.subscriptionCards?.length}
+                        >
+                          {actionDatabase === selectedTenant ? 'Updating...' : 'Remove Linked Card'}
+                        </button>
+                      </div>
                     </div>
 
                     <div className='ca-table-wrap'>

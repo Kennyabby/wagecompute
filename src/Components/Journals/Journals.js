@@ -1155,6 +1155,11 @@ const Journals = () => {
                 ...(prev || {}),
                 [glCode]: Array.isArray(resp.ledger) ? resp.ledger : []
             }))
+            setDrillDown((prev) => prev?.glCode === glCode ? {
+                ...prev,
+                balance: resp.balance || null,
+                openingBaseClosingDate: resp.meta?.openingBaseClosingDate || resp.meta?.openingBaseClosing?.closingDate || null,
+            } : prev)
         } catch (error) {
             setAlertState('error')
             setAlert(error.message || 'Failed to load account ledger')
@@ -1271,6 +1276,9 @@ const Journals = () => {
         const fmtAmt = (n) => n ? n.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-';
         const fmtDate = (d) => d ? new Date(Number(d) || d).toLocaleDateString() : '-';
         const sideLabel = drillDown.side === 'net' ? 'All' : drillDown.side === 'debit' ? 'Debit' : 'Credit';
+        const balanceHint = drillDown.balance
+            ? `Balance: debit ${fmtAmt(drillDown.balance.debit)} / credit ${fmtAmt(drillDown.balance.credit)} / net ${fmtAmt(drillDown.balance.net)}`
+            : '';
 
         return (
             <div className="journals-modal-overlay" style={getModalOverlayStyle()} onClick={() => setDrillDown(null)}>
@@ -1286,7 +1294,13 @@ const Journals = () => {
                         {isDrillDownLoading ? (
                             <div className="dd-empty">Loading ledger entries...</div>
                         ) : filtered.length === 0 ? (
-                            <div className="dd-empty">No transactions found for this account/filter.</div>
+                            <div className="dd-empty">
+                                <strong>No period ledger lines found for this account/filter.</strong>
+                                {balanceHint && <span>{balanceHint}</span>}
+                                {drillDown.openingBaseClosingDate && (
+                                    <span>This balance may include opening values from the stored closing on {drillDown.openingBaseClosingDate}.</span>
+                                )}
+                            </div>
                         ) : (
                             <table className="dd-table">
                                 <thead>
@@ -2258,6 +2272,20 @@ const Journals = () => {
     const renderReports = () => {
         const fmt = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })
         const { profitLoss, trialBalance, balanceSheet } = reportData
+        const openReportLedger = (row, side = 'net') => {
+            if (!row?.code) return
+            handleOpenDrillDown({ 'g/l code': row.code, name: row.name }, side)
+        }
+        const renderLedgerAmount = (row, value, side = 'net') => (
+            <button
+                type="button"
+                className="report-ledger-link"
+                onClick={() => openReportLedger(row, side)}
+                title={`View ledger entries for ${row?.name || 'this account'}`}
+            >
+                {fmt(value)}
+            </button>
+        )
         
         return (
             <div className="reports-wrapper fade-in">
@@ -2286,7 +2314,7 @@ const Journals = () => {
                                 {profitLoss.revenue.map((row) => (
                                     <div className="pl-line" key={row.code}>
                                         <span>{row.name}</span>
-                                        <span className="num">{fmt(row.amount)}</span>
+                                        <span className="num">{renderLedgerAmount(row, row.amount, 'credit')}</span>
                                     </div>
                                 ))}
                                 <div className="pl-subtotal">
@@ -2300,7 +2328,7 @@ const Journals = () => {
                                 {profitLoss.costOfSales.map((row) => (
                                     <div className="pl-line" key={row.code}>
                                         <span>{row.name}</span>
-                                        <span className="num">{fmt(row.amount)}</span>
+                                        <span className="num">{renderLedgerAmount(row, row.amount, 'debit')}</span>
                                     </div>
                                 ))}
                                 <div className="pl-subtotal">
@@ -2319,7 +2347,7 @@ const Journals = () => {
                                 {profitLoss.expenses.map((row) => (
                                     <div className="pl-line" key={row.code}>
                                         <span>{row.name}</span>
-                                        <span className="num">{fmt(row.amount)}</span>
+                                        <span className="num">{renderLedgerAmount(row, row.amount, 'debit')}</span>
                                     </div>
                                 ))}
                                 <div className="pl-subtotal">
@@ -2340,7 +2368,7 @@ const Journals = () => {
                                 {balanceSheet.assets.map((row) => (
                                     <div className="pl-line" key={`asset-${row.code}`}>
                                         <span>{row.name}</span>
-                                        <span className="num">{fmt(row.amount)}</span>
+                                        <span className="num">{renderLedgerAmount(row, row.amount, 'debit')}</span>
                                     </div>
                                 ))}
                                 <div className="pl-subtotal">
@@ -2354,7 +2382,7 @@ const Journals = () => {
                                 {balanceSheet.liabilities.map((row) => (
                                     <div className="pl-line" key={`liability-${row.code}`}>
                                         <span>{row.name}</span>
-                                        <span className="num">{fmt(row.amount)}</span>
+                                        <span className="num">{renderLedgerAmount(row, row.amount, 'credit')}</span>
                                     </div>
                                 ))}
                             </div>
@@ -2364,7 +2392,7 @@ const Journals = () => {
                                 {balanceSheet.equity.map((row) => (
                                     <div className="pl-line" key={`equity-${row.code}`}>
                                         <span>{row.name}</span>
-                                        <span className="num">{fmt(row.amount)}</span>
+                                        <span className="num">{renderLedgerAmount(row, row.amount, 'credit')}</span>
                                     </div>
                                 ))}
                                 <div className="pl-subtotal">
@@ -2392,9 +2420,9 @@ const Journals = () => {
                                                     <span className="tb-code">{row.code}</span>
                                                     <span className="tb-name">{row.name}</span>
                                                 </td>
-                                                <td className="num">{fmt(row.debit)}</td>
-                                                <td className="num">{fmt(row.credit)}</td>
-                                                <td className="num">{fmt(row.net)}</td>
+                                                <td className="num">{renderLedgerAmount(row, row.debit, 'debit')}</td>
+                                                <td className="num">{renderLedgerAmount(row, row.credit, 'credit')}</td>
+                                                <td className="num">{renderLedgerAmount(row, row.net, 'net')}</td>
                                             </tr>
                                         )
                                     })}
@@ -2414,6 +2442,33 @@ const Journals = () => {
             </div>
         )
     }
+
+    const closingActionHelp = [
+        {
+            label: 'Build Closing',
+            title: 'Compute and save the monthly closing balances for the selected period end. This keeps future reports from recalculating from day one.',
+        },
+        {
+            label: 'Build with Ledger',
+            title: 'Build the same monthly closing and also store detailed ledger traces for audit. This is heavier, so use it when you need proof lines.',
+        },
+        {
+            label: 'Find Late Changes',
+            title: 'Detect backdated or changed transactions that may affect previous closings and add those closings to the recheck queue.',
+        },
+        {
+            label: 'Review Queue',
+            title: 'Open the list of closing dates waiting to be reprocessed.',
+        },
+        {
+            label: 'Run Queue',
+            title: 'Recompute queued closings that are not locked, then refresh accounting summaries.',
+        },
+        {
+            label: 'Admin Override Run',
+            title: 'Admin-only queue processing for locked closings. Use carefully when a locked period must be corrected.',
+        },
+    ]
 
     const renderJournalPostings = () => {
         return (
@@ -2448,24 +2503,35 @@ const Journals = () => {
                             </div>
 
                             <div className="closing-actions" style={{ display: closingToolbarOpen ? 'flex' : 'none' }}>
-                                <button className="j-btn-primary" onClick={() => handleComputeClosing(false)} disabled={isClosingAction}>Compute</button>
-                                <button className="j-btn-secondary" onClick={() => handleComputeClosing(true)} disabled={isClosingAction}>Compute + Raw</button>
+                                <button className="j-btn-primary" onClick={() => handleComputeClosing(false)} disabled={isClosingAction} title={closingActionHelp[0].title}>Build Closing</button>
+                                <button className="j-btn-secondary" onClick={() => handleComputeClosing(true)} disabled={isClosingAction} title={closingActionHelp[1].title}>Build with Ledger</button>
                                 {lastClosing && lastClosing.status !== 'confirmed' && (
-                                    <button className="j-btn-secondary" onClick={() => handleSetClosingStatus('confirmed')} disabled={isClosingAction}>Confirm</button>
+                                    <button className="j-btn-secondary" onClick={() => handleSetClosingStatus('confirmed')} disabled={isClosingAction} title="Mark the closing as reviewed. Confirmed closings can still be corrected before they are locked.">Confirm Closing</button>
                                 )}
                                 {lastClosing && lastClosing.status !== 'locked' && (
-                                    <button className="j-btn-danger" onClick={() => handleSetClosingStatus('locked')} disabled={isClosingAction}>Lock</button>
+                                    <button className="j-btn-danger" onClick={() => handleSetClosingStatus('locked')} disabled={isClosingAction} title="Lock the closing to prevent normal recompute. Admin override is required to change it.">Lock Closing</button>
                                 )}
                                 {lastClosing && (
-                                    <button className="j-btn-secondary" onClick={() => handleRecomputeClosing()} disabled={isClosingAction}>Recompute</button>
+                                    <button className="j-btn-secondary" onClick={() => handleRecomputeClosing()} disabled={isClosingAction} title="Rebuild the currently selected last closing from the latest source records.">Rebuild Closing</button>
                                 )}
-                                <button className="j-btn-secondary" onClick={() => handleDetectAffectedClosings()} disabled={isClosingAction}>Detect</button>
-                                <button className="j-btn-secondary" onClick={handleOpenPendingModal} disabled={isClosingAction}>Pending List</button>
-                                <button className="j-btn-secondary" onClick={() => handleTriggerPendingRecomputes(false)} disabled={isClosingAction}>Process Pending</button>
+                                <button className="j-btn-secondary" onClick={() => handleDetectAffectedClosings()} disabled={isClosingAction} title={closingActionHelp[2].title}>Find Late Changes</button>
+                                <button className="j-btn-secondary" onClick={handleOpenPendingModal} disabled={isClosingAction} title={closingActionHelp[3].title}>Review Queue</button>
+                                <button className="j-btn-secondary" onClick={() => handleTriggerPendingRecomputes(false)} disabled={isClosingAction} title={closingActionHelp[4].title}>Run Queue</button>
                                 {companyRecord?.status === 'admin' && (
-                                    <button className="j-btn-danger" onClick={() => handleTriggerPendingRecomputes(true)} disabled={isClosingAction}>Force (admin)</button>
+                                    <button className="j-btn-danger" onClick={() => handleTriggerPendingRecomputes(true)} disabled={isClosingAction} title={closingActionHelp[5].title}>Admin Override Run</button>
                                 )}
                             </div>
+                            <details className="accounting-actions-help" style={{ display: closingToolbarOpen ? 'block' : 'none' }}>
+                                <summary>What do these closing actions do?</summary>
+                                <div className="accounting-actions-help-grid">
+                                    {closingActionHelp.map((item) => (
+                                        <div className="accounting-actions-help-card" key={item.label}>
+                                            <strong>{item.label}</strong>
+                                            <span>{item.title}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </details>
                         </>
                     )}
                 </div>
