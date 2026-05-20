@@ -405,6 +405,8 @@ const Settings = () => {
                 desc: 'Approval Configuration',
                 updatedAt: Date.now(),
             }
+            delete payload._id
+            
             const resp = await fetchServer("POST", {
                 prop: [{ name: 'approvalConfig' }, payload]
             }, "updateSettings", server)

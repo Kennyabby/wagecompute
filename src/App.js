@@ -1936,11 +1936,9 @@ function App() {
     // Removed destructive Navigate('/') that was stripping paths on refresh
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     setCompany(cmp_val)
-    console.log("propVal", propVal)
     const resp = await fetchServer("POST", {
       sessionId: propVal
     }, "getUserProfileDetails", SERVER)
-    console.log("resp", resp)
     if ([null, undefined].includes(resp.record)) {
       removeSessions()
     } else {
