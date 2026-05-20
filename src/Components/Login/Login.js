@@ -257,7 +257,6 @@ const Login = () => {
             return ({ ...field, emailid: "", password: "" })
           })
           setSigninStatus("Sign In")
-          console.log("loading page with idVal: ", idVal)
           loadPage(idVal, requestedNext)
         }
       }
