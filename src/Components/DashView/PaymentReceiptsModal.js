@@ -15,6 +15,26 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     }, null)?.toISOString().slice(0, 10);
   }, [paymentReceipts]);
 
+  // Non-admin date visibility bounds: yesterday and today (YYYY-MM-DD)
+  const isNonAdmin = companyRecord?.status !== 'admin';
+  const getYesterdayAndToday = () => {
+    const todayObj = new Date();
+    const yesterdayObj = new Date();
+    yesterdayObj.setDate(todayObj.getDate() - 1);
+    
+    const getLocalDateString = (dateObj) => {
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    return {
+      today: getLocalDateString(todayObj),
+      yesterday: getLocalDateString(yesterdayObj)
+    };
+  };
+
   const [payPointAccounts, setPayPointAccounts] = useState({});
   useEffect(() => {
     const payPoints = paymentMethods.reduce((obj, method) => {
@@ -38,6 +58,24 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     onlyDuplicates: false
   });
 
+  // Clamp date filters to yesterday-today on mount/load for non-admin users
+  useEffect(() => {
+    if (isNonAdmin) {
+      const { yesterday, today } = getYesterdayAndToday();
+      setFilter(f => ({
+        ...f,
+        from: yesterday,
+        to: today
+      }));
+    } else {
+      setFilter(f => ({
+        ...f,
+        from: earliestDate,
+        to: ''
+      }));
+    }
+  }, [companyRecord, earliestDate, isNonAdmin]);
+
   // Multi-select toggles for each filter
   const [multiPaypoint, setMultiPaypoint] = useState(false);
   const [multiModule, setMultiModule] = useState(false);
@@ -55,8 +93,15 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
   const filteredReceipts = useMemo(() => {
     let data = paymentReceipts.filter(r => {
       const d = new Date(r.paymentDate).toISOString().slice(0, 10);
-      if (filter.from && d < filter.from) return false;
-      if (filter.to && d > filter.to) return false;
+      let effectiveFrom = filter.from;
+      let effectiveTo = filter.to;
+      if (isNonAdmin) {
+        const { yesterday, today } = getYesterdayAndToday();
+        if (!effectiveFrom || effectiveFrom < yesterday) effectiveFrom = yesterday;
+        if (!effectiveTo || effectiveTo > today) effectiveTo = today;
+      }
+      if (effectiveFrom && d < effectiveFrom) return false;
+      if (effectiveTo && d > effectiveTo) return false;
       if (multiPaypoint && Array.isArray(filter.paypoint) && filter.paypoint.length && !filter.paypoint.includes(r.paymentPoint)) return false;
       if (!multiPaypoint && filter.paypoint && r.paymentPoint !== filter.paypoint) return false;
       if (multiModule && Array.isArray(filter.module) && filter.module.length && !filter.module.includes(r.paymentModule)) return false;
@@ -257,11 +302,41 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontWeight: 'bold', color: '#1976d2' }}>Date From</label>
-            <input type="date" value={filter.from} min={earliestDate} onChange={e => setFilter(f => ({ ...f, from: e.target.value }))} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #90caf9' }} />
+            <input 
+              type="date" 
+              value={filter.from} 
+              min={isNonAdmin ? getYesterdayAndToday().yesterday : earliestDate} 
+              max={isNonAdmin ? getYesterdayAndToday().today : undefined} 
+              onChange={e => {
+                let val = e.target.value;
+                if (isNonAdmin) {
+                  const { yesterday, today } = getYesterdayAndToday();
+                  if (val < yesterday) val = yesterday;
+                  if (val > today) val = today;
+                }
+                setFilter(f => ({ ...f, from: val }));
+              }} 
+              style={{ padding: '6px', borderRadius: '4px', border: '1px solid #90caf9' }} 
+            />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontWeight: 'bold', color: '#1976d2' }}>Date To</label>
-            <input type="date" value={filter.to} min={filter.from} onChange={e => setFilter(f => ({ ...f, to: e.target.value }))} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #90caf9' }} />
+            <input 
+              type="date" 
+              value={filter.to} 
+              min={isNonAdmin ? getYesterdayAndToday().yesterday : filter.from} 
+              max={isNonAdmin ? getYesterdayAndToday().today : undefined} 
+              onChange={e => {
+                let val = e.target.value;
+                if (isNonAdmin) {
+                  const { yesterday, today } = getYesterdayAndToday();
+                  if (val < yesterday) val = yesterday;
+                  if (val > today) val = today;
+                }
+                setFilter(f => ({ ...f, to: val }));
+              }} 
+              style={{ padding: '6px', borderRadius: '4px', border: '1px solid #90caf9' }} 
+            />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontWeight: 'bold', color: '#1976d2' }}>Paypoint</label>
