@@ -108,8 +108,7 @@ const Stock = ({
     }, [approvals, companyRecord?.emailid]);
     const canPostTransferDirectly = companyRecord?.status === 'admin'
         || companyRecord?.permissions?.includes('all')
-        || companyRecord?.permissions?.includes('approve_posttransfer')
-        || companyRecord?.permissions?.includes('allow_transfer_posts');
+        || companyRecord?.permissions?.includes('approve_posttransfer')                        
     const refreshStockData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         try {
@@ -467,48 +466,55 @@ const Stock = ({
             });
 
             const postTransferDocuments = async () => {
-                setAlertState('info');
-                setAlert('Transferring products...');
-                setAlertTimeout(100000)
-                let countSuccess = 0;
-                for (const transferDocument of transferDocuments) {
-                    const resps = await fetchServer("POST", {
-                        database: company,
-                        collection: "InventoryTransactions",
-                        update: transferDocument
-                    }, "createDoc", server);
-                    if (resps.err || resps.error) {
-                        setAlertState('error');
-                        setAlert(resps.mess || resps.message || 'Transfer posting failed');
-                        setAlertTimeout(3000);
-                        setIsOnView(false);
-                        setIsSaveValue(false);
-                        setIsTransferValue(false);
-                        setFromWarehouse('');
-                        setToWarehouse('');
-                        return;
-                    } else {
-                        countSuccess++;
-                        setAlertState('success');
-                        setAlert(`${Math.ceil(countSuccess / 2)}/${validEntries.length} product(s) transferred successfully`);
-                        setAlertTimeout(100000);
+                if (companyRecord?.permissions?.includes('allow_transfer_posts') || companyRecord?.status === 'admin'){
+
+                    setAlertState('info');
+                    setAlert('Transferring products...');
+                    setAlertTimeout(100000)
+                    let countSuccess = 0;
+                    for (const transferDocument of transferDocuments) {
+                        const resps = await fetchServer("POST", {
+                            database: company,
+                            collection: "InventoryTransactions",
+                            update: transferDocument
+                        }, "createDoc", server);
+                        if (resps.err || resps.error) {
+                            setAlertState('error');
+                            setAlert(resps.mess || resps.message || 'Transfer posting failed');
+                            setAlertTimeout(3000);
+                            setIsOnView(false);
+                            setIsSaveValue(false);
+                            setIsTransferValue(false);
+                            setFromWarehouse('');
+                            setToWarehouse('');
+                            return;
+                        } else {
+                            countSuccess++;
+                            setAlertState('success');
+                            setAlert(`${Math.ceil(countSuccess / 2)}/${validEntries.length} product(s) transferred successfully`);
+                            setAlertTimeout(100000);
+                        }
                     }
+                    if (countSuccess !== transferDocuments.length) return;
+                    setAlertState('success');
+                    setAlert('All Products Transfered Successful!');
+                    setAlertTimeout(1000);
+                    setIsOnView(false);
+                    setIsSaveValue(false);
+                    setIsTransferValue(false);
+                    setFromWarehouse('');
+                    setToWarehouse('');
+                    getProductsStockReport(company, products, {
+                        startDate: dateRange.startDate,
+                        endDate: dateRange.endDate
+                    })
+                    getApprovals(company, companyRecord)
+                    resetCount();
+                }else{
+                    setAlertState('error')
+                    setAlert('You are not allowed to post internal transfers')
+                    setAlertTimeout(4000)
                 }
-                if (countSuccess !== transferDocuments.length) return;
-                setAlertState('success');
-                setAlert('All Products Transfered Successful!');
-                setAlertTimeout(1000);
-                setIsOnView(false);
-                setIsSaveValue(false);
-                setIsTransferValue(false);
-                setFromWarehouse('');
-                setToWarehouse('');
-                getProductsStockReport(company, products, {
-                    startDate: dateRange.startDate,
-                    endDate: dateRange.endDate
-                })
-                getApprovals(company, companyRecord)
-                resetCount();
             }
 
             const approvalPayload = {

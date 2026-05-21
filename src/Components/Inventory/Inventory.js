@@ -58,7 +58,7 @@ const Inventory = ()=>{
     const isInventoryAdmin = companyRecord?.status === 'admin' || companyRecord?.access === 'admin'
     const canImport = isInventoryAdmin || companyRecord?.permissions?.includes('imports')
     const canTransfer = isInventoryAdmin || ['internal_transfer', 'stock_transfer', 'transfer_order', 'inventory_transfer'].some((permission) => companyRecord?.permissions?.includes(permission))
-    const canPostTransferDirectly = isInventoryAdmin || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('approve_posttransfer') || companyRecord?.permissions?.includes('allow_transfer_posts')
+    const canPostTransferDirectly = isInventoryAdmin || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('approve_posttransfer');
     const settingsMenu = {
         Products: [
             { name: 'bill of materials', status: 'always' },

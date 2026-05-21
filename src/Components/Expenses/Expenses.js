@@ -114,9 +114,7 @@ const Expenses = () => {
     useEffect(() => {
         setExpenseApprovals((approvals || []).filter((approval) => (
             approval.module === 'expense' &&
-            approval.section === 'postexpense' &&
-            !approval.approved &&
-            !approval.message
+            approval.section === 'postexpense'
         )))
     }, [approvals])
 
@@ -242,17 +240,23 @@ const Expenses = () => {
 
     const handleViewClick = (exp) => {
         setIsView(true)
-        if (exp?.approval) {
-            setCurApproval(exp.approval)
-        } else {
-            setCurApproval(null)
-        }
-        if (curExpense === null || exp.createdAt !== curExpense?.createdAt) {
-            setCurExpense(exp)
-            setFields({ ...exp })
-            setIsView(true)
-        }
+        setCurApproval(null)
+        setCurExpense(exp)
+        setFields({ ...exp })        
     }
+
+    useEffect(() => {
+        if (curExpense) {
+            setExpensesDate(curExpense.postingDate)
+            setIsView(true)
+        } else {
+            if (curApproval) {
+                setExpensesDate(curApproval.postingDate)
+            } else {
+                setExpensesDate(new Date(Date.now()).toISOString().slice(0, 10))
+            }
+        }
+    }, [curExpense, curApproval])
 
     useEffect(() => {
         if (isView || curExpense) {
@@ -260,49 +264,64 @@ const Expenses = () => {
         }
     }, [isView, curExpense])
 
+    useEffect(() => {
+        if (curApproval) {
+            setCurExpense(null)
+            setFields({ ...curApproval.data})
+            setIsView(true)         
+            setExpensesDate(curApproval.postingDate)               
+        }
+    }, [curApproval])
+
+    const postExpense = async () => {
+        setExpensesStatus('Posting Expenses...')
+        setAlertState('info')
+        setAlert('Posting Expenses...')
+        setAlertTimeout(5000)
+        const newExpense = {
+            ...fields,
+            postingDate: expensesDate,
+            createdAt: Date.now()
+        }
+        const newExpenses = [newExpense, ...expenses]
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Expenses",
+            update: {
+                ...newExpense,
+                approvedBy: curApproval?.approvedBy || companyRecord?.emailid
+            }
+        }, "createDoc", server)
+
+        if (resps.err) {
+            console.log(resps.mess)
+            setAlertState('info')
+            setAlert(resps.mess)
+            setAlertTimeout(5000)
+            setExpensesStatus('Post Expenses')
+        } else {
+            setExpensesStatus('Post Expenses')
+            setExpenses(newExpenses)
+            setCurExpense(newExpense)
+            setIsView(true)
+            setFields({ ...newExpense })
+            setCurApproval(null)
+            setAlertState('success')
+            setAlert('Expenses Record Posted Successfully!')
+            setAlertTimeout(1000)
+            getExpenses(company)
+            getApprovals(company, companyRecord)
+        }
+    }
     const addExpenses = async () => {
         if (fields.expensesAmount && fields.expenseCategory &&
             fields.expensesDepartment && fields.expensesHandler &&
             fields.expensesVendor && fields.expensesBank
-        ) {
-            setExpensesStatus('Posting Expenses...')
-            setAlertState('info')
-            setAlert('Posting Expenses...')
+        ) {            
             const newExpense = {
                 ...fields,
                 postingDate: expensesDate,
                 createdAt: Date.now()
-            }
-            const postExpense = async () => {
-                const newExpenses = [newExpense, ...expenses]
-                const resps = await fetchServer("POST", {
-                    database: company,
-                    collection: "Expenses",
-                    update: {
-                        ...newExpense,
-                        approvedBy: curApproval?.approvedBy || companyRecord?.emailid
-                    }
-                }, "createDoc", server)
-
-                if (resps.err) {
-                    console.log(resps.mess)
-                    setAlertState('info')
-                    setAlert(resps.mess)
-                    setAlertTimeout(5000)
-                    setExpensesStatus('Post Expenses')
-                } else {
-                    setExpensesStatus('Post Expenses')
-                    setExpenses(newExpenses)
-                    setCurExpense(newExpense)
-                    setIsView(true)
-                    setFields({ ...newExpense })
-                    setCurApproval(null)
-                    setAlertState('success')
-                    setAlert('Expenses Record Posted Successfully!')
-                    setAlertTimeout(1000)
-                    getExpenses(company)
-                    getApprovals(company, companyRecord)
-                }
             }
             await runApprovalWorkFlow(expensesDate, curApproval, 'expense', 'postexpense', newExpense, postExpense)
             setExpensesStatus('Post Expenses')
@@ -409,7 +428,7 @@ const Expenses = () => {
         approval,
         isApprovalRequest: true,
     }))
-    const displayExpenses = [...approvalExpenseRecords, ...(salaryDetails || []), ...expenses]
+    const displayExpenses = [...expenseApprovals, ...(salaryDetails || []), ...expenses]
 
     return (
         <>
@@ -539,77 +558,140 @@ const Expenses = () => {
                         const second = new Date(b.postingDate)
                         return second - first
                     }).map((exp, index) => {
-                        const {
-                            createdAt, postingDate,
-                            expensesAmount, expensesDepartment,
-                            expenseCategory, expensesHandler, expensesVendor,
-                            expensesDescription
-                        } = exp
-                        var handlerName = ''
-                        employees.forEach((emp) => {
-                            if (emp.i_d === expensesHandler) {
-                                handlerName = `${emp.firstName} ${emp.lastName}`
+                        if (exp.isApproval) {
+                            const { createdAt, postingDate, message, handlerId, approved, approvers } = exp
+                            var textColor = 'red'
+                            if (approved) {
+                                textColor = 'green'
                             }
-                        })
-                        return (
-                            <div className={'dept  desc-relt' + (curExpense?.createdAt === createdAt ? ' curview' : '')} key={index}
-                                onClick={(e) => {
-                                    handleViewClick(exp)
-                                }}
-                            >
-                                <div className='dets sldets'>
-                                    {(curExpense?.createdAt === createdAt && curExpense.showDetails) &&
-                                        <FaPrint
-                                            className='desc-btn-top'
-                                            onClick={(e) => { printToPDF(e) }}
-                                        />
-                                    }
-                                    {(curExpense?.createdAt === createdAt && curExpense.showDetails) ?
-                                        (<FaAngleUp
-                                            className='desc-btn-bottom'
-                                            onClick={() => {
-                                                setCurExpense((curExpense) => {
-                                                    return { ...curExpense, showDetails: false }
-                                                })
-                                            }}
-                                        />)
-                                        : (curExpense?.createdAt === createdAt && <FaAngleDown
-                                            className='desc-btn-bottom'
-                                            onClick={() => {
-                                                setCurExpense((curExpense) => {
-                                                    return { ...curExpense, showDetails: true }
-                                                })
-                                            }}
-                                        />)}
-                                    <div>Posting Date: <b>{getDate(postingDate)}</b></div>
-                                    {exp.approval && <div className='deptdesc' style={{ color: '#b45309', fontWeight: 'bold' }}>
-                                        {isExpenseApprover ? 'Pending approval request' : 'Awaiting approval'}
-                                    </div>}
-                                    <div>Expenses Department: <b>{expensesDepartment}</b></div>
-                                    <div>Expenses Category: <b>{expenseCategory}</b></div>
-                                    <div>Expenses Amount: <b>{'₦' + (Number(expensesAmount)).toLocaleString()}</b></div>
-                                    <div className='deptdesc'>{`Expenses Handled By:`} <b>{`${handlerName}`}</b></div>
-                                    {(curExpense?.createdAt === createdAt && curExpense?.showDetails) && <div>
-                                        <div>Expenses Vendor: <b>{expensesVendor}</b></div>
-                                        <div className='exp-desc'>Description of Items:</div>
-                                        <pre className='exp-dets'>{expensesDescription}</pre>
-                                    </div>}
-                                </div>
-                                {(companyRecord.status === 'admin') && <div
-                                    className='edit'
-                                    name='delete'
-                                    style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
-                                    onClick={() => {
-                                        setAlertState('info')
-                                        setAlert('You are about to delete the selected Expense Record. Please Delete again if you are sure!')
-                                        setAlertTimeout(5000)
-                                        deleteExpenses(exp)
+                            return (
+                                <div className={'dept sldept' + (curApproval?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                    onClick={(e) => {
+                                        setCurApproval(exp)
                                     }}
                                 >
-                                    Delete
-                                </div>}
-                            </div>
-                        )
+                                    <div className='dets sldets'>
+                                        <div>Approval Type: <b>{'EXPENSE'}</b></div>
+                                        <div>Posting Date: <b>{getDate(postingDate)}</b></div>
+                                        <div>Approval Status: <b style={{ color: textColor }}>{message ? 'REJECTED' : (approved ? 'APPROVED' : 'AWAITING APPROVAL')}</b></div>
+                                        {message && <div>Message: <b>{message}</b></div>}
+                                        <div className='deptdesc'>{`Requested By ID:`} <b>{`${handlerId}`}</b></div>
+                                        {approvers?.length &&
+                                            <div
+                                                className='deptdesc'
+                                                style={{
+                                                    fontWeight: 'bold',
+                                                    fontSize: '13px',
+                                                    color: 'greenyellow',
+                                                    background: 'rgba(0,0,0,0.7)',
+                                                    width: 'fit-content',
+                                                    padding: '5px',
+                                                    borderRadius: '8px',
+                                                    border: 'solid greenyellow 3px',
+                                                }}
+                                            >
+                                                ## EXPENSE VERIFIED ##
+                                            </div>
+                                        }
+                                    </div>
+                                    {(companyRecord.status === 'admin') && <div
+                                        className='edit'
+                                        name='delete'
+                                        style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
+                                        onClick={async () => {
+                                            setAlertState('info')
+                                            setAlert('Deleting Approval Data...')
+                                            setAlertTimeout(100000)
+
+                                            const resp = await removeApproval(company, 'expense', postExpense, {
+                                                createdAt: createdAt,
+                                                postingDate: postingDate
+                                            })
+
+                                            if (resp.completed) {
+                                                setAlertState('success')
+                                                setAlert('Deleted Approval Data Successfully!')
+                                                setAlertTimeout(1000)
+                                                setCurExpense(null)
+                                                setCurApproval(null)
+                                            }
+
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                        } else {                        
+                            const {
+                                createdAt, postingDate,
+                                expensesAmount, expensesDepartment,
+                                expenseCategory, expensesHandler, expensesVendor,
+                                expensesDescription
+                            } = exp
+                            var handlerName = ''
+                            employees.forEach((emp) => {
+                                if (emp.i_d === expensesHandler) {
+                                    handlerName = `${emp.firstName} ${emp.lastName}`
+                                }
+                            })
+                            return (
+                                <div className={'dept' + (curExpense?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                    onClick={(e) => {
+                                        handleViewClick(exp)
+                                    }}
+                                >
+                                    <div className='dets sldets'>
+                                        {(curExpense?.createdAt === createdAt && curExpense.showDetails) &&
+                                            <FaPrint
+                                                className='desc-btn-top'
+                                                onClick={(e) => { printToPDF(e) }}
+                                            />
+                                        }
+                                        {(curExpense?.createdAt === createdAt && curExpense.showDetails) ?
+                                            (<FaAngleUp
+                                                className='desc-btn-bottom'
+                                                onClick={() => {
+                                                    setCurExpense((curExpense) => {
+                                                        return { ...curExpense, showDetails: false }
+                                                    })
+                                                }}
+                                            />)
+                                            : (curExpense?.createdAt === createdAt && <FaAngleDown
+                                                className='desc-btn-bottom'
+                                                onClick={() => {
+                                                    setCurExpense((curExpense) => {
+                                                        return { ...curExpense, showDetails: true }
+                                                    })
+                                                }}
+                                            />)}
+                                        <div>Posting Date: <b>{getDate(postingDate)}</b></div>                                       
+                                        <div>Expenses Department: <b>{expensesDepartment}</b></div>
+                                        <div>Expenses Category: <b>{expenseCategory}</b></div>
+                                        <div>Expenses Amount: <b>{'₦' + (Number(expensesAmount)).toLocaleString()}</b></div>
+                                        <div className='deptdesc'>{`Expenses Handled By:`} <b>{`${handlerName}`}</b></div>
+                                        {(curExpense?.createdAt === createdAt && curExpense?.showDetails) && <div>
+                                            <div>Expenses Vendor: <b>{expensesVendor}</b></div>
+                                            <div className='exp-desc'>Description of Items:</div>
+                                            <pre className='exp-dets'>{expensesDescription}</pre>
+                                        </div>}
+                                    </div>
+                                    {(companyRecord.status === 'admin') && <div
+                                        className='edit'
+                                        name='delete'
+                                        style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
+                                        onClick={() => {
+                                            setAlertState('info')
+                                            setAlert('You are about to delete the selected Expense Record. Please Delete again if you are sure!')
+                                            setAlertTimeout(5000)
+                                            deleteExpenses(exp)
+                                        }}
+                                    >
+                                        Delete
+                                    </div>}
+                                </div>
+                            )
+                        }
                     })}
                 </div>
                 <div className='purinfo'>
@@ -783,7 +865,7 @@ const Expenses = () => {
                         <div
                             className='expensesbutton'
                             onClick={addExpenses}
-                        >{curApproval ? (isExpenseApprover ? 'Approve Request' : 'Request Approval') : (isExpenseApprover ? expensesStatus : 'Request Approval')}</div>
+                        >{curApproval ? (curApproval.approved ? expensesStatus : (isExpenseApprover ? 'Approve Request' : 'Request Approval')) : (isExpenseApprover ? 'Post Expenses' : 'Request Approval')}</div>
                     </div>}
                     <MdAdd
                         className='add slsadd expenses-detail-add'
