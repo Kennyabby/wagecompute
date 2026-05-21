@@ -31,7 +31,7 @@ const ApprovalBox = ({
     // if (!isOpen) return null
 
     return (
-        <div className="modal-overlay">
+        <div className="modal-overlay approval-box">
             <div className="modal-content">
                 <div className="modal-header">
                     <h2>Approvals</h2>
@@ -103,13 +103,13 @@ const ApprovalBox = ({
                     position: absolute;
                     top: 0;
                     left: 0;
-                    right: 0;
-                    bottom: 0;
+                    width: 100vw;
+                    height: 100vh;
                     background-color: rgba(0, 0, 0, 0.5);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    z-index: 4500;
+                    z-index: 450000;
                 }
 
                 .modal-content {

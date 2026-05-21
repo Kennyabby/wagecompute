@@ -1354,16 +1354,8 @@ function App() {
   }
 
   const runApprovalWorkFlow = async (postingDate, curApproval, module, section, data, runApproval, link) => {
-    const directPostPermission = section === 'posttransfer'
-      ? 'allow_transfer_posts'
-      : /^post/i.test(section)
-        ? `allow_${section.replace(/^post/i, '').toLowerCase()}_posts`
-        : ''
-    const canPostWithoutApproval = companyRecord?.permissions?.includes('approve_' + section)
-      || companyRecord?.permissions?.includes(directPostPermission)
-      || companyRecord?.permissions?.includes('all')
-      || companyRecord?.status === 'admin'
-
+    const { isApprover, approverLevel, finalLevel } = getApprovalConfig(module, section, companyRecord?.emailid)
+    const canPostWithoutApproval = isApprover
     const executePostAction = async () => {
       await runApproval()
       if (curApproval?.createdAt) {
