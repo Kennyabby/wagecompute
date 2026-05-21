@@ -51,6 +51,18 @@ const TransactionReports = ({
         lastDeliveredBy: ''
     });
 
+    // Non-admin date restriction: compute yesterday start and today end bounds
+    const isNonAdmin = companyRecord?.status !== 'admin';
+    const getNonAdminDateBounds = () => {
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+        return {
+            minDate: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0),
+            maxDate: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+        };
+    };
+
     // Get unique filter options from the actual data
     const filterOptions = useMemo(() => {
         // Get unique locations from sessions (filter out undefined/null/empty)
@@ -122,6 +134,18 @@ const TransactionReports = ({
         }, {})
         setPayPointAccounts({ ...payPoints, 'Employee': 'EMPLOYEE' })
     }, [paymentMethods])
+
+    // Clamp date filters for non-admin users to yesterday–today on mount
+    useEffect(() => {
+        if (isNonAdmin) {
+            const { minDate, maxDate } = getNonAdminDateBounds();
+            setFilters(prev => ({
+                ...prev,
+                startDate: minDate,
+                endDate: maxDate
+            }));
+        }
+    }, [companyRecord]);
 
     useEffect(()=>{
         const dateRange = {
@@ -269,11 +293,18 @@ const TransactionReports = ({
 
         // Apply filters
         result = result.filter(session => {
-            // Date filter - handle null dates
-            if (filters.startDate && (!session.startDate || new Date(session.startDate) < filters.startDate)) {
+            // Date filter - handle null dates (clamp for non-admin users)
+            let effectiveStartDate = filters.startDate;
+            let effectiveEndDate = filters.endDate;
+            if (isNonAdmin) {
+                const { minDate, maxDate } = getNonAdminDateBounds();
+                if (effectiveStartDate && effectiveStartDate < minDate) effectiveStartDate = minDate;
+                if (effectiveEndDate && effectiveEndDate > maxDate) effectiveEndDate = maxDate;
+            }
+            if (effectiveStartDate && (!session.startDate || new Date(session.startDate) < effectiveStartDate)) {
                 return false;
             }
-            if (filters.endDate && (!session.startDate || new Date(session.startDate) > filters.endDate)) {
+            if (effectiveEndDate && (!session.startDate || new Date(session.startDate) > effectiveEndDate)) {
                 return false;
             }
 
@@ -496,28 +527,45 @@ const TransactionReports = ({
                             <div className="date-range-picker">
                                 <DatePicker
                                     selected={filters.startDate}
-                                    onChange={(date) => date && setFilters(prev => ({ ...prev, startDate: date }))}
+                                    onChange={(date) => {
+                                        if (!date) return;
+                                        if (isNonAdmin) {
+                                            const { minDate, maxDate } = getNonAdminDateBounds();
+                                            if (date < minDate) date = minDate;
+                                            if (date > maxDate) date = maxDate;
+                                        }
+                                        setFilters(prev => ({ ...prev, startDate: date }));
+                                    }}
                                     selectsStart
                                     startDate={filters.startDate}
                                     endDate={filters.endDate}
-                                    maxDate={new Date()}
+                                    minDate={isNonAdmin ? getNonAdminDateBounds().minDate : undefined}
+                                    maxDate={isNonAdmin ? getNonAdminDateBounds().maxDate : new Date()}
                                     className="date-input"
                                     dateFormat="MMM d, yyyy"
-                                    isClearable
+                                    isClearable={!isNonAdmin}
                                     placeholderText="Start date"
                                 />
                                 <span className="date-range-separator">to</span>
                                 <DatePicker
                                     selected={filters.endDate}
-                                    onChange={(date) => date && setFilters(prev => ({ ...prev, endDate: date }))}
+                                    onChange={(date) => {
+                                        if (!date) return;
+                                        if (isNonAdmin) {
+                                            const { minDate, maxDate } = getNonAdminDateBounds();
+                                            if (date < minDate) date = minDate;
+                                            if (date > maxDate) date = maxDate;
+                                        }
+                                        setFilters(prev => ({ ...prev, endDate: date }));
+                                    }}
                                     selectsEnd
                                     startDate={filters.startDate}
                                     endDate={filters.endDate}
-                                    minDate={filters.startDate}
-                                    maxDate={new Date()}
+                                    minDate={isNonAdmin ? getNonAdminDateBounds().minDate : filters.startDate}
+                                    maxDate={isNonAdmin ? getNonAdminDateBounds().maxDate : new Date()}
                                     className="date-input"
                                     dateFormat="MMM d, yyyy"
-                                    isClearable
+                                    isClearable={!isNonAdmin}
                                     placeholderText="End date"
                                 />
                             </div>

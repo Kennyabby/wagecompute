@@ -46,6 +46,24 @@ const Sales = () => {
         paymentReceipts, obtainPaymentReceipts,
     } = useContext(ContextProvider)
 
+    const getYesterdayAndToday = () => {
+        const todayObj = new Date();
+        const yesterdayObj = new Date();
+        yesterdayObj.setDate(todayObj.getDate() - 1);
+        
+        const getLocalDateString = (dateObj) => {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        
+        return {
+            today: getLocalDateString(todayObj),
+            yesterday: getLocalDateString(yesterdayObj)
+        };
+    };
+
     const recoveryReasons = [
         {
             i_d: 1,
@@ -967,13 +985,17 @@ const Sales = () => {
     }, [rentalFields.rentalSpace, rentalFields.paymentMonth])
 
     useEffect(() => {
-        if (!allowBacklogs) {
+        if (companyRecord && companyRecord.status !== 'admin') {
+            const { today, yesterday } = getYesterdayAndToday();
+            setSaleFrom(yesterday);
+            setSaleTo(today);
+        } else if (!allowBacklogs) {
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
         }
         if (companyRecord?.permissions.includes('approve_postsales') || companyRecord?.status === 'admin') {
             setIsApprover(true)
         }
-    }, [companyRecord])
+    }, [companyRecord, allowBacklogs])
 
     useEffect(() => {
         setCurApproval(null)
@@ -2011,20 +2033,34 @@ const Sales = () => {
     }
 
     const calculateReportSales = () => {
+        var reportFromDate = saleFrom;
+        if (companyRecord?.status !== 'admin') {
+            const { yesterday } = getYesterdayAndToday();
+            if (new Date(saleFrom).getTime() < new Date(yesterday).getTime()) {
+                reportFromDate = yesterday;
+            }
+        }
         var filteredReportSales = {
             totalCashSales: 0,
             totalBankSales: 0,
             totalDebt: 0,
             totalShortage: 0,
             totalDebtRecovered: 0,
-            postingDate: saleFrom,
+            postingDate: reportFromDate,
             createdAt: Date.now(),
             record: []
         }
         sales.filter((ftrsale) => {
             const slPostingDate = new Date(ftrsale.postingDate).getTime()
-            const fromDate = new Date(saleFrom).getTime()
-            const toDate = new Date(saleTo).getTime()
+            let fromDate = new Date(saleFrom).getTime()
+            let toDate = new Date(saleTo).getTime()
+            if (companyRecord?.status !== 'admin') {
+                const { yesterday, today } = getYesterdayAndToday();
+                const yesterdayTime = new Date(yesterday).getTime();
+                const todayTime = new Date(today).getTime();
+                fromDate = Math.max(fromDate, yesterdayTime);
+                toDate = Math.min(toDate, todayTime);
+            }
             if (slPostingDate >= fromDate && slPostingDate <= toDate
             ) {
                 return ftrsale
@@ -2521,8 +2557,8 @@ const Sales = () => {
                             setReportSales(null)
                         }
                     }}
-                    fromDate={saleFrom}
-                    toDate={saleTo}
+                    fromDate={companyRecord?.status !== 'admin' ? (new Date(saleFrom).getTime() < new Date(getYesterdayAndToday().yesterday).getTime() ? getYesterdayAndToday().yesterday : saleFrom) : saleFrom}
+                    toDate={companyRecord?.status !== 'admin' ? (new Date(saleTo).getTime() > new Date(getYesterdayAndToday().today).getTime() ? getYesterdayAndToday().today : saleTo) : saleTo}
                 />}
 
                 {showDebtReport && <DebtReport
@@ -2620,8 +2656,16 @@ const Sales = () => {
                                 placeholder='From'
                                 value={saleFrom}
                                 disabled={!allowBacklogs}
+                                min={companyRecord?.status !== 'admin' ? getYesterdayAndToday().yesterday : undefined}
+                                max={companyRecord?.status !== 'admin' ? getYesterdayAndToday().today : undefined}
                                 onChange={(e) => {
-                                    setSaleFrom(e.target.value)
+                                    let val = e.target.value;
+                                    if (companyRecord?.status !== 'admin') {
+                                        const { yesterday, today } = getYesterdayAndToday();
+                                        if (val < yesterday) val = yesterday;
+                                        if (val > today) val = today;
+                                    }
+                                    setSaleFrom(val)
                                     setSaleEmployee('')
                                 }}
                             />
@@ -2635,8 +2679,16 @@ const Sales = () => {
                                 placeholder='To'
                                 value={saleTo}
                                 disabled={!allowBacklogs}
+                                min={companyRecord?.status !== 'admin' ? getYesterdayAndToday().yesterday : undefined}
+                                max={companyRecord?.status !== 'admin' ? getYesterdayAndToday().today : undefined}
                                 onChange={(e) => {
-                                    setSaleTo(e.target.value)
+                                    let val = e.target.value;
+                                    if (companyRecord?.status !== 'admin') {
+                                        const { yesterday, today } = getYesterdayAndToday();
+                                        if (val < yesterday) val = yesterday;
+                                        if (val > today) val = today;
+                                    }
+                                    setSaleTo(val)
                                     setSaleEmployee('')
                                 }}
                             />
@@ -2685,8 +2737,15 @@ const Sales = () => {
                     </div>}
                     {salesOpts1 === 'sales' && (reportSales ? [reportSales] : [...ftrApprovals, ...sales]).filter((ftrsale) => {
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
-                        const fromDate = new Date(saleFrom).getTime()
-                        const toDate = new Date(saleTo).getTime()
+                        let fromDate = new Date(saleFrom).getTime()
+                        let toDate = new Date(saleTo).getTime()
+                        if (companyRecord?.status !== 'admin') {
+                            const { yesterday, today } = getYesterdayAndToday();
+                            const yesterdayTime = new Date(yesterday).getTime();
+                            const todayTime = new Date(today).getTime();
+                            fromDate = Math.max(fromDate, yesterdayTime);
+                            toDate = Math.min(toDate, todayTime);
+                        }
 
                         if (slCreatedAt >= fromDate && slCreatedAt <= toDate
                         ) {
