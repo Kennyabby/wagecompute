@@ -99,11 +99,13 @@ const ApprovalBox = ({
             </div>
 
             <style jsx>{`
-                .modal-overlay {
+                .modal-overlay{
                     position: absolute;
                     top: 0;
                     left: 0;
-                    width: 100vw;
+                    right: 0;
+                    bottom: 0;
+                    width: 100%;
                     height: 100vh;
                     background-color: rgba(0, 0, 0, 0.5);
                     display: flex;

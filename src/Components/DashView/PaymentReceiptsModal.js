@@ -5,7 +5,7 @@ import { exportReceiptsTableToPDF, exportSummaryMatrixToPDF } from './pdfUtils';
 import { generateExcel } from '../../utils/exportUtils';
 
 const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
-  const { employees, paymentMethods, companyRecord } = useContext(ContextProvider);
+  const { employees, paymentMethods, companyRecord, allowBacklogs } = useContext(ContextProvider);
   // Get earliest date boundary
   const earliestDate = useMemo(() => {
     if (!paymentReceipts.length) return '';
@@ -16,7 +16,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
   }, [paymentReceipts]);
 
   // Non-admin date visibility bounds: yesterday and today (YYYY-MM-DD)
-  const isNonAdmin = companyRecord?.status !== 'admin';
+  const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
   const getYesterdayAndToday = () => {
     const todayObj = new Date();
     const yesterdayObj = new Date();

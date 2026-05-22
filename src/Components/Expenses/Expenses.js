@@ -24,7 +24,7 @@ const Expenses = () => {
         company, getDate,
         alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
-        expenses, setExpenses, getExpenses,
+        expenses, setExpenses, getExpenses, allowBacklogs,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
         attendance, getAttendance, months, monthDays, employees, getEmployees,
         approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow,
@@ -161,10 +161,17 @@ const Expenses = () => {
     }
 
     useEffect(() => {
-        if (companyRecord.status !== 'admin') {
-            setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
+        const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs
+        const today = new Date(Date.now()).toISOString().slice(0, 10)
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        if (isNonAdmin) {
+            setExpenseFrom(yesterday)
+            setExpenseTo(today)
+        } else {
+            if (!expenseFrom) setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
+            if (!expenseTo) setExpenseTo(today)
         }
-    }, [companyRecord])
+    }, [companyRecord, allowBacklogs])
 
     useEffect(() => {
         const selectedMonthFrom = expenseFrom.split('-')[1]
@@ -501,9 +508,24 @@ const Expenses = () => {
                                 type='date'
                                 placeholder='From'
                                 value={expenseFrom}
-                                disabled={companyRecord.status !== 'admin'}
+                                disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
+                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
+                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
                                 onChange={(e) => {
-                                    setExpenseFrom(e.target.value)
+                                    const val = e.target.value
+                                    if (companyRecord?.status !== 'admin' && !allowBacklogs) {
+                                        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+                                        const today = new Date(Date.now()).toISOString().slice(0, 10)
+                                        if (new Date(val).getTime() < new Date(yesterday).getTime()) {
+                                            setExpenseFrom(yesterday)
+                                        } else if (new Date(val).getTime() > new Date(today).getTime()) {
+                                            setExpenseFrom(today)
+                                        } else {
+                                            setExpenseFrom(val)
+                                        }
+                                    } else {
+                                        setExpenseFrom(val)
+                                    }
                                 }}
                             />
                         </div>
@@ -515,9 +537,24 @@ const Expenses = () => {
                                 type='date'
                                 placeholder='To'
                                 value={expenseTo}
-                                disabled={companyRecord.status !== 'admin'}
+                                disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
+                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
+                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
                                 onChange={(e) => {
-                                    setExpenseTo(e.target.value)
+                                    const val = e.target.value
+                                    if (companyRecord?.status !== 'admin' && !allowBacklogs) {
+                                        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+                                        const today = new Date(Date.now()).toISOString().slice(0, 10)
+                                        if (new Date(val).getTime() < new Date(yesterday).getTime()) {
+                                            setExpenseTo(yesterday)
+                                        } else if (new Date(val).getTime() > new Date(today).getTime()) {
+                                            setExpenseTo(today)
+                                        } else {
+                                            setExpenseTo(val)
+                                        }
+                                    } else {
+                                        setExpenseTo(val)
+                                    }
                                 }}
                             />
                         </div>
@@ -544,6 +581,11 @@ const Expenses = () => {
                         </select>
                     </div>}
                     {displayExpenses.filter((expfltr) => {
+                        // Allow approval records through regardless of date bounds
+                        if (expfltr?.module === 'expense' && expfltr?.section === 'postexpense') {
+                            return expfltr
+                        }
+
                         if (expfltr.postingDate >= expenseFrom && expfltr.postingDate <= expenseTo) {
                             if (expenseFilter) {
                                 if (expfltr.expenseCategory === expenseFilter) {
@@ -950,7 +992,7 @@ const AddExpenseAccount = ({
     if (!isOpen) return null
 
     return (
-        <div className="modal-overlay">
+        <div className="modal-overlay add-expense">
             <div className="modal-content">
                 <div className="modal-header">
                     <h2>Add New Expense Account</h2>
@@ -1020,17 +1062,19 @@ const AddExpenseAccount = ({
             </div>
 
             <style jsx>{`
-                .modal-overlay {
-                    position: fixed;
+                .modal-overlay add-expense {
+                    position: absolute;
                     top: 0;
                     left: 0;
                     right: 0;
                     bottom: 0;
+                    width: 100%;
+                    height: 100vh;
                     background-color: rgba(0, 0, 0, 0.5);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    z-index: 1000;
+                    z-index: 450000;
                 }
 
                 .modal-content {

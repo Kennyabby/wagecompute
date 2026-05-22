@@ -985,13 +985,20 @@ const Sales = () => {
     }, [rentalFields.rentalSpace, rentalFields.paymentMonth])
 
     useEffect(() => {
-        if (companyRecord && companyRecord.status !== 'admin') {
-            const { today, yesterday } = getYesterdayAndToday();
-            setSaleFrom(yesterday);
-            setSaleTo(today);
-        } else if (!allowBacklogs) {
-            setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
-        }
+            // Treat non-admins without the `allowBacklogs` permission as restricted
+            const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
+            if (companyRecord) {
+                if (isNonAdmin) {
+                    const { today, yesterday } = getYesterdayAndToday();
+                    setSaleFrom(yesterday);
+                    setSaleTo(today);
+                } else {
+                    // admin or users with allowBacklogs: default to first of month if no backlogs allowed
+                    if (!allowBacklogs) {
+                        setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10));
+                    }
+                }
+            }
         if (companyRecord?.permissions.includes('approve_postsales') || companyRecord?.status === 'admin') {
             setIsApprover(true)
         }
