@@ -25,7 +25,7 @@ const TransactionReports = ({
     fetchOrdersByRange
 }) => {
     const {
-        company, server, fetchServer, user, companyRecord,
+        company, server, fetchServer, user, companyRecord, allowBacklogs,
         paymentReceipts, getPosOrders, fetchSessions, paymentMethods,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider);
@@ -52,7 +52,7 @@ const TransactionReports = ({
     });
 
     // Non-admin date restriction: compute yesterday start and today end bounds
-    const isNonAdmin = companyRecord?.status !== 'admin';
+    const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
     const getNonAdminDateBounds = () => {
         const today = new Date();
         const yesterday = new Date();
@@ -145,7 +145,7 @@ const TransactionReports = ({
                 endDate: maxDate
             }));
         }
-    }, [companyRecord]);
+    }, [companyRecord, allowBacklogs]);
 
     useEffect(()=>{
         const dateRange = {

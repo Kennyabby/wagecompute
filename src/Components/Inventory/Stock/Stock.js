@@ -24,7 +24,7 @@ const Stock = ({
         server, fetchServer, getProducts, getProductsWithStock, getProductsStockReport,
         setAlert, setAlertState, setAlertTimeout, intervalPeriod,
         products, setProducts, settings, company, companyRecord,
-        runApprovalWorkFlow, approvals, getApprovals,
+          runApprovalWorkFlow, approvals, getApprovals, allowBacklogs,
     } = useContext(ContextProvider);
     const intervalRef = useRef(null);
     const [warehouses, setWarehouses] = useState([]);
@@ -35,6 +35,18 @@ const Stock = ({
         startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10), // First day of current month
         endDate: new Date().toISOString().slice(0, 10) // Today
     });
+
+    // Non-admin date restriction: if not admin and no allowBacklogs permission, restrict to yesterday-today
+    const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
+    const getNonAdminDateBounds = () => {
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+        return {
+            start: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0,0,0,0).toISOString().slice(0,10),
+            end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23,59,59,999).toISOString().slice(0,10)
+        };
+    };
 
     // Fetch warehouses from the database
     const getWarehouses = async () => {
@@ -243,6 +255,14 @@ const Stock = ({
             }
         }
     }, [window.localStorage.getItem('sessn-cmp'), isTransferClicked, dateRange]);
+
+    // Clamp dateRange for non-admin users on mount
+    useEffect(() => {
+        if (companyRecord && isNonAdmin) {
+            const bounds = getNonAdminDateBounds();
+            setDateRange(prev => ({ ...prev, startDate: bounds.start, endDate: bounds.end }));
+        }
+    }, [companyRecord, allowBacklogs]);
 
     // useEffect(() => {
     //     if (products){
@@ -551,10 +571,16 @@ const Stock = ({
 
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        setDateRange(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        // Prepare tentative new range
+        let newStart = name === 'startDate' ? value : dateRange.startDate;
+        let newEnd = name === 'endDate' ? value : dateRange.endDate;
+        if (isNonAdmin) {
+            const bounds = getNonAdminDateBounds();
+            if (newStart < bounds.start) newStart = bounds.start;
+            if (newEnd > bounds.end) newEnd = bounds.end;
+        }
+        if (newEnd < newStart) newEnd = newStart;
+        setDateRange({ startDate: newStart, endDate: newEnd });
     };
 
     // Format currency values
@@ -935,6 +961,8 @@ const Stock = ({
                                 value={dateRange.startDate}
                                 onChange={handleDateChange}
                                 className="date-input"
+                                min={isNonAdmin ? getNonAdminDateBounds().start : undefined}
+                                max={isNonAdmin ? getNonAdminDateBounds().end : undefined}
                             />
                             <span>to</span>
                             <input
@@ -944,6 +972,7 @@ const Stock = ({
                                 onChange={handleDateChange}
                                 className="date-input"
                                 min={dateRange.startDate}
+                                max={isNonAdmin ? getNonAdminDateBounds().end : undefined}
                             />
                         </div>
                     </div>

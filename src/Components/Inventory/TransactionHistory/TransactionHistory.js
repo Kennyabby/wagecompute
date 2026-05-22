@@ -21,6 +21,7 @@ const TransactionHistory = () => {
     setAlertTimeout,
     products,
     companyRecord,
+    allowBacklogs,
     getProductsStockReport,
     approvals,
     updateApproval,
@@ -59,6 +60,26 @@ const TransactionHistory = () => {
     page: 1,
     limit: 50,
   });
+
+  // Non-admin date restriction: compute yesterday start and today end bounds
+  const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
+  const getNonAdminDateBounds = () => {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    return {
+      minDate: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0).toISOString().slice(0,10),
+      maxDate: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString().slice(0,10)
+    };
+  };
+
+  // Clamp date filters for non-admin users to yesterday–today on mount
+  useEffect(() => {
+    if (companyRecord && isNonAdmin) {
+      const { minDate, maxDate } = getNonAdminDateBounds();
+      setFilters(prev => ({ ...prev, startDate: minDate, endDate: maxDate }));
+    }
+  }, [companyRecord, allowBacklogs]);
 
   const [locations, setLocations] = useState([]);
   const pendingTransferApprovals = useMemo(() => {
@@ -1759,6 +1780,18 @@ const TransactionHistory = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
+    // If non-admin, clamp date changes to yesterday..today
+    if (isNonAdmin && (name === 'startDate' || name === 'endDate')) {
+      const bounds = getNonAdminDateBounds();
+      let newStart = name === 'startDate' ? value : filters.startDate;
+      let newEnd = name === 'endDate' ? value : filters.endDate;
+      if (newStart < bounds.minDate) newStart = bounds.minDate;
+      if (newEnd > bounds.maxDate) newEnd = bounds.maxDate;
+      if (newEnd < newStart) newEnd = newStart;
+      setFilters(prev => ({ ...prev, startDate: newStart, endDate: newEnd, page: 1 }));
+      return;
+    }
+
     setFilters(prev => ({
       ...prev,
       [name]: value,
@@ -1770,8 +1803,16 @@ const TransactionHistory = () => {
     const { startDate, endDate, location, productId, transactionType } = filters;
     // Format dates to ISO strings (YYYY-MM-DD)
     // This ensures compatibility with the database date format
-    const formattedStartDate = new Date(startDate).toISOString().split('T')[0];
-    const formattedEndDate = new Date(endDate).toISOString().split('T')[0];
+    // Enforce non-admin bounds if necessary
+    let effStart = startDate;
+    let effEnd = endDate;
+    if (isNonAdmin) {
+      const bounds = getNonAdminDateBounds();
+      if (effStart < bounds.minDate) effStart = bounds.minDate;
+      if (effEnd > bounds.maxDate) effEnd = bounds.maxDate;
+    }
+    const formattedStartDate = new Date(effStart).toISOString().split('T')[0];
+    const formattedEndDate = new Date(effEnd).toISOString().split('T')[0];
 
     // Trigger the stock report (which has its own caching in App.js)
     withRequestTimeout(getProductsStockReport(company, products, {
@@ -1881,6 +1922,8 @@ const TransactionHistory = () => {
               name="startDate"
               value={filters.startDate}
               onChange={handleFilterChange}
+              min={isNonAdmin ? getNonAdminDateBounds().minDate : undefined}
+              max={isNonAdmin ? getNonAdminDateBounds().maxDate : undefined}
               className="date-input"
             />
           </div>
@@ -1894,6 +1937,8 @@ const TransactionHistory = () => {
               name="endDate"
               value={filters.endDate}
               onChange={handleFilterChange}
+              min={filters.startDate}
+              max={isNonAdmin ? getNonAdminDateBounds().maxDate : undefined}
               className="date-input"
             />
           </div>

@@ -258,17 +258,21 @@ const Accommodation = () => {
         }
     }, [customers, isView])
     useEffect(() => {
-        if (!allowBacklogs) {
-            if (companyRecord?.status === 'admin') {
-                setSaleFrom(new Date(Date.now()).toISOString().slice(0, 10))
-            } else {
-                setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
-            }
+        const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs
+        const today = new Date(Date.now()).toISOString().slice(0, 10)
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        if (isNonAdmin) {
+            setSaleFrom(yesterday)
+            setSaleTo(today)
+        } else {
+            // keep existing defaults for admins / allowBacklogs users
+            if (!saleFrom) setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
+            if (!saleTo) setSaleTo(today)
         }
         if (companyRecord?.permissions.includes('approve_postaccommodation') || companyRecord?.status === 'admin') {
             setIsApprover(true)
         }
-    }, [companyRecord])
+    }, [companyRecord, allowBacklogs])
     useEffect(() => {
         if (accommodationCustomer) {
             calculateAccommodationSales()
@@ -948,18 +952,33 @@ const Accommodation = () => {
                     <div className='accommodation-left-filter-bar'>
                         <div className='accommodation-left-filter-card'>
                             <div className='accommodation-left-filter-label'>Date From</div>
-                            <input
-                                className='accommodation-left-date-input'
-                                name='salesfrom'
-                                type='date'
-                                placeholder='From'
-                                value={saleFrom}
-                                disabled={!allowBacklogs}
-                                onChange={(e) => {
-                                    setSaleFrom(e.target.value)
-                                    setAccommodationCustomer('')
-                                }}
-                            />
+                                    <input
+                                        className='accommodation-left-date-input'
+                                        name='salesfrom'
+                                        type='date'
+                                        placeholder='From'
+                                        value={saleFrom}
+                                        disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
+                                        min={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
+                                        max={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
+                                        onChange={(e) => {
+                                            const val = e.target.value
+                                            if (companyRecord?.status !== 'admin' && !allowBacklogs) {
+                                                const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+                                                const today = new Date(Date.now()).toISOString().slice(0, 10)
+                                                if (new Date(val).getTime() < new Date(yesterday).getTime()) {
+                                                    setSaleFrom(yesterday)
+                                                } else if (new Date(val).getTime() > new Date(today).getTime()) {
+                                                    setSaleFrom(today)
+                                                } else {
+                                                    setSaleFrom(val)
+                                                }
+                                            } else {
+                                                setSaleFrom(val)
+                                            }
+                                            setAccommodationCustomer('')
+                                        }}
+                                    />
                         </div>
                         <div className='accommodation-left-filter-card'>
                             <div className='accommodation-left-filter-label'>Date To</div>
@@ -969,9 +988,24 @@ const Accommodation = () => {
                                 type='date'
                                 placeholder='To'
                                 value={saleTo}
-                                disabled={!allowBacklogs}
+                                disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
+                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
+                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
                                 onChange={(e) => {
-                                    setSaleTo(e.target.value)
+                                    const val = e.target.value
+                                    if (companyRecord?.status !== 'admin' && !allowBacklogs) {
+                                        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+                                        const today = new Date(Date.now()).toISOString().slice(0, 10)
+                                        if (new Date(val).getTime() < new Date(yesterday).getTime()) {
+                                            setSaleTo(yesterday)
+                                        } else if (new Date(val).getTime() > new Date(today).getTime()) {
+                                            setSaleTo(today)
+                                        } else {
+                                            setSaleTo(val)
+                                        }
+                                    } else {
+                                        setSaleTo(val)
+                                    }
                                     setAccommodationCustomer('')
                                 }}
                             />
@@ -1010,12 +1044,15 @@ const Accommodation = () => {
                         </select>
                     </div>}
                     {salesOpts1 === 'accommodation' && accommodations?.filter((ftrsale) => {
+                        // allow linked approval records through regardless of date bounds
+                        const hasApproval = accommodationApprovals.find((accappr) => accappr.link === ftrsale.createdAt)
+                        if (hasApproval) return ftrsale
+
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
                         const fromDate = new Date(saleFrom).getTime()
                         const toDate = new Date(saleTo).getTime()
 
-                        if (slCreatedAt >= fromDate && slCreatedAt <= toDate
-                        ) {
+                        if (slCreatedAt >= fromDate && slCreatedAt <= toDate) {
                             if (accommodationCustomer) {
                                 if (accommodationCustomer === ftrsale.customerId) {
                                     return ftrsale
