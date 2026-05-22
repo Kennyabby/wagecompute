@@ -1155,11 +1155,11 @@ const Journals = () => {
                 ...(prev || {}),
                 [glCode]: Array.isArray(resp.ledger) ? resp.ledger : []
             }))
-            setDrillDown((prev) => prev?.glCode === glCode ? {
-                ...prev,
-                balance: resp.balance || null,
-                openingBaseClosingDate: resp.meta?.openingBaseClosingDate || resp.meta?.openingBaseClosing?.closingDate || null,
-            } : prev)
+            // setDrillDown((prev) => prev?.glCode === glCode ? {
+            //     ...prev,
+            //     balance: resp.balance || null,
+            //     openingBaseClosingDate: resp.meta?.openingBaseClosingDate || resp.meta?.openingBaseClosing?.closingDate || null,
+            // } : prev)
         } catch (error) {
             setAlertState('error')
             setAlert(error.message || 'Failed to load account ledger')
