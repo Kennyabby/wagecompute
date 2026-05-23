@@ -901,7 +901,7 @@
 }
 
 .coa-table {
-    min-width: 960px; /* forces scroll on small screens */
+    min-width: 1080px; /* forces scroll on small screens */
 }
 
 .coa-table th,
@@ -1697,7 +1697,7 @@
     }
 
     .report-grid {
-        min-width: 620px;
+        min-width: 760px;
     }
 }
 

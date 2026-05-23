@@ -715,19 +715,26 @@ function App() {
             case 'AccountingSummaries':
               try {
                 const summaryDoc = payload.data || null;
-                if (summaryDoc?.fromDate && summaryDoc?.toDate) {
+                const scopedFilters = summaryDoc?.filters?.filters || summaryDoc?.filters || {};
+                const hasScopedFilters = Object.keys(scopedFilters || {}).some((key) => (
+                  !['fromDate', 'toDate'].includes(key) &&
+                  scopedFilters[key] !== undefined &&
+                  scopedFilters[key] !== null &&
+                  scopedFilters[key] !== ''
+                ));
+                if (summaryDoc?.fromDate && summaryDoc?.toDate && !hasScopedFilters) {
                   const summaryKey = `journal-snapshot-${summaryDoc.fromDate}-${summaryDoc.toDate}`;
                   setCached(company, summaryKey, {
                     balances: summaryDoc.balances || {},
                     reports: summaryDoc.reports || {},
                   }, companyRecord?.emailid);
+                  window.dispatchEvent(new CustomEvent('wc:accounting-live-update', {
+                    detail: {
+                      company,
+                      snapshot: summaryDoc,
+                    }
+                  }));
                 }
-                window.dispatchEvent(new CustomEvent('wc:accounting-live-update', {
-                  detail: {
-                    company,
-                    snapshot: summaryDoc,
-                  }
-                }));
               } catch (e) {
                 console.error('SSE AccountingSummaries apply error', e);
               }
