@@ -582,7 +582,7 @@ const Purchase = () => {
                                                 }
                                                 const rep = await fetchServer("POST", {
                                                     collection: "ProductCostLogs",
-                                                    markUp: curPosSettings?.useMarkUp,
+                                                    markUp: curPosSettings?.useMarkUp || false,
                                                     markUpValue: 30,
                                                     prop: entryIds
                                                 }, "updateProductCost", server)
@@ -733,7 +733,7 @@ const Purchase = () => {
                 }
                 const rep = await fetchServer("POST", {
                     collection: "ProductCostLogs",
-                    markUp: curPosSettings?.useMarkUp,
+                    markUp: curPosSettings?.useMarkUp || false,
                     markUpValue: 30,
                     prop: entryIds
                 }, "updateProductCost", server)

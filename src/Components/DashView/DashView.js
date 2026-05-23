@@ -21,6 +21,7 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 import { getAppCache, setAppCache } from '../../Resources/offlineDb';
 
 const fmt = (n)=> Number(n||0).toLocaleString()
+const DASHBOARD_SUMMARY_ENGINE_VERSION = 3
 
 const DashView = () =>{
     // Modal state for payment receipts
@@ -168,6 +169,10 @@ const DashView = () =>{
         ].join('|')
     }
 
+    const isUsableDashboardSnapshot = (snap) => {
+        return Number(snap?._rollups?.engineVersion || 0) === DASHBOARD_SUMMARY_ENGINE_VERSION
+    }
+
     // Apply a cached or freshly-computed snapshot into React state
     const applyDashSnapshot = (snap) => {
         if (!snap) return;
@@ -250,7 +255,7 @@ const DashView = () =>{
         if (summaryCacheKey && !force) {
             try {
                 const cached = await getAppCache(company, companyRecord?.emailid, summaryCacheKey);
-                if (cached && cached.data) {
+                if (cached && cached.data && isUsableDashboardSnapshot(cached.data)) {
                     applyDashSnapshot(cached.data);
                 }
             } catch (e) {
@@ -885,6 +890,7 @@ const DashView = () =>{
             if (!summary || event?.detail?.company !== company) return
             const expectedKey = makeDashSummaryKey()
             if (summary.summaryKey !== expectedKey) return
+            if (!isUsableDashboardSnapshot(summary.snapshot || {})) return
             setDashboardSummaryKey(summary.summaryKey)
             applyDashSnapshot(summary.snapshot || {})
         }

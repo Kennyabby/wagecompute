@@ -69,7 +69,7 @@ const Journals = () => {
     const [balances, setBalances]           = useState({})   // { '11010': { debit, credit } }
     const [rawLedger, setRawLedger]         = useState({})   // { '11010': [ { date, desc, debit, credit, source } ] }
     const [reportData, setReportData]       = useState({
-        trialBalance: { rows: [], totals: { debit: 0, credit: 0, net: 0 } },
+        trialBalance: { rows: [], totals: { debit: 0, credit: 0, openingBalance: 0, net: 0 } },
         profitLoss: {
             revenue: [],
             costOfSales: [],
@@ -83,6 +83,7 @@ const Journals = () => {
             totals: { assets: 0, liabilities: 0, equity: 0, liabilitiesAndEquity: 0 }
         }
     })
+    const [reportRangeKey, setReportRangeKey] = useState('')
 
     // Drill-down modal
     const [drillDown, setDrillDown] = useState(null) // { glCode, accountName, side: 'debit'|'credit'|'net' }
@@ -406,9 +407,12 @@ const Journals = () => {
                 const cachedData = cached?.data || cached || null
                 if (cachedData?.balances) {
                     setBalances(cachedData.balances || {})
+                    if (cachedData.reports) {
+                        setReportData(cachedData.reports)
+                        setReportRangeKey(`${fromDate}|${toDate}`)
+                    }
                     if (activeTab !== 'COA') {
                         setRawLedger(cachedData.rawLedger || {})
-                        setReportData(cachedData.reports || reportData)
                     }
                 }
             } catch (cacheError) {
@@ -431,7 +435,7 @@ const Journals = () => {
             throw new Error(resp.mess || 'Failed to load accounting snapshot');
         }
         const nextReports = resp.reports || {
-            trialBalance: { rows: [], totals: { debit: 0, credit: 0, net: 0 } },
+            trialBalance: { rows: [], totals: { debit: 0, credit: 0, openingBalance: 0, net: 0 } },
             profitLoss: {
                 revenue: [],
                 costOfSales: [],
@@ -447,13 +451,15 @@ const Journals = () => {
         }
         setIsBalancesLoading(false);
         setBalances(resp.balances || {});
+        setReportData(nextReports);
+        setReportRangeKey(`${fromDate}|${toDate}`);
         if (activeTab === 'COA' && !includeRawLedger) {
             await setAppCache(company, userId, balanceOnlyCacheKey, {
                 balances: resp.balances || {},
+                reports: nextReports,
             })
         } else {
             setRawLedger(resp.rawLedger || {});
-            setReportData(nextReports);
             await setAppCache(company, userId, snapshotCacheKey, {
                 balances: resp.balances || {},
                 rawLedger: resp.rawLedger || {},
@@ -543,16 +549,20 @@ const Journals = () => {
         doc.setTextColor(255, 255, 255);
         doc.text('G/L Code', marginLeft + 2, y + 1);
         doc.text('Account Name', marginLeft + 25, y + 1);
-        doc.text('Debit', 140, y + 1, { align: 'right' });
-        doc.text('Credit', 165, y + 1, { align: 'right' });
+        doc.text('Opening', 120, y + 1, { align: 'right' });
+        doc.text('Debit', 145, y + 1, { align: 'right' });
+        doc.text('Credit', 168, y + 1, { align: 'right' });
+        doc.text('Net', 190, y + 1, { align: 'right' });
         y += 10;
         doc.setTextColor(0, 0, 0);
 
         reportData.trialBalance.rows.forEach((row) => {
             doc.text(String(row.code), marginLeft + 2, y);
-            doc.text(String(row.name).substring(0, 40), marginLeft + 25, y);
-            doc.text(fmt(row.debit), 140, y, { align: 'right' });
-            doc.text(fmt(row.credit), 165, y, { align: 'right' });
+            doc.text(String(row.name).substring(0, 32), marginLeft + 25, y);
+            doc.text(fmt(row.openingBalance || 0), 120, y, { align: 'right' });
+            doc.text(fmt(row.debit), 145, y, { align: 'right' });
+            doc.text(fmt(row.credit), 168, y, { align: 'right' });
+            doc.text(fmt(row.net), 190, y, { align: 'right' });
             y += 6;
             if (y > 280) {
                 doc.addPage();
@@ -561,7 +571,7 @@ const Journals = () => {
         });
 
         doc.line(marginLeft, y - 2, 195, y - 2);
-        drawRow('TOTALS', `${fmt(reportData.trialBalance.totals.debit)} / ${fmt(reportData.trialBalance.totals.credit)}`, true);
+        drawRow('TOTALS', `Opening ${fmt(reportData.trialBalance.totals.openingBalance || 0)} | Debit ${fmt(reportData.trialBalance.totals.debit)} | Credit ${fmt(reportData.trialBalance.totals.credit)} | Net ${fmt(reportData.trialBalance.totals.net)}`, true);
         doc.save(`TrialBalance_${compName}.pdf`);
     };
 
@@ -604,6 +614,7 @@ const Journals = () => {
         generateExcel(reportData.trialBalance.rows, [
             { name: 'G/L Code', reference: 'code' },
             { name: 'Account Name', reference: 'name' },
+            { name: 'Opening Balance', reference: 'openingBalance', numeric: true },
             { name: 'Debit', reference: 'debit', numeric: true },
             { name: 'Credit', reference: 'credit', numeric: true },
             { name: 'Net Balance', reference: 'net', numeric: true }
@@ -657,6 +668,7 @@ const Journals = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (company && ['COA', 'REPORTS'].includes(activeTab)) {
+            if (activeTab === 'REPORTS' && reportRangeKey === `${fromDate}|${toDate}`) return
             // loadBalances(true)
             hydrateFullAccountingSnapshot(false, { includeRawLedger: false }).catch((error) => {
                 console.error('Error loading accounting snapshot:', error)
@@ -671,11 +683,21 @@ const Journals = () => {
             const snapshot = event?.detail?.snapshot
             if (!snapshot || event?.detail?.company !== company) return
             if (String(snapshot.fromDate) !== String(fromDate) || String(snapshot.toDate) !== String(toDate)) return
+            const scopedFilters = snapshot?.filters?.filters || snapshot?.filters || {}
+            const hasScopedFilters = Object.keys(scopedFilters || {}).some((key) => (
+                !['fromDate', 'toDate'].includes(key) &&
+                scopedFilters[key] !== undefined &&
+                scopedFilters[key] !== null &&
+                scopedFilters[key] !== ''
+            ))
+            if (hasScopedFilters) return
 
             setBalances(snapshot.balances || {})
-            setRawLedger(snapshot.rawLedger || {})
+            if (snapshot.rawLedger && Object.keys(snapshot.rawLedger || {}).length) {
+                setRawLedger(snapshot.rawLedger || {})
+            }
             setReportData(snapshot.reports || {
-                trialBalance: { rows: [], totals: { debit: 0, credit: 0, net: 0 } },
+                trialBalance: { rows: [], totals: { debit: 0, credit: 0, openingBalance: 0, net: 0 } },
                 profitLoss: {
                     revenue: [],
                     costOfSales: [],
@@ -689,6 +711,7 @@ const Journals = () => {
                     totals: { assets: 0, liabilities: 0, equity: 0, liabilitiesAndEquity: 0 }
                 }
             })
+            setReportRangeKey(`${fromDate}|${toDate}`)
             setIsBalancesLoading(false)
         }
 
@@ -711,9 +734,12 @@ const Journals = () => {
                 const cachedData = cached?.data || cached || null
                 if (cachedData?.balances) {
                     setBalances(cachedData.balances || {})
+                    if (cachedData.reports) {
+                        setReportData(cachedData.reports)
+                        setReportRangeKey(`${fromDate}|${toDate}`)
+                    }
                     if (activeTab !== 'COA') {
                         setRawLedger(cachedData.rawLedger || {})
-                        setReportData(cachedData.reports || reportData)
                     }
                 }
             } catch (cacheError) {
@@ -737,28 +763,30 @@ const Journals = () => {
             }
 
             setBalances(resp.balances || {});
+            const nextReports = resp.reports || {
+                trialBalance: { rows: [], totals: { debit: 0, credit: 0, openingBalance: 0, net: 0 } },
+                profitLoss: {
+                    revenue: [],
+                    costOfSales: [],
+                    expenses: [],
+                    totals: { revenue: 0, costOfSales: 0, grossProfit: 0, expenses: 0, netIncome: 0 }
+                },
+                balanceSheet: {
+                    assets: [],
+                    liabilities: [],
+                    equity: [],
+                    totals: { assets: 0, liabilities: 0, equity: 0, liabilitiesAndEquity: 0 }
+                }
+            };
+            setReportData(nextReports);
+            setReportRangeKey(`${fromDate}|${toDate}`);
             if (activeTab === 'COA') {
                 await setAppCache(company, userId, balanceOnlyCacheKey, {
                     balances: resp.balances || {},
+                    reports: nextReports,
                 })
             } else {
                 setRawLedger(resp.rawLedger || {});
-                const nextReports = resp.reports || {
-                    trialBalance: { rows: [], totals: { debit: 0, credit: 0, net: 0 } },
-                    profitLoss: {
-                        revenue: [],
-                        costOfSales: [],
-                        expenses: [],
-                        totals: { revenue: 0, costOfSales: 0, grossProfit: 0, expenses: 0, netIncome: 0 }
-                    },
-                    balanceSheet: {
-                        assets: [],
-                        liabilities: [],
-                        equity: [],
-                        totals: { assets: 0, liabilities: 0, equity: 0, liabilitiesAndEquity: 0 }
-                    }
-                };
-                setReportData(nextReports);
                 await setAppCache(company, userId, snapshotCacheKey, {
                     balances: resp.balances || {},
                     rawLedger: resp.rawLedger || {},
@@ -808,7 +836,7 @@ const Journals = () => {
         // Calculate balances including range aggregation for headers
         const results = accounts.map(acc => {
             const isRange = acc.headerType === 'header' || acc.headerType === 'sub-header';
-            let debit = 0, credit = 0;
+            let opening = 0, debit = 0, credit = 0, net = 0;
 
             if (isRange) {
                 const start = Number(acc['begin-code'] || acc['g/l code']);
@@ -818,22 +846,28 @@ const Journals = () => {
                 Object.keys(balances).forEach(code => {
                     const c = Number(code);
                     if (c >= start && c <= end) {
-                        debit += balances[code].debit || 0;
-                        credit += balances[code].credit || 0;
+                        const bal = balances[code] || {};
+                        opening += (bal.openingDebit || 0) - (bal.openingCredit || 0);
+                        debit += bal.periodDebit ?? bal.debit ?? 0;
+                        credit += bal.periodCredit ?? bal.credit ?? 0;
+                        net += bal.net || 0;
                     }
                 });
             } else {
                 const glKey = String(acc['g/l code']);
                 const bal   = balances[glKey] || {};
-                debit  = bal.debit  || 0;
-                credit = bal.credit || 0;
+                opening = (bal.openingDebit || 0) - (bal.openingCredit || 0);
+                debit  = bal.periodDebit ?? bal.debit ?? 0;
+                credit = bal.periodCredit ?? bal.credit ?? 0;
+                net = bal.net ?? (opening + debit - credit);
             }
 
             return {
                 ...acc,
+                openingBalance: opening,
                 debitBalance:  debit,
                 creditBalance: credit,
-                netBalance:    debit - credit
+                netBalance:    net
             };
         });
 
@@ -1196,7 +1230,7 @@ const Journals = () => {
             setBalances({});
             setRawLedger({});
             setReportData({
-                trialBalance: { rows: [], totals: { debit: 0, credit: 0, net: 0 } },
+                trialBalance: { rows: [], totals: { debit: 0, credit: 0, openingBalance: 0, net: 0 } },
                 profitLoss: {
                     revenue: [],
                     costOfSales: [],
@@ -2170,9 +2204,10 @@ const Journals = () => {
                         </div>
                     ) : (() => {
                         const leafAccounts = flattenedAccounts.filter(a => a.headerType === 'leaf');
+                        const totalOpening = leafAccounts.reduce((s, a) => s + (a.openingBalance || 0), 0);
                         const totalDebit  = leafAccounts.reduce((s, a) => s + a.debitBalance,  0);
                         const totalCredit = leafAccounts.reduce((s, a) => s + a.creditBalance, 0);
-                        const totalNet    = totalDebit - totalCredit;
+                        const totalNet    = leafAccounts.reduce((s, a) => s + (a.netBalance || 0), 0);
                         
                         const fmt = (n) => {
                             if (isBalancesLoading && (balances && Object.keys(balances).length === 0)) return '...';
@@ -2196,6 +2231,7 @@ const Journals = () => {
                                         Category {sortConfig.key === 'category' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                     </th>
                                     <th>Statement</th>
+                                    <th className="num-col">Opening Balance</th>
                                     <th className="num-col">Debit</th>
                                     <th className="num-col">Credit</th>
                                     <th className="num-col">Net Balance</th>
@@ -2223,6 +2259,9 @@ const Journals = () => {
                                             </span>
                                         </td>
                                         <td>{acc.type}</td>
+                                        <td className="num-col" style={{ color: '#475569', fontWeight: 600 }}>
+                                            {fmt(acc.openingBalance || 0)}
+                                        </td>
                                         <td className="num-col bal-clickable" style={{ color: '#1d4ed8', fontWeight: 500 }}
                                             onClick={() => handleOpenDrillDown(acc, 'debit')} title="Click to see debit transactions">
                                             {fmt(acc.debitBalance)}
@@ -2243,7 +2282,7 @@ const Journals = () => {
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan="9" className="coa-empty-state">No accounts found matching your filters.</td>
+                                        <td colSpan="10" className="coa-empty-state">No accounts found matching your filters.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -2251,6 +2290,7 @@ const Journals = () => {
                                 <tfoot>
                                     <tr className="coa-totals-row">
                                         <td colSpan="4"><strong>Totals ({flattenedAccounts.length} accounts)</strong></td>
+                                        <td className="num-col" style={{ color: '#475569', fontWeight: 700 }}>{fmt(totalOpening)}</td>
                                         <td className="num-col" style={{ color: '#1d4ed8', fontWeight: 700 }}>{fmt(totalDebit)}</td>
                                         <td className="num-col" style={{ color: '#7c3aed', fontWeight: 700 }}>{fmt(totalCredit)}</td>
                                         <td className="num-col coa-tb-net" style={{ fontWeight: 700, color: netColor(totalNet) }} onClick={analyzeImbalances} title="Click to analyze Trial Balance">
@@ -2407,6 +2447,7 @@ const Journals = () => {
                                 <thead>
                                     <tr>
                                         <th>Account Details</th>
+                                        <th className="num">Opening Balance</th>
                                         <th className="num">Debit</th>
                                         <th className="num">Credit</th>
                                         <th className="num">Net Balance</th>
@@ -2420,6 +2461,7 @@ const Journals = () => {
                                                     <span className="tb-code">{row.code}</span>
                                                     <span className="tb-name">{row.name}</span>
                                                 </td>
+                                                <td className="num">{fmt(row.openingBalance || 0)}</td>
                                                 <td className="num">{renderLedgerAmount(row, row.debit, 'debit')}</td>
                                                 <td className="num">{renderLedgerAmount(row, row.credit, 'credit')}</td>
                                                 <td className="num">{renderLedgerAmount(row, row.net, 'net')}</td>
@@ -2430,6 +2472,7 @@ const Journals = () => {
                                 <tfoot>
                                     <tr>
                                         <td>TOTALS</td>
+                                        <td className="num">{fmt(trialBalance.totals.openingBalance || 0)}</td>
                                         <td className="num">{fmt(trialBalance.totals.debit)}</td>
                                         <td className="num">{fmt(trialBalance.totals.credit)}</td>
                                         <td className="num">{fmt(trialBalance.totals.net)}</td>
