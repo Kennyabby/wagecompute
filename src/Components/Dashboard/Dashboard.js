@@ -24,6 +24,68 @@ import LicenseExpired from '../LandingPage/LicenseExpired'
 
 const CORE_LEDGER_PAGES = new Set(['settings', 'journals', 'reports', 'employees', 'departments', 'positions'])
 
+const SETTING_REQUIREMENTS = {
+    dashboard: [
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+        ['warehouses', 'warehouses', 'Warehouses'],
+        ['product_categories', 'categories', 'Product and posting categories'],
+    ],
+    attendance: [
+        ['import_columns', 'import_columns', 'Attendance import columns'],
+        ['approvalConfig', 'modules', 'Approval configuration'],
+    ],
+    payroll: [
+        ['approvalConfig', 'modules', 'Approval configuration'],
+    ],
+    inventory: [
+        ['uom', 'mearsures', 'Product units of measure'],
+        ['warehouses', 'warehouses', 'Warehouses and locations'],
+        ['product_categories', 'categories', 'Product categories'],
+        ['approvalConfig', 'modules', 'Approval configuration'],
+    ],
+    assets: [
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+    ],
+    pos: [
+        ['uom', 'mearsures', 'Product units of measure'],
+        ['warehouses', 'warehouses', 'Sales warehouses'],
+        ['product_categories', 'categories', 'Product categories'],
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+        ['posSettings', 'posSettings', 'POS tables/sessions'],
+    ],
+    delivery: [
+        ['uom', 'mearsures', 'Product units of measure'],
+        ['warehouses', 'warehouses', 'Delivery warehouses'],
+        ['product_categories', 'categories', 'Product categories'],
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+        ['posSettings', 'posSettings', 'Delivery/POS service points'],
+    ],
+    sales: [
+        ['uom', 'mearsures', 'Product units of measure'],
+        ['warehouses', 'warehouses', 'Sales warehouses'],
+        ['product_categories', 'categories', 'Sales points and item categories'],
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+        ['approvalConfig', 'modules', 'Approval configuration'],
+    ],
+    accommodations: [
+        ['product_categories', 'categories', 'Accommodation room categories'],
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+        ['approvalConfig', 'modules', 'Approval configuration'],
+    ],
+    purchase: [
+        ['uom', 'mearsures', 'Product units of measure'],
+        ['warehouses', 'warehouses', 'Receiving warehouses'],
+        ['product_categories', 'categories', 'Purchase categories'],
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+        ['approvalConfig', 'modules', 'Approval configuration'],
+    ],
+    expenses: [
+        ['product_categories', 'categories', 'Expense categories'],
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+        ['approvalConfig', 'modules', 'Approval configuration'],
+    ],
+}
+
 const LEDGER_REQUIREMENTS = {
     dashboard: {
         title: 'Platform dashboard',
@@ -176,13 +238,46 @@ const getPostingAccountCodes = (chartOfAccounts = []) => {
     return codes
 }
 
-const getLedgerSetupStatus = (page, settings = [], chartOfAccounts = []) => {
-    if (CORE_LEDGER_PAGES.has(page)) return { ready: true, missing: [], title: '' }
+const getSettingsSetupIssues = (page, settings = []) => {
+    const requirements = SETTING_REQUIREMENTS[page] || []
+    if (!requirements.length) return []
+
+    return requirements.reduce((missing, [settingName, fieldName, label]) => {
+        const setting = (settings || []).find((item) => item?.name === settingName)
+        const value = setting?.[fieldName]
+        const hasValue = Array.isArray(value)
+            ? value.length > 0
+            : value && typeof value === 'object'
+                ? Object.keys(value).length > 0
+                : Boolean(value)
+
+        if (!setting?.name || !hasValue) {
+            missing.push(`${label} must be configured in Settings before this module can be used.`)
+        }
+        return missing
+    }, [])
+}
+
+const getLedgerSetupStatus = (page, settings = [], chartOfAccounts = [], options = {}) => {
+    if (CORE_LEDGER_PAGES.has(page)) return { ready: true, checking: false, missing: [], settingMissing: [], ledgerMissing: [], title: '' }
 
     const requirement = LEDGER_REQUIREMENTS[page]
-    if (!requirement) return { ready: true, missing: [], title: '' }
+    if (!requirement) return { ready: true, checking: false, missing: [], settingMissing: [], ledgerMissing: [], title: '' }
 
-    const missing = []
+    const settingsLoaded = options.settingsLoaded !== false
+    const chartLoaded = options.chartLoaded !== false
+    if (!settingsLoaded || !chartLoaded) {
+        return {
+            ready: false,
+            checking: true,
+            missing: [],
+            settingMissing: [],
+            ledgerMissing: [],
+            title: requirement.title,
+        }
+    }
+
+    const ledgerMissing = []
     const postingCodes = getPostingAccountCodes(chartOfAccounts)
     const mappings = (settings || []).find((setting) => setting?.name === 'accountingMappings')
     const modules = mappings?.modules || {}
@@ -193,57 +288,88 @@ const getLedgerSetupStatus = (page, settings = [], chartOfAccounts = []) => {
     }
 
     if (!postingCodes.size) {
-        missing.push('Initialize the Chart of Accounts so posting accounts are available.')
+        ledgerMissing.push('Initialize the Chart of Accounts so posting accounts are available.')
     }
 
     if (!mappings?.name) {
-        missing.push('Create the Operational G/L Linking record from Settings or Journals.')
+        ledgerMissing.push('Create the Operational G/L Linking record from Settings or Journals.')
     }
 
     ;(requirement.fields || []).forEach(([moduleName, field, label]) => {
         if (!hasValidCode(modules?.[moduleName]?.[field])) {
-            missing.push(`${label} is not linked to a valid posting account.`)
+            ledgerMissing.push(`${label} is not linked to a valid posting account.`)
         }
     })
 
     ;(requirement.lists || []).forEach(([moduleName, listName, field, label]) => {
         const rows = listName ? modules?.[moduleName]?.[listName] : modules?.[moduleName]
         if (!Array.isArray(rows) || !rows.length) {
-            missing.push(`${label} links are not available yet.`)
+            ledgerMissing.push(`${label} links are not available yet.`)
             return
         }
 
         rows.forEach((row) => {
             if (!hasValidCode(row?.[field])) {
-                missing.push(`${label} "${row?.label || row?.key || 'Unnamed'}" is not linked to a valid posting account.`)
+                ledgerMissing.push(`${label} "${row?.label || row?.key || 'Unnamed'}" is not linked to a valid posting account.`)
             }
         })
     })
 
+    const settingMissing = getSettingsSetupIssues(page, settings)
+    const missing = Array.from(new Set([...settingMissing, ...ledgerMissing]))
+
     return {
         ready: missing.length === 0,
-        missing: Array.from(new Set(missing)),
+        checking: false,
+        missing,
+        settingMissing: Array.from(new Set(settingMissing)),
+        ledgerMissing: Array.from(new Set(ledgerMissing)),
         title: requirement.title,
     }
 }
 
+const SetupCheckingBlock = ({ title }) => (
+    <div className='ledger-setup-block'>
+        <div className='ledger-setup-dialog ledger-setup-checking' role='status' aria-live='polite'>
+            <div className='ledger-setup-loader' />
+            <div>
+                <div className='ledger-setup-kicker'>Checking setup</div>
+                <h2>{title || 'Module'} setup is being verified</h2>
+                <p>
+                    We are confirming the required settings, Chart of Accounts, and operational G/L links before opening this workspace.
+                </p>
+            </div>
+        </div>
+    </div>
+)
+
 const LedgerConfigurationBlock = ({ status, onOpenAccounting, onOpenCOA }) => (
     <div className='ledger-setup-block'>
         <div className='ledger-setup-dialog' role='dialog' aria-modal='true' aria-labelledby='ledger-setup-title'>
-            <div className='ledger-setup-kicker'>Accounting setup required</div>
-            <h2 id='ledger-setup-title'>{status.title} is waiting for G/L configuration</h2>
+            <div className='ledger-setup-kicker'>Setup required</div>
+            <h2 id='ledger-setup-title'>{status.title} is waiting for configuration</h2>
             <p>
-                This page posts financial activity into the Chart of Accounts. Complete the required ledger links first so balances, reports, and live summaries stay correct.
+                Complete the pending settings and ledger links first. This keeps posting, approvals, balances, reports, and live summaries consistent.
             </p>
             <div className='ledger-setup-missing'>
-                {status.missing.slice(0, 8).map((item, index) => (
-                    <div className='ledger-setup-missing-row' key={`${item}-${index}`}>
+                {!!status.settingMissing?.length && <div className='ledger-setup-section-title'>Pending settings</div>}
+                {(status.settingMissing || []).slice(0, 8).map((item, index) => (
+                    <div className='ledger-setup-missing-row settings-row' key={`setting-${item}-${index}`}>
                         <span>{index + 1}</span>
                         <p>{item}</p>
                     </div>
                 ))}
-                {status.missing.length > 8 && (
-                    <div className='ledger-setup-more'>+{status.missing.length - 8} more item(s) need attention.</div>
+                {!!status.ledgerMissing?.length && <div className='ledger-setup-section-title'>Pending G/L links</div>}
+                {(status.ledgerMissing || []).slice(0, 8).map((item, index) => (
+                    <div className='ledger-setup-missing-row' key={`ledger-${item}-${index}`}>
+                        <span>{index + 1}</span>
+                        <p>{item}</p>
+                    </div>
+                ))}
+                {(Math.max((status.settingMissing?.length || 0) - 8, 0) + Math.max((status.ledgerMissing?.length || 0) - 8, 0)) > 0 && (
+                    <div className='ledger-setup-more'>
+                        +{Math.max((status.settingMissing?.length || 0) - 8, 0) + Math.max((status.ledgerMissing?.length || 0) - 8, 0)} more item(s) need attention.
+                    </div>
                 )}
             </div>
             <div className='ledger-setup-actions'>
@@ -251,7 +377,7 @@ const LedgerConfigurationBlock = ({ status, onOpenAccounting, onOpenCOA }) => (
                     Open Journals & COA
                 </button>
                 <button type='button' className='ledger-setup-primary' onClick={onOpenAccounting}>
-                    Configure G/L Links
+                    Open Settings
                 </button>
             </div>
         </div>
@@ -261,7 +387,7 @@ const LedgerConfigurationBlock = ({ status, onOpenAccounting, onOpenCOA }) => (
 const Dashboard = ()=>{
     const {
         dashList, companyRecord, subscriptionState, showSubscriptionBanner,
-        settings, chartOfAccounts
+        settings, chartOfAccounts, settingsLoadState, chartOfAccountsLoadState
     } = useContext(ContextProvider)
     const [view, setView] = useState(null)
     const params = useParams()
@@ -275,7 +401,11 @@ const Dashboard = ()=>{
                 return
             }
             const guardPage = (page, element) => {
-                const setupStatus = getLedgerSetupStatus(page, settings, chartOfAccounts)
+                const setupStatus = getLedgerSetupStatus(page, settings, chartOfAccounts, {
+                    settingsLoaded: settingsLoadState?.loaded || settings?.length > 0,
+                    chartLoaded: chartOfAccountsLoadState?.loaded || chartOfAccounts?.length > 0,
+                })
+                if (setupStatus.checking) return <SetupCheckingBlock title={setupStatus.title} />
                 if (setupStatus.ready) return element
                 return (
                     <LedgerConfigurationBlock
@@ -328,7 +458,7 @@ const Dashboard = ()=>{
                 setView('')
             }
         }
-    },[params,companyRecord,subscriptionState,settings,chartOfAccounts,Navigate,dashList])
+    },[params,companyRecord,subscriptionState,settings,chartOfAccounts,settingsLoadState,chartOfAccountsLoadState,Navigate,dashList])
     return(
         <>
             <div className='dashboard'>

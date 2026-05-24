@@ -21,7 +21,7 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 import { getAppCache, setAppCache } from '../../Resources/offlineDb';
 
 const fmt = (n)=> Number(n||0).toLocaleString()
-const DASHBOARD_SUMMARY_ENGINE_VERSION = 3
+const DASHBOARD_SUMMARY_ENGINE_VERSION = 4
 
 const DashView = () =>{
     // Modal state for payment receipts

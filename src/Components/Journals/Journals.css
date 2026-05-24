@@ -357,6 +357,38 @@
     font-weight: 400;
 }
 
+.coa-row-rollup-parent td {
+    background: linear-gradient(90deg, rgba(15, 118, 110, 0.08), rgba(255, 255, 255, 0.96));
+    font-weight: 700;
+}
+
+.coa-row-rollup-detail td {
+    background: rgba(15, 23, 42, 0.025);
+}
+
+.coa-row-rollup-detail .coa-name-cell {
+    color: #475569;
+}
+
+.coa-rollup-chip {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 10px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #0f766e;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.coa-rollup-chip.parent {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
 .coa-row-leaf:hover {
     background-color: #f8f9fa !important;
 }
