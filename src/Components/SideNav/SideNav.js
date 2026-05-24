@@ -139,18 +139,40 @@ const SideNav = () => {
 
     const logout = async () => {
         setLogStatus('Ending Session')
-        const resps = await fetchServer("POST", {
-            record: companyRecord
-        }, "closeSession", server)
-
-        if (resps.err) {
-            console.log(resps.mess)
-            setLogStatus('Log Out')
-        } else {
-            window.localStorage.setItem('lgt-mess', 'Logged Out Successfully!')
+        const clearLocalSession = () => {
+            window.localStorage.removeItem('sess-recg-id')
+            window.localStorage.removeItem('idt-curr-usr')
+            window.localStorage.removeItem('sessn-id')
+            window.localStorage.removeItem('curr-path')
+            window.localStorage.removeItem('slvw')
+            window.localStorage.removeItem('sldtl')
+            window.localStorage.removeItem('sessn-cmp')
+            window.localStorage.removeItem('pos-wrh')
             window.localStorage.removeItem('ps-vw')
             window.localStorage.removeItem('acc-vw')
-            window.location.reload()
+        }
+
+        try {
+            const resps = await fetchServer("POST", {
+                record: companyRecord
+            }, "closeSession", server)
+
+            if (resps.err) {
+                console.log(resps.mess)
+                clearLocalSession()
+                window.localStorage.setItem('lgt-mess', 'Logged out locally. The server session could not be closed.')
+                Navigate('/login')
+                return
+            }
+
+            clearLocalSession()
+            window.localStorage.setItem('lgt-mess', 'Logged Out Successfully!')
+            Navigate('/login')
+        } catch (error) {
+            console.warn('Logout failed remotely; clearing local session.', error)
+            clearLocalSession()
+            window.localStorage.setItem('lgt-mess', 'Logged out locally. The server session could not be closed.')
+            Navigate('/login')
         }
     }
 

@@ -277,6 +277,10 @@ const Login = () => {
     window.localStorage.removeItem('sess-recg-id');
     window.localStorage.removeItem('idt-curr-usr');
     window.localStorage.removeItem('sessn-id');
+    window.localStorage.removeItem('curr-path');
+    window.localStorage.removeItem('ps-vw');
+    window.localStorage.removeItem('acc-vw');
+    window.localStorage.setItem('lgt-mess', 'Logged Out Successfully!');
     window.location.reload();
   };
 

@@ -179,6 +179,8 @@ const applySseCollectionChange = (existing = [], payload = {}) => {
   return current;
 };
 
+const ACCOUNTING_UI_CACHE_VERSION = 5;
+
 function App() {
 
   const [showLoading, setShowLoading] = useState(true)
@@ -229,6 +231,7 @@ function App() {
   const [customers, setCustomers] = useState([])
   const [reloadCount, setReloadCount] = useState(0)
   const [settings, setSettings] = useState([])
+  const [settingsLoadState, setSettingsLoadState] = useState({ loading: false, loaded: false, company: null })
   const [colSettings, setColSettings] = useState({})
   const [posSettings, setPosSettings] = useState({})
   const [paymentMethods, setPaymentMethods] = useState([])
@@ -243,6 +246,7 @@ function App() {
   const [changingSettings, setChangingSettings] = useState(false)
 
   const [chartOfAccounts, setChartOfAccounts] = useState([])
+  const [chartOfAccountsLoadState, setChartOfAccountsLoadState] = useState({ loading: false, loaded: false, company: null })
   const [accountingLiveBalances, setAccountingLiveBalances] = useState(null)
   const [attendance, setAttendance] = useState([])
   const [sales, setSales] = useState([])
@@ -696,7 +700,7 @@ function App() {
                 setAccountingLiveBalances(liveSnapshot);
                 setCached(company, 'accountingLiveBalances', liveSnapshot, companyRecord?.emailid);
                 if (liveSnapshot?.fromDate && liveSnapshot?.toDate) {
-                  const liveSnapshotKey = `journal-snapshot-${liveSnapshot.fromDate}-${liveSnapshot.toDate}`;
+                  const liveSnapshotKey = `journal-snapshot-v${ACCOUNTING_UI_CACHE_VERSION}-${liveSnapshot.fromDate}-${liveSnapshot.toDate}`;
                   setCached(company, liveSnapshotKey, {
                     balances: liveSnapshot.balances || {},
                     reports: liveSnapshot.reports || {},
@@ -723,7 +727,7 @@ function App() {
                   scopedFilters[key] !== ''
                 ));
                 if (summaryDoc?.fromDate && summaryDoc?.toDate && !hasScopedFilters) {
-                  const summaryKey = `journal-snapshot-${summaryDoc.fromDate}-${summaryDoc.toDate}`;
+                  const summaryKey = `journal-snapshot-v${ACCOUNTING_UI_CACHE_VERSION}-${summaryDoc.fromDate}-${summaryDoc.toDate}`;
                   setCached(company, summaryKey, {
                     balances: summaryDoc.balances || {},
                     reports: summaryDoc.reports || {},
@@ -944,17 +948,14 @@ function App() {
 
           setIsHydrated(true)
 
-          // Flush any pending local changes to the server before pulling authoritative state
-          try {
-            await syncPendingChanges(company, companyRecord?.emailid, fetchServer, SERVER)
-          } catch (e) {
-            console.warn('Initial syncPendingChanges failed', e)
-          }
-
           // Now fetch authoritative datasets (retain original ordering/logic)
           try {
             if (companyRecord.status === 'admin') {
               window.localStorage.removeItem('lgt-vw')
+              const targetPath = '/' + loadedCurPath;
+              if (window.location.pathname !== targetPath) {
+                Navigate(targetPath + window.location.search);
+              }
               getEmployees(company)
               getAccommodations(company)
               getSales(company)
@@ -973,13 +974,17 @@ function App() {
               getPurchase(company)
               getExpenses(company)
               getAttendance(company)
-              const targetPath = '/' + loadedCurPath;
-              if (window.location.pathname !== targetPath) {
-                Navigate(targetPath + window.location.search);
-              }
               setTimeout(() => { setLoadedCurPath('') }, 500);
             }
           } catch (e) { console.warn('Initial authoritative fetch failed', e) }
+
+          // Flush pending local changes after routing so offline sync cannot hold
+          // users on the login screen.
+          try {
+            await syncPendingChanges(company, companyRecord?.emailid, fetchServer, SERVER)
+          } catch (e) {
+            console.warn('Initial syncPendingChanges failed', e)
+          }
 
           setIsInitialSyncDone(true)
         } catch (e) {
@@ -1109,21 +1114,21 @@ function App() {
   }, [window.localStorage.getItem('ps-vw')])
 
   const logout = async () => {
-    const resps = await fetchServer("POST", {
-      record: companyRecord
-    }, "closeSession", SERVER)
-    if (resps.err) {
-      console.log(resps.mess)
-      setAlertState('error')
-      setAlert(resps.mess)
-      setAlertTimeout(3000)
-    } else {
-      window.localStorage.removeItem('ps-vw')
-      window.localStorage.removeItem('acc-vw')
+    try {
+      const resps = await fetchServer("POST", {
+        record: companyRecord
+      }, "closeSession", SERVER)
+      if (resps.err) {
+        console.log(resps.mess)
+      }
+    } catch (error) {
+      console.warn('Remote session close failed; clearing local session.', error)
+    } finally {
+      removeSessions()
       if (!pauseView) {
         window.localStorage.setItem('lgt-mess', 'Login Access Denied. Please Request For Access!')
       }
-      window.location.reload()
+      Navigate('/login')
     }
   }
 
@@ -1914,21 +1919,11 @@ function App() {
     window.localStorage.removeItem('sessn-cmp')
     window.localStorage.removeItem('pos-wrh')
     setSessID(null)
-    // Only redirect to root if we are not on a public/payment page
-    const isPublicPath = ['/payment/confirm', '/login', '/signup', '/forgot-password', '/pricing'].includes(window.location.pathname);
-    if (!isPublicPath) Navigate("/")
-    setTimeout(() => {
-      var currPath = window.localStorage.getItem('curr-path')
-      if (currPath){
-        Navigate("/" + currPath)
-      }else{
-        Navigate("/")
-      }
-      // if (path !== undefined) {
-      //   Navigate("/" + path)
-      // } else {
-      // }
-    }, 5000)
+    setCompanyRecord(null)
+    setCompany(null)
+    setLoadedCurPath('')
+    const isPublicPath = ['/', '/payment/confirm', '/login', '/signup', '/forgot-password', '/pricing'].includes(window.location.pathname);
+    if (!isPublicPath) Navigate('/login')
   }
 
   const loadPage = async (propVal, currPath) => {
@@ -1957,6 +1952,14 @@ function App() {
         setEnableBlockVal(!resp.record?.enableLogin)
       }
       setLoadedCurPath(currPath)
+      const targetPath = '/' + (currPath || 'dashboard');
+      if (
+        currPath &&
+        window.location.pathname !== targetPath &&
+        window.location.pathname !== '/payment/confirm'
+      ) {
+        Navigate(targetPath + window.location.search);
+      }
     }
   }
 
@@ -2152,18 +2155,24 @@ function App() {
 
   const getChartOfAccounts = async (company) => {
     if (company && companyRecord?.emailid) {
-      const cached = await getCached(company, 'chartOfAccounts', companyRecord?.emailid);
-      if (cached && Array.isArray(cached)) {
-        setChartOfAccounts(cached);
-      }
-      const resp = await fetchServer("POST", {
-        database: company,
-        collection: "ChartOfAccounts",
-        prop: {}
-      }, "getDocsDetails", SERVER)
-      if (Array.isArray(resp.record)) {
-        setChartOfAccounts(resp.record)
-        setCached(company, 'chartOfAccounts', resp.record, companyRecord?.emailid)
+      setChartOfAccountsLoadState({ loading: true, loaded: false, company })
+      try {
+        const cached = await getCached(company, 'chartOfAccounts', companyRecord?.emailid);
+        if (cached && Array.isArray(cached)) {
+          setChartOfAccounts(cached);
+          setChartOfAccountsLoadState({ loading: true, loaded: true, company })
+        }
+        const resp = await fetchServer("POST", {
+          database: company,
+          collection: "ChartOfAccounts",
+          prop: {}
+        }, "getDocsDetails", SERVER)
+        if (Array.isArray(resp.record)) {
+          setChartOfAccounts(resp.record)
+          setCached(company, 'chartOfAccounts', resp.record, companyRecord?.emailid)
+        }
+      } finally {
+        setChartOfAccountsLoadState({ loading: false, loaded: true, company })
       }
     }
   };
@@ -3368,17 +3377,24 @@ function App() {
   }
 
   const getSettings = async (company) => {
-    const cached = await getCached(company, 'settings', companyRecord?.emailid);
-    if (cached) {
-      setSettings(cached);
-    }
-    const resp = await fetchServer("POST", {
-      collection: "Settings",
-      prop: {}
-    }, "getDocsDetails", SERVER)
-    if (resp.record) {
-      setSettings(resp.record)
-      setCached(company, 'settings', resp.record, companyRecord?.emailid)
+    if (!company) return
+    setSettingsLoadState({ loading: true, loaded: false, company })
+    try {
+      const cached = await getCached(company, 'settings', companyRecord?.emailid);
+      if (cached) {
+        setSettings(cached);
+        setSettingsLoadState({ loading: true, loaded: true, company })
+      }
+      const resp = await fetchServer("POST", {
+        collection: "Settings",
+        prop: {}
+      }, "getDocsDetails", SERVER)
+      if (resp.record) {
+        setSettings(resp.record)
+        setCached(company, 'settings', resp.record, companyRecord?.emailid)
+      }
+    } finally {
+      setSettingsLoadState({ loading: false, loaded: true, company })
     }
   };
 
@@ -3489,6 +3505,7 @@ function App() {
         getSessionEnd, getSessionStart,
         companyRecord, setCompanyRecord,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
+        chartOfAccountsLoadState,
         accountingLiveBalances, setAccountingLiveBalances,
         showSubscriptionBanner, setShowSubscriptionBanner,
         subscriptionState, setSubscriptionState, refreshSubscriptionState,
@@ -3534,6 +3551,7 @@ function App() {
         paymentReceipts, obtainPaymentReceipts,
 
         settings, setSettings, getSettings,
+        settingsLoadState,
         colSettings, setColSettings,
         posSettings, setPosSettings,
         paymentMethods, setPaymentMethods,
