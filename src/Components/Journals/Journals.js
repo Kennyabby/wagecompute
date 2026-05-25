@@ -31,8 +31,17 @@ const Journals = () => {
     const [collapsedHeaders, setCollapsedHeaders] = useState(new Set())
     
     // Date Filters
-    const [fromDate, setFromDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
-    const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0])
+    const formatDateInput = (value) => {
+        const date = value instanceof Date ? value : new Date(value)
+        if (Number.isNaN(date.getTime())) return ''
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+    }
+
+    const [fromDate, setFromDate] = useState(formatDateInput(new Date(new Date().getFullYear(), new Date().getMonth(), 1)))
+    const [toDate, setToDate] = useState(formatDateInput(new Date()))
 
     const setDatePreset = (preset) => {
         const now = new Date();
@@ -50,8 +59,8 @@ const Journals = () => {
         } else {
             from = new Date(now.getFullYear(), now.getMonth(), 1);
         }
-        const f = from.toISOString().split('T')[0];
-        const t = to.toISOString().split('T')[0];
+        const f = formatDateInput(from);
+        const t = formatDateInput(to);
         setFromDate(f);
         setToDate(t);
     }
@@ -86,6 +95,7 @@ const Journals = () => {
         }
     })
     const [reportRangeKey, setReportRangeKey] = useState('')
+    const [accountingSnapshotMeta, setAccountingSnapshotMeta] = useState(null)
 
     // Drill-down modal
     const [drillDown, setDrillDown] = useState(null) // { glCode, accountName, side: 'debit'|'credit'|'net' }
@@ -108,9 +118,11 @@ const Journals = () => {
     // Closing balances UI/state
     const [lastClosing, setLastClosing] = useState(null)
     const [lastClosingDetails, setLastClosingDetails] = useState(null)
+    const [monthlyClosings, setMonthlyClosings] = useState([])
     const [pendingClosings, setPendingClosings] = useState([])
     const [auditEntries, setAuditEntries] = useState([])
     const [showClosingDetailsModal, setShowClosingDetailsModal] = useState(false)
+    const [showClosingsModal, setShowClosingsModal] = useState(false)
     const [showPendingModal, setShowPendingModal] = useState(false)
     const [showAuditModal, setShowAuditModal] = useState(false)
     const [isClosingLoading, setIsClosingLoading] = useState(false)
@@ -148,6 +160,31 @@ const Journals = () => {
         } finally {
             setIsClosingLoading(false);
         }
+    }
+
+    const loadMonthlyClosings = async () => {
+        if (!company) return []
+        setIsClosingLoading(true)
+        try {
+            const closingEnd = monthEndFor(toDate)
+            const resp = await fetchServer('GET', { from: '1970-01-01', to: closingEnd }, 'accounting/closings', server)
+            const rows = resp?.ok ? (resp.closings || []) : []
+            setMonthlyClosings(rows)
+            return rows
+        } catch (e) {
+            console.error('load monthly closings failed', e)
+            setAlertState('error')
+            setAlert(e.message || 'Failed to load monthly closings')
+            setAlertTimeout(4000)
+            return []
+        } finally {
+            setIsClosingLoading(false)
+        }
+    }
+
+    const handleOpenClosingsModal = async () => {
+        await loadMonthlyClosings()
+        setShowClosingsModal(true)
     }
 
     const loadPendingClosings = async () => {
@@ -210,9 +247,9 @@ const Journals = () => {
     }, [company, fromDate])
 
     const monthEndFor = (dateStr) => {
-        const d = new Date(dateStr)
-        const last = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-        return last.toISOString().split('T')[0]
+        const [year, month] = String(dateStr || formatDateInput(new Date())).split('-').map(Number)
+        const last = new Date(year, month, 0)
+        return formatDateInput(last)
     }
 
     const getModalOverlayStyle = () => {
@@ -255,13 +292,47 @@ const Journals = () => {
         }
     }
 
-    const handleSetClosingStatus = async (status) => {
-        if (!lastClosing) return
+    const handleBuildMissingMonthlyClosings = async (includeRawLedger = false) => {
+        if (!company || !companyRecord) return
+        const closingEnd = monthEndFor(toDate)
         setIsClosingAction(true)
         try {
-            const resp = await fetchServer('POST', { status }, `accounting/closing/${lastClosing.closingDate}/status`, server)
+            const resp = await fetchServer('POST', {
+                fromDate: '1970-01-01',
+                toDate: closingEnd,
+                includeRawLedger,
+                status: 'draft',
+            }, 'accounting/compute-closings-range', server)
             if (resp && resp.ok) {
-                setLastClosing(resp.closing || null)
+                setAlertState('success')
+                setAlert(`Monthly closings ${includeRawLedger ? 'with ledger snapshots ' : ''}built through ${closingEnd}. Refreshing balances now.`)
+                setAlertTimeout(4000)
+                await loadLastClosing()
+                await loadMonthlyClosings()
+                await hydrateFullAccountingSnapshot(true)
+            } else {
+                setAlertState('error')
+                setAlert(resp?.mess || 'Failed to build monthly closings')
+                setAlertTimeout(5000)
+            }
+        } catch (e) {
+            console.error('build missing monthly closings failed', e)
+            setAlertState('error')
+            setAlert(e.message || 'Failed to build monthly closings')
+            setAlertTimeout(5000)
+        } finally {
+            setIsClosingAction(false)
+        }
+    }
+
+    const handleSetClosingStatus = async (status, closingDate = lastClosing?.closingDate) => {
+        if (!closingDate) return
+        setIsClosingAction(true)
+        try {
+            const resp = await fetchServer('POST', { status }, `accounting/closing/${closingDate}/status`, server)
+            if (resp && resp.ok) {
+                if (closingDate === lastClosing?.closingDate) setLastClosing(resp.closing || null)
+                setMonthlyClosings((prev) => prev.map((row) => row.closingDate === closingDate ? (resp.closing || row) : row))
                 setAlertState('success')
                 setAlert(resp.mess || 'Status updated')
                 setAlertTimeout(3000)
@@ -280,13 +351,14 @@ const Journals = () => {
         }
     }
 
-    const handleRecomputeClosing = async () => {
-        if (!lastClosing) return
+    const handleRecomputeClosing = async (closingDate = lastClosing?.closingDate, includeRawLedger = false) => {
+        if (!closingDate) return
         setIsClosingAction(true)
         try {
-            const resp = await fetchServer('POST', {}, `accounting/closing/${lastClosing.closingDate}/recompute`, server)
+            const resp = await fetchServer('POST', { includeRawLedger }, `accounting/closing/${closingDate}/recompute`, server)
             if (resp && resp.ok) {
-                setLastClosing(resp.closing || null)
+                if (closingDate === lastClosing?.closingDate) setLastClosing(resp.closing || null)
+                setMonthlyClosings((prev) => prev.map((row) => row.closingDate === closingDate ? (resp.closing || row) : row))
                 loadBalances(true)
                 setAlertState('success')
                 setAlert(resp.mess || 'Closing recomputed')
@@ -383,12 +455,32 @@ const Journals = () => {
         const leafAccs = flattenedAccounts.filter(a => a.headerType === 'leaf');
         const totalD = leafAccs.reduce((s, a) => s + (a.debitBalance || 0), 0);
         const totalC = leafAccs.reduce((s, a) => s + (a.creditBalance || 0), 0);
+        const openingGap = leafAccs.reduce((s, a) => s + (a.openingBalance || 0), 0);
+        const periodGap = leafAccs.reduce((s, a) => s + (a.periodNetBalance || 0), 0);
+        const closingGap = leafAccs.reduce((s, a) => s + (a.netBalance || 0), 0);
+        const affectedAccounts = leafAccs
+            .filter((account) => Math.abs(account.openingBalance || 0) > 0.01 || Math.abs(account.periodNetBalance || 0) > 0.01 || Math.abs(account.netBalance || 0) > 0.01)
+            .map((account) => ({
+                code: account['g/l code'],
+                name: account.name,
+                category: account.category,
+                opening: account.openingBalance || 0,
+                period: account.periodNetBalance || 0,
+                closing: account.netBalance || 0,
+                impact: Math.abs(account.netBalance || 0),
+            }))
+            .sort((a, b) => b.impact - a.impact)
+            .slice(0, 15);
 
         return {
             totalD,
             totalC,
             difference: totalD - totalC,
+            openingGap,
+            periodGap,
+            closingGap,
             unbalancedDocs: unbalanced,
+            affectedAccounts,
             categoryTotals
         };
     };
@@ -401,6 +493,17 @@ const Journals = () => {
         const snapshotCacheKey = `journal-snapshot-v${ACCOUNTING_UI_CACHE_VERSION}-${fromDate}-${toDate}`
         const balanceOnlyCacheKey = `journal-balances-v${ACCOUNTING_UI_CACHE_VERSION}-${fromDate}-${toDate}`
         const includeRawLedger = options?.includeRawLedger === true
+        const traceId = `journal-${activeTab}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+        const startedAt = Date.now()
+        console.info('[JOURNALS] hydrate snapshot start', {
+            traceId,
+            activeTab,
+            endpoint: activeTab === 'COA' && !includeRawLedger ? 'accounting/coa-balances' : 'getAccountingSummary',
+            fromDate,
+            toDate,
+            forceRefresh,
+            includeRawLedger,
+        })
 
         if (!forceRefresh) {
             try {
@@ -409,6 +512,7 @@ const Journals = () => {
                 const cachedData = cached?.data || cached || null
                 if (cachedData?.balances) {
                     setBalances(cachedData.balances || {})
+                    setAccountingSnapshotMeta(cachedData.meta || null)
                     if (cachedData.reports) {
                         setReportData(cachedData.reports)
                         setReportRangeKey(`${fromDate}|${toDate}`)
@@ -429,8 +533,19 @@ const Journals = () => {
             fromDate,
             toDate,
             forceRefresh,
-            includeRawLedger
+            includeRawLedger,
+            traceId,
         }, endpoint, server);
+        console.info('[JOURNALS] hydrate snapshot response', {
+            traceId,
+            durationMs: Date.now() - startedAt,
+            ok: resp?.ok,
+            error: resp?.err,
+            balanceAccounts: Object.keys(resp?.balances || {}).length,
+            rawLedgerAccounts: Object.keys(resp?.rawLedger || {}).length,
+            hasReports: Boolean(resp?.reports && Object.keys(resp.reports || {}).length),
+            serverTraceId: resp?.meta?.traceId,
+        })
 
         if (resp.err || !resp.ok) {
             setIsBalancesLoading(false);
@@ -453,6 +568,7 @@ const Journals = () => {
         }
         setIsBalancesLoading(false);
         setBalances(resp.balances || {});
+        setAccountingSnapshotMeta(resp.meta || null);
         setReportData(nextReports);
         setReportRangeKey(`${fromDate}|${toDate}`);
         if (activeTab === 'COA' && !includeRawLedger) {
@@ -472,14 +588,39 @@ const Journals = () => {
     }
 
     const analyzeImbalances = async () => {
+        setIsBalancesLoading(true)
         try {
-            let ledgerSource = rawLedger;
-            if (!Object.keys(rawLedger || {}).length) {
-                setIsBalancesLoading(true);
-                const snapshot = await hydrateFullAccountingSnapshot(false, { includeRawLedger: true });
-                ledgerSource = snapshot.rawLedger || {};
+            const traceId = `journal-analyze-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+            const resp = await fetchServer('POST', {
+                fromDate,
+                toDate,
+                traceId,
+            }, 'accounting/analyze-imbalances', server)
+
+            if (resp?.ok) {
+                setImbalanceAnalysis({
+                    ...(resp.summary || {}),
+                    totalD: resp.summary?.totalD || 0,
+                    totalC: resp.summary?.totalC || 0,
+                    difference: resp.summary?.difference || 0,
+                    openingGap: resp.summary?.openingGap || 0,
+                    periodGap: resp.summary?.periodGap || 0,
+                    closingGap: resp.summary?.closingGap || 0,
+                    unbalancedDocs: resp.unbalancedDocs || [],
+                    affectedAccounts: resp.affectedAccounts || [],
+                    categoryTotals: resp.categoryTotals || {},
+                    findings: resp.findings || [],
+                    meta: resp.meta || {},
+                })
+                return
             }
-            setImbalanceAnalysis(buildImbalanceSnapshot(ledgerSource));
+
+            let ledgerSource = rawLedger
+            if (!Object.keys(rawLedger || {}).length) {
+                const snapshot = await hydrateFullAccountingSnapshot(false, { includeRawLedger: true })
+                ledgerSource = snapshot.rawLedger || {}
+            }
+            setImbalanceAnalysis(buildImbalanceSnapshot(ledgerSource))
         } catch (error) {
             setAlertState('error')
             setAlert(error.message || 'Failed to analyze imbalances')
@@ -490,132 +631,220 @@ const Journals = () => {
     };
 
     const exportToPDF = () => {
-        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const isTrialBalance = reportType === 'TB'
+        const doc = new jsPDF({ orientation: isTrialBalance ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
         const compName = companyRecord?.name || 'Enterprise Compute';
-        const marginLeft = 15;
-        let y = 20;
-        const fmt = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
-        const drawRow = (left, right, bold = false) => {
-            doc.setFont('helvetica', bold ? 'bold' : 'normal');
-            doc.text(String(left), marginLeft, y);
-            doc.text(String(right), 185, y, { align: 'right' });
-            y += 7;
-        };
-
-        doc.setFontSize(17);
-        doc.setFont('helvetica', 'bold');
         const title = reportType === 'PL'
             ? 'Profit and Loss Statement'
             : reportType === 'BS'
                 ? 'Balance Sheet'
                 : 'Trial Balance';
-        doc.text(`${compName} - ${title}`, marginLeft, y);
-        y += 8;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Period: ${fromDate} to ${toDate}`, marginLeft, y);
-        y += 10;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 12;
+        let y = 16;
+        const fmt = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const safeFileName = (name) => String(name || 'Report').replace(/[\\/:*?"<>|]+/g, '_');
+
+        const addHeader = () => {
+            y = 16;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.text(`${compName} - ${title}`, margin, y);
+            y += 6;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.text(`Period: ${fromDate} to ${toDate}`, margin, y);
+            y += 9;
+        };
+
+        const ensureSpace = (height = 8) => {
+            if (y + height <= pageHeight - 12) return;
+            doc.addPage();
+            addHeader();
+        };
+
+        const drawStatementRow = (label, amount, bold = false) => {
+            doc.setFont('helvetica', bold ? 'bold' : 'normal');
+            doc.setFontSize(bold ? 9 : 8.5);
+            const valueText = fmt(amount);
+            const valueWidth = 42;
+            const labelLines = doc.splitTextToSize(String(label || ''), pageWidth - (margin * 2) - valueWidth - 8);
+            const rowHeight = Math.max(6, labelLines.length * 4.2);
+            ensureSpace(rowHeight + 2);
+            doc.text(labelLines, margin, y);
+            doc.text(valueText, pageWidth - margin, y, { align: 'right' });
+            y += rowHeight;
+        };
+
+        const drawSection = (label, rows = [], amountSide = 'amount') => {
+            ensureSpace(12);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(20, 83, 45);
+            doc.text(label, margin, y);
+            doc.setTextColor(0, 0, 0);
+            y += 6;
+            rows.forEach((row) => drawStatementRow(`${row.code ? `${row.code} - ` : ''}${row.name}`, row[amountSide]));
+            y += 2;
+        };
+
+        addHeader();
 
         if (reportType === 'PL') {
             const { revenue, costOfSales, expenses, totals } = reportData.profitLoss;
-            [['REVENUE', revenue], ['COST OF SALES', costOfSales], ['EXPENSES', expenses]].forEach(([label, rows]) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(label, marginLeft, y);
-                y += 6;
-                rows.forEach((row) => drawRow(row.name, fmt(row.amount)));
-                y += 3;
-            });
-            drawRow('Gross Profit', fmt(totals.grossProfit), true);
-            drawRow('Net Income / (Loss)', fmt(totals.netIncome), true);
-            doc.save(`ProfitLoss_${compName}.pdf`);
+            drawSection('REVENUE', revenue);
+            drawStatementRow('Total Revenue', totals.revenue, true);
+            drawSection('COST OF SALES', costOfSales);
+            drawStatementRow('Total Cost of Sales', totals.costOfSales, true);
+            drawStatementRow('Gross Profit', totals.grossProfit, true);
+            drawSection('EXPENSES', expenses);
+            drawStatementRow('Total Operating Expenses', totals.expenses, true);
+            drawStatementRow('Net Income / (Loss)', totals.netIncome, true);
+            doc.save(`${safeFileName(`ProfitLoss_${compName}`)}.pdf`);
             return;
         }
 
         if (reportType === 'BS') {
             const { assets, liabilities, equity, totals } = reportData.balanceSheet;
-            [['ASSETS', assets], ['LIABILITIES', liabilities], ['EQUITY', equity]].forEach(([label, rows]) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(label, marginLeft, y);
-                y += 6;
-                rows.forEach((row) => drawRow(`${row.code} - ${row.name}`, fmt(row.amount)));
-                y += 3;
-            });
-            drawRow('Total Assets', fmt(totals.assets), true);
-            drawRow('Total Liabilities + Equity', fmt(totals.liabilitiesAndEquity), true);
-            doc.save(`BalanceSheet_${compName}.pdf`);
+            drawSection('ASSETS', assets);
+            drawStatementRow('Total Assets', totals.assets, true);
+            drawSection('LIABILITIES', liabilities);
+            drawStatementRow('Total Liabilities', totals.liabilities, true);
+            drawSection('EQUITY', equity);
+            drawStatementRow('Total Equity', totals.equity, true);
+            drawStatementRow('Total Liabilities + Equity', totals.liabilitiesAndEquity, true);
+            doc.save(`${safeFileName(`BalanceSheet_${compName}`)}.pdf`);
             return;
         }
 
-        doc.setFillColor(29, 78, 216);
-        doc.rect(marginLeft, y - 5, 180, 8, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.text('G/L Code', marginLeft + 2, y + 1);
-        doc.text('Account Name', marginLeft + 25, y + 1);
-        doc.text('Opening', 112, y + 1, { align: 'right' });
-        doc.text('Debit', 135, y + 1, { align: 'right' });
-        doc.text('Credit', 156, y + 1, { align: 'right' });
-        doc.text('Period Net', 177, y + 1, { align: 'right' });
-        doc.text('Closing', 195, y + 1, { align: 'right' });
-        y += 10;
-        doc.setTextColor(0, 0, 0);
+        const columns = [
+            { label: 'G/L Code', x: margin, width: 22, align: 'left' },
+            { label: 'Account Name', x: margin + 24, width: 70, align: 'left' },
+            { label: 'Opening', x: margin + 112, width: 30, align: 'right' },
+            { label: 'Debit', x: margin + 143, width: 30, align: 'right' },
+            { label: 'Credit', x: margin + 174, width: 30, align: 'right' },
+            { label: 'Period Net', x: margin + 205, width: 30, align: 'right' },
+            { label: 'Closing Net', x: margin + 238, width: 32, align: 'right' },
+        ];
 
+        const drawTbHeader = () => {
+            ensureSpace(12);
+            doc.setFillColor(20, 83, 45);
+            doc.rect(margin, y - 4, pageWidth - (margin * 2), 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            columns.forEach((col) => {
+                doc.text(col.label, col.align === 'right' ? col.x + col.width : col.x, y + 1, { align: col.align });
+            });
+            doc.setTextColor(0, 0, 0);
+            y += 8;
+        };
+
+        drawTbHeader();
+        doc.setFontSize(7);
         reportData.trialBalance.rows.forEach((row) => {
-            doc.text(String(row.code), marginLeft + 2, y);
-            doc.text(String(row.name).substring(0, 28), marginLeft + 25, y);
-            doc.text(fmt(row.openingBalance || 0), 112, y, { align: 'right' });
-            doc.text(fmt(row.debit), 135, y, { align: 'right' });
-            doc.text(fmt(row.credit), 156, y, { align: 'right' });
-            doc.text(fmt(row.periodNet || 0), 177, y, { align: 'right' });
-            doc.text(fmt(row.net), 195, y, { align: 'right' });
-            y += 6;
-            if (y > 280) {
+            const nameLines = doc.splitTextToSize(String(row.name || ''), columns[1].width);
+            const rowHeight = Math.max(5.5, nameLines.length * 3.5);
+            if (y + rowHeight > pageHeight - 12) {
                 doc.addPage();
-                y = 20;
+                addHeader();
+                drawTbHeader();
             }
+            doc.setFont('helvetica', 'normal');
+            doc.text(String(row.code || ''), columns[0].x, y);
+            doc.text(nameLines, columns[1].x, y);
+            doc.text(fmt(row.openingBalance || 0), columns[2].x + columns[2].width, y, { align: 'right' });
+            doc.text(fmt(row.debit), columns[3].x + columns[3].width, y, { align: 'right' });
+            doc.text(fmt(row.credit), columns[4].x + columns[4].width, y, { align: 'right' });
+            doc.text(fmt(row.periodNet || 0), columns[5].x + columns[5].width, y, { align: 'right' });
+            doc.text(fmt(row.net), columns[6].x + columns[6].width, y, { align: 'right' });
+            y += rowHeight;
         });
 
-        doc.line(marginLeft, y - 2, 195, y - 2);
-        drawRow('TOTALS', `Opening ${fmt(reportData.trialBalance.totals.openingBalance || 0)} | Debit ${fmt(reportData.trialBalance.totals.debit)} | Credit ${fmt(reportData.trialBalance.totals.credit)} | Period Net ${fmt(reportData.trialBalance.totals.periodNet || 0)} | Closing ${fmt(reportData.trialBalance.totals.net)}`, true);
-        doc.save(`TrialBalance_${compName}.pdf`);
+        ensureSpace(9);
+        doc.line(margin, y - 2, pageWidth - margin, y - 2);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.2);
+        const totals = reportData.trialBalance.totals || {};
+        doc.text('TOTALS', columns[1].x, y + 2);
+        doc.text(fmt(totals.openingBalance || 0), columns[2].x + columns[2].width, y + 2, { align: 'right' });
+        doc.text(fmt(totals.debit), columns[3].x + columns[3].width, y + 2, { align: 'right' });
+        doc.text(fmt(totals.credit), columns[4].x + columns[4].width, y + 2, { align: 'right' });
+        doc.text(fmt(totals.periodNet || 0), columns[5].x + columns[5].width, y + 2, { align: 'right' });
+        doc.text(fmt(totals.net), columns[6].x + columns[6].width, y + 2, { align: 'right' });
+        doc.save(`${safeFileName(`TrialBalance_${compName}`)}.pdf`);
     };
 
     const exportToExcel = () => {
         const compInfo = { name: companyRecord?.name || 'Enterprise' };
         const dRange = { startDate: fromDate, endDate: toDate };
+        const skipAutoTotals = { skipAutoTotals: true };
 
         if (reportType === 'PL') {
-            const { revenue, costOfSales, expenses } = reportData.profitLoss;
+            const { revenue, costOfSales, expenses, totals } = reportData.profitLoss;
             const data = [
                 ...revenue.map((row) => ({ section: 'Revenue', code: row.code, name: row.name, amount: row.amount })),
+                { section: 'Revenue', code: '', name: 'Total Revenue', amount: totals.revenue },
                 ...costOfSales.map((row) => ({ section: 'Cost of Sales', code: row.code, name: row.name, amount: row.amount })),
+                { section: 'Cost of Sales', code: '', name: 'Total Cost of Sales', amount: totals.costOfSales },
+                { section: 'Summary', code: '', name: 'Gross Profit', amount: totals.grossProfit },
                 ...expenses.map((row) => ({ section: 'Expenses', code: row.code, name: row.name, amount: row.amount })),
+                { section: 'Expenses', code: '', name: 'Total Operating Expenses', amount: totals.expenses },
+                { section: 'Summary', code: '', name: 'Net Income / (Loss)', amount: totals.netIncome },
             ];
             generateExcel(data, [
                 { name: 'Section', reference: 'section' },
                 { name: 'G/L Code', reference: 'code' },
                 { name: 'Account Name', reference: 'name' },
                 { name: 'Amount', reference: 'amount', numeric: true }
-            ], compInfo, dRange, 'Profit and Loss Report');
+            ], compInfo, dRange, 'Profit and Loss Report', skipAutoTotals);
             return;
         }
 
         if (reportType === 'BS') {
-            const { assets, liabilities, equity } = reportData.balanceSheet;
+            const { assets, liabilities, equity, totals } = reportData.balanceSheet;
             const data = [
                 ...assets.map((row) => ({ section: 'Assets', code: row.code, name: row.name, amount: row.amount })),
+                { section: 'Assets', code: '', name: 'Total Assets', amount: totals.assets },
                 ...liabilities.map((row) => ({ section: 'Liabilities', code: row.code, name: row.name, amount: row.amount })),
+                { section: 'Liabilities', code: '', name: 'Total Liabilities', amount: totals.liabilities },
                 ...equity.map((row) => ({ section: 'Equity', code: row.code, name: row.name, amount: row.amount })),
+                { section: 'Equity', code: '', name: 'Total Equity', amount: totals.equity },
+                { section: 'Summary', code: '', name: 'Total Liabilities + Equity', amount: totals.liabilitiesAndEquity },
             ];
             generateExcel(data, [
                 { name: 'Section', reference: 'section' },
                 { name: 'G/L Code', reference: 'code' },
                 { name: 'Account Name', reference: 'name' },
                 { name: 'Amount', reference: 'amount', numeric: true }
-            ], compInfo, dRange, 'Balance Sheet Report');
+            ], compInfo, dRange, 'Balance Sheet Report', skipAutoTotals);
             return;
         }
 
-        generateExcel(reportData.trialBalance.rows, [
+        const tbRows = [
+            ...(reportData.trialBalance.rows || []).map((row) => ({
+                code: row.code,
+                name: row.name,
+                openingBalance: row.openingBalance || 0,
+                debit: row.debit || 0,
+                credit: row.credit || 0,
+                periodNet: row.periodNet || 0,
+                net: row.net || 0,
+            })),
+            {
+                code: '',
+                name: 'TOTALS',
+                openingBalance: reportData.trialBalance.totals?.openingBalance || 0,
+                debit: reportData.trialBalance.totals?.debit || 0,
+                credit: reportData.trialBalance.totals?.credit || 0,
+                periodNet: reportData.trialBalance.totals?.periodNet || 0,
+                net: reportData.trialBalance.totals?.net || 0,
+            },
+        ];
+
+        generateExcel(tbRows, [
             { name: 'G/L Code', reference: 'code' },
             { name: 'Account Name', reference: 'name' },
             { name: 'Opening Balance', reference: 'openingBalance', numeric: true },
@@ -623,7 +852,7 @@ const Journals = () => {
             { name: 'Credit', reference: 'credit', numeric: true },
             { name: 'Period Net Balance', reference: 'periodNet', numeric: true },
             { name: 'Closing Net Balance', reference: 'net', numeric: true }
-        ], compInfo, dRange, 'Trial Balance Report');
+        ], compInfo, dRange, 'Trial Balance Report', skipAutoTotals);
     };
 
     // COA Form State
@@ -698,6 +927,7 @@ const Journals = () => {
             if (hasScopedFilters) return
 
             setBalances(snapshot.balances || {})
+            setAccountingSnapshotMeta(snapshot.meta || null)
             if (snapshot.rawLedger && Object.keys(snapshot.rawLedger || {}).length) {
                 setRawLedger(snapshot.rawLedger || {})
             }
@@ -731,6 +961,16 @@ const Journals = () => {
         const userId = companyRecord?.emailid || 'admin'
         const snapshotCacheKey = `journal-snapshot-v${ACCOUNTING_UI_CACHE_VERSION}-${fromDate}-${toDate}`
         const balanceOnlyCacheKey = `journal-balances-v${ACCOUNTING_UI_CACHE_VERSION}-${fromDate}-${toDate}`
+        const traceId = `journal-load-${activeTab}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+        const startedAt = Date.now()
+        console.info('[JOURNALS] load balances start', {
+            traceId,
+            activeTab,
+            endpoint: activeTab === 'COA' ? 'accounting/coa-balances' : 'getAccountingSummary',
+            fromDate,
+            toDate,
+            forceRefresh,
+        })
 
         if (!forceRefresh) {
             try {
@@ -739,6 +979,7 @@ const Journals = () => {
                 const cachedData = cached?.data || cached || null
                 if (cachedData?.balances) {
                     setBalances(cachedData.balances || {})
+                    setAccountingSnapshotMeta(cachedData.meta || null)
                     if (cachedData.reports) {
                         setReportData(cachedData.reports)
                         setReportRangeKey(`${fromDate}|${toDate}`)
@@ -756,8 +997,18 @@ const Journals = () => {
 
         try {
             const endpoint = activeTab === 'COA' ? 'accounting/coa-balances' : 'getAccountingSummary'
-            const payload = { fromDate, toDate, forceRefresh, includeRawLedger: false };
+            const payload = { fromDate, toDate, forceRefresh, includeRawLedger: false, traceId };
             const resp = await fetchServer("POST", payload, endpoint, server);
+            console.info('[JOURNALS] load balances response', {
+                traceId,
+                durationMs: Date.now() - startedAt,
+                ok: resp?.ok,
+                error: resp?.err,
+                balanceAccounts: Object.keys(resp?.balances || {}).length,
+                rawLedgerAccounts: Object.keys(resp?.rawLedger || {}).length,
+                hasReports: Boolean(resp?.reports && Object.keys(resp.reports || {}).length),
+                serverTraceId: resp?.meta?.traceId,
+            })
 
             if (resp.err || !resp.ok) {
                 throw new Error(resp.mess || 'Failed to load accounting snapshot');
@@ -768,6 +1019,7 @@ const Journals = () => {
             }
 
             setBalances(resp.balances || {});
+            setAccountingSnapshotMeta(resp.meta || null);
             const nextReports = resp.reports || {
                 trialBalance: { rows: [], totals: { debit: 0, credit: 0, openingBalance: 0, net: 0 } },
                 profitLoss: {
@@ -1242,6 +1494,7 @@ const Journals = () => {
             
             // 3. Clear local states to force the UI to show the full-page loader on fresh load
             setBalances({});
+            setAccountingSnapshotMeta(null);
             setRawLedger({});
             setReportData({
                 trialBalance: { rows: [], totals: { debit: 0, credit: 0, openingBalance: 0, net: 0 } },
@@ -1459,6 +1712,101 @@ const Journals = () => {
                                     ))}
                                 </tbody>
                             </table>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    const renderClosingsModal = () => {
+        if (!showClosingsModal) return null
+        const fmtClosing = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        const summarizeClosing = (closing) => {
+            const rows = Object.values(closing?.balances || {}).filter((row) => !row?.rollupDetail)
+            const debit = rows.reduce((sum, row) => sum + Number(row?.debit || 0), 0)
+            const credit = rows.reduce((sum, row) => sum + Number(row?.credit || 0), 0)
+            const rawLedgerAccounts = Object.keys(closing?.rawLedger || {}).length
+            return {
+                debit,
+                credit,
+                net: debit - credit,
+                accounts: rows.length,
+                rawLedgerAccounts,
+            }
+        }
+
+        return (
+            <div className="journals-modal-overlay" style={getModalOverlayStyle()} onClick={() => setShowClosingsModal(false)}>
+                <div className="journals-modal modal-large closing-list-modal" onClick={(event) => event.stopPropagation()}>
+                    <div className="journals-modal-header">
+                        <div>
+                            <h3>Monthly Closing Builds</h3>
+                            <p className="dd-subtitle">Review every saved month-end snapshot, lock completed months, and rebuild draft months when source records change.</p>
+                        </div>
+                        <button className="journals-modal-close" onClick={() => setShowClosingsModal(false)}><MdClose /></button>
+                    </div>
+                    <div className="journals-modal-body">
+                        <div className="closing-list-actions">
+                            <button className="j-btn-secondary" onClick={loadMonthlyClosings} disabled={isClosingLoading}>Refresh List</button>
+                            <button className="j-btn-primary" onClick={() => handleBuildMissingMonthlyClosings(false)} disabled={isClosingAction}>Build Missing Months</button>
+                            <button className="j-btn-secondary" onClick={() => handleBuildMissingMonthlyClosings(true)} disabled={isClosingAction} title="Stores raw ledger traces inside each closing snapshot. Heavier, but useful for audit months.">Build Missing with Ledgers</button>
+                        </div>
+                        {isClosingLoading ? (
+                            <div className="closing-loading">Loading monthly closing builds...</div>
+                        ) : (
+                            <div className="analysis-table-wrapper">
+                                <table className="analysis-table closing-list-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Month End</th>
+                                            <th>Status</th>
+                                            <th>Computed Range</th>
+                                            <th className="num-col">Debit</th>
+                                            <th className="num-col">Credit</th>
+                                            <th className="num-col">Net</th>
+                                            <th>Snapshot</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {monthlyClosings.length ? monthlyClosings.map((closing) => {
+                                            const summary = summarizeClosing(closing)
+                                            return (
+                                                <tr key={closing.closingDate}>
+                                                    <td>{closing.closingDate}</td>
+                                                    <td><span className={`closing-status-pill ${closing.status || 'draft'}`}>{closing.status || 'draft'}</span></td>
+                                                    <td>{closing.computedFrom || 'N/A'} to {closing.computedTo || 'N/A'}</td>
+                                                    <td className="num-col">{fmtClosing(summary.debit)}</td>
+                                                    <td className="num-col">{fmtClosing(summary.credit)}</td>
+                                                    <td className={`num-col ${Math.abs(summary.net) < 0.01 ? 'text-success' : 'text-danger'}`}>{fmtClosing(summary.net)}</td>
+                                                    <td>{summary.accounts} accounts, {summary.rawLedgerAccounts ? `${summary.rawLedgerAccounts} ledger groups` : 'no raw ledger'}</td>
+                                                    <td className="closing-row-actions">
+                                                        <button className="j-btn-secondary btn-sm" onClick={() => { setLastClosingDetails(closing); setShowClosingDetailsModal(true); }}>View</button>
+                                                        {closing.status !== 'confirmed' && closing.status !== 'locked' && (
+                                                            <button className="j-btn-secondary btn-sm" onClick={() => handleSetClosingStatus('confirmed', closing.closingDate)} disabled={isClosingAction}>Confirm</button>
+                                                        )}
+                                                        {closing.status !== 'locked' && (
+                                                            <button className="j-btn-danger btn-sm" onClick={() => handleSetClosingStatus('locked', closing.closingDate)} disabled={isClosingAction}>Lock</button>
+                                                        )}
+                                                        {closing.status !== 'locked' && (
+                                                            <button className="j-btn-secondary btn-sm" onClick={() => handleRecomputeClosing(closing.closingDate, false)} disabled={isClosingAction}>Rebuild</button>
+                                                        )}
+                                                        {closing.status !== 'locked' && (
+                                                            <button className="j-btn-secondary btn-sm" onClick={() => handleRecomputeClosing(closing.closingDate, true)} disabled={isClosingAction}>Rebuild + Ledgers</button>
+                                                        )}
+                                                        <button className="j-btn-secondary btn-sm" onClick={() => handleViewAudit(closing.closingDate)}>Audit</button>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        }) : (
+                                            <tr>
+                                                <td colSpan="8" className="empty-row">No monthly closings have been built yet.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -2012,7 +2360,7 @@ const Journals = () => {
 
     const renderImbalanceAnalysis = () => {
         if (!imbalanceAnalysis) return null;
-        const { difference, unbalancedDocs, totalD, totalC, categoryTotals } = imbalanceAnalysis;
+        const { difference, openingGap, periodGap, closingGap, unbalancedDocs, affectedAccounts = [], findings = [], totalD, totalC, categoryTotals = {} } = imbalanceAnalysis;
         
         return (
             <div className="journals-modal-overlay" style={getModalOverlayStyle()} onClick={() => setImbalanceAnalysis(null)}>
@@ -2046,6 +2394,20 @@ const Journals = () => {
                             <div className="categorical-explanation">
                                 <h3>Financial Component Breakdown</h3>
                                 <p>This breakdown explains how the net balance is composed across major account categories:</p>
+                                <div className="analysis-summary-grid">
+                                    <div className={`analysis-card ${Math.abs(openingGap || 0) < 0.01 ? 'balanced' : 'unbalanced'}`}>
+                                        <span className="card-label">Opening Gap</span>
+                                        <h3 className="card-val">{(openingGap || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
+                                    </div>
+                                    <div className={`analysis-card ${Math.abs(periodGap || 0) < 0.01 ? 'balanced' : 'unbalanced'}`}>
+                                        <span className="card-label">Period Gap</span>
+                                        <h3 className="card-val">{(periodGap || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
+                                    </div>
+                                    <div className={`analysis-card ${Math.abs(closingGap || 0) < 0.01 ? 'balanced' : 'unbalanced'}`}>
+                                        <span className="card-label">Closing Gap</span>
+                                        <h3 className="card-val">{(closingGap || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
+                                    </div>
+                                </div>
                                 <div className="analysis-grid">
                                     {Object.entries(categoryTotals).map(([cat, val]) => (
                                         <div key={cat} className="analysis-stat-card">
@@ -2065,6 +2427,58 @@ const Journals = () => {
                         </div>
 
                         <div className="unbalanced-section">
+                            {findings.length > 0 && (
+                                <div className="unbalanced-list" style={{ marginBottom: 18 }}>
+                                    <div className="unbalanced-header">
+                                        <h3>Diagnostic Findings</h3>
+                                    </div>
+                                    <div className="analysis-grid">
+                                        {findings.map((finding, index) => (
+                                            <div className="analysis-stat-card" key={`${finding.type}-${index}`}>
+                                                <div className="stat-header">
+                                                    <span className={`coa-badge ${finding.severity === 'high' ? 'badge-expense' : 'badge-asset'}`}>{finding.type}</span>
+                                                </div>
+                                                <div className="stat-body">
+                                                    <div className="stat-label">{finding.message}</div>
+                                                    <div className="analysis-note" style={{ marginTop: 8 }}>{finding.evidence}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {affectedAccounts.length > 0 && (
+                                <div className="unbalanced-list" style={{ marginBottom: 18 }}>
+                                    <div className="unbalanced-header">
+                                        <h3>Largest Account Drivers</h3>
+                                    </div>
+                                    <p className="analysis-note">These accounts contribute the largest remaining opening, period, or closing net positions. If document groups below are balanced, the gap is likely from opening balances, rollup metadata, or a source posting missing its opposite ledger.</p>
+                                    <div className="analysis-table-wrapper">
+                                        <table className="analysis-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Account</th>
+                                                    <th>Category</th>
+                                                    <th className="num-col">Opening</th>
+                                                    <th className="num-col">Period</th>
+                                                    <th className="num-col">Closing</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {affectedAccounts.map((account) => (
+                                                    <tr key={account.code}>
+                                                        <td>{account.code} - {account.name}</td>
+                                                        <td>{account.category}</td>
+                                                        <td className="num-col">{account.opening.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                        <td className="num-col">{account.period.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                        <td className="num-col">{account.closing.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
                             {unbalancedDocs.length > 0 ? (
                                 <div className="unbalanced-list">
                                     <div className="unbalanced-header">
@@ -2081,6 +2495,7 @@ const Journals = () => {
                                                     <th className="num-col">Debits</th>
                                                     <th className="num-col">Credits</th>
                                                     <th className="num-col">Gap</th>
+                                                    <th>Likely Cause</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -2091,9 +2506,10 @@ const Journals = () => {
                                                             <div className="doc-source-tag">{doc.rows[0]?.source}</div>
                                                         </td>
                                                         <td>{new Date(doc.rows[0]?.date).toLocaleDateString()}</td>
-                                                        <td className="num-col">{doc.d.toLocaleString()}</td>
-                                                        <td className="num-col">{doc.c.toLocaleString()}</td>
-                                                        <td className="num-col text-danger">{(doc.d - doc.c).toLocaleString()}</td>
+                                                        <td className="num-col">{(doc.d || doc.debit || 0).toLocaleString()}</td>
+                                                        <td className="num-col">{(doc.c || doc.credit || 0).toLocaleString()}</td>
+                                                        <td className="num-col text-danger">{(doc.gap || ((doc.d || 0) - (doc.c || 0))).toLocaleString()}</td>
+                                                        <td>{doc.likelyCause || 'Check the missing opposite posting line or account mapping.'}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -2569,6 +2985,13 @@ const Journals = () => {
                             <div className="closing-meta" style={{ display: closingToolbarOpen ? 'block' : 'none' }}>
                                 <div className="closing-line">Last: {lastClosing ? lastClosing.closingDate : 'None'} {lastClosing && <button className="link-like" onClick={handleViewClosing}>View</button>}</div>
                                 <div className="closing-line">Status: {lastClosing ? (lastClosing.status || 'draft') : 'n/a'}</div>
+                                {accountingSnapshotMeta?.openingStatus && (
+                                    <div className={`closing-line opening-status ${accountingSnapshotMeta.openingStatus === 'ready' ? 'ready' : 'warning'}`}>
+                                        Opening: {accountingSnapshotMeta.openingStatus === 'ready'
+                                            ? `From ${accountingSnapshotMeta.openingSource?.closingDate || accountingSnapshotMeta.fromClosing || 'saved closing'}`
+                                            : (accountingSnapshotMeta.openingMessage || 'Opening balances need monthly closings.')}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="closing-actions" style={{ display: closingToolbarOpen ? 'flex' : 'none' }}>
@@ -2583,6 +3006,9 @@ const Journals = () => {
                                 {lastClosing && (
                                     <button className="j-btn-secondary" onClick={() => handleRecomputeClosing()} disabled={isClosingAction} title="Rebuild the currently selected last closing from the latest source records.">Rebuild Closing</button>
                                 )}
+                                <button className="j-btn-primary" onClick={() => handleBuildMissingMonthlyClosings(false)} disabled={isClosingAction} title="Build missing month-end closing snapshots so opening balances load from saved closings instead of recalculating all history.">Build Monthly Closings</button>
+                                <button className="j-btn-secondary" onClick={() => handleBuildMissingMonthlyClosings(true)} disabled={isClosingAction} title="Build monthly closings and store raw ledger traces in each closing snapshot for audit drill-down.">Build Monthly + Ledgers</button>
+                                <button className="j-btn-secondary" onClick={handleOpenClosingsModal} disabled={isClosingAction} title="View all monthly closing builds, summaries, audit state, and locking controls.">Monthly Closing List</button>
                                 <button className="j-btn-secondary" onClick={() => handleDetectAffectedClosings()} disabled={isClosingAction} title={closingActionHelp[2].title}>Find Late Changes</button>
                                 <button className="j-btn-secondary" onClick={handleOpenPendingModal} disabled={isClosingAction} title={closingActionHelp[3].title}>Review Queue</button>
                                 <button className="j-btn-secondary" onClick={() => handleTriggerPendingRecomputes(false)} disabled={isClosingAction} title={closingActionHelp[4].title}>Run Queue</button>
@@ -2659,6 +3085,7 @@ const Journals = () => {
             {renderJournalModal()}
             {renderDrillDown()}
             {renderImbalanceAnalysis()}
+            {renderClosingsModal()}
             {renderClosingDetailsModal()}
             {renderPendingModal && renderPendingModal()}
             {renderAuditModal && renderAuditModal()}
