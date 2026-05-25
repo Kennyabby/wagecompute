@@ -235,8 +235,9 @@ export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle
             });
         }
         
-        // Add totals row if there's data
-        if (data.length > 0) {
+        // Add totals row if there's data. Some reports already provide
+        // server-computed totals, so callers can opt out to avoid mismatches.
+        if (data.length > 0 && !filters?.skipAutoTotals) {
             const totalsRow = columns.map((col, colIndex) => {
                 if (!col.numeric || col.id === 'i_d' || col.id === 'name' || col.id === 'code' || col.id === 'category') {
                     return colIndex === 0 ? 'TOTAL' : '';
