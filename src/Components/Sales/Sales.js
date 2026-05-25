@@ -2663,8 +2663,8 @@ const Sales = () => {
                                 placeholder='From'
                                 value={saleFrom}
                                 disabled={!allowBacklogs}
-                                min={companyRecord?.status !== 'admin' ? getYesterdayAndToday().yesterday : undefined}
-                                max={companyRecord?.status !== 'admin' ? getYesterdayAndToday().today : undefined}
+                                min={(companyRecord?.status !== 'admin' && !allowBacklogs) ? getYesterdayAndToday().yesterday : undefined}
+                                max={(companyRecord?.status !== 'admin' && !allowBacklogs) ? getYesterdayAndToday().today : undefined}
                                 onChange={(e) => {
                                     let val = e.target.value;
                                     if (companyRecord?.status !== 'admin') {
@@ -2746,7 +2746,7 @@ const Sales = () => {
                         const slCreatedAt = new Date(ftrsale.postingDate).getTime()
                         let fromDate = new Date(saleFrom).getTime()
                         let toDate = new Date(saleTo).getTime()
-                        if (companyRecord?.status !== 'admin') {
+                        if (companyRecord?.status !== 'admin' && !allowBacklogs) {
                             const { yesterday, today } = getYesterdayAndToday();
                             const yesterdayTime = new Date(yesterday).getTime();
                             const todayTime = new Date(today).getTime();
