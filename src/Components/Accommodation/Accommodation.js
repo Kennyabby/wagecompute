@@ -959,8 +959,8 @@ const Accommodation = () => {
                                         placeholder='From'
                                         value={saleFrom}
                                         disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
-                                        min={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
-                                        max={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
+                                        min={(companyRecord?.status !== 'admin' && !allowBacklogs) ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
+                                        max={(companyRecord?.status !== 'admin' && !allowBacklogs) ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
                                         onChange={(e) => {
                                             const val = e.target.value
                                             if (companyRecord?.status !== 'admin' && !allowBacklogs) {
