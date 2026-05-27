@@ -21,7 +21,7 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 import { getAppCache, setAppCache } from '../../Resources/offlineDb';
 
 const fmt = (n)=> Number(n||0).toLocaleString()
-const DASHBOARD_SUMMARY_ENGINE_VERSION = 4
+const DASHBOARD_SUMMARY_ENGINE_VERSION = 5
 
 const DashView = () =>{
     // Modal state for payment receipts
@@ -38,7 +38,7 @@ const DashView = () =>{
         employees, getEmployees
     } = useContext(ContextProvider)
     // Default date range (current month)
-    const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0,10)
+    const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10)
     const defaultToDate = new Date().toISOString().slice(0,10)
     
     const [fromDate, setFromDate] = useState(saleFrom || defaultFromDate)
@@ -61,19 +61,19 @@ const DashView = () =>{
         
         switch(season) {
             case 'Q1':
-                startDate = new Date(now.getFullYear(), 0, 2) // Jan 1
+                startDate = new Date(now.getFullYear(), 0, 1) // Jan 1
                 endDate = new Date(now.getFullYear(), 2, 31)  // Mar 31
                 break
             case 'Q2':
-                startDate = new Date(now.getFullYear(), 3, 2)  // Apr 1
+                startDate = new Date(now.getFullYear(), 3, 1)  // Apr 1
                 endDate = new Date(now.getFullYear(), 5, 30)   // Jun 30
                 break
             case 'Q3':
-                startDate = new Date(now.getFullYear(), 6, 2)  // Jul 1
+                startDate = new Date(now.getFullYear(), 6, 1)  // Jul 1
                 endDate = new Date(now.getFullYear(), 8, 30)   // Sep 30
                 break
             case 'Q4':
-                startDate = new Date(now.getFullYear(), 9, 2)  // Oct 1
+                startDate = new Date(now.getFullYear(), 9, 1)  // Oct 1
                 endDate = new Date(now.getFullYear(), 11, 31)  // Dec 31
                 break
             default:
@@ -169,8 +169,10 @@ const DashView = () =>{
         ].join('|')
     }
 
-    const isUsableDashboardSnapshot = (snap) => {
-        return Number(snap?._rollups?.engineVersion || 0) === DASHBOARD_SUMMARY_ENGINE_VERSION
+    const isUsableDashboardSnapshot = (snap, expectedSummaryKey = makeDashSummaryKey()) => {
+        const engineMatches = Number(snap?._rollups?.engineVersion || 0) === DASHBOARD_SUMMARY_ENGINE_VERSION
+        const snapshotKey = snap?._summaryKey || snap?.summaryKey || ''
+        return engineMatches && (!snapshotKey || snapshotKey === expectedSummaryKey)
     }
 
     // Apply a cached or freshly-computed snapshot into React state
@@ -245,11 +247,11 @@ const DashView = () =>{
     const loadDashData = async(force = false)=>{
         if (!company) return
 
-        setLoading(true)
         setDashErr('')
 
         const cacheKey = makeDashCacheKey();
         const summaryCacheKey = `dashboard-summary-${makeDashSummaryKey()}`
+        let hydratedFromCache = false
 
         // 1) Try to hydrate from IndexedDB app cache first (for snappy UI)
         if (summaryCacheKey && !force) {
@@ -257,10 +259,17 @@ const DashView = () =>{
                 const cached = await getAppCache(company, companyRecord?.emailid, summaryCacheKey);
                 if (cached && cached.data && isUsableDashboardSnapshot(cached.data)) {
                     applyDashSnapshot(cached.data);
+                    setDashboardSummaryKey(makeDashSummaryKey())
+                    hydratedFromCache = true
+                    setLoading(false)
                 }
             } catch (e) {
                 console.warn('DashView: getAppCache failed', e);
             }
+        }
+
+        if (!hydratedFromCache) {
+            setLoading(true)
         }
 
         try{
@@ -282,11 +291,17 @@ const DashView = () =>{
             }
 
             if (summaryResponse?.ok && summaryResponse?.snapshot) {
-                applyDashSnapshot(summaryResponse.snapshot)
-                setDashboardSummaryKey(summaryResponse.summaryKey || makeDashSummaryKey())
+                const resolvedSummaryKey = summaryResponse.summaryKey || makeDashSummaryKey()
+                const snapshotToCache = {
+                    ...(summaryResponse.snapshot || {}),
+                    _summaryKey: resolvedSummaryKey,
+                    _filters: { fromDate, toDate, locationFilter, productFilter, employeeFilter, seasonFilter },
+                }
+                applyDashSnapshot(snapshotToCache)
+                setDashboardSummaryKey(resolvedSummaryKey)
                 if (summaryResponse.summaryKey) {
                     try {
-                        await setAppCache(company, companyRecord?.emailid, `dashboard-summary-${summaryResponse.summaryKey}`, summaryResponse.snapshot)
+                        await setAppCache(company, companyRecord?.emailid, `dashboard-summary-${summaryResponse.summaryKey}`, snapshotToCache)
                     } catch (cacheError) {
                         console.warn('DashView: setAppCache failed', cacheError)
                     }

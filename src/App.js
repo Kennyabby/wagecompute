@@ -701,10 +701,22 @@ function App() {
                 setCached(company, 'accountingLiveBalances', liveSnapshot, companyRecord?.emailid);
                 if (liveSnapshot?.fromDate && liveSnapshot?.toDate) {
                   const liveSnapshotKey = `journal-snapshot-v${ACCOUNTING_UI_CACHE_VERSION}-${liveSnapshot.fromDate}-${liveSnapshot.toDate}`;
-                  setCached(company, liveSnapshotKey, {
+                  const liveBalanceKey = `journal-balances-v${ACCOUNTING_UI_CACHE_VERSION}-${liveSnapshot.fromDate}-${liveSnapshot.toDate}`;
+                  const liveCachePayload = {
+                    fromDate: liveSnapshot.fromDate,
+                    toDate: liveSnapshot.toDate,
+                    cacheScope: {
+                      fromDate: liveSnapshot.fromDate,
+                      toDate: liveSnapshot.toDate,
+                      filters: {},
+                    },
                     balances: liveSnapshot.balances || {},
                     reports: liveSnapshot.reports || {},
-                  }, companyRecord?.emailid);
+                    rawLedger: liveSnapshot.rawLedger || {},
+                    meta: liveSnapshot.meta || {},
+                  };
+                  setCached(company, liveSnapshotKey, liveCachePayload, companyRecord?.emailid);
+                  setCached(company, liveBalanceKey, { ...liveCachePayload, rawLedger: {} }, companyRecord?.emailid);
                 }
                 window.dispatchEvent(new CustomEvent('wc:accounting-live-update', {
                   detail: {
@@ -728,10 +740,22 @@ function App() {
                 ));
                 if (summaryDoc?.fromDate && summaryDoc?.toDate && !hasScopedFilters) {
                   const summaryKey = `journal-snapshot-v${ACCOUNTING_UI_CACHE_VERSION}-${summaryDoc.fromDate}-${summaryDoc.toDate}`;
-                  setCached(company, summaryKey, {
+                  const balanceSummaryKey = `journal-balances-v${ACCOUNTING_UI_CACHE_VERSION}-${summaryDoc.fromDate}-${summaryDoc.toDate}`;
+                  const summaryCachePayload = {
+                    fromDate: summaryDoc.fromDate,
+                    toDate: summaryDoc.toDate,
+                    cacheScope: {
+                      fromDate: summaryDoc.fromDate,
+                      toDate: summaryDoc.toDate,
+                      filters: {},
+                    },
                     balances: summaryDoc.balances || {},
                     reports: summaryDoc.reports || {},
-                  }, companyRecord?.emailid);
+                    rawLedger: summaryDoc.rawLedger || {},
+                    meta: summaryDoc.meta || {},
+                  };
+                  setCached(company, summaryKey, summaryCachePayload, companyRecord?.emailid);
+                  setCached(company, balanceSummaryKey, { ...summaryCachePayload, rawLedger: {} }, companyRecord?.emailid);
                   window.dispatchEvent(new CustomEvent('wc:accounting-live-update', {
                     detail: {
                       company,
@@ -747,7 +771,11 @@ function App() {
               try {
                 const summaryDoc = payload.data || null;
                 if (summaryDoc?.summaryKey) {
-                  setCached(company, `dashboard-summary-${summaryDoc.summaryKey}`, summaryDoc.snapshot || {}, companyRecord?.emailid);
+                  setCached(company, `dashboard-summary-${summaryDoc.summaryKey}`, {
+                    ...(summaryDoc.snapshot || {}),
+                    _summaryKey: summaryDoc.summaryKey,
+                    _filters: summaryDoc.filters || null,
+                  }, companyRecord?.emailid);
                 }
                 window.dispatchEvent(new CustomEvent('wc:dashboard-summary-update', {
                   detail: {

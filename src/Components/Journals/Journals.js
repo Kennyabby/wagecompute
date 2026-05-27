@@ -7,6 +7,28 @@ import { generateExcel } from '../../utils/exportUtils'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb'
 
 const ACCOUNTING_UI_CACHE_VERSION = 5
+const buildJournalCacheScope = (fromDate, toDate, filters = {}) => ({
+    fromDate: String(fromDate || ''),
+    toDate: String(toDate || ''),
+    filters: filters || {},
+})
+
+const isJournalCacheForScope = (cachedData, fromDate, toDate) => {
+    if (!cachedData?.balances) return false
+    const cachedFrom = cachedData.fromDate || cachedData.cacheScope?.fromDate || cachedData.meta?.fromDate
+    const cachedTo = cachedData.toDate || cachedData.cacheScope?.toDate || cachedData.meta?.toDate
+    return String(cachedFrom || '') === String(fromDate || '') && String(cachedTo || '') === String(toDate || '')
+}
+
+const buildJournalCachePayload = ({ fromDate, toDate, balances = {}, reports = {}, rawLedger = {}, meta = {}, includeRawLedger = false }) => ({
+    fromDate,
+    toDate,
+    cacheScope: buildJournalCacheScope(fromDate, toDate),
+    balances,
+    reports,
+    rawLedger: includeRawLedger ? rawLedger : {},
+    meta,
+})
 
 const Journals = () => {
     const {
@@ -510,7 +532,7 @@ const Journals = () => {
                 const cacheKey = activeTab === 'COA' ? balanceOnlyCacheKey : snapshotCacheKey
                 const cached = await getAppCache(company, userId, cacheKey)
                 const cachedData = cached?.data || cached || null
-                if (cachedData?.balances) {
+                if (isJournalCacheForScope(cachedData, fromDate, toDate)) {
                     setBalances(cachedData.balances || {})
                     setAccountingSnapshotMeta(cachedData.meta || null)
                     if (cachedData.reports) {
@@ -520,6 +542,14 @@ const Journals = () => {
                     if (activeTab !== 'COA') {
                         setRawLedger(cachedData.rawLedger || {})
                     }
+                } else if (cachedData?.balances) {
+                    console.info('[JOURNALS] ignored stale accounting cache', {
+                        traceId,
+                        requestedFrom: fromDate,
+                        requestedTo: toDate,
+                        cachedFrom: cachedData.fromDate || cachedData.cacheScope?.fromDate || cachedData.meta?.fromDate,
+                        cachedTo: cachedData.toDate || cachedData.cacheScope?.toDate || cachedData.meta?.toDate,
+                    })
                 }
             } catch (cacheError) {
                 console.error('Error reading journal cache:', cacheError)
@@ -571,18 +601,20 @@ const Journals = () => {
         setAccountingSnapshotMeta(resp.meta || null);
         setReportData(nextReports);
         setReportRangeKey(`${fromDate}|${toDate}`);
+        const cachePayload = buildJournalCachePayload({
+            fromDate,
+            toDate,
+            balances: resp.balances || {},
+            reports: nextReports,
+            rawLedger: resp.rawLedger || {},
+            meta: resp.meta || {},
+            includeRawLedger: !(activeTab === 'COA' && !includeRawLedger),
+        })
         if (activeTab === 'COA' && !includeRawLedger) {
-            await setAppCache(company, userId, balanceOnlyCacheKey, {
-                balances: resp.balances || {},
-                reports: nextReports,
-            })
+            await setAppCache(company, userId, balanceOnlyCacheKey, cachePayload)
         } else {
             setRawLedger(resp.rawLedger || {});
-            await setAppCache(company, userId, snapshotCacheKey, {
-                balances: resp.balances || {},
-                rawLedger: resp.rawLedger || {},
-                reports: nextReports
-            })
+            await setAppCache(company, userId, snapshotCacheKey, cachePayload)
         }
         return resp;
     }
@@ -977,7 +1009,7 @@ const Journals = () => {
                 const cacheKey = activeTab === 'COA' ? balanceOnlyCacheKey : snapshotCacheKey
                 const cached = await getAppCache(company, userId, cacheKey)
                 const cachedData = cached?.data || cached || null
-                if (cachedData?.balances) {
+                if (isJournalCacheForScope(cachedData, fromDate, toDate)) {
                     setBalances(cachedData.balances || {})
                     setAccountingSnapshotMeta(cachedData.meta || null)
                     if (cachedData.reports) {
@@ -987,6 +1019,14 @@ const Journals = () => {
                     if (activeTab !== 'COA') {
                         setRawLedger(cachedData.rawLedger || {})
                     }
+                } else if (cachedData?.balances) {
+                    console.info('[JOURNALS] ignored stale accounting cache', {
+                        traceId,
+                        requestedFrom: fromDate,
+                        requestedTo: toDate,
+                        cachedFrom: cachedData.fromDate || cachedData.cacheScope?.fromDate || cachedData.meta?.fromDate,
+                        cachedTo: cachedData.toDate || cachedData.cacheScope?.toDate || cachedData.meta?.toDate,
+                    })
                 }
             } catch (cacheError) {
                 console.error('Error reading journal cache:', cacheError)
@@ -1037,18 +1077,20 @@ const Journals = () => {
             };
             setReportData(nextReports);
             setReportRangeKey(`${fromDate}|${toDate}`);
+            const cachePayload = buildJournalCachePayload({
+                fromDate,
+                toDate,
+                balances: resp.balances || {},
+                reports: nextReports,
+                rawLedger: resp.rawLedger || {},
+                meta: resp.meta || {},
+                includeRawLedger: activeTab !== 'COA',
+            })
             if (activeTab === 'COA') {
-                await setAppCache(company, userId, balanceOnlyCacheKey, {
-                    balances: resp.balances || {},
-                    reports: nextReports,
-                })
+                await setAppCache(company, userId, balanceOnlyCacheKey, cachePayload)
             } else {
                 setRawLedger(resp.rawLedger || {});
-                await setAppCache(company, userId, snapshotCacheKey, {
-                    balances: resp.balances || {},
-                    rawLedger: resp.rawLedger || {},
-                    reports: nextReports
-                })
+                await setAppCache(company, userId, snapshotCacheKey, cachePayload)
             }
         } catch (e) {
             console.error('Error loading balances:', e);
