@@ -782,7 +782,9 @@ const Sales = () => {
 
                         })
                         // console.log(wrhSessionOrders.length, wh, totalWrhTransactions[wh].totalSales)
-                        if (wrhSessionOrders.length && totalWrhTransactions[wh].totalSales) {
+                        const sessionDebtAmount = Number(totalWrhTransactions[wh].debt || 0)
+                        const sessionUnaccountedAmount = Number(totalWrhTransactions[wh].unAccountedSales || 0)
+                        if (wrhSessionOrders.length && (totalWrhTransactions[wh].totalSales || sessionDebtAmount || sessionUnaccountedAmount)) {
                             const salesUnits1 = { ...salesUnits }
                             salesUnits1[wh] = { ...(totalWrhTransactions[wh].allPayPoints) }
                             saleRecord.employeeId = employeeId

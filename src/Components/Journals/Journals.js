@@ -6,7 +6,7 @@ import jsPDF from 'jspdf'
 import { generateExcel } from '../../utils/exportUtils'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb'
 
-const ACCOUNTING_UI_CACHE_VERSION = 5
+const ACCOUNTING_UI_CACHE_VERSION = 6
 const buildJournalCacheScope = (fromDate, toDate, filters = {}) => ({
     fromDate: String(fromDate || ''),
     toDate: String(toDate || ''),
@@ -64,6 +64,8 @@ const Journals = () => {
 
     const [fromDate, setFromDate] = useState(formatDateInput(new Date(new Date().getFullYear(), new Date().getMonth(), 1)))
     const [toDate, setToDate] = useState(formatDateInput(new Date()))
+    const [draftFromDate, setDraftFromDate] = useState(formatDateInput(new Date(new Date().getFullYear(), new Date().getMonth(), 1)))
+    const [draftToDate, setDraftToDate] = useState(formatDateInput(new Date()))
 
     const setDatePreset = (preset) => {
         const now = new Date();
@@ -83,8 +85,16 @@ const Journals = () => {
         }
         const f = formatDateInput(from);
         const t = formatDateInput(to);
+        setDraftFromDate(f);
+        setDraftToDate(t);
         setFromDate(f);
         setToDate(t);
+    }
+
+    const applyAccountingDateRange = () => {
+        if (!draftFromDate || !draftToDate) return;
+        setFromDate(draftFromDate);
+        setToDate(draftToDate);
     }
 
     const toggleHeader = (glCode) => {
@@ -189,7 +199,7 @@ const Journals = () => {
         setIsClosingLoading(true)
         try {
             const closingEnd = monthEndFor(toDate)
-            const resp = await fetchServer('GET', { from: '1970-01-01', to: closingEnd }, 'accounting/closings', server)
+            const resp = await fetchServer('GET', { to: closingEnd }, 'accounting/closings', server)
             const rows = resp?.ok ? (resp.closings || []) : []
             setMonthlyClosings(rows)
             return rows
@@ -320,22 +330,24 @@ const Journals = () => {
         setIsClosingAction(true)
         try {
             const resp = await fetchServer('POST', {
-                fromDate: '1970-01-01',
                 toDate: closingEnd,
                 includeRawLedger,
                 status: 'draft',
             }, 'accounting/compute-closings-range', server)
             if (resp && resp.ok) {
                 setAlertState('success')
-                setAlert(`Monthly closings ${includeRawLedger ? 'with ledger snapshots ' : ''}built through ${closingEnd}. Refreshing balances now.`)
+                setAlert(`Monthly closings ${includeRawLedger ? 'with ledger snapshots ' : ''}built through ${closingEnd}. ${resp.persistedCount || 0} month(s) saved. Refreshing balances now.`)
                 setAlertTimeout(4000)
                 await loadLastClosing()
                 await loadMonthlyClosings()
                 await hydrateFullAccountingSnapshot(true)
             } else {
+                const failed = (resp?.results || []).filter((row) => !row.ok)
+                const failedPreview = failed.slice(0, 3).map((row) => `${row.date}: ${row.error || 'failed'}`).join(' | ')
                 setAlertState('error')
-                setAlert(resp?.mess || 'Failed to build monthly closings')
-                setAlertTimeout(5000)
+                setAlert(failedPreview || resp?.mess || 'Failed to build monthly closings')
+                setAlertTimeout(8000)
+                await loadMonthlyClosings()
             }
         } catch (e) {
             console.error('build missing monthly closings failed', e)
@@ -578,8 +590,14 @@ const Journals = () => {
         })
 
         if (resp.err || !resp.ok) {
-            setIsBalancesLoading(false);
+            if (balanceRequestRef.current === requestId) {
+                setIsBalancesLoading(false);
+            }
             throw new Error(resp.mess || 'Failed to load accounting snapshot');
+        }
+
+        if (balanceRequestRef.current !== requestId) {
+            return
         }
         const nextReports = resp.reports || {
             trialBalance: { rows: [], totals: { debit: 0, credit: 0, openingBalance: 0, net: 0 } },
@@ -2640,20 +2658,21 @@ const Journals = () => {
                         </select>
                     </div>
                     <div className="coa-filter-group coa-date-range">
-                        <input 
-                            type="date" 
-                            value={fromDate} 
-                            onChange={(e) => setFromDate(e.target.value)} 
+                        <input
+                            type="date"
+                            value={draftFromDate}
+                            onChange={(e) => setDraftFromDate(e.target.value)}
                             title="From Date"
                         />
                         <span>to</span>
-                        <input 
-                            type="date" 
-                            value={toDate} 
-                            onChange={(e) => setToDate(e.target.value)} 
+                        <input
+                            type="date"
+                            value={draftToDate}
+                            onChange={(e) => setDraftToDate(e.target.value)}
                             title="To Date"
                         />
                         <div className="coa-date-presets">
+                            <button className="preset-btn" onClick={applyAccountingDateRange} disabled={!draftFromDate || !draftToDate || (draftFromDate === fromDate && draftToDate === toDate)}>Apply</button>
                             <button className="preset-btn" onClick={() => setDatePreset('MTD')}>MTD</button>
                             <button className="preset-btn" onClick={() => setDatePreset('YTD')}>YTD</button>
                             <button className="preset-btn" onClick={() => setDatePreset('QTR')}>QTR</button>

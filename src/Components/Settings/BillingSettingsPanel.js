@@ -283,7 +283,7 @@ const BillingSettingsPanel = ({ variants }) => {
             <strong>{snapshot.plan?.name || 'Standard Monthly'}</strong>
             <p>{formatMoney(snapshot.plan?.amountNaira || 92000)} / {snapshot.plan?.interval || 'monthly'}</p>
             <p style={{ marginTop: 6 }}>
-              Paystack mode: <strong>{String(snapshot.plan?.paystackMode || 'test').toUpperCase()}</strong>
+              Paystack mode: <strong>{String(snapshot.plan?.paystackMode || 'live').toUpperCase()}</strong>
             </p>
           </div>
           <div className='settings-billing-summary-card'>

@@ -1,7 +1,7 @@
 import './DashView.css'
 import PaymentReceiptsModal from './PaymentReceiptsModal'
 import React from 'react'
-import {useEffect, useMemo, useState, useCallback } from 'react'
+import {useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -43,6 +43,9 @@ const DashView = () =>{
     
     const [fromDate, setFromDate] = useState(saleFrom || defaultFromDate)
     const [toDate, setToDate] = useState(saleTo || defaultToDate)
+    const [draftFromDate, setDraftFromDate] = useState(saleFrom || defaultFromDate)
+    const [draftToDate, setDraftToDate] = useState(saleTo || defaultToDate)
+    const dashboardRequestRef = useRef(0)
         // Track expanded locations for stock alerts
         const [expandedLocations, setExpandedLocations] = useState({})
     // Filters
@@ -78,23 +81,37 @@ const DashView = () =>{
                 break
             default:
                 // If 'All' or invalid, use default date range
+                setDraftFromDate(defaultFromDate)
+                setDraftToDate(defaultToDate)
                 setFromDate(defaultFromDate)
                 setToDate(defaultToDate)
                 return
         }
         
-        setFromDate(startDate.toISOString().slice(0,10))
-        setToDate(endDate.toISOString().slice(0,10))
+        const nextFrom = startDate.toISOString().slice(0,10)
+        const nextTo = endDate.toISOString().slice(0,10)
+        setDraftFromDate(nextFrom)
+        setDraftToDate(nextTo)
+        setFromDate(nextFrom)
+        setToDate(nextTo)
     }
     
     // Handle clear all filters
     const handleClearFilters = () => {
+        setDraftFromDate(defaultFromDate)
+        setDraftToDate(defaultToDate)
         setFromDate(defaultFromDate)
         setToDate(defaultToDate)
         setLocationFilter('')
         setProductFilter('')
         setEmployeeFilter('')
         setSeasonFilter('')
+    }
+
+    const handleApplyDateFilters = () => {
+        if (!draftFromDate || !draftToDate) return
+        setFromDate(draftFromDate)
+        setToDate(draftToDate)
     }
 
     // Loading
@@ -245,7 +262,10 @@ const DashView = () =>{
     }
 
     const loadDashData = async(force = false)=>{
-        if (!company) return
+        const dashboardUserId = companyRecord?.emailid
+        if (!company || !dashboardUserId) return
+        const requestId = Date.now()
+        dashboardRequestRef.current = requestId
 
         setDashErr('')
 
@@ -256,7 +276,7 @@ const DashView = () =>{
         // 1) Try to hydrate from IndexedDB app cache first (for snappy UI)
         if (summaryCacheKey && !force) {
             try {
-                const cached = await getAppCache(company, companyRecord?.emailid, summaryCacheKey);
+                const cached = await getAppCache(company, dashboardUserId, summaryCacheKey);
                 if (cached && cached.data && isUsableDashboardSnapshot(cached.data)) {
                     applyDashSnapshot(cached.data);
                     setDashboardSummaryKey(makeDashSummaryKey())
@@ -284,6 +304,7 @@ const DashView = () =>{
             }, 'getDashboardSummary', server)
 
             if (summaryResponse && !summaryResponse.ok) {
+                if (dashboardRequestRef.current !== requestId) return
                 console.error('🔴 [DASHBOARD] Server aggregation failed:', summaryResponse.mess || summaryResponse.error);
                 setDashErr(summaryResponse.mess || summaryResponse.error || 'Server-side dashboard aggregation failed.');
                 setLoading(false);
@@ -291,6 +312,7 @@ const DashView = () =>{
             }
 
             if (summaryResponse?.ok && summaryResponse?.snapshot) {
+                if (dashboardRequestRef.current !== requestId) return
                 const resolvedSummaryKey = summaryResponse.summaryKey || makeDashSummaryKey()
                 const snapshotToCache = {
                     ...(summaryResponse.snapshot || {}),
@@ -301,7 +323,7 @@ const DashView = () =>{
                 setDashboardSummaryKey(resolvedSummaryKey)
                 if (summaryResponse.summaryKey) {
                     try {
-                        await setAppCache(company, companyRecord?.emailid, `dashboard-summary-${summaryResponse.summaryKey}`, snapshotToCache)
+                        await setAppCache(company, dashboardUserId, `dashboard-summary-${summaryResponse.summaryKey}`, snapshotToCache)
                     } catch (cacheError) {
                         console.warn('DashView: setAppCache failed', cacheError)
                     }
@@ -530,6 +552,7 @@ const DashView = () =>{
                 location,
                 lowStockProducts
             }));
+            if (dashboardRequestRef.current !== requestId) return
             // Use this for UI rendering
             setRestock(locationRestockAlerts);
 
@@ -807,17 +830,20 @@ const DashView = () =>{
                     topExpenseCategories: topExpenses,
                 };
                 try {
-                    await setAppCache(company, companyRecord?.emailid, cacheKey, snapshot);
+                    await setAppCache(company, dashboardUserId, cacheKey, snapshot);
                 } catch (e) {
                     console.warn('DashView: setAppCache failed', e);
                 }
             }
 
         }catch(err){
+            if (dashboardRequestRef.current !== requestId) return
             console.error('[DASHBOARD] Failed to load dashboard data:', err);
             setDashErr('Failed to load dashboard data. Please try again or check the console for details.')
         }finally{
-            setLoading(false)
+            if (dashboardRequestRef.current === requestId) {
+                setLoading(false)
+            }
         }
     }
 
@@ -897,7 +923,7 @@ const DashView = () =>{
     useEffect(() => {
         loadDashData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fromDate, toDate, locationFilter, productFilter, employeeFilter, seasonFilter, company])
+    }, [fromDate, toDate, locationFilter, productFilter, employeeFilter, seasonFilter, company, companyRecord?.emailid])
 
     useEffect(() => {
         const handleDashboardSummaryUpdate = (event) => {
@@ -1091,19 +1117,20 @@ const DashView = () =>{
                 <div className='dash-filters'>
                     <div className='filter-group1'>
                         <label>From</label>
-                        <input type='date' value={fromDate} onChange={e=>setFromDate(e.target.value)} />
+                        <input type='date' value={draftFromDate} onChange={e=>setDraftFromDate(e.target.value)} />
                     </div>
                     <div className='filter-group1'>
                         <label>To</label>
-                        <input type='date' value={toDate} onChange={e=>setToDate(e.target.value)} />
+                        <input type='date' value={draftToDate} onChange={e=>setDraftToDate(e.target.value)} />
                     </div>
                     <div className='filter-group1'>
                         <label>Presets</label>
                         <div className='btn-group' style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                            <button className='btn-secondary' onClick={()=>{ const d=new Date(); const s=d.toISOString().slice(0,10); setFromDate(s); setToDate(s) }}>Today</button>
-                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), now.getMonth(), 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>MTD</button>
-                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const q=Math.floor(now.getMonth()/3); const s=new Date(now.getFullYear(), q*3, 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), q*3+3, 1).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>QTD</button>
-                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), 0, 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), 11, 32).toISOString().slice(0,10); setFromDate(s); setToDate(e) }}>YTD</button>
+                            <button className='btn-secondary' onClick={()=>{ const d=new Date(); const s=d.toISOString().slice(0,10); setDraftFromDate(s); setDraftToDate(s); setFromDate(s); setToDate(s) }}>Today</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), now.getMonth(), 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString().slice(0,10); setDraftFromDate(s); setDraftToDate(e); setFromDate(s); setToDate(e) }}>MTD</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const q=Math.floor(now.getMonth()/3); const s=new Date(now.getFullYear(), q*3, 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), q*3+3, 1).toISOString().slice(0,10); setDraftFromDate(s); setDraftToDate(e); setFromDate(s); setToDate(e) }}>QTD</button>
+                            <button className='btn-secondary' onClick={()=>{ const now=new Date(); const s=new Date(now.getFullYear(), 0, 2).toISOString().slice(0,10); const e=new Date(now.getFullYear(), 11, 32).toISOString().slice(0,10); setDraftFromDate(s); setDraftToDate(e); setFromDate(s); setToDate(e) }}>YTD</button>
+                            <button className='btn-secondary' onClick={handleApplyDateFilters} disabled={!draftFromDate || !draftToDate || (draftFromDate === fromDate && draftToDate === toDate)}>Apply Dates</button>
                             <button className='btn-secondary' onClick={handleClearFilters}>Clear All Filters</button>
                         </div>
                     </div>
