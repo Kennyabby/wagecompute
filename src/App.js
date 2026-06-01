@@ -179,7 +179,7 @@ const applySseCollectionChange = (existing = [], payload = {}) => {
   return current;
 };
 
-const ACCOUNTING_UI_CACHE_VERSION = 5;
+const ACCOUNTING_UI_CACHE_VERSION = 6;
 
 function App() {
 
