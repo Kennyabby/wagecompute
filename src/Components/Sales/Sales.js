@@ -2212,6 +2212,42 @@ const Sales = () => {
 
         }
     }
+
+    const uploadRentalReceiptForRecord = async (fileBlob, rentalRecord) => {
+        if (!fileBlob || !rentalRecord?.createdAt) return rentalRecord
+        const res = await uploadFile(
+            fileBlob,
+            company + "/Rental Receipts",
+            rentalRecord.createdAt,
+            company,
+            'Rentals',
+            server
+        )
+
+        if (res?.mess || res?.err || !res?.downloadLink) {
+            throw new Error(res?.mess || 'Rental receipt upload failed. Please try again.')
+        }
+
+        const updated = {
+            imgId: res.imgId,
+            viewLink: res.viewLink,
+            downloadLink: res.downloadLink,
+            receiptLastUploadedBy: companyRecord?.emailid,
+        }
+
+        const resp = await fetchServer('POST', {
+            database: company,
+            collection: 'Rentals',
+            prop: [{ createdAt: rentalRecord.createdAt }, { ...updated }]
+        }, 'updateOneDoc', server)
+
+        if (!resp?.updated) {
+            throw new Error('Rental receipt uploaded but failed to update Rentals record')
+        }
+
+        return { ...rentalRecord, ...updated }
+    }
+
     const postRentals = async () => {
         setAlertState('info')
         setAlert('Posting to Rentals...')
@@ -2222,7 +2258,6 @@ const Sales = () => {
             createdAt: new Date().getTime(),
         }
 
-        const newRentals = [newRental, ...rentals]
         const resps = await fetchServer("POST", {
             database: company,
             collection: "Rentals",
@@ -2236,15 +2271,31 @@ const Sales = () => {
             setAlertTimeout(5000)
             setRentalsStatus('Post Rentals')
         } else {
-            setRentals(newRentals)
-            setCurRent(newRental)
+            let savedRental = newRental
+            if (rentalReceiptUpload) {
+                try {
+                    setAlert('Uploading Rental Receipt...')
+                    savedRental = await uploadRentalReceiptForRecord(rentalReceiptUpload, newRental)
+                } catch (error) {
+                    setRentalsStatus('Post Rentals')
+                    setAlertState('error')
+                    setAlert(error.message || 'Rentals posted, but receipt upload failed.')
+                    setAlertTimeout(5000)
+                    savedRental = newRental
+                }
+            }
+            setRentals([savedRental, ...rentals])
+            setCurRent(savedRental)
             setIsView(true)
-            setRentalFields({ ...newRental })
+            setRentalFields({ ...savedRental })
+            setRentalReceiptUpload(null)
             getRentals(company)
             getApprovals(company, companyRecord)
-            setAlertState('success')
-            setAlert('Rentals Posted Successfully!')
-            setAlertTimeout(1000)
+            if (savedRental?.imgId || !rentalReceiptUpload) {
+                setAlertState('success')
+                setAlert('Rentals Posted Successfully!')
+                setAlertTimeout(1000)
+            }
             setRentalsStatus('Post Rentals')
         }
     }
@@ -2309,65 +2360,32 @@ const Sales = () => {
             setAlertTimeout(3000)
             return
         }
+        if (!curRent?.createdAt) {
+            setAlertState('info')
+            setAlert('Receipt selected. It will upload automatically after this rental is posted.')
+            setAlertTimeout(3000)
+            return
+        }
 
         setUploadingReceipt(true)
         setAlertState('info')
         setAlert('Uploading Rental Receipt...')
         setAlertTimeout(100000)
 
-        const collection = 'Rentals'
-        const createdAt = curRent.createdAt
-        const res = await uploadFile(
-            fileBlob,
-            company + "/Rental Receipts",
-            createdAt,
-            company,
-            collection,
-            server
-        )
-
-        if (res?.mess) {
+        try {
+            const updatedRental = await uploadRentalReceiptForRecord(fileBlob, curRent)
+            setCurRent(updatedRental)
+            setRentalFields((f) => ({ ...f, ...updatedRental }))
+            setRentalReceiptUpload(null)
+            setUploadingReceipt(false)
+            setAlertState('success')
+            setAlert('Rental Receipt Uploaded Successfully!')
+            setAlertTimeout(1000)
+            getRentals(company)
+        } catch (error) {
             setUploadingReceipt(false)
             setAlertState('error')
-            setAlert(res.mess)
-            setAlertTimeout(3000)
-            return
-        }
-
-        if (res?.downloadLink) {
-            console.log('uploaded')
-            const updated = {
-                imgId: res.imgId,
-                viewLink: res.viewLink,
-                downloadLink: res.downloadLink,
-                lastUploadedBy: companyRecord?.emailid,
-            }
-
-            const resp = await fetchServer('POST', {
-                database: company,
-                collection: 'Rentals',
-                prop: [{ createdAt }, { ...updated }]
-            }, 'updateOneDoc', server)
-
-            if (resp?.updated) {
-                setCurRent((p) => ({ ...p, ...updated }))
-                setRentalFields((f) => ({ ...f, ...updated }))
-                setRentalReceiptUpload(null)
-                setUploadingReceipt(false)
-                setAlertState('success')
-                setAlert('Rental Receipt Uploaded Successfully!')
-                setAlertTimeout(1000)
-                getRentals(company)
-            } else {
-                setUploadingReceipt(false)
-                setAlertState('error')
-                setAlert('Rental receipt uploaded but failed to update Rentals record')
-                setAlertTimeout(3000)
-            }
-        } else {
-            setUploadingReceipt(false)
-            setAlertState('error')
-            setAlert('Rental receipt upload failed. Please try again.')
+            setAlert(error.message || 'Rental receipt upload failed. Please try again.')
             setAlertTimeout(3000)
         }
     }
@@ -2385,7 +2403,7 @@ const Sales = () => {
                 imgId: null,
                 viewLink: null,
                 downloadLink: null,
-                lastDeletedBy: companyRecord?.emailid,
+                receiptLastDeletedBy: companyRecord?.emailid,
             }
             const resp = await fetchServer('POST', {
                 database: company,
@@ -4465,10 +4483,10 @@ const Sales = () => {
 
                         {salesOpts === 'rentals' && <div className='yesbtn salesyesbtn'
                             style={{
-                                cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) ? 'pointer' : 'not-allowed'
+                                cursor: (rentalFields.paymentAmount && rentalFields.expectedPayment) ? 'pointer' : 'not-allowed'
                             }}
                             onClick={() => {
-                                if (rentalFields.paymentAmount && rentalFields.expectedPayment && rentalFields.rentalReceipt) {
+                                if (rentalFields.paymentAmount && rentalFields.expectedPayment) {
                                     if (curApproval && curApproval?.approved) {
                                         if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_rental_posts')) {
                                             setAlertState('error')

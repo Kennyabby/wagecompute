@@ -106,7 +106,17 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
             }
         }
 
-        const response = await resp.json()
+        let response = {};
+        try {
+            response = await resp.json()
+        } catch (parseError) {
+            response = {
+                err: true,
+                mess: resp.status === 413
+                    ? 'The request is too large for the server to accept. Please use a smaller image or reduce camera resolution before uploading.'
+                    : `Server returned an unreadable response (${resp.status}). Please retry.`,
+            }
+        }
         // On login (authenticateUser) store returned accessToken for Authorization header use
         if (!response.err && response.accessToken) {
             window.localStorage.setItem('accessToken', response.accessToken);

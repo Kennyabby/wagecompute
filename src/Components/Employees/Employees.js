@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useContext } from 'react'
 import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
+import heic2any from 'heic2any'
 
 const Employees = () => {
     const { storePath,
@@ -27,6 +28,9 @@ const Employees = () => {
     const [editIndex, setEditIndex] = useState(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
+    const [employeeSaving, setEmployeeSaving] = useState(false)
+    const [employeeUploadStatus, setEmployeeUploadStatus] = useState('')
+    const [employeeUploadError, setEmployeeUploadError] = useState('')
     const initFields = {
         i_d: '',
         firstName: '',
@@ -97,6 +101,8 @@ const Employees = () => {
         setWriteStatus('New')
         setCurEmployee(null)
         setPendingPhotos({ profile: null, guarantor: null })
+        setEmployeeUploadStatus('')
+        setEmployeeUploadError('')
         setMobileDetailOpen(false)
     }
     const changeEmployeeType = (name) => {
@@ -111,7 +117,40 @@ const Employees = () => {
             setSelform(name)
         }
     }
+    const getUploadErrorMessage = (error, fallback) => {
+        const code = error?.code || error?.response?.code
+        const message = error?.message || error?.mess || fallback
+        if (code === 'GOOGLE_DRIVE_AUTH_EXPIRED' || String(message || '').toLowerCase().includes('invalid_grant')) {
+            return 'Google Drive authorization has expired. Refresh the Google Drive token on the server, then try this upload again.'
+        }
+        if (code === 'UPLOAD_TIMEOUT') {
+            return 'Image upload timed out. The employee details were saved, but the photo was not uploaded. Try again with a smaller image or a stronger connection.'
+        }
+        return message || fallback
+    }
+
+    const getEmployeeForInitialSave = (employee, existingEmployee = {}) => {
+        const nextEmployee = { ...employee }
+        if (pendingPhotos.profile) {
+            nextEmployee.profilePhotoId = existingEmployee.profilePhotoId || ''
+            nextEmployee.profilePhotoUrl = existingEmployee.profilePhotoUrl || ''
+            nextEmployee.profilePhotoViewLink = existingEmployee.profilePhotoViewLink || ''
+            nextEmployee.profilePhotoDownloadLink = existingEmployee.profilePhotoDownloadLink || ''
+        }
+        if (pendingPhotos.guarantor) {
+            nextEmployee.guarantorPhotoId = existingEmployee.guarantorPhotoId || ''
+            nextEmployee.guarantorPhotoUrl = existingEmployee.guarantorPhotoUrl || ''
+            nextEmployee.guarantorPhotoViewLink = existingEmployee.guarantorPhotoViewLink || ''
+            nextEmployee.guarantorPhotoDownloadLink = existingEmployee.guarantorPhotoDownloadLink || ''
+        }
+        return nextEmployee
+    }
+
     const addEmployee = async () => {
+        if (employeeSaving) return
+        setEmployeeSaving(true)
+        setEmployeeUploadStatus('')
+        setEmployeeUploadError('')
         setAlertState('info')
         setAlert(
             `Adding Employee...`
@@ -119,7 +158,7 @@ const Employees = () => {
         if (fields.i_d) {
             const createdAt = Date.now()
             const newEmployee = {
-                ...fields,
+                ...getEmployeeForInitialSave(fields),
                 createdAt
             }
             const resps = await fetchServer("POST", {
@@ -136,8 +175,21 @@ const Employees = () => {
                 )
                 setAlertTimeout(5000)
             } else {
-                const employeeWithPhotos = await uploadEmployeePhotos(newEmployee)
+                let employeeWithPhotos = newEmployee
+                let photoUploadFailed = false
+                try {
+                    setEmployeeUploadStatus('Saving employee record completed. Preparing optional photo upload...')
+                    employeeWithPhotos = await uploadEmployeePhotos(newEmployee)
+                } catch (error) {
+                    photoUploadFailed = true
+                    const uploadMessage = getUploadErrorMessage(error, 'Employee was created, but photo upload failed. Please edit the employee and try again.')
+                    setEmployeeUploadError(uploadMessage)
+                    setAlertState('error')
+                    setAlert(uploadMessage)
+                    setAlertTimeout(5000)
+                }
                 if (employeeWithPhotos !== newEmployee) {
+                    setEmployeeUploadStatus('Photo uploaded. Updating employee photo links...')
                     await fetchServer("POST", {
                         database: company,
                         collection: "Employees",
@@ -146,20 +198,36 @@ const Employees = () => {
                 }
                 setEmployees([...employees, employeeWithPhotos])
                 setCurEmployee(employeeWithPhotos)
-                setIsView(true)
+                setIsView(!photoUploadFailed)
+                if (photoUploadFailed) {
+                    setWriteStatus('Edit')
+                }
                 setFields({ ...employeeWithPhotos })
-                setPendingPhotos({ profile: null, guarantor: null })
-                setAlertState('success')
-                setAlert(
-                    'Employee Added Successfully!'
-                )
-                setAlertTimeout(1000)
+                if (!photoUploadFailed) {
+                    setPendingPhotos({ profile: null, guarantor: null })
+                    setEmployeeUploadStatus('')
+                }
+                if (!photoUploadFailed) {
+                    setAlertState('success')
+                    setAlert(
+                        'Employee Added Successfully!'
+                    )
+                    setAlertTimeout(1000)
+                }
                 getEmployees(company)
             }
-
+        } else {
+            setAlertState('error')
+            setAlert('Employee ID is required before saving.')
+            setAlertTimeout(3000)
         }
+        setEmployeeSaving(false)
     }
     const editEmployee = async () => {
+        if (employeeSaving) return
+        setEmployeeSaving(true)
+        setEmployeeUploadStatus('')
+        setEmployeeUploadError('')
         setAlertState('info')
         setAlert(
             `Updating Employee...`
@@ -167,19 +235,18 @@ const Employees = () => {
         const i_d = curEmployee.i_d
         const index = Number(editIndex)
         if (fields.i_d) {
+            const existingEmployee = curEmployee || employees[index] || {}
             const updatedEmployee = {
-                ...fields,
-                createdAt: employees[index].createdAt
+                ...getEmployeeForInitialSave(fields, existingEmployee),
+                createdAt: existingEmployee.createdAt || fields.createdAt || Date.now()
             }
-            const employeeWithPhotos = await uploadEmployeePhotos(updatedEmployee)
             const filteredEmp = employees.filter((emp) => {
                 return emp.i_d !== i_d
             })
-            const updatedEmployees = [...filteredEmp, employeeWithPhotos]
             const resps = await fetchServer("POST", {
                 database: company,
                 collection: "Employees",
-                prop: [{ i_d: i_d }, employeeWithPhotos]
+                prop: [{ i_d: i_d }, updatedEmployee]
             }, "updateOneDoc", server)
 
             if (resps.err) {
@@ -190,20 +257,52 @@ const Employees = () => {
                 )
                 setAlertTimeout(5000)
             } else {
+                let employeeWithPhotos = updatedEmployee
+                let photoUploadFailed = false
+                try {
+                    setEmployeeUploadStatus('Employee details saved. Preparing optional photo upload...')
+                    employeeWithPhotos = await uploadEmployeePhotos(updatedEmployee)
+                    if (employeeWithPhotos !== updatedEmployee) {
+                        setEmployeeUploadStatus('Photo uploaded. Updating employee photo links...')
+                        const photoUpdate = await fetchServer("POST", {
+                            database: company,
+                            collection: "Employees",
+                            prop: [{ i_d: i_d }, employeeWithPhotos]
+                        }, "updateOneDoc", server)
+                        if (photoUpdate?.err) {
+                            throw new Error(photoUpdate.mess || 'Photo uploaded, but employee photo links were not saved.')
+                        }
+                    }
+                } catch (error) {
+                    photoUploadFailed = true
+                    const uploadMessage = getUploadErrorMessage(error, 'Employee details were saved, but photo upload failed. Please try the photo upload again.')
+                    setEmployeeUploadError(uploadMessage)
+                    setAlertState('error')
+                    setAlert(uploadMessage)
+                    setAlertTimeout(6000)
+                }
+                const updatedEmployees = [...filteredEmp, employeeWithPhotos]
                 setEmployees(updatedEmployees)
                 setCurEmployee(employeeWithPhotos)
-                setIsView(true)
+                setIsView(!photoUploadFailed)
                 setFields({ ...employeeWithPhotos })
-                setPendingPhotos({ profile: null, guarantor: null })
-                setAlertState('success')
-                setAlert(
-                    'Employee Details Updated Successfully!'
-                )
-                setAlertTimeout(1000)
+                if (!photoUploadFailed) {
+                    setPendingPhotos({ profile: null, guarantor: null })
+                    setEmployeeUploadStatus('')
+                    setAlertState('success')
+                    setAlert(
+                        'Employee Details Updated Successfully!'
+                    )
+                    setAlertTimeout(1000)
+                }
                 getEmployees(company)
             }
-
+        } else {
+            setAlertState('error')
+            setAlert('Employee ID is required before saving.')
+            setAlertTimeout(3000)
         }
+        setEmployeeSaving(false)
     }
 
     const deleteEmployee = async () => {
@@ -302,19 +401,32 @@ const Employees = () => {
             }
         })
     }
+    const getDriveThumbnailUrl = (imgId) => imgId ? `https://drive.google.com/thumbnail?id=${imgId}&sz=w1000` : ''
+
     const uploadEmployeePhotos = async (employee) => {
         let nextEmployee = { ...employee }
         const uploadOne = async (file, kind) => {
             if (!file) return
-            const folderPath = `/Employees/${kind}`
+            setEmployeeUploadError('')
+            setEmployeeUploadStatus(`${kind === 'profile' ? 'Employee profile photo' : 'Guarantor photo'}: compressing and uploading...`)
+            const folderPath = `${company}/Employee Photos/${kind === 'profile' ? 'Profile Photos' : 'Guarantor Photos'}`
             const res = await uploadFile(file, folderPath, nextEmployee.createdAt, company, 'Employees', server)
-            const fileId = res?.fileId || res?.id || res?.imageId || res?.imgId || res?.data?.id || res?.data?.imgId || ''
-            const fileUrl = res?.url || res?.downloadLink || res?.viewLink || res?.webViewLink || res?.webContentLink || res?.data?.url || res?.data?.downloadLink || res?.data?.viewLink || ''
-            if (fileId || fileUrl) {
+            if (res?.mess || res?.err) {
+                const err = new Error(res.mess || 'Employee photo upload failed')
+                err.code = res.code
+                throw err
+            }
+            const fileId = res?.imgId || res?.fileId || res?.id || res?.imageId || res?.data?.id || res?.data?.imgId || ''
+            const fileUrl = getDriveThumbnailUrl(fileId) || res?.downloadLink || res?.viewLink || res?.webViewLink || res?.webContentLink || res?.data?.downloadLink || res?.data?.viewLink || ''
+            if (fileId) {
+                setEmployeeUploadStatus(`${kind === 'profile' ? 'Employee profile photo' : 'Guarantor photo'} uploaded successfully.`)
                 nextEmployee = {
                     ...nextEmployee,
                     [kind === 'profile' ? 'profilePhotoId' : 'guarantorPhotoId']: fileId,
                     [kind === 'profile' ? 'profilePhotoUrl' : 'guarantorPhotoUrl']: fileUrl,
+                    [kind === 'profile' ? 'profilePhotoViewLink' : 'guarantorPhotoViewLink']: res?.viewLink || '',
+                    [kind === 'profile' ? 'profilePhotoDownloadLink' : 'guarantorPhotoDownloadLink']: res?.downloadLink || '',
+                    [kind === 'profile' ? 'profilePhotoLastUploadedBy' : 'guarantorPhotoLastUploadedBy']: companyRecord?.emailid || '',
                 }
             }
         }
@@ -322,11 +434,34 @@ const Employees = () => {
         await uploadOne(pendingPhotos.guarantor, 'guarantor')
         return nextEmployee
     }
-    const handlePhotoChange = (event, kind) => {
+    const handlePhotoChange = async (event, kind) => {
         const file = event.target.files?.[0]
         if (!file) return
-        const previewUrl = URL.createObjectURL(file)
-        setPendingPhotos((current) => ({ ...current, [kind]: file }))
+        let uploadBlob = file
+        if (file.type === 'image/heic' || (file.name || '').toLowerCase().endsWith('.heic')) {
+            try {
+                setEmployeeUploadStatus('Converting HEIC photo to JPEG...')
+                uploadBlob = await heic2any({
+                    blob: file,
+                    toType: 'image/jpeg',
+                    quality: 0.9,
+                })
+                uploadBlob = new File(
+                    [uploadBlob],
+                    `${(file.name || `${kind}-photo`).replace(/\.heic$/i, '')}.jpg`,
+                    { type: 'image/jpeg' }
+                )
+            } catch (err) {
+                setAlertState('error')
+                setAlert(`Image conversion failed: ${err}`)
+                setAlertTimeout(3000)
+                return
+            }
+        }
+        setEmployeeUploadStatus(`${kind === 'profile' ? 'Employee profile photo' : 'Guarantor photo'} selected. It will be uploaded when you save.`)
+        setEmployeeUploadError('')
+        const previewUrl = URL.createObjectURL(uploadBlob)
+        setPendingPhotos((current) => ({ ...current, [kind]: uploadBlob }))
         setFields((current) => ({
             ...current,
             [kind === 'profile' ? 'profilePhotoUrl' : 'guarantorPhotoUrl']: previewUrl,
@@ -460,8 +595,8 @@ const Employees = () => {
         .slice(0, 2)
         .toUpperCase() || 'EC'
     const activePanelPhotoUrl = selform === 'Guarantor'
-        ? fields.guarantorPhotoUrl
-        : fields.profilePhotoUrl
+        ? (getDriveThumbnailUrl(fields.guarantorPhotoId) || fields.guarantorPhotoUrl)
+        : (getDriveThumbnailUrl(fields.profilePhotoId) || fields.profilePhotoUrl)
     const activePanelPhotoAlt = selform === 'Guarantor' ? 'Guarantor profile' : 'Employee profile'
     const panelTitle = isView ? 'Employee Profile' : (writeStatus === 'New' ? 'Create Employee' : 'Edit Employee')
     const panelDescription = selform === 'Basic'
@@ -470,6 +605,47 @@ const Employees = () => {
             ? 'Employment records, salary, and banking information.'
             : 'Guarantor profile and background details.'
     const canEditEmployees = companyRecord.status === 'admin' || editAccess.employees
+    const renderEmployeeSaveActions = () => {
+        if (isView) return null
+        return (
+            <div className='employees-form-actions'>
+                {(employeeUploadStatus || employeeUploadError) && <div className={'employees-upload-feedback' + (employeeUploadError ? ' error' : '')}>
+                    <div className='employees-upload-feedback-title'>
+                        {employeeUploadError ? 'Upload attention needed' : 'Upload progress'}
+                    </div>
+                    <div>{employeeUploadError || employeeUploadStatus}</div>
+                </div>}
+                {writeStatus === 'Edit' && <button
+                    type='button'
+                    className='employees-secondary-btn'
+                    disabled={employeeSaving}
+                    onClick={() => {
+                        setIsView(true)
+                        setFields({ ...curEmployee })
+                        setPendingPhotos({ profile: null, guarantor: null })
+                        setEmployeeUploadStatus('')
+                        setEmployeeUploadError('')
+                    }}
+                >
+                    Discard
+                </button>}
+                <button
+                    type='button'
+                    className='employees-primary-btn'
+                    disabled={employeeSaving}
+                    onClick={() => {
+                        if (writeStatus === 'New') {
+                            addEmployee()
+                        } else {
+                            editEmployee()
+                        }
+                    }}
+                >
+                    {employeeSaving ? 'Saving Employee...' : 'Save Employee'}
+                </button>
+            </div>
+        )
+    }
     return (
         <>
             <div className={`employees-page ${mobileDetailOpen ? 'mobile-detail-open' : ''}`}>
@@ -616,6 +792,7 @@ const Employees = () => {
                                 </div>
                             </div>
                             <div className='employees-detail-actions'>
+                                {renderEmployeeSaveActions()}
                                 {writeStatus === 'Edit' && !isView && <button
                                     type='button'
                                     className='employees-delete-btn'
@@ -1039,31 +1216,6 @@ const Employees = () => {
                             </div>
                         }
                             </div>
-                            {!isView && <div className='employees-form-actions'>
-                                {writeStatus === 'Edit' && <button
-                                    type='button'
-                                    className='employees-secondary-btn'
-                                    onClick={() => {
-                                        setIsView(true)
-                                        setFields({ ...curEmployee })
-                                    }}
-                                >
-                                    Discard
-                                </button>}
-                                <button
-                                    type='button'
-                                    className='employees-primary-btn'
-                                    onClick={() => {
-                                        if (writeStatus === 'New') {
-                                            addEmployee()
-                                        } else {
-                                            editEmployee()
-                                        }
-                                    }}
-                                >
-                                    Save Employee
-                                </button>
-                            </div>}
                         </div>
                     </div>
                 </div>
