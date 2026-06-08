@@ -1231,6 +1231,17 @@ const Settings = () => {
 
                                 <div className='settings-accounting-card'>
                                     <div className='settings-accounting-card-header'>
+                                        <h3>Vendors</h3>
+                                        <span>AP subsidiary ledger links</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Vendor Payable', modules.vendors?.payableAccount, (value) => updateAccountingField('vendors', 'payableAccount', value))}
+                                        {renderAccountingSelect('Default Bill Expense', modules.vendors?.expenseAccount, (value) => updateAccountingField('vendors', 'expenseAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
                                         <h3>Expenses</h3>
                                         <span>Default expense liabilities</span>
                                     </div>
@@ -1249,6 +1260,17 @@ const Settings = () => {
                                         {renderAccountingSelect('Service Revenue', modules.sales?.serviceRevenueAccount, (value) => updateAccountingField('sales', 'serviceRevenueAccount', value))}
                                         {renderAccountingSelect('Employee Receivable', modules.sales?.employeeReceivableAccount, (value) => updateAccountingField('sales', 'employeeReceivableAccount', value))}
                                         {renderAccountingSelect('Salary Payable', modules.sales?.salaryPayableAccount, (value) => updateAccountingField('sales', 'salaryPayableAccount', value))}
+                                    </div>
+                                </div>
+
+                                <div className='settings-accounting-card'>
+                                    <div className='settings-accounting-card-header'>
+                                        <h3>Corporate Sales</h3>
+                                        <span>Customer AR and invoice revenue</span>
+                                    </div>
+                                    <div className='settings-accounting-fields'>
+                                        {renderAccountingSelect('Invoice Revenue', modules.corporateSales?.revenueAccount, (value) => updateAccountingField('corporateSales', 'revenueAccount', value))}
+                                        {renderAccountingSelect('Customer Receivable', modules.corporateSales?.receivableAccount, (value) => updateAccountingField('corporateSales', 'receivableAccount', value))}
                                     </div>
                                 </div>
 

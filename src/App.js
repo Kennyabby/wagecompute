@@ -334,9 +334,9 @@ function App() {
   }
 
   const pathList = ['', 'login', 'profile', 'dashboard',
-    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
+    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
   const dashList = ['dashboard',
-    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
+    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
   const months = [
     'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
     'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
@@ -667,6 +667,18 @@ function App() {
                 });
               } catch (e) {
                 console.error('SSE Settings apply error', e);
+                setReloadCount(c => c + 1)
+              }
+              break;
+            case 'Tables':
+              try {
+                setTables((prev) => {
+                  const merged = applySseCollectionChange(prev, payload);
+                  setCached(company, 'tables', merged, companyRecord?.emailid);
+                  return merged;
+                });
+              } catch (e) {
+                console.error('SSE Tables apply error', e);
                 setReloadCount(c => c + 1)
               }
               break;

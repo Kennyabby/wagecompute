@@ -21,6 +21,7 @@ import Expenses from '../Expenses/Expenses'
 import Settings from '../Settings/Settings'
 import Journals from '../Journals/Journals'
 import LicenseExpired from '../LandingPage/LicenseExpired'
+import BusinessPartners from '../BusinessPartners/BusinessPartners'
 
 const CORE_LEDGER_PAGES = new Set(['settings', 'journals', 'reports', 'employees', 'departments', 'positions'])
 
@@ -67,6 +68,9 @@ const SETTING_REQUIREMENTS = {
         ['paymentMethods', 'paymentMethods', 'Payment methods'],
         ['approvalConfig', 'modules', 'Approval configuration'],
     ],
+    'business-partners': [
+        ['paymentMethods', 'paymentMethods', 'Payment methods'],
+    ],
     accommodations: [
         ['product_categories', 'categories', 'Accommodation room categories'],
         ['paymentMethods', 'paymentMethods', 'Payment methods'],
@@ -98,6 +102,10 @@ const LEDGER_REQUIREMENTS = {
             ['inventory', 'productionVarianceAccount', 'Production variance'],
             ['purchase', 'directExpenseAccount', 'Direct purchase account'],
             ['purchase', 'payableAccount', 'Purchase payable'],
+            ['vendors', 'payableAccount', 'Vendor payable'],
+            ['vendors', 'expenseAccount', 'Vendor bill expense'],
+            ['corporateSales', 'revenueAccount', 'Corporate sales revenue'],
+            ['corporateSales', 'receivableAccount', 'Corporate customer receivable'],
             ['expenses', 'payableAccount', 'Expense payable'],
             ['accommodations', 'revenueAccount', 'Accommodation revenue'],
             ['accommodations', 'receivableAccount', 'Accommodation receivable'],
@@ -210,6 +218,18 @@ const LEDGER_REQUIREMENTS = {
         lists: [
             ['paymentMethods', null, 'accountCode', 'Payment method'],
             ['purchase', 'categoryMappings', 'accountCode', 'Purchase category'],
+        ],
+    },
+    'business-partners': {
+        title: 'Corporate customers and vendors',
+        fields: [
+            ['corporateSales', 'revenueAccount', 'Corporate sales revenue'],
+            ['corporateSales', 'receivableAccount', 'Corporate customer receivable'],
+            ['vendors', 'payableAccount', 'Vendor payable'],
+            ['vendors', 'expenseAccount', 'Vendor bill expense'],
+        ],
+        lists: [
+            ['paymentMethods', null, 'accountCode', 'Payment method'],
         ],
     },
     expenses: {
@@ -436,6 +456,8 @@ const Dashboard = ()=>{
                 setView(guardPage(path, <Delivery/>))
             }else if (path === 'sales' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('sales'))){
                 setView(guardPage(path, <Sales/>))
+            }else if (path === 'business-partners' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('business-partners'))){
+                setView(guardPage(path, <BusinessPartners/>))
             }else if (path === 'inventory' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('inventory'))){
                 setView(guardPage(path, <Inventory/>))
             }else if (path === 'assets' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('assets'))){

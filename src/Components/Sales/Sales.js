@@ -197,6 +197,10 @@ const Sales = () => {
     const [autoPostSales, setAutoPostSales] = useState(false)
     const [pendingSalesDates, setPendingSalesDates] = useState([])
     const [proceedToNextAutomation, setProceedToNextAutomation] = useState(false)
+    const [autoPostLog, setAutoPostLog] = useState([])
+    const [autoPostRunning, setAutoPostRunning] = useState(false)
+    const autoPostRunningRef = useRef(false)
+    const autoPostStopRef = useRef(false)
 
     const [postingRecovery, setPostingRecovery] = useState(false)
     const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
@@ -371,16 +375,16 @@ const Sales = () => {
         calculatePOSSessionSales(allSessions, postingDate, isView, saleEmployee)
     }, [allSessions, postingDate, isView, saleEmployee])
 
-    useEffect(()=>{
-        if (autoPostSales && postingDate && allSessions.length){
-            pendingSalesDates.forEach((postingDate)=>{
-                if (proceedToNextAutomation){
-                    calculateAccommodationSales(accommodations, postingDate, isView, saleEmployee)
-                    calculatePOSSessionSales(allSessions, postingDate, isView, saleEmployee)
-                }
-            })            
+    useEffect(() => {
+        if (!autoPostSales || autoPostRunningRef.current) return
+        if (!Object.keys(payPoints || {}).length || !Object.keys(salesUnits || {}).length) {
+            setAlertState('info')
+            setAlert('Preparing sales automation settings...')
+            setAlertTimeout(5000)
+            return
         }
-    },[postingDate, autoPostSales, allSessions])
+        runAutomaticSalesPosting()
+    }, [autoPostSales, pendingSalesDates, accommodations, allSessions, sales, wrhs, salesUnits, payPoints, wrhCategories])
 
     const calculateAccommodationSales = (accommodations, postingDate, isView, saleEmployee)=>{
         var accommodationRecord = []
@@ -449,6 +453,7 @@ const Sales = () => {
         if (accommodationRecords !== accommodationRecord) {
             setAccommodationRecords(accommodationRecord)
         }
+        return accommodationRecord
     }
     const calculatePOSSessionSales = (allSessions, postingDate, isView, saleEmployee)=>{
         var sessionSalesRecord = []
@@ -812,7 +817,291 @@ const Sales = () => {
         if (sessionSalesRecords !== sessionSalesRecord) {
             setSessionSalesRecords(sessionSalesRecord)
         }
+        return { records: sessionSalesRecord, activeSessions: activeSessions || [] }
     }    
+
+    const appendAutoPostLog = (message, state = 'info') => {
+        const row = {
+            message,
+            state,
+            createdAt: Date.now(),
+        }
+        setAutoPostLog((log) => [row, ...log].slice(0, 20))
+        setAlertState(state === 'error' ? 'error' : state === 'success' ? 'success' : 'info')
+        setAlert(message)
+        setAlertTimeout(state === 'error' ? 8000 : 100000)
+    }
+
+    const fetchAutomationSourceData = async (targetDate) => {
+        const targetTime = new Date(targetDate).getTime()
+        const sessionStart = targetTime - (24 * 60 * 60 * 1000)
+        const sessionEnd = targetTime + (2 * 24 * 60 * 60 * 1000)
+        const [salesResp, accommodationResp, sessionResp] = await Promise.all([
+            fetchServer("POST", {
+                database: company,
+                collection: "Sales",
+                prop: {}
+            }, "getDocsDetails", server),
+            fetchServer("POST", {
+                database: company,
+                collection: "Accommodations",
+                prop: { postingDate: targetDate }
+            }, "getDocsDetails", server),
+            fetchServer("POST", {
+                database: company,
+                collection: "POSSessions",
+                prop: { start: { $gte: sessionStart, $lte: sessionEnd } }
+            }, "getDocsDetails", server),
+        ])
+
+        const failed = [salesResp, accommodationResp, sessionResp].find((resp) => resp?.err)
+        if (failed) {
+            throw new Error(failed.mess || `Could not load source data for ${targetDate}`)
+        }
+
+        return {
+            salesRecords: Array.isArray(salesResp?.record) ? salesResp.record : [],
+            accommodationRecords: Array.isArray(accommodationResp?.record) ? accommodationResp.record : [],
+            sessionRecords: Array.isArray(sessionResp?.record) ? sessionResp.record : [],
+        }
+    }
+
+    const salesDateAlreadyPosted = (targetDate, salesList = []) => {
+        return (salesList || []).some((sale) => getDate(sale.postingDate) === getDate(targetDate))
+    }
+
+    const acceptPositiveDifferencesAsDebt = (records = []) => {
+        return records.map((record) => {
+            const field = structuredClone({ record }).record
+            let netTotal = Number(field.cashSales) + Number(field.bankSales) + Number(field.debt) + Number(field.shortage)
+            if (field.isSession) {
+                netTotal -= Number(field.debt)
+            }
+            const debtDue = Math.round(Number(field.totalSales)) - Math.round(netTotal)
+            if (debtDue > 0) {
+                field.debt = Number(field.debt || 0) + debtDue
+                field.debtAccepted = true
+                field.autoDebtAccepted = true
+            }
+            return field
+        })
+    }
+
+    const validateAutomaticSalesRecords = (records = [], targetDate, activeSessionIds = []) => {
+        if (activeSessionIds.length) {
+            return {
+                ok: false,
+                message: `Automatic posting stopped for ${targetDate}. There are still active POS sessions for this date: ${activeSessionIds.join(', ')}.`,
+            }
+        }
+
+        let negativeCount = 0
+        records.forEach((field) => {
+            let enteredSales = Number(field.cashSales) + Number(field.bankSales) + Number(field.debt) + Number(field.shortage)
+            if (field.isSession) {
+                if (field.debtAccepted) {
+                    if (field.unAccountedSales) {
+                        enteredSales -= (Number(field.debt) - Number(field.unAccountedSales))
+                    }
+                } else {
+                    enteredSales -= Number(field.debt)
+                }
+            }
+
+            if (Math.round(enteredSales) > Math.round(Number(field.totalSales))) {
+                negativeCount += 1
+            }
+        })
+
+        if (negativeCount) {
+            return {
+                ok: false,
+                message: `Automatic posting stopped for ${targetDate}. ${negativeCount} record(s) have negative differences and must be reviewed manually.`,
+            }
+        }
+
+        return { ok: true }
+    }
+
+    const buildAutomaticSalesDocument = (targetDate, records = []) => {
+        let totalCashSales = 0
+        let totalDebt = 0
+        let totalSalesDebt = 0
+        let totalShortage = 0
+        let totalBankSales = 0
+        const deliverySessions = []
+        const salesSessions = []
+        let productRequiredCount = 0
+
+        records.forEach((field) => {
+            totalCashSales += Number(field.cashSales)
+            totalDebt += Number(field.debt)
+            totalSalesDebt += Number(field.debt) - Number(field.unAccountedSales || 0)
+            totalShortage += Number(field.shortage)
+            totalBankSales += Number(field.bankSales)
+            if ((field.debt || field.shortage) && !field.unAccountedSales) {
+                productRequiredCount += 1
+            }
+            if (field.isSession) {
+                field.deliverySessions?.forEach((deliverySession) => {
+                    if (!deliverySessions.includes(deliverySession)) {
+                        deliverySessions.push(deliverySession)
+                    }
+                })
+                field.salesSessions?.forEach((salesSession) => {
+                    if (!salesSessions.includes(salesSession)) {
+                        salesSessions.push(salesSession)
+                    }
+                })
+            }
+        })
+
+        return {
+            postingDate: targetDate,
+            createdAt: new Date().getTime(),
+            totalCashSales,
+            totalBankSales,
+            totalDebt,
+            totalSalesDebt,
+            totalShortage,
+            deliverySessions,
+            salesSessions,
+            approvedBy: companyRecord?.emailid,
+            productsRef: productRequiredCount === 0 ? 'auto-generated' : undefined,
+            autoPosted: true,
+            automationMeta: {
+                source: 'session-manager-auto-sales',
+                autoDebtAccepted: records.some((record) => record.autoDebtAccepted),
+                postedBy: companyRecord?.emailid,
+                createdAt: Date.now(),
+            },
+            record: records,
+        }
+    }
+
+    const postAutomaticSalesDate = async (targetDate, records, currentSalesList) => {
+        if (salesDateAlreadyPosted(targetDate, currentSalesList)) {
+            return { skipped: true, reason: 'already-posted' }
+        }
+
+        const saleDoc = buildAutomaticSalesDocument(targetDate, records)
+        const resps = await fetchServer("POST", {
+            database: company,
+            collection: "Sales",
+            update: saleDoc
+        }, "createDoc", server)
+
+        if (resps.err) {
+            throw new Error(resps.mess || `Could not post automatic sales for ${targetDate}`)
+        }
+
+        return { saleDoc }
+    }
+
+    const runAutomaticSalesPosting = async () => {
+        if (!company || !companyRecord?.emailid || autoPostRunningRef.current) return
+        autoPostRunningRef.current = true
+        autoPostStopRef.current = false
+        setAutoPostRunning(true)
+        setSalesOpts('sales')
+        setSalesOpts1('sales')
+        setSaleEmployee('')
+        setIsView(false)
+        setCurSale(null)
+        setCurApproval(null)
+        setFields([])
+        setAutoPostLog([])
+
+        try {
+            appendAutoPostLog('Automatic sales posting started. Loading pending days...')
+            let currentSalesList = Array.isArray(sales) ? [...sales] : []
+            if (!currentSalesList.length) {
+                const { salesRecords } = await fetchAutomationSourceData(new Date(Date.now()).toISOString().slice(0, 10))
+                currentSalesList = salesRecords
+            }
+
+            let datesToProcess = getPendingSalesDates(currentSalesList).reverse()
+            if (pendingSalesDates.length) {
+                datesToProcess = [...pendingSalesDates].reverse()
+            }
+
+            if (!datesToProcess.length) {
+                appendAutoPostLog('No pending sales dates found. You can start the POS session manager now.', 'success')
+                window.localStorage.removeItem('auto-sales')
+                setAutoPostSales(false)
+                return
+            }
+
+            for (const targetDate of datesToProcess) {
+                if (autoPostStopRef.current) {
+                    appendAutoPostLog('Automatic sales posting stopped by user before the next pending day.', 'info')
+                    break
+                }
+                appendAutoPostLog(`Preparing sales posting for ${targetDate}...`)
+                const source = await fetchAutomationSourceData(targetDate)
+                currentSalesList = source.salesRecords
+
+                if (salesDateAlreadyPosted(targetDate, currentSalesList)) {
+                    appendAutoPostLog(`${targetDate} already has a sales posting. Skipping.`, 'success')
+                    continue
+                }
+
+                setPostingDate(targetDate)
+                const accommodationResult = calculateAccommodationSales(source.accommodationRecords, targetDate, false, '')
+                const sessionResult = calculatePOSSessionSales(source.sessionRecords, targetDate, false, '')
+                const records = acceptPositiveDifferencesAsDebt([
+                    ...(accommodationResult || []),
+                    ...((sessionResult && sessionResult.records) || []),
+                ])
+
+                setAccommodationRecords(accommodationResult || [])
+                setSessionSalesRecords((sessionResult && sessionResult.records) || [])
+                setFields(records)
+                setMobileDetailOpen(true)
+
+                const validation = validateAutomaticSalesRecords(records, targetDate, (sessionResult && sessionResult.activeSessions) || [])
+                if (!validation.ok) {
+                    throw new Error(validation.message)
+                }
+
+                if (!records.length) {
+                    appendAutoPostLog(`No sales activity found for ${targetDate}. Posting a zero-activity marker so the day is cleared.`)
+                } else {
+                    appendAutoPostLog(`Posting ${records.length} sales detail record(s) for ${targetDate}...`)
+                }
+
+                const posted = await postAutomaticSalesDate(targetDate, records, currentSalesList)
+                if (posted?.saleDoc) {
+                    currentSalesList = [posted.saleDoc, ...currentSalesList]
+                    setSales((existingSales) => [posted.saleDoc, ...existingSales])
+                    setCurSale(posted.saleDoc)
+                    setCurSaleDate(posted.saleDoc.postingDate)
+                    setIsView(true)
+                    setFields([...(posted.saleDoc.record || [])])
+                    appendAutoPostLog(`Automatic sales posting completed for ${targetDate}.`, 'success')
+                }
+            }
+
+            window.localStorage.removeItem('auto-sales')
+            setAutoPostSales(false)
+            setPendingSalesDates([])
+            if (!autoPostStopRef.current) {
+                appendAutoPostLog('Automatic sales posting finished. Pending days have been cleared.', 'success')
+            }
+            getSales(company)
+            fetchAllSessions({ company, companyRecord })
+            getAccommodations(company)
+        } catch (error) {
+            const message = error?.message || 'Automatic sales posting stopped because an unexpected error occurred.'
+            appendAutoPostLog(message, 'error')
+            setAutoPostSales(false)
+        } finally {
+            autoPostRunningRef.current = false
+            autoPostStopRef.current = false
+            setAutoPostRunning(false)
+            setPostStatus('Post Sales')
+        }
+    }
 
     useEffect(() => {
         const findKitchenField = fields.find((field) => { return field.isSplit })
@@ -2615,6 +2904,30 @@ const Sales = () => {
                         acceptSalesDebt()
                     }}
                 />}
+                {(autoPostRunning || autoPostLog.length > 0) && <div className='sales-auto-post-panel'>
+                    <div className='sales-auto-post-head'>
+                        <div>
+                            <span>Auto Posting Assistant</span>
+                            <strong>{autoPostRunning ? 'Running' : 'Stopped'}</strong>
+                        </div>
+                        {autoPostRunning && <button type='button' onClick={() => {
+                            window.localStorage.removeItem('auto-sales')
+                            autoPostStopRef.current = true
+                            setAutoPostSales(false)
+                            appendAutoPostLog('Automatic sales posting stop requested. The current step will finish before stopping.', 'info')
+                        }}>
+                            Stop after current step
+                        </button>}
+                    </div>
+                    <div className='sales-auto-post-log'>
+                        {autoPostLog.map((log) => (
+                            <div key={log.createdAt} className={`sales-auto-post-row ${log.state || 'info'}`}>
+                                <span>{new Date(log.createdAt).toLocaleTimeString()}</span>
+                                <p>{log.message}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>}
                 {productAdd && <AddProduct
                     companyRecord={companyRecord}
                     products={products}
