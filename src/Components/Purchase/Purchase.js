@@ -43,6 +43,7 @@ const Purchase = () => {
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
     const [wrhs, setWrhs] = useState([])
+    const [vendors, setVendors] = useState([])
     const [postAction, setPostAction] = useState('postpurchase')
     const [productPurchased, setProductPurchased] = useState([])
     const [isSyncing, setIsSyncing] = useState(false);
@@ -67,6 +68,9 @@ const Purchase = () => {
         purchaseUOM: '',
         purchaseAmount: '',
         purchaseVendor: '',
+        vendorId: '',
+        vendorNo: '',
+        vendorName: '',
     }
     const [fields, setFields] = useState({ ...defaultFields })
     const [departments, setDepartments] = useState([])
@@ -242,6 +246,13 @@ const Purchase = () => {
             tasks.push(getEmployees(cmp_val, companyRecord));
             tasks.push(getPurchase(cmp_val, companyRecord));
             await Promise.all(tasks);
+            const vendorResp = await fetchServer("POST", {
+                database: cmp_val,
+                collection: "Vendors"
+            }, "getDocsDetails", server)
+            if (!vendorResp.err && Array.isArray(vendorResp.record)) {
+                setVendors(vendorResp.record)
+            }
         } catch (e) { }
     }
 
@@ -377,9 +388,22 @@ const Purchase = () => {
                 setFields((fields) => {
                     return { ...fields, [name]: value, purchaseUOM: '', purchaseQuantity: '' }
                 })
+            } else if (name === 'vendorId') {
+                const vendor = vendors.find((item) => item._id === value)
+                setFields((fields) => ({
+                    ...fields,
+                    vendorId: value,
+                    vendorNo: vendor?.vendorNo || '',
+                    vendorName: vendor?.name || '',
+                    purchaseVendor: vendor?.name || fields.purchaseVendor || ''
+                }))
             } else {
                 setFields((fields) => {
-                    return { ...fields, [name]: value }
+                    return {
+                        ...fields,
+                        [name]: value,
+                        ...(name === 'purchaseVendor' && !fields.vendorId ? { vendorName: value } : {})
+                    }
                 })
             }
         }
@@ -1111,15 +1135,31 @@ const Purchase = () => {
                             </select>
                         </div>
                         <div className='inpcov'>
-                            <div>Vendor</div>
+                            <div>Registered Vendor</div>
+                            <select
+                                className='forminp'
+                                name='vendorId'
+                                value={fields.vendorId || ''}
+                                disabled={isView}
+                            >
+                                <option value=''>Select registered vendor</option>
+                                {vendors.map((vendor) => (
+                                    <option key={vendor._id} value={vendor._id}>
+                                        {`${vendor.vendorNo || ''} ${vendor.name || ''}`.trim()}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className='inpcov'>
+                            <div>Vendor Name</div>
                             <input
                                 className='forminp'
                                 name='purchaseVendor'
                                 type='text'
-                                autoComplete={true}
-                                placeholder='Vendor'
+                                autoComplete='on'
+                                placeholder='Vendor name'
                                 value={fields.purchaseVendor}
-                                disabled={isView}
+                                disabled={isView || !!fields.vendorId}
                             />
                         </div>
                         <div className='inpcov'>
@@ -1378,18 +1418,27 @@ const AddProduct = ({
     const [productSearch, setProductSearch] = useState('')
     const [nullFieldsCount, setNullFieldsCount] = useState(0)
     const [isProductEdit, setIsProductEdit] = useState(false)
+    const [purchasePrintType, setPurchasePrintType] = useState('purchaseOrder')
     const targetRef = useRef(null)
     const { getDate, setAlertState, setAlert, setAlertTimeout } = useContext(ContextProvider)
-    const printToPDF = () => {
-        const element = targetRef.current;
-        const options = {
-            margin: 0.1,
-            filename: `${curApproval ? '(APPROVALS) ' : ''}PRODUCT PURCHASE DETAILS ${getDate(curPurchase?.purchaseDate || curPurchase?.postingDate || curApproval?.postingDate || purchaseDate)}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
-        };
-        html2pdf().set(options).from(element).save();
+    const getPurchasePrintTitle = (type = purchasePrintType) => ({
+        purchaseOrder: 'PURCHASE ORDER',
+        grn: 'GOODS RECEIVED NOTE',
+        purchaseInvoice: 'PURCHASE INVOICE',
+    }[type] || 'PURCHASE DOCUMENT')
+    const printToPDF = (type = purchasePrintType) => {
+        setPurchasePrintType(type)
+        setTimeout(() => {
+            const element = targetRef.current;
+            const options = {
+                margin: 0.1,
+                filename: `${curApproval ? '(APPROVALS) ' : ''}${getPurchasePrintTitle(type)} ${getDate(curPurchase?.purchaseDate || curPurchase?.postingDate || curApproval?.postingDate || purchaseDate)}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
+            };
+            html2pdf().set(options).from(element).save();
+        }, 0)
     };
     useEffect(() => {
         if (!isProductView) {
@@ -1499,12 +1548,11 @@ const AddProduct = ({
                 <div className='add-products'>
                     <div className='add-products-title'>
                         <label>Product Purchase Details</label>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && <div
-                            className='slprwh-print'
-                            onClick={() => {
-                                printToPDF()
-                            }}
-                        >Print Product</div>}
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && <div className='purchase-doc-print-actions'>
+                            <button type='button' onClick={() => printToPDF('purchaseOrder')}>Print PO</button>
+                            <button type='button' onClick={() => printToPDF('grn')}>Print GRN</button>
+                            <button type='button' onClick={() => printToPDF('purchaseInvoice')}>Print Invoice</button>
+                        </div>}
                     </div>
                     <div>
                         <input
@@ -1516,13 +1564,19 @@ const AddProduct = ({
                             onChange={(e) => { setProductSearch(e.target.value) }}
                         />
                     </div>
-                    <div className='add-products-content' ref={targetRef}>
-                        <div className='add-products-content-title' style={{ display: 'flex', width: 'fit-content' }}>{`${companyRecord?.name.toUpperCase()} (PURCHASE ORDER)`}</div>
-                        <div style={{ display: 'block', width: 'fit-content', marginRight: 'auto', marginLeft: '0px' }}>
-                            <label style={{ width: 'fit-content', textAlign: 'left' }}>{`Vendor: ${fields.purchaseVendor}`}</label>
-                            <p></p>
-                            <label>{`Order Date: ${purchaseDate || fields.postingDate}`}</label>
-                            <p></p>
+                    <div className='add-products-content purchase-doc-print-sheet' ref={targetRef}>
+                        <div className='purchase-doc-print-header'>
+                            <div>
+                                <h2>{companyRecord?.name?.toUpperCase()}</h2>
+                                <p>{companyRecord?.address || ''}</p>
+                                <p>{companyRecord?.phone || companyRecord?.mobile || ''} {companyRecord?.email ? `| ${companyRecord.email}` : ''}</p>
+                            </div>
+                            <div>
+                                <h3>{getPurchasePrintTitle()}</h3>
+                                <p>{`Date: ${purchaseDate || fields.postingDate}`}</p>
+                                <p>{`Vendor: ${fields.purchaseVendor || fields.vendorName || ''}`}</p>
+                                <p>{`Department: ${fields.purchaseDepartment || ''}`}</p>
+                            </div>
                         </div>
                         <div className='add-products-content-title'>
                             <div>Product Name</div>

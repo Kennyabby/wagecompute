@@ -4994,13 +4994,13 @@ const POSDashboard = ({
                                         if (canUpdateSession){
                                             createSessionManager()
                                         }else{
-                                            // window.localStorage.setItem('auto-sales', 'Auto Posting Sales...')
-                                            // setTimeout(() => {
-                                            //     Navigate('/sales')
-                                            // }, 3000)
                                             setAlertState('error')
-                                            setAlert("Please Post Pending Sales for previous days to Start Today's Session Manager! Redirecting ....")
-                                            setAlertTimeout(3000)  
+                                            setAlert("Please post pending sales for previous days to start today's Session Manager. Redirecting to Sales automation...")
+                                            setAlertTimeout(3000)
+                                            window.localStorage.setItem('auto-sales', 'Auto Posting Sales. Please keep this page open while pending sales are processed.')
+                                            setTimeout(() => {
+                                                Navigate('/sales')
+                                            }, 1500)
                                         }
                                     }else{
                                         setAlertState('error')

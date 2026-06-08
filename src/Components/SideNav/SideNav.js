@@ -5,7 +5,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BiSolidDashboard, BiMenu } from "react-icons/bi";
 import { BsTable } from "react-icons/bs";
-import { FaUsers, FaHotel, FaBoxes } from "react-icons/fa";
+import { FaUsers, FaHotel, FaBoxes, FaHandshake } from "react-icons/fa";
 import { SiPayloadcms } from "react-icons/si";
 import { MdInventory, MdClose, MdSubject, MdDeliveryDining, MdLogout } from "react-icons/md";
 import { GiPayMoney, GiPlayerTime, GiBuyCard, GiExpense } from "react-icons/gi";
@@ -252,6 +252,12 @@ const SideNav = () => {
             meta: 'Revenue',
             icon: GiPayMoney,
             badge: hasPermission('approve_postsales') ? salesApprovals.length : 0
+        },
+        hasPermission('business-partners') && {
+            name: 'business-partners',
+            label: 'Customers & Vendors',
+            meta: 'AR/AP ledgers',
+            icon: FaHandshake
         },
         hasPermission('pos') && { name: 'pos', label: 'POS', meta: 'Counter', icon: GiPayMoney },
         hasPermission('delivery') && { name: 'delivery', label: 'Order Delivery', meta: 'Dispatch', icon: MdDeliveryDining },

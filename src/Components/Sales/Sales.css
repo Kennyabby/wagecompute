@@ -16,6 +16,100 @@
         radial-gradient(circle at top right, rgba(61, 153, 112, 0.12), transparent 22%),
         linear-gradient(180deg, #f7f4eb 0%, #eef3ef 100%);
 }
+
+.sales-auto-post-panel {
+    position: fixed;
+    top: 18px;
+    right: 24px;
+    width: min(420px, calc(100vw - 48px));
+    max-height: min(420px, calc(100dvh - 48px));
+    z-index: 3600;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 22px;
+    border: 1px solid rgba(23, 56, 41, 0.14);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 24px 70px rgba(16, 31, 24, 0.18);
+    backdrop-filter: blur(14px);
+}
+
+.sales-auto-post-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sales-auto-post-head span {
+    display: block;
+    font-size: 0.72rem;
+    font-family: 'MontserratBold', sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #607064;
+}
+
+.sales-auto-post-head strong {
+    display: block;
+    margin-top: 4px;
+    color: #173829;
+    font-size: 1.05rem;
+}
+
+.sales-auto-post-head button {
+    border: none;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #173829;
+    color: #fff;
+    font-family: 'MontserratBold', sans-serif;
+    cursor: pointer;
+}
+
+.sales-auto-post-log {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: auto;
+}
+
+.sales-auto-post-row {
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: #f4f8f5;
+    border: 1px solid rgba(23, 56, 41, 0.08);
+}
+
+.sales-auto-post-row span {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.72rem;
+    color: #6b7c70;
+}
+
+.sales-auto-post-row p {
+    margin: 0;
+    color: #173829;
+    font-size: 0.86rem;
+    line-height: 1.45;
+}
+
+.sales-auto-post-row.error {
+    background: #fff3ef;
+    border-color: rgba(194, 85, 85, 0.25);
+}
+
+.sales-auto-post-row.error p {
+    color: #9a3d31;
+}
+
+.sales-auto-post-row.success {
+    background: #edf8f1;
+    border-color: rgba(45, 106, 76, 0.22);
+}
+
 .saleslist{
     width: 35%;
 }
@@ -565,6 +659,25 @@
 }
 
 @media (max-width: 720px) {
+    .sales-auto-post-panel {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-height: min(360px, calc(100dvh - 20px));
+        padding: 12px;
+        border-radius: 18px;
+    }
+
+    .sales-auto-post-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sales-auto-post-head button {
+        width: 100%;
+    }
+
     .sales-left-filter-bar,
     .sales-left-toggle-bar {
         grid-template-columns: 1fr;
@@ -853,4 +966,3 @@
         margin-bottom: 14px;
     }
 }
-
