@@ -97,6 +97,9 @@ const BillingSettingsPanel = ({ variants }) => {
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false)
   const [disablePaystackPayment, setDisablePaystackPayment] = useState(false)
   const [subscriptionMode, setSubscriptionMode] = useState(true)
+  const [paymentChannel, setPaymentChannel] = useState('card')
+  const [dedicatedAccount, setDedicatedAccount] = useState(null)
+  const [checkoutReference, setCheckoutReference] = useState('')
   const [cardActionLoading, setCardActionLoading] = useState('')
 
   const currentStatus = snapshot.currentStatus || subscriptionState || null
@@ -145,8 +148,16 @@ const BillingSettingsPanel = ({ variants }) => {
     }
     setIsCheckoutLoading(true)
     try {
-      const response = await fetchServer('POST', { months: 1, subscriptionMode }, 'billing/initializeTenantSubscription', server)
+      const payload = { months: 1, subscriptionMode, paymentChannel }
+      const response = await fetchServer('POST', payload, 'billing/initializeTenantSubscription', server)
       if (response.err || !response.ok || !response.authorizationUrl) {
+        // If a dedicated account was created, backend returns dedicatedAccount without authorizationUrl
+        if (response.dedicatedAccount) {
+          setDedicatedAccount(response.dedicatedAccount)
+          setCheckoutReference(response.reference || '')
+          setIsCheckoutLoading(false)
+          return
+        }
         throw new Error(response.mess || 'Unable to initialize Paystack checkout.')
       }
       window.location.href = response.authorizationUrl
@@ -154,6 +165,39 @@ const BillingSettingsPanel = ({ variants }) => {
       setAlertState('error')
       setAlert(error.message || 'Unable to initialize Paystack checkout.')
       setAlertTimeout(3500)
+      setIsCheckoutLoading(false)
+    }
+  }
+
+  const handleCopy = (text) => {
+    try {
+      navigator.clipboard.writeText(String(text || ''))
+      setAlertState('success')
+      setAlert('Copied to clipboard')
+      setAlertTimeout(2000)
+    } catch (err) {
+      setAlertState('error')
+      setAlert('Unable to copy')
+      setAlertTimeout(2500)
+    }
+  }
+
+  const handleVerifyNow = async () => {
+    if (!checkoutReference) return
+    setIsCheckoutLoading(true)
+    try {
+      const response = await fetchServer('GET', { reference: checkoutReference }, 'billing/verifyTenantSubscription', server)
+      if (!response || !response.ok) throw new Error(response?.mess || response?.message || 'Verification failed')
+      setAlertState('success')
+      setAlert('Verification result: ' + (response.status || 'pending'))
+      setAlertTimeout(4000)
+      setDedicatedAccount(null)
+      await loadTenantSnapshot(false)
+    } catch (err) {
+      setAlertState('error')
+      setAlert(err.message || 'Verification failed')
+      setAlertTimeout(4000)
+    } finally {
       setIsCheckoutLoading(false)
     }
   }
@@ -249,14 +293,48 @@ const BillingSettingsPanel = ({ variants }) => {
             </p>
           </div>
           <div className='settings-billing-actions'>
-            <label className='settings-billing-autorenew'>
-              <input
-                type='checkbox'
-                checked={subscriptionMode}
-                onChange={(event) => setSubscriptionMode(event.target.checked)}
-              />
-              <span>Save card for monthly auto-renewal</span>
-            </label>
+            <div className='settings-billing-payment-methods'>
+              <label className='settings-billing-payment-method'>
+                <input type='radio' name='paymentChannel' value='card' checked={paymentChannel === 'card'} onChange={() => { setPaymentChannel('card'); }} />
+                <span>Pay with Card (store card for auto-renewal)</span>
+              </label>
+              <label className='settings-billing-payment-method'>
+                <input type='radio' name='paymentChannel' value='bank' checked={paymentChannel === 'bank'} onChange={() => { setPaymentChannel('bank'); setSubscriptionMode(false); }} />
+                <span>Bank transfer / USSD (no card saved)</span>
+              </label>
+              <label className='settings-billing-autorenew'>
+                <input
+                  type='checkbox'
+                  checked={subscriptionMode}
+                  onChange={(event) => setSubscriptionMode(event.target.checked)}
+                  disabled={paymentChannel === 'bank'}
+                />
+                <span>Save card for monthly auto-renewal</span>
+              </label>
+            </div>
+            {dedicatedAccount ? (
+              <div className='settings-billing-transfer-panel'>
+                <div className='settings-billing-transfer-inner'>
+                  <h4>Transfer {formatMoney(snapshot.plan?.amountNaira || 0)}</h4>
+                  <div className='transfer-row'>
+                    <div><strong>Bank</strong></div>
+                    <div>{dedicatedAccount.bank || dedicatedAccount.bank_name || 'Paystack Bank'}</div>
+                  </div>
+                  <div className='transfer-row'>
+                    <div><strong>Account Number</strong></div>
+                    <div>{dedicatedAccount.accountNumber || dedicatedAccount.account_number || ''} <button className='settings-billing-inline-btn' onClick={() => handleCopy(dedicatedAccount.accountNumber || dedicatedAccount.account_number)}>Copy</button></div>
+                  </div>
+                  <div className='transfer-row'>
+                    <div><strong>Account Name</strong></div>
+                    <div>{dedicatedAccount.accountName || dedicatedAccount.account_name || ''}</div>
+                  </div>
+                  <div className='transfer-actions'>
+                    <button className='savebtn' onClick={handleVerifyNow} disabled={isCheckoutLoading}>I've paid — Verify now</button>
+                    <button className='settings-billing-secondary-btn' onClick={() => { setDedicatedAccount(null); setCheckoutReference('') }}>Close</button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <button className='savebtn' onClick={handleSubscribe} disabled={isCheckoutLoading}>
               {isCheckoutLoading ? 'Opening Paystack...' : (currentStatus?.trialActive ? 'Upgrade Before Trial Ends' : 'Subscribe with Paystack')}
             </button>
