@@ -915,6 +915,7 @@ const Expenses = () => {
                             setIsView(false)
                             setFields({ ...defaultFields })
                             setCurExpense(null)
+                            setCurApproval(null)
                         }}
                     />
                 </div>
