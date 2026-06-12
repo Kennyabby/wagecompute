@@ -4,6 +4,8 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
+import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
+import heic2any from 'heic2any'
 
 const DEFAULT_APPROVAL_CONFIG = {
     name: 'approvalConfig',
@@ -37,6 +39,7 @@ const Settings = () => {
     const [showPass, setShowPass] = useState(false)
     const [saveStatus, setSaveStatus] = useState('')
     const [currentView, setCurrentView] = useState('employees')
+    const [companyProfile, setCompanyProfile] = useState(null)
     const [uoms, setUoms] = useState([])
     const [categories, setCategories] = useState([])
     const [wrhs, setWrhs] = useState([])
@@ -221,6 +224,165 @@ const Settings = () => {
             }
         }
     }, [settings])
+
+    useEffect(() => {
+        // keep local editable company profile in sync
+        // For the Company Profile view we prefer the central WCDatabase.CompanyProfiles document
+        if (currentView === 'company') return
+        setCompanyProfile(companyRecord ? ({ ...companyRecord }) : null)
+    }, [companyRecord])
+
+    // When the Company view is active, load the central CompanyProfile from the server (authenticated)
+    useEffect(() => {
+        const loadCentralProfile = async () => {
+            try {
+                const resp = await fetchServer('POST', {}, 'getCompanyProfile', server)
+                if (!resp || resp.err) return
+                if (resp.record) setCompanyProfile({ ...resp.record })
+            } catch (e) {
+                // ignore; fallback to companyRecord
+            }
+        }
+
+        if (currentView === 'company') {
+            loadCentralProfile()
+        }
+    }, [currentView, company, fetchServer, server])
+
+    const handleCompanyFieldChange = (e) => {
+        const { name, value } = e.target
+        setCompanyProfile((prev) => ({ ...prev, [name]: value }))
+    }
+
+    const getDriveThumbnailUrl = (imgId) => imgId ? `https://drive.google.com/thumbnail?id=${imgId}&sz=w1000` : ''
+    
+    const handleCompanyFileChange = async (e, kind) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        let uploadBlob = file
+        if (file.type === 'image/heic' || (file.name || '').toLowerCase().endsWith('.heic')) {
+            try {
+                setAlertState('info')
+                setAlert('Converting HEIC photo to JPEG...')
+                setAlertTimeout(100000) // long timeout for conversion
+                uploadBlob = await heic2any({
+                    blob: file,
+                    toType: 'image/jpeg',
+                    quality: 0.9,
+                })
+                uploadBlob = new File(
+                    [uploadBlob],
+                    `${(file.name || `${kind}-photo`).replace(/\.heic$/i, '')}.jpg`,
+                    { type: 'image/jpeg' }
+                )
+            } catch (err) {
+                setAlertState('error')
+                setAlert(`Image conversion failed: ${err}`)
+                setAlertTimeout(3000)
+                return
+            }
+        }
+        // show immediate local preview like employee photo flow
+        try {
+            const previewUrl = URL.createObjectURL(uploadBlob)
+            if (kind === 'logo') setCompanyProfile((prev) => ({ ...prev, logoUrl: previewUrl }))
+                else if (kind === 'signature') setCompanyProfile((prev) => ({ ...prev, signatureUrl: previewUrl }))
+        } catch (err) {
+        // ignore preview failures
+        }
+        setAlertState('info')
+        setAlert(`Uploading ${kind === 'signature' ? 'signature' : 'logo'}...`)
+        setAlertTimeout(100000) // long timeout for upload
+        try {
+            const folderPath = `${company}/Company Assets/${kind === 'signature' ? 'Signatures' : 'Logos'}`
+            const res = await uploadFile(uploadBlob, folderPath, Date.now(), company, 'CompanyProfiles', server)
+            if (res?.mess || res?.err) {
+                const err = new Error(res.mess || 'Upload failed')
+                err.code = res.code
+                throw err
+            }
+            const fileId = res?.imgId || res?.fileId || res?.id || res?.imageId || res?.data?.id || res?.data?.imgId || ''
+            const fileUrl = getDriveThumbnailUrl(fileId) || res?.downloadLink || res?.viewLink || res?.webViewLink || res?.webContentLink || res?.data?.downloadLink || res?.data?.viewLink || ''
+            // Persist both the file id and a public URL in the CompanyProfile shape
+            if (fileId){
+                if (kind === 'logo') {
+                    setCompanyProfile((prev) => ({ ...prev, logo: fileId, logoUrl: fileUrl }))
+                    // persist immediately so prints and other clients see it
+                    setAlertState('info')
+                    setAlert('Logo uploaded. Saving to Company Profile...')
+                    setAlertTimeout(100000)
+                    try {
+                        const respSave = await fetchServer('POST', { prop: [{ db: company }, { logo: fileId, logoUrl: fileUrl }] }, 'updateDBProfileDoc', server)
+                        if (respSave?.err || !respSave?.updated) {
+                            console.warn('Failed to persist logo to CompanyProfiles', respSave)
+                            setAlertState('error')
+                            setAlert('Logo uploaded but failed to save to Company Profile. Please Save Company Profile manually.')
+                            setAlertTimeout(6000)
+                        }
+                    } catch (e) {
+                        console.warn('Persist logo error', e)
+                        setAlertState('error')
+                        setAlert('Logo uploaded but failed to save to Company Profile. Please Save Company Profile manually.')
+                        setAlertTimeout(6000)
+                    }
+                } else if (kind === 'signature') {
+                    setCompanyProfile((prev) => ({ ...prev, signature: fileId, signatureUrl: fileUrl }))
+                    setAlertState('info')
+                    setAlert('Signature uploaded. Saving to Company Profile...')
+                    setAlertTimeout(100000)
+                    try {
+                        const respSave = await fetchServer('POST', { prop: [{ db: company }, { signature: fileId, signatureUrl: fileUrl }] }, 'updateDBProfileDoc', server)
+                        if (respSave?.err || !respSave?.updated) {
+                            console.warn('Failed to persist signature to CompanyProfiles', respSave)
+                            setAlertState('error')
+                            setAlert('Signature uploaded but failed to save to Company Profile. Please Save Company Profile manually.')
+                            setAlertTimeout(6000)
+                        }
+                    } catch (e) {
+                        console.warn('Persist signature error', e)
+                        setAlertState('error')
+                        setAlert('Signature uploaded but failed to save to Company Profile. Please Save Company Profile manually.')
+                        setAlertTimeout(6000)
+                    }
+                } else {
+                    setAlertState('info')
+                    setAlert('Setting Company Profile image to default')
+                    setAlertTimeout(4000)
+                    setCompanyProfile((prev) => ({ ...prev, [`${kind}FileId`]: fileId, [`${kind}Url`]: fileUrl }))
+                }
+                setAlertState('success')
+                setAlert(`${kind === 'signature' ? 'Signature' : 'Logo'} uploaded`)
+                setAlertTimeout(2000)
+            }else{
+                setAlertState('error')
+                setAlert('Upload succeeded but failed to retrieve file ID')
+                setAlertTimeout(4000)
+            }
+        } catch (err) {
+            setAlertState('error')
+            setAlert(err.message || 'Upload failed')
+            setAlertTimeout(4000)
+        }
+    }
+
+    const saveCompanyProfile = async () => {
+        if (!companyProfile) return
+        setSaveStatus('Saving Company Profile...')
+        try {
+            const payload = { ...companyProfile }
+            delete payload._id
+            const resp = await fetchServer('POST', { prop: [{ db: company }, payload] }, 'updateDBProfileDoc', server)
+            if (resp.err) throw new Error(resp.mess || 'Save failed')
+            fetchProfiles(company)
+            setSaveStatus('Company Profile Saved')
+            setTimeout(() => setSaveStatus(''), 2000)
+        } catch (err) {
+            setSaveStatus('')
+            setAlertState('error')
+            setAlert(err.message || 'Failed to save company profile')
+            setAlertTimeout(4000)
+        }
+    }
 
     useEffect(() => {
         let salesPostsPerms = []
@@ -1978,6 +2140,92 @@ const Settings = () => {
                         </div>
                     </motion.div>
                 )
+            case 'company':
+                return (
+                    <motion.div className='general-settings' initial="initial" animate="animate" exit="exit" variants={variants}>
+                        <div className='general-details'>
+                            <div className='form-card'>
+                            <div className='formtitle'><IoSettings /> Company Profile</div>
+                                            <div className='form-grid'>
+                                                <div className='inpcov'>
+                                                    <div>Subdomain</div>
+                                                    <input className='forminp' name='subdomain' value={companyProfile?.subdomain || ''} onChange={handleCompanyFieldChange} disabled />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Database</div>
+                                                    <input className='forminp' name='db' value={companyProfile?.db || ''} onChange={handleCompanyFieldChange} disabled />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Company Name</div>
+                                                    <input className='forminp' name='name' value={companyProfile?.name || ''} onChange={handleCompanyFieldChange} />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Email</div>
+                                                    <input className='forminp' name='email' value={companyProfile?.email || ''} onChange={handleCompanyFieldChange} />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Phone</div>
+                                                    <input className='forminp' name='phone' value={companyProfile?.phone || ''} onChange={handleCompanyFieldChange} />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Address</div>
+                                                    <input className='forminp' name='address' value={companyProfile?.address || ''} onChange={handleCompanyFieldChange} />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>City</div>
+                                                    <input className='forminp' name='city' value={companyProfile?.city || ''} onChange={handleCompanyFieldChange} />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>State</div>
+                                                    <input className='forminp' name='state' value={companyProfile?.state || ''} onChange={handleCompanyFieldChange} />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Country</div>
+                                                    <input className='forminp' name='country' value={companyProfile?.country || ''} onChange={handleCompanyFieldChange} />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Company Logo</div>
+                                                    <input className='forminp' type='file' accept='image/*' onChange={(e) => handleCompanyFileChange(e, 'logo')} />
+                                                    {companyProfile?.logoUrl && <div style={{ marginTop: 8 }}><img src={companyProfile.logoUrl} alt='logo' style={{ maxWidth: 160, maxHeight: 80 }} /></div>}
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Management Signature</div>
+                                                    <input className='forminp' type='file' accept='image/*' onChange={(e) => handleCompanyFileChange(e, 'signature')} />
+                                                    {companyProfile?.signatureUrl && <div style={{ marginTop: 8 }}><img src={companyProfile.signatureUrl} alt='signature' style={{ maxWidth: 260, maxHeight: 120 }} /></div>}
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Pause DB</div>
+                                                    <input className='forminp' type='checkbox' style={{ width: 'auto' }} checked={!!companyProfile?.pauseDB} disabled />
+                                                </div>
+                                                <div className='inpcov'>
+                                                    <div>Manual Pause</div>
+                                                    <input className='forminp' type='checkbox' style={{ width: 'auto' }} checked={!!companyProfile?.manualPauseDB} disabled />
+                                                </div>
+                                                <div className='inpcov' style={{ gridColumn: '1 / -1' }}>
+                                                    <div style={{ fontWeight: 700, marginBottom: 8 }}>Subscription / Trial (read-only)</div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                                                        <div>
+                                                            <div>Subscription Status</div>
+                                                            <input className='forminp' value={companyProfile?.subscriptionStatus || ''} disabled />
+                                                        </div>
+                                                        <div>
+                                                            <div>Plan Name</div>
+                                                            <input className='forminp' value={companyProfile?.subscriptionPlanName || ''} disabled />
+                                                        </div>
+                                                        <div>
+                                                            <div>Reference</div>
+                                                            <input className='forminp' value={companyProfile?.subscriptionReference || ''} disabled />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                            <div className='form-actions'>
+                                <button className='savebtn' onClick={saveCompanyProfile}><IoSave /> Save Company Profile</button>
+                            </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )
             default:
                 return null
         }
@@ -2024,6 +2272,11 @@ const Settings = () => {
                     {companyRecord?.access === 'admin' && (
                         <div className={`settings-nav-item ${currentView === 'billing' ? 'active' : ''}`} onClick={() => setCurrentView('billing')}>
                             <IoCard /> Billing & Plan
+                        </div>
+                    )}
+                    {companyRecord?.access === 'admin' && (
+                        <div className={`settings-nav-item ${currentView === 'company' ? 'active' : ''}`} onClick={() => setCurrentView('company')}>
+                            <IoPerson /> Company Profile
                         </div>
                     )}
                     <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>

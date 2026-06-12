@@ -434,6 +434,9 @@
     gap: 18px;
     min-height: 0;
     padding: 18px 24px 24px;
+    flex: 1; /* allow panel to expand and be scrollable */
+    overflow: auto; /* enable scrolling when content overflows */
+    padding-right: 12px;
 }
 
 .employees-panel-topline {

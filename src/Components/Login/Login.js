@@ -11,7 +11,7 @@ import AuthNotify from '../../Resources/Notify/AuthNotify';
 
 const Login = () => {
   const { server, fetchServer, storePath,
-    loginMessage, setLoginMessage, loadPage
+    loginMessage, setLoginMessage, loadPage, companyRecord
   } = useContext(ContextProvider)
   const [viewType, setViewType] = useState('')
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -24,6 +24,7 @@ const Login = () => {
   const [activeInput, setActiveInput] = useState('emailid');
   const [capsLock, setCapsLock] = useState(false);
   const [showSymbols, setShowSymbols] = useState(false);
+  const [loginLogo, setLoginLogo] = useState(null);
 
   const Navigate = useNavigate()
   const location = useLocation()
@@ -150,9 +151,19 @@ const Login = () => {
   };
 
   useEffect(() => {
-    storePath('login')
+    storePath('login');
     // set page title
-    document.title = "Login | Enterprise Compute Central"
+    document.title = "Login | Enterprise Compute Central";
+    // Fetch public company profile for pre-login logo
+    (async () => {
+      try {
+        const host = window.location.hostname;
+        const resp = await fetch(`/public/company-profile?host=${encodeURIComponent(host)}`);
+        if (!resp.ok) return;
+        const body = await resp.json();
+        if (body?.record?.logoUrl) setLoginLogo(body.record.logoUrl);
+      } catch (e) { /* ignore */ }
+    })();
   }, [storePath])
 
   useEffect(() => {
@@ -375,8 +386,8 @@ const Login = () => {
         <div className="user-header">
           <motion.div className="logo-link" onClick={() => Navigate('/')}>
             <motion.img
-              src={applogo}
-              alt="Logo"
+              src={companyRecord?.logoUrl || loginLogo || applogo}
+              alt="Company Logo"
               className="user-app-logo"
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
