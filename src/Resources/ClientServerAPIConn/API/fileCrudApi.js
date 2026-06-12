@@ -152,6 +152,28 @@ export async function uploadFile(file, folderPath, createdAt, company, collectio
   return normalizeUploadResponse(res, uploadableFile);
 }
 
+export async function uploadCompanyFile(file, folderPath, createdAt, company, collection, server /* folderPAth: e.g. "/Payment Receipts" */) {
+  const uploadableFile = await compressImageFile(blobToFile(file));
+  const sizeError = validateClientUploadSize(uploadableFile);
+  if (sizeError) return sizeError;
+  const base64 = await fileToBase64(uploadableFile);
+  const res = await sendFileRequest('POST',{
+        collection: collection,
+        prop:[{db: company}],
+        imageInfo: {
+            fileName: uploadableFile.name,
+            mimeType: uploadableFile.type,
+            fileData: base64,
+            options: {folderPath}, // optional - will be made under BASE_FOLDER_PATH
+        }
+        
+    } , 
+    'uploadCompanyImage', 
+    server
+  )
+  return normalizeUploadResponse(res, uploadableFile);
+}
+
 export async function updateFile(fileId, file, createdAt, company, collection, server) {
   const uploadableFile = await compressImageFile(blobToFile(file));
   const sizeError = validateClientUploadSize(uploadableFile);
@@ -169,6 +191,28 @@ export async function updateFile(fileId, file, createdAt, company, collection, s
         
     } , 
     'updateImage', 
+    server
+  )
+  return normalizeUploadResponse(res, uploadableFile);
+}
+
+export async function updateCompanyFile(fileId, file, createdAt, company, collection, server) {
+  const uploadableFile = await compressImageFile(blobToFile(file));
+  const sizeError = validateClientUploadSize(uploadableFile);
+  if (sizeError) return sizeError;
+  const base64 = await fileToBase64(uploadableFile);
+  const res = await sendFileRequest('POST',{
+        collection: collection,
+        prop:[{db: company}],
+        imageInfo: {
+            fileId: fileId,
+            fileName: uploadableFile.name,
+            mimeType: uploadableFile.type,
+            data: base64
+        }
+        
+    } , 
+    'updateCompanyImage', 
     server
   )
   return normalizeUploadResponse(res, uploadableFile);

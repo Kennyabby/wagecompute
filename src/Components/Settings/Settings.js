@@ -4,7 +4,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
-import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
+import { uploadCompanyFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 import heic2any from 'heic2any'
 
 const DEFAULT_APPROVAL_CONFIG = {
@@ -27,7 +27,7 @@ const Settings = () => {
         setChangingSettings, colSettings, setColSettings,
         enableBlockVal, setEnableBlockVal,
         DBProfiles, setDBProfiles, fetchDBProfiles,
-        profiles, setProfiles,
+        profiles, setProfiles, centralCompany,
         employees, getEmployees, dashList, fetchProfiles,
         chartOfAccounts, getChartOfAccounts,
         setAlert, setAlertState, setAlertTimeout
@@ -229,8 +229,8 @@ const Settings = () => {
         // keep local editable company profile in sync
         // For the Company Profile view we prefer the central WCDatabase.CompanyProfiles document
         if (currentView === 'company') return
-        setCompanyProfile(companyRecord ? ({ ...companyRecord }) : null)
-    }, [companyRecord])
+        setCompanyProfile(centralCompany ? ({ ...centralCompany }) : null)
+    }, [centralCompany, currentView])
 
     // When the Company view is active, load the central CompanyProfile from the server (authenticated)
     useEffect(() => {
@@ -295,10 +295,11 @@ const Settings = () => {
         setAlertTimeout(100000) // long timeout for upload
         try {
             const folderPath = `${company}/Company Assets/${kind === 'signature' ? 'Signatures' : 'Logos'}`
-            const res = await uploadFile(uploadBlob, folderPath, Date.now(), company, 'CompanyProfiles', server)
+            const res = await uploadCompanyFile(uploadBlob, folderPath, Date.now(), company, 'CompanyProfiles', server)
             if (res?.mess || res?.err) {
                 const err = new Error(res.mess || 'Upload failed')
                 err.code = res.code
+                console.log(err)    
                 throw err
             }
             const fileId = res?.imgId || res?.fileId || res?.id || res?.imageId || res?.data?.id || res?.data?.imgId || ''

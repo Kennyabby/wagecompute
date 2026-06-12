@@ -186,6 +186,7 @@ function App() {
   const [showLoading, setShowLoading] = useState(true)
   const [viewAccess, setViewAccess] = useState(null)
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
+  const [centralCompany, setCentralCompany] = useState(null)
   const [showSubscriptionBanner, setShowSubscriptionBanner] = useState(false)
   const [saleNextFrom, setSaleNextFrom] = useState(null)
   const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
@@ -919,6 +920,10 @@ function App() {
             })
           }
         }
+        try {
+            const cpResp = await fetchServer('POST', {}, 'getCompanyProfile', SERVER)
+            if (cpResp && !cpResp.err && cpResp.record) setCentralCompany(cpResp.record)
+        } catch (e) { /* ignore */ }
       }
 
       updateThisUserState()
@@ -945,6 +950,7 @@ function App() {
       })
       delete wrhSetFilt[0]?._id
       setWrhs(wrhSetFilt[0]?.name ? [...wrhSetFilt[0].warehouses] : [])
+
     }
   }, [settings, changingSettings, window.localStorage.getItem('sessn-id')])
 
@@ -3538,7 +3544,7 @@ function App() {
         server: SERVER, viewAccess, getViewAccess, 
         intervalPeriod,
         showLoading, setShowLoading,
-        pauseView, setPauseView,
+        pauseView, setPauseView, centralCompany,
         loginMessage, setLoginMessage,
         generateCode, generateSeries,
         exportFile, importFile,

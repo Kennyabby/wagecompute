@@ -11,7 +11,7 @@ const Employees = () => {
         fetchServer,
         server, intervalPeriod,
         company, companyRecord,
-        departments,
+        departments, centralCompany,
         positions, editAccess,
         employees, setEmployees, getEmployees,
         sales, purchase, expenses, accommodations,
@@ -77,7 +77,7 @@ const Employees = () => {
         document.title = 'Employees | Enterprise Compute Central'   
     }, [storePath])
     useEffect(() => {
-        var cmp_val = window.localStorage.getItem('sessn-cmp')
+        var cmp_val = window.localStorage.getItem('sessn-cmp')       
         getEmployees(cmp_val)
         const intervalId = setInterval(() => {
             if (cmp_val) {
@@ -511,7 +511,7 @@ const Employees = () => {
         const appointment = `
             <p>Dear ${safeText(employeeName)},</p>
             <p>We are pleased to confirm your appointment as <strong>${safeText(employee.position)}</strong> in the <strong>${safeText(employee.department)}</strong> department.</p>
-            <p>Your appointment takes effect from <strong>${safeText(employee.hiredDate)}</strong>. Your monthly salary is <strong>${employee.salary ? `N${Number(employee.salary).toLocaleString()}` : '--'}</strong>, subject to company policies and applicable deductions.</p>
+            <p>Your appointment takes effect from <strong>${safeText(employee.hiredDate)}</strong>. Your annual salary is <strong>${employee.salary ? `N${(Number(employee.salary || 0) * 12).toLocaleString()}` : '--'}</strong>, subject to company policies and applicable deductions.</p>
             <p>Kindly accept this appointment by signing below.</p>
         `
         const printWindow = window.open('', '_blank', 'width=950,height=760')
@@ -521,8 +521,8 @@ const Employees = () => {
         const table = (list) => list.map(([label, value]) => `<tr><th>${label}</th><td>${safeText(value)}</td></tr>`).join('')
         const signatureUrl = centralCompany?.signatureUrl || companyRecord?.signatureUrl
         const signHtml = type === 'details'
-            ? `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${signatureUrl ? `<img src="${signatureUrl}" style="max-width:220px;max-height:100px;object-fit:contain;" />` : ''}</div></div>`
-            : `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${(signatureUrl) ? `<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;"><img src=\"${signatureUrl}\" style=\"max-width:220px;max-height:100px;object-fit:contain;\" /><div>Authorized Signature / Date</div></div>` : 'Authorized Signature / Date'}</div></div>`
+            ? `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${signatureUrl ? `<div class="line">Authorized Signature / Date</div><img src="${signatureUrl}" style="max-width:220px;max-height:100px;object-fit:contain;" />` : ''}</div></div>`
+            : `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${(signatureUrl) ? `<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;"><div class="line">Authorized Signature / Date</div><img src=\"${signatureUrl}\" style=\"max-width:220px;max-height:100px;object-fit:contain;\" />` : 'Authorized Signature / Date'}</div></div>`
         printWindow.document.write(`
             <html>
                 <head>
@@ -538,7 +538,6 @@ const Employees = () => {
                         th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #edf4ef; font-size:13px; }
                         th { width:30%; color:#6b8175; text-transform:uppercase; font-size:11px; letter-spacing:.06em; }
                         .sign { display:grid; grid-template-columns:1fr 1fr; gap:34px; margin-top:50px; }
-                        .line { border-top:1px solid #173829; padding-top:8px; font-size:12px; }
                     </style>
                 </head>
                 <body>
