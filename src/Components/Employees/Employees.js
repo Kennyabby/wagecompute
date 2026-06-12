@@ -33,6 +33,9 @@ const Employees = () => {
     const [employeeUploadError, setEmployeeUploadError] = useState('')
     const initFields = {
         i_d: '',
+        email: '',
+        emailid: '',
+        domainName: '',
         firstName: '',
         lastName: '',
         otherName: '',
@@ -434,6 +437,7 @@ const Employees = () => {
         await uploadOne(pendingPhotos.guarantor, 'guarantor')
         return nextEmployee
     }
+
     const handlePhotoChange = async (event, kind) => {
         const file = event.target.files?.[0]
         if (!file) return
@@ -468,8 +472,14 @@ const Employees = () => {
         }))
     }
     const safeText = (value) => String(value || '--')
-    const printEmployeeDocument = (type) => {
+    const printEmployeeDocument = async (type) => {
         const employee = curEmployee || fields
+        // fetch central company profile to ensure logo/signature are current
+        let centralCompany = null
+        try {
+            const cpResp = await fetchServer('POST', {}, 'getCompanyProfile', server)
+            if (cpResp && !cpResp.err && cpResp.record) centralCompany = cpResp.record
+        } catch (e) { /* ignore */ }
         const employeeName = [employee.firstName, employee.otherName, employee.lastName].filter(Boolean).join(' ')
         const titleMap = {
             details: 'Employee Basic and HR Details',
@@ -509,6 +519,10 @@ const Employees = () => {
         const photo = employee.profilePhotoUrl ? `<img class="photo" src="${employee.profilePhotoUrl}" alt="Employee" />` : ''
         const guarantorPhoto = employee.guarantorPhotoUrl ? `<img class="photo" src="${employee.guarantorPhotoUrl}" alt="Guarantor" />` : ''
         const table = (list) => list.map(([label, value]) => `<tr><th>${label}</th><td>${safeText(value)}</td></tr>`).join('')
+        const signatureUrl = centralCompany?.signatureUrl || companyRecord?.signatureUrl
+        const signHtml = type === 'details'
+            ? `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${signatureUrl ? `<img src="${signatureUrl}" style="max-width:220px;max-height:100px;object-fit:contain;" />` : ''}</div></div>`
+            : `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${(signatureUrl) ? `<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;"><img src=\"${signatureUrl}\" style=\"max-width:220px;max-height:100px;object-fit:contain;\" /><div>Authorized Signature / Date</div></div>` : 'Authorized Signature / Date'}</div></div>`
         printWindow.document.write(`
             <html>
                 <head>
@@ -530,19 +544,48 @@ const Employees = () => {
                 <body>
                     <div class="sheet">
                         <div class="head">
-                            <div><h1>${titleMap[type] || titleMap.details}</h1><p>${safeText(companyRecord?.name || company)}</p></div>
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                ${(centralCompany?.logoUrl || companyRecord?.logoUrl) ? `<img src="${centralCompany?.logoUrl || companyRecord.logoUrl}" alt="Company Logo" style="width:80px;height:80px;object-fit:contain;border-radius:8px;" />` : ''}
+                                <div><h1>${titleMap[type] || titleMap.details}</h1><p>${safeText(centralCompany?.name || companyRecord?.name || company)}</p></div>
+                            </div>
                             <div>${type === 'guarantor' ? guarantorPhoto : photo}</div>
                         </div>
                         ${type === 'appointment' ? appointment : `<table>${table(type === 'guarantor' ? guarantorRows : rows)}</table>`}
-                        ${type === 'guarantor' ? `<table>${table(guarantorRows)}</table>` : ''}
-                        <div class="sign"><div class="line">Employee Signature / Date</div><div class="line">Authorized Signature / Date</div></div>
+                        ${signHtml}
                     </div>
                 </body>
             </html>
         `)
         printWindow.document.close()
         printWindow.focus()
-        printWindow.print()
+        // Wait for images to load in the print window before printing to avoid missing photos
+        const imgs = printWindow.document.images || []
+        const waitForImages = () => new Promise((resolve) => {
+            if (!imgs || imgs.length === 0) return resolve()
+            let loaded = 0
+            const total = imgs.length
+            const done = () => {
+                loaded += 1
+                if (loaded >= total) resolve()
+            }
+            for (const img of imgs) {
+                try {
+                    if (img.complete) {
+                        done()
+                    } else {
+                        img.addEventListener('load', done)
+                        img.addEventListener('error', done)
+                    }
+                } catch (e) {
+                    done()
+                }
+            }
+            // Fallback timeout in case some images never finish
+            setTimeout(resolve, 3000)
+        })
+        waitForImages().then(() => {
+            try { printWindow.print() } catch (e) { /* ignore print errors */ }
+        })
     }
     const handleViewClick = (e, index, employee) => {
         const name = e.target.getAttribute('name')
@@ -584,16 +627,12 @@ const Employees = () => {
     const currentEmployeesCount = employees.filter((empl) => !empl.dismissalDate).length
     const dismissedEmployeesCount = employees.length - currentEmployeesCount
     const panelEmployee = curEmployee || fields
-    const panelEmployeeName = [panelEmployee?.firstName, panelEmployee?.otherName, panelEmployee?.lastName]
-        .filter(Boolean)
-        .join(' ')
-        .trim()
-    const panelEmployeeInitials = [panelEmployee?.firstName, panelEmployee?.lastName]
-        .filter(Boolean)
-        .map((name) => name[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase() || 'EC'
+    const panelEmployeeName = selform === 'Guarantor'
+        ? (panelEmployee?.guarantorName || '--')
+        : [panelEmployee?.firstName, panelEmployee?.otherName, panelEmployee?.lastName].filter(Boolean).join(' ').trim()
+    const panelEmployeeInitials = selform === 'Guarantor'
+        ? ([panelEmployee?.guarantorName].filter(Boolean)[0] || 'G').slice(0,2).toUpperCase()
+        : ([panelEmployee?.firstName, panelEmployee?.lastName].filter(Boolean).map((name) => name[0]).join('').slice(0, 2).toUpperCase() || 'EC')
     const activePanelPhotoUrl = selform === 'Guarantor'
         ? (getDriveThumbnailUrl(fields.guarantorPhotoId) || fields.guarantorPhotoUrl)
         : (getDriveThumbnailUrl(fields.profilePhotoId) || fields.profilePhotoUrl)
@@ -747,6 +786,7 @@ const Employees = () => {
                                                 <span>{department || 'No department'}</span>
                                                 <span>{position || 'No position'}</span>
                                                 <span>{phoneNo || 'No phone number'}</span>
+                                                {employee.email ? <span>{employee.email}</span> : (employee.emailid ? <span>{employee.emailid}</span> : null)}
                                             </div>
                                         </div>
                                         {canEditEmployees && <button
@@ -784,6 +824,8 @@ const Employees = () => {
                                     <span className='employees-detail-badge'>{fields.i_d || 'No employee ID yet'}</span>
                                     <span className='employees-detail-badge'>{fields.department || 'Department pending'}</span>
                                     <span className='employees-detail-badge'>{fields.position || 'Role pending'}</span>
+                                    {(fields.email || fields.emailid) && <span className='employees-detail-badge'>{fields.email || fields.emailid}</span>}
+                                    {fields.domainName && <span className='employees-detail-badge'>{fields.domainName}</span>}
                                 </div>
                                 <div className='employees-document-actions'>
                                     <button type='button' onClick={() => printEmployeeDocument('details')} disabled={!fields.i_d}>Print Details</button>
@@ -883,6 +925,39 @@ const Employees = () => {
                                     type='text'
                                     placeholder='Address'
                                     value={fields.address}
+                                    disabled={isView}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <label className='employees-field-label'>Email</label>
+                                <input
+                                    className='forminp'
+                                    name='email'
+                                    type='email'
+                                    placeholder='employee@example.com'
+                                    value={fields.email}
+                                    disabled={isView}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <label className='employees-field-label'>Email ID</label>
+                                <input
+                                    className='forminp'
+                                    name='emailid'
+                                    type='text'
+                                    placeholder='login id or emailid'
+                                    value={fields.emailid}
+                                    disabled={isView}
+                                />
+                            </div>
+                            <div className='inpcov'>
+                                <label className='employees-field-label'>Domain</label>
+                                <input
+                                    className='forminp'
+                                    name='domainName'
+                                    type='text'
+                                    placeholder='domain (e.g., example.com)'
+                                    value={fields.domainName}
                                     disabled={isView}
                                 />
                             </div>

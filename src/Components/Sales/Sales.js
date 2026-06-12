@@ -1031,7 +1031,7 @@ const Sales = () => {
                 setAutoPostSales(false)
                 return
             }
-
+            console.log('dates to process:', datesToProcess)
             for (const targetDate of datesToProcess) {
                 if (autoPostStopRef.current) {
                     appendAutoPostLog('Automatic sales posting stopped by user before the next pending day.', 'info')
