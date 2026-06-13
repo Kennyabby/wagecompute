@@ -21,6 +21,7 @@ const ForgotPassword = () => {
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState("error") // 'success' | 'info' | 'error'
   const [loading, setLoading] = useState(false)
+  const [resending, setResending] = useState(false)
 
   const showMsg = (msg, type = 'error') => {
     setMessage(msg)
@@ -28,13 +29,14 @@ const ForgotPassword = () => {
   }
 
   const handleRequestOTP = async () => {
+    if (loading) return
     if (!emailid) {
       showMsg("Please enter your registered email.", 'error')
       return
     }
 
     setLoading(true)
-    setMessage("")
+    setResending(true)
     try {
       const response = await fetch(`${server}/requestPasswordReset`, {
         method: 'POST',
@@ -53,10 +55,15 @@ const ForgotPassword = () => {
       showMsg("Network error. Please try again.", 'error')
     } finally {
       setLoading(false)
+      setTimeout(() => {
+        showMsg("")
+        setResending(false)
+      }, 3000)
     }
   }
 
   const handleVerifyOTP = async () => {
+    if (loading) return
     if (!otp) {
       showMsg("Please enter the 6-digit code.", 'error')
       return
@@ -196,10 +203,10 @@ const ForgotPassword = () => {
                   disabled={loading || otp.length < 6}
                   style={{ width: '100%', marginTop: '20px' }}
                 >
-                  {loading ? "Verifying..." : "Verify Identity"}
+                  {(loading && !resending) ? "Verifying..." : "Verify Identity"}
                 </button>
                 <div className="resend-box">
-                  Didn't get the code? <span className="resend-link" onClick={handleRequestOTP}>Resend</span>
+                  Didn't get the code? <span className="resend-link" onClick={handleRequestOTP}>{resending ? "Resending...": "Resend Code"}</span>
                 </div>
               </motion.div>
             )}

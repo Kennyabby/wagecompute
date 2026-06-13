@@ -301,6 +301,19 @@ const PointOfSales = () => {
     //     })();
     // }, [company, companyRecord?.emailid]);
 
+    useEffect(()=>{
+        if (window.localStorage.getItem('back-to-pos')){
+            setWrh(curSession?.wrh || Object.keys(posWrhAccess)[0])                
+            setTimeout(()=>{
+                setViewSessions(true)
+            },1000)            
+            window.localStorage.removeItem('auto-sales')
+            setTimeout(()=>{
+                createSessionManager()
+            },1500)
+        }
+    },[window.localStorage.getItem('back-to-pos')])
+
     useEffect(() => {
         if (company && companyRecord) {
             const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
@@ -847,7 +860,7 @@ const PointOfSales = () => {
     };
 
     const createSession = async (sessionUser) => {
-        if (!wrh) {
+        if (!wrh && !window.localStorage.getItem('back-to-pos')) {
             setAlertState('info');
             setAlert('Please Select Your Sales Post');
             setAlertTimeout(5000);
@@ -861,7 +874,7 @@ const PointOfSales = () => {
                 : companyRecord.emailid,
             i_d: newDate,
             type: 'sales',
-            wrh: wrh,
+            wrh: wrh || curSession?.wrh || Object.keys(posWrhAccess)[0],
             start: newDate,
             startedBy: companyRecord.emailid,
             end: null,
@@ -899,7 +912,7 @@ const PointOfSales = () => {
                     } else {
                         setAlert('Welcome Back!');
                     }
-                    setAlertTimeout(500);
+                    setAlertTimeout(1000);
                     setCurrSession(newSession);
                     setOpeningCash(0);
                     mergeAndPersistSessions([newSession])
@@ -913,6 +926,7 @@ const PointOfSales = () => {
                     setSessionUser(null);
                     setStartSession(false);
                     setLoading(false)
+                    window.localStorage.removeItem('back-to-pos')
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchAllSessions({ company, companyRecord })
                 } catch (e) {
