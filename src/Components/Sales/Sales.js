@@ -2,6 +2,7 @@ import './Sales.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal';
 import heic2any from "heic2any";
 import { useState, useEffect, useContext, useRef } from 'react'
+import { useNavigate } from 'react-router-dom';
 import ContextProvider from '../../Resources/ContextProvider'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
@@ -24,7 +25,7 @@ const Sales = () => {
     const { storePath,
         fetchServer, paymentMethods,
         server, intervalPeriod,
-        companyRecord,
+        companyRecord, posSettings,
         company, recoveryVal, allowBacklogs,
         employees, setEmployees, getEmployees, getPendingSalesDates,
         sales, setSales, getSales, months, years, initialYear,
@@ -33,7 +34,7 @@ const Sales = () => {
         accommodations, getAccommodations,
         rentals, setRentals, getRentals,
         products, setProducts, getProducts, getProductsWithStock,
-        getDate, removeComma, settings,
+        getDate, removeComma, settings, isSameDate, formatDateToDefault,
         saleFrom, saleTo,
         setSaleFrom, setSaleTo,
         nextSales, setNextSales,
@@ -79,6 +80,7 @@ const Sales = () => {
         }
     ]
 
+    const Navigate = useNavigate()
     const rentalSpaces = ['Suya Space', 'Shisha Space', 'Snooker Space', 'Shawarma Space', 'Birthday Space', 'Other Programme Space']
 
     const [payPoints, setPayPoints] = useState({})
@@ -244,18 +246,18 @@ const Sales = () => {
     }, [storePath])
 
     useEffect(()=>{
-        const pendingDays = getPendingSalesDates(sales)
+        const pendingDays = getPendingSalesDates()
         setPendingSalesDates(pendingDays)
-        if (pendingDays.length && window.localStorage.getItem('auto-sales')){
+        if (pendingDays.length && window.localStorage.getItem('auto-sales') && !autoPostSales) {
             setPostingDate('')
             setAlertState('info')
             setAlert(window.localStorage.getItem('auto-sales'))
             setAlertTimeout(100000)
             setTimeout(()=>{
                 setAutoPostSales(true)
-            }, 3000)
+            }, 2000)
         }
-    },[window.localStorage.getItem('auto-sales'), sales])
+    },[window.localStorage.getItem('auto-sales')])
 
     useEffect(() => {
         refreshSalesData();
@@ -376,15 +378,17 @@ const Sales = () => {
     }, [allSessions, postingDate, isView, saleEmployee])
 
     useEffect(() => {
-        if (!autoPostSales || autoPostRunningRef.current) return
-        if (!Object.keys(payPoints || {}).length || !Object.keys(salesUnits || {}).length) {
-            setAlertState('info')
-            setAlert('Preparing sales automation settings...')
-            setAlertTimeout(5000)
-            return
+        if (autoPostSales && !autoPostRunning && !autoPostRunningRef.current) {
+            if (!Object.keys(payPoints || {}).length || !Object.keys(salesUnits || {}).length) {
+                setAlertState('info')
+                setAlert('Preparing sales automation settings...')
+                setAlertTimeout(5000)
+                return
+            }
+            console.log('************autoPostSales triggered, running automatic sales posting...***************')
+            runAutomaticSalesPosting()            
         }
-        runAutomaticSalesPosting()
-    }, [autoPostSales, pendingSalesDates, accommodations, allSessions, sales, wrhs, salesUnits, payPoints, wrhCategories])
+    }, [autoPostRunning, autoPostSales, payPoints, salesUnits])
 
     const calculateAccommodationSales = (accommodations, postingDate, isView, saleEmployee)=>{
         var accommodationRecord = []
@@ -455,7 +459,78 @@ const Sales = () => {
         }
         return accommodationRecord
     }
-    const calculatePOSSessionSales = (allSessions, postingDate, isView, saleEmployee)=>{
+    
+    const autoCalculateAccommodationSales = async(accommodations, postingDate, isView, saleEmployee)=>{
+        var accommodationRecord = []
+        const postingDate1 = postingDate
+        var ct = 0
+        sales.forEach((sale) => {
+            if (getDate(sale.postingDate) === getDate(postingDate1)) {
+                ct++
+            }
+            if (ct) {
+                return
+            }
+        })        
+        if (!isView && !saleEmployee && !ct) {
+            var accommodationEmployees = []
+            accommodations.forEach((accommodation) => {
+                const employeeId = accommodation.employeeId
+                if (!accommodationEmployees.includes(employeeId)) {
+                    accommodationEmployees = accommodationEmployees.concat(employeeId)
+                }
+            })
+            accommodationEmployees.forEach((employeeId) => {
+                const saleRecord = {}
+                saleRecord.isAccommodation = true
+                var totalAccommodationAmount = 0
+                var totalPaymentAmount = 0
+                var totalCashSales = 0
+                var totalBankSales = 0
+                const allPayPoints = { ...payPoints }
+                var postingDates = []
+                accommodations.forEach((accommodation) => {
+                    if (employeeId === accommodation.employeeId) {
+                        const { postingDate, payPoint, accommodationAmount, paymentAmount } = accommodation
+                        if (!postingDates.includes(getDate(postingDate)) && postingDate1 === postingDate) {
+                            postingDates = postingDate.concat(getDate(postingDate))
+                        }
+                        if (postingDate1 === postingDate) {
+                            totalAccommodationAmount += Number(accommodationAmount)
+                            totalPaymentAmount += Number(paymentAmount)
+                            if (payPoint) {
+                                allPayPoints[payPoint] = Number(allPayPoints[payPoint]) + Number(paymentAmount)
+                            }
+                            totalCashSales += payPoint === 'cash' ? Number(paymentAmount) : 0
+                            totalBankSales += payPoint !== 'cash' ? Number(paymentAmount) : 0
+                        }
+                    }
+                })
+                if (postingDates.length) {
+                    const salesUnits1 = { ...salesUnits }
+                    salesUnits1['accomodation'] = { ...allPayPoints }
+                    saleRecord.employeeId = employeeId
+                    saleRecord.totalSales = totalAccommodationAmount
+                    saleRecord.cashSales = totalCashSales
+                    saleRecord.bankSales = totalBankSales
+                    saleRecord.debt = Number(totalAccommodationAmount) - Number(totalPaymentAmount)
+                    saleRecord.shortage = ''
+                    saleRecord.debtRecovered = ''
+                    saleRecord.salesPoint = 'accomodation'
+                    Object.keys(salesUnits1).forEach((saleUnit) => {
+                        saleRecord[saleUnit] = salesUnits1[saleUnit]
+                    })
+                    accommodationRecord = accommodationRecord.concat(saleRecord)
+                }
+            })
+        }
+        if (accommodationRecords !== accommodationRecord) {
+            // setAccommodationRecords(accommodationRecord)
+        }
+        return accommodationRecord
+    }
+    
+    const calculatePOSSessionSales = (allSessions, postingDate, isView, saleEmployee)=>{        
         var sessionSalesRecord = []
         var wrhPoints = []
         wrhs.forEach((wh) => {
@@ -466,6 +541,7 @@ const Sales = () => {
 
         const postingDate1 = postingDate
         var ct = 0
+
         sales.forEach((sale) => {
             if (getDate(sale.postingDate) === getDate(postingDate1)) {
                 ct++
@@ -819,6 +895,379 @@ const Sales = () => {
         }
         return { records: sessionSalesRecord, activeSessions: activeSessions || [] }
     }    
+    
+    const autoCalculatePOSSessionSales = async (allSessions, sales, postingDate, isView, saleEmployee)=>{
+        console.log('auto Post Running Value:', autoPostRunning)
+        console.log('all sessions for posting date:', postingDate, allSessions)
+        
+        var sessionSalesRecord = []
+        var wrhPoints = []
+        wrhs.forEach((wh) => {
+            if (!wh.purchase) {
+                wrhPoints.push(wh.name)
+            }
+        })
+        console.log('comparing session sales for posting date:', postingDate)
+        
+        const postingDate1 = postingDate
+        var ct = 0
+        console.log('sales to compare for session sales:', sales, 'all sessions:', allSessions)
+
+        sales.forEach((sale) => {
+            if (getDate(sale.postingDate) === getDate(postingDate1)) {
+                ct++
+            }
+            if (ct) {
+                return
+            }
+        })
+
+        console.log('session sales count for posting date:', postingDate, ct)
+
+        if (!isView && !saleEmployee && !ct) {
+            const curPosSetting = posSettings?.posSettings?.find((sett) => {
+                return sett.active
+            })            
+            const currClosingHour = curPosSetting?.sessHour || 0
+            var sessionEmployees = []
+            var activeSessions = []
+            const salesEndDate = new Date(postingDate1)
+            salesEndDate.setDate(salesEndDate.getDate() + 1)
+            salesEndDate.setHours(currClosingHour, 0, 0, 0)
+            const sessionEndTime = salesEndDate.getTime()
+           
+            let multSessions = []
+            allSessions.forEach((session) => {
+                let bmultSessions = {}
+                let kmultSessions = {}
+                let ordersToSkip = []
+                let foundMult = false
+                if (getSessionEnd(session.start) === sessionEndTime) {
+                    const employeeId = session.employee_id
+                    if (!sessionEmployees.includes(employeeId)) {
+                        sessionEmployees = sessionEmployees.concat(employeeId)
+                    }
+                    session?.orders?.forEach((sessionOrders) => {
+                        const employeeId = sessionOrders.lastDeliveredBy
+                        if (employeeId && !sessionEmployees.includes(employeeId)) {
+                            sessionEmployees = sessionEmployees.concat(employeeId)
+                        }
+                    })
+                    if (!sessionEmployees.includes("1")) {
+                        sessionEmployees = sessionEmployees.concat("1")
+                    }
+                    if (!session.end) {
+                        activeSessions.push(session.i_d)
+                    }
+                    if (session.type === 'sales') {
+                        const sessionOrders = session?.orders || []
+                        sessionOrders.forEach((sessionOrder) => {
+                            const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                            salesPostsPay.forEach((pay) => {
+                                if (sessionOrder.salesPosts[pay] !== 'multiple') {
+                                    ordersToSkip.push(sessionOrder)
+                                }
+                            })
+                        })
+                    }
+
+                    const sessionCopy = (structuredClone({ session })).session
+                    if (sessionCopy.type === 'sales') {
+                        const sessionOrders = sessionCopy?.orders || []
+                        sessionOrders.forEach((sessionOrder) => {
+                            const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                            let multTotalPayment = 0
+                            let multTotalSales = 0
+                            salesPostsPay.forEach((pay) => {
+                                if (sessionOrder.salesPosts[pay] === 'multiple') {
+                                    foundMult = true
+                                    let splitPayment = {}
+                                    const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
+                                    const totalOrderSales = Number(sessionOrder?.totalSales || 0)
+                                    let kct = 0
+                                    let bct = 0
+                                    const warehouse = sessionOrder.wrh
+                                    let blastDeliveredBy = ''
+                                    sessionOrder.items.forEach((item) => {
+                                        const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
+                                        if (wrhCategories[warehouse].includes(item.category)) {
+                                            bct += totalItemPrice
+                                            blastDeliveredBy = item.lastDeliveredBy
+                                        } else if (wrhCategories['kitchen'].includes(item.category)) {
+                                            kct += totalItemPrice
+                                        }
+                                        const employeeId = item.lastDeliveredBy
+                                        if (employeeId && !sessionEmployees.includes(employeeId)) {
+                                            sessionEmployees = sessionEmployees.concat(employeeId)
+                                        }
+                                    })
+                                    splitPayment[warehouse] = (totalOrderPayment ? (Number(bct) / totalOrderSales) : 0)
+                                    splitPayment['kitchen'] = (totalOrderPayment ? (Number(kct) / totalOrderSales) : 0)
+                                    sessionOrder.salesPosts[pay] = warehouse
+                                    const orderPay = structuredClone({ orderPay: sessionOrder[pay] }).orderPay
+                                    sessionOrder[pay] = (splitPayment[warehouse] * orderPay)
+                                    multTotalPayment += splitPayment[warehouse] * orderPay
+                                    multTotalSales += splitPayment[warehouse] * orderPay
+                                    sessionOrder.lastDeliveredBy = blastDeliveredBy
+                                }
+                            })
+                            sessionOrder.totalPayment = multTotalPayment
+                            sessionOrder.totalSales = multTotalSales
+                        })
+                    }
+                    bmultSessions = (structuredClone({ sessionCopy })).sessionCopy
+
+                    const sessionCopy1 = (structuredClone({ session })).session
+                    if (sessionCopy1.type === 'sales') {
+                        const sessionOrders = sessionCopy1?.orders || []
+                        sessionOrders.forEach((sessionOrder) => {
+                            const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                            let multTotalPayment = 0
+                            let multTotalSales = 0
+                            salesPostsPay.forEach((pay) => {
+                                if (sessionOrder.salesPosts[pay] === 'multiple') {
+                                    foundMult = true
+                                    let splitPayment = {}
+                                    const totalOrderPayment = Number(sessionOrder?.totalPayment || 0)
+                                    const totalOrderSales = Number(sessionOrder?.totalSales || 0)
+                                    let kct = 0
+                                    let bct = 0
+                                    const warehouse = sessionOrder.wrh
+                                    let klastDeliveredBy = ''
+                                    sessionOrder.items.forEach((item) => {
+                                        const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
+                                        if (wrhCategories[warehouse].includes(item.category)) {
+                                            bct += totalItemPrice
+                                        } else if (wrhCategories['kitchen'].includes(item.category)) {
+                                            kct += totalItemPrice
+                                            klastDeliveredBy = item.lastDeliveredBy
+                                        }
+                                        const employeeId = item.lastDeliveredBy
+                                        if (employeeId && !sessionEmployees.includes(employeeId)) {
+                                            sessionEmployees = sessionEmployees.concat(employeeId)
+                                        }
+                                    })
+                                    splitPayment[warehouse] = (totalOrderPayment ? (Number(bct) / totalOrderSales) : 0)
+                                    splitPayment['kitchen'] = (totalOrderPayment ? (Number(kct) / totalOrderSales) : 0)
+
+                                    sessionOrder.salesPosts[pay] = 'kitchen'
+                                    const orderPay = structuredClone({ orderPay: sessionOrder[pay] }).orderPay
+                                    sessionOrder[pay] = (splitPayment['kitchen'] * orderPay)
+                                    multTotalPayment += splitPayment['kitchen'] * orderPay
+                                    multTotalSales += splitPayment['kitchen'] * orderPay
+                                    sessionOrder.lastDeliveredBy = klastDeliveredBy
+                                }
+                            })
+                            sessionOrder.totalPayment = multTotalPayment
+                            sessionOrder.totalSales = multTotalSales
+                        })
+                    }
+                    kmultSessions = (structuredClone({ sessionCopy1 })).sessionCopy1
+                }
+
+                if (foundMult) {
+                    const ordersToSkipCopy = (structuredClone({ ordersToSkip })).ordersToSkip
+                    const ordersToSkipCopy1 = (structuredClone({ ordersToSkip })).ordersToSkip
+                    bmultSessions.orders = bmultSessions.orders?.filter((sessionOr) => { return !ordersToSkipCopy.find((order) => { return order.orderNumber === sessionOr.orderNumber }) })
+                    kmultSessions.orders = kmultSessions.orders?.filter((sessionOr) => { return !ordersToSkipCopy1.find((order) => { return order.orderNumber === sessionOr.orderNumber }) })
+                    if (!multSessions.includes(kmultSessions) && !multSessions.includes(bmultSessions)) {
+                        multSessions = multSessions.concat([kmultSessions, bmultSessions])
+                    }
+                }
+            })
+            let activeSessionManager = []
+            sessionManagers.forEach((sessionManager)=>{
+                if (sessionManager.active){
+                    activeSessionManager.push(sessionManager)
+                }
+            })
+
+            let mct = 0
+            console.log('session employees with sales for posting date:', postingDate, sessionEmployees)
+            
+            sessionEmployees.forEach((employeeId) => {
+                if (employeeId !== null) {
+                    let totalWrhTransactions = {}
+                    wrhPoints.forEach((wh) => {
+                        const payPointsClone = structuredClone({ payPoints })
+                        const allPayPoints = { ...(payPointsClone.payPoints) }
+                        totalWrhTransactions[wh] = {
+                            totalSales: 0,
+                            cashSales: 0,
+                            bankSales: 0,
+                            debt: 0,
+                            unAccountedSales: 0,
+                            allPayPoints,
+                            postingDates: []
+                        }
+                    })
+
+                    let deliverySessions = []
+                    let salesSessions = []
+                    wrhPoints.forEach((wh) => {
+                        let wrhSessionOrders = []
+                        const saleRecord = {}
+                        saleRecord.isSession = true
+                        const updatedAllSessions = [...multSessions, ...allSessions]
+                        console.log('All sessions for wh:',wh, 'showing:',updatedAllSessions)
+                        updatedAllSessions.forEach((session) => {
+                            const salesEndDate = new Date(postingDate1)
+                            salesEndDate.setDate(salesEndDate.getDate() + 1);
+                            salesEndDate.setHours(currClosingHour, 0, 0, 0)
+                            const sessionEndTime = salesEndDate.getTime()
+                            const sessionOrders = session?.orders || []                            
+                            sessionOrders.forEach((sessionOrder) => {                                
+                                if ((sessionOrder.lastDeliveredBy === employeeId || sessionOrder.handlerId === employeeId)
+                                    && session.type === 'sales' && session.end && !['cancelled'].includes(sessionOrder.status)
+                                    && (
+                                        session.totalSalesAmount || session.debtDue ||
+                                        session.unAccountedSales || sessionOrder.status === 'completed' || session.totalPendingSales
+                                    ) 
+                                    && getSessionEnd(session.start) === sessionEndTime
+                                ) {
+                                    console.log('Showing Session order for employee:',employeeId,'order:',sessionOrder)
+                                    const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
+                                    let wct = 0
+                                    if (sessionOrder?.salesPosts){
+                                        salesPostsPay.forEach((pay) => {
+                                            let splitPayment = {}
+                                            if (sessionOrder?.salesPosts[pay] === wh) {
+                                                wct++
+                                                splitPayment[wh] = 1
+                                                if (wct > 1) {
+                                                    splitPayment['exclude'] = true
+                                                }
+    
+                                                if (sessionOrder.handlerId === employeeId) {
+                                                    wrhSessionOrders.push({ session, sessionOrder, splitPayment })
+                                                } else {
+                                                    if (session.employee_id !== employeeId && wh === 'kitchen') {
+                                                        wrhSessionOrders.push({ session, sessionOrder, splitPayment })
+                                                    }
+                                                }
+                                                sessionOrder?.deliverySessions?.forEach((deliverySession) => {
+                                                    if (!deliverySessions.includes(deliverySession)) {
+                                                        deliverySessions.push(deliverySession)
+                                                    }
+                                                })
+    
+                                                if (!salesSessions.includes(sessionOrder.sessionId)) {
+                                                    salesSessions.push(sessionOrder.sessionId)
+                                                }
+                                            }
+                                        })
+                                    }else{
+                                        let splitPayment = {}
+                                        if (sessionOrder.wrh === wh || sessionOrder?.deliverySessions?.length) {
+                                            // console.log('yes')
+                                            wct++
+                                            splitPayment[wh] = 1
+                                            if (wct > 1) {
+                                                splitPayment['exclude'] = true
+                                            }
+
+                                            if (sessionOrder.handlerId === employeeId) {
+                                                wrhSessionOrders.push({ session, sessionOrder, splitPayment })
+                                            } else {
+                                                if (session.employee_id !== employeeId && wh === 'kitchen') {
+                                                    wrhSessionOrders.push({ session, sessionOrder, splitPayment })
+                                                }
+                                            }
+                                            sessionOrder?.deliverySessions?.forEach((deliverySession) => {
+                                                if (!deliverySessions.includes(deliverySession)) {
+                                                    deliverySessions.push(deliverySession)
+                                                }
+                                            })
+
+                                            if (!salesSessions.includes(sessionOrder.sessionId)) {
+                                                salesSessions.push(sessionOrder.sessionId)
+                                            }
+                                        }
+                                    }
+                                }
+                            })
+
+                        })
+                        if (wrhSessionOrders.length){
+                            // console.log('for warehouse:',wh,'by',employeeId,'wrhSessionOrders is:',wrhSessionOrders)
+                        }
+                        wrhSessionOrders.forEach(({ session, sessionOrder, splitPayment }, index) => {
+                            if (session.employee_id !== employeeId && wh === 'kitchen') {
+
+                                let tcashSales = 0
+                                let tbankSales = 0
+                                Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint) => {
+                                    if (sessionOrder[payPoint] && sessionOrder.status === 'completed') {
+                                        totalWrhTransactions[wh].allPayPoints[payPoint] = (Number(totalWrhTransactions[wh].allPayPoints[payPoint]) + (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])))
+                                        totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                        totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                        tbankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint]) * (splitPayment['exclude'] ? 0 : Number(splitPayment[wh] || 0))) : 0)
+                                        tcashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash']) * (splitPayment['exclude'] ? 0 : Number(splitPayment[wh] || 0))) : 0)
+                                    }
+                                })
+
+                                totalWrhTransactions[wh].totalSales += (tbankSales + tcashSales)
+                            } else {
+                                if (session.wrh === wh) {
+                                    let tcashSales = 0
+                                    let tbankSales = 0
+                                    Object.keys(totalWrhTransactions[wh].allPayPoints).forEach((payPoint) => {
+                                        if (sessionOrder[payPoint] && sessionOrder.status === 'completed') {
+                                            totalWrhTransactions[wh].allPayPoints[payPoint] = Number(totalWrhTransactions[wh].allPayPoints[payPoint] || 0) + (Number(sessionOrder[payPoint] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh]))
+                                            totalWrhTransactions[wh].cashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash'] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+                                            totalWrhTransactions[wh].bankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint] || 0) * (splitPayment['exclude'] ? 0 : splitPayment[wh])) : 0)
+
+                                            tbankSales += (payPoint !== 'cash' ? (Number(sessionOrder[payPoint] || 0) * (splitPayment['exclude'] ? 0 : Number(splitPayment[wh] || 0))) : 0)
+                                            tcashSales += (payPoint === 'cash' ? (Number(sessionOrder['cash'] || 0) * (splitPayment['exclude'] ? 0 : Number(splitPayment[wh] || 0))) : 0)
+                                        }
+                                    })
+
+                                    totalWrhTransactions[wh].totalSales += (tbankSales + tcashSales)
+                                    if (index === wrhSessionOrders.length - 1) {
+                                        const { totalSalesAmount, debtDue, unAccountedSales } = session
+                                        totalWrhTransactions[wh].debt += Number(debtDue)
+                                        totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
+
+                                        totalWrhTransactions[wh].totalSales += Number(unAccountedSales || 0)
+                                    }
+                                }
+
+                            }
+
+                        })
+                        console.log('converging info:', wrhSessionOrders.length, wh, totalWrhTransactions[wh].totalSales)
+                        const sessionDebtAmount = Number(totalWrhTransactions[wh].debt || 0)
+                        const sessionUnaccountedAmount = Number(totalWrhTransactions[wh].unAccountedSales || 0)
+                        if (wrhSessionOrders.length && (totalWrhTransactions[wh].totalSales || sessionDebtAmount || sessionUnaccountedAmount)) {
+                            const salesUnits1 = { ...salesUnits }
+                            salesUnits1[wh] = { ...(totalWrhTransactions[wh].allPayPoints) }
+                            saleRecord.employeeId = employeeId
+                            saleRecord.totalSales = totalWrhTransactions[wh].totalSales
+                            saleRecord.cashSales = totalWrhTransactions[wh].cashSales
+                            saleRecord.bankSales = totalWrhTransactions[wh].bankSales
+                            saleRecord.debt = totalWrhTransactions[wh].debt
+                            saleRecord.unAccountedSales = totalWrhTransactions[wh].unAccountedSales
+                            saleRecord.shortage = ''
+                            saleRecord.debtRecovered = ''
+                            saleRecord.salesPoint = wh
+                            saleRecord.salesSessions = salesSessions
+                            saleRecord.deliverySessions = deliverySessions
+                            Object.keys(salesUnits1).forEach((saleUnit) => {
+                                saleRecord[saleUnit] = salesUnits1[saleUnit]
+                            })
+                            sessionSalesRecord.push(saleRecord)
+                        }
+                    })
+                }
+            })
+        } else {
+            // setActiveSessions([])
+        }
+        if (sessionSalesRecords !== sessionSalesRecord) {
+            // setSessionSalesRecords(sessionSalesRecord)
+        }
+        return { records: sessionSalesRecord, activeSessions: activeSessions || [] }
+    }    
 
     const appendAutoPostLog = (message, state = 'info') => {
         const row = {
@@ -829,29 +1278,42 @@ const Sales = () => {
         setAutoPostLog((log) => [row, ...log].slice(0, 20))
         setAlertState(state === 'error' ? 'error' : state === 'success' ? 'success' : 'info')
         setAlert(message)
-        setAlertTimeout(state === 'error' ? 8000 : 100000)
+        setAlertTimeout(state === 'error' ? 8000 : state === 'success'? 3000: 100000)
     }
 
     const fetchAutomationSourceData = async (targetDate) => {
         const targetTime = new Date(targetDate).getTime()
-        const sessionStart = targetTime - (24 * 60 * 60 * 1000)
-        const sessionEnd = targetTime + (2 * 24 * 60 * 60 * 1000)
+        const targetEndDate = new Date(targetDate)
+        targetEndDate.setDate(targetEndDate.getDate() + 1)
+        const targetTimeEnd = targetEndDate.getTime()
+        var defaultEndPoint = 'getDocsDetails'
+        const salesDays = 60 * 24 * 60 * 60 * 1000
+        const sessionDays = 2 * 24 * 60 * 60 * 1000
+        const allowedSalesFromDays = targetTime - salesDays
+        const allowedSessionFromDays = targetTime - sessionDays
+        const body = {
+            database: company,
+            collection: "Sales",
+            prop: { createdAt: { $gte: allowedSalesFromDays } }
+        }
+        const sessionBody = {
+            database: company,
+            collection: "POSSessions",
+            prop: { start: { $gte: allowedSessionFromDays, $lte: targetTimeEnd }}
+        }
+        
         const [salesResp, accommodationResp, sessionResp] = await Promise.all([
             fetchServer("POST", {
-                database: company,
-                collection: "Sales",
-                prop: {}
-            }, "getDocsDetails", server),
+                ...body
+            }, defaultEndPoint, server),
             fetchServer("POST", {
                 database: company,
                 collection: "Accommodations",
-                prop: { postingDate: targetDate }
+                prop: { postingDate: formatDateToDefault(targetDate) }
             }, "getDocsDetails", server),
             fetchServer("POST", {
-                database: company,
-                collection: "POSSessions",
-                prop: { start: { $gte: sessionStart, $lte: sessionEnd } }
-            }, "getDocsDetails", server),
+                ...sessionBody
+            }, defaultEndPoint, server)
         ])
 
         const failed = [salesResp, accommodationResp, sessionResp].find((resp) => resp?.err)
@@ -859,15 +1321,17 @@ const Sales = () => {
             throw new Error(failed.mess || `Could not load source data for ${targetDate}`)
         }
 
-        return {
+        const allData = {
             salesRecords: Array.isArray(salesResp?.record) ? salesResp.record : [],
             accommodationRecords: Array.isArray(accommodationResp?.record) ? accommodationResp.record : [],
             sessionRecords: Array.isArray(sessionResp?.record) ? sessionResp.record : [],
         }
+        console.log('Fetched automation source data for', targetDate, allData)
+        return allData
     }
 
     const salesDateAlreadyPosted = (targetDate, salesList = []) => {
-        return (salesList || []).some((sale) => getDate(sale.postingDate) === getDate(targetDate))
+        return (salesList || []).some((sale) => isSameDate(sale.postingDate, targetDate))
     }
 
     const acceptPositiveDifferencesAsDebt = (records = []) => {
@@ -1002,6 +1466,7 @@ const Sales = () => {
         if (!company || !companyRecord?.emailid || autoPostRunningRef.current) return
         autoPostRunningRef.current = true
         autoPostStopRef.current = false
+        console.log('Starting automatic sales posting...')
         setAutoPostRunning(true)
         setSalesOpts('sales')
         setSalesOpts1('sales')
@@ -1014,13 +1479,13 @@ const Sales = () => {
 
         try {
             appendAutoPostLog('Automatic sales posting started. Loading pending days...')
-            let currentSalesList = Array.isArray(sales) ? [...sales] : []
-            if (!currentSalesList.length) {
+            let currSalesList = Array.isArray(sales) ? [...sales] : []
+            if (!currSalesList.length) {
                 const { salesRecords } = await fetchAutomationSourceData(new Date(Date.now()).toISOString().slice(0, 10))
-                currentSalesList = salesRecords
+                currSalesList = salesRecords
             }
 
-            let datesToProcess = getPendingSalesDates(currentSalesList).reverse()
+            let datesToProcess = getPendingSalesDates(currSalesList).reverse()
             if (pendingSalesDates.length) {
                 datesToProcess = [...pendingSalesDates].reverse()
             }
@@ -1029,26 +1494,32 @@ const Sales = () => {
                 appendAutoPostLog('No pending sales dates found. You can start the POS session manager now.', 'success')
                 window.localStorage.removeItem('auto-sales')
                 setAutoPostSales(false)
+                setAutoPostRunning(false)
+                setAutoPostLog([])
                 return
             }
             console.log('dates to process:', datesToProcess)
             for (const targetDate of datesToProcess) {
+                let currentSalesList = []
                 if (autoPostStopRef.current) {
                     appendAutoPostLog('Automatic sales posting stopped by user before the next pending day.', 'info')
                     break
                 }
                 appendAutoPostLog(`Preparing sales posting for ${targetDate}...`)
-                const source = await fetchAutomationSourceData(targetDate)
+                const source = await fetchAutomationSourceData(formatDateToDefault(targetDate))
                 currentSalesList = source.salesRecords
 
                 if (salesDateAlreadyPosted(targetDate, currentSalesList)) {
-                    appendAutoPostLog(`${targetDate} already has a sales posting. Skipping.`, 'success')
+                    appendAutoPostLog(`${targetDate} already has a sales posting. Skipping...`, 'success')
                     continue
                 }
 
-                setPostingDate(targetDate)
-                const accommodationResult = calculateAccommodationSales(source.accommodationRecords, targetDate, false, '')
-                const sessionResult = calculatePOSSessionSales(source.sessionRecords, targetDate, false, '')
+                setPostingDate(formatDateToDefault(targetDate))
+                console.log('Source data for', formatDateToDefault(targetDate), source)
+                const accommodationResult = await autoCalculateAccommodationSales(source.accommodationRecords, formatDateToDefault(targetDate), false, '')
+                const sessionResult = await autoCalculatePOSSessionSales(source.sessionRecords, source.salesRecords, formatDateToDefault(targetDate), false, '')
+                console.log('Calculated accommodation sales for', formatDateToDefault(targetDate), accommodationResult)
+                console.log('Calculated session sales for', formatDateToDefault(targetDate), sessionResult)
                 const records = acceptPositiveDifferencesAsDebt([
                     ...(accommodationResult || []),
                     ...((sessionResult && sessionResult.records) || []),
@@ -1070,12 +1541,12 @@ const Sales = () => {
                     appendAutoPostLog(`Posting ${records.length} sales detail record(s) for ${targetDate}...`)
                 }
 
-                const posted = await postAutomaticSalesDate(targetDate, records, currentSalesList)
+                const posted = await postAutomaticSalesDate(formatDateToDefault(targetDate), records, currentSalesList)
                 if (posted?.saleDoc) {
                     currentSalesList = [posted.saleDoc, ...currentSalesList]
                     setSales((existingSales) => [posted.saleDoc, ...existingSales])
                     setCurSale(posted.saleDoc)
-                    setCurSaleDate(posted.saleDoc.postingDate)
+                    setCurSaleDate(formatDateToDefault(posted.saleDoc.postingDate))
                     setIsView(true)
                     setFields([...(posted.saleDoc.record || [])])
                     appendAutoPostLog(`Automatic sales posting completed for ${targetDate}.`, 'success')
@@ -1099,7 +1570,13 @@ const Sales = () => {
             autoPostRunningRef.current = false
             autoPostStopRef.current = false
             setAutoPostRunning(false)
+            setAutoPostLog([])
             setPostStatus('Post Sales')
+            window.localStorage.removeItem('auto-sales')
+            window.localStorage.setItem('back-to-pos', 'true')
+            setTimeout(()=>{
+                Navigate('/pos')
+            },2000)
         }
     }
 
@@ -4551,13 +5028,13 @@ const Sales = () => {
                                         if (!activeSessions.length) {
                                             // setIsProductView(false)
                                             // setProductAdd(true)      
+                                            if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_sales_posts')) {
+                                                setAlertState('error')
+                                                setAlert('You are not allowed to post sales!')
+                                                setAlertTimeout(3000)
+                                                return
+                                            }
                                             if (curApproval && curApproval?.approved) {
-                                                if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_sales_posts')) {
-                                                    setAlertState('error')
-                                                    setAlert('You are not allowed to post sales!')
-                                                    setAlertTimeout(3000)
-                                                    return
-                                                }
                                             }
                                             runApprovalWorkFlow(postingDate, curApproval, 'sales', 'postsales', data, addSales)
                                         } else {

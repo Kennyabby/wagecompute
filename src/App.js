@@ -1250,23 +1250,41 @@ function App() {
     return sessionStart.getTime();
   };
 
-  const getPendingSalesDates = (sales)=>{
+  const getPendingSalesDates = ()=>{
       const pendingDates = []
       const salesDates = sales.map((sale)=>{return getDate(sale.postingDate)})
       const now = new Date()
       const today = new Date(now)
       const currDay = today.getDate()
-      for (let i=0; i<=sales.length; i++){
+      for (let i=0; i<=7; i++){
           let today = new Date(now)
           const dateDay = today.setDate(currDay - (i+1))
-          const dayCheck = salesDates.find((salesDate)=>{return getDate(dateDay) === salesDate})
+          const dayCheck = salesDates.find((salesDate)=>{return isSameDate(salesDate, dateDay)})
           if (!dayCheck){
-              pendingDates.push(getDate(dateDay))
+              pendingDates.push(formatDateToDefault(dateDay))
           }else{
               break
           }
       }
       return pendingDates
+  }
+
+  const isSameDate = (date1, date2) => {
+    const d1 = new Date(date1).getDay()
+    const d2 = new Date(date2).getDay()
+
+    const m1 = new Date(date1).getMonth()
+    const m2 = new Date(date2).getMonth()
+
+    const y1 = new Date(date1).getFullYear()
+    const y2 = new Date(date2).getFullYear()
+
+    return d1 === d2 && m1 === m2 && y1 === y2
+  }
+
+  const formatDateToDefault = (date) => {
+    const d = new Date(date).toISOString().slice(0, 10)
+    return d
   }
 
   const shuffleList = (array) => {
@@ -3621,7 +3639,7 @@ function App() {
         loadPage,
         getImage,
         excelDateToTimestamp,
-        getDate,
+        getDate, isSameDate, formatDateToDefault,
         removeComma,
         removeSessions,
         sessId,

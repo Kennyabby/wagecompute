@@ -125,7 +125,7 @@ const fetchServer = async (method, body, endpoint, server, signal) => {
             return { err: true, status: resp.status, ...response }
         }
 
-        return { err: false, status: resp.status, ...response }
+        return { ok: true, err: false, status: resp.status, ...response }
 
     } catch (error) {
         // Handle different types of errors
