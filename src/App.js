@@ -1252,18 +1252,20 @@ function App() {
 
   const getPendingSalesDates = ()=>{
       const pendingDates = []
-      const salesDates = sales.map((sale)=>{return getDate(sale.postingDate)})
+      const salesDates = sales.map((sale)=>{return sale.postingDate})
       const now = new Date()
       const today = new Date(now)
       const currDay = today.getDate()
-      for (let i=0; i<=7; i++){
-          let today = new Date(now)
-          const dateDay = today.setDate(currDay - (i+1))
-          const dayCheck = salesDates.find((salesDate)=>{return isSameDate(salesDate, dateDay)})
+      for (let i=0; i<=7; i++){                    
+          today.setDate(currDay - (i+1))
+          const dateDay = today
+          const dayCheck = salesDates.find((salesDate)=>{
+            return salesDate === formatDateToDefault(dateDay)
+          })
           if (!dayCheck){
               pendingDates.push(formatDateToDefault(dateDay))
           }else{
-              break
+              // break
           }
       }
       return pendingDates
