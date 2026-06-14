@@ -1252,22 +1252,30 @@ function App() {
 
   const getPendingSalesDates = ()=>{
       const pendingDates = []
+      const fouldSales = []
+      const skippedDates = []
       const salesDates = sales.map((sale)=>{return sale.postingDate})
       const now = new Date()
       const today = new Date(now)
       const currDay = today.getDate()
-      for (let i=0; i<=7; i++){                    
-          today.setDate(currDay - (i+1))
+      for (let i=0; i<=10; i++){     
+          today.setDate(today.getDate() - 1)
           const dateDay = today
           const dayCheck = salesDates.find((salesDate)=>{
+            if (salesDate === formatDateToDefault(dateDay)) {
+              fouldSales.push(salesDate)
+            }
             return salesDate === formatDateToDefault(dateDay)
           })
           if (!dayCheck){
               pendingDates.push(formatDateToDefault(dateDay))
           }else{
-              // break
+              skippedDates.push(formatDateToDefault(dateDay))
           }
       }
+      // console.log('pending days', pendingDates)
+      // console.log('skipped days', skippedDates)
+      // console.log('found sales', fouldSales)
       return pendingDates
   }
 
