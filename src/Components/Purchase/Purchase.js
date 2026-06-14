@@ -2,8 +2,7 @@ import './Purchase.css'
 import { useEffect, useContext, useState, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { syncPendingChanges } from '../../Resources/offlineSync';
-import generatePDF, { Resolution, Margin } from 'react-to-pdf';
-import html2pdf from 'html2pdf.js';
+import { exportPurchaseDocumentToPDF } from '../DashView/pdfUtils';
 import { useScroll } from 'framer-motion'
 import { MdAdd, MdArrowBack } from 'react-icons/md'
 import { FaTableCells } from 'react-icons/fa6'
@@ -888,6 +887,8 @@ const Purchase = () => {
                     setIsProductView={setIsProductView}
                     companyRecord={companyRecord}
                     curApproval={curApproval}
+                    server={server}
+                    fetchServer={fetchServer}
                 />}
                 {showReport && <PurchaseReport
                     reportPurchases={reportPurchase}
@@ -1413,32 +1414,43 @@ export default Purchase
 
 const AddProduct = ({
     products, category, purchaseDate, fields, setFields, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
-    handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord, curApproval,
+    handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord, curApproval, server, fetchServer,
 }) => {
     const [productSearch, setProductSearch] = useState('')
     const [nullFieldsCount, setNullFieldsCount] = useState(0)
     const [isProductEdit, setIsProductEdit] = useState(false)
-    const [purchasePrintType, setPurchasePrintType] = useState('purchaseOrder')
-    const targetRef = useRef(null)
     const { getDate, setAlertState, setAlert, setAlertTimeout } = useContext(ContextProvider)
-    const getPurchasePrintTitle = (type = purchasePrintType) => ({
+    const getPurchasePrintTitle = (type = 'purchaseOrder') => ({
         purchaseOrder: 'PURCHASE ORDER',
         grn: 'GOODS RECEIVED NOTE',
         purchaseInvoice: 'PURCHASE INVOICE',
     }[type] || 'PURCHASE DOCUMENT')
-    const printToPDF = (type = purchasePrintType) => {
-        setPurchasePrintType(type)
-        setTimeout(() => {
-            const element = targetRef.current;
-            const options = {
-                margin: 0.1,
-                filename: `${curApproval ? '(APPROVALS) ' : ''}${getPurchasePrintTitle(type)} ${getDate(curPurchase?.purchaseDate || curPurchase?.postingDate || curApproval?.postingDate || purchaseDate)}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
-            };
-            html2pdf().set(options).from(element).save();
-        }, 0)
+    const printToPDF = async (type = 'purchaseOrder') => {
+        setAlertState('info')
+        setAlert('Generating purchase document...')
+        setAlertTimeout(100000)
+        try {
+            await exportPurchaseDocumentToPDF({
+                type,
+                title: getPurchasePrintTitle(type),
+                companyRecord,
+                fields,
+                entries: purchaseEntries,
+                purchaseDate: purchaseDate || fields.postingDate,
+                curApproval,
+                getDate,
+                server,
+                fetchServer
+            })
+            setAlertState('success')
+            setAlert('Document generated successfully!')
+            setAlertTimeout(1000)
+        } catch (error) {
+            console.error('Error generating purchase document:', error)
+            setAlertState('error')
+            setAlert('Failed to generate purchase document. Please try again.')
+            setAlertTimeout(5000)
+        }
     };
     useEffect(() => {
         if (!isProductView) {
@@ -1482,6 +1494,7 @@ const AddProduct = ({
                     purchaseUom: product.purchaseUom.toLowerCase(),
                     baseUom: uom1[0]?.base,
                     totalCost: '',
+                    totalSales: '',
                     entryType: 'Purchase',
                     documentType: 'Receipt'
                 }                
@@ -1492,18 +1505,30 @@ const AddProduct = ({
     }, [])
 
     useEffect(() => {
-        if (!isProductView) {
+        if (!isProductView) {       
             let ct = 0
             const fieldsAmount = purchaseEntries.reduce((acc, entry) => {
                 if ((!entry.totalCost && entry.quantity) || (!entry.quantity && entry.totalCost)) {
                     ct += 1
                 }
                 return acc + (Number(entry.totalCost) || 0)
+            }, 0) 
+            const fieldsSalesAmount = purchaseEntries.reduce((acc, entry) => {
+                const prd = products.find((p) => { return p.i_d === entry.productId })                
+                return acc + (Number(prd?.salesPrice) || 0) * (Number(entry.baseQuantity) || 0)
             }, 0)
             setFields((fields) => {
-                return { ...fields, purchaseAmount: fieldsAmount }
+                return { ...fields, purchaseAmount: fieldsAmount, salesAmount: fieldsSalesAmount }
             })
             setNullFieldsCount(ct)
+        }else if (!fields.salesAmount){
+            const fieldsSalesAmount = purchaseEntries.reduce((acc, entry) => {
+                const prd = products.find((p) => { return p.i_d === entry.productId })                
+                return acc + (Number(prd?.salesPrice) || 0) * (Number(entry.baseQuantity) || 0)
+            }, 0)
+            setFields((fields)=>{
+                return {...fields, salesAmount: fieldsSalesAmount}
+            })
         }
     }, [purchaseEntries])
 
@@ -1547,119 +1572,14 @@ const AddProduct = ({
             <div className='addproduct'>
                 <div className='add-products'>
                     <div className='add-products-title'>
-                        <label>Product Purchase Details</label>
+                        <div>
+                            <label>Product Purchase Details</label>
+                        </div>
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && <div className='purchase-doc-print-actions'>
                             <button type='button' onClick={() => printToPDF('purchaseOrder')}>Print PO</button>
                             <button type='button' onClick={() => printToPDF('grn')}>Print GRN</button>
                             <button type='button' onClick={() => printToPDF('purchaseInvoice')}>Print Invoice</button>
                         </div>}
-                    </div>
-                    <div>
-                        <input
-                            placeholder='Search Product'
-                            style={{
-                                padding: '5px', borderRadius: '5px',
-                                outline: 'none', fontSize: '12px'
-                            }}
-                            onChange={(e) => { setProductSearch(e.target.value) }}
-                        />
-                    </div>
-                    <div className='add-products-content purchase-doc-print-sheet' ref={targetRef}>
-                        <div className='purchase-doc-print-header'>
-                            <div>
-                                <h2>{companyRecord?.name?.toUpperCase()}</h2>
-                                <p>{companyRecord?.address || ''}</p>
-                                <p>{companyRecord?.phone || companyRecord?.mobile || ''} {companyRecord?.email ? `| ${companyRecord.email}` : ''}</p>
-                            </div>
-                            <div>
-                                <h3>{getPurchasePrintTitle()}</h3>
-                                <p>{`Date: ${purchaseDate || fields.postingDate}`}</p>
-                                <p>{`Vendor: ${fields.purchaseVendor || fields.vendorName || ''}`}</p>
-                                <p>{`Department: ${fields.purchaseDepartment || ''}`}</p>
-                            </div>
-                        </div>
-                        <div className='add-products-content-title'>
-                            <div>Product Name</div>
-                            <div>Product ID</div>
-                            {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
-                                <>
-                                    <div style={{ color: 'red' }}>Current Stock</div>
-                                    <div style={{ color: 'red' }}>Requested Stock (units)</div>
-                                </>
-                            }
-                            <div>Purchase Quantity</div>
-                            <div>Purchase UOM</div>
-                            <div>{`Purchase Amount (${(fields.purchaseAmount || 0).toLocaleString()})`}</div>
-                        </div>
-                        {purchaseEntries.length === 0 && isProductView && <div className='load-products'><span>Loading Purchase Products...</span></div>}
-                        {purchaseEntries.sort((a, b) => {
-                            const numA = parseInt(a.productId.replace("PD", ""), 10);
-                            const numB = parseInt(b.productId.replace("PD", ""), 10);
-                            return numA - numB;
-                        }).filter((purflt) => {
-                            let showEntry = true
-                            if (isProductView) {
-                                if (!purflt.quantity && !purflt.totalCost) {
-                                    showEntry = false
-                                }
-                            } else (
-                                showEntry = true
-                            )
-                            if (showEntry) {
-                                if (productSearch === '') {
-                                    return purflt
-                                } else return (purflt.name.toLowerCase().includes(productSearch.toLowerCase()) || purflt.productId.toLowerCase().includes(productSearch.toLowerCase()))
-                            }
-                        }).map((entry, index) => {
-                            let currentStock = (products.find((p) => { return p.i_d === entry.productId }))?.stockSummary?.closingQty
-                            return (
-                                <div key={index} className='add-products-content-entry'>
-                                    <div>{entry.name}</div>
-                                    <div>{entry.productId}</div>
-                                    {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
-                                        <>
-                                            <div style={{ color: 'red' }}>{currentStock}</div>
-                                            <div style={{ color: 'red' }}>{entry.baseQuantity}</div>
-                                        </>
-                                    }
-                                    <div>
-                                        <input
-                                            type='number'
-                                            name='quantity'
-                                            id={entry.productId}
-                                            value={entry.quantity}
-                                            onChange={(e) => { handlePurchaseUdpate(e, index) }}
-                                            disabled={isProductView}
-                                        />
-                                    </div>
-                                    <div>
-                                        <select
-                                            name='purchaseUom'
-                                            id={entry.productId}
-                                            value={entry.purchaseUom}
-                                            onChange={(e) => { handlePurchaseUdpate(e, index) }}
-                                            disabled={isProductView || true}
-                                        >
-                                            {uoms.map((uom, idx) => {
-                                                return (
-                                                    <option key={idx} value={uom.code}>{uom.name}</option>
-                                                )
-                                            })}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <input
-                                            name='totalCost'
-                                            type='number'
-                                            id={entry.productId}
-                                            value={entry.totalCost}
-                                            disabled={entry.baseQuantity === 0 || isProductView}
-                                            onChange={(e) => { handlePurchaseUdpate(e, index) }}
-                                        />
-                                    </div>
-                                </div>
-                            )
-                        })}
                     </div>
                     <div className='add-products-button'>
                         {!isProductView && <div
@@ -1694,9 +1614,127 @@ const AddProduct = ({
                                 if (!isProductView) {
                                     setPurchaseEntries([])
                                 }
+                                setFields((fields) => {
+                                    return { ...fields, salesAmount: '' }
+                                })
                             }}
                         >{isProductView ? 'Close' : 'Cancel'}</div>
                     </div>
+                    <div className='add-products-search'>
+                        <input
+                            placeholder='🔍 Search products by name or ID...'
+                            onChange={(e) => { setProductSearch(e.target.value) }}
+                        />
+                    </div>
+                    <div className='add-products-totals'>
+                        <div className='add-products-total-card add-purchase'>
+                            <div className='add-products-total-label'>Total Purchase Amount</div>
+                            <div className='add-products-total-value'>₦{(fields.purchaseAmount || 0).toLocaleString()}</div>
+                        </div>
+                        {companyRecord?.status === 'admin' && <div className='add-products-total-card sales'>
+                            <div className='add-products-total-label'>Total Sales Amount</div>
+                            <div className='add-products-total-value'>₦{(fields.salesAmount || 0).toLocaleString()}</div>
+                        </div>}
+                        {companyRecord?.status === 'admin' && <div className={`add-products-total-card profit ${(fields.salesAmount || 0) - (fields.purchaseAmount || 0) < 0 ? 'negative' : ''}`}>
+                            <div className='add-products-total-label'>Projected Profit</div>
+                            <div className='add-products-total-value'>₦{((fields.salesAmount || 0) - (fields.purchaseAmount || 0)).toLocaleString()}</div>
+                        </div>}
+                    </div>
+                    <div className='add-products-content-wrapper'>
+                        <div className='add-products-content-header'>
+                            <div>Product Name</div>
+                            <div>Product ID</div>
+                            {(companyRecord?.status === 'admin') && curApproval &&
+                                <div>Stock</div>
+                            }
+                            <div>Qty</div>
+                            <div>UOM</div>
+                            <div>Amount</div>
+                            {companyRecord?.status === 'admin' && <div>Sales</div>}
+                        </div>
+                        <div className='add-products-content'>                           
+                            {purchaseEntries.length === 0 && isProductView && <div className='load-products'><span>⏳ Loading Purchase Products...</span></div>}
+                            {purchaseEntries.sort((a, b) => {
+                                const numA = parseInt(a.productId.replace("PD", ""), 10);
+                                const numB = parseInt(b.productId.replace("PD", ""), 10);
+                                return numA - numB;
+                            }).filter((purflt) => {
+                                let showEntry = true
+                                if (isProductView) {
+                                    if (!purflt.quantity && !purflt.totalCost) {
+                                        showEntry = false
+                                    }
+                                } else (
+                                    showEntry = true
+                                )
+                                if (showEntry) {
+                                    if (productSearch === '') {
+                                        return purflt
+                                    } else return (purflt.name.toLowerCase().includes(productSearch.toLowerCase()) || purflt.productId.toLowerCase().includes(productSearch.toLowerCase()))
+                                }
+                            }).map((entry, index) => {
+                                let currProduct = (products.find((p) => { return p.i_d === entry.productId }))
+                                let currentStock = currProduct?.stockSummary?.closingQty 
+                                entry.totalSales = entry.totalSales || (Number(currProduct.salesPrice || 0) * Number(entry.baseQuantity || 0))
+                                return (
+                                    <div key={index} className='add-products-content-entry'>
+                                        <div>{entry.name}</div>
+                                        <div>{entry.productId}</div>
+                                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
+                                            <div>{currentStock}</div>
+                                        }
+                                        <div>
+                                            <input
+                                                type='number'
+                                                name='quantity'
+                                                id={entry.productId}
+                                                value={entry.quantity}
+                                                onChange={(e) => { handlePurchaseUdpate(e, index) }}
+                                                disabled={isProductView}
+                                                placeholder='0'
+                                            />
+                                        </div>
+                                        <div>
+                                            <select
+                                                name='purchaseUom'
+                                                id={entry.productId}
+                                                value={entry.purchaseUom}
+                                                onChange={(e) => { handlePurchaseUdpate(e, index) }}
+                                                disabled={isProductView || true}
+                                            >
+                                                {uoms.map((uom, idx) => {
+                                                    return (
+                                                        <option key={idx} value={uom.code}>{uom.name}</option>
+                                                    )
+                                                })}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <input
+                                                name='totalCost'
+                                                type='number'
+                                                id={entry.productId}
+                                                value={entry.totalCost}
+                                                disabled={entry.baseQuantity === 0 || isProductView}
+                                                onChange={(e) => { handlePurchaseUdpate(e, index) }}
+                                                placeholder='0.00'
+                                            />
+                                        </div>
+                                        {companyRecord?.status === 'admin' && <div>
+                                            <input
+                                                name='totalSales'
+                                                type='number'
+                                                id={entry.productId}
+                                                value={entry.totalSales}
+                                                disabled={true}
+                                                placeholder='0.00'
+                                            />
+                                        </div>}
+                                    </div>
+                                )
+                            })}
+                        </div>                        
+                    </div>                    
                 </div>
             </div>
         </>
