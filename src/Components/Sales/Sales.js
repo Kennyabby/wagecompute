@@ -5515,6 +5515,7 @@ const AddProduct = ({
 
         setSalesEntries(allEntries)
     }
+
     useEffect(() => {
         setAddingProducts(false)
         if (!isProductView) {
@@ -5656,6 +5657,35 @@ const AddProduct = ({
                             }}
                         >Print Product</div>}
                     </div>
+                    <div className='add-products-button'>
+                        {!isProductView && <div
+                            className='add-products-button-add'
+                            style={{ cursor: addingProducts ? 'not-allowed' : 'pointer' }}
+                            onClick={() => {
+                                if (!addingProducts) {
+                                    setAddingProducts(true)
+                                    handleProductSales()
+                                }
+                            }}
+                        >{curSale === null ?
+                            (curSale.approval?.approved ? 'Add and Post' : (isProductApprover ? 'Approve Request' : 'Request Approval'))
+                            : (curSale.approval?.approved ? 'Save' : (isProductApprover ? 'Approve Request' : 'Request Approval'))
+                            }</div>}
+                        <div
+                            className='add-products-button-cancel'
+                            onClick={() => {
+                                setPostedProducts([])
+                                setIsProductView(false)
+                                setProductAdd(false)
+                                if (!isProductView) {
+                                    if (curSale !== null && [undefined, null].includes(curSale.approval)) {
+                                        localStorage.setItem(`sales-${curSale.createdAt}`, JSON.stringify(salesEntries));
+                                    }
+                                }
+                                setSalesEntries({})
+                            }}
+                        >{isProductView ? 'Close' : 'Cancel'}</div>
+                    </div>
                     <div>
                         <select
                             className='slprfl'
@@ -5671,8 +5701,8 @@ const AddProduct = ({
                         </select>
                     </div>
                     <div className='add-products-title slprwh-add'>Product Sales Details</div>
-                    <div className='add-products-content'>
-                        <div className='add-products-content-title'>
+                    <div className='add-products-content-wrapper'>
+                        <div className='add-products-content-header'>
                             <div>Product Name</div>
                             <div>Product ID</div>
                             <div>Sales Quantity</div>
@@ -5745,36 +5775,7 @@ const AddProduct = ({
                                 </div>
                             )
                         })}
-                    </div>
-                    <div className='add-products-button'>
-                        {!isProductView && <div
-                            className='add-products-button-add'
-                            style={{ cursor: addingProducts ? 'not-allowed' : 'pointer' }}
-                            onClick={() => {
-                                if (!addingProducts) {
-                                    setAddingProducts(true)
-                                    handleProductSales()
-                                }
-                            }}
-                        >{curSale === null ?
-                            (curSale.approval?.approved ? 'Add and Post' : (isProductApprover ? 'Approve Request' : 'Request Approval'))
-                            : (curSale.approval?.approved ? 'Save' : (isProductApprover ? 'Approve Request' : 'Request Approval'))
-                            }</div>}
-                        <div
-                            className='add-products-button-cancel'
-                            onClick={() => {
-                                setPostedProducts([])
-                                setIsProductView(false)
-                                setProductAdd(false)
-                                if (!isProductView) {
-                                    if (curSale !== null && [undefined, null].includes(curSale.approval)) {
-                                        localStorage.setItem(`sales-${curSale.createdAt}`, JSON.stringify(salesEntries));
-                                    }
-                                }
-                                setSalesEntries({})
-                            }}
-                        >{isProductView ? 'Close' : 'Cancel'}</div>
-                    </div>
+                    </div>                    
                 </div>
             </div>
         </>

@@ -2926,6 +2926,40 @@ const AddProduct = ({
                             }}
                         >Print Product</div>}
                     </div>
+                    <div className='add-products-button'>
+                        {!isProductView && <div
+                            className='add-products-button-add'
+                            style={{ cursor: addingProducts ? 'not-allowed' : 'pointer' }}
+                            onClick={async () => {
+                                if (!addingProducts) {
+                                    setAddingProducts(true)
+                                    const result = await compareStock(countedStockList)
+                                    setCountResult(result)
+                                    const { stocksPositiveDifference, stocksNegativeDifference, stocksDifference, differenceSummary } = result
+                                    if (stocksPositiveDifference.count) {
+                                        setAlertState('error')
+                                        setAlert('Positive Stock Differences Found.! Make Sure No Purchases or Transfers are Pending. Resolve The Descrepancies Before Proceeding!')
+                                        setAlertTimeout(5000)
+                                    } else if (stocksNegativeDifference.count) {
+                                        setAlertState('info')
+                                        setActionMessage('Accept')
+                                        setAlert('Your Stock Count is less than current Inventory. Accept the differences as Sales Shortage, to be applied directly to the responsible employee(s) ID(s)')
+                                        setAlertTimeout(15000)
+                                    } else {
+                                        saveStocksDifference(result)
+                                    }
+                                }
+                            }}
+                        >{'Save'}</div>}
+                        <div
+                            className='add-products-button-cancel'
+                            onClick={() => {
+                                setIsProductView(false)
+                                setProductAdd(false)
+                                setCountedStockList({})
+                            }}
+                        >{isProductView ? 'Close' : 'Cancel'}</div>
+                    </div>
                     <div>
                         <select
                             className='slprfl'
@@ -2941,8 +2975,8 @@ const AddProduct = ({
                         </select>
                     </div>
                     <div className='add-products-title slprwh-add'>Enter Counted Closing Stock</div>
-                    <div className='add-products-content'>
-                        <div className='add-products-content-title'>
+                    <div className='add-products-content-wrapper'>
+                        <div className='add-products-content-header'>
                             <div>Product Name</div>
                             <div>Product ID</div>
                             <div>Sales Quantity</div>
@@ -3016,41 +3050,7 @@ const AddProduct = ({
                                 </div>
                             )
                         })}
-                    </div>
-                    <div className='add-products-button'>
-                        {!isProductView && <div
-                            className='add-products-button-add'
-                            style={{ cursor: addingProducts ? 'not-allowed' : 'pointer' }}
-                            onClick={async () => {
-                                if (!addingProducts) {
-                                    setAddingProducts(true)
-                                    const result = await compareStock(countedStockList)
-                                    setCountResult(result)
-                                    const { stocksPositiveDifference, stocksNegativeDifference, stocksDifference, differenceSummary } = result
-                                    if (stocksPositiveDifference.count) {
-                                        setAlertState('error')
-                                        setAlert('Positive Stock Differences Found.! Make Sure No Purchases or Transfers are Pending. Resolve The Descrepancies Before Proceeding!')
-                                        setAlertTimeout(5000)
-                                    } else if (stocksNegativeDifference.count) {
-                                        setAlertState('info')
-                                        setActionMessage('Accept')
-                                        setAlert('Your Stock Count is less than current Inventory. Accept the differences as Sales Shortage, to be applied directly to the responsible employee(s) ID(s)')
-                                        setAlertTimeout(15000)
-                                    } else {
-                                        saveStocksDifference(result)
-                                    }
-                                }
-                            }}
-                        >{'Save'}</div>}
-                        <div
-                            className='add-products-button-cancel'
-                            onClick={() => {
-                                setIsProductView(false)
-                                setProductAdd(false)
-                                setCountedStockList({})
-                            }}
-                        >{isProductView ? 'Close' : 'Cancel'}</div>
-                    </div>
+                    </div>                    
                 </div>
             </div>
         </>
