@@ -5688,7 +5688,7 @@ const AddProduct = ({
                     </div>
                     <div>
                         <select
-                            className='slprfl'
+                            className='add-products-category-select'
                             type='text'
                             name='category'
                             value={category}

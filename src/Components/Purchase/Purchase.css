@@ -284,6 +284,16 @@
     animation: fadeInEntry 0.4s ease;    
 }
 
+.add-products-category-select{
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    color: #173829;
+    min-height: 44px;
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
 @keyframes fadeInEntry {
     from {
         opacity: 0;
@@ -413,7 +423,7 @@
     gap: 12px;
     border-top: 1px solid rgba(23, 56, 41, 0.08);
     flex-shrink: 0;
-    margin-top: 0;
+    margin-top: 20px;
 }
 
 .add-products-button div {
@@ -501,11 +511,12 @@
     }
 
     .add-products-button {
-        flex-direction: column-reverse;
+        display: flex;
+        margin-top: 50px;
     }
 
     .add-products-button div {
-        width: 100%;
+        width:  fit-content
     }
 
     .add-products-totals {

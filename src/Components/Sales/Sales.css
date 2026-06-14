@@ -192,10 +192,16 @@
     width: fit-content;
 }
 .slprwh-cover{
-    position: absolute;
-    left: 10px;
-    top: 10px;
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 18px 22px;
+    border-radius: 28px;
+    border: 1px solid var(--pos-border);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: var(--pos-shadow);
 }
 .slprwh-print{
     /* position: absolute; */
@@ -213,20 +219,24 @@
     font-size: .8em;
     font-weight: 600;
 }
-.slprwh{
-    background: rgba(204, 207, 200, 0.4);
-    margin: auto 10px;
-    padding:5px 10px;
-    border-radius: 5px;
+.slprwh {
+    padding: 10px 16px;
+    border-radius: 999px;
     font-size: .8em;
-    cursor: pointer
+    border: 1px solid rgba(23, 56, 41, 0.1);
+    background: #f7faf7;
+    color: var(--pos-ink);
+    font-weight: 700;
 }
+
 .slprwh-add{
     padding-top: 50px;
 }
-.slprwh-clicked{
-    border: solid rgb(144, 228, 17) 1.5px;
-    font-weight: bold;
+.slprwh-clicked {
+    border-color: rgba(43, 106, 75, 0.28);
+    background: linear-gradient(135deg, #fff7e2, #eff6f1);
+    color: var(--pos-accent);
+    box-shadow: 0 12px 24px rgba(23, 56, 41, 0.08);
 }
 .salesfm{
     width: 90%;
