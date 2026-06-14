@@ -5028,7 +5028,7 @@ const Sales = () => {
                                         if (!activeSessions.length) {
                                             // setIsProductView(false)
                                             // setProductAdd(true)      
-                                            if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_sales_posts')) {
+                                            if (companyRecord?.status !== 'admin') {
                                                 setAlertState('error')
                                                 setAlert('You are not allowed to post sales!')
                                                 setAlertTimeout(3000)
