@@ -744,7 +744,7 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
                             type='number'
                             placeholder='Shortages'
                             value={subShortages}
-                            disabled={true}
+                            // disabled={true}
                             onChange={(e)=>{
                                 setSubShortages(e.target.value)
                             }}
