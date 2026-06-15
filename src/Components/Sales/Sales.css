@@ -184,6 +184,20 @@
     cursor: pointer;
     z-index: 1;
 }
+
+.auto-slprd{
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: .7em;
+    background: rgba(219, 249, 228, 0.96);
+    color: #173829;
+    font-weight: bold;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1;
+}
 .slprfl{
     position: absolute;
     left: 20px;

@@ -385,7 +385,7 @@ const Sales = () => {
                 setAlertTimeout(5000)
                 return
             }
-            console.log('************autoPostSales triggered, running automatic sales posting...***************')
+            // console.log('************autoPostSales triggered, running automatic sales posting...***************')
             runAutomaticSalesPosting()            
         }
     }, [autoPostRunning, autoPostSales, payPoints, salesUnits])
@@ -897,8 +897,8 @@ const Sales = () => {
     }    
     
     const autoCalculatePOSSessionSales = async (allSessions, sales, postingDate, isView, saleEmployee)=>{
-        console.log('auto Post Running Value:', autoPostRunning)
-        console.log('all sessions for posting date:', postingDate, allSessions)
+        // console.log('auto Post Running Value:', autoPostRunning)
+        // console.log('all sessions for posting date:', postingDate, allSessions)
         
         var sessionSalesRecord = []
         var wrhPoints = []
@@ -907,11 +907,11 @@ const Sales = () => {
                 wrhPoints.push(wh.name)
             }
         })
-        console.log('comparing session sales for posting date:', postingDate)
+        // console.log('comparing session sales for posting date:', postingDate)
         
         const postingDate1 = postingDate
         var ct = 0
-        console.log('sales to compare for session sales:', sales, 'all sessions:', allSessions)
+        // console.log('sales to compare for session sales:', sales, 'all sessions:', allSessions)
 
         sales.forEach((sale) => {
             if (getDate(sale.postingDate) === getDate(postingDate1)) {
@@ -922,7 +922,7 @@ const Sales = () => {
             }
         })
 
-        console.log('session sales count for posting date:', postingDate, ct)
+        // console.log('session sales count for posting date:', postingDate, ct)
 
         if (!isView && !saleEmployee && !ct) {
             const curPosSetting = posSettings?.posSettings?.find((sett) => {
@@ -1083,7 +1083,7 @@ const Sales = () => {
             })
 
             let mct = 0
-            console.log('session employees with sales for posting date:', postingDate, sessionEmployees)
+            // console.log('session employees with sales for posting date:', postingDate, sessionEmployees)
             
             sessionEmployees.forEach((employeeId) => {
                 if (employeeId !== null) {
@@ -1109,7 +1109,7 @@ const Sales = () => {
                         const saleRecord = {}
                         saleRecord.isSession = true
                         const updatedAllSessions = [...multSessions, ...allSessions]
-                        console.log('All sessions for wh:',wh, 'showing:',updatedAllSessions)
+                        // console.log('All sessions for wh:',wh, 'showing:',updatedAllSessions)
                         updatedAllSessions.forEach((session) => {
                             const salesEndDate = new Date(postingDate1)
                             salesEndDate.setDate(salesEndDate.getDate() + 1);
@@ -1125,7 +1125,7 @@ const Sales = () => {
                                     ) 
                                     && getSessionEnd(session.start) === sessionEndTime
                                 ) {
-                                    console.log('Showing Session order for employee:',employeeId,'order:',sessionOrder)
+                                    // console.log('Showing Session order for employee:',employeeId,'order:',sessionOrder)
                                     const salesPostsPay = Object.keys(sessionOrder?.salesPosts || {})
                                     let wct = 0
                                     if (sessionOrder?.salesPosts){
@@ -1235,7 +1235,7 @@ const Sales = () => {
                             }
 
                         })
-                        console.log('converging info:', wrhSessionOrders.length, wh, totalWrhTransactions[wh].totalSales)
+                        // console.log('converging info:', wrhSessionOrders.length, wh, totalWrhTransactions[wh].totalSales)
                         const sessionDebtAmount = Number(totalWrhTransactions[wh].debt || 0)
                         const sessionUnaccountedAmount = Number(totalWrhTransactions[wh].unAccountedSales || 0)
                         if (wrhSessionOrders.length && (totalWrhTransactions[wh].totalSales || sessionDebtAmount || sessionUnaccountedAmount)) {
@@ -1331,7 +1331,7 @@ const Sales = () => {
     }
 
     const salesDateAlreadyPosted = (targetDate, salesList = []) => {
-        return (salesList || []).some((sale) => isSameDate(sale.postingDate, targetDate))
+        return (salesList || []).some((sale) => sale.postingDate === targetDate)
     }
 
     const acceptPositiveDifferencesAsDebt = (records = []) => {
@@ -1498,7 +1498,7 @@ const Sales = () => {
                 setAutoPostLog([])
                 return
             }
-            console.log('dates to process:', datesToProcess)
+            // console.log('dates to process:', datesToProcess)
             for (const targetDate of datesToProcess) {
                 let currentSalesList = []
                 if (autoPostStopRef.current) {
@@ -1509,17 +1509,19 @@ const Sales = () => {
                 const source = await fetchAutomationSourceData(formatDateToDefault(targetDate))
                 currentSalesList = source.salesRecords
 
-                if (salesDateAlreadyPosted(targetDate, currentSalesList)) {
-                    appendAutoPostLog(`${targetDate} already has a sales posting. Skipping...`, 'success')
-                    continue
-                }
+                // if (salesDateAlreadyPosted(targetDate, currentSalesList)) {
+                //     console.log('sales already posted for',targetDate)
+                //     appendAutoPostLog(`${targetDate} already has a sales posting. Skipping...`, 'success')
+                //     console.log('Skipped.')
+                //     continue
+                // }
 
                 setPostingDate(formatDateToDefault(targetDate))
-                console.log('Source data for', formatDateToDefault(targetDate), source)
+                // console.log('Source data for', formatDateToDefault(targetDate), source)
                 const accommodationResult = await autoCalculateAccommodationSales(source.accommodationRecords, formatDateToDefault(targetDate), false, '')
                 const sessionResult = await autoCalculatePOSSessionSales(source.sessionRecords, source.salesRecords, formatDateToDefault(targetDate), false, '')
-                console.log('Calculated accommodation sales for', formatDateToDefault(targetDate), accommodationResult)
-                console.log('Calculated session sales for', formatDateToDefault(targetDate), sessionResult)
+                // console.log('Calculated accommodation sales for', formatDateToDefault(targetDate), accommodationResult)
+                // console.log('Calculated session sales for', formatDateToDefault(targetDate), sessionResult)
                 const records = acceptPositiveDifferencesAsDebt([
                     ...(accommodationResult || []),
                     ...((sessionResult && sessionResult.records) || []),
@@ -3694,7 +3696,9 @@ const Sales = () => {
                                             }}
                                         >
                                             Add Products
-                                        </span>}
+                                        </span>
+                                    }
+                                    {sale?.autoPosted && <span className='auto-slprd'>auto posted</span>}
                                     <div className='dets sldets'>
                                         <div>Posting Date: <b>{getDate(postingDate)}</b></div>
                                         <div>Total Sales: <b>{'₦' + (Number(totalCashSales) + Number(totalBankSales) + Number(totalDebt) - Number(totalSalesDebt || 0) + Number(totalShortage)).toLocaleString()}</b></div>
