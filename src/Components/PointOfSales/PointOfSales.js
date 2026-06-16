@@ -730,7 +730,9 @@ const PointOfSales = () => {
                     setAlertTimeout(500);
                     setCurrSessionManager(newSessionManager);
                     setSessions([...(sessions || []), newSessionManager]);
+                    // Start Session for Session Manager
                     createSession()
+                    // Start Session for last active users.
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessionManagers(company, companyRecord)
                 } catch (e) {

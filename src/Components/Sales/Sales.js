@@ -1555,12 +1555,16 @@ const Sales = () => {
                 }
             }
 
-            window.localStorage.removeItem('auto-sales')
             setAutoPostSales(false)
             setPendingSalesDates([])
             if (!autoPostStopRef.current) {
                 appendAutoPostLog('Automatic sales posting finished. Pending days have been cleared.', 'success')
             }
+            window.localStorage.removeItem('auto-sales')
+            window.localStorage.setItem('back-to-pos', 'true')
+            setTimeout(()=>{
+                Navigate('/pos')
+            },2000)
             getSales(company)
             fetchAllSessions({ company, companyRecord })
             getAccommodations(company)
@@ -1573,12 +1577,7 @@ const Sales = () => {
             autoPostStopRef.current = false
             setAutoPostRunning(false)
             setAutoPostLog([])
-            setPostStatus('Post Sales')
-            window.localStorage.removeItem('auto-sales')
-            window.localStorage.setItem('back-to-pos', 'true')
-            setTimeout(()=>{
-                Navigate('/pos')
-            },2000)
+            setPostStatus('Post Sales')           
         }
     }
 
