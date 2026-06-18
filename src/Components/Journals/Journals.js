@@ -1,7 +1,8 @@
 import './Journals.css'
 import { useState, useContext, useEffect, useMemo, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
-import { MdSearch, MdAdd, MdEdit, MdDelete, MdFilterList, MdOutlineAccountBalance, MdOutlineReceiptLong, MdClose, MdRefresh, MdAnalytics, MdFileDownload, MdPictureAsPdf, MdDeleteSweep } from 'react-icons/md'
+import { MdSearch, MdAdd, MdEdit, MdDelete, MdFilterList, MdOutlineAccountBalance, MdOutlineReceiptLong, MdClose, MdRefresh, MdAnalytics, MdPictureAsPdf, MdDeleteSweep } from 'react-icons/md'
+import { FaFileExcel } from 'react-icons/fa'
 import jsPDF from 'jspdf'
 import { generateExcel } from '../../utils/exportUtils'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb'
@@ -905,6 +906,134 @@ const Journals = () => {
         ], compInfo, dRange, 'Trial Balance Report', skipAutoTotals);
     };
 
+    const exportDrillDownToExcel = (accountCode) => {
+        const glCode = String(accountCode || drillDown?.glCode || '')
+        // build a global lookup of transaction keys -> lines so we can infer counterpart accounts
+        const globalMap = {};
+        Object.keys(rawLedger || {}).forEach(accCode => {
+            (rawLedger[accCode] || []).forEach(line => {
+                const key = `${line.source || ''}:${line.id || line.sourceId || line.date || ''}`;
+                if (!globalMap[key]) globalMap[key] = [];
+                globalMap[key].push({ accountCode: accCode, line });
+            })
+        })
+
+        const rows = (rawLedger?.[glCode] || []).map(r => {
+            const key = `${r.source || ''}:${r.id || r.sourceId || r.date || ''}`;
+            const peers = globalMap[key] || [];
+            const debitAccounts = peers.filter(p => Number(p.line.debit || 0) > 0).map(p => String(p.accountCode));
+            const creditAccounts = peers.filter(p => Number(p.line.credit || 0) > 0).map(p => String(p.accountCode));
+            const resolveNames = (codes) => codes.map(c => {
+                const acc = flattenedAccounts.find(a => String(a['g/l code']) === String(c));
+                return acc ? `${c} - ${acc.name}` : c;
+            }).join(', ');
+
+            return {
+                Date: r.date ? new Date(Number(r.date) || r.date).toLocaleDateString() : '',
+                Description: r.desc || r.note || '',
+                'Debit Account': resolveNames(debitAccounts),
+                'Credit Account': resolveNames(creditAccounts),
+                Source: r.source || '',
+                Debit: Number(r.debit || 0),
+                Credit: Number(r.credit || 0),
+            }
+        });
+
+        const compInfo = { name: companyRecord?.name || 'Enterprise' };
+        const dRange = { startDate: fromDate, endDate: toDate };
+        generateExcel([
+            ...rows,
+        ], [
+            { name: 'Date', reference: 'Date' },
+            { name: 'Description', reference: 'Description' },
+            { name: 'Debit Account', reference: 'Debit Account' },
+            { name: 'Credit Account', reference: 'Credit Account' },
+            { name: 'Source', reference: 'Source' },
+            { name: 'Debit', reference: 'Debit', numeric: true },
+            { name: 'Credit', reference: 'Credit', numeric: true },
+        ], compInfo, dRange, `Ledger_${glCode}`);
+    }
+
+    const exportDrillDownToPDF = (accountCode) => {
+        const glCode = String(accountCode || drillDown?.glCode || '')
+        const rows = (rawLedger?.[glCode] || []).map(r => ({
+            date: r.date ? new Date(Number(r.date) || r.date).toLocaleDateString() : '',
+            desc: r.desc || r.note || '',
+            source: r.source || '',
+            debit: Number(r.debit || 0),
+            credit: Number(r.credit || 0),
+        }));
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 12;
+        let y = 16;
+        const fmt = (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.text(`${companyRecord?.name || 'Enterprise'} - Ledger ${glCode}`, margin, y);
+        y += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`Period: ${fromDate} to ${toDate}`, margin, y);
+        y += 8;
+
+        // header
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('Date', margin, y);
+        doc.text('Description', margin + 30, y);
+        doc.text('Debit Account', margin + 30 + 60, y);
+        doc.text('Credit Account', margin + 30 + 160, y);
+        doc.text('Source', margin + 260, y);
+        doc.text('Debit', pageWidth - margin - 40, y, { align: 'right' });
+        doc.text('Credit', pageWidth - margin, y, { align: 'right' });
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+
+        let totalD = 0, totalC = 0;
+        rows.forEach((r) => {
+            if (y > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); y = 20; }
+            const descLines = doc.splitTextToSize(String(r.desc || ''), 80);
+            doc.text(r.date || '', margin, y);
+            doc.text(descLines, margin + 30, y);
+            // debit/credit account text
+            const key = `${r.source || ''}:${r.id || r.sourceId || r.date || ''}`;
+            const globalMap = {};
+            Object.keys(rawLedger || {}).forEach(accCode => {
+                (rawLedger[accCode] || []).forEach(line => {
+                    const k = `${line.source || ''}:${line.id || line.sourceId || line.date || ''}`;
+                    if (!globalMap[k]) globalMap[k] = [];
+                    globalMap[k].push({ accountCode: accCode, line });
+                })
+            })
+            const peers = globalMap[key] || [];
+            const debitAccounts = peers.filter(p => Number(p.line.debit || 0) > 0).map(p => String(p.accountCode));
+            const creditAccounts = peers.filter(p => Number(p.line.credit || 0) > 0).map(p => String(p.accountCode));
+            const resolveNames = (codes) => codes.map(c => {
+                const acc = flattenedAccounts.find(a => String(a['g/l code']) === String(c));
+                return acc ? `${c} - ${acc.name}` : c;
+            }).join(', ');
+            doc.text(resolveNames(debitAccounts), margin + 30 + 60, y);
+            doc.text(resolveNames(creditAccounts), margin + 30 + 160, y);
+            doc.text(r.source || '', margin + 260, y);
+            doc.text(fmt(r.debit), pageWidth - margin - 40, y, { align: 'right' });
+            doc.text(fmt(r.credit), pageWidth - margin, y, { align: 'right' });
+            y += Math.max(5, descLines.length * 4);
+            totalD += r.debit || 0;
+            totalC += r.credit || 0;
+        });
+
+        // totals
+        if (y > doc.internal.pageSize.getHeight() - 30) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOTALS', margin + 30, y + 6);
+        doc.text(fmt(totalD), pageWidth - margin - 40, y + 6, { align: 'right' });
+        doc.text(fmt(totalC), pageWidth - margin, y + 6, { align: 'right' });
+
+        doc.save(`Ledger_${glCode}.pdf`);
+    }
+
     // COA Form State
     const [editAcc, setEditAcc] = useState(null)
     const [coaForm, setCoaForm] = useState({
@@ -1649,7 +1778,11 @@ const Journals = () => {
                             <h2>Ledger Drill-Down</h2>
                             <p className="dd-subtitle">G/L {drillDown.glCode} &mdash; {drillDown.accountName} &mdash; <span className="dd-side-label">{sideLabel}</span></p>
                         </div>
-                        <button className="journals-modal-close" onClick={() => setDrillDown(null)}><MdClose /></button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button className="j-btn-secondary" onClick={() => exportDrillDownToExcel(drillDown.glCode)} disabled={(rawLedger?.[drillDown.glCode] || []).length === 0} title="Export ledger to Excel"><FaFileExcel /></button>
+                            <button className="j-btn-secondary" onClick={() => exportDrillDownToPDF(drillDown.glCode)} disabled={(rawLedger?.[drillDown.glCode] || []).length === 0} title="Export ledger to PDF"><MdPictureAsPdf /></button>
+                            <button className="journals-modal-close" onClick={() => setDrillDown(null)}><MdClose /></button>
+                        </div>
                     </div>
                     <div className="journals-modal-body dd-body">
                         {isDrillDownLoading ? (
@@ -2543,7 +2676,7 @@ const Journals = () => {
                                 <div className="unbalanced-list">
                                     <div className="unbalanced-header">
                                         <h3>Suspected Imbalances ({unbalancedDocs.length})</h3>
-                                        <button className="j-btn-secondary btn-sm" onClick={exportToPDF}><MdFileDownload /> Export Report</button>
+                                        <button className="j-btn-secondary btn-sm" onClick={exportToPDF}><MdPictureAsPdf /> Export Report</button>
                                     </div>
                                     <p className="analysis-note">The following transaction groups are mathematically unbalanced:</p>
                                     <div className="analysis-table-wrapper">
@@ -2608,7 +2741,7 @@ const Journals = () => {
                     <div className="coa-actions-group">
                         <div className="coa-export-btns">
                             <button className="j-btn-secondary" onClick={exportToExcel} title="Export to Excel">
-                                <MdFileDownload /> Excel
+                                <FaFileExcel /> Excel
                             </button>
                             <button className="j-btn-secondary" onClick={exportToPDF} title="Export to PDF">
                                 <MdPictureAsPdf /> PDF
@@ -2842,7 +2975,7 @@ const Journals = () => {
                             <p className="report-period">Period: {new Date(fromDate).toLocaleDateString()} — {new Date(toDate).toLocaleDateString()}</p>
                         </div>
                         <div className="report-btns">
-                            <button className="j-btn-secondary" onClick={exportToExcel}><MdFileDownload /> Excel</button>
+                            <button className="j-btn-secondary" onClick={exportToExcel}><FaFileExcel /> Excel</button>
                             <button className="j-btn-primary" onClick={exportToPDF}><MdPictureAsPdf /> PDF Report</button>
                         </div>
                     </div>
