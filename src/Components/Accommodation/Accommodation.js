@@ -1,4 +1,5 @@
 import './Accommodation.css'
+import './AccommodationEnterprise.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal'
 import heic2any from "heic2any";
 import { useState, useEffect, useContext, use } from 'react'
@@ -48,6 +49,7 @@ const Accommodation = () => {
     const [accommodationApprovals, setAccommodationApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
 
+    
     const [accommodationStatus, setAccommodationStatus] = useState('Post Accommodation')
     const [fillmode, setFillMode] = useState('')
     const [customerStatus, setCustomerStatus] = useState('Add Customer')
@@ -60,6 +62,31 @@ const Accommodation = () => {
     const [curPaymentAmount, setCurPaymentAmount] = useState(0)
     const [payPoints, setPayPoints] = useState({})
     const [rooms, setRooms] = useState({})
+
+    // ==========================================
+    // HOSPITALITY DASHBOARD STATES
+    // ==========================================
+
+    const [roomBoard, setRoomBoard] = useState({})
+    const [occupancyStats, setOccupancyStats] = useState({
+        totalRooms: 0,
+        occupiedRooms: 0,
+        availableRooms: 0,
+        reservedRooms: 0,
+        dirtyRooms: 0,
+        occupancyRate: 0,
+        expectedCheckIns: 0,
+        expectedCheckOuts: 0
+    })
+
+    const [roomStatusFilter, setRoomStatusFilter] = useState('all')
+    // ==================================
+    // GROUP BOOKINGS
+    // ==================================
+
+    const [selectedRooms, setSelectedRooms] =useState([])
+    const [bookingType, setBookingType] =useState('individual')
+    const [groupName, setGroupName] =useState('')
 
     const defaultCustomerFields = {
         i_d: '',
@@ -113,6 +140,79 @@ const Accommodation = () => {
             createdAt: Date.now()
         }
     }
+    const toggleRoomSelection = (
+    roomName
+) => {
+
+    setSelectedRooms(prev => {
+
+            const exists =
+                prev.includes(roomName)
+
+            if (exists) {
+
+                return prev.filter(
+                    r => r !== roomName
+                )
+
+            }
+
+            return [
+                ...prev,
+                roomName
+            ]
+
+        })
+
+    }
+
+    const isRoomAvailable = (
+        roomName,
+        arrivalDate,
+        departureDate
+    ) => {
+
+        const arrival =
+            new Date(arrivalDate)
+                .getTime()
+
+        const departure =
+            new Date(departureDate)
+                .getTime()
+
+        const conflictingBooking =
+            accommodations.find(acc => {
+
+                const rooms =
+                    acc.roomNos ||
+                    [acc.roomNo]
+
+                if (
+                    !rooms.includes(roomName)
+                ) {
+                    return false
+                }
+
+                const bookedArrival =
+                    new Date(
+                        acc.arrivalDate
+                    ).getTime()
+
+                const bookedDeparture =
+                    new Date(
+                        acc.departureDate
+                    ).getTime()
+
+                return (
+                    arrival <= bookedDeparture &&
+                    departure >= bookedArrival
+                )
+
+            })
+
+        return !conflictingBooking
+
+    }
 
     useEffect(() => {
         storePath('accommodations')
@@ -136,6 +236,126 @@ const Accommodation = () => {
             setRooms(rms)
         }
     },[products])
+
+    useEffect(() => {
+
+        const today =
+            new Date(Date.now())
+                .toISOString()
+                .slice(0, 10)
+
+        const board = {}
+
+        const roomProducts = products.filter(
+            (p) => p.category === 'room'
+        )
+
+        roomProducts.forEach((room) => {
+
+            board[room.name] = {
+                roomNo: room.name,
+                status: 'Available',
+                customerId: '',
+                arrivalDate: '',
+                departureDate: '',
+                amount: Number(room.salesPrice || 0)
+            }
+
+        })
+
+        accommodations.forEach((acc) => {
+
+            const roomName = acc.roomNo
+
+            if (!board[roomName]) return
+
+            const arrival =
+                new Date(acc.arrivalDate)
+                    .getTime()
+
+            const departure =
+                new Date(acc.departureDate)
+                    .getTime()
+
+            const now =
+                new Date(today)
+                    .getTime()
+
+            if (
+                now >= arrival &&
+                now <= departure
+            ) {
+                board[roomName].status = 'Occupied'
+                board[roomName].customerId =
+                    acc.customerId
+
+                board[roomName].arrivalDate =
+                    acc.arrivalDate
+
+                board[roomName].departureDate =
+                    acc.departureDate
+            }
+
+            else if (
+                arrival > now
+            ) {
+                board[roomName].status =
+                    'Reserved'
+            }
+
+        })
+
+        const rooms =
+            Object.values(board)
+
+        const occupied =
+            rooms.filter(
+                r => r.status === 'Occupied'
+            ).length
+
+        const reserved =
+            rooms.filter(
+                r => r.status === 'Reserved'
+            ).length
+
+        const available =
+            rooms.filter(
+                r => r.status === 'Available'
+            ).length
+
+        const expectedCheckIns =
+            accommodations.filter(acc =>
+                acc.arrivalDate === today
+            ).length
+
+        const expectedCheckOuts =
+            accommodations.filter(acc =>
+                acc.departureDate === today
+            ).length
+
+        setOccupancyStats({
+            totalRooms: rooms.length,
+            occupiedRooms: occupied,
+            availableRooms: available,
+            reservedRooms: reserved,
+            dirtyRooms: 0,
+            occupancyRate:
+                rooms.length
+                    ? Number(
+                        (
+                            occupied /
+                            rooms.length
+                        ) * 100
+                    ).toFixed(1)
+                    : 0,
+            expectedCheckIns,
+            expectedCheckOuts
+        })
+
+        setRoomBoard(board)
+
+    }, [products, accommodations])
+
 
     useEffect(() => {
         const payPoints = paymentMethods.reduce((obj, method) => {
@@ -391,6 +611,66 @@ const Accommodation = () => {
         }
 
         const newAccommodations = [newAccommodation, ...accommodations]
+        const roomsToCheck =
+            selectedRooms.length
+                ? selectedRooms
+                : [newAccommodation.roomNo]
+
+        const unavailableRooms =
+            roomsToCheck.filter(room =>
+
+                !isRoomAvailable(
+                    room,
+                    newAccommodation.arrivalDate,
+                    newAccommodation.departureDate
+                )
+
+            )
+
+        if (
+            unavailableRooms.length
+        ) {
+
+            setAlertState('error')
+            setAlert(`Room already booked:
+                ${unavailableRooms.join(', ')}`)
+            setAlertTimeout(4000)
+            
+
+            return
+
+        }
+        newAccommodation.roomNos =
+            selectedRooms.length
+                ? selectedRooms
+                : [newAccommodation.roomNo]
+
+        newAccommodation.bookingType =
+            bookingType
+
+        newAccommodation.groupName =
+            groupName
+        const totalAmount =selectedRooms.reduce(
+            (sum, roomName) => {
+
+                const room =
+                    products.find(
+                        p =>
+                        p.name === roomName
+                    )
+
+                return (
+                    sum +
+                    Number(
+                        room?.salesPrice || 0
+                    )
+                )
+
+            },
+            0
+        )
+        newAccommodation.accommodationAmount =totalAmount
+
         const resps = await fetchServer("POST", {
             database: company,
             collection: "Accommodations",
@@ -1273,7 +1553,66 @@ const Accommodation = () => {
                             <div name='customers' className={salesOpts === 'customers' ? 'slopts' : ''}>Customers</div>
                             <div name='accommodation' className={salesOpts === 'accommodation' ? 'slopts' : ''}>Accommodation</div>
                         </div>}
+                        {salesOpts === 'accommodation' && <div className='hc-booking-type'>
 
+                            <label>
+
+                                Booking Type
+
+                            </label>
+
+                            <select
+                                value={bookingType}
+                                onChange={(e)=>
+
+                                    setBookingType(
+                                        e.target.value
+                                    )
+
+                                }
+                            >
+
+                                <option value='individual'>
+                                    Individual
+                                </option>
+
+                                <option value='family'>
+                                    Family
+                                </option>
+
+                                <option value='corporate'>
+                                    Corporate
+                                </option>
+
+                                <option value='group'>
+                                    Group
+                                </option>
+
+                            </select>
+
+                        </div>}
+                        {
+                            bookingType !==
+                            'individual' && salesOpts === 'accommodation' &
+
+                            <input
+
+                                className='hc-input'
+
+                                placeholder='Group Name'
+
+                                value={groupName}
+
+                                onChange={(e)=>
+
+                                    setGroupName(
+                                        e.target.value
+                                    )
+
+                                }
+
+                            />
+                        }
                         {salesOpts === 'accommodation' && fillmode === '' && <div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
@@ -1337,7 +1676,7 @@ const Accommodation = () => {
                                     })}
                                 </datalist>
                             </div>
-                            <div className='inpcov'>
+                            {/* <div className='inpcov'>
                                 <div>Room Number</div>
                                 <select
                                     className='forminp'
@@ -1354,6 +1693,62 @@ const Accommodation = () => {
                                         return <option key={room} value={room}>{`ROOM ${room}`}</option>
                                     })}
                                 </select>
+                            </div> */}
+                            <div className='hc-room-selector'>
+
+                                {
+
+                                    products
+
+                                    .filter(
+                                        p =>
+                                        p.category === 'room'
+                                    )
+
+                                    .map(room => {
+
+                                        const selected =
+                                            selectedRooms.includes(
+                                                room.name
+                                            )
+
+                                        return (
+
+                                            <div
+
+                                                key={room.name}
+
+                                                className={`
+                                                    hc-room-pill
+                                                    ${
+                                                        selected
+                                                        ?
+                                                        'active'
+                                                        :
+                                                        ''
+                                                    }
+                                                `}
+
+                                                onClick={()=>
+
+                                                    toggleRoomSelection(
+                                                        room.name
+                                                    )
+
+                                                }
+
+                                            >
+
+                                                {room.name}
+
+                                            </div>
+
+                                        )
+
+                                    })
+
+                                }
+
                             </div>
                             <div className='inpcov'>
                                 <div>Amount</div>

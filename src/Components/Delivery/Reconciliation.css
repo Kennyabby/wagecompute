@@ -1,0 +1,252 @@
+/* Inventory Reconciliation feature: AddProduct additions + ReconciliationReview dialog */
+
+.reconcile-date-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    flex-wrap: wrap;
+}
+
+.reconcile-date-row label {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.reconcile-date-row input[type="date"] {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.reconcile-loading-tag,
+.reconcile-locked-tag,
+.reconcile-readonly-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+
+.reconcile-loading-tag {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.reconcile-locked-tag {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.reconcile-readonly-tag {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.reconcile-image-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 10px;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+}
+
+.reconcile-image-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.reconcile-image-thumb {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    text-decoration: none;
+}
+
+.reconcile-image-thumb.saved {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.reconcile-image-thumb.pending {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.reconcile-upload-btn {
+    align-self: flex-start;
+    background: #2980b9;
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+/* ================= Review Dialog ================= */
+
+.reconcile-review-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 6000;
+}
+
+.reconcile-review-modal {
+    background: #fff;
+    color: #1f2937;
+    width: min(1100px, 95vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 10px;
+    padding: 16px 20px;
+}
+
+.reconcile-review-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.reconcile-review-header h3 {
+    flex: 1;
+    margin: 0;
+}
+
+.reconcile-review-empty {
+    padding: 20px;
+    text-align: center;
+    color: #6b7280;
+}
+
+.reconcile-review-grand-totals {
+    display: flex;
+    gap: 24px;
+    padding: 10px 14px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+
+.reconcile-review-location-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.reconcile-review-location-head {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 10px 14px;
+    background: #f3f4f6;
+    cursor: pointer;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+
+.reconcile-review-location-name {
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-right: 6px;
+}
+
+.reconcile-review-location-body {
+    padding: 12px 14px;
+}
+
+.reconcile-review-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.reconcile-review-actions button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.reconcile-review-actions button:hover {
+    background: #f3f4f6;
+}
+
+.reconcile-review-table-wrap {
+    overflow-x: auto;
+}
+
+.reconcile-review-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+.reconcile-review-table th,
+.reconcile-review-table td {
+    border: 1px solid #e5e7eb;
+    padding: 4px 8px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.reconcile-review-table th:first-child,
+.reconcile-review-table td:first-child {
+    text-align: left;
+}
+
+.reconcile-review-table tr.diff-positive td {
+    background: #fefce8;
+}
+
+.reconcile-review-table tr.diff-negative td {
+    background: #fef2f2;
+}
+
+.reconcile-shortage-draft {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.reconcile-shortage-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 0;
+}
+
+.reconcile-shortage-row input {
+    width: 120px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.reconcile-shortage-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.reconcile-shortage-actions button {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    background: #2980b9;
+    color: #fff;
+}

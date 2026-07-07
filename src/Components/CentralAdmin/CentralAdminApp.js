@@ -1,8 +1,8 @@
 import './CentralAdmin.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-const SERVER = "https://api.epxcentral.com"
-// const SERVER = "http://localhost:3001"
+// Same single source of truth as the tenant app (App.js) — REACT_APP_API_URL.
+const SERVER = process.env.REACT_APP_API_URL || "https://api.epxcentral.com"
 const ADMIN_TOKEN_KEY = 'central-admin-access-token'
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
@@ -99,9 +99,14 @@ const CentralAdminApp = () => {
     settings: { defaultFreeTrialDays: 14 },
   })
   const [loginForm, setLoginForm] = useState({
-    username: 'admin',
-    password: 'admin123',
+    username: '',
+    password: '',
   })
+  const [migrationTenant, setMigrationTenant] = useState('')
+  const [migrationRunAll, setMigrationRunAll] = useState(false)
+  const [migrationDropOldIndexes, setMigrationDropOldIndexes] = useState(false)
+  const [migrationRunning, setMigrationRunning] = useState(false)
+  const [migrationOutcome, setMigrationOutcome] = useState(null)
   const [planForm, setPlanForm] = useState({
     key: '',
     name: '',
@@ -388,8 +393,13 @@ const CentralAdminApp = () => {
       storeAdminToken(response.accessToken)
     }
     setAdminUser(response.admin || null)
-    setActiveTab('overview')
-    setNotice('success', 'Central admin login successful.')
+    if (response.mustChangePassword) {
+      setActiveTab('settings')
+      setNotice('error', 'Password change required before continuing.')
+    } else {
+      setActiveTab('overview')
+      setNotice('success', 'Central admin login successful.')
+    }
     await loadSnapshot()
     setIsBusy(false)
   }
@@ -441,6 +451,32 @@ const CentralAdminApp = () => {
     setNotice('success', response.mess || 'Admin password changed successfully.')
     await checkAuth()
     setIsBusy(false)
+  }
+
+  const handleRunDocumentNumberingMigration = async () => {
+    if (!migrationRunAll && !migrationTenant) {
+      setNotice('error', 'Select a tenant, or check "Run for all tenants".')
+      return
+    }
+    if (migrationDropOldIndexes && !window.confirm(
+      'Dropping old indexes is a one-way step. Only do this once you have confirmed the new app build (with clientTxnId/documentNo) is live for the affected tenant(s). Continue?'
+    )) {
+      return
+    }
+    setMigrationRunning(true)
+    setMigrationOutcome(null)
+    const response = await requestAdmin('POST', 'admin/maintenance/run-document-numbering-migration', {
+      ...(migrationRunAll ? { all: true } : { database: migrationTenant }),
+      dropOldIndexes: migrationDropOldIndexes,
+    })
+    setMigrationRunning(false)
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || 'Migration failed.')
+      setMigrationOutcome({ ok: false, mess: response.mess, log: response.log || [] })
+      return
+    }
+    setNotice('success', 'Migration completed.')
+    setMigrationOutcome({ ok: true, results: response.results || [], log: response.log || [] })
   }
 
   const handleManualField = (event) => {
@@ -759,9 +795,6 @@ const CentralAdminApp = () => {
             </label>
             <button type='submit' disabled={isBusy}>{isBusy ? 'Signing in...' : 'Sign in to Central Admin'}</button>
           </form>
-          <div className='ca-default-cred'>
-            Default bootstrap credentials: <strong>admin</strong> / <strong>admin123</strong>
-          </div>
         </div>
       </div>
     )
@@ -807,6 +840,7 @@ const CentralAdminApp = () => {
             ['health', 'System Health', '🩺'],
             ['subscriptions', 'Subscriptions', '💳'],
             ['support', 'Help & Support', '💬'],
+            ['maintenance', 'Maintenance', '🛠️'],
             ['settings', 'Settings', '⚙️'],
           ].map(([key, label, icon]) => (
             <button
@@ -845,7 +879,7 @@ const CentralAdminApp = () => {
         <header className='ca-header'>
           <div>
             <div className='ca-page-kicker'>Central admin platform</div>
-            <h2>{activeTab === 'overview' ? 'Global operations view' : activeTab === 'tenants' ? 'Tenant estate' : activeTab === 'subscriptions' ? 'Subscriptions & billing' : 'Admin settings'}</h2>
+            <h2>{activeTab === 'overview' ? 'Global operations view' : activeTab === 'tenants' ? 'Tenant estate' : activeTab === 'subscriptions' ? 'Subscriptions & billing' : activeTab === 'maintenance' ? 'Maintenance & migrations' : 'Admin settings'}</h2>
             <p>Generated {formatDateTime(snapshot.generatedAt || Date.now())}</p>
           </div>
           <div className='ca-header-actions'>
@@ -1393,6 +1427,102 @@ const CentralAdminApp = () => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeTab === 'maintenance' && (
+          <>
+            <section className='ca-panel' style={{ marginBottom: 24 }}>
+              <div className='ca-panel-head'>
+                <h3>Document-numbering migration (Phase 2)</h3>
+              </div>
+              <div className='ca-panel-content'>
+                <p className='ca-panel-description'>
+                  Backfills a real, sequential documentNo and a clientTxnId idempotency key onto every existing
+                  Sales/Purchase/Expenses/Approvals/Departments/Positions/Accommodations/Rentals/Attendance/POSSessions/SessionManagers/InventoryTransactions
+                  record, and builds the new unique index that prevents duplicate postings. Safe to re-run — already-migrated
+                  records are left untouched, so this can be run repeatedly against live production data before the
+                  corresponding app update is published (each run just catches up anything created since the last run).
+                </p>
+
+                <label className='ca-checkbox-row'>
+                  <input
+                    type='checkbox'
+                    checked={migrationRunAll}
+                    onChange={(e) => setMigrationRunAll(e.target.checked)}
+                  />
+                  <span>Run for all tenants</span>
+                </label>
+
+                {!migrationRunAll && (
+                  <div className='ca-form-grid' style={{ padding: 0, marginTop: 16 }}>
+                    <label>
+                      <span>Tenant</span>
+                      <select value={migrationTenant} onChange={(e) => setMigrationTenant(e.target.value)}>
+                        <option value=''>Select a tenant…</option>
+                        {snapshot.tenants.map((t) => (
+                          <option key={t.database} value={t.database}>{t.companyName}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+
+                <label className='ca-checkbox-row ca-checkbox-row-warning'>
+                  <input
+                    type='checkbox'
+                    checked={migrationDropOldIndexes}
+                    onChange={(e) => setMigrationDropOldIndexes(e.target.checked)}
+                  />
+                  <span>Also drop old indexes (one-way — only after the new app build is confirmed live)</span>
+                </label>
+
+                <button
+                  type='button'
+                  className='ca-primary-btn'
+                  style={{ marginTop: 20, marginLeft: 0 }}
+                  disabled={migrationRunning}
+                  onClick={handleRunDocumentNumberingMigration}
+                >
+                  {migrationRunning ? 'Running…' : 'Run migration'}
+                </button>
+
+                {migrationOutcome && (
+                  <div className='ca-migration-outcome'>
+                    <h4>{migrationOutcome.ok ? 'Results' : 'Error'}</h4>
+                    {!migrationOutcome.ok && <p className='ca-error-text'>{migrationOutcome.mess}</p>}
+                    {migrationOutcome.ok && migrationOutcome.results.map((tenantResult) => (
+                      <div key={tenantResult.database} className='ca-migration-tenant-result'>
+                        <strong>{tenantResult.database}</strong>
+                        <div className='ca-table-wrap'>
+                          <table className='ca-table wide'>
+                            <thead>
+                              <tr><th>Collection</th><th>Docs</th><th>clientTxnId backfilled</th><th>documentNo backfilled</th><th>Counter</th><th>Old index dropped</th></tr>
+                            </thead>
+                            <tbody>
+                              {tenantResult.results.map((r, idx) => (
+                                <tr key={`${r.collection}-${idx}`}>
+                                  <td>{r.collection}</td>
+                                  <td>{r.docs ?? '—'}</td>
+                                  <td>{r.backfilledTxnId ?? '—'}</td>
+                                  <td>{r.backfilledDocNo ?? '—'}</td>
+                                  <td>{r.counterAdvancedTo ?? '—'}</td>
+                                  <td>{r.droppedOldIndex ? <span className='ca-badge active'>Yes</span> : <span className='ca-badge unconfigured'>No</span>}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                    <details className='ca-raw-log'>
+                      <summary>Raw log</summary>
+                      <pre>{(migrationOutcome.log || []).join('\n')}</pre>
+                    </details>
+                  </div>
+                )}
               </div>
             </section>
           </>

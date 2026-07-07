@@ -716,6 +716,7 @@ const Sales = () => {
                             bankSales: 0,
                             debt: 0,
                             unAccountedSales: 0,
+                            inventoryShortageDue: 0,
                             allPayPoints,
                             postingDates: []
                         }
@@ -851,9 +852,10 @@ const Sales = () => {
 
                                     totalWrhTransactions[wh].totalSales += (tbankSales + tcashSales)
                                     if (index === wrhSessionOrders.length - 1) {
-                                        const { totalSalesAmount, debtDue, unAccountedSales } = session
+                                        const { totalSalesAmount, debtDue, unAccountedSales, inventoryShortageDue } = session
                                         totalWrhTransactions[wh].debt += Number(debtDue)
                                         totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
+                                        totalWrhTransactions[wh].inventoryShortageDue += Number(inventoryShortageDue || 0)
 
                                         totalWrhTransactions[wh].totalSales += Number(unAccountedSales || 0)
                                     }
@@ -874,6 +876,7 @@ const Sales = () => {
                             saleRecord.bankSales = totalWrhTransactions[wh].bankSales
                             saleRecord.debt = totalWrhTransactions[wh].debt
                             saleRecord.unAccountedSales = totalWrhTransactions[wh].unAccountedSales
+                            saleRecord.inventoryShortageDue = totalWrhTransactions[wh].inventoryShortageDue
                             saleRecord.shortage = ''
                             saleRecord.debtRecovered = ''
                             saleRecord.salesPoint = wh
@@ -1097,6 +1100,7 @@ const Sales = () => {
                             bankSales: 0,
                             debt: 0,
                             unAccountedSales: 0,
+                            inventoryShortageDue: 0,
                             allPayPoints,
                             postingDates: []
                         }
@@ -1224,9 +1228,10 @@ const Sales = () => {
 
                                     totalWrhTransactions[wh].totalSales += (tbankSales + tcashSales)
                                     if (index === wrhSessionOrders.length - 1) {
-                                        const { totalSalesAmount, debtDue, unAccountedSales } = session
+                                        const { totalSalesAmount, debtDue, unAccountedSales, inventoryShortageDue } = session
                                         totalWrhTransactions[wh].debt += Number(debtDue)
                                         totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
+                                        totalWrhTransactions[wh].inventoryShortageDue += Number(inventoryShortageDue || 0)
 
                                         totalWrhTransactions[wh].totalSales += Number(unAccountedSales || 0)
                                     }
@@ -1247,6 +1252,7 @@ const Sales = () => {
                             saleRecord.bankSales = totalWrhTransactions[wh].bankSales
                             saleRecord.debt = totalWrhTransactions[wh].debt
                             saleRecord.unAccountedSales = totalWrhTransactions[wh].unAccountedSales
+                            saleRecord.inventoryShortageDue = totalWrhTransactions[wh].inventoryShortageDue
                             saleRecord.shortage = ''
                             saleRecord.debtRecovered = ''
                             saleRecord.salesPoint = wh
@@ -1393,6 +1399,7 @@ const Sales = () => {
         let totalSalesDebt = 0
         let totalShortage = 0
         let totalBankSales = 0
+        let totalInventoryShortageDue = 0
         const deliverySessions = []
         const salesSessions = []
         let productRequiredCount = 0
@@ -1403,6 +1410,7 @@ const Sales = () => {
             totalSalesDebt += Number(field.debt) - Number(field.unAccountedSales || 0)
             totalShortage += Number(field.shortage)
             totalBankSales += Number(field.bankSales)
+            totalInventoryShortageDue += Number(field.inventoryShortageDue || 0)
             if ((field.debt || field.shortage) && !field.unAccountedSales) {
                 productRequiredCount += 1
             }
@@ -1428,6 +1436,7 @@ const Sales = () => {
             totalDebt,
             totalSalesDebt,
             totalShortage,
+            totalInventoryShortageDue,
             deliverySessions,
             salesSessions,
             approvedBy: companyRecord?.emailid,

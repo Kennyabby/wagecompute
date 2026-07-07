@@ -3,10 +3,8 @@ import './Delivery.css'
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import '../PointOfSales/PointOfSales.css'
-import html2pdf from 'html2pdf.js';
 import { MdShoppingBasket } from 'react-icons/md';
 import TransactionReports from '../Shared/TransactionReports/TransactionReports';
-import Notify from '../../Resources/Notify/Notify';
 import {
     loadDeliverySnapshot,
     saveDeliverySnapshot,
@@ -21,6 +19,11 @@ import {
     putInventoryTransactions,
 } from '../../Resources/offlineDb';
 import { syncPendingChanges } from '../../Resources/offlineSync';
+import { getTerminalId, generateClientTxnId } from '../../Resources/clientTxnId';
+import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
+import { exportReconciliationExcel, exportReconciliationPDF } from '../../utils/reconciliationExport';
+import ReconciliationReview from './ReconciliationReview';
+import './Reconciliation.css';
 
 const Delivery = () => {
     // =========================================
@@ -54,8 +57,8 @@ const Delivery = () => {
     const [posSalesDifference, setPosSalesDifference] = useState({})
     const [countedStockList, setCountedStockList] = useState([])
     const [productAdd, setProductAdd] = useState(false)
+    const [reviewOpen, setReviewOpen] = useState(false)
     const [addingProducts, setAddingProducts] = useState(false)
-    const [isProductView, setIsProductView] = useState(false)
     const [startSession, setStartSession] = useState(false);
     const [endSession, setEndSession] = useState(false);
     const [sessions, setSessions] = useState(null)
@@ -1685,72 +1688,6 @@ const Delivery = () => {
         }
     };
 
-    const compareStock = async (countedStockList) => {
-        let stocksDifference = {};
-        let stocksPositiveDifference = {};
-        let stocksNegativeDifference = {};
-        stocksPositiveDifference['count'] = 0
-        stocksNegativeDifference['count'] = 0
-        let differenceSummary = {};
-        Object.keys(countedStockList).forEach((entryWrh) => {
-            stocksDifference[entryWrh] = []
-            stocksPositiveDifference[entryWrh] = []
-            differenceSummary[entryWrh] = {
-                totalBaseQuantity: 0,
-                totalCountedQuantity: 0,
-                totalQtyDifference: 0,
-                totalCostDifference: 0,
-                totalSalesDifference: 0
-            }
-            for (const entry of countedStockList[entryWrh]) {
-                const product = products.find((p) => p.i_d === entry.productId);
-                if (
-                    product
-                    && wrhs.find((wh) => { return wh.name === entryWrh })?.productCategories?.includes(product.category)
-                ) {
-                    let countBaseQuantity = 0;
-                    const { cost, quantity } =
-                        product.locationStock?.[entryWrh] || { cost: 0, quantity: 0 };
-                    countBaseQuantity = Number(quantity || 0);
-                    const salesPrice = (entryWrh === 'vip' ? Number(entry.vipPrice || entry.salesPrice || 0) : Number(entry.salesPrice || 0))
-                    const qtyDifference = Number(entry.countedQuantity) - (countBaseQuantity > 0 ? countBaseQuantity : 0)
-                    const costDifference = entry.costPrice * qtyDifference
-                    const salesDifference = qtyDifference * salesPrice
-                    const stockDiff = {
-                        productId: entry.productId,
-                        name: entry.name,
-                        wrh: entryWrh,
-                        salesPrice: salesPrice,
-                        costPrice: entry.costPrice,
-                        vipPrice: entry.vipPrice,
-                        salesUom: entry.salesUom,
-                        baseUom: entry.baseUom,
-                        countedQuantity: Number(entry.countedQuantity || 0),
-                        baseQuantity: countBaseQuantity,
-                        qtyDifference,
-                        costDifference,
-                        salesDifference
-                    }
-                    stocksDifference[entryWrh].push(stockDiff);
-                    if (qtyDifference > 0) {
-                        stocksPositiveDifference[entryWrh].push(stockDiff)
-                        stocksPositiveDifference['count'] += 1
-                    } else if (qtyDifference < 0) {
-                        stocksNegativeDifference['count'] += 1
-                    }
-                    differenceSummary[entryWrh].totalBaseQuantity += Number(countBaseQuantity)
-                    differenceSummary[entryWrh].totalCountedQuantity += Number(entry.countedQuantity)
-                    differenceSummary[entryWrh].totalQtyDifference += qtyDifference
-                    differenceSummary[entryWrh].totalCostDifference += costDifference
-                    differenceSummary[entryWrh].totalSalesDifference += salesDifference
-                }
-            }
-        })
-        // console.log('Stock Difference:',stocksDifference)
-        // console.log('Difference Summary:',differenceSummary)
-        return { stocksPositiveDifference, stocksNegativeDifference, stocksDifference, differenceSummary };
-    }
-
     const printReceipt = (orderData) => {
         const receiptContent = `
             <div class="receipt">
@@ -2310,8 +2247,20 @@ const Delivery = () => {
         const year = date.getFullYear().toString().slice(-2);
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
-        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        return `ORD-${year}${month}${day}-${random}`;
+
+        // Per-terminal identifier + a strictly-incrementing per-terminal
+        // sequence (not a random 0-999 guess) — collision-proof across
+        // terminals and across orders created in quick succession, fully
+        // offline, with no server round-trip needed to generate it.
+        const terminalId = getTerminalId();
+        const seqKey = 'wc-order-seq';
+        let nextSeq = 1;
+        try {
+            nextSeq = (parseInt(window.localStorage.getItem(seqKey), 10) || 0) + 1;
+            window.localStorage.setItem(seqKey, String(nextSeq));
+        } catch (e) { /* localStorage unavailable; fall back to seq=1 for this call */ }
+
+        return `ORD-${terminalId}-${year}${month}${day}-${String(nextSeq).padStart(6, '0')}`;
     };
 
     // =========================================
@@ -2323,28 +2272,27 @@ const Delivery = () => {
             {productAdd && <AddProduct
                 companyRecord={companyRecord}
                 products={products}
-                productAdd={productAdd}
                 setProductAdd={setProductAdd}
                 uoms={uoms}
                 categories={categories}
                 wrhs={wrhs}
-                isProductView={isProductView}
-                setIsProductView={setIsProductView}
-                compareStock={compareStock}
                 countedStockList={countedStockList}
                 setCountedStockList={setCountedStockList}
-                curSession={curSession}
-                getDate={getDate}
                 addingProducts={addingProducts}
                 setAddingProducts={setAddingProducts}
                 setAlert={setAlert}
                 setAlertState={setAlertState}
                 setAlertTimeout={setAlertTimeout}
-                setActionMessage={setActionMessage}
-                alert={alert}
-                alertState={alertState}
-                alertTimeout={alertTimeout}
-                actionMessage={actionMessage}
+            />}
+            {reviewOpen && <ReconciliationReview
+                companyRecord={companyRecord}
+                getEmployeeName={getEmployeeName}
+                allSessions={allSessions}
+                allDeliverySessions={allDeliverySessions}
+                setReviewOpen={setReviewOpen}
+                setAlert={setAlert}
+                setAlertState={setAlertState}
+                setAlertTimeout={setAlertTimeout}
             />}
             {viewSesions ?
                 <DeliveryDashboard
@@ -2375,6 +2323,7 @@ const Delivery = () => {
                     allSessionOrders={allSessionOrders}
                     getPosOrders={getPosOrders}
                     setProductAdd={setProductAdd}
+                    setReviewOpen={setReviewOpen}
                     getSessionSales={getSessionSales}
                     setAlertState={setAlertState}
                     setAlert={setAlert}
@@ -2709,44 +2658,39 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
 };
 
 const AddProduct = ({
-    products, productAdd, setProductAdd, categories, uoms, wrhs, isProductView, wrh,
-    setIsProductView, compareStock, countedStockList, setCountedStockList, curSession,
-    getDate, companyRecord, addingProducts, setAddingProducts, setPostedProducts,
-    setAlertState, setAlert, setAlertTimeout, setActionMessage, alert, alertState, alertTimeout, actionMessage
+    products, setProductAdd, categories, uoms, wrhs,
+    countedStockList, setCountedStockList,
+    companyRecord, addingProducts, setAddingProducts,
+    setAlertState, setAlert, setAlertTimeout,
 }) => {
+    const { fetchServer, server, company, allowBacklogs } = useContext(ContextProvider)
+    const isAdmin = companyRecord?.status === 'admin'
+    const canBacklog = isAdmin || allowBacklogs
+    const todayStr = new Date().toISOString().slice(0, 10)
+
     const [category, setCategory] = useState('all')
-    const [wrh1, setWrh1] = useState(isProductView ? Object.keys(countedStockList)[0] : (wrhs.find((wr) => { return !wr.purchase })?.name || 'default'))
-    const [totalSalesAmount, setTotalSalesAmount] = useState(0)
-    const [totalAmount, setTotalAmount] = useState(0)
-    const [countResult, setCountResult] = useState({})
-    const targetRef = useRef(null)
+    const [wrh1, setWrh1] = useState(wrhs.find((wr) => { return !wr.purchase })?.name || 'default')
+    const [postingDate, setPostingDate] = useState(todayStr)
+    const [reconciliationRecord, setReconciliationRecord] = useState(null)
+    const [loadingRecord, setLoadingRecord] = useState(false)
+    const [pendingImages, setPendingImages] = useState({})
+    const [uploadingImage, setUploadingImage] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const [exporting, setExporting] = useState(false)
 
-    const printToPDF = () => {
-        const element = targetRef.current;
-        const options = {
-            margin: 0.1,
-            filename: `PRODUCT DETAILS.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
-        };
-        html2pdf().set(options).from(element).save();
-    };
+    const currentLocationRecord = reconciliationRecord?.locations?.find((loc) => loc.location === wrh1) || null
+    const isLocationLocked = !!currentLocationRecord?.locked
+    const isReadOnlyForUser = !!currentLocationRecord && !isAdmin
+    const savedImages = currentLocationRecord?.images || []
+    const pendingImagesForLoc = pendingImages[wrh1] || []
+    const entryLocked = isLocationLocked || isReadOnlyForUser
 
-    const resetSalesEntries = () => {
+    const buildFreshEntries = () => {
         const allEntries = {}
         const wrhEntries = [...products].map((product, index) => {
             const uom1 = uoms.filter((uom) => {
                 return uom.code === product.purchaseUom
             })
-
-            const purchaseWrh = wrhs.find((warehouse) => {
-                return warehouse.purchase
-            })
-            const { cost, quantity } = product.locationStock?.[purchaseWrh?.name] || { cost: 0, quantity: 0 }
-            let cummulativeUnitCostPrice = 0
-            cummulativeUnitCostPrice = quantity ? parseFloat(Math.abs(Number(cost / quantity))).toFixed(2) : 0
-
             return {
                 productId: product.i_d,
                 index: index,
@@ -2756,144 +2700,230 @@ const AddProduct = ({
                 baseQuantity: 0,
                 salesUom: product.salesUom,
                 baseUom: uom1[0]?.base,
-                // costPrice: cummulativeUnitCostPrice,
                 costPrice: Number(product.costPrice),
                 salesPrice: product.salesPrice,
                 vipPrice: product.vipPrice,
                 totalSales: '',
             }
         })
-
-
         wrhs.forEach((wh) => {
             if (!wh.purchase) {
                 allEntries[wh.name] = [...wrhEntries]
             }
         })
-        setCountedStockList(allEntries)
+        return allEntries
     }
 
-    // const setApprovalEntries = (approval)=>{        
-    //     const allEntries = {}
-    //     const wrhEntries = [...products].map((product, index)=>{
-    //         const uom1 = uoms.filter((uom)=>{
-    //             return uom.code === product.purchaseUom
-    //         })      
+    const resetSalesEntries = () => {
+        setCountedStockList(buildFreshEntries())
+    }
 
-    //         const purchaseWrh = wrhs.find((warehouse)=>{
-    //             return warehouse.purchase
-    //         })
-    //         const {cost, quantity} = product.locationStock?.[purchaseWrh?.name] || {cost: 0, quantity: 0}
-    //         let cummulativeUnitCostPrice = 0            
-    //         cummulativeUnitCostPrice = quantity? parseFloat(Math.abs(Number(cost/quantity))).toFixed(2) : 0
+    const applyRecordToEntries = (record) => {
+        const base = buildFreshEntries()
+        ;(record?.locations || []).forEach((loc) => {
+            if (!base[loc.location]) return
+            base[loc.location] = (loc.lines || []).map((line, index) => {
+                const uom2 = uoms.filter((u) => u.code === line.salesUom)
+                const multiple = Number(uom2[0]?.multiple) || 1
+                const hasCounted = line.countedQuantity !== null && line.countedQuantity !== undefined
+                return {
+                    productId: line.productId,
+                    index,
+                    name: line.name,
+                    category: line.category,
+                    countedQuantity: hasCounted ? Math.round((line.countedQuantity / multiple) * 100) / 100 : '',
+                    baseQuantity: hasCounted ? line.countedQuantity : 0,
+                    salesUom: line.salesUom,
+                    baseUom: line.baseUom,
+                    costPrice: line.costPrice,
+                    salesPrice: line.salesPrice,
+                    vipPrice: line.vipPrice,
+                    totalSales: hasCounted ? line.countedSalesValue : '',
+                }
+            })
+        })
+        setCountedStockList(base)
+    }
 
-    //         return {                
-    //             productId : product.i_d,
-    //             index: index,
-    //             name: product.name,
-    //             category: product.category,
-    //             countedQuantity: '',
-    //             baseQuantity: 0,
-    //             salesUom: product.salesUom,
-    //             baseUom: uom1[0]?.base,
-    //             // costPrice: cummulativeUnitCostPrice,
-    //             costPrice: Number(product.costPrice),
-    //             salesPrice: product.salesPrice,
-    //             vipPrice: product.vipPrice,
-    //             totalSales: '',
-    //             entryType: 'Sales',
-    //             documentType: 'Shipment'
-    //         }
-    //     })
-
-    //     wrhs.forEach((wrh)=>{
-    //         if (!wrh.purchase){
-    //             if (approval.data[wrh.name]){
-    //                 allEntries[wrh.name] = approval.data[wrh.name]
-    //             }else{
-    //                 if (approval.data[wrh.name]?.length && approval.message){
-    //                     allEntries[wrh.name] = approval.data[wrh.name]                        
-    //                 }else{
-    //                     allEntries[wrh.name] = [...wrhEntries]
-    //                 }
-    //             }
-    //         }
-    //     })
-    //     setCountedStockList(allEntries)
-    // }
+    const fetchExistingReconciliation = async (date) => {
+        setLoadingRecord(true)
+        try {
+            const resp = await fetchServer("POST", { postingDate: date }, "inventoryReconciliation/getForDate", server)
+            if (resp?.err) {
+                setAlertState('error')
+                setAlert(resp?.mess || 'Failed to load reconciliation for this date.')
+                setAlertTimeout(4000)
+                setReconciliationRecord(null)
+                resetSalesEntries()
+                return
+            }
+            if (resp?.exists) {
+                setReconciliationRecord(resp.record)
+                applyRecordToEntries(resp.record)
+            } else {
+                setReconciliationRecord(null)
+                resetSalesEntries()
+            }
+        } finally {
+            setLoadingRecord(false)
+        }
+    }
 
     useEffect(() => {
         setAddingProducts(false)
-        if (!isProductView) {
-            if (localStorage.getItem(`sales-${curSession?.start}`)) {
-                setCountedStockList(JSON.parse(localStorage.getItem(`sales-${curSession.start}`)))
-            } else {
-                resetSalesEntries()
-            }
-        }
-    }, [])
+        fetchExistingReconciliation(postingDate)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [postingDate])
 
     const handleSalesUdpate = (e, index) => {
         const name = e.target.getAttribute('name')
         const value = e.target.value
-        if (name) {
+        if (name && !entryLocked) {
             if (name === 'countedQuantity') {
                 const uom2 = uoms.filter((uom) => {
                     return uom.code === countedStockList[wrh1][index].salesUom
                 })
                 const originalEntries = structuredClone({ countedStockList })
                 var updatedWrh = [...countedStockList[wrh1]]
-                updatedWrh[index][name] = Number(value)
-                updatedWrh[index].baseQuantity = Number(value) * Number(uom2[0]?.multiple)
+                updatedWrh[index][name] = value === '' ? '' : Number(value)
+                updatedWrh[index].baseQuantity = value === '' ? 0 : Number(value) * Number(uom2[0]?.multiple || 1)
                 if (wrh1 === 'vip') {
                     updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * (Number(updatedWrh[index].vipPrice) || Number(updatedWrh[index].salesPrice))
-                } else if (wrh1 === 'kitchen') {
-                    updatedWrh[index].totalVipSales = updatedWrh[index].baseQuantity * (Number(updatedWrh[index].vipPrice) || Number(updatedWrh[index].salesPrice))
+                } else {
                     updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
                 }
-                else {
-                    updatedWrh[index].totalSales = updatedWrh[index].baseQuantity * Number(updatedWrh[index].salesPrice)
-                }
-                setCountedStockList({ ...(originalEntries.countedStockList), [wrh1]: updatedWrh })
-            } else {
-                const originalEntries = structuredClone({ countedStockList })
-                var updatedWrh = [...countedStockList[wrh1]]
-                updatedWrh[index][name] = Number(value)
                 setCountedStockList({ ...(originalEntries.countedStockList), [wrh1]: updatedWrh })
             }
         }
     }
 
-    const saveStocksDifference = async (result) => {
-        setAlert('info')
-        setAlert('Calculating Shortages...')
-        setAlertTimeout(2000)
-        console.log('count result:', result || countResult)
-        setIsProductView(false)
-        setProductAdd(false)
-        setAddingProducts(false)
-        resetSalesEntries()
-        setActionMessage('')
+    const handleImageFilesSelected = async (fileList) => {
+        if (!fileList?.length || entryLocked) return
+        setUploadingImage(true)
+        try {
+            const uploaded = []
+            for (const file of Array.from(fileList)) {
+                const folderPath = `${company}/Inventory Reconciliation/${postingDate}/${wrh1}`
+                const uniqueMarker = `reconciliation-${postingDate}-${wrh1}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+                // eslint-disable-next-line no-await-in-loop
+                const res = await uploadFile(file, folderPath, uniqueMarker, company, 'InventoryReconciliations', server)
+                if (res?.err || (!res?.imgId && !res?.downloadLink)) {
+                    setAlertState('error')
+                    setAlert(res?.mess || `Failed to upload ${file.name}`)
+                    setAlertTimeout(4000)
+                    continue
+                }
+                uploaded.push({
+                    imgId: res.imgId || '',
+                    downloadLink: res.downloadLink || '',
+                    viewLink: res.viewLink || '',
+                    webViewLink: res.webViewLink || '',
+                    fileName: file.name,
+                    mimeType: file.type,
+                    uploadedBy: companyRecord?.emailid || '',
+                    uploadedAt: Date.now(),
+                })
+            }
+            if (uploaded.length) {
+                setPendingImages((prev) => ({ ...prev, [wrh1]: [...(prev[wrh1] || []), ...uploaded] }))
+                setAlertState('success')
+                setAlert(`${uploaded.length} photo(s) ready to save.`)
+                setAlertTimeout(2000)
+            }
+        } finally {
+            setUploadingImage(false)
+        }
+    }
+
+    const handleSaveReconciliation = async () => {
+        if (saving || entryLocked) return
+        const entries = countedStockList[wrh1] || []
+        const totalImages = savedImages.length + pendingImagesForLoc.length
+        if (!totalImages) {
+            setAlertState('error')
+            setAlert('Please upload at least one photo of the counted stock before saving.')
+            setAlertTimeout(4000)
+            return
+        }
+        const countedLines = entries
+            .filter((entry) => entry.countedQuantity !== '' && entry.countedQuantity !== undefined && entry.countedQuantity !== null)
+            .map((entry) => ({ productId: entry.productId, countedQuantity: entry.baseQuantity }))
+        if (!countedLines.length) {
+            setAlertState('error')
+            setAlert('Enter at least one counted quantity before saving.')
+            setAlertTimeout(4000)
+            return
+        }
+        setSaving(true)
+        setAlertState('info')
+        setAlert('Saving reconciliation...')
+        setAlertTimeout(60000)
+        try {
+            const resp = await fetchServer("POST", {
+                postingDate,
+                location: wrh1,
+                newImages: pendingImagesForLoc,
+                countedLines,
+                clientTxnId: generateClientTxnId(),
+            }, "inventoryReconciliation/save", server)
+            if (resp?.err) {
+                setAlertState('error')
+                setAlert(resp?.mess || 'Failed to save reconciliation.')
+                setAlertTimeout(5000)
+                return
+            }
+            setReconciliationRecord(resp.record)
+            setPendingImages((prev) => ({ ...prev, [wrh1]: [] }))
+            const totals = resp.totals || {}
+            setAlertState('success')
+            setAlert(`Saved. Over: ${Number(totals.positiveDifferenceQty || 0)} / Short: ${Math.abs(Number(totals.negativeDifferenceQty || 0))}`)
+            setAlertTimeout(5000)
+        } catch (e) {
+            setAlertState('error')
+            setAlert('Network error while saving reconciliation.')
+            setAlertTimeout(4000)
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleExport = async (format) => {
+        if (!currentLocationRecord) return
+        setExporting(true)
+        try {
+            const fn = format === 'excel' ? exportReconciliationExcel : exportReconciliationPDF
+            fn({
+                companyInfo: { name: company },
+                postingDate,
+                location: wrh1,
+                lines: currentLocationRecord.lines || [],
+            })
+        } finally {
+            setExporting(false)
+        }
     }
 
     return (
         <>
             <div className='reconcileproduct'>
-                {actionMessage && <Notify
-                    notifyMessage={alert}
-                    notifyState={alertState}
-                    timeout={alertTimeout}
-                    actionMessage={actionMessage}
-                    cancel={() => {
-                        setAddingProducts(false)
-                        setCountResult({})
-                    }}
-                    action={() => {
-                        setActionMessage('')
-                        saveStocksDifference()
-                    }}
-                />}
-                <div className='add-products' ref={targetRef}>
+                <div className='add-products'>
+                    <div className='reconcile-date-row'>
+                        <label>Posting Date</label>
+                        <input
+                            type='date'
+                            value={postingDate}
+                            disabled={!canBacklog}
+                            min={!canBacklog ? todayStr : undefined}
+                            max={!canBacklog ? todayStr : undefined}
+                            onChange={(e) => {
+                                if (!canBacklog) return
+                                setPostingDate(e.target.value)
+                            }}
+                        />
+                        {loadingRecord && <span className='reconcile-loading-tag'>Loading...</span>}
+                        {isLocationLocked && <span className='reconcile-locked-tag'>Locked ({currentLocationRecord?.lockedReason})</span>}
+                        {isReadOnlyForUser && !isLocationLocked && <span className='reconcile-readonly-tag'>Already saved — read only</span>}
+                    </div>
                     <div className='slprwh-cover' onClick={(e) => {
                         const name = e.target.getAttribute('name')
                         if (name) {
@@ -2904,61 +2934,62 @@ const AddProduct = ({
                         {
                             wrhs.map((wh, id) => {
                                 if (!wh.purchase) {
-                                    if (isProductView) {
-                                        return Object.keys(countedStockList).includes(wh.name) && <div key={id} className={'slprwh ' + (wrh1 === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
-                                    } else {
-                                        return <div key={id} className={'slprwh ' + (wrh1 === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
-                                    }
+                                    return <div key={id} className={'slprwh ' + (wrh1 === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
                                 }
+                                return null
                             })
                         }
-                        {/* <div className='slprwh-cover-txt'>{`Remaining (${(Number(totalSalesAmount) - Math.abs(Number(totalAmount))).toLocaleString()}) Out Of ${(Number(totalSalesAmount)).toLocaleString()}`}</div> */}
-                        {(!isProductView) && <div
+                        {!entryLocked && <div
                             className='slprwh-print'
                             onClick={() => {
                                 resetSalesEntries()
                             }}
                         >Reset</div>}
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('export_sales_report')) && isProductView && <div
-                            className='slprwh-print'
-                            onClick={() => {
-                                printToPDF()
-                            }}
-                        >Print Product</div>}
+                    </div>
+                    <div className='reconcile-image-section'>
+                        <div className='reconcile-image-list'>
+                            {savedImages.map((img, idx) => (
+                                <a key={`saved-${idx}`} href={img.viewLink || img.downloadLink} target='_blank' rel='noreferrer' className='reconcile-image-thumb saved'>{img.fileName || 'Photo'}</a>
+                            ))}
+                            {pendingImagesForLoc.map((img, idx) => (
+                                <span key={`pending-${idx}`} className='reconcile-image-thumb pending'>{img.fileName || 'Photo'} (unsaved)</span>
+                            ))}
+                        </div>
+                        {!entryLocked && <label className='reconcile-upload-btn'>
+                            {uploadingImage ? 'Uploading...' : 'Upload Closing Stock Photo(s)'}
+                            <input
+                                type='file'
+                                accept='image/*'
+                                multiple
+                                disabled={uploadingImage}
+                                style={{ display: 'none' }}
+                                onChange={(e) => { handleImageFilesSelected(e.target.files); e.target.value = '' }}
+                            />
+                        </label>}
                     </div>
                     <div className='add-products-button'>
-                        {!isProductView && <div
+                        {!entryLocked && <div
                             className='add-products-button-add'
-                            style={{ cursor: addingProducts ? 'not-allowed' : 'pointer' }}
-                            onClick={async () => {
-                                if (!addingProducts) {
-                                    setAddingProducts(true)
-                                    const result = await compareStock(countedStockList)
-                                    setCountResult(result)
-                                    const { stocksPositiveDifference, stocksNegativeDifference, stocksDifference, differenceSummary } = result
-                                    if (stocksPositiveDifference.count) {
-                                        setAlertState('error')
-                                        setAlert('Positive Stock Differences Found.! Make Sure No Purchases or Transfers are Pending. Resolve The Descrepancies Before Proceeding!')
-                                        setAlertTimeout(5000)
-                                    } else if (stocksNegativeDifference.count) {
-                                        setAlertState('info')
-                                        setActionMessage('Accept')
-                                        setAlert('Your Stock Count is less than current Inventory. Accept the differences as Sales Shortage, to be applied directly to the responsible employee(s) ID(s)')
-                                        setAlertTimeout(15000)
-                                    } else {
-                                        saveStocksDifference(result)
-                                    }
-                                }
-                            }}
-                        >{'Save'}</div>}
+                            style={{ cursor: (saving || addingProducts) ? 'not-allowed' : 'pointer' }}
+                            onClick={() => { if (!saving) handleSaveReconciliation() }}
+                        >{saving ? 'Saving...' : 'Save'}</div>}
+                        {currentLocationRecord && <div
+                            className='add-products-button-add'
+                            style={{ cursor: exporting ? 'not-allowed' : 'pointer' }}
+                            onClick={() => handleExport('excel')}
+                        >Export Excel</div>}
+                        {currentLocationRecord && <div
+                            className='add-products-button-add'
+                            style={{ cursor: exporting ? 'not-allowed' : 'pointer' }}
+                            onClick={() => handleExport('pdf')}
+                        >Export PDF</div>}
                         <div
                             className='add-products-button-cancel'
                             onClick={() => {
-                                setIsProductView(false)
                                 setProductAdd(false)
                                 setCountedStockList({})
                             }}
-                        >{isProductView ? 'Close' : 'Cancel'}</div>
+                        >Close</div>
                     </div>
                     <div>
                         <select
@@ -2979,19 +3010,13 @@ const AddProduct = ({
                         <div className='add-products-content-header'>
                             <div>Product Name</div>
                             <div>Product ID</div>
-                            <div>Sales Quantity</div>
+                            <div>Counted Quantity</div>
                             <div>Sales UOM</div>
                             <div>{
-                                `
-                                    Total Sales Amount
-                                    ${(companyRecord.status === 'admin' || true) ?
-                                    (`(${countedStockList[wrh1]?.reduce((sum, entry) => sum + Math.abs(Number(entry.totalSales)), 0).toLocaleString()})`)
-                                    : ''
-                                }
-                                `
+                                `Counted Sales Value (${countedStockList[wrh1]?.reduce((sum, entry) => sum + Math.abs(Number(entry.totalSales || 0)), 0).toLocaleString()})`
                             }</div>
                         </div>
-                        {Object.keys(countedStockList).length === 0 && isProductView && <div className='load-products'><span>Loading Sales Products...</span></div>}
+                        {Object.keys(countedStockList).length === 0 && <div className='load-products'><span>Loading Products...</span></div>}
                         {countedStockList[wrh1]?.filter((flent) => {
                             if (flent.salesPrice || flent.vipPrice) {
                                 if (category === 'all') {
@@ -3016,9 +3041,9 @@ const AddProduct = ({
                                             type='number'
                                             name='countedQuantity'
                                             placeholder={entry.name}
-                                            value={isProductView ? Math.abs(Number(entry.countedQuantity)) : entry.countedQuantity}
+                                            value={entry.countedQuantity}
                                             onChange={(e) => { handleSalesUdpate(e, entry.index) }}
-                                            disabled={isProductView}
+                                            disabled={entryLocked}
                                         />
                                     </div>
                                     <div>
@@ -3036,21 +3061,12 @@ const AddProduct = ({
                                         </select>
                                     </div>
                                     <div>
-                                        <select
-                                            name='totalSales'
-                                            type='number'
-                                            value={isProductView ? Math.abs(Number(entry.totalSales)) : entry.totalSales}
-                                            disabled={true}
-                                            onChange={(e) => { handleSalesUdpate(e, entry.index) }}
-                                        >
-                                            <option value={isProductView ? Math.abs(Number(entry.totalSales)) : entry.totalSales}>{isProductView ? Math.abs(Number(entry.totalSales)) : entry.totalSales}</option>
-                                            <option value={isProductView ? Math.abs(Number(entry.totalVipSales)) : entry.totalVipSales}>{isProductView ? Math.abs(Number(entry.totalVipSales)) : entry.totalVipSales}</option>
-                                        </select>
+                                        {Number(entry.totalSales || 0).toLocaleString()}
                                     </div>
                                 </div>
                             )
                         })}
-                    </div>                    
+                    </div>
                 </div>
             </div>
         </>
@@ -3062,7 +3078,7 @@ const DeliveryDashboard = ({
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, wrhs,
     setViewSessions, deliveryWrhAccess, allSessions, setAllSessions, setAllSessionOrders, setSessionUser, getSessionEnd,
     setWrh, allSessionOrders, getPosOrders, getSessionSales, curSession,
-    setAlertState, setAlert, setAlertTimeout, tables, setProductAdd, mergeAndPersistOrders, mergeAndPersistSessions,
+    setAlertState, setAlert, setAlertTimeout, tables, setProductAdd, setReviewOpen, mergeAndPersistOrders, mergeAndPersistSessions,
 }) => {
     const { fetchServer, server, company } = useContext(ContextProvider)
     const [pendingSessions, setPendingSessions] = useState([])
@@ -3112,6 +3128,13 @@ const DeliveryDashboard = ({
                             style={{ marginRight: '10px' }}
                         >
                             Reconcile Inventory
+                        </button>}
+                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('review_inventory_reconciliation')) && <button
+                            className="action-btn"
+                            onClick={() => setReviewOpen(true)}
+                            style={{ marginRight: '10px' }}
+                        >
+                            Review Reconciliations
                         </button>}
                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_deliveries')) && <button
                             className="action-btn"

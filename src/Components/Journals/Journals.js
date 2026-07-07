@@ -413,51 +413,51 @@ const Journals = () => {
         }
     }
 
-        const handleDetectAffectedClosings = async () => {
-            if (!company) return;
-            setIsClosingAction(true);
-            try {
-                const events = [];
-                if (drillDown && drillDown.glCode && rawLedger[drillDown.glCode]) {
-                    rawLedger[drillDown.glCode].forEach(row => {
-                        events.push({ collection: row.source || 'GeneralLedgerEntries', op: 'update', data: { postingDate: row.date || row.postingDate || row.createdAt, ...row } });
-                    });
-                }
-
-                const resp = await fetchServer('POST', { events, enqueue: true }, 'accounting/detect-affected-closings', server);
-                if (resp && resp.ok) {
-                    setAlertState('success');
-                    setAlert(resp.mess || `Detected ${resp.affected?.length || 0} affected closings`);
-                    setAlertTimeout(3000);
-                    await loadPendingClosings();
-                } else {
-                    setAlertState('error'); setAlert(resp?.mess || 'Failed to detect affected closings'); setAlertTimeout(4000);
-                }
-            } catch (e) {
-                console.error('detect affected closings failed', e);
-                setAlertState('error'); setAlert(e.message || 'Failed to detect affected closings'); setAlertTimeout(4000);
-            } finally {
-                setIsClosingAction(false);
+    const handleDetectAffectedClosings = async () => {
+        if (!company) return;
+        setIsClosingAction(true);
+        try {
+            const events = [];
+            if (drillDown && drillDown.glCode && rawLedger[drillDown.glCode]) {
+                rawLedger[drillDown.glCode].forEach(row => {
+                    events.push({ collection: row.source || 'GeneralLedgerEntries', op: 'update', data: { postingDate: row.date || row.postingDate || row.createdAt, ...row } });
+                });
             }
-        }
 
-        const handleTriggerPendingRecomputes = async (adminOverride = false) => {
-            if (!company) return;
-            setIsClosingAction(true);
-            try {
-                const resp = await fetchServer('POST', { adminOverride: !!adminOverride, includeRawLedger: false }, 'accounting/trigger-pending-closing-recomputes', server);
-                if (resp && resp.ok) {
-                    setAlertState('success'); setAlert(resp.mess || 'Triggered pending recomputes'); setAlertTimeout(3000);
-                } else {
-                    setAlertState('error'); setAlert(resp?.mess || 'Failed to trigger recomputes'); setAlertTimeout(4000);
-                }
-            } catch (e) {
-                console.error('trigger pending recomputes failed', e);
-                setAlertState('error'); setAlert(e.message || 'Failed to trigger recomputes'); setAlertTimeout(4000);
-            } finally {
-                setIsClosingAction(false);
+            const resp = await fetchServer('POST', { events, enqueue: true }, 'accounting/detect-affected-closings', server);
+            if (resp && resp.ok) {
+                setAlertState('success');
+                setAlert(resp.mess || `Detected ${resp.affected?.length || 0} affected closings`);
+                setAlertTimeout(3000);
+                await loadPendingClosings();
+            } else {
+                setAlertState('error'); setAlert(resp?.mess || 'Failed to detect affected closings'); setAlertTimeout(4000);
             }
+        } catch (e) {
+            console.error('detect affected closings failed', e);
+            setAlertState('error'); setAlert(e.message || 'Failed to detect affected closings'); setAlertTimeout(4000);
+        } finally {
+            setIsClosingAction(false);
         }
+    }
+
+    const handleTriggerPendingRecomputes = async (adminOverride = false) => {
+        if (!company) return;
+        setIsClosingAction(true);
+        try {
+            const resp = await fetchServer('POST', { adminOverride: !!adminOverride, includeRawLedger: false }, 'accounting/trigger-pending-closing-recomputes', server);
+            if (resp && resp.ok) {
+                setAlertState('success'); setAlert(resp.mess || 'Triggered pending recomputes'); setAlertTimeout(3000);
+            } else {
+                setAlertState('error'); setAlert(resp?.mess || 'Failed to trigger recomputes'); setAlertTimeout(4000);
+            }
+        } catch (e) {
+            console.error('trigger pending recomputes failed', e);
+            setAlertState('error'); setAlert(e.message || 'Failed to trigger recomputes'); setAlertTimeout(4000);
+        } finally {
+            setIsClosingAction(false);
+        }
+    }
 
     const buildImbalanceSnapshot = (ledgerSource = rawLedger) => {
         const groups = {}; // { "source:id": { d: 0, c: 0, rows: [] } }
@@ -930,12 +930,26 @@ const Journals = () => {
 
             return {
                 Date: r.date ? new Date(Number(r.date) || r.date).toLocaleDateString() : '',
+                postingDate: r.postingDate || r.date || '',
+                createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString() : '',
+                accountCode: r.accountCode || r.accountcode || glCode,
+                accountName: r.accountName || r.acountName || '',
+                accountType: r.accountType || '',
                 Description: r.desc || r.note || '',
                 'Debit Account': resolveNames(debitAccounts),
                 'Credit Account': resolveNames(creditAccounts),
+                balAccountCode: r.balAccountCode || '',
+                balAccountType: r.balAccountType || '',
+                documentNo: r.documentNo || '',
+                documentType: r.documentType || '',
+                entryNo: r.entryNo || '',
+                handlerId: r.handlerId || '',
                 Source: r.source || '',
+                sourceId: r.sourceId || r.id || '',
+                amount: Number(r.amount || r.debit || r.credit || 0),
                 Debit: Number(r.debit || 0),
                 Credit: Number(r.credit || 0),
+                meta: r.meta ? JSON.stringify(r.meta) : '',
             }
         });
 
@@ -945,24 +959,65 @@ const Journals = () => {
             ...rows,
         ], [
             { name: 'Date', reference: 'Date' },
+            { name: 'Posting Date', reference: 'postingDate' },
+            { name: 'Created At', reference: 'createdAt' },
+            { name: 'Account Code', reference: 'accountCode' },
+            { name: 'Account Name', reference: 'accountName' },
+            { name: 'Account Type', reference: 'accountType' },
             { name: 'Description', reference: 'Description' },
             { name: 'Debit Account', reference: 'Debit Account' },
             { name: 'Credit Account', reference: 'Credit Account' },
+            { name: 'Bal Account Code', reference: 'balAccountCode' },
+            { name: 'Bal Account Type', reference: 'balAccountType' },
+            { name: 'Document No', reference: 'documentNo' },
+            { name: 'Document Type', reference: 'documentType' },
+            { name: 'Entry No', reference: 'entryNo' },
+            { name: 'Handler Id', reference: 'handlerId' },
             { name: 'Source', reference: 'Source' },
+            { name: 'Source Id', reference: 'sourceId' },
+            { name: 'Amount', reference: 'amount', numeric: true },
             { name: 'Debit', reference: 'Debit', numeric: true },
             { name: 'Credit', reference: 'Credit', numeric: true },
+            { name: 'Meta', reference: 'meta' },
         ], compInfo, dRange, `Ledger_${glCode}`);
     }
 
     const exportDrillDownToPDF = (accountCode) => {
         const glCode = String(accountCode || drillDown?.glCode || '')
-        const rows = (rawLedger?.[glCode] || []).map(r => ({
+        const ledgerRows = (rawLedger?.[glCode] || []);
+        // build global map once
+        const globalMap = {};
+        Object.keys(rawLedger || {}).forEach(accCode => {
+            (rawLedger[accCode] || []).forEach(line => {
+                const k = `${line.source || ''}:${line.id || line.sourceId || line.date || ''}`;
+                if (!globalMap[k]) globalMap[k] = [];
+                globalMap[k].push({ accountCode: accCode, line });
+            })
+        })
+
+        const rows = ledgerRows.map(r => ({
             date: r.date ? new Date(Number(r.date) || r.date).toLocaleDateString() : '',
+            postingDate: r.postingDate || r.date || '',
+            createdAt: r.createdAt || '',
+            accountCode: r.accountCode || r.accountcode || glCode,
+            accountName: r.accountName || r.acountName || '',
+            accountType: r.accountType || '',
             desc: r.desc || r.note || '',
             source: r.source || '',
+            sourceId: r.sourceId || r.id || '',
             debit: Number(r.debit || 0),
             credit: Number(r.credit || 0),
+            amount: Number(r.amount || r.debit || r.credit || 0),
+            balAccountCode: r.balAccountCode || '',
+            balAccountType: r.balAccountType || '',
+            documentNo: r.documentNo || '',
+            documentType: r.documentType || '',
+            entryNo: r.entryNo || '',
+            handlerId: r.handlerId || '',
+            meta: r.meta || {},
+            id: r.id || r.sourceId || r.date,
         }));
+
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 12;
@@ -984,7 +1039,6 @@ const Journals = () => {
         doc.text('Description', margin + 30, y);
         doc.text('Debit Account', margin + 30 + 60, y);
         doc.text('Credit Account', margin + 30 + 160, y);
-        doc.text('Source', margin + 260, y);
         doc.text('Debit', pageWidth - margin - 40, y, { align: 'right' });
         doc.text('Credit', pageWidth - margin, y, { align: 'right' });
         y += 6;
@@ -993,20 +1047,13 @@ const Journals = () => {
 
         let totalD = 0, totalC = 0;
         rows.forEach((r) => {
-            if (y > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); y = 20; }
+            if (y > doc.internal.pageSize.getHeight() - 60) { doc.addPage(); y = 20; }
             const descLines = doc.splitTextToSize(String(r.desc || ''), 80);
             doc.text(r.date || '', margin, y);
             doc.text(descLines, margin + 30, y);
-            // debit/credit account text
+
+            // compute peer accounts from prebuilt globalMap
             const key = `${r.source || ''}:${r.id || r.sourceId || r.date || ''}`;
-            const globalMap = {};
-            Object.keys(rawLedger || {}).forEach(accCode => {
-                (rawLedger[accCode] || []).forEach(line => {
-                    const k = `${line.source || ''}:${line.id || line.sourceId || line.date || ''}`;
-                    if (!globalMap[k]) globalMap[k] = [];
-                    globalMap[k].push({ accountCode: accCode, line });
-                })
-            })
             const peers = globalMap[key] || [];
             const debitAccounts = peers.filter(p => Number(p.line.debit || 0) > 0).map(p => String(p.accountCode));
             const creditAccounts = peers.filter(p => Number(p.line.credit || 0) > 0).map(p => String(p.accountCode));
@@ -1014,12 +1061,20 @@ const Journals = () => {
                 const acc = flattenedAccounts.find(a => String(a['g/l code']) === String(c));
                 return acc ? `${c} - ${acc.name}` : c;
             }).join(', ');
+
             doc.text(resolveNames(debitAccounts), margin + 30 + 60, y);
             doc.text(resolveNames(creditAccounts), margin + 30 + 160, y);
-            doc.text(r.source || '', margin + 260, y);
             doc.text(fmt(r.debit), pageWidth - margin - 40, y, { align: 'right' });
             doc.text(fmt(r.credit), pageWidth - margin, y, { align: 'right' });
-            y += Math.max(5, descLines.length * 4);
+
+            // metadata line (smaller font)
+            const metaText = `Acct: ${r.acountName || ''} (${r.accountcode || ''}) Type: ${r.accountType || ''} | Bal: ${r.balAccountCode || ''} (${r.balAccountType || ''}) | Doc: ${r.documentType || ''} ${r.documentNo || ''} | Entry: ${r.entryNo || ''} | Handler: ${r.handlerId || ''} | Src: ${r.source || ''}/${r.sourceId || ''} | Created: ${r.createdAt || ''}`;
+            const metaLines = doc.splitTextToSize(metaText, pageWidth - (margin * 2));
+            doc.setFontSize(7);
+            doc.text(metaLines, margin + 30, y + Math.max(6, descLines.length * 4));
+            doc.setFontSize(8);
+
+            y += Math.max(5, descLines.length * 4) + (metaLines.length * 4);
             totalD += r.debit || 0;
             totalC += r.credit || 0;
         });
@@ -2319,7 +2374,8 @@ const Journals = () => {
             const payload = {
                 ...journalForm,
                 totalAmount: totalDebit,
-                createdAt: Date.now()
+                createdAt: Date.now(),
+                handlerId: companyRecord?.emailid
             }
 
             const resp = await fetchServer("POST", payload, "createGeneralLedgerEntry", server);

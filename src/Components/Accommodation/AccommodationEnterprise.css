@@ -1,0 +1,92 @@
+/* ======================================
+   HYPERCITY ACCOMMODATION ENTERPRISE
+====================================== */
+
+.hc-acc-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.hc-acc-stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+
+.hc-acc-stat-label {
+    font-size: 12px;
+    color: #666;
+}
+
+.hc-acc-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    margin-top: 5px;
+}
+
+.hc-room-board {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fill,minmax(160px,1fr));
+    gap: 10px;
+}
+
+.hc-room-card {
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.hc-room-card:hover {
+    transform: translateY(-2px);
+}
+
+.hc-room-available {
+    background: #ecfdf5;
+    border: 1px solid #10b981;
+}
+
+.hc-room-occupied {
+    background: #fef2f2;
+    border: 1px solid #ef4444;
+}
+
+.hc-room-reserved {
+    background: #fffbeb;
+    border: 1px solid #f59e0b;
+}
+
+.hc-room-number {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.hc-room-status {
+    font-size: 12px;
+    margin-top: 6px;
+}
+.hc-room-selector{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.hc-room-pill{
+    padding:10px 15px;
+    border:1px solid #ddd;
+    border-radius:50px;
+    cursor:pointer;
+}
+
+.hc-room-pill.active{
+    background:#2563eb;
+    color:white;
+}
+
+.hc-booking-type{
+    margin-bottom:10px;
+}

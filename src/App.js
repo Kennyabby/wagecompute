@@ -28,9 +28,10 @@ import LegalPage from './Components/LandingPage/LegalPage';
 
 import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
-import fetchServer from './Resources/ClientServerAPIConn/fetchServer'
+import fetchServer, { setConnectivityStatus } from './Resources/ClientServerAPIConn/fetchServer'
 import createSSE from './Resources/ClientServerAPIConn/sseClient'
 import { syncPendingChanges } from './Resources/offlineSync';
+import { useConnectionStatus } from './Resources/useConnectionStatus';
 import {
   getAppCache,
   setAppCache,
@@ -45,11 +46,18 @@ import {
   putOrder,
   putTable,
   putSession,
+  sweepStaleAppCache,
 } from './Resources/offlineDb';
 
-const SERVER = "https://api.epxcentral.com"
-// const SERVER = "http://localhost:3001"
-// const SERVER = ""
+// Single source of truth for the API base URL: set REACT_APP_API_URL in the
+// environment used for each build (CRA inlines REACT_APP_* vars at build time).
+// Falls back to localhost only for local dev when the var isn't set.
+const SERVER = process.env.REACT_APP_API_URL || "http://localhost:3001"
+if (process.env.NODE_ENV === 'production' && SERVER.includes('localhost')) {
+  // Loud, unmissable warning rather than a silent guaranteed-to-fail deploy —
+  // a real build-time check belongs in CI, but this catches it at runtime too.
+  console.error('CONFIGURATION ERROR: REACT_APP_API_URL is not set for this production build — API calls will target localhost and fail.')
+}
 
 const DEFAULT_APPROVAL_CONFIG = {
   name: 'approvalConfig',
@@ -268,7 +276,12 @@ function App() {
   const [isInitialSyncDone, setIsInitialSyncDone] = useState(false)
   const [isProduction, setIsProduction] = useState(false)
   const [subscriptionState, setSubscriptionState] = useState(null)
-  
+  const { isFullyConnected } = useConnectionStatus(SERVER, isSSEConnected)
+
+  useEffect(() => {
+    setConnectivityStatus(isFullyConnected)
+  }, [isFullyConnected])
+
   const Navigate = useNavigate()
   
   const intervalPeriod = 3600000; // 60 minutes
@@ -896,6 +909,14 @@ function App() {
       return () => clearInterval(intervalId);
     }
   }, [window.localStorage.getItem('sessn-cmp')])
+
+  // Local IndexedDB housekeeping only — clears stale cached entries older than
+  // the app-cache TTL. Never touches the server/live database.
+  useEffect(() => {
+    if (company && companyRecord?.emailid) {
+      sweepStaleAppCache(company, companyRecord.emailid).catch(() => {});
+    }
+  }, [company, companyRecord?.emailid])
 
   useEffect(() => {
     if (settings?.length && window.localStorage.getItem('sessn-id')) {
@@ -3583,6 +3604,7 @@ function App() {
         accountingLiveBalances, setAccountingLiveBalances,
         showSubscriptionBanner, setShowSubscriptionBanner,
         subscriptionState, setSubscriptionState, refreshSubscriptionState,
+        isSSEConnected, isFullyConnected,
         profiles, setProfiles, fetchProfiles,
         DBProfiles, setDBProfiles, fetchDBProfiles,
         departments, setDepartments, getDepartments,

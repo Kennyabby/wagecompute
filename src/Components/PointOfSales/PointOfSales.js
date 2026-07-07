@@ -20,6 +20,7 @@ import {
     putInventoryTransactions,
 } from '../../Resources/offlineDb';
 import { syncPendingChanges, processChange } from '../../Resources/offlineSync';
+import { getTerminalId } from '../../Resources/clientTxnId';
 
 const PointOfSales = () => {
     // =========================================
@@ -4048,11 +4049,19 @@ const PointOfSales = () => {
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
 
-        // Combine epoch time + high-resolution performance time
-        const uniquePart = `${Date.now()}${Math.floor(performance.now() * 1000) % 1000}`;
-        const shortCode = uniquePart.slice(-8); // shorten if you want
+        // Per-terminal identifier + a strictly-incrementing per-terminal
+        // sequence (not a timestamp) — collision-proof across terminals and
+        // across orders created in the same millisecond, fully offline, with
+        // no server round-trip needed to generate it.
+        const terminalId = getTerminalId();
+        const seqKey = 'wc-order-seq';
+        let nextSeq = 1;
+        try {
+            nextSeq = (parseInt(window.localStorage.getItem(seqKey), 10) || 0) + 1;
+            window.localStorage.setItem(seqKey, String(nextSeq));
+        } catch (e) { /* localStorage unavailable; fall back to seq=1 for this call */ }
 
-        return `ORD-${year}${month}${day}-${shortCode}`;
+        return `ORD-${terminalId}-${year}${month}${day}-${String(nextSeq).padStart(6, '0')}`;
     };
 
     // =========================================

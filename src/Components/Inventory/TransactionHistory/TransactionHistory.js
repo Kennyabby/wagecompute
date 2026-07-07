@@ -37,6 +37,7 @@ const TransactionHistory = () => {
   const [deleteTotal, setDeleteTotal] = useState(0);
   const [deleteCompleted, setDeleteCompleted] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [processingApprovalKey, setProcessingApprovalKey] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [showColumnManager, setShowColumnManager] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
@@ -92,28 +93,19 @@ const TransactionHistory = () => {
   }, [approvals]);
   const canApproveTransfers = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('approve_posttransfer');
   const postApprovedTransfer = async (approval) => {
-    const transactions = approval?.data?.transactions || [];
-    if (!Array.isArray(transactions) || !transactions.length) {
-      throw new Error('The approval request has no transfer transactions to post.');
-    }
-    for (const transaction of transactions) {
-      const resp = await fetchServer('POST', {
-        database: company,
-        collection: 'InventoryTransactions',
-        update: {
-          ...transaction,
-          approvedBy: companyRecord?.emailid,
-          approvedAt: Date.now(),
-        },
-      }, 'createDoc', server);
-      if (resp?.err || resp?.error) {
-        throw new Error(resp.mess || resp.message || 'Unable to post approved transfer.');
-      }
-    }
-    await removeApproval(company, 'inventory', 'posttransfer', {
+    // Posting is a single atomic server-side call (see
+    // wageserver/UserModule/Inventory/transferOrders.js) rather than a
+    // client-side loop over /createDoc per transaction — the server claims
+    // the approval (posted:false -> deleted) and inserts the transactions in
+    // one Mongo transaction, so a double-click or two admins approving the
+    // same request concurrently can no longer create two sets of postings.
+    const resp = await fetchServer('POST', {
       createdAt: approval.createdAt,
       postingDate: approval.postingDate,
-    });
+    }, 'inventory/postApprovedTransfer', server);
+    if (resp?.err || resp?.error || resp?.alreadyPosted) {
+      throw new Error(resp.mess || resp.message || 'Unable to post approved transfer.');
+    }
     await getApprovals(company, companyRecord);
     if (typeof getProductsStockReport === 'function') {
       await getProductsStockReport(company, products, {
@@ -122,6 +114,7 @@ const TransactionHistory = () => {
       });
     }
     await fetchTransactionHistory();
+    return resp;
   };
   const [summary, setSummary] = useState({
     // Quantities
@@ -1863,20 +1856,27 @@ const TransactionHistory = () => {
         show={showTransferApprovals}
         approvals={pendingTransferApprovals}
         canApprove={canApproveTransfers}
+        processingApprovalKey={processingApprovalKey}
         onClose={() => setShowTransferApprovals(false)}
         onApprove={async (approval) => {
+          if (processingApprovalKey) return;
           try {
+            setProcessingApprovalKey(approval.createdAt);
             setLoading(true);
-            await postApprovedTransfer(approval);
+            setAlertState('info');
+            setAlert('Posting approved transfer...');
+            setAlertTimeout(100000);
+            const resp = await postApprovedTransfer(approval);
             setAlertState('success');
-            setAlert('Transfer request approved and posted successfully.');
-            setAlertTimeout(1500);
+            setAlert(`Transfer approved and posted successfully (${resp?.documentNos?.join(', ') || resp?.count || ''}).`);
+            setAlertTimeout(2500);
           } catch (error) {
             setAlertState('error');
             setAlert(error.message || 'Unable to approve transfer request.');
             setAlertTimeout(5000);
           } finally {
             setLoading(false);
+            setProcessingApprovalKey(null);
           }
         }}
         onReject={async (approval, message) => {
@@ -2351,7 +2351,7 @@ const TransactionHistory = () => {
   );
 };
 
-const TransferApprovalModal = ({ show, approvals, canApprove, onClose, onApprove, onReject }) => {
+const TransferApprovalModal = ({ show, approvals, canApprove, processingApprovalKey, onClose, onApprove, onReject }) => {
   const [rejectMessages, setRejectMessages] = useState({});
   if (!show) return null;
   return (
@@ -2366,6 +2366,8 @@ const TransferApprovalModal = ({ show, approvals, canApprove, onClose, onApprove
           {approvals.map((approval) => {
             const data = approval.data || {};
             const entries = data.entries || [];
+            const isProcessingThis = processingApprovalKey === approval.createdAt;
+            const isBusy = !!processingApprovalKey;
             return (
               <div className='transfer-approval-card' key={approval.createdAt}>
                 <div className='transfer-approval-head'>
@@ -2395,10 +2397,10 @@ const TransferApprovalModal = ({ show, approvals, canApprove, onClose, onApprove
                         [approval.createdAt]: event.target.value,
                       }))}
                     />
-                    <button className='btn btn-primary' onClick={() => onApprove(approval)}>
-                      Approve Request
+                    <button className='btn btn-primary' disabled={isBusy} onClick={() => onApprove(approval)}>
+                      {isProcessingThis ? 'Posting...' : 'Approve Request'}
                     </button>
-                    <button className='btn btn-secondary' onClick={() => onReject(approval, rejectMessages[approval.createdAt])}>
+                    <button className='btn btn-secondary' disabled={isBusy} onClick={() => onReject(approval, rejectMessages[approval.createdAt])}>
                       Reject
                     </button>
                   </div>
