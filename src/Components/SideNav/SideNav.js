@@ -18,7 +18,8 @@ import { loadPendingChanges } from '../../Resources/offlineDb';
 const SideNav = () => {
     const {
         server, fetchServer, company, companyRecord,
-        setAlertState, setAlert, setAlertTimeout, approvals, setCurApproval
+        setAlertState, setAlert, setAlertTimeout, approvals, setCurApproval,
+        isFullyConnected
     } = useContext(ContextProvider)
     const [companyName, setCompanyName] = useState('....')
     const [curPath, setCurPath] = useState('')
@@ -351,6 +352,15 @@ const SideNav = () => {
                         {isCollapsed ? '→' : '←'}
                     </button>
                 </div>
+                {!isCollapsed && (
+                    <div
+                        className={`connectivity-indicator ${isFullyConnected ? 'online' : 'offline'}`}
+                        title={isFullyConnected ? 'Connected to server' : 'No connection to server — some actions require a live connection'}
+                    >
+                        <span className='connectivity-dot' />
+                        {isFullyConnected ? 'Online' : 'Offline'}
+                    </div>
+                )}
                 <nav className='navbox' onClick={handleNavClick}>
                     <ul className='navbarr'>
                         {navItems.map((item) => {

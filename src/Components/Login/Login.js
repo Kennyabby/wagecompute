@@ -220,56 +220,52 @@ const Login = () => {
   }, [location.search, fetchServer, server, loadPage, requestedNext, setLoginMessage])
 
   const validateLogin = async () => {
-    if (field.emailid === 'test' && field.password === 'test') {
-      Navigate('/test')
-    } else {
-      setSigninStatus("Signing In...")
-      setLoginMessage("")
-      const endpoint = isRootDomainLogin ? "authenticateTenantAdmin" : "authenticateUser"
-      const resp = await fetchServer("POST", {
-        pass: field.password,
-        prop: { 'emailid': field.emailid }
-      }, endpoint, server)
+    setSigninStatus("Signing In...")
+    setLoginMessage("")
+    const endpoint = isRootDomainLogin ? "authenticateTenantAdmin" : "authenticateUser"
+    const resp = await fetchServer("POST", {
+      pass: field.password,
+      prop: { 'emailid': field.emailid }
+    }, endpoint, server)
 
-      if (resp.err) {
-        setLoginMessage(resp.mess)
+    if (resp.err) {
+      setLoginMessage(resp.mess)
+      setSigninStatus("Sign In")
+      setTimeout(() => {
+        setLoginMessage("")
+      }, 5000)
+    } else {
+      if (resp.mess) {
+        if (resp.mess === 'Invalid Tenant'){
+          setLoginMessage("Invalid User ID or Password")
+        }else{
+          setLoginMessage(resp.mess)
+        }
         setSigninStatus("Sign In")
         setTimeout(() => {
           setLoginMessage("")
         }, 5000)
       } else {
-        if (resp.mess) {
-          if (resp.mess === 'Invalid Tenant'){
-            setLoginMessage("Invalid User ID or Password") 
-          }else{
-            setLoginMessage(resp.mess)
-          }
-          setSigninStatus("Sign In")
-          setTimeout(() => {
-            setLoginMessage("")
-          }, 5000)
-        } else {
-          if (isRootDomainLogin && resp.handoffCode && resp.subdomain) {
-            window.location.href = buildTenantRedirectUrl(resp.subdomain, resp.handoffCode)
-            return
-          }
-          var idVal = resp.id
-          var company = resp.db
-          var now = Date.now()
-          var sess = 0
-          idVal.split('').forEach((chr) => {
-            sess += chr.codePointAt(0)
-          })
-          window.localStorage.setItem('sessn-cmp', company)
-          window.localStorage.setItem('sess-recg-id', now + "-" + sess)
-          window.localStorage.setItem('idt-curr-usr', now + "")
-          window.localStorage.setItem('sessn-id', idVal)
-          setField((field) => {
-            return ({ ...field, emailid: "", password: "" })
-          })
-          setSigninStatus("Sign In")
-          loadPage(idVal, requestedNext)
+        if (isRootDomainLogin && resp.handoffCode && resp.subdomain) {
+          window.location.href = buildTenantRedirectUrl(resp.subdomain, resp.handoffCode)
+          return
         }
+        var idVal = resp.id
+        var company = resp.db
+        var now = Date.now()
+        var sess = 0
+        idVal.split('').forEach((chr) => {
+          sess += chr.codePointAt(0)
+        })
+        window.localStorage.setItem('sessn-cmp', company)
+        window.localStorage.setItem('sess-recg-id', now + "-" + sess)
+        window.localStorage.setItem('idt-curr-usr', now + "")
+        window.localStorage.setItem('sessn-id', idVal)
+        setField((field) => {
+          return ({ ...field, emailid: "", password: "" })
+        })
+        setSigninStatus("Sign In")
+        loadPage(idVal, requestedNext)
       }
     }
   }

@@ -33,6 +33,8 @@ const Purchase = () => {
     const [productAdd, setProductAdd] = useState(false)
     const [curPosSettings, setCurPosSettings] = useState([])
     const [deleteCount, setDeleteCount] = useState(0)
+    const [isReversing, setIsReversing] = useState(false)
+    const [isSubmittingPurchase, setIsSubmittingPurchase] = useState(false)
     const [isView, setIsView] = useState(false)
     const [isProductView, setIsProductView] = useState(false)
     const [showReport, setShowReport] = useState(false)
@@ -447,26 +449,6 @@ const Purchase = () => {
         }
     }
 
-    const checkDuplicateTransaction = async (company, transaction) => {
-        const response = await fetchServer("POST", {
-            database: company,
-            collection: "InventoryTransactions",
-            prop: {
-                productId: (transaction.productId || transaction.i_d), // Use productId or i_d
-                location: transaction.location,
-                postingDate: transaction.postingDate,
-                createdAt: transaction.createdAt,
-                entryType: transaction.entryType,
-                documentType: transaction.documentType,
-                quantity: Number(transaction.quantity) * -1,
-                baseQuantity: Number(transaction.baseQuantity) * -1,
-                totalSales: Number(transaction.totalSales) * -1,
-                totalCost: Number(transaction.costPrice) * Number(transaction.baseQuantity) * -1
-            }
-        }, "getDocsDetails", server); // plural version that returns an array
-
-        return Array.isArray(response.record) && response.record.length > 0;
-    };
     const updateInventory = async (action) => {
         // console.log(fields)
         if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
@@ -499,134 +481,127 @@ const Purchase = () => {
                 const createdAt = Date.now()
                 const entryIds = validEntries.map(entry => { return entry.productId })
                 if (fields.stage === 'receipt' || action === 'reverse') {
-                    setAlertState('info')
-                    setAlert(action === 'purchase' ? 'Updating Inventory...' : 'Reversing Inventory...')
-                    setAlertTimeout(100000)
-                    validEntries.forEach(async (entry) => {
-                        const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
-                        const newTransaction = {
-                            ...entry,
-                            ...(action === 'reverse' && {
-                                documentType: 'Purchase Return', 
-                                quantity: -1 * Number(entry.quantity),
-                                baseQuantity: -1 * Number(entry.baseQuantity),
-                                totalCost: -1 * Number(entry.totalCost)
-                            }),
-                            location: fields?.location || purchaseWrh?.name,
-                            postingDate: purchaseDate,
-                            postingStamp: new Date(purchaseDate),
-                            createdAt: createdAt,
-                            handlerId: fields.purchaseHandler,
-                        }
-                        const resps = await fetchServer("POST", {
-                            database: company,
-                            collection: "InventoryTransactions",
-                            update: newTransaction
-                        }, "createDoc", server)
-                        if (resps.err) {
-                            setAlertState('error')
-                            setAlert(resps.mess)
-                            setAlertTimeout(5000)
-                            if (curApproval) {
-                                curApproval.posted = false
-                            }
-                        } else {
-                            setPostCount((prevCount) => {
-                                const newCount = prevCount + 1
-                                if (newCount === validEntries.length) {
-                                    setProductAdd(false)
-                                    setAlertState('success')
-                                    setAlert(`${validEntries.length} Inventory ${action === 'purchase' ? 'Updated' : 'Reversed'} Successfully!`)
-                                    setAlertTimeout(100000)
-                                    getProductsWithStock(company, products)
-                                    const entryIds = validEntries.map(entry => { return entry.productId })
-                                    if (curPurchase === null) {
-                                        setTimeout(() => {
-                                            addPurchase(createdAt, entryIds)
-                                        }, 500)
-                                    } else {
-                                        setTimeout(async () => {
-                                            setAlertState('info');
-                                            if (action === 'purchase'){
-                                                setAlert('Linking to Posted Purchase...');
-                                            }else{
-                                                setAlert('Unlinking from Posted Purchase...');
-                                            }
-                                            setAlertTimeout(100000);
-                                            const resps1 = await fetchServer("POST", {
-                                                database: company,
-                                                collection: "Purchase",
-                                                prop: [{ createdAt: curPurchase.createdAt }, {
-                                                    productsRef: action === 'purchase' ? createdAt : null,
-                                                    purchaseQuantity: fields.purchaseQuantity,
-                                                    purchaseUOM: 'units',
-                                                    stage: action === 'purchase' ? 'posted' : 'receipt',
-                                                    data : action === 'purchase' ? null : data
-
-                                                }]
-                                            }, "updateOneDoc", server);
-
-                                            if (resps1.err) {
-                                                console.log(resps1.mess);
-                                                setAlertState('error');
-                                                setAlert(resps1.mess);
-                                                setAlertTimeout(5000);
-                                                if (curApproval) {
-                                                    curApproval.posted = false
-                                                }
-                                            } else {
-
-                                                setAlertState('success');
-                                                if (action === 'purchase'){
-                                                    setAlert('Products Linked Successfully!');
-                                                }else{
-                                                    setAlert('Products Unlinked Successfully!');
-                                                }
-                                                setAlertTimeout(1000);
-                                                setFields((fields) => {
-                                                    return { ...fields, productsRef: action === 'purchase' ? createdAt : null}
-                                                })
-                                                if (curApproval) {
-                                                    curApproval.posted = false
-                                                }
-                                                getPurchase(company);
-                                                if (action === 'purchase'){
-                                                    const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
-                                                    const transactions = await getPurchaseProducts(company, { productsRef: createdAt })
-                                                    if (transactions.length) {
-                                                        const entries = []
-                                                        transactions.forEach((transaction) => {
-                                                            if (transaction.location === purchaseWrh?.name || transaction.location === curPurchase?.location) {
-                                                                entries.push(transaction)
-                                                            }
-                                                        })
-                                                        setPurchaseEntries([...entries])
-                                                    }
-                                                }
-                                                const rep = await fetchServer("POST", {
-                                                    collection: "ProductCostLogs",
-                                                    markUp: curPosSettings?.useMarkUp || false,
-                                                    markUpValue: 30,
-                                                    prop: entryIds
-                                                }, "updateProductCost", server)
-
-                                                if (!rep.err) {
-                                                    getProducts(company)
-                                                }
-
-                                            }
-                                            return
-                                        }, 1000);
+                    // Both the actual stock posting and the Purchase doc's
+                    // stage flip now happen server-side in one atomic Mongo
+                    // transaction (see wageserver/UserModule/Purchase/purchase.js)
+                    // instead of a client-side loop of individual /createDoc
+                    // calls followed by a separate re-link call — closes the
+                    // double-post/double-reverse race the two-step version had,
+                    // and every InventoryTransactions line now gets a real
+                    // server-issued documentNo.
+                    const finishUpAfterPost = async (record) => {
+                        setProductAdd(false)
+                        getPurchase(company)
+                        getProductsWithStock(company, products)
+                        setFields((prevFields) => ({ ...prevFields, ...record }))
+                        if (action === 'purchase') {
+                            const purchaseWrh = wrhs.find((wh) => { return wh.purchase })
+                            const transactions = await getPurchaseProducts(company, record)
+                            if (transactions.length) {
+                                const entriesFiltered = []
+                                transactions.forEach((transaction) => {
+                                    if (transaction.location === purchaseWrh?.name || transaction.location === record?.location) {
+                                        entriesFiltered.push(transaction)
                                     }
-                                } else {
-                                    setAlertState('success')
-                                    setAlert(`${newCount} / ${validEntries.length} Inventory ${action === 'purchase' ? 'Updated' : 'Reversed'} Successfully!`)
-                                }
-
-                                return newCount
-                            })
+                                })
+                                setPurchaseEntries([...entriesFiltered])
+                            }
+                            const rep = await fetchServer("POST", {
+                                collection: "ProductCostLogs",
+                                markUp: curPosSettings?.useMarkUp || false,
+                                markUpValue: 30,
+                                prop: entryIds
+                            }, "updateProductCost", server)
+                            if (!rep.err) getProducts(company)
+                        } else {
+                            setPurchaseEntries(record?.data?.validEntries || [])
                         }
-                    })
+                    }
+
+                    try {
+                        if (action === 'reverse') {
+                            setAlertState('info')
+                            setAlert('Reversing Inventory...')
+                            setAlertTimeout(100000)
+                            const resp = await fetchServer("POST", {
+                                purchaseCreatedAt: curPurchase.createdAt,
+                            }, "purchase/reversePurchaseReceipt", server)
+                            if (resp?.err || !resp?.isDelivered) {
+                                setAlertState('error')
+                                setAlert(resp?.mess || 'Could not reverse purchase.')
+                                setAlertTimeout(5000)
+                                if (curApproval) curApproval.posted = false
+                                return
+                            }
+                            setAlertState('success')
+                            setAlert(`Purchase reversed successfully (${resp.documentNos?.join(', ') || resp.count} line(s)).`)
+                            setAlertTimeout(3000)
+                            if (curApproval) curApproval.posted = false
+                            await finishUpAfterPost(resp.record)
+                        } else {
+                            let purchaseCreatedAt = curPurchase?.createdAt
+                            if (curPurchase === null) {
+                                // No Purchase draft exists yet — create it first
+                                // (unchanged generic-gateway create, no stock
+                                // effect), then atomically receive it.
+                                setAlertState('info')
+                                setAlert('Creating purchase record...')
+                                setAlertTimeout(100000)
+                                purchaseCreatedAt = createdAt
+                                const createResp = await fetchServer("POST", {
+                                    database: company,
+                                    collection: "Purchase",
+                                    update: {
+                                        ...fields,
+                                        stage: 'receipt',
+                                        postingDate: purchaseDate,
+                                        approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
+                                        createdAt: purchaseCreatedAt,
+                                    }
+                                }, "createDoc", server)
+                                if (createResp?.err) {
+                                    setAlertState('error')
+                                    setAlert(createResp.mess)
+                                    setAlertTimeout(5000)
+                                    if (curApproval) curApproval.posted = false
+                                    return
+                                }
+                                if (curApproval) {
+                                    await removeApproval(company, 'purchase', postAction, {
+                                        createdAt: curApproval.createdAt,
+                                        postingDate: curApproval.postingDate
+                                    })
+                                }
+                            }
+                            setAlertState('info')
+                            setAlert('Receiving Inventory...')
+                            setAlertTimeout(100000)
+                            const resp = await fetchServer("POST", {
+                                purchaseCreatedAt,
+                                entries: validEntries,
+                                postingDate: purchaseDate,
+                                location: fields?.location,
+                                handlerId: fields.purchaseHandler,
+                            }, "purchase/postPurchaseReceipt", server)
+                            if (resp?.err || !resp?.isDelivered) {
+                                setAlertState('error')
+                                setAlert(resp?.mess || 'Could not receive purchase.')
+                                setAlertTimeout(5000)
+                                if (curApproval) curApproval.posted = false
+                                return
+                            }
+                            setAlertState('success')
+                            setAlert(`Purchase received successfully (${resp.documentNos?.join(', ') || resp.count} line(s)).`)
+                            setAlertTimeout(3000)
+                            if (curApproval) curApproval.posted = false
+                            await finishUpAfterPost(resp.record)
+                        }
+                    } catch (e) {
+                        setAlertState('error')
+                        setAlert('Network error while posting purchase.')
+                        setAlertTimeout(4000)
+                        if (curApproval) curApproval.posted = false
+                    }
                 } else {
                     if (action === 'purchase'){
                         addPurchase(createdAt, entryIds, data)
@@ -780,6 +755,9 @@ const Purchase = () => {
             return
         }
         if (deleteCount === purchase.createdAt) {
+            if (isReversing) return
+            setIsReversing(true)
+            setTimeout(() => setIsReversing(false), 8000)
             setAlertState('info')
             setAlert(`${fields?.stage === 'receipt' ? 'Deleting' : 'Reversing'} Purchase...`)
             if (['posted', null, undefined].includes(fields.stage)) {
@@ -788,7 +766,7 @@ const Purchase = () => {
                 if (transactions.length) {
                     const entries = []
                     transactions.forEach((transaction) => {
-                        if (transaction.location === purchaseWrh?.name || transaction.location === purchase?.location) {                            
+                        if (transaction.location === purchaseWrh?.name || transaction.location === purchase?.location) {
                             entries.push(transaction)
                         }
                     })
@@ -875,6 +853,7 @@ const Purchase = () => {
                     products={products}
                     category={fields.itemCategory}
                     purchaseDate={purchaseDate}
+                    setPurchaseDate={setPurchaseDate}
                     fields={fields}
                     setFields={setFields}
                     curPurchase={curPurchase}
@@ -889,6 +868,8 @@ const Purchase = () => {
                     curApproval={curApproval}
                     server={server}
                     fetchServer={fetchServer}
+                    isSubmittingPurchase={isSubmittingPurchase}
+                    setIsSubmittingPurchase={setIsSubmittingPurchase}
                 />}
                 {showReport && <PurchaseReport
                     reportPurchases={reportPurchase}
@@ -1071,15 +1052,16 @@ const Purchase = () => {
                                     {(companyRecord.status === 'admin') && <div
                                         className='edit'
                                         name='delete'
-                                        style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px' }}
+                                        style={{ color: 'red', background: 'white', borderRadius: '8px', padding: '5px 10px', border: 'solid red 1.3px', cursor: isReversing ? 'not-allowed' : 'pointer', opacity: isReversing ? 0.6 : 1 }}
                                         onClick={() => {
+                                            if (isReversing) return
                                             setAlertState('info')
                                             setAlert('You are about to Reverse the selected Purchase Record. Please click again if you are sure!')
                                             setAlertTimeout(5000)
                                             deletePurchase(pur)
                                         }}
                                     >
-                                        {stage === 'posted' ? 'Reverse': 'Delete'}
+                                        {isReversing ? 'Processing...' : (stage === 'posted' ? 'Reverse' : 'Delete')}
                                     </div>}
                                 </div>
                             )
@@ -1225,7 +1207,7 @@ const Purchase = () => {
                                 value={fields.location}
                                 disabled={isView}
                             >
-                                <option value=''>DEFAULT</option>
+                                {/* <option value=''>DEFAULT</option> */}
                                 {wrhs.filter((wrhfl)=>{
                                     return wrhfl?.productCategories?.length
                                 }).map((wrh, index) => {
@@ -1379,8 +1361,9 @@ const Purchase = () => {
                         </div>
                         <div
                             className='purchasebutton'
-                            style={{ cursor: purchaseEntries.length ? 'pointer' : 'not-allowed' }}
+                            style={{ cursor: (purchaseEntries.length && !isSubmittingPurchase) ? 'pointer' : 'not-allowed', opacity: isSubmittingPurchase ? 0.6 : 1 }}
                             onClick={() => {
+                                if (isSubmittingPurchase) return
                                 if (purchaseEntries.length) {
                                     const purchaseWrh = wrhs.find((wh) => wh.purchase)
                                     if (!purchaseWrh && !fields?.location) {
@@ -1389,10 +1372,12 @@ const Purchase = () => {
                                         setAlertTimeout(3000)
                                         return
                                     }
+                                    setIsSubmittingPurchase(true)
+                                    setTimeout(() => setIsSubmittingPurchase(false), 8000)
                                     handleProductPurchase()
                                 }
                             }}
-                        >{curApproval ? (curApproval.approved ? purchaseStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Purchase' : 'Request Approval')}</div>
+                        >{isSubmittingPurchase ? 'Processing...' : (curApproval ? (curApproval.approved ? purchaseStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Purchase' : 'Request Approval'))}</div>
                     </div>}
                     <MdAdd
                         className='add slsadd purchase-detail-add'
@@ -1413,8 +1398,9 @@ const Purchase = () => {
 export default Purchase
 
 const AddProduct = ({
-    products, category, purchaseDate, fields, setFields, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
+    products, category, purchaseDate, setPurchaseDate, fields, setFields, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
     handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord, curApproval, server, fetchServer,
+    isSubmittingPurchase, setIsSubmittingPurchase,
 }) => {
     const [productSearch, setProductSearch] = useState('')
     const [nullFieldsCount, setNullFieldsCount] = useState(0)
@@ -1584,9 +1570,13 @@ const AddProduct = ({
                     <div className='add-products-button'>
                         {!isProductView && <div
                             className='add-products-button-add'
+                            style={{ cursor: isSubmittingPurchase ? 'not-allowed' : 'pointer', opacity: isSubmittingPurchase ? 0.6 : 1 }}
                             onClick={
                                 () => {
+                                    if (isSubmittingPurchase) return
                                     if (nullFieldsCount === 0) {
+                                        setIsSubmittingPurchase(true)
+                                        setTimeout(() => setIsSubmittingPurchase(false), 8000)
                                         handleProductPurchase()
                                     } else {
                                         setAlertState('error')
@@ -1595,7 +1585,7 @@ const AddProduct = ({
                                     }
                                 }
                             }
-                        >{curPurchase === null ? 'Add' : (fields.stage === 'receipt' ? 'Receive' : 'Save')}</div>}
+                        >{isSubmittingPurchase ? 'Processing...' : (curPurchase === null ? 'Add' : (fields.stage === 'receipt' ? 'Receive' : 'Save'))}</div>}
                         {isProductView && (curPurchase === null || fields?.stage === 'receipt') && <div
                             className='add-products-button-add'
                             onClick={() => {
@@ -1638,6 +1628,25 @@ const AddProduct = ({
                         {companyRecord?.status === 'admin' && <div className={`add-products-total-card profit ${(fields.salesAmount || 0) - (fields.purchaseAmount || 0) < 0 ? 'negative' : ''}`}>
                             <div className='add-products-total-label'>Projected Profit</div>
                             <div className='add-products-total-value'>₦{((fields.salesAmount || 0) - (fields.purchaseAmount || 0)).toLocaleString()}</div>
+                        </div>}
+                        {fields?.stage === 'receipt' && <div className='add-products-total-card'>
+                            <div className='add-products-total-label'>Receipt Posting Date</div>
+                            <input
+                                type='date'
+                                value={purchaseDate}
+                                disabled={isProductView}
+                                onChange={(e) => {
+                                    const date = new Date(e.target.value)
+                                    const today = new Date()
+                                    if (date <= today) {
+                                        setPurchaseDate(e.target.value)
+                                    } else {
+                                        setAlertState('error')
+                                        setAlert('You cannot set the posting date in the future!')
+                                        setAlertTimeout(5000)
+                                    }
+                                }}
+                            />
                         </div>}
                     </div>
                     <div className='add-products-content-wrapper'>

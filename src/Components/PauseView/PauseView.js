@@ -1,45 +1,20 @@
 import './PauseView.css'
-import { useEffect, useState, useContext } from 'react'
+import { useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 
-const PauseView = ()=>{
-    const { pauseView, setPauseView, viewAccess, generateCode} = useContext(ContextProvider)
-    const [accessValue, setAccessValue] = useState('')
-    const magicWord = 'oh ye server. allow thee into your world '
-    const handleSecretAccess = (e)=>{
-        const {name, value} = e.target
-        if (name === 'access'){
-            setAccessValue(value)
-        }else{
-            setAccessValue('')
-        }
-    }
-
-    useEffect(()=>{
-        if (accessValue === magicWord){
-            window.localStorage.setItem('ps-vw', 'true')  
-            window.localStorage.setItem('acc-vw', 'true')  
-            setPauseView(false)                 
-            setAccessValue('')         
-        }
-    },[accessValue])
+// Pure "waiting on activation check" state. The real activation/subscription
+// gate is enforced server-side (every request is checked against the tenant's
+// suspension state) — this view has no client-side bypass of any kind; it only
+// reflects whatever the server has already decided.
+const PauseView = () => {
+    const { viewAccess } = useContext(ContextProvider)
 
     return (
-        <>
-            <div className='pause-view' onChange={handleSecretAccess} onClick={handleSecretAccess}>
-                <input
-                    className='saccess'
-                    name = 'access'
-                    value={accessValue} 
-                    autoComplete={false}                                   
-                />
-                <label>
-                    {/* { viewAccess === null ? '' : (viewAccess === '405' ? '405 ERROR, NO SERVER RESPONSE - METHOD NOT ALLOWED' : 'This deployment is temporarily paused')} */}
-                    { viewAccess === null ? '' : (viewAccess === '405' ? '405 ERROR, NO SERVER RESPONSE - METHOD NOT ALLOWED' : '')}
-                </label>
-                {/* {viewAccess !==null && viewAccess!=='405' && <div className='pause-base-code'>{`cpt1 : : ${generateCode(5)}-${generateCode(13)}-d${generateCode(5)}aaef${generateCode(2)}`}</div>} */}
-            </div>
-        </>
+        <div className='pause-view'>
+            <label>
+                {viewAccess === null ? '' : (viewAccess === '405' ? '405 ERROR, NO SERVER RESPONSE - METHOD NOT ALLOWED' : '')}
+            </label>
+        </div>
     )
 }
 

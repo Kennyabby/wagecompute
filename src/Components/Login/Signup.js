@@ -153,6 +153,12 @@ const Signup = () => {
       return
     }
 
+    if (field.password.length < 8) {
+      showMsg("Password must be at least 8 characters.", 'error')
+      setTimeout(() => setSignupMessage(""), 5000)
+      return
+    }
+
     if (subdomainAvailable === false) {
       showMsg("Please choose an available subdomain", 'error')
       setTimeout(() => setSignupMessage(""), 5000)

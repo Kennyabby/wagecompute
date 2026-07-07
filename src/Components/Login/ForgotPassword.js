@@ -93,8 +93,8 @@ const ForgotPassword = () => {
   }
 
   const handleFinalReset = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      showMsg("Password must be at least 6 characters.", 'error')
+    if (!newPassword || newPassword.length < 8) {
+      showMsg("Password must be at least 8 characters.", 'error')
       return
     }
     if (newPassword !== confirmPassword) {
