@@ -1304,8 +1304,8 @@ const Delivery = () => {
                 tableId: currentOrder.tableId,
                 handlerId: currentOrder.handlerId,
                 deliveredBy: companyRecord.emailid,
-                postingDate: new Date(Date.now()).toISOString().slice(0, 10),
-                postingStamp: new Date(Date.now()),
+                postingDate: currentOrder.postingDate,
+                postingStamp: currentOrder.postingStamp,
                 createdAt: createdAt,
             };
 
