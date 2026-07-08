@@ -1,5 +1,5 @@
 import './Accommodation.css'
-import './AccommodationEnterprise.css'
+// import './AccommodationEnterprise.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal'
 import heic2any from "heic2any";
 import { useState, useEffect, useContext, use } from 'react'
@@ -67,26 +67,26 @@ const Accommodation = () => {
     // HOSPITALITY DASHBOARD STATES
     // ==========================================
 
-    const [roomBoard, setRoomBoard] = useState({})
-    const [occupancyStats, setOccupancyStats] = useState({
-        totalRooms: 0,
-        occupiedRooms: 0,
-        availableRooms: 0,
-        reservedRooms: 0,
-        dirtyRooms: 0,
-        occupancyRate: 0,
-        expectedCheckIns: 0,
-        expectedCheckOuts: 0
-    })
+    // const [roomBoard, setRoomBoard] = useState({})
+    // const [occupancyStats, setOccupancyStats] = useState({
+    //     totalRooms: 0,
+    //     occupiedRooms: 0,
+    //     availableRooms: 0,
+    //     reservedRooms: 0,
+    //     dirtyRooms: 0,
+    //     occupancyRate: 0,
+    //     expectedCheckIns: 0,
+    //     expectedCheckOuts: 0
+    // })
 
-    const [roomStatusFilter, setRoomStatusFilter] = useState('all')
-    // ==================================
-    // GROUP BOOKINGS
-    // ==================================
+    // const [roomStatusFilter, setRoomStatusFilter] = useState('all')
+    // // ==================================
+    // // GROUP BOOKINGS
+    // // ==================================
 
-    const [selectedRooms, setSelectedRooms] =useState([])
-    const [bookingType, setBookingType] =useState('individual')
-    const [groupName, setGroupName] =useState('')
+    // const [selectedRooms, setSelectedRooms] =useState([])
+    // const [bookingType, setBookingType] =useState('individual')
+    // const [groupName, setGroupName] =useState('')
 
     const defaultCustomerFields = {
         i_d: '',
@@ -140,79 +140,79 @@ const Accommodation = () => {
             createdAt: Date.now()
         }
     }
-    const toggleRoomSelection = (
-    roomName
-) => {
+//     const toggleRoomSelection = (
+//     roomName
+// ) => {
 
-    setSelectedRooms(prev => {
+//     setSelectedRooms(prev => {
 
-            const exists =
-                prev.includes(roomName)
+//             const exists =
+//                 prev.includes(roomName)
 
-            if (exists) {
+//             if (exists) {
 
-                return prev.filter(
-                    r => r !== roomName
-                )
+//                 return prev.filter(
+//                     r => r !== roomName
+//                 )
 
-            }
+//             }
 
-            return [
-                ...prev,
-                roomName
-            ]
+//             return [
+//                 ...prev,
+//                 roomName
+//             ]
 
-        })
+//         })
 
-    }
+//     }
 
-    const isRoomAvailable = (
-        roomName,
-        arrivalDate,
-        departureDate
-    ) => {
+//     const isRoomAvailable = (
+//         roomName,
+//         arrivalDate,
+//         departureDate
+//     ) => {
 
-        const arrival =
-            new Date(arrivalDate)
-                .getTime()
+//         const arrival =
+//             new Date(arrivalDate)
+//                 .getTime()
 
-        const departure =
-            new Date(departureDate)
-                .getTime()
+//         const departure =
+//             new Date(departureDate)
+//                 .getTime()
 
-        const conflictingBooking =
-            accommodations.find(acc => {
+//         const conflictingBooking =
+//             accommodations.find(acc => {
 
-                const rooms =
-                    acc.roomNos ||
-                    [acc.roomNo]
+//                 const rooms =
+//                     acc.roomNos ||
+//                     [acc.roomNo]
 
-                if (
-                    !rooms.includes(roomName)
-                ) {
-                    return false
-                }
+//                 if (
+//                     !rooms.includes(roomName)
+//                 ) {
+//                     return false
+//                 }
 
-                const bookedArrival =
-                    new Date(
-                        acc.arrivalDate
-                    ).getTime()
+//                 const bookedArrival =
+//                     new Date(
+//                         acc.arrivalDate
+//                     ).getTime()
 
-                const bookedDeparture =
-                    new Date(
-                        acc.departureDate
-                    ).getTime()
+//                 const bookedDeparture =
+//                     new Date(
+//                         acc.departureDate
+//                     ).getTime()
 
-                return (
-                    arrival <= bookedDeparture &&
-                    departure >= bookedArrival
-                )
+//                 return (
+//                     arrival <= bookedDeparture &&
+//                     departure >= bookedArrival
+//                 )
 
-            })
+//             })
 
-        return !conflictingBooking
+//         return !conflictingBooking
 
-    }
+//     }
 
     useEffect(() => {
         storePath('accommodations')
@@ -237,124 +237,124 @@ const Accommodation = () => {
         }
     },[products])
 
-    useEffect(() => {
+    // useEffect(() => {
 
-        const today =
-            new Date(Date.now())
-                .toISOString()
-                .slice(0, 10)
+    //     const today =
+    //         new Date(Date.now())
+    //             .toISOString()
+    //             .slice(0, 10)
 
-        const board = {}
+    //     const board = {}
 
-        const roomProducts = products.filter(
-            (p) => p.category === 'room'
-        )
+    //     const roomProducts = products.filter(
+    //         (p) => p.category === 'room'
+    //     )
 
-        roomProducts.forEach((room) => {
+    //     roomProducts.forEach((room) => {
 
-            board[room.name] = {
-                roomNo: room.name,
-                status: 'Available',
-                customerId: '',
-                arrivalDate: '',
-                departureDate: '',
-                amount: Number(room.salesPrice || 0)
-            }
+    //         board[room.name] = {
+    //             roomNo: room.name,
+    //             status: 'Available',
+    //             customerId: '',
+    //             arrivalDate: '',
+    //             departureDate: '',
+    //             amount: Number(room.salesPrice || 0)
+    //         }
 
-        })
+    //     })
 
-        accommodations.forEach((acc) => {
+    //     accommodations.forEach((acc) => {
 
-            const roomName = acc.roomNo
+    //         const roomName = acc.roomNo
 
-            if (!board[roomName]) return
+    //         if (!board[roomName]) return
 
-            const arrival =
-                new Date(acc.arrivalDate)
-                    .getTime()
+    //         const arrival =
+    //             new Date(acc.arrivalDate)
+    //                 .getTime()
 
-            const departure =
-                new Date(acc.departureDate)
-                    .getTime()
+    //         const departure =
+    //             new Date(acc.departureDate)
+    //                 .getTime()
 
-            const now =
-                new Date(today)
-                    .getTime()
+    //         const now =
+    //             new Date(today)
+    //                 .getTime()
 
-            if (
-                now >= arrival &&
-                now <= departure
-            ) {
-                board[roomName].status = 'Occupied'
-                board[roomName].customerId =
-                    acc.customerId
+    //         if (
+    //             now >= arrival &&
+    //             now <= departure
+    //         ) {
+    //             board[roomName].status = 'Occupied'
+    //             board[roomName].customerId =
+    //                 acc.customerId
 
-                board[roomName].arrivalDate =
-                    acc.arrivalDate
+    //             board[roomName].arrivalDate =
+    //                 acc.arrivalDate
 
-                board[roomName].departureDate =
-                    acc.departureDate
-            }
+    //             board[roomName].departureDate =
+    //                 acc.departureDate
+    //         }
 
-            else if (
-                arrival > now
-            ) {
-                board[roomName].status =
-                    'Reserved'
-            }
+    //         else if (
+    //             arrival > now
+    //         ) {
+    //             board[roomName].status =
+    //                 'Reserved'
+    //         }
 
-        })
+    //     })
 
-        const rooms =
-            Object.values(board)
+    //     const rooms =
+    //         Object.values(board)
 
-        const occupied =
-            rooms.filter(
-                r => r.status === 'Occupied'
-            ).length
+    //     const occupied =
+    //         rooms.filter(
+    //             r => r.status === 'Occupied'
+    //         ).length
 
-        const reserved =
-            rooms.filter(
-                r => r.status === 'Reserved'
-            ).length
+    //     const reserved =
+    //         rooms.filter(
+    //             r => r.status === 'Reserved'
+    //         ).length
 
-        const available =
-            rooms.filter(
-                r => r.status === 'Available'
-            ).length
+    //     const available =
+    //         rooms.filter(
+    //             r => r.status === 'Available'
+    //         ).length
 
-        const expectedCheckIns =
-            accommodations.filter(acc =>
-                acc.arrivalDate === today
-            ).length
+    //     const expectedCheckIns =
+    //         accommodations.filter(acc =>
+    //             acc.arrivalDate === today
+    //         ).length
 
-        const expectedCheckOuts =
-            accommodations.filter(acc =>
-                acc.departureDate === today
-            ).length
+    //     const expectedCheckOuts =
+    //         accommodations.filter(acc =>
+    //             acc.departureDate === today
+    //         ).length
 
-        setOccupancyStats({
-            totalRooms: rooms.length,
-            occupiedRooms: occupied,
-            availableRooms: available,
-            reservedRooms: reserved,
-            dirtyRooms: 0,
-            occupancyRate:
-                rooms.length
-                    ? Number(
-                        (
-                            occupied /
-                            rooms.length
-                        ) * 100
-                    ).toFixed(1)
-                    : 0,
-            expectedCheckIns,
-            expectedCheckOuts
-        })
+    //     setOccupancyStats({
+    //         totalRooms: rooms.length,
+    //         occupiedRooms: occupied,
+    //         availableRooms: available,
+    //         reservedRooms: reserved,
+    //         dirtyRooms: 0,
+    //         occupancyRate:
+    //             rooms.length
+    //                 ? Number(
+    //                     (
+    //                         occupied /
+    //                         rooms.length
+    //                     ) * 100
+    //                 ).toFixed(1)
+    //                 : 0,
+    //         expectedCheckIns,
+    //         expectedCheckOuts
+    //     })
 
-        setRoomBoard(board)
+    //     setRoomBoard(board)
 
-    }, [products, accommodations])
+    // }, [products, accommodations])
 
 
     useEffect(() => {
@@ -611,65 +611,65 @@ const Accommodation = () => {
         }
 
         const newAccommodations = [newAccommodation, ...accommodations]
-        const roomsToCheck =
-            selectedRooms.length
-                ? selectedRooms
-                : [newAccommodation.roomNo]
+        // const roomsToCheck =
+        //     selectedRooms.length
+        //         ? selectedRooms
+        //         : [newAccommodation.roomNo]
 
-        const unavailableRooms =
-            roomsToCheck.filter(room =>
+        // const unavailableRooms =
+        //     roomsToCheck.filter(room =>
 
-                !isRoomAvailable(
-                    room,
-                    newAccommodation.arrivalDate,
-                    newAccommodation.departureDate
-                )
+        //         !isRoomAvailable(
+        //             room,
+        //             newAccommodation.arrivalDate,
+        //             newAccommodation.departureDate
+        //         )
 
-            )
+        //     )
 
-        if (
-            unavailableRooms.length
-        ) {
+        // if (
+        //     unavailableRooms.length
+        // ) {
 
-            setAlertState('error')
-            setAlert(`Room already booked:
-                ${unavailableRooms.join(', ')}`)
-            setAlertTimeout(4000)
+        //     setAlertState('error')
+        //     setAlert(`Room already booked:
+        //         ${unavailableRooms.join(', ')}`)
+        //     setAlertTimeout(4000)
             
 
-            return
+        //     return
 
-        }
-        newAccommodation.roomNos =
-            selectedRooms.length
-                ? selectedRooms
-                : [newAccommodation.roomNo]
+        // }
+        // newAccommodation.roomNos =
+        //     selectedRooms.length
+        //         ? selectedRooms
+        //         : [newAccommodation.roomNo]
 
-        newAccommodation.bookingType =
-            bookingType
+        // newAccommodation.bookingType =
+        //     bookingType
 
-        newAccommodation.groupName =
-            groupName
-        const totalAmount =selectedRooms.reduce(
-            (sum, roomName) => {
+        // newAccommodation.groupName =
+        //     groupName
+        // const totalAmount =selectedRooms.reduce(
+        //     (sum, roomName) => {
 
-                const room =
-                    products.find(
-                        p =>
-                        p.name === roomName
-                    )
+        //         const room =
+        //             products.find(
+        //                 p =>
+        //                 p.name === roomName
+        //             )
 
-                return (
-                    sum +
-                    Number(
-                        room?.salesPrice || 0
-                    )
-                )
+        //         return (
+        //             sum +
+        //             Number(
+        //                 room?.salesPrice || 0
+        //             )
+        //         )
 
-            },
-            0
-        )
-        newAccommodation.accommodationAmount =totalAmount
+        //     },
+        //     0
+        // )
+        // newAccommodation.accommodationAmount =totalAmount
 
         const resps = await fetchServer("POST", {
             database: company,
@@ -1553,7 +1553,7 @@ const Accommodation = () => {
                             <div name='customers' className={salesOpts === 'customers' ? 'slopts' : ''}>Customers</div>
                             <div name='accommodation' className={salesOpts === 'accommodation' ? 'slopts' : ''}>Accommodation</div>
                         </div>}
-                        {salesOpts === 'accommodation' && <div className='hc-booking-type'>
+                        {/* {salesOpts === 'accommodation' && <div className='hc-booking-type'>
 
                             <label>
 
@@ -1612,7 +1612,7 @@ const Accommodation = () => {
                                 }
 
                             />
-                        }
+                        } */}
                         {salesOpts === 'accommodation' && fillmode === '' && <div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Employee ID</div>
@@ -1676,7 +1676,7 @@ const Accommodation = () => {
                                     })}
                                 </datalist>
                             </div>
-                            {/* <div className='inpcov'>
+                            <div className='inpcov'>
                                 <div>Room Number</div>
                                 <select
                                     className='forminp'
@@ -1693,8 +1693,8 @@ const Accommodation = () => {
                                         return <option key={room} value={room}>{`ROOM ${room}`}</option>
                                     })}
                                 </select>
-                            </div> */}
-                            <div className='hc-room-selector'>
+                            </div>
+                            {/* <div className='hc-room-selector'>
 
                                 {
 
@@ -1749,7 +1749,7 @@ const Accommodation = () => {
 
                                 }
 
-                            </div>
+                            </div> */}
                             <div className='inpcov'>
                                 <div>Amount</div>
                                 <input

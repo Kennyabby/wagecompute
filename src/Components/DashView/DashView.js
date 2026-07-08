@@ -35,7 +35,9 @@ const DashView = () =>{
         expenses, getExpenses,
         accommodations, getAccommodations,
         rentals, getRentals,
-        employees, getEmployees
+        employees, getEmployees, getSessionEnd,
+        salesSessions, lastActiveSessions, sessionManagers,
+        setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
     // Default date range (current month)
     const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10)
@@ -920,8 +922,26 @@ const DashView = () =>{
         return { debtTotal, debtRecovered }
     }
 
+    useEffect(()=>{
+        if (Array.isArray(lastActiveSessions)){
+            let activeSessions = lastActiveSessions.filter(s => s.active && getSessionEnd(s.start) <= Date.now())
+            let endedCount = lastActiveSessions.filter(s => s.end).length
+            if (activeSessions.length > 0 && companyRecord?.status === 'admin'){
+                setAlertState('info')
+                setAlert('Session as ended. Please Stop Session Manager')
+                setAlertTimeout(5000)
+            }
+
+            if (endedCount === lastActiveSessions.length && companyRecord?.status === 'admin'){
+                setAlertState('info')
+                setAlert('All sesisons ended, Please Start Session Manager!')
+                setAlertTimeout(8000)
+            }
+        }
+    },[salesSessions, lastActiveSessions, companyRecord])
+
     useEffect(() => {
-        loadDashData();
+        loadDashData();        
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fromDate, toDate, locationFilter, productFilter, employeeFilter, seasonFilter, company, companyRecord?.emailid])
 
