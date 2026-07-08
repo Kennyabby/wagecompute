@@ -925,14 +925,14 @@ const DashView = () =>{
     useEffect(()=>{
         if (Array.isArray(lastActiveSessions)){
             let activeSessions = lastActiveSessions.filter(s => s.active && getSessionEnd(s.start) <= Date.now())
-            let endedCount = lastActiveSessions.filter(s => s.end).length
+            let endedCount = (lastActiveSessions?.filter(s => s.end))?.length;
             if (activeSessions.length > 0 && companyRecord?.status === 'admin'){
                 setAlertState('info')
                 setAlert('Session as ended. Please Stop Session Manager')
                 setAlertTimeout(5000)
             }
 
-            if (endedCount === lastActiveSessions.length && companyRecord?.status === 'admin'){
+            if (endedCount && endedCount === lastActiveSessions?.length && companyRecord?.status === 'admin'){
                 setAlertState('info')
                 setAlert('All sesisons ended, Please Start Session Manager!')
                 setAlertTimeout(8000)
