@@ -642,17 +642,19 @@ const PointOfSales = () => {
     // ]);
 
     useEffect(()=>{
-        let activeSessions = lastActiveSessions.filter(s => s.active)
-        if (currSessionManager && currSessionManager?.end && activeSessions.length){
-            setAlertState('info')
-            setAlert('SessionManager Ended. Please End all Sessions')
-            setAlertTimeout(6000)
-        }
-
-        if (currSessionManager && currSessionManager?.active && !activeSessions.length){
-            setAlertState('info')
-            setAlert('SessionManager Started. Start all Sessions')
-            setAlertTimeout(6000)
+        if (companyRecord?.permissions?.includes('access_pos_sessions') || companyRecord?.access === 'admin'){
+            let activeSessions = lastActiveSessions.filter(s => s.active)
+            if (currSessionManager && currSessionManager?.end && activeSessions.length){
+                setAlertState('info')
+                setAlert('SessionManager Ended. Please End all Sessions')
+                setAlertTimeout(6000)
+            }
+    
+            if (currSessionManager && currSessionManager?.active && !activeSessions.length){
+                setAlertState('info')
+                setAlert('SessionManager Started. Start all Sessions')
+                setAlertTimeout(6000)
+            }
         }
     },[currSessionManager, lastActiveSessions])
 
@@ -4879,7 +4881,7 @@ const POSDashboard = ({
     fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange, lastActiveSessions,
     setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories
 }) => {
-    const { fetchServer, server, company, wrhs } = useContext(ContextProvider);
+    const { fetchServer, server, company, wrhs, formatDateToDefault } = useContext(ContextProvider);
 
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
@@ -4887,6 +4889,7 @@ const POSDashboard = ({
     const [activeSessions, setActiveSessions] = useState([])
     const [filteredSessions, setFilteredSessions] = useState(null);
     const [sessionsState, setSessionsState] = useState('general');
+    const [reconciliationRecord, setReconciliationRecord] = useState(null)
 
     const [showPendingModal, setShowPendingModal] = useState(false);
     const [pendingChanges, setPendingChanges] = useState([]);
@@ -4940,14 +4943,14 @@ const POSDashboard = ({
     useEffect(()=>{
         if (Array.isArray(lastActiveSessions)){
             let activeSessions = lastActiveSessions.filter(s => s.active && getSessionEnd(s.start) <= Date.now())
-            let endedCount = lastActiveSessions.filter(s => s.end).length
+            let endedCount = (lastActiveSessions.filter(s => s.end))?.length
             if (activeSessions.length > 0 && companyRecord?.status === 'admin'){
                 setAlertState('info')
                 setAlert('Session as ended. Please Stop Session Manager')
                 setAlertTimeout(5000)
             }
 
-            if (endedCount === lastActiveSessions.length && companyRecord?.status === 'admin'){
+            if (endedCount && endedCount === lastActiveSessions.length && companyRecord?.status === 'admin'){
                 setAlertState('info')
                 setAlert('All sesisons ended, Please Start Session Manager!')
                 setAlertTimeout(8000)
@@ -4976,6 +4979,25 @@ const POSDashboard = ({
         })()
     }, [])
 
+    useEffect(()=>{
+        if (currSessionManager && getSessionEnd(currSessionManager?.start) <= new Date().getTime()){
+            const resp = await fetchServer("POST", { postingDate: formatDateToDefault(currSessionManager?.start) }, "inventoryReconciliation/getForDate", server)
+            if (resp?.err) {
+                setAlertState('error')
+                setAlert(resp?.mess || 'Failed to load reconciliation for this date.')
+                setAlertTimeout(4000)
+                setReconciliationRecord(null)
+                resetSalesEntries()
+                return
+            }
+            if (resp?.exists) {
+                setReconciliationRecord(resp.record)
+            } else {
+                setReconciliationRecord(null)
+            }
+        }
+    },[currSessionManager])
+
     const loadPendingOfflineChanges = async () => {
         if (!company || !companyRecord?.emailid) return;
         setPendingLoading(true);
@@ -4995,7 +5017,7 @@ const POSDashboard = ({
         setAlert('Please End All Other Sessions Before Starting A New One!')
         setAlertTimeout(3000)
     }
-
+    
     return (
         <>
             <div className='pos-session-board'>
@@ -5189,6 +5211,12 @@ const POSDashboard = ({
                                                                         viewModal = false
                                                                         setAlertState('error')
                                                                         setAlert('This User Still Has Pending Delivery(s) for Order(s) that have been paid for. Please place all deliveries before proceeding!')
+                                                                        setAlertTimeout(3000)
+                                                                    }
+                                                                    if (!reconciliationRecord){
+                                                                        viewModal = false
+                                                                        setAlertState('error')
+                                                                        setAlert('Inventory Reconciliation Pending. Please Save Closing Stock for yesterday before ending session!')
                                                                         setAlertTimeout(3000)
                                                                     }
                                                                 }
