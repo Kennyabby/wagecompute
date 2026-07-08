@@ -641,6 +641,21 @@ const PointOfSales = () => {
     //     currentOrder,
     // ]);
 
+    useEffect(()=>{
+        let activeSessions = lastActiveSessions.filter(s => s.active)
+        if (currSessionManager && currSessionManager?.end && activeSessions.length){
+            setAlertState('info')
+            setAlert('SessionManager Ended. Please End all Sessions')
+            setAlertTimeout(6000)
+        }
+
+        if (currSessionManager && currSessionManager?.active && !activeSessions.length){
+            setAlertState('info')
+            setAlert('SessionManager Started. Start all Sessions')
+            setAlertTimeout(6000)
+        }
+    },[currSessionManager, lastActiveSessions])
+
     const getSessionSales = (orders) => {
         const payPointList = Object.keys(payPoints)
         const allSales = {}
@@ -4921,6 +4936,24 @@ const POSDashboard = ({
         // }
         // getSessionsData()
     }, [lastActiveSessions, allSalesSessions])
+
+    useEffect(()=>{
+        if (Array.isArray(lastActiveSessions)){
+            let activeSessions = lastActiveSessions.filter(s => s.active && getSessionEnd(s.start) <= Date.now())
+            let endedCount = lastActiveSessions.filter(s => s.end).length
+            if (activeSessions.length > 0 && companyRecord?.status === 'admin'){
+                setAlertState('info')
+                setAlert('Session as ended. Please Stop Session Manager')
+                setAlertTimeout(5000)
+            }
+
+            if (endedCount === lastActiveSessions.length && companyRecord?.status === 'admin'){
+                setAlertState('info')
+                setAlert('All sesisons ended, Please Start Session Manager!')
+                setAlertTimeout(8000)
+            }
+        }
+    },[lastActiveSessions, companyRecord])
 
     useEffect(() => {
         (async () => {
