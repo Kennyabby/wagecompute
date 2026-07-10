@@ -4873,6 +4873,13 @@ const OrdersModal = ({
     );
 };
 
+// Locations a closing-stock reconciliation must be saved for before a
+// session manager can be ended. Other warehouses configured in Settings
+// (`wrhs`) are not currently operational — deliberately a fixed list rather
+// than derived from `wrhs`, so adding a not-yet-active warehouse to Settings
+// doesn't unexpectedly start blocking session end.
+const RECONCILIATION_REQUIRED_LOCATIONS = ['bar1', 'vip', 'kitchen'];
+
 const POSDashboard = ({
     sessions, allSalesSessions, setAllSalesSessions, profiles, employees, companyRecord, sales, canUpdateSession,
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, mergeAndPersistOrders, mergeAndPersistSessions,
@@ -4980,22 +4987,36 @@ const POSDashboard = ({
     }, [])
 
     useEffect(()=>{
-        if (currSessionManager && getSessionEnd(currSessionManager?.start) <= new Date().getTime()){
-            const resp = await fetchServer("POST", { postingDate: formatDateToDefault(currSessionManager?.start) }, "inventoryReconciliation/getForDate", server)
-            if (resp?.err) {
-                setAlertState('error')
-                setAlert(resp?.mess || 'Failed to load reconciliation for this date.')
-                setAlertTimeout(4000)
-                setReconciliationRecord(null)
-                resetSalesEntries()
-                return
-            }
-            if (resp?.exists) {
-                setReconciliationRecord(resp.record)
-            } else {
-                setReconciliationRecord(null)
+        // `useEffect`'s callback must be sync (it may return a cleanup
+        // function; an async function instead returns a Promise, which React
+        // can't call as cleanup) — the async work is wrapped in an inner
+        // function and invoked immediately instead of marking the effect
+        // itself `async`.
+        const checkReconciliation = async () => {
+            if (currSessionManager && getSessionEnd(currSessionManager?.start) <= new Date().getTime()){
+                const resp = await fetchServer("POST", { postingDate: formatDateToDefault(currSessionManager?.start) }, "inventoryReconciliation/getForDate", server)
+                if (resp?.err) {
+                    setAlertState('error')
+                    setAlert(resp?.mess || 'Failed to load reconciliation for this date.')
+                    setAlertTimeout(4000)
+                    setReconciliationRecord(null)
+                    return
+                }
+                // `exists` only means a reconciliation doc was created for
+                // this date, not that every required location was
+                // reconciled — one saved location was enough to pass this
+                // check before, letting sessions end while other locations'
+                // stock was never counted. Only bar1/vip/kitchen are
+                // currently in active use (other configured warehouses in
+                // `wrhs` are not yet operational), so those are the fixed
+                // set required here rather than deriving "all non-purchase
+                // warehouses" from `wrhs`.
+                const recordLocations = new Set((resp?.record?.locations || []).map((loc) => loc.location))
+                const isComplete = !!resp?.exists && RECONCILIATION_REQUIRED_LOCATIONS.every((name) => recordLocations.has(name))
+                setReconciliationRecord(isComplete ? resp.record : null)
             }
         }
+        checkReconciliation()
     },[currSessionManager])
 
     const loadPendingOfflineChanges = async () => {

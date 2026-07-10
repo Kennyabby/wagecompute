@@ -1207,7 +1207,7 @@ const Purchase = () => {
                                 value={fields.location}
                                 disabled={isView}
                             >
-                                {/* <option value=''>DEFAULT</option> */}
+                                <option value=''>DEFAULT</option>
                                 {wrhs.filter((wrhfl)=>{
                                     return wrhfl?.productCategories?.length
                                 }).map((wrh, index) => {

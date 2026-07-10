@@ -250,3 +250,71 @@
     background: #2980b9;
     color: #fff;
 }
+
+/* ================= Confirmation dialogs (adjustment / shortage) =================
+   Nested above the review modal (higher z-index), centered, so they can never
+   be missed or hidden behind other content — replaces an earlier design that
+   reused the small corner-toast Notify component for a confirmation, and an
+   inline panel nested inside an already-collapsed location card, both of
+   which were easy to miss in practice. */
+
+.reconcile-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 6500;
+}
+
+.reconcile-confirm-modal {
+    background: #fff;
+    color: #1f2937;
+    width: min(480px, 92vw);
+    max-height: 85vh;
+    overflow-y: auto;
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.reconcile-confirm-modal.reconcile-shortage-modal {
+    width: min(560px, 92vw);
+}
+
+.reconcile-confirm-modal h4 {
+    margin: 0 0 10px 0;
+}
+
+.reconcile-confirm-modal p {
+    font-size: 0.9rem;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.reconcile-confirm-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.reconcile-confirm-actions button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    background: #2980b9;
+    color: #fff;
+    font-weight: 600;
+}
+
+.reconcile-confirm-actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.reconcile-confirm-actions button.secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
