@@ -2,7 +2,6 @@ import './Reconciliation.css'
 
 import { useState, useEffect, useContext } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
-import Notify from '../../Resources/Notify/Notify';
 import { exportReconciliationExcel, exportReconciliationPDF } from '../../utils/reconciliationExport';
 
 const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
@@ -217,34 +216,6 @@ const ReconciliationReview = ({
                                                 </table>
                                             </div>
 
-                                            {shortageDraft?.location === loc.location && (
-                                                <div className='reconcile-shortage-draft'>
-                                                    <div>Shortage value available: {shortageDraft.shortageAvailable.toLocaleString()}</div>
-                                                    {shortageDraft.allocations.length === 0 && <div>No open/closed sessions found for this location on this date.</div>}
-                                                    {shortageDraft.allocations.map((alloc, idx) => (
-                                                        <div key={alloc.start} className='reconcile-shortage-row'>
-                                                            <span>{getEmployeeName ? getEmployeeName(alloc.employee_id) : alloc.employee_id}</span>
-                                                            <input
-                                                                type='number'
-                                                                min={0}
-                                                                value={alloc.amount}
-                                                                onChange={(e) => {
-                                                                    const value = Number(e.target.value || 0)
-                                                                    setShortageDraft((prev) => {
-                                                                        const next = { ...prev, allocations: [...prev.allocations] }
-                                                                        next.allocations[idx] = { ...next.allocations[idx], amount: value }
-                                                                        return next
-                                                                    })
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    ))}
-                                                    <div className='reconcile-shortage-actions'>
-                                                        <button disabled={busyAction} onClick={handlePostShortage}>Confirm Post Shortage</button>
-                                                        <button disabled={busyAction} onClick={() => setShortageDraft(null)}>Cancel</button>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -252,16 +223,66 @@ const ReconciliationReview = ({
                         })}
                     </>
                 )}
-
-                {confirmAdjustment && <Notify
-                    notifyMessage={`Post an inventory adjustment for ${confirmAdjustment} on ${postingDate}? This will create InventoryTransactions lines to match counted stock and lock this location.`}
-                    notifyState={'info'}
-                    timeout={100000}
-                    actionMessage={'Confirm'}
-                    cancel={() => setConfirmAdjustment(null)}
-                    action={() => handlePostAdjustment(confirmAdjustment)}
-                />}
             </div>
+
+            {confirmAdjustment && (
+                <div className='reconcile-confirm-overlay' onClick={() => !busyAction && setConfirmAdjustment(null)}>
+                    <div className='reconcile-confirm-modal' onClick={(e) => e.stopPropagation()}>
+                        <h4>Post Inventory Adjustment</h4>
+                        <p>
+                            Post an inventory adjustment for <b>{confirmAdjustment}</b> on <b>{postingDate}</b>?
+                            This will create InventoryTransactions lines to match the counted stock and lock this
+                            location from further edits.
+                        </p>
+                        <div className='reconcile-confirm-actions'>
+                            <button disabled={busyAction} onClick={() => handlePostAdjustment(confirmAdjustment)}>
+                                {busyAction ? 'Posting...' : 'Confirm Adjustment'}
+                            </button>
+                            <button disabled={busyAction} className='secondary' onClick={() => setConfirmAdjustment(null)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {shortageDraft && (
+                <div className='reconcile-confirm-overlay' onClick={() => !busyAction && setShortageDraft(null)}>
+                    <div className='reconcile-confirm-modal reconcile-shortage-modal' onClick={(e) => e.stopPropagation()}>
+                        <h4>Post Shortage to POS Session(s)</h4>
+                        <p>
+                            Location <b>{shortageDraft.location}</b> — shortage value available:{' '}
+                            <b>{shortageDraft.shortageAvailable.toLocaleString()}</b>.
+                            Select the amount to charge each employee's session below (partial splits allowed).
+                        </p>
+                        {shortageDraft.allocations.length === 0 && (
+                            <div className='reconcile-review-empty'>No open/closed sessions were found for this location on this date.</div>
+                        )}
+                        {shortageDraft.allocations.map((alloc, idx) => (
+                            <div key={alloc.start} className='reconcile-shortage-row'>
+                                <span>{getEmployeeName ? getEmployeeName(alloc.employee_id) : alloc.employee_id}</span>
+                                <input
+                                    type='number'
+                                    min={0}
+                                    value={alloc.amount}
+                                    onChange={(e) => {
+                                        const value = Number(e.target.value || 0)
+                                        setShortageDraft((prev) => {
+                                            const next = { ...prev, allocations: [...prev.allocations] }
+                                            next.allocations[idx] = { ...next.allocations[idx], amount: value }
+                                            return next
+                                        })
+                                    }}
+                                />
+                            </div>
+                        ))}
+                        <div className='reconcile-confirm-actions'>
+                            <button disabled={busyAction || !shortageDraft.allocations.length} onClick={handlePostShortage}>
+                                {busyAction ? 'Posting...' : 'Confirm Post Shortage'}
+                            </button>
+                            <button disabled={busyAction} className='secondary' onClick={() => setShortageDraft(null)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
