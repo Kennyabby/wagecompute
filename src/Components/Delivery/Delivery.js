@@ -2663,13 +2663,20 @@ const AddProduct = ({
     companyRecord, addingProducts, setAddingProducts,
     setAlertState, setAlert, setAlertTimeout,
 }) => {
-    const { fetchServer, server, company, allowBacklogs } = useContext(ContextProvider)
+    const { fetchServer, server, company, allowBacklogs, settings } = useContext(ContextProvider)
     const isAdmin = companyRecord?.status === 'admin'
     const canBacklog = isAdmin || allowBacklogs
     const todayStr = new Date().toISOString().slice(0, 10)
 
+    // Configured in Settings > General Config > POS Reconciliation. Falls
+    // back to all non-purchase warehouses while that setting hasn't loaded
+    // yet, so the modal isn't briefly empty on first render.
+    const posReconciliationSetting = settings.find((setting) => setting.name === 'posReconciliation')
+    const configuredLocations = posReconciliationSetting?.locations
+    const reconciliationWrhs = wrhs.filter((wh) => !wh.purchase && (!Array.isArray(configuredLocations) || configuredLocations.includes(wh.name)))
+
     const [category, setCategory] = useState('all')
-    const [wrh1, setWrh1] = useState(wrhs.find((wr) => { return !wr.purchase })?.name || 'default')
+    const [wrh1, setWrh1] = useState(reconciliationWrhs[0]?.name || 'default')
     const [postingDate, setPostingDate] = useState(todayStr)
     const [reconciliationRecord, setReconciliationRecord] = useState(null)
     const [loadingRecord, setLoadingRecord] = useState(false)
@@ -2706,10 +2713,8 @@ const AddProduct = ({
                 totalSales: '',
             }
         })
-        wrhs.forEach((wh) => {
-            if (!wh.purchase) {
-                allEntries[wh.name] = [...wrhEntries]
-            }
+        reconciliationWrhs.forEach((wh) => {
+            allEntries[wh.name] = [...wrhEntries]
         })
         return allEntries
     }
@@ -2774,6 +2779,13 @@ const AddProduct = ({
         fetchExistingReconciliation(postingDate)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [postingDate])
+
+    useEffect(() => {
+        if (reconciliationWrhs.length && !reconciliationWrhs.some((wh) => wh.name === wrh1)) {
+            setWrh1(reconciliationWrhs[0].name)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [reconciliationWrhs.map((wh) => wh.name).join(',')])
 
     const handleSalesUdpate = (e, index) => {
         const name = e.target.getAttribute('name')
@@ -2932,12 +2944,9 @@ const AddProduct = ({
                         }
                     }}>
                         {
-                            wrhs.map((wh, id) => {
-                                if (!wh.purchase) {
-                                    return <div key={id} className={'slprwh ' + (wrh1 === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
-                                }
-                                return null
-                            })
+                            reconciliationWrhs.map((wh, id) => (
+                                <div key={id} className={'slprwh ' + (wrh1 === wh.name ? 'slprwh-clicked' : '')} name={wh.name}>{wh.name}</div>
+                            ))
                         }
                         {!entryLocked && <div
                             className='slprwh-print'
