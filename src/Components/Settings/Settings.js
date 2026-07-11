@@ -7,6 +7,15 @@ import BillingSettingsPanel from './BillingSettingsPanel'
 import { uploadCompanyFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 import heic2any from 'heic2any'
 
+// Mirrors the server default in wageserver/UserModule/SettingsModule/settings.js
+// so the UI doesn't flash a "disabled" state before the real doc loads.
+const DEFAULT_POS_RECONCILIATION_CONFIG = {
+    name: 'posReconciliation',
+    desc: 'POS Reconciliation',
+    enabled: true,
+    locations: ['bar1', 'vip', 'kitchen'],
+}
+
 const DEFAULT_APPROVAL_CONFIG = {
     name: 'approvalConfig',
     desc: 'Approval Configuration',
@@ -51,6 +60,7 @@ const Settings = () => {
     const [selectedEmployee, setSelectedEmployee] = useState(null)
     const [currentSetting, setCurrentSetting] = useState(null)
     const [approvalConfig, setApprovalConfig] = useState(DEFAULT_APPROVAL_CONFIG)
+    const [posReconciliationConfig, setPosReconciliationConfig] = useState(DEFAULT_POS_RECONCILIATION_CONFIG)
     const [propState, setPropState] = useState('new')
     const [curPropSet, setCurPropSet] = useState(null)
     const [currentProfiles, setCurrentProfiles] = useState([])
@@ -183,6 +193,11 @@ const Settings = () => {
                         case 'posSettings':
                             setting.desc = 'POS Settings'
                             setting.prop = 'posSettings'
+                            return setting.desc
+                        case 'posReconciliation':
+                            setting.desc = 'POS Reconciliation'
+                            setting.prop = 'locations'
+                            return setting.desc
                         default:
                             return setting.desc
                     }
@@ -221,6 +236,11 @@ const Settings = () => {
             const approvalSet = settings.find((setting) => setting.name === 'approvalConfig')
             if (approvalSet?.modules) {
                 setApprovalConfig({ ...DEFAULT_APPROVAL_CONFIG, ...approvalSet, modules: { ...DEFAULT_APPROVAL_CONFIG.modules, ...approvalSet.modules } })
+            }
+
+            const posReconSet = settings.find((setting) => setting.name === 'posReconciliation')
+            if (posReconSet) {
+                setPosReconciliationConfig({ ...DEFAULT_POS_RECONCILIATION_CONFIG, ...posReconSet })
             }
         }
     }, [settings])
@@ -584,6 +604,54 @@ const Settings = () => {
             setSaveStatus('')
             setAlertState('error')
             setAlert(error.message || 'Failed to save approval configuration')
+            setAlertTimeout(4000)
+        }
+    }
+
+    const canConfigurePosReconciliation = companyRecord?.access === 'admin' || companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all')
+
+    const togglePosReconciliationLocation = (locationName) => {
+        setPosReconciliationConfig((prev) => {
+            const locations = prev.locations || []
+            return {
+                ...prev,
+                locations: locations.includes(locationName)
+                    ? locations.filter((name) => name !== locationName)
+                    : [...locations, locationName]
+            }
+        })
+    }
+
+    const savePosReconciliationConfig = async () => {
+        if (!canConfigurePosReconciliation) {
+            setAlertState('error')
+            setAlert('POS Reconciliation configuration is restricted to admins.')
+            setAlertTimeout(3000)
+            return
+        }
+        setSaveStatus('Saving POS Reconciliation Configuration...')
+        try {
+            const payload = {
+                ...posReconciliationConfig,
+                name: 'posReconciliation',
+                desc: 'POS Reconciliation',
+                updatedAt: Date.now(),
+            }
+            delete payload._id
+            const resp = await fetchServer("POST", {
+                prop: [{ name: 'posReconciliation' }, payload]
+            }, "updateSettings", server)
+            if (resp.err || resp.updated === false) {
+                throw new Error(resp.mess || 'Failed to save POS Reconciliation configuration')
+            }
+            setPosReconciliationConfig(payload)
+            getSettings(company, companyRecord)
+            setSaveStatus('POS Reconciliation Configuration Saved')
+            setTimeout(() => setSaveStatus(''), 2500)
+        } catch (error) {
+            setSaveStatus('')
+            setAlertState('error')
+            setAlert(error.message || 'Failed to save POS Reconciliation configuration')
             setAlertTimeout(4000)
         }
     }
@@ -1909,7 +1977,47 @@ const Settings = () => {
                         <div className='general-details'>
                             <div className="form-card">
                                 <div className='formtitle'><IoSettings /> {currentSetting?.desc} Configuration</div>
-                                
+
+                                {currentSetting?.name === 'posReconciliation' ? (
+                                    <div className="form-fields-container">
+                                        <p className='settings-accounting-copy'>
+                                            When enabled, POS agents must save a closing-stock reconciliation for every selected location before that session manager's session can be ended. Only the locations selected below appear in the Reconciliation add-stock screen.
+                                        </p>
+                                        <div className='inpcov toggle-row'>
+                                            <div>Require Reconciliation Before Ending Session</div>
+                                            <label className='toggle-switch'>
+                                                <input
+                                                    type='checkbox'
+                                                    checked={!!posReconciliationConfig.enabled}
+                                                    disabled={!canConfigurePosReconciliation}
+                                                    onChange={(e) => setPosReconciliationConfig((prev) => ({ ...prev, enabled: e.target.checked }))}
+                                                />
+                                                <span className='slider'></span>
+                                            </label>
+                                        </div>
+                                        <div className="section-divider">Locations Included in Reconciliation Validation</div>
+                                        <div className='permissions'>
+                                            {wrhs.filter((wrh) => !wrh.purchase).map((wrh, i) => (
+                                                <label key={i} className='permission-label'>
+                                                    <input
+                                                        type='checkbox'
+                                                        checked={(posReconciliationConfig.locations || []).includes(wrh.name)}
+                                                        disabled={!canConfigurePosReconciliation}
+                                                        onChange={() => togglePosReconciliationLocation(wrh.name)}
+                                                    />
+                                                    <span className='permission-text'>{wrh.name}</span>
+                                                </label>
+                                            ))}
+                                            {!wrhs.filter((wrh) => !wrh.purchase).length && (
+                                                <div className='settings-accounting-empty'>No non-purchase warehouses configured yet.</div>
+                                            )}
+                                        </div>
+                                        <div className="form-actions" style={{ marginTop: '40px' }}>
+                                            <button className='savebtn' onClick={savePosReconciliationConfig} disabled={!canConfigurePosReconciliation}><IoSave /> Save Configuration</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                <>
                                 <div className='general-body'>
                                     {!['posSettings'].includes(currentSetting.name) && (
                                         <button className='general-propSet-add' onClick={() => resetToDefault(currentSetting)}>
@@ -2137,6 +2245,8 @@ const Settings = () => {
                                         )}
                                     </div>
                                 </div>
+                                </>
+                                )}
                             </div>
                         </div>
                     </motion.div>

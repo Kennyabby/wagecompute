@@ -4873,13 +4873,6 @@ const OrdersModal = ({
     );
 };
 
-// Locations a closing-stock reconciliation must be saved for before a
-// session manager can be ended. Other warehouses configured in Settings
-// (`wrhs`) are not currently operational — deliberately a fixed list rather
-// than derived from `wrhs`, so adding a not-yet-active warehouse to Settings
-// doesn't unexpectedly start blocking session end.
-const RECONCILIATION_REQUIRED_LOCATIONS = ['bar1', 'vip', 'kitchen'];
-
 const POSDashboard = ({
     sessions, allSalesSessions, setAllSalesSessions, profiles, employees, companyRecord, sales, canUpdateSession,
     isLive, liveErrorMessages, sessionEnded, setEndSession, setStartSession, mergeAndPersistOrders, mergeAndPersistSessions,
@@ -4888,7 +4881,14 @@ const POSDashboard = ({
     fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange, lastActiveSessions,
     setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories
 }) => {
-    const { fetchServer, server, company, wrhs, formatDateToDefault } = useContext(ContextProvider);
+    const { fetchServer, server, company, wrhs, formatDateToDefault, settings } = useContext(ContextProvider);
+
+    // Configured in Settings > General Config > POS Reconciliation, instead of
+    // a fixed list, so admins control which locations gate session-end without
+    // a code change.
+    const posReconciliationSetting = settings.find((setting) => setting.name === 'posReconciliation')
+    const reconciliationEnabled = !!posReconciliationSetting?.enabled
+    const reconciliationRequiredLocations = posReconciliationSetting?.locations || []
 
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
@@ -4993,6 +4993,12 @@ const POSDashboard = ({
         // function and invoked immediately instead of marking the effect
         // itself `async`.
         const checkReconciliation = async () => {
+            // Reconciliation isn't required at all if the admin has disabled
+            // it, or hasn't selected any locations for it, in Settings.
+            if (!reconciliationEnabled || !reconciliationRequiredLocations.length) {
+                setReconciliationRecord({})
+                return
+            }
             if (currSessionManager && getSessionEnd(currSessionManager?.start) <= new Date().getTime()){
                 const resp = await fetchServer("POST", { postingDate: formatDateToDefault(currSessionManager?.start) }, "inventoryReconciliation/getForDate", server)
                 if (resp?.err) {
@@ -5006,18 +5012,14 @@ const POSDashboard = ({
                 // this date, not that every required location was
                 // reconciled — one saved location was enough to pass this
                 // check before, letting sessions end while other locations'
-                // stock was never counted. Only bar1/vip/kitchen are
-                // currently in active use (other configured warehouses in
-                // `wrhs` are not yet operational), so those are the fixed
-                // set required here rather than deriving "all non-purchase
-                // warehouses" from `wrhs`.
+                // stock was never counted.
                 const recordLocations = new Set((resp?.record?.locations || []).map((loc) => loc.location))
-                const isComplete = !!resp?.exists && RECONCILIATION_REQUIRED_LOCATIONS.every((name) => recordLocations.has(name))
+                const isComplete = !!resp?.exists && reconciliationRequiredLocations.every((name) => recordLocations.has(name))
                 setReconciliationRecord(isComplete ? resp.record : null)
             }
         }
         checkReconciliation()
-    },[currSessionManager])
+    },[currSessionManager, reconciliationEnabled, reconciliationRequiredLocations.join(',')])
 
     const loadPendingOfflineChanges = async () => {
         if (!company || !companyRecord?.emailid) return;
