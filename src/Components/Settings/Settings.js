@@ -195,9 +195,11 @@ const Settings = () => {
                             setting.prop = 'posSettings'
                             return setting.desc
                         case 'posReconciliation':
-                            setting.desc = 'POS Reconciliation'
-                            setting.prop = 'locations'
-                            return setting.desc
+                            // Rendered as a static sidebar entry below instead
+                            // (it's a singleton config, not a list), so it's
+                            // excluded here to avoid a duplicate entry once
+                            // this doc exists in `settings`.
+                            return false
                         default:
                             return setting.desc
                     }
@@ -759,10 +761,15 @@ const Settings = () => {
                         productCategories: selectedCategories,
                         paymentMethods: selectedPaymentMethods
                     }
+                    // Only one warehouse can be the Primary Purchase Location —
+                    // making this one primary demotes any other that held it.
+                    const existingWarehouses = newWarehouse.purchase
+                        ? wrhs.map((wrh) => (wrh.purchase ? { ...wrh, purchase: false } : wrh))
+                        : wrhs
                     const resps = await fetchServer("POST", {
                         prop: [{ name: 'warehouses' }, {
                             ...currentSetting,
-                            warehouses: [...wrhs, newWarehouse]
+                            warehouses: [...existingWarehouses, newWarehouse]
                         }]
                     }, "updateSettings", server)
                     if (resps.err) {
@@ -779,6 +786,8 @@ const Settings = () => {
                         }, 3000)
                     }
                 } else {
+                    // Only one warehouse can be the Primary Purchase Location —
+                    // making this one primary demotes any other that held it.
                     const updatedWarehouses = wrhs.map((wrh) => {
                         if (wrh.name === curPropSet.name) {
                             return {
@@ -786,6 +795,9 @@ const Settings = () => {
                                 productCategories: selectedCategories,
                                 paymentMethods: selectedPaymentMethods
                             }
+                        }
+                        if (curPropSet.purchase && wrh.purchase) {
+                            return { ...wrh, purchase: false }
                         }
                         return wrh
                     })
@@ -938,9 +950,14 @@ const Settings = () => {
                 break
             case "posSettings":
                 if (propState === 'view') {
+                    // Only one POS mode (Shop or Restaurant) can be active at
+                    // once — activating this one deactivates any other.
                     const updatedPosSetting = posSettings.map((pos) => {
                         if (pos.name === curPropSet.name) {
                             return curPropSet
+                        }
+                        if (curPropSet.active && pos.active) {
+                            return { ...pos, active: false }
                         }
                         return pos
                     })
@@ -1972,6 +1989,14 @@ const Settings = () => {
                                         {setting.desc}
                                     </div>
                                 ))}
+                                {/* Singleton config, not a list — always shown rather than
+                                    only once a matching Settings doc happens to already exist. */}
+                                <div
+                                    className={'profile-item ' + (currentSetting?.name === 'posReconciliation' ? 'profile-item-active' : '')}
+                                    onClick={() => handleSettingSelect({ name: 'posReconciliation', desc: 'POS Reconciliation', prop: 'locations' })}
+                                >
+                                    POS Reconciliation
+                                </div>
                             </div>
                         </div>
                         <div className='general-details'>
@@ -2092,7 +2117,12 @@ const Settings = () => {
                                     {['warehouses'].includes(currentSetting.name) && (
                                         <>
                                             <div className='inpcov toggle-row'>
-                                                <div>Primary Purchase Location</div>
+                                                <div>
+                                                    Primary Purchase Location
+                                                    {curPropSet.purchase && wrhs.some((wrh) => wrh.purchase && wrh.name !== curPropSet.name) && (
+                                                        <div className='settings-toggle-hint'>Saving will turn this off for the current primary purchase location.</div>
+                                                    )}
+                                                </div>
                                                 <label className='toggle-switch'>
                                                     <input type='checkbox' name='purchase' checked={curPropSet.purchase} onChange={handlePropSetChange} />
                                                     <span className='slider'></span>
@@ -2153,7 +2183,12 @@ const Settings = () => {
                                     {['posSettings'].includes(currentSetting.name) && (
                                         <div className="pos-settings-grid">
                                             <div className='inpcov toggle-row'>
-                                                <div>Active Status</div>
+                                                <div>
+                                                    Active Status
+                                                    {curPropSet.active && posSettings.some((pos) => pos.active && pos.name !== curPropSet.name) && (
+                                                        <div className='settings-toggle-hint'>Saving will turn off the currently active POS mode ({posSettings.find((pos) => pos.active && pos.name !== curPropSet.name)?.name}).</div>
+                                                    )}
+                                                </div>
                                                 <label className='toggle-switch'>
                                                     <input type='checkbox' name='active' checked={curPropSet.active} onChange={handlePropSetChange} />
                                                     <span className='slider'></span>

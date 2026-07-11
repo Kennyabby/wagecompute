@@ -52,8 +52,8 @@ import {
 // Single source of truth for the API base URL: set REACT_APP_API_URL in the
 // environment used for each build (CRA inlines REACT_APP_* vars at build time).
 // Falls back to localhost only for local dev when the var isn't set.
-const SERVER = process.env.REACT_APP_API_URL || "https://wageserver-production.up.railway.app"
-// const SERVER = process.env.REACT_APP_API_URL || "http://localhost:3001"
+// const SERVER = process.env.REACT_APP_API_URL || "https://wageserver-production.up.railway.app"
+const SERVER = process.env.REACT_APP_API_URL || "http://localhost:3001"
 if (process.env.NODE_ENV === 'production' && SERVER.includes('localhost')) {
   // Loud, unmissable warning rather than a silent guaranteed-to-fail deploy —
   // a real build-time check belongs in CI, but this catches it at runtime too.
