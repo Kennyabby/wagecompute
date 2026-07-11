@@ -2,7 +2,18 @@ import './CentralAdmin.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 // Same single source of truth as the tenant app (App.js) — REACT_APP_API_URL.
-const SERVER = process.env.REACT_APP_API_URL || "https://api.epxcentral.com"
+// Previously fell back to the hardcoded "https://api.epxcentral.com" — a
+// plausible-looking but not-yet-live domain — whenever the env var wasn't
+// set for whatever hosting target serves admin.epxcentral.com/admin.localhost.
+// That silently sent every request to a dead/parked address with no warning,
+// which the browser and this file's own catch block both report identically
+// to a real CORS block ("Network error or CORS failure"). Falling back to
+// localhost instead (matching App.js exactly) turns the same misconfiguration
+// into an obvious, diagnosable failure rather than a mysterious one.
+const SERVER = process.env.REACT_APP_API_URL || "http://localhost:3001"
+if (process.env.NODE_ENV === 'production' && SERVER.includes('localhost')) {
+  console.error('CONFIGURATION ERROR: REACT_APP_API_URL is not set for this production build — Central Admin API calls will target localhost and fail.')
+}
 const ADMIN_TOKEN_KEY = 'central-admin-access-token'
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
