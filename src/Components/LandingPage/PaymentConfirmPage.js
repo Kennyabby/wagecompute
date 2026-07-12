@@ -10,6 +10,7 @@ const PaymentConfirmPage = () => {
   const [state, setState] = useState({ verifying: false, type: '', message: '', reference: '' })
   const checkout = new URLSearchParams(location.search).get('checkout') || ''
   const isTenantCheckout = checkout === 'tenant-settings'
+  const isTenantRenewal = checkout === 'tenant-renewal'
 
   useEffect(() => {
     storePath('payment-confirm')
@@ -25,7 +26,9 @@ const PaymentConfirmPage = () => {
       try {
         const endpoint = checkout === 'tenant-settings'
           ? 'billing/verifyTenantSubscription'
-          : 'public/payments/paystack/verify'
+          : checkout === 'tenant-renewal'
+            ? 'public/tenant/renewal/verify'
+            : 'public/payments/paystack/verify'
         const response = await fetchServer('GET', { reference }, endpoint, server)
         if (cancelled) return
         if (!response || !response.ok) {
@@ -59,7 +62,7 @@ const PaymentConfirmPage = () => {
         <div className="sp-confirm-shell">
           <div className={`sp-confirm-card ${state.type || 'info'}`}>
             <div className="sp-confirm-pill-row">
-              <span className="sp-confirm-pill">{isTenantCheckout ? 'Tenant billing checkout' : 'Public pricing checkout'}</span>
+              <span className="sp-confirm-pill">{isTenantRenewal ? 'Workspace renewal' : isTenantCheckout ? 'Tenant billing checkout' : 'Public pricing checkout'}</span>
               <span className="sp-confirm-pill">{state.verifying ? 'Verification in progress' : (state.type || 'pending')}</span>
             </div>
 
@@ -81,14 +84,19 @@ const PaymentConfirmPage = () => {
 
               <div className="sp-confirm-actions">
                 <div className="sp-input-help">
-                  {isTenantCheckout
-                    ? 'Return to tenant settings to review the subscription snapshot, payments, invoices, and current workspace status.'
-                    : 'Return to pricing to continue your onboarding path or start a new free trial tenant.'}
+                  {isTenantRenewal
+                    ? 'Your workspace should now be reactivated. Please log in to continue.'
+                    : isTenantCheckout
+                      ? 'Return to tenant settings to review the subscription snapshot, payments, invoices, and current workspace status.'
+                      : 'Return to pricing to continue your onboarding path or start a new free trial tenant.'}
                 </div>
-                <button className="sp-checkout-submit" onClick={() => navigate(isTenantCheckout ? '/settings' : '/pricing')}>
-                  {isTenantCheckout ? 'Return to Billing Settings' : 'Back to Pricing'}
+                <button
+                  className="sp-checkout-submit"
+                  onClick={() => navigate(isTenantRenewal ? '/login' : isTenantCheckout ? '/settings' : '/pricing')}
+                >
+                  {isTenantRenewal ? 'Return to Login' : isTenantCheckout ? 'Return to Billing Settings' : 'Back to Pricing'}
                 </button>
-                {!isTenantCheckout ? (
+                {!isTenantCheckout && !isTenantRenewal ? (
                   <button className="sp-confirm-secondary-btn" onClick={() => navigate('/signup')}>
                     Start Free Trial Instead
                   </button>

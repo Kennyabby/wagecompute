@@ -7,7 +7,7 @@ import './ErrorPages.css';
 
 const LicenseExpired = () => {
   const navigate = useNavigate();
-  const { storePath } = useContext(ContextProvider)
+  const { storePath, companyRecord } = useContext(ContextProvider)
 
   useEffect(() => {
     storePath('license-expired')
@@ -66,7 +66,7 @@ const LicenseExpired = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <button className="btn-primary" onClick={() => navigate('/settings')}>
+          <button className="btn-primary" onClick={() => navigate(companyRecord?.emailid ? '/settings' : '/renew')}>
             Manage Subscription
           </button>
           <button className="btn-back" onClick={() => navigate('/')}>
