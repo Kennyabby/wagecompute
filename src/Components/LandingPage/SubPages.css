@@ -17,33 +17,40 @@
 /* ===== PRICING PAGE ===== */
 .sp-billing-toggle { display: inline-flex; gap: 4px; background: #fff; padding: 4px; border-radius: 14px; border: 1px solid rgba(23,56,41,0.08); box-shadow: 0 4px 12px rgba(23,56,41,0.04); margin: 0 auto; }
 .sp-billing-toggle-wrapper { display: flex; justify-content: center; margin-bottom: 32px; }
-.sp-billing-toggle button { padding: 10px 24px; border: none; border-radius: 10px; background: transparent; font-weight: 700; font-size: 0.9rem; cursor: pointer; color: var(--ec-muted); transition: 0.2s; font-family: 'MontserratRegular', sans-serif; }
+.sp-billing-toggle button { padding: 10px 24px; border: none; border-radius: 10px; background: transparent; font-weight: 700; font-size: 0.9rem; cursor: pointer; color: var(--ec-muted); transition: 0.2s; font-family: 'MontserratRegular', sans-serif; white-space: nowrap; }
 .sp-billing-toggle button.active { background: var(--ec-primary); color: #fff; box-shadow: 0 4px 12px rgba(23,56,41,0.15); }
 .sp-save-badge { display: inline-block; padding: 2px 8px; background: rgba(106,242,173,0.2); color: var(--ec-secondary); border-radius: 6px; font-size: 0.75rem; margin-left: 6px; }
-.sp-badge-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
-.sp-plan-chip { padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,0.82); border: 1px solid rgba(23,56,41,0.08); color: var(--ec-primary); font-size: 0.82rem; font-weight: 700; }
+.sp-badge-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.sp-plan-chip { padding: 10px 16px; border-radius: 999px; background: rgba(255,255,255,0.82); border: 1px solid rgba(23,56,41,0.08); color: var(--ec-primary); font-size: 0.82rem; font-weight: 700; }
 
-.sp-pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1100px; margin: 0 auto; }
-.sp-pricing-card { padding: 40px 32px; border-radius: 24px; background: #fff; border: 1px solid rgba(23,56,41,0.06); box-shadow: 0 12px 32px rgba(23,56,41,0.04); position: relative; transition: 0.3s; }
+.sp-pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; max-width: 1140px; margin: 0 auto; padding: 0 24px; align-items: stretch; }
+.sp-pricing-card { display: flex; flex-direction: column; padding: 40px 32px; border-radius: 24px; background: #fff; border: 1px solid rgba(23,56,41,0.06); box-shadow: 0 12px 32px rgba(23,56,41,0.04); position: relative; transition: transform 0.25s ease, box-shadow 0.25s ease; }
 .sp-pricing-card:hover { transform: translateY(-4px); box-shadow: 0 20px 48px rgba(23,56,41,0.08); }
-.sp-pricing-card.featured { border-color: var(--ec-secondary); box-shadow: 0 20px 48px rgba(43,106,75,0.12); transform: scale(1.03); }
+.sp-pricing-card.featured { border-color: var(--ec-secondary); box-shadow: 0 20px 48px rgba(43,106,75,0.12); transform: scale(1.03); z-index: 1; }
 .sp-pricing-card.featured:hover { transform: scale(1.03) translateY(-4px); }
 .sp-pricing-card.supporting { background: linear-gradient(180deg, #ffffff 0%, #f8faf8 100%); }
 .sp-pricing-card.selected { border-color: rgba(43,106,75,0.26); box-shadow: 0 24px 54px rgba(23,56,41,0.09); }
-.sp-pricing-badge-row { position: relative; min-height: 28px; margin-bottom: 10px; }
+/* No `position: relative` here on purpose — .sp-popular-badge is an
+   absolutely-positioned child of this row, and this row's own content
+   (.sp-pricing-mini-badge) sits right where the badge's small `top: -14px`
+   offset would still land if resolved against this row, overlapping it.
+   Leaving this un-positioned lets the badge resolve against the card itself
+   (.sp-pricing-card has `position: relative`), floating it as a ribbon above
+   the card's outer top edge instead of on top of the mini-badge beside it. */
+.sp-pricing-badge-row { min-height: 28px; margin-bottom: 14px; }
 .sp-pricing-mini-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; border-radius: 999px; background: rgba(43,106,75,0.08); color: var(--ec-secondary); font-size: 0.76rem; font-weight: 700; }
 .sp-popular-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); padding: 6px 20px; background: linear-gradient(135deg, #173829, #2b6a4b); color: #fff; border-radius: 999px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
-.sp-pricing-card h3 { font-family: 'MontserratBold', sans-serif; font-size: 1.3rem; color: var(--ec-primary); margin-bottom: 8px; }
-.sp-price { display: flex; align-items: baseline; gap: 2px; margin-bottom: 8px; }
+.sp-pricing-card h3 { font-family: 'MontserratBold', sans-serif; font-size: 1.3rem; color: var(--ec-primary); margin-bottom: 10px; }
+.sp-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .sp-currency { font-size: 1.4rem; font-weight: 700; color: var(--ec-primary); }
-.sp-amount { font-family: 'MontserratBold', sans-serif; font-size: 3rem; color: var(--ec-primary); line-height: 1; }
+.sp-amount { font-family: 'MontserratBold', sans-serif; font-size: clamp(1.9rem, 3.4vw, 2.8rem); color: var(--ec-primary); line-height: 1.05; }
 .sp-period { font-size: 0.9rem; color: var(--ec-muted); }
-.sp-plan-desc { font-size: 0.9rem; color: var(--ec-muted); margin-bottom: 24px; }
-.sp-plan-cta { width: 100%; padding: 14px; border-radius: 14px; border: 1.5px solid rgba(23,56,41,0.14); background: #fff; color: var(--ec-primary); font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: 0.2s; margin-bottom: 28px; font-family: 'MontserratRegular', sans-serif; }
+.sp-plan-desc { font-size: 0.92rem; color: var(--ec-muted); line-height: 1.6; margin-bottom: 24px; }
+.sp-plan-cta { width: 100%; padding: 15px; border-radius: 14px; border: 1.5px solid rgba(23,56,41,0.14); background: #fff; color: var(--ec-primary); font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: 0.2s; margin-bottom: 28px; font-family: 'MontserratRegular', sans-serif; }
 .sp-plan-cta.primary { background: linear-gradient(135deg, #173829, #2b6a4b); color: #fff; border: none; box-shadow: 0 8px 20px rgba(23,56,41,0.18); }
 .sp-plan-cta:hover { transform: translateY(-1px); }
-.sp-feature-list { list-style: none; padding: 0; display: grid; gap: 12px; }
-.sp-feature-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem; color: var(--ec-text); line-height: 1.4; }
+.sp-feature-list { list-style: none; padding: 0; margin: 0 0 0 0; display: grid; gap: 13px; margin-top: auto; }
+.sp-feature-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem; color: var(--ec-text); line-height: 1.45; }
 .sp-check { width: 22px; height: 22px; border-radius: 8px; background: rgba(106,242,173,0.15); color: var(--ec-secondary); display: grid; place-items: center; font-size: 0.72rem; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
 
 .sp-status-banner {
@@ -63,9 +70,9 @@
 .sp-status-banner.info { border-color: rgba(190, 144, 34, 0.18); background: linear-gradient(180deg, #ffffff 0%, #fff9ed 100%); }
 
 .sp-checkout-shell {
-  max-width: 1100px;
+  max-width: 1140px;
   margin: 0 auto;
-  padding: 10px;
+  padding: 14px;
   border-radius: 34px;
   background:
     radial-gradient(circle at top left, rgba(255,226,154,0.24), transparent 34%),
@@ -75,7 +82,8 @@
 .sp-checkout-grid-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr);
-  gap: 22px;
+  gap: 24px;
+  align-items: start;
 }
 .sp-checkout-card {
   padding: 36px;
@@ -83,6 +91,11 @@
   background: rgba(255,255,255,0.92);
   border: 1px solid rgba(23,56,41,0.07);
   box-shadow: 0 22px 44px rgba(23,56,41,0.06);
+  min-width: 0;
+}
+.sp-checkout-card.sp-checkout-card-sticky {
+  position: sticky;
+  top: calc(var(--ec-nav-height) + 20px);
 }
 .sp-calculator-card {
   background:
@@ -178,6 +191,14 @@
   font-size: 0.9rem;
   line-height: 1.65;
 }
+.sp-calculator-summary-card.highlight {
+  background: linear-gradient(135deg, #173829, #2b6a4b);
+  border-color: transparent;
+  box-shadow: 0 18px 36px rgba(23,56,41,0.22);
+}
+.sp-calculator-summary-card.highlight span { color: rgba(255,255,255,0.72); }
+.sp-calculator-summary-card.highlight strong { color: #fff; font-size: 1.6rem; }
+.sp-calculator-summary-card.highlight p { color: rgba(255,255,255,0.78); }
 .sp-plan-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -517,14 +538,43 @@
 .sp-contact-card p { font-size: 0.88rem; color: var(--ec-muted); margin-bottom: 16px; }
 .sp-contact-action { font-size: 0.88rem; font-weight: 700; color: var(--ec-secondary); }
 
+/* App selector cards for pricing page */
+.sp-optional-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.sp-app-card { display: block; }
+.sp-app-select { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(23,56,41,0.06); background: #fff; cursor: pointer; transition: box-shadow 0.18s ease, transform 0.12s ease; }
+.sp-app-select:hover { box-shadow: 0 10px 24px rgba(23,56,41,0.04); transform: translateY(-2px); }
+.sp-app-select input { width: 18px; height: 18px; margin-top: 12px; accent-color: #2b6a4b; flex-shrink: 0; }
+.sp-app-logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: #fff; background: linear-gradient(135deg, #2b6a4b, #173829); font-family: 'MontserratBold', sans-serif; flex-shrink: 0; }
+/* `min-width: 0` intentionally overrides the flex-item default of
+   `min-width: auto` (which otherwise refuses to shrink below content size)
+   — required so the name can truncate instead of overflowing its box. The
+   price tag lives inside this column now (sp-app-meta-head), not as a
+   sibling fighting the logo/checkbox for the same row, so it can never be
+   overlapped by overflowing name text regardless of card width. */
+.sp-app-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sp-app-meta-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.sp-app-meta-head strong { font-size: 0.98rem; color: var(--ec-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-app-deps { font-size: 0.82rem; color: #6b7b71; }
+.sp-app-tag { font-size: 0.82rem; color: var(--ec-secondary); background: rgba(43,106,75,0.06); padding: 6px 10px; border-radius: 999px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.sp-app-select input:checked ~ .sp-app-logo { box-shadow: 0 8px 20px rgba(43,106,75,0.14); transform: scale(1.03); }
+
 /* ===== RESPONSIVE ===== */
+/* Large tablet / small laptop */
+@media(max-width: 1180px) {
+  .sp-pricing-grid { max-width: 920px; }
+}
+
+/* Tablet: two-column layouts start collapsing, but grids that still fit
+   comfortably (summary cards, checkout highlights, comparison rows) stay
+   multi-column here rather than jumping straight to a single column like
+   they used to — that left a lot of dead horizontal space on real tablets. */
 @media(max-width: 1024px) {
-  .sp-pricing-grid { grid-template-columns: 1fr; max-width: 480px; padding: 0 20px; gap: 32px; }
-  .sp-pricing-card.featured { transform: none; margin: 0; }
-  .sp-checkout-grid-layout { grid-template-columns: 1fr; gap: 24px; padding: 10px; }
-  .sp-calculator-summary-grid { grid-template-columns: 1fr; gap: 16px; }
-  .sp-plan-meta { grid-template-columns: 1fr; }
-  .sp-checkout-highlights { grid-template-columns: repeat(2, 1fr); }
+  .sp-pricing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 720px; padding: 0 20px; gap: 28px; }
+  .sp-pricing-card.featured { transform: none; margin: 0; grid-column: span 2; max-width: 480px; margin: 0 auto; }
+  .sp-checkout-grid-layout { grid-template-columns: 1fr; gap: 28px; padding: 6px; }
+  .sp-checkout-card-sticky { position: static; }
+  .sp-plan-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sp-checkout-highlights { grid-template-columns: repeat(3, 1fr); }
   .sp-checkout-grid { grid-template-columns: 1fr; }
   .sp-confirm-grid { grid-template-columns: 1fr; }
   .sp-stats-row { grid-template-columns: repeat(2, 1fr); }
@@ -532,38 +582,55 @@
   .sp-help-grid { grid-template-columns: repeat(2, 1fr); }
   .sp-contact-grid { grid-template-columns: 1fr; max-width: 400px; }
 }
+
+/* Small tablet / large phone */
+@media(max-width: 860px) {
+  .sp-pricing-grid { grid-template-columns: 1fr; max-width: 480px; }
+  .sp-pricing-card.featured { grid-column: auto; max-width: none; margin: 0; }
+  .sp-calculator-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .sp-plan-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sp-checkout-highlights { grid-template-columns: repeat(2, 1fr); }
+}
+
 @media(max-width: 640px) {
-  .sp-hero { padding: calc(var(--ec-nav-height) + 32px) 20px 60px; }
-  .sp-hero h1 { font-size: 2.2rem; }
-  .sp-pricing-grid { padding: 0 16px; gap: 24px; }
-  .sp-pricing-card { padding: 32px 24px; border-radius: 20px; }
+  .sp-hero { padding: calc(var(--ec-nav-height) + 32px) 20px 56px; }
+  .sp-hero h1 { font-size: 2.1rem; }
+  .sp-hero p { font-size: 1rem; }
+  .sp-pricing-grid { padding: 0 16px; gap: 20px; }
+  .sp-pricing-card { padding: 30px 22px; border-radius: 20px; }
+  .sp-billing-toggle-wrapper { margin-bottom: 24px; }
   .sp-checkout-shell { border-radius: 24px; padding: 4px; }
-  .sp-checkout-card { padding: 28px 20px; border-radius: 20px; }
+  .sp-checkout-card { padding: 24px 18px; border-radius: 20px; }
   .sp-checkout-highlights { grid-template-columns: 1fr; }
+  .sp-calculator-summary-grid { grid-template-columns: 1fr; }
+  .sp-plan-meta { grid-template-columns: 1fr; margin: 20px 0; }
   .sp-status-banner { padding: 18px; border-radius: 16px; }
-  .sp-confirm-card { padding: 24px 20px; }
+  .sp-confirm-card { padding: 22px 18px; }
+  .sp-confirm-actions { gap: 10px; }
   .sp-stats-row, .sp-help-grid { grid-template-columns: 1fr; }
   .sp-community-links { grid-template-columns: 1fr; }
   .sp-search-box { flex-direction: column; }
-  .sp-comparison-table { font-size: 0.82rem; }
-  .sp-amount { font-size: 2.5rem; }
+  .sp-comparison-table table { font-size: 0.82rem; }
+  .sp-comparison-table th, .sp-comparison-table td { padding: 12px 14px; }
+  .sp-amount { font-size: 2.4rem; }
   .sp-calculator-slider-card { padding: 16px; }
   .sp-calculator-summary-card { padding: 18px; }
+  .sp-calculator-summary-card.highlight strong { font-size: 1.4rem; }
+  .sp-optional-list { grid-template-columns: 1fr; }
+  .sp-app-select { padding: 10px; }
+  .sp-faq-item { padding: 16px 18px; }
+  .sp-billing-toggle button { padding: 9px 16px; font-size: 0.85rem; }
 }
 
-/* App selector cards for pricing page */
-.sp-optional-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.sp-app-card { display: block; }
-.sp-app-select { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(23,56,41,0.06); background: #fff; cursor: pointer; transition: box-shadow 0.18s ease, transform 0.12s ease; }
-.sp-app-select:hover { box-shadow: 0 10px 24px rgba(23,56,41,0.04); transform: translateY(-2px); }
-.sp-app-select input { width: 18px; height: 18px; accent-color: #2b6a4b; flex-shrink: 0; }
-.sp-app-logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: #fff; background: linear-gradient(135deg, #2b6a4b, #173829); font-family: 'MontserratBold', sans-serif; flex-shrink: 0; }
-.sp-app-meta { margin-left: 6px; display: flex; flex-direction: column; }
-.sp-app-meta strong { font-size: 0.98rem; color: var(--ec-primary); }
-.sp-app-deps { font-size: 0.82rem; color: #6b7b71; margin-top: 4px; }
-.sp-app-tag { margin-left: auto; font-size: 0.82rem; color: var(--ec-secondary); background: rgba(43,106,75,0.06); padding: 6px 10px; border-radius: 999px; font-weight: 700; }
-.sp-app-select input:checked ~ .sp-app-logo { box-shadow: 0 8px 20px rgba(43,106,75,0.14); transform: scale(1.03); }
-
-@media(max-width: 720px) {
-  .sp-optional-list { grid-template-columns: 1fr; }
+/* Small phones */
+@media(max-width: 420px) {
+  .sp-hero { padding: calc(var(--ec-nav-height) + 24px) 16px 44px; }
+  .sp-hero h1 { font-size: 1.75rem; }
+  .sp-badge-row { gap: 8px; }
+  .sp-plan-chip { padding: 8px 12px; font-size: 0.76rem; }
+  .sp-pricing-card { padding: 26px 18px; }
+  .sp-amount { font-size: 2.1rem; }
+  .sp-app-logo { width: 38px; height: 38px; }
+  .sp-app-tag { font-size: 0.76rem; padding: 5px 8px; }
+  .sp-checkout-submit, .sp-confirm-secondary-btn, .sp-plan-cta { padding: 14px; font-size: 0.9rem; }
 }

@@ -38,7 +38,7 @@ const Settings = () => {
         DBProfiles, setDBProfiles, fetchDBProfiles,
         profiles, setProfiles, centralCompany,
         employees, getEmployees, dashList, fetchProfiles,
-        chartOfAccounts, getChartOfAccounts,
+        chartOfAccounts, getChartOfAccounts, enabledModules,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
 
@@ -129,9 +129,10 @@ const Settings = () => {
             return !['header', 'sub-header'].includes(headerType)
         })
         .sort((first, second) => Number(first?.['g/l code'] || 0) - Number(second?.['g/l code'] || 0))
-    const modulePermissions = [
-        ...dashList
-    ]
+    // Only modules this tenant actually has enabled can be granted to an
+    // employee — an admin can't hand out access to something the workspace
+    // itself hasn't purchased.
+    const modulePermissions = dashList.filter((moduleKey) => (enabledModules || dashList).includes(moduleKey))
     const [salesPostsPermissions, setSalesPostsPermissions] = useState([])
     const [deliveryPostsPermissions, setDeliveryPostsPermissions] = useState([])
     const [posAdminPermissions, setPosAdminPermissions] = useState([])
@@ -573,7 +574,14 @@ const Settings = () => {
         }
     }
 
-    const canConfigureApprovals = companyRecord?.access === 'admin' || companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('configure_approvals')
+    // `status` and `access` have been used inconsistently for "is this
+    // profile a tenant admin" across the app (seed.js sets both on the
+    // founding admin, but other admin-creation paths only set one) — check
+    // both everywhere, matching the pattern already established just below
+    // for Approval Rules, rather than each gate picking a different single
+    // field and silently hiding the tab for admins missing that one field.
+    const isTenantAdmin = companyRecord?.access === 'admin' || companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all')
+    const canConfigureApprovals = isTenantAdmin || companyRecord?.permissions?.includes('configure_approvals')
 
     const saveApprovalConfig = async () => {
         if (!canConfigureApprovals) {
@@ -2415,12 +2423,12 @@ const Settings = () => {
                             <IoSettings /> Approval Rules
                         </div>
                     )}
-                    {companyRecord?.access === 'admin' && (
+                    {isTenantAdmin && (
                         <div className={`settings-nav-item ${currentView === 'billing' ? 'active' : ''}`} onClick={() => setCurrentView('billing')}>
                             <IoCard /> Billing & Plan
                         </div>
                     )}
-                    {companyRecord?.access === 'admin' && (
+                    {isTenantAdmin && (
                         <div className={`settings-nav-item ${currentView === 'company' ? 'active' : ''}`} onClick={() => setCurrentView('company')}>
                             <IoPerson /> Company Profile
                         </div>

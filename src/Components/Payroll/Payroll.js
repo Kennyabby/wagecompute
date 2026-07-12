@@ -553,13 +553,49 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
     setPenalties, setBonus, setAdjustment, curEmployee, setViewSlip, setCurAtt,
     setTotalPay, handlePayeeUpdate, monthDays, viewSlipStatus, months
 })=>{
+    const { server, fetchServer } = useContext(ContextProvider)
     const [subPrevDebt, setSubPrevDebt] = useState('')
     const [subDebtDue, setSubDebtDue] = useState('')
     const [subShortages, setSubShortages] = useState('')
     const [subPenalties, setSubPenalties] = useState('')
     const [subBonus, setSubBonus] = useState('')
     const [subAdjustment, setSubAdjustment] = useState('')
+    // Unrecovered inventory-reconciliation shortage charges for this employee
+    // (Post Shortage on the reconciliation page debits their receivable, but
+    // the deduction still has to actually be included in a payroll run to
+    // clear it — see accounting.js's attendance posting, which already nets
+    // `payee.shortages` against this same receivable). Purely informational
+    // + an explicit "Apply" action — never auto-added, unlike the sales
+    // shortage below, so it never silently overwrites a manual edit.
+    const [outstandingInventoryShortage, setOutstandingInventoryShortage] = useState(0)
+    const [appliedInventoryShortage, setAppliedInventoryShortage] = useState(0)
     const {payees} = att
+
+    useEffect(() => {
+        let cancelled = false
+        setAppliedInventoryShortage(0)
+        const loadOutstandingShortage = async () => {
+            const response = await fetchServer('POST', {}, 'inventoryReconciliation/getOutstandingShortage', server)
+            if (cancelled || response?.err) return
+            setOutstandingInventoryShortage(Number(response?.outstandingByEmployee?.[curEmployee.i_d]) || 0)
+        }
+        loadOutstandingShortage()
+        return () => { cancelled = true }
+    }, [curEmployee.i_d, fetchServer, server])
+
+    const applyOutstandingShortage = () => {
+        if (!outstandingInventoryShortage) return
+        setSubShortages((prev) => (Number(prev || 0) + outstandingInventoryShortage).toFixed(2))
+        setAppliedInventoryShortage(outstandingInventoryShortage)
+        // Marked recovered immediately on Apply rather than after the payroll
+        // batch actually posts (that save is a fire-and-forget click handler
+        // below with no reliable success callback to hook into) — the
+        // acceptable tradeoff for a minimal settlement surface: if this
+        // payslip is never actually saved, re-open the reconciliation to
+        // re-charge, which is rare.
+        fetchServer('POST', { employee_id: curEmployee.i_d, amountRecovered: outstandingInventoryShortage }, 'inventoryReconciliation/markShortageRecovered', server)
+        setOutstandingInventoryShortage(0)
+    }
     useEffect(()=>{
       setSubPrevDebt('')
       setSubDebtDue('')
@@ -738,7 +774,7 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
                     </div>
                     <div className='inpcov formpad'>
                         <label className='ddclbl'>Shortages</label>
-                        <input 
+                        <input
                             className='forminp prinp'
                             name='shortages'
                             type='number'
@@ -749,6 +785,16 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
                                 setSubShortages(e.target.value)
                             }}
                         />
+                        {outstandingInventoryShortage > 0 && (
+                            <div className='ddclbl' style={{ marginTop: 4, cursor: 'pointer', color: '#F81D2D' }} onClick={applyOutstandingShortage}>
+                                Outstanding inventory shortage: ₦{outstandingInventoryShortage.toLocaleString()} (click to apply)
+                            </div>
+                        )}
+                        {appliedInventoryShortage > 0 && (
+                            <div className='ddclbl' style={{ marginTop: 4 }}>
+                                ₦{appliedInventoryShortage.toLocaleString()} applied from reconciliation
+                            </div>
+                        )}
                     </div>
                     <div className='inpcov formpad'>
                         <label className='ddclbl'>Penalties</label>

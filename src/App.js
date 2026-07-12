@@ -359,6 +359,20 @@ function App() {
     'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
   const dashList = ['dashboard',
     'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
+  // Must mirror the free-tier keys in wageserver/UserModule/Billing/moduleCatalog.js
+  // exactly — these are always available regardless of what a tenant purchased.
+  const FREE_TIER_MODULE_KEYS = ['dashboard', 'settings', 'employees', 'departments', 'positions', 'attendance']
+  // Tenant-level module entitlement ceiling — mirrors the exact logic of
+  // wageserver/UserModule/Billing/moduleCatalog.js's resolveEffectiveModules,
+  // computed here from data already fetched (centralCompany, subscriptionState)
+  // rather than a new network call. Full trial access and the "no field yet"
+  // grandfather clause both intentionally return every module — see that
+  // file's comments for why.
+  const isTrialFullAccess = !!subscriptionState?.trialActive && !subscriptionState?.hasConfiguredSubscription
+  const tenantEnabledModules = Array.isArray(centralCompany?.enabledModules) ? centralCompany.enabledModules : null
+  const enabledModules = isTrialFullAccess || !tenantEnabledModules
+    ? dashList
+    : Array.from(new Set([...FREE_TIER_MODULE_KEYS, ...tenantEnabledModules]))
   const months = [
     'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
     'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
@@ -372,6 +386,17 @@ function App() {
 
   const initialYear = '2025'
 
+
+  // Re-fetches the central CompanyProfiles record — the source of
+  // `enabledModules` — so a tenant admin adding modules (or a central admin
+  // changing them) is reflected in nav/route gating without a full page
+  // reload. Exposed via context for any component that mutates entitlements.
+  const refreshCentralCompany = async () => {
+    try {
+      const cpResp = await fetchServer('POST', {}, 'getCompanyProfile', SERVER)
+      if (cpResp && !cpResp.err && cpResp.record) setCentralCompany(cpResp.record)
+    } catch (e) { /* ignore */ }
+  }
 
   const refreshSubscriptionState = async (seedStatus = null) => {
     if (seedStatus) {
@@ -949,10 +974,7 @@ function App() {
             })
           }
         }
-        try {
-            const cpResp = await fetchServer('POST', {}, 'getCompanyProfile', SERVER)
-            if (cpResp && !cpResp.err && cpResp.record) setCentralCompany(cpResp.record)
-        } catch (e) { /* ignore */ }
+        await refreshCentralCompany()
       }
 
       updateThisUserState()
@@ -3607,7 +3629,7 @@ function App() {
         server: SERVER, viewAccess, getViewAccess, 
         intervalPeriod,
         showLoading, setShowLoading,
-        pauseView, setPauseView, centralCompany,
+        pauseView, setPauseView, centralCompany, refreshCentralCompany,
         loginMessage, setLoginMessage,
         generateCode, generateSeries,
         exportFile, importFile,
@@ -3682,6 +3704,7 @@ function App() {
         months, monthDays, years, initialYear,
         path,
         dashList,
+        enabledModules,
         loadPage,
         getImage,
         excelDateToTimestamp,

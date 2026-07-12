@@ -159,6 +159,8 @@ const CentralAdminApp = () => {
   const [selectedTenant, setSelectedTenant] = useState('')
   const [tenantDetails, setTenantDetails] = useState(null)
   const [tenantDetailsLoading, setTenantDetailsLoading] = useState(false)
+  const [draftModules, setDraftModules] = useState([])
+  const [isSavingModules, setIsSavingModules] = useState(false)
   const [isCleaningTestData, setIsCleaningTestData] = useState(false)
   const [enquiries, setEnquiries] = useState([])
   const [selectedEnquiry, setSelectedEnquiry] = useState(null)
@@ -592,6 +594,48 @@ const CentralAdminApp = () => {
     setActionDatabase('')
   }
 
+  // Client-side optimistic dependency expansion only, for responsive
+  // checkbox behavior — wageserver's moduleCatalog.js's resolveModuleDependencies
+  // always re-resolves server-side before anything is actually saved.
+  const resolveModuleDepsClientSide = (catalog, selection) => {
+    const selected = new Set(selection)
+    let changed = true
+    while (changed) {
+      changed = false
+      ;(catalog || []).forEach((app) => {
+        if (selected.has(app.key) && app.deps?.length) {
+          app.deps.forEach((dep) => {
+            if (!selected.has(dep)) { selected.add(dep); changed = true }
+          })
+        }
+      })
+    }
+    return Array.from(selected)
+  }
+
+  const toggleDraftModule = (key) => {
+    setDraftModules((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return resolveModuleDepsClientSide(tenantDetails?.moduleCatalog, Array.from(next))
+    })
+  }
+
+  const handleSaveTenantModules = async () => {
+    if (!selectedTenant) return
+    setIsSavingModules(true)
+    const response = await requestAdmin('POST', 'billing/adminSetTenantModules', { database: selectedTenant, modules: draftModules })
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || 'Unable to update tenant modules.')
+      setIsSavingModules(false)
+      return
+    }
+    setNotice('success', 'Tenant modules updated.')
+    await loadTenantDetails(selectedTenant)
+    setIsSavingModules(false)
+  }
+
   const handleVerifyPendingPayments = async () => {
     setIsReconcilingPending(true)
     setNotice('', '')
@@ -757,6 +801,8 @@ const CentralAdminApp = () => {
         throw new Error(response.mess || 'Unable to load tenant details.')
       }
       setTenantDetails(response)
+      const allKeys = (response.moduleCatalog || []).map((m) => m.key)
+      setDraftModules(Array.isArray(response.enabledModules) ? response.enabledModules : allKeys)
     } catch (error) {
       setNotice('error', error.message || 'Unable to load tenant details.')
     } finally {
@@ -1082,6 +1128,35 @@ const CentralAdminApp = () => {
                           disabled={actionDatabase === selectedTenant || !tenantDetails.subscriptionCards?.length}
                         >
                           {actionDatabase === selectedTenant ? 'Updating...' : 'Remove Linked Card'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className='ca-control-strip ca-module-panel'>
+                      <div>
+                        <strong>Enabled modules</strong>
+                        <span>Only checked modules are available to this tenant's admin and employees. Dependencies are selected automatically.</span>
+                      </div>
+                      <div className='ca-module-grid'>
+                        {(tenantDetails.moduleCatalog || []).map((app) => (
+                          <label key={app.key} className={`ca-module-chip ${app.tier === 'free' ? 'locked' : ''}`}>
+                            <input
+                              type='checkbox'
+                              checked={app.tier === 'free' || draftModules.includes(app.key)}
+                              disabled={app.tier === 'free'}
+                              onChange={() => toggleDraftModule(app.key)}
+                            />
+                            <span>{app.name}{app.tier === 'free' ? ' (always on)' : ''}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className='ca-inline-action-row'>
+                        <button
+                          className='ca-inline-btn primary'
+                          onClick={handleSaveTenantModules}
+                          disabled={isSavingModules}
+                        >
+                          {isSavingModules ? 'Saving...' : 'Save Modules'}
                         </button>
                       </div>
                     </div>

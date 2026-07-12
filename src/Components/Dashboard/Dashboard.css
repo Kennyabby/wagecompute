@@ -19,6 +19,27 @@
         #f8fafc;
 }
 
+.module-not-enabled{
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    text-align: center;
+    background: #f8fafc;
+}
+
+.module-not-enabled h2{
+    font-size: 1.15rem;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.module-not-enabled p{
+    max-width: 480px;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
 .ledger-setup-dialog{
     width: min(720px, 100%);
     background: #ffffff;
