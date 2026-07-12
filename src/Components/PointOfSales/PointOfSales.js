@@ -1110,15 +1110,21 @@ const PointOfSales = () => {
     const UpdateSessionManagerState = (sessionManagers) => {
         if (sessionManagers?.length) {
             const previousSession = sessionManagers.filter((session) => session.active)
-            let lastSessionIndex = 0
             if (previousSession.length) {
-                lastSessionIndex = previousSession.length - 1
-                setCurrSessionManager(previousSession[lastSessionIndex])            
+                // Must pick the most recent ACTIVE session manager by date, not
+                // whatever position it happens to occupy in the array — if more
+                // than one was ever left un-stopped (e.g. an admin missed a day),
+                // array order isn't guaranteed to be chronological, and picking
+                // the wrong (older) one here meant the reconciliation check below
+                // queried an older date than "yesterday", reporting it as
+                // pending even after the actually-relevant date was saved.
+                const mostRecentActive = [...previousSession].sort((a, b) => b.start - a.start)[0]
+                setCurrSessionManager(mostRecentActive)
             } else {
                 let oldSession = null
                 if (sessionManagers.length) {
-                    let oldSessions = sessionManagers.sort((a, b) => a.start - b.start)
-                    oldSession = oldSessions[sessionManagers.length - 1]
+                    let oldSessions = [...sessionManagers].sort((a, b) => b.start - a.start)
+                    oldSession = oldSessions[0]
                     setCurrSessionManager(oldSession)
                 }
                 if (companyRecord.status !== 'admin' && !companyRecord.permissions.includes('access_pos_sessions')) {

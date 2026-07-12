@@ -593,7 +593,7 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
         // acceptable tradeoff for a minimal settlement surface: if this
         // payslip is never actually saved, re-open the reconciliation to
         // re-charge, which is rare.
-        fetchServer('POST', { employee_id: curEmployee.i_d, amountRecovered: outstandingInventoryShortage }, 'inventoryReconciliation/markShortageRecovered', server)
+        fetchServer('POST', { employee_id: curEmployee.i_d, amountRecovered: outstandingInventoryShortage, recoveryPoint: 'employee' }, 'inventoryReconciliation/postShortageRecovery', server)
         setOutstandingInventoryShortage(0)
     }
     useEffect(()=>{

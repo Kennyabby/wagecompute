@@ -3,6 +3,7 @@ import './Reconciliation.css'
 import { useState, useEffect, useContext } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import { exportReconciliationExcel, exportReconciliationPDF } from '../../utils/reconciliationExport';
+import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 
 const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
@@ -20,6 +21,10 @@ const ReconciliationReview = ({
     const [shortageDraft, setShortageDraft] = useState(null) // { location, allocations: [{start, employee_id, amount}] }
     const [confirmAdjustment, setConfirmAdjustment] = useState(null) // location name pending confirm
     const [busyAction, setBusyAction] = useState(false)
+    const [outstandingByEmployee, setOutstandingByEmployee] = useState({})
+    const [recoveryDraft, setRecoveryDraft] = useState(null) // { employeeId, amount, recoveryPoint, recoveryReceipt, imgId, viewLink, downloadLink }
+    const [recoveryUpload, setRecoveryUpload] = useState(null)
+    const [uploadingReceipt, setUploadingReceipt] = useState(false)
 
     const fetchRecord = async (date) => {
         setLoading(true)
@@ -42,6 +47,55 @@ const ReconciliationReview = ({
         fetchRecord(postingDate)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [postingDate])
+
+    const loadOutstandingShortage = async () => {
+        const resp = await fetchServer('POST', {}, 'inventoryReconciliation/getOutstandingShortage', server)
+        if (resp?.err) return
+        setOutstandingByEmployee(resp?.outstandingByEmployee || {})
+    }
+
+    useEffect(() => {
+        loadOutstandingShortage()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [postingDate])
+
+    const handlePostShortageRecovery = async () => {
+        if (!recoveryDraft) return
+        setBusyAction(true)
+        try {
+            let uploadedImage = {}
+            if (recoveryUpload) {
+                setUploadingReceipt(true)
+                const folderPath = `${company}/Inventory Shortage Recoveries`
+                const uniqueMarker = `shortage-recovery-${recoveryDraft.employeeId}-${Date.now()}`
+                const res = await uploadFile(recoveryUpload, folderPath, uniqueMarker, company, 'POSSessions', server)
+                setUploadingReceipt(false)
+                if (res?.err || (!res?.imgId && !res?.downloadLink)) {
+                    setAlertState('error'); setAlert(res?.mess || 'Failed to upload receipt.'); setAlertTimeout(4000)
+                    return
+                }
+                uploadedImage = { imgId: res.imgId || '', viewLink: res.viewLink || '', downloadLink: res.downloadLink || '' }
+            }
+            const resp = await fetchServer('POST', {
+                employee_id: recoveryDraft.employeeId,
+                amountRecovered: recoveryDraft.amount,
+                recoveryPoint: recoveryDraft.recoveryPoint,
+                recoveryReceipt: recoveryDraft.recoveryReceipt,
+                recoveryTransferId: recoveryDraft.recoveryTransferId,
+                ...uploadedImage,
+            }, 'inventoryReconciliation/postShortageRecovery', server)
+            if (resp?.err || !resp?.ok) {
+                setAlertState('error'); setAlert(resp?.mess || 'Failed to post shortage recovery.'); setAlertTimeout(5000)
+                return
+            }
+            setAlertState('success'); setAlert(`Recovered ₦${Number(resp.appliedAmount || 0).toLocaleString()}.`); setAlertTimeout(3000)
+            setRecoveryDraft(null)
+            setRecoveryUpload(null)
+            loadOutstandingShortage()
+        } finally {
+            setBusyAction(false)
+        }
+    }
 
     const openSessionsForLocation = (location) => {
         if (typeof getSessionStart !== 'function' || typeof getSessionEnd !== 'function') return []
@@ -179,6 +233,36 @@ const ReconciliationReview = ({
                                                 <button onClick={() => exportReconciliationPDF({ companyInfo: { name: company }, postingDate, location: loc.location, lines: loc.lines || [] })}>Export PDF</button>
                                             </div>
 
+                                            {loc.lockedReason === 'shortage' && (loc.shortagePostings || []).length > 0 && (
+                                                <div className='reconcile-review-shortage-postings'>
+                                                    <div className='reconcile-review-shortage-postings-title'>Shortage charged to</div>
+                                                    {loc.shortagePostings.map((posting, pIdx) => {
+                                                        const outstanding = Number(outstandingByEmployee?.[posting.employee_id]) || 0
+                                                        return (
+                                                            <div key={pIdx} className='reconcile-shortage-row'>
+                                                                <span>{getEmployeeName ? getEmployeeName(posting.employee_id) : posting.employee_id}</span>
+                                                                <span>Charged: ₦{Number(posting.amountCharged || 0).toLocaleString()}</span>
+                                                                <span>{new Date(posting.postedAt).toLocaleDateString()}</span>
+                                                                {isAdmin && outstanding > 0 && (
+                                                                    <button
+                                                                        disabled={busyAction}
+                                                                        onClick={() => setRecoveryDraft({
+                                                                            employeeId: posting.employee_id,
+                                                                            amount: '',
+                                                                            recoveryPoint: '',
+                                                                            recoveryReceipt: '',
+                                                                            recoveryTransferId: '',
+                                                                        })}
+                                                                    >
+                                                                        Record Recovery (₦{outstanding.toLocaleString()} outstanding)
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+
                                             <div className='reconcile-review-table-wrap'>
                                                 <table className='reconcile-review-table'>
                                                     <thead>
@@ -279,6 +363,64 @@ const ReconciliationReview = ({
                                 {busyAction ? 'Posting...' : 'Confirm Post Shortage'}
                             </button>
                             <button disabled={busyAction} className='secondary' onClick={() => setShortageDraft(null)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {recoveryDraft && (
+                <div className='reconcile-confirm-overlay' onClick={() => !busyAction && setRecoveryDraft(null)}>
+                    <div className='reconcile-confirm-modal' onClick={(e) => e.stopPropagation()}>
+                        <h4>Record Inventory Shortage Recovery</h4>
+                        <p>
+                            {getEmployeeName ? getEmployeeName(recoveryDraft.employeeId) : recoveryDraft.employeeId} —
+                            outstanding: ₦{(Number(outstandingByEmployee?.[recoveryDraft.employeeId]) || 0).toLocaleString()}
+                        </p>
+                        <div className='inpcov'>
+                            <div>Amount Recovered</div>
+                            <input
+                                type='number'
+                                min={0}
+                                value={recoveryDraft.amount}
+                                onChange={(e) => setRecoveryDraft((prev) => ({ ...prev, amount: e.target.value }))}
+                            />
+                        </div>
+                        <div className='inpcov'>
+                            <div>Receipt Number</div>
+                            <input
+                                type='text'
+                                placeholder='Enter Receipt Number'
+                                disabled={recoveryDraft.recoveryPoint === 'Employee'}
+                                value={recoveryDraft.recoveryReceipt}
+                                onChange={(e) => setRecoveryDraft((prev) => ({ ...prev, recoveryReceipt: e.target.value }))}
+                            />
+                        </div>
+                        <div className='inpcov'>
+                            <div>Recovery Point</div>
+                            <select
+                                value={recoveryDraft.recoveryPoint}
+                                onChange={(e) => setRecoveryDraft((prev) => ({ ...prev, recoveryPoint: e.target.value, recoveryTransferId: '', recoveryReceipt: e.target.value === 'Employee' ? '' : prev.recoveryReceipt }))}
+                            >
+                                <option value=''>Select Recovery Point</option>
+                                <option value='cash'>CASH</option>
+                                <option value='bank'>BANK</option>
+                                <option value='Employee'>EMPLOYEE (transfer)</option>
+                            </select>
+                        </div>
+                        <div className='inpcov'>
+                            <div>Upload Receipt</div>
+                            <input
+                                type='file'
+                                accept='image/*'
+                                capture='environment'
+                                onChange={(e) => setRecoveryUpload(e.target.files?.[0] || null)}
+                            />
+                        </div>
+                        <div className='reconcile-confirm-actions'>
+                            <button disabled={busyAction || uploadingReceipt || !(Number(recoveryDraft.amount) > 0)} onClick={handlePostShortageRecovery}>
+                                {busyAction || uploadingReceipt ? 'Posting...' : 'Confirm Recovery'}
+                            </button>
+                            <button disabled={busyAction} className='secondary' onClick={() => { setRecoveryDraft(null); setRecoveryUpload(null) }}>Cancel</button>
                         </div>
                     </div>
                 </div>
