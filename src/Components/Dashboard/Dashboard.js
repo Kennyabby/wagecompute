@@ -407,7 +407,8 @@ const LedgerConfigurationBlock = ({ status, onOpenAccounting, onOpenCOA }) => (
 const Dashboard = ()=>{
     const {
         dashList, companyRecord, subscriptionState, showSubscriptionBanner,
-        settings, chartOfAccounts, settingsLoadState, chartOfAccountsLoadState
+        settings, chartOfAccounts, settingsLoadState, chartOfAccountsLoadState,
+        enabledModules
     } = useContext(ContextProvider)
     const [view, setView] = useState(null)
     const params = useParams()
@@ -418,6 +419,15 @@ const Dashboard = ()=>{
         if (dashList.includes(path)){
             if (subscriptionState?.isSuspended && path !== 'settings') {
                 setView(<LicenseExpired />)
+                return
+            }
+            if (!(enabledModules || []).includes(path)) {
+                setView(
+                    <div className='module-not-enabled'>
+                        <h2>Module not included in your plan</h2>
+                        <p>This workspace doesn't currently have access to this module. An admin can add it from Settings, or contact your account admin.</p>
+                    </div>
+                )
                 return
             }
             const guardPage = (page, element) => {
@@ -480,7 +490,7 @@ const Dashboard = ()=>{
                 setView('')
             }
         }
-    },[params,companyRecord,subscriptionState,settings,chartOfAccounts,settingsLoadState,chartOfAccountsLoadState,Navigate,dashList])
+    },[params,companyRecord,subscriptionState,settings,chartOfAccounts,settingsLoadState,chartOfAccountsLoadState,Navigate,dashList,enabledModules])
     return(
         <>
             <div className='dashboard'>

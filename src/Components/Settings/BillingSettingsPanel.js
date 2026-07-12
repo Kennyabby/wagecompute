@@ -80,10 +80,17 @@ const BillingSettingsPanel = ({ variants }) => {
     server,
     subscriptionState,
     refreshSubscriptionState,
+    refreshCentralCompany,
+    enabledModules,
     setAlert,
     setAlertState,
     setAlertTimeout,
   } = useContext(ContextProvider)
+
+  const [moduleCatalog, setModuleCatalog] = useState([])
+  const [modulePricing, setModulePricing] = useState({})
+  const [selectedNewModules, setSelectedNewModules] = useState([])
+  const [isSavingModules, setIsSavingModules] = useState(false)
 
   const [snapshot, setSnapshot] = useState({
     currentStatus: null,
@@ -137,6 +144,78 @@ const BillingSettingsPanel = ({ variants }) => {
   useEffect(() => {
     loadTenantSnapshot()
   }, [company, companyRecord?.emailid])
+
+  useEffect(() => {
+    const loadModuleCatalog = async () => {
+      try {
+        const response = await fetch(`${server}/platform-modules`)
+        const data = await response.json()
+        if (data.ok) {
+          setModuleCatalog(Array.isArray(data.catalog) ? data.catalog : [])
+          setModulePricing(data.pricing || {})
+        }
+      } catch (err) {
+        console.error('Failed to load module catalog', err)
+      }
+    }
+    loadModuleCatalog()
+  }, [server])
+
+  // Client-side optimistic dependency expansion only — the server
+  // (moduleCatalog.js's resolveModuleDependencies) always re-resolves before
+  // anything is actually saved/billed.
+  const resolveModuleDepsClientSide = (selection) => {
+    const selected = new Set(selection)
+    let changed = true
+    while (changed) {
+      changed = false
+      moduleCatalog.forEach((app) => {
+        if (selected.has(app.key) && app.deps?.length) {
+          app.deps.forEach((dep) => {
+            if (!selected.has(dep)) { selected.add(dep); changed = true }
+          })
+        }
+      })
+    }
+    return Array.from(selected)
+  }
+
+  const toggleNewModule = (key) => {
+    setSelectedNewModules((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return resolveModuleDepsClientSide(Array.from(next))
+    })
+  }
+
+  const addableModules = moduleCatalog.filter((app) => app.tier === 'standard' && !(enabledModules || []).includes(app.key))
+  const currentMonthlyNaira = moduleCatalog
+    .filter((app) => app.tier === 'standard' && (enabledModules || []).includes(app.key))
+    .reduce((sum, app) => sum + (Number(modulePricing[app.key]) || 0), 0)
+  const addedMonthlyNaira = selectedNewModules.reduce((sum, key) => sum + (Number(modulePricing[key]) || 0), 0)
+
+  const handleAddModules = async () => {
+    if (!selectedNewModules.length) return
+    setIsSavingModules(true)
+    try {
+      const response = await fetchServer('POST', { modules: selectedNewModules }, 'billing/addTenantModules', server)
+      if (response.err || !response.ok) {
+        throw new Error(response.mess || 'Unable to add modules.')
+      }
+      setAlertState('success')
+      setAlert('Modules added. They\'re available now — the higher price applies from your next renewal.')
+      setAlertTimeout(4000)
+      setSelectedNewModules([])
+      if (typeof refreshCentralCompany === 'function') await refreshCentralCompany()
+    } catch (error) {
+      setAlertState('error')
+      setAlert(error.message || 'Unable to add modules.')
+      setAlertTimeout(4000)
+    } finally {
+      setIsSavingModules(false)
+    }
+  }
 
   const handleSubscribe = async () => {
     if (disablePaystackPayment) {
@@ -409,6 +488,47 @@ const BillingSettingsPanel = ({ variants }) => {
               <div className='settings-billing-empty'>No reusable Paystack card is linked yet.</div>
             )}
           </div>
+        </section>
+
+        <section className='settings-billing-panel settings-billing-modules-panel'>
+          <div className='settings-billing-panel-header'>
+            <div>
+              <h3>Add modules</h3>
+              <p>
+                Currently enabled: {formatMoney(currentMonthlyNaira)}/month.
+                {' '}Adding modules unlocks them right away — the higher price applies starting your next renewal, no extra charge today.
+              </p>
+            </div>
+          </div>
+          {addableModules.length ? (
+            <>
+              <div className='settings-billing-module-grid'>
+                {addableModules.map((app) => (
+                  <label key={app.key} className='settings-billing-module-chip'>
+                    <input
+                      type='checkbox'
+                      checked={selectedNewModules.includes(app.key)}
+                      onChange={() => toggleNewModule(app.key)}
+                    />
+                    <span className='settings-billing-module-name'>{app.name}</span>
+                    <span className='settings-billing-module-price'>{formatMoney(modulePricing[app.key])}/mo</span>
+                  </label>
+                ))}
+              </div>
+              <div className='settings-billing-module-footer'>
+                <span>
+                  {selectedNewModules.length
+                    ? `New monthly total: ${formatMoney(currentMonthlyNaira + addedMonthlyNaira)} (+${formatMoney(addedMonthlyNaira)})`
+                    : 'Select modules above to see the new monthly total.'}
+                </span>
+                <button className='savebtn' onClick={handleAddModules} disabled={!selectedNewModules.length || isSavingModules}>
+                  {isSavingModules ? 'Adding...' : 'Add Selected Modules'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className='settings-billing-empty'>Every available module is already enabled for this workspace.</div>
+          )}
         </section>
 
         <div className='settings-billing-panels'>

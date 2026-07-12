@@ -9,37 +9,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const FALLBACK_STANDARD_PRICE = 92000
 const FREE_TRIAL_DAYS = 14
-// App catalog for the platform - all 15 actual apps with dependencies
-// Free trial includes core + HR + basic accounting; Standard adds operations and full suite
-// Price varies based on selected apps, max 92,000 NGN
-const APPS = [
-  // Core apps (always included)
-  { key: 'dashboard', name: 'Dashboard', category: 'core', deps: [], tier: 'free' },
-  { key: 'settings', name: 'Settings', category: 'core', deps: [], tier: 'free' },
-  
-  // HR & People Management (interdependent)
-  { key: 'employees', name: 'Employees', category: 'hr', deps: [], tier: 'free' },
-  { key: 'departments', name: 'Departments', category: 'hr', deps: ['employees'], tier: 'free' },
-  { key: 'positions', name: 'Positions', category: 'hr', deps: ['employees', 'departments'], tier: 'free' },
-  { key: 'attendance', name: 'Attendance', category: 'hr', deps: ['employees'], tier: 'free' },
-  { key: 'payroll', name: 'Payroll', category: 'hr', deps: ['employees', 'attendance', 'departments', 'positions'], tier: 'standard' },
-  
-  // Operations & Inventory (standard tier)
-  { key: 'inventory', name: 'Inventory', category: 'ops', deps: [], tier: 'standard' },
-  { key: 'purchase', name: 'Purchase', category: 'ops', deps: ['inventory'], tier: 'standard' },
-  
-  // Sales & Delivery (standard tier)
-  { key: 'sales', name: 'Sales', category: 'sales', deps: ['inventory'], tier: 'standard' },
-  { key: 'delivery', name: 'Delivery', category: 'sales', deps: ['sales'], tier: 'standard' },
-  { key: 'pos', name: 'POS', category: 'sales', deps: ['sales', 'inventory'], tier: 'standard' },
-  
-  // Hospitality & Services (standard tier)
-  { key: 'accommodation', name: 'Accommodation', category: 'services', deps: [], tier: 'standard' },
-  
-  // Finance & Accounting (standard tier)
-  { key: 'expenses', name: 'Expenses', category: 'accounting', deps: [], tier: 'standard' },
-  { key: 'journals', name: 'Journals & COA', category: 'accounting', deps: ['expenses'], tier: 'standard' },
-]
 
 const formatCurrency = (value) => `NGN ${Number(value || 0).toLocaleString()}`
 
@@ -63,13 +32,19 @@ const detectWorkspaceSubdomain = () => {
   return ''
 }
 
-const buildWorkspacePricingUrl = (subdomain) => {
+const buildWorkspacePricingUrl = (subdomain, modules = []) => {
   if (!subdomain) return ''
   const protocol = window.location.protocol
   const hostname = window.location.hostname
   const port = window.location.port ? `:${window.location.port}` : ''
-  // Redirect into tenant's public pricing route so checkout can continue inside the tenant
-  const query = `?billing=1&src=public_pricing`
+  // Redirect into tenant's public pricing route so checkout can continue inside the tenant.
+  // Carry the module selection across so it isn't silently lost on this
+  // cross-domain redirect — the tenant-side page re-selects (and the server
+  // always re-resolves/re-prices) from this, never trusting it directly.
+  const modulesParam = Array.isArray(modules) && modules.length
+    ? `&modules=${encodeURIComponent(modules.join(','))}`
+    : ''
+  const query = `?billing=1&src=public_pricing${modulesParam}`
 
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost')) {
     return `${protocol}//${subdomain}.localhost${port}/pricing${query}`
@@ -133,6 +108,12 @@ const PricingPage = () => {
   const [disablePaystackPayment, setDisablePaystackPayment] = useState(false)
   const [liveStandardPlan, setLiveStandardPlan] = useState(null)
   const [liveTrialDays, setLiveTrialDays] = useState(FREE_TRIAL_DAYS)
+  // Real module catalog + per-module pricing, fetched from the server (see
+  // wageserver/UserModule/Billing/moduleCatalog.js) — this used to be a
+  // hardcoded, drifted-out-of-sync copy of the app's real 18 module routes
+  // with a purely decorative price estimate that was never sent to checkout.
+  const [moduleCatalog, setModuleCatalog] = useState([])
+  const [modulePricing, setModulePricing] = useState({})
   const [workspaceCheck, setWorkspaceCheck] = useState({
     checking: false,
     exists: null,
@@ -159,20 +140,46 @@ const PricingPage = () => {
     loadPlatformConfig()
   }, [server])
 
+  useEffect(() => {
+    const loadModuleCatalog = async () => {
+      try {
+        const response = await fetch(`${server}/platform-modules`)
+        const data = await response.json()
+        if (data.ok) {
+          setModuleCatalog(Array.isArray(data.catalog) ? data.catalog : [])
+          setModulePricing(data.pricing || {})
+        }
+      } catch (err) {
+        console.error('Failed to load module catalog', err)
+      }
+    }
+    loadModuleCatalog()
+  }, [server])
+
+  // Cheapest single standard-tier module — used as the "From ₦X/mo" floor on
+  // the Standard plan card. The old flat `liveStandardPlan.amountNaira` price
+  // shown here directly contradicted the module calculator lower on the same
+  // page (a tenant selecting 2 of 12 modules would see one number up top and
+  // a much lower one in the calculator) — modular pricing has no single
+  // "the" price, so the card now points at the calculator instead of quoting
+  // a number that isn't actually what most tenants would pay.
+  const standardTierPrices = moduleCatalog.filter(a => a.tier === 'standard').map(a => Number(modulePricing[a.key]) || 0).filter(Boolean)
+  const cheapestModuleNaira = standardTierPrices.length ? Math.min(...standardTierPrices) : (liveStandardPlan?.amountNaira ?? FALLBACK_STANDARD_PRICE)
+
   const plans = useMemo(() => ([
     {
       key: 'free',
       name: 'Free Trial',
       priceLabel: '0',
       period: `for ${liveTrialDays} days`,
-      desc: 'Start with the full Standard experience before payment is required.',
+      desc: 'Every module unlocked, free, while you set up and test the workspace.',
       highlight: false,
       badge: 'Best for first setup',
       features: [
-        `${liveTrialDays}-day free access to the Standard plan`,
-        'Multiple users can explore the same tenant workspace',
-        'All core apps, accounting, approvals, dashboard summaries, and offline sync',
-        'Expiry warning banner with direct upgrade path before suspension',
+        `${liveTrialDays}-day free access to every module in the catalog`,
+        'Unlimited users can explore the same tenant workspace',
+        'Core apps, accounting, approvals, dashboard summaries, and offline sync',
+        'Choose which modules to keep before your first payment',
       ],
       cta: 'Start Free Trial',
       action: () => navigate('/signup'),
@@ -180,18 +187,18 @@ const PricingPage = () => {
     {
       key: 'standard',
       name: liveStandardPlan?.name || 'Standard',
-      priceLabel: formatCurrency(liveStandardPlan?.amountNaira ?? FALLBACK_STANDARD_PRICE),
+      priceLabel: `From ${formatCurrency(cheapestModuleNaira)}`,
       period: '/month',
-      desc: 'Monthly subscription for multiple users with full access to all apps.',
+      desc: 'Core apps are free forever. Add only the operational and accounting modules your business needs.',
       highlight: true,
-      badge: 'Recommended for live teams',
+      badge: 'Pay only for what you use',
       features: [
-        'Multiple users on one tenant workspace',
-        'All operational apps: POS, Delivery, Inventory, HR, Payroll, Sales, Purchase, Expenses, Accommodation',
-        'Journals, Chart of Accounts, ledgers, Trial Balance, Balance Sheet, and Profit & Loss',
-        'Live dashboard summaries, SSE sync, approvals, and offline-ready workflows',
+        'Unlimited users on one tenant workspace',
+        'Core apps always free: Dashboard, Employees, Departments, Positions, Attendance, Settings',
+        'Add modules individually — POS, Sales, Inventory, Payroll, Purchase, Accounting, and more',
+        'Add more modules anytime; the new price applies from your next renewal',
       ],
-      cta: 'Proceed to Paystack',
+      cta: 'Build Your Plan',
       action: () => {
         setSelectedPlan('standard')
         document.getElementById('pricing-checkout')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -214,16 +221,16 @@ const PricingPage = () => {
       cta: 'Talk to Sales',
       action: () => navigate('/help'),
     },
-  ]), [navigate, liveStandardPlan, liveTrialDays])
+  ]), [navigate, liveStandardPlan, liveTrialDays, cheapestModuleNaira])
 
   const faqs = [
     {
       q: 'What does the Standard subscription include?',
-      a: 'The Standard plan gives your tenant multiple-user access to every core operational app and the full accounting experience, including journals, COA, ledgers, Balance Sheet, Trial Balance, Profit and Loss, approvals, offline sync, and live dashboard summaries.',
+      a: 'Core apps — Dashboard, Employees, Departments, Positions, Attendance, and Settings — are free on every workspace, forever. Everything else (POS, Sales, Inventory, Payroll, Purchase, Delivery, Accommodations, Business Partners, and the full accounting suite — journals, COA, ledgers, Trial Balance, Balance Sheet, Profit & Loss, Reports) is priced per module, so you only pay for what your business actually uses.',
     },
     {
       q: 'Can I start with a free trial first?',
-      a: `Yes. New tenants start with a ${liveTrialDays}-day free Standard trial. During that window the platform shows a warning banner as expiry approaches, and payment becomes required after the trial ends.`,
+      a: `Yes. New tenants get a ${liveTrialDays}-day free trial with every module unlocked, so you can test the full platform before deciding what to keep. The platform shows a warning banner as the trial approaches its end, and you choose your modules the first time you pay.`,
     },
     {
       q: 'How is billing handled?',
@@ -231,27 +238,27 @@ const PricingPage = () => {
     },
     {
       q: 'Do I need a separate license for each module?',
-      a: 'No. The Standard subscription is positioned as one monthly platform plan for all apps in the workspace, rather than separate module purchases.',
+      a: 'Pricing is per module rather than one flat platform fee. Each operational or accounting module beyond the free core apps has its own price, dependencies are added automatically (e.g. enabling Sales also enables Inventory), and you can add more modules at any time from Settings — the higher price applies starting your next renewal, with no extra charge the day you add them.',
     },
   ]
 
   const comparison = [
-    { feature: 'Users', free: 'Multiple users', standard: 'Multiple users', enterprise: 'Custom' },
-    { feature: 'Apps included', free: 'All apps', standard: 'All apps', enterprise: 'All apps + bespoke scope' },
-    { feature: 'Accounting suite', free: 'Included', standard: 'Included', enterprise: 'Included' },
-    { feature: 'Trial / billing', free: `${FREE_TRIAL_DAYS}-day trial`, standard: 'Monthly plan', enterprise: 'Custom quote' },
+    { feature: 'Users', free: 'Unlimited', standard: 'Unlimited', enterprise: 'Custom' },
+    { feature: 'Core apps', free: 'Included', standard: 'Always free', enterprise: 'Always free' },
+    { feature: 'Operational & accounting modules', free: 'All unlocked during trial', standard: 'Pay per module enabled', enterprise: 'All modules + bespoke scope' },
+    { feature: 'Trial / billing', free: `${FREE_TRIAL_DAYS}-day trial`, standard: 'Modular monthly plan', enterprise: 'Custom quote' },
     { feature: 'Dashboard summaries', free: 'Live', standard: 'Live', enterprise: 'Live + tailored rollout' },
     { feature: 'Offline support', free: 'Included', standard: 'Included', enterprise: 'Included' },
     { feature: 'Approvals & workflow', free: 'Included', standard: 'Included', enterprise: 'Included' },
-    { feature: 'Commercial model', free: 'Zero upfront', standard: `NGN ${Number(liveStandardPlan?.amountNaira ?? FALLBACK_STANDARD_PRICE).toLocaleString()} / month`, enterprise: 'Custom quote' },
+    { feature: 'Commercial model', free: 'Zero upfront', standard: 'Pay only for enabled modules', enterprise: 'Custom quote' },
   ]
 
   const calculator = useMemo(() => {
     const activePlan = selectedPlan === 'free' ? 'free' : 'standard'
-    
+
     if (activePlan === 'free') {
       // Free tier: core + basic HR + basic accounting = 0 cost
-      const freeApps = APPS.filter(a => a.tier === 'free')
+      const freeApps = moduleCatalog.filter(a => a.tier === 'free')
       return {
         activePlan,
         monthlyTotal: 0,
@@ -262,23 +269,19 @@ const PricingPage = () => {
         selectedApps: [],
       }
     }
-    
-    // Standard tier: all apps selectable, price based on what's selected, max live plan price
-    const standardApps = APPS.filter(a => a.tier === 'standard')
-    const coreApps = APPS.filter(a => a.tier === 'free' || a.tier === 'core')
-    const standardPrice = liveStandardPlan?.amountNaira ?? FALLBACK_STANDARD_PRICE
 
-    // Selected apps within standard tier
+    // Standard tier: real per-module pricing (server-provided) — the actual
+    // amount charged at checkout is this same sum, not a proportional guess.
+    const standardApps = moduleCatalog.filter(a => a.tier === 'standard')
+    const coreApps = moduleCatalog.filter(a => a.tier === 'free' || a.tier === 'core')
     const selectedStandardApps = standardApps.filter(a => selectedOptionalApps.includes(a.key))
 
-    // Price as proportion of selected apps vs total standard apps
-    const pricePercentage = standardApps.length > 0 ? selectedStandardApps.length / standardApps.length : 0
-    const monthlyTotal = Math.round(standardPrice * pricePercentage)
+    const monthlyTotal = selectedStandardApps.reduce((sum, app) => sum + (Number(modulePricing[app.key]) || 0), 0)
     const yearlyTotal = monthlyTotal * 12
     const billedTotal = billingCycle === 'yearly' ? yearlyTotal : monthlyTotal
-    
+
     const allSelectedApps = [...coreApps, ...selectedStandardApps]
-    
+
     return {
       activePlan,
       monthlyTotal,
@@ -290,7 +293,7 @@ const PricingPage = () => {
       standardAppCount: standardApps.length,
       selectedStandardCount: selectedStandardApps.length,
     }
-  }, [billingCycle, selectedPlan, selectedOptionalApps, liveStandardPlan])
+  }, [billingCycle, selectedPlan, selectedOptionalApps, modulePricing, moduleCatalog])
 
   useEffect(() => {
     storePath('pricing')
@@ -309,6 +312,20 @@ const PricingPage = () => {
       resolvedUrl: buildWorkspacePricingUrl(detectedSubdomain),
     }))
   }, [])
+
+  // Re-select whatever module selection was carried across from the public
+  // marketing pricing page's redirect (see buildWorkspacePricingUrl) — needs
+  // the catalog loaded first to validate/resolve against real keys.
+  useEffect(() => {
+    if (!moduleCatalog.length) return
+    const requested = new URLSearchParams(window.location.search).get('modules')
+    if (!requested) return
+    const validKeys = requested.split(',').map((k) => k.trim()).filter((k) => moduleCatalog.some((app) => app.key === k))
+    if (validKeys.length) {
+      setSelectedOptionalApps(resolveSelectionWithDeps(validKeys))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleCatalog])
 
   useEffect(() => {
     const subdomain = String(checkoutForm.workspaceSubdomain || '').trim().toLowerCase()
@@ -427,6 +444,7 @@ const PricingPage = () => {
       if (currentHostSubdomain && currentHostSubdomain === subdomain) {
         const payload = {
           months: billingCycle === 'yearly' ? 12 : 1,
+          modules: selectedOptionalApps,
         }
         const initResp = await fetchServer('POST', payload, 'billing/initializeTenantSubscription', server)
         if (initResp?.err || !initResp?.authorizationUrl) {
@@ -438,7 +456,7 @@ const PricingPage = () => {
       }
 
       // Otherwise, redirect the visitor into the tenant pricing page so the tenant flow can initialize checkout there
-      const targetUrl = buildWorkspacePricingUrl(subdomain)
+      const targetUrl = buildWorkspacePricingUrl(subdomain, selectedOptionalApps)
       setCheckoutState({ loading: true, verifying: false, type: 'info', message: `Workspace located. Redirecting you to ${targetUrl} so subscription checkout happens inside the tenant billing settings.`, reference: '', paystackMode: '' })
       window.location.href = targetUrl
       return
@@ -451,14 +469,16 @@ const PricingPage = () => {
     // App selection helpers
     // -----------------------
   const resolveSelectionWithDeps = (selection) => {
-    // Start with selected apps
+    // Client-side optimistic expansion only, for snappy checkbox behavior —
+    // the server (moduleCatalog.js's resolveModuleDependencies) always
+    // re-resolves and is the one whose output is actually billed/persisted.
     const selected = new Set(selection || [])
-    
+
     // Iteratively add dependencies until stable
     let changed = true
     while (changed) {
       changed = false
-      APPS.forEach((app) => {
+      moduleCatalog.forEach((app) => {
         // If this app is selected and has dependencies, add its dependencies
         if (selected.has(app.key) && app.deps && app.deps.length > 0) {
           app.deps.forEach((dep) => {
@@ -470,10 +490,10 @@ const PricingPage = () => {
         }
       })
     }
-    
+
     // Return only standard tier apps (free tier is always included)
     return Array.from(selected).filter(k => {
-      const app = APPS.find(x => x.key === k)
+      const app = moduleCatalog.find(x => x.key === k)
       return app && app.tier === 'standard'
     })
   }
@@ -498,16 +518,17 @@ const PricingPage = () => {
       <section className="sp-hero">
         <div className="sp-hero-inner">
           <div className="ec-hero-kicker">Platform Pricing</div>
-          <h1>Flexible Start, Clean Upgrade Path, One Operating Platform</h1>
+          <h1>Pay Only For The Modules Your Business Actually Uses</h1>
           <p>
-            Start with a free Standard trial, forecast your operating cost by team size,
-            and move into secure Paystack billing when you are ready to go live.
+            Core apps are free on every workspace. Try the full catalog free for {liveTrialDays} days,
+            then build a plan from only the operational and accounting modules you need —
+            add more anytime and billing adjusts automatically.
           </p>
           <div className="sp-badge-row">
-            <span className="sp-plan-chip">14-day free trial</span>
-            <span className="sp-plan-chip">Multiple users</span>
-            <span className="sp-plan-chip">All apps included</span>
-            <span className="sp-plan-chip">Paystack support</span>
+            <span className="sp-plan-chip">{liveTrialDays}-day free trial</span>
+            <span className="sp-plan-chip">Unlimited users</span>
+            <span className="sp-plan-chip">Pay per module</span>
+            <span className="sp-plan-chip">Secure Paystack billing</span>
           </div>
         </div>
       </section>
@@ -562,10 +583,10 @@ const PricingPage = () => {
           <div className="sp-checkout-grid-layout">
             <div className="sp-checkout-card sp-calculator-card">
               <div className="ec-section-kicker">Plan Calculator</div>
-              <h2>Estimate your platform cost before checkout</h2>
+              <h2>Build your plan and see the exact monthly cost</h2>
               <p>
-                Adjust the team size and compare free-trial access with the Standard operating plan.
-                This helps you see the effective cost per user while keeping one shared tenant for the whole team.
+                Pick your modules below and the total updates live — this is the exact amount charged at checkout,
+                not an estimate. Team size never changes the price: every plan includes unlimited users.
               </p>
 
               <div className="sp-calculator-controls">
@@ -594,20 +615,74 @@ const PricingPage = () => {
                     >
                       Monthly
                     </button>
-                    <button 
-                      className={billingCycle === 'annually' ? 'active' : ''} 
-                      onClick={() => setBillingCycle('annually')}
+                    <button
+                      className={billingCycle === 'yearly' ? 'active' : ''}
+                      onClick={() => setBillingCycle('yearly')}
                     >
                       Annually
-                      <span className="sp-save-badge">Save 20%</span>
+                      <span className="sp-save-badge">Prepay 12 months</span>
                     </button>
                   </div>
                 </div>
               </div>
 
+              <div className="sp-calculator-summary-grid">
+                <div className="sp-calculator-summary-card highlight">
+                  <span>{billingCycle === 'yearly' ? 'Annual total (12x monthly)' : 'Monthly cost'}</span>
+                  <strong>{formatCurrency(calculator.billedTotal)}</strong>
+                  <p>{calculator.activePlan === 'free' ? 'No upfront charge during trial.' : (billingCycle === 'yearly' ? '12 months prepaid at the monthly rate shown.' : 'Exact Paystack checkout amount for the modules selected below.')}</p>
+                </div>
+                <div className="sp-calculator-summary-card">
+                  <span>Selected plan</span>
+                  <strong>{calculator.activePlan === 'free' ? 'Free Trial' : 'Standard'}</strong>
+                  <p>{calculator.activePlan === 'free' ? `${FREE_TRIAL_DAYS}-day full-access trial` : 'Unlimited users + selected modules'}</p>
+                </div>
+                <div className="sp-calculator-summary-card">
+                  <span>Modules included</span>
+                  <strong>{calculator.appCount}</strong>
+                  <p>Free core apps + selected operational and accounting modules</p>
+                </div>
+                <div className="sp-calculator-summary-card">
+                  <span>Users</span>
+                  <strong>Unlimited</strong>
+                  <p>Every plan includes unlimited users in your workspace</p>
+                </div>
+              </div>
+
+              <div className="sp-optional-apps-card">
+                <div className="ec-section-kicker">Modules</div>
+                <p style={{ marginTop: 6, marginBottom: 12 }}>
+                  Core apps are always free and already included above. Add the operational and accounting
+                  modules your business needs below — dependencies (e.g. Sales requires Inventory) are added automatically.
+                </p>
+                <div className="sp-optional-list">
+                  {selectedPlan === 'standard' && moduleCatalog.filter(a => a.tier === 'standard').map(app => (
+                    <div key={app.key} className="sp-app-card">
+                      <label className="sp-app-select">
+                        <input
+                          type="checkbox"
+                          checked={selectedOptionalApps.includes(app.key)}
+                          onChange={() => toggleOptionalApp(app.key)}
+                        />
+                        <div className="sp-app-logo" aria-hidden>
+                          {getAppInitials(app.name)}
+                        </div>
+                        <div className="sp-app-meta">
+                          <div className="sp-app-meta-head">
+                            <strong>{app.name}</strong>
+                            <div className="sp-app-tag">{formatCurrency(modulePricing[app.key])}/mo</div>
+                          </div>
+                          <div className="sp-app-deps">{app.deps && app.deps.length ? `Requires: ${app.deps.map(d => (moduleCatalog.find(x => x.key === d) || {}).name || d).join(', ')}` : ''}</div>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="sp-calculator-slider-card">
                 <div className="sp-calculator-slider-head">
-                  <span>Expected team size</span>
+                  <span>Expected team size <em>(unlimited users included — for your own planning only)</em></span>
                   <strong>{teamSize} user{teamSize > 1 ? 's' : ''}</strong>
                 </div>
                 <input
@@ -626,61 +701,10 @@ const PricingPage = () => {
                 </div>
               </div>
 
-              <div className="sp-optional-apps-card">
-                <div className="ec-section-kicker">Optional Modules</div>
-                <p style={{ marginTop: 6, marginBottom: 12 }}>
-                  Select optional modules to include in your Standard plan. Dependencies are selected automatically.
-                </p>
-                <div className="sp-optional-list">
-                  {selectedPlan === 'standard' && APPS.filter(a => a.tier === 'standard').map(app => (
-                    <div key={app.key} className="sp-app-card">
-                      <label className="sp-app-select">
-                        <input
-                          type="checkbox"
-                          checked={selectedOptionalApps.includes(app.key)}
-                          onChange={() => toggleOptionalApp(app.key)}
-                        />
-                        <div className="sp-app-logo" aria-hidden>
-                          {getAppInitials(app.name)}
-                        </div>
-                        <div className="sp-app-meta">
-                          <strong>{app.name}</strong>
-                          <div className="sp-app-deps">{app.deps && app.deps.length ? `Requires: ${app.deps.map(d => (APPS.find(x => x.key === d) || {}).name || d).join(', ')}` : ''}</div>
-                        </div>
-                        <div className="sp-app-tag">Included</div>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="sp-calculator-summary-grid">
-                <div className="sp-calculator-summary-card">
-                  <span>Selected plan</span>
-                  <strong>{calculator.activePlan === 'free' ? 'Free Trial' : 'Standard'}</strong>
-                  <p>{calculator.activePlan === 'free' ? `${FREE_TRIAL_DAYS}-day full-access trial` : 'Multiple users + selected apps'}</p>
-                </div>
-                <div className="sp-calculator-summary-card">
-                  <span>{billingCycle === 'yearly' ? 'Annual projection' : 'Monthly cost'}</span>
-                  <strong>{formatCurrency(calculator.billedTotal)}</strong>
-                  <p>{calculator.activePlan === 'free' ? 'No upfront charge during trial.' : (billingCycle === 'yearly' ? 'Annual projection based on selected apps.' : 'Actual Paystack checkout amount based on selected apps.')}</p>
-                </div>
-                <div className="sp-calculator-summary-card">
-                  <span>Users</span>
-                  <strong>Unlimited</strong>
-                  <p>Multiple users in your tenant workspace</p>
-                </div>
-                <div className="sp-calculator-summary-card">
-                  <span>Apps included</span>
-                  <strong>{calculator.appCount}</strong>
-                  <p>Core + selected operational and accounting apps</p>
-                </div>
-              </div>
-
               <div className="sp-plan-meta">
                 <div>
-                  <span>Free trial includes</span>
-                  <strong>{APPS.filter(a => a.tier === 'free').slice(0,5).map(a=>a.name).join(', ')}</strong>
+                  <span>Always free (every plan)</span>
+                  <strong>{moduleCatalog.filter(a => a.tier === 'free').slice(0,5).map(a=>a.name).join(', ')}</strong>
                 </div>
                 <div>
                   <span>Accounting stack</span>
@@ -693,7 +717,7 @@ const PricingPage = () => {
               </div>
             </div>
 
-            <div className="sp-checkout-card">
+            <div className="sp-checkout-card sp-checkout-card-sticky">
               <div className="ec-section-kicker">Tenant Billing Access</div>
               <h2>{selectedPlan === 'free' ? 'Start with the free trial' : 'Open the tenant billing workspace'}</h2>
               <p>

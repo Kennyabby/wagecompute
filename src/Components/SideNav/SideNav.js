@@ -19,7 +19,7 @@ const SideNav = () => {
     const {
         server, fetchServer, company, companyRecord,
         setAlertState, setAlert, setAlertTimeout, approvals, setCurApproval,
-        isFullyConnected
+        isFullyConnected, enabledModules
     } = useContext(ContextProvider)
     const [companyName, setCompanyName] = useState('....')
     const [curPath, setCurPath] = useState('')
@@ -94,6 +94,14 @@ const SideNav = () => {
 
     const hasPermission = (permission) => {
         return companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes(permission)
+    }
+
+    // Tenant-level entitlement ceiling on top of the per-employee permission
+    // check above — an employee can only be granted a module the tenant
+    // itself has enabled. Only used for the top-level module nav gates below,
+    // never for sub-permissions like approval badges (those aren't modules).
+    const hasModuleAccess = (moduleKey) => {
+        return (enabledModules || []).includes(moduleKey) && hasPermission(moduleKey)
     }
 
     const companyInitials = useMemo(() => {
@@ -221,47 +229,47 @@ const SideNav = () => {
     }, []);
 
     const navItems = [
-        hasPermission('dashboard') && { name: 'dashboard', label: 'Dashboard', meta: 'Overview', icon: BiSolidDashboard },
-        (hasPermission('journals') || hasPermission('reports')) && {
+        hasModuleAccess('dashboard') && { name: 'dashboard', label: 'Dashboard', meta: 'Overview', icon: BiSolidDashboard },
+        (hasModuleAccess('journals') || hasModuleAccess('reports')) && {
             name: 'journals',
             label: 'Journals & COA',
             meta: 'Accounting',
             icon: BsTable
         },
-        hasPermission('employees') && { name: 'employees', label: 'Employees', meta: 'People', icon: FaUsers },
-        hasPermission('departments') && { name: 'departments', label: 'Departments', meta: 'Teams', icon: MdSubject },
-        hasPermission('positions') && { name: 'positions', label: 'Positions', meta: 'Roles', icon: CgArrangeBack },
-        hasPermission('attendance') && {
+        hasModuleAccess('employees') && { name: 'employees', label: 'Employees', meta: 'People', icon: FaUsers },
+        hasModuleAccess('departments') && { name: 'departments', label: 'Departments', meta: 'Teams', icon: MdSubject },
+        hasModuleAccess('positions') && { name: 'positions', label: 'Positions', meta: 'Roles', icon: CgArrangeBack },
+        hasModuleAccess('attendance') && {
             name: 'attendance',
             label: 'Attendance',
             meta: 'Time sheets',
             icon: GiPlayerTime,
             badge: hasPermission('approve_postattendance') ? attendanceApprovals.length : 0
         },
-        hasPermission('payroll') && { name: 'payroll', label: 'Payroll', meta: 'Payouts', icon: SiPayloadcms },
-        hasPermission('inventory') && {
+        hasModuleAccess('payroll') && { name: 'payroll', label: 'Payroll', meta: 'Payouts', icon: SiPayloadcms },
+        hasModuleAccess('inventory') && {
             name: 'inventory',
             label: 'Inventory',
             meta: 'Stock',
             icon: MdInventory,
             badge: hasPermission('approve_posttransfer') ? inventoryApprovals.length : 0
         },
-        hasPermission('assets') && { name: 'assets', label: 'Assets', meta: 'Fixed assets', icon: FaBoxes },
-        hasPermission('sales') && {
+        hasModuleAccess('assets') && { name: 'assets', label: 'Assets', meta: 'Fixed assets', icon: FaBoxes },
+        hasModuleAccess('sales') && {
             name: 'sales',
             label: 'Sales',
             meta: 'Revenue',
             icon: GiPayMoney,
             badge: hasPermission('approve_postsales') ? salesApprovals.length : 0
         },
-        hasPermission('business-partners') && {
+        hasModuleAccess('business-partners') && {
             name: 'business-partners',
             label: 'Customers & Vendors',
             meta: 'AR/AP ledgers',
             icon: FaHandshake
         },
-        hasPermission('pos') && { name: 'pos', label: 'POS', meta: 'Counter', icon: GiPayMoney },
-        hasPermission('delivery') && { name: 'delivery', label: 'Order Delivery', meta: 'Dispatch', icon: MdDeliveryDining },
+        hasModuleAccess('pos') && { name: 'pos', label: 'POS', meta: 'Counter', icon: GiPayMoney },
+        hasModuleAccess('delivery') && { name: 'delivery', label: 'Order Delivery', meta: 'Dispatch', icon: MdDeliveryDining },
         {
             name: 'offline-sync',
             label: 'Offline Sync',
@@ -273,28 +281,28 @@ const SideNav = () => {
                 setShowOfflineModal(true)
             }
         },
-        hasPermission('accommodations') && {
+        hasModuleAccess('accommodations') && {
             name: 'accommodations',
             label: 'Accommodation',
             meta: 'Hospitality',
             icon: FaHotel,
             badge: hasPermission('approve_postaccommodation') ? accommodationApprovals.length : 0
         },
-        hasPermission('purchase') && {
+        hasModuleAccess('purchase') && {
             name: 'purchase',
             label: 'Direct Purchase',
             meta: 'Procurement',
             icon: GiBuyCard,
             badge: hasPermission('approve_postpurchase') ? purchaseApprovals.length : 0
         },
-        hasPermission('expenses') && {
+        hasModuleAccess('expenses') && {
             name: 'expenses',
             label: 'Admin Expenses',
             meta: 'Overheads',
             icon: GiExpense,
             badge: hasPermission('approve_postexpense') ? expenseApprovals.length : 0
         },
-        hasPermission('settings') && { name: 'settings', label: 'Settings', meta: 'Control room', icon: RiSettings2Fill }
+        hasModuleAccess('settings') && { name: 'settings', label: 'Settings', meta: 'Control room', icon: RiSettings2Fill }
     ].filter(Boolean)
 
     const renderNavItem = ({ name, label, meta, icon: Icon, badge, action }) => {
