@@ -168,6 +168,21 @@ const Sales = () => {
         recoveryDate: '',
         recoveryTransferId: ''
     }
+    // Physical-inventory-reconciliation shortage recovery is a distinct kind
+    // of recovery from sales debt (not tied to a specific `recoverySales`
+    // record, not classified by `recoveryReasons` which are all about missing
+    // sales accounting) — kept as its own flag + card rather than overloading
+    // the existing reason list with an unrelated meaning.
+    const defaultShortageRecoveryFields = {
+        isInventoryShortage: true,
+        recoveryReceipt: '',
+        imgId: '',
+        viewLink: '',
+        downloadLink: '',
+        recoveryAmount: '',
+        recoveryPoint: '',
+        recoveryTransferId: '',
+    }
 
     const defaultRentalFields = {
         paymentDate: new Date(Date.now()).toISOString().slice(0, 10),
@@ -191,6 +206,7 @@ const Sales = () => {
     const [wrhCategories, setWrhCategories] = useState({})
     const [fields, setFields] = useState([])
     const [recoveryFields, setRecoveryFields] = useState([])
+    const [outstandingInventoryShortage, setOutstandingInventoryShortage] = useState(0)
     const [rentalFields, setRentalFields] = useState({
         ...defaultRentalFields
     })
@@ -1669,6 +1685,19 @@ const Sales = () => {
     }, [recoveryVal])
 
     useEffect(() => {
+        let cancelled = false
+        setOutstandingInventoryShortage(0)
+        if (!recoveryEmployeeId) return
+        const loadOutstandingShortage = async () => {
+            const response = await fetchServer('POST', {}, 'inventoryReconciliation/getOutstandingShortage', server)
+            if (cancelled || response?.err) return
+            setOutstandingInventoryShortage(Number(response?.outstandingByEmployee?.[recoveryEmployeeId]) || 0)
+        }
+        loadOutstandingShortage()
+        return () => { cancelled = true }
+    }, [recoveryEmployeeId, fetchServer, server])
+
+    useEffect(() => {
         // console.log(fields)
     }, [fields])
 
@@ -2625,6 +2654,31 @@ const Sales = () => {
         setAlert('Posting Recovery ....')
         setAlertTimeout(100000)
         recoveryFields.forEach(async (field) => {
+            if (field.isInventoryShortage) {
+                const resp = await fetchServer('POST', {
+                    employee_id: recoveryEmployeeId,
+                    amountRecovered: field.recoveryAmount,
+                    recoveryPoint: field.recoveryPoint,
+                    recoveryReceipt: field.recoveryReceipt,
+                    recoveryTransferId: field.recoveryTransferId,
+                    imgId: field.imgId,
+                    viewLink: field.viewLink,
+                    downloadLink: field.downloadLink,
+                }, 'inventoryReconciliation/postShortageRecovery', server)
+                if (resp?.err || !resp?.ok) {
+                    setAlertState('error')
+                    setAlert(resp?.mess || 'Failed to post inventory shortage recovery.')
+                    setAlertTimeout(5000)
+                    setRecoveryStatus('Post Recovery')
+                    return
+                }
+                setRecoveryFields((fields) => fields.filter((ftrfield) => ftrfield !== field))
+                setAlertState('success')
+                setAlert('Inventory Shortage Recovered Successfully!')
+                setAlertTimeout(2000)
+                setRecoveryStatus('Post Recovery')
+                return
+            }
             if (recoveryEmployeeId === (field.recoverySales).slice(0, field.recoverySales.indexOf('-'))) {
                 var updtEmployee = {}
                 employees.forEach((employee) => {
@@ -2831,6 +2885,7 @@ const Sales = () => {
             totalDebt: 0,
             totalShortage: 0,
             totalDebtRecovered: 0,
+            totalInventoryShortageDue: 0,
             postingDate: reportFromDate,
             createdAt: Date.now(),
             record: []
@@ -2857,6 +2912,7 @@ const Sales = () => {
                 filteredReportSales['totalDebt'] += sale['totalDebt'] ? sale['totalDebt'] : 0
                 filteredReportSales['totalShortage'] += sale['totalShortage'] ? sale['totalShortage'] : 0
                 filteredReportSales['totalDebtRecovered'] += sale['totalDebtRecovered'] ? sale['totalDebtRecovered'] : 0
+                filteredReportSales['totalInventoryShortageDue'] += sale['totalInventoryShortageDue'] ? Number(sale['totalInventoryShortageDue']) : 0
                 filteredReportSales['record'] = filteredReportSales['record'].concat(sale['record'])
             } else {
                 var totalBankSales = 0
@@ -3653,7 +3709,7 @@ const Sales = () => {
                             }
                             const { createdAt, postingDate, totalCashSales, totalDebt, totalSalesDebt, record,
                                 totalShortage, totalDebtRecovered, totalBankSales, recoveryList, productsRef,
-                                approval
+                                totalInventoryShortageDue, approval
                             } = sale
 
                             let unAccountedSalesDebt = 0
@@ -3714,6 +3770,11 @@ const Sales = () => {
                                         <div>Cash: <b>{'₦' + totalCashSales.toLocaleString()}</b></div>
                                         <div>Debts: <b>{'₦' + (Number(totalDebt) + Number(totalShortage) - Number(totalDebtRecovered ? totalDebtRecovered : 0)).toLocaleString()}</b></div>
                                         <div>Recovered: <b>{'₦' + (Number(totalDebtRecovered ? totalDebtRecovered : 0)).toLocaleString()}</b></div>
+                                        {/* Distinct from "Debts" (till/cash shortage) above — this is the
+                                        physical-inventory-reconciliation shortage charged to staff for this
+                                        day, recoverable from the Recovery section below or the Reconcile
+                                        Inventory modal. */}
+                                        {Number(totalInventoryShortageDue) > 0 && <div>Inventory Shortage: <b>{'₦' + Number(totalInventoryShortageDue).toLocaleString()}</b></div>}
                                         <div className='deptdesc'>{`Number of Sales Made:`} <b>{`${record.length}`}</b></div>
                                         {approval && approval?.approvers?.length &&
                                             <div
@@ -4235,9 +4296,141 @@ const Sales = () => {
                             >
                                 Add Recovery Amount
                             </div>
+                            {outstandingInventoryShortage > 0 && <div className='addempsales'
+                                style={{ cursor: recoveryEmployeeId ? 'pointer' : 'not-allowed' }}
+                                onClick={() => {
+                                    if (recoveryEmployeeId) {
+                                        setRecoveryFields((fields) => {
+                                            // recoveryMaxAmount reuses the same cap the existing
+                                            // recoveryAmount onChange handler already enforces
+                                            // (handleRecoveryFieldChange) — no new validation path needed.
+                                            return [...fields, { ...defaultShortageRecoveryFields, recoveryMaxAmount: outstandingInventoryShortage }]
+                                        })
+                                    }
+                                }}
+                            >
+                                Add Inventory Shortage Recovery (₦{outstandingInventoryShortage.toLocaleString()} outstanding)
+                            </div>}
                         </div>}
                         {
                             salesOpts === 'recovery' && recoveryFields.map((field, index) => {
+                                if (field.isInventoryShortage) {
+                                    // Compact card for the physical-inventory-reconciliation
+                                    // shortage recovery type — same delete/upload helpers as
+                                    // the sales-debt card below, no recoverySales/recoveryReason
+                                    // selectors since neither concept applies here.
+                                    return (
+                                        <div className='recoveryblk' key={index}>
+                                            <MdDelete
+                                                className='recoverydelete'
+                                                onClick={() => {
+                                                    setRecoveryFields((fields) => fields.filter((ftrfield) => ftrfield !== field))
+                                                }}
+                                            />
+                                            <div className='inpcov'>
+                                                <div>Inventory Shortage Recovery — Outstanding: ₦{Number(field.recoveryMaxAmount || 0).toLocaleString()}</div>
+                                            </div>
+                                            <input
+                                                className='forminp recoveryReceipt'
+                                                style={{ cursor: field.recoveryPoint === 'Employee' ? 'not-allowed' : 'auto' }}
+                                                name='recoveryReceipt'
+                                                type='text'
+                                                placeholder='Enter Receipt Number'
+                                                disabled={field.recoveryPoint === 'Employee' || (isView && (companyRecord.status !== 'admin' && !companyRecord?.permissions.includes('allow_recovery_posts')))}
+                                                value={field.recoveryReceipt}
+                                                onChange={(e) => handleRecoveryFieldChange({ index, e })}
+                                            />
+                                            <div className='inpcov'>
+                                                <div>Recovery Amount</div>
+                                                <input
+                                                    className='forminp'
+                                                    name='recoveryAmount'
+                                                    type='number'
+                                                    placeholder='Recovery Amount'
+                                                    value={field.recoveryAmount}
+                                                    disabled={isView}
+                                                    onChange={(e) => handleRecoveryFieldChange({ index, e })}
+                                                />
+                                            </div>
+                                            <div className='inpcov'>
+                                                <div>Recovery Point</div>
+                                                <select
+                                                    className='forminp'
+                                                    name='recoveryPoint'
+                                                    disabled={isView}
+                                                    value={field.recoveryPoint}
+                                                    onChange={(e) => handleRecoveryFieldChange({ index, e })}
+                                                >
+                                                    <option value=''>Select Recovery Point</option>
+                                                    {Object.keys(payPoints).map((paypoint, pIndex) => (
+                                                        <option key={pIndex} value={paypoint}>{`${payPointAccounts[paypoint]}`}</option>
+                                                    ))}
+                                                    <option key={'em001'} value='Employee'>EMPLOYEE</option>
+                                                </select>
+                                            </div>
+                                            {field.recoveryPoint === 'Employee' &&
+                                                <div className='inpcov'>
+                                                    <div>Transfer To ID</div>
+                                                    <select
+                                                        className='forminp'
+                                                        name='recoveryTransferId'
+                                                        value={field.recoveryTransferId}
+                                                        disabled={isView}
+                                                        onChange={(e) => handleRecoveryFieldChange({ index, e })}
+                                                    >
+                                                        <option value=''>Select Transfer ID</option>
+                                                        {employees.map((employee) => (
+                                                            !employee.dismissalDate && (
+                                                                <option key={employee.i_d} value={employee.i_d}>
+                                                                    {`(${employee.i_d}) ${employee.firstName.toUpperCase()} ${employee.lastName.toUpperCase()} - ${employee.position}`}
+                                                                </option>
+                                                            )
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            }
+                                            {field.recoveryPoint && <section className='imgview'>
+                                                <div className='acpymdt'>Upload Recovery Receipt</div>
+                                                {(field.imgId || imageUpload) &&
+                                                    <a href={field?.viewLink || ''} target="_blank" rel="noopener noreferrer">
+                                                        <img className='imgtag' src={(field?.imgId ? `https://drive.google.com/thumbnail?id=${field.imgId}&sz=w1000` : '') || (imageUpload ? (URL.createObjectURL(imageUpload)) : '')}
+                                                            alt='receipt'
+                                                        />
+                                                    </a>
+                                                }
+                                                {!imageUpload && !field.imgId && <div className='inpcov'>
+                                                    <div>Upload Image</div>
+                                                    <input
+                                                        className='forminp'
+                                                        name='imgId'
+                                                        type='file'
+                                                        accept='image/*'
+                                                        capture="environment"
+                                                        onChange={(e) => handleImageSelect(e)}
+                                                    />
+                                                </div>}
+                                                {(!field.imgId) && <button
+                                                    className='imgupld'
+                                                    name='imgId'
+                                                    style={{ cursor: uploadingReceipt ? 'not-allowed' : 'pointer' }}
+                                                    disabled={uploadingReceipt}
+                                                    onClick={(e) => handleImageUpload(imageUpload, index, e)}
+                                                > Upload</button>}
+                                                {(((companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('edit_payment_receipts')) && field.imgId) || imageUpload) && <button
+                                                    className='imgupld'
+                                                    name='imgId'
+                                                    color='red'
+                                                    style={{ cursor: deletingReceipt ? 'not-allowed' : 'pointer' }}
+                                                    disabled={deletingReceipt}
+                                                    onClick={(e) => {
+                                                        setImageUpload(null)
+                                                        if (field.imgId) handleImageDelete(field.imgId, index, e)
+                                                    }}
+                                                >Delete</button>}
+                                            </section>}
+                                        </div>
+                                    )
+                                }
                                 return (
                                     <div className='recoveryblk' key={index}>
                                         <MdDelete
