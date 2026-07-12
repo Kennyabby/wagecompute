@@ -148,10 +148,17 @@ const fetchServer = async (method, rawBody, endpoint, server, signal) => {
                 if (resp.status === 401) {
                     throw new Error('Session expired after token refresh');
                 }
-                
+
                 const responseData = await resp.json();
+                // A non-401 error here (e.g. 403 "Workspace Suspended" from a
+                // route that's genuinely off-limits, not an auth failure) is
+                // NOT a session problem — but it's still an error, and must be
+                // reported as one rather than silently returned as a success.
+                if (!resp.ok) {
+                    return { err: true, status: resp.status, ...responseData };
+                }
                 return { err: false, ...responseData };
-                
+
             } catch (error) {
                 console.error('Session expired or refresh failed:', error);
                 // Clear any sensitive data

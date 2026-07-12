@@ -14,6 +14,7 @@ import Signup from './Components/Login/Signup';
 import ForgotPassword from './Components/Login/ForgotPassword';
 import DatabaseNotFound from './Components/LandingPage/DatabaseNotFound';
 import LicenseExpired from './Components/LandingPage/LicenseExpired';
+import TenantRenewal from './Components/LandingPage/TenantRenewal';
 import Profile from './Components/Profile/Profile';
 import Dashboard from './Components/Dashboard/Dashboard';
 import DashView from './Components/DashView/DashView';
@@ -347,7 +348,14 @@ function App() {
     return await fetchServer(method, body, endpoint, serverParam, signal)
   }
 
-  const pathList = ['', 'login', 'profile', 'dashboard',
+  // 'license-expired' and 'renew' must be here too — a suspended tenant can
+  // now log in and land on /license-expired (see LicenseExpired.js's
+  // storePath('license-expired')). Without them in this list, refreshing
+  // while there hit the `else` branch below and called removeSessions()
+  // unconditionally, wiping a perfectly valid login and bouncing to /login —
+  // this whole path only became reachable once a suspended tenant could log
+  // in at all, so the gap was latent until now.
+  const pathList = ['', 'login', 'profile', 'dashboard', 'license-expired', 'renew',
     'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
   const dashList = ['dashboard',
     'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
@@ -2017,7 +2025,7 @@ function App() {
     setCompanyRecord(null)
     setCompany(null)
     setLoadedCurPath('')
-    const isPublicPath = ['/', '/payment/confirm', '/login', '/signup', '/forgot-password', '/pricing'].includes(window.location.pathname);
+    const isPublicPath = ['/', '/payment/confirm', '/login', '/signup', '/forgot-password', '/pricing', '/renew', '/license-expired'].includes(window.location.pathname);
     if (!isPublicPath) Navigate('/login')
   }
 
@@ -2082,7 +2090,13 @@ function App() {
           setSubscriptionState(resps.currentStatus)
         }
         const workspaceSuspended = !!(resps.currentStatus?.isSuspended || !resps.isActive)
-        const isConfirming = window.location.pathname === '/payment/confirm'
+        // Previously only excluded '/payment/confirm' — a suspended tenant
+        // could never even reach the login form (this redirect fired before
+        // it could render), so "Manage Subscription" led to a dead end: no
+        // session, no way to log in, nothing to click. '/login' and '/renew'
+        // (the public self-service renewal page) must stay reachable while
+        // suspended.
+        const isConfirming = ['/payment/confirm', '/login', '/renew'].includes(window.location.pathname)
 
         if (workspaceSuspended && !isConfirming) {
           window.localStorage.removeItem('ps-vw')
@@ -3579,7 +3593,7 @@ function App() {
     const showSubscriptionBanner = !!(
       companyRecord?.emailid &&
       subscriptionState &&
-      !['/', '/pricing', '/community', '/help', '/login', '/signup', '/forgot-password', '/license-expired', '/database-not-found', '/payment/confirm'].includes(location.pathname) &&
+      !['/', '/pricing', '/community', '/help', '/login', '/signup', '/forgot-password', '/license-expired', '/database-not-found', '/payment/confirm', '/renew'].includes(location.pathname) &&
       (subscriptionState.warningActive || subscriptionState.isSuspended || (subscriptionState.trialActive && !subscriptionState.hasConfiguredSubscription))
     )
     setShowSubscriptionBanner(showSubscriptionBanner)
@@ -3700,6 +3714,7 @@ function App() {
           <Route path='/forgot-password' element={<ForgotPassword />}></Route>
           <Route path='/database-not-found' element={<DatabaseNotFound isProduction={isProduction} />}></Route>
           <Route path='/license-expired' element={<LicenseExpired />}></Route>
+          <Route path='/renew' element={<TenantRenewal />}></Route>
           <Route path='/profile' element={<Profile />}></Route>
           <Route path='/test' element={<FormPage />}></Route>
           <Route path='/dash' element={<DashView />}></Route>
