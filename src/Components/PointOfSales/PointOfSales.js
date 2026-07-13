@@ -5006,12 +5006,27 @@ const POSDashboard = ({
                 return
             }
             if (currSessionManager && getSessionEnd(currSessionManager?.start) <= new Date().getTime()){
-                const resp = await fetchServer("POST", { postingDate: formatDateToDefault(currSessionManager?.start) }, "inventoryReconciliation/getForDate", server)
+                const postingDate = formatDateToDefault(currSessionManager?.start)
+                let resp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
+                if (resp?.err) {
+                    // A transient network/auth hiccup (e.g. the access token
+                    // refreshing) shouldn't be treated the same as "reconciliation
+                    // genuinely not done" — that was blocking session end on a
+                    // request failure that had nothing to do with whether the
+                    // reconciliation was actually saved. One quick retry first,
+                    // then fail OPEN (don't block) rather than closed if it's
+                    // still failing — the reconciliation posting itself is still
+                    // enforced server-side; this is just a soft client-side
+                    // reminder, so wrongly blocking someone from ending their
+                    // shift is worse than occasionally skipping the reminder.
+                    await new Promise((resolve) => setTimeout(resolve, 1200))
+                    resp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
+                }
                 if (resp?.err) {
                     setAlertState('error')
-                    setAlert(resp?.mess || 'Failed to load reconciliation for this date.')
-                    setAlertTimeout(4000)
-                    setReconciliationRecord(null)
+                    setAlert(resp?.mess || 'Could not verify inventory reconciliation status — allowing session end without blocking.')
+                    setAlertTimeout(6000)
+                    setReconciliationRecord({ unverified: true })
                     return
                 }
                 // `exists` only means a reconciliation doc was created for
