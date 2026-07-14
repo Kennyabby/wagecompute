@@ -12,6 +12,7 @@ const ForgotPassword = () => {
   const Navigate = useNavigate()
   
   const [emailid, setEmailid] = useState("");
+  const [subdomain, setSubdomain] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,6 +35,10 @@ const ForgotPassword = () => {
       showMsg("Please enter your registered email.", 'error')
       return
     }
+    if (!subdomain) {
+      showMsg("Please enter your company subdomain.", 'error')
+      return
+    }
 
     setLoading(true)
     setResending(true)
@@ -41,7 +46,7 @@ const ForgotPassword = () => {
       const response = await fetch(`${server}/requestPasswordReset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emailid })
+        body: JSON.stringify({ emailid, subdomain })
       })
       const data = await response.json()
       
@@ -75,7 +80,7 @@ const ForgotPassword = () => {
       const response = await fetch(`${server}/verifyOTP`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emailid, otp })
+        body: JSON.stringify({ emailid, otp, subdomain })
       })
       const data = await response.json()
       
@@ -108,7 +113,7 @@ const ForgotPassword = () => {
       const response = await fetch(`${server}/resetPassword`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emailid, otp, newPassword })
+        body: JSON.stringify({ emailid, otp, newPassword, subdomain })
       })
       const data = await response.json()
       
@@ -171,6 +176,19 @@ const ForgotPassword = () => {
                     onChange={(e) => setEmailid(e.target.value)}
                   />
                 </div>
+                <label style={{ marginTop: '16px' }}>Company Subdomain</label>
+                <div className="input-with-icon">
+                  <HiShieldCheck className="icon" />
+                  <input
+                    placeholder="e.g. mycompany"
+                    type="text"
+                    value={subdomain}
+                    onChange={(e) => setSubdomain(e.target.value)}
+                  />
+                </div>
+                <p style={{ fontSize: '12px', color: 'var(--login-muted, #6b7b71)', marginTop: '6px' }}>
+                  The subdomain your team logs in with (e.g. "mycompany" from mycompany.epxcentral.com). The same email can be registered on more than one company, so this tells us which one to reset.
+                </p>
                 <button className="main-login-btn" onClick={handleRequestOTP} disabled={loading} style={{ marginTop: '24px' }}>
                   {loading ? "Sending..." : "Send Verification Code"}
                 </button>
