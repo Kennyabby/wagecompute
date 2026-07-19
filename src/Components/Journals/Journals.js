@@ -6,6 +6,7 @@ import { FaFileExcel } from 'react-icons/fa'
 import jsPDF from 'jspdf'
 import { generateExcel } from '../../utils/exportUtils'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb'
+import { generateOperationId, checkPostingOperationStatus, usePostingOperationProgress } from '../../Resources/postingOperations'
 
 const ACCOUNTING_UI_CACHE_VERSION = 6
 const buildJournalCacheScope = (fromDate, toDate, filters = {}) => ({
@@ -456,6 +457,71 @@ const Journals = () => {
             setAlertState('error'); setAlert(e.message || 'Failed to trigger recomputes'); setAlertTimeout(4000);
         } finally {
             setIsClosingAction(false);
+        }
+    }
+
+    // One-click historical backlog: posts a real GeneralLedgerEntries record
+    // for every existing Purchase/Inventory/Assets/BusinessPartners document
+    // that doesn't already have one — safe to re-run (server-side dedup
+    // skips anything already posted), so this can also be used later to pick
+    // up any gap after new historical data is imported.
+    //
+    // The server responds immediately with an operationId and keeps running
+    // in the background — progress comes from the PostingOperations SSE feed
+    // (usePostingOperationProgress below), and the operationId is persisted
+    // to localStorage so reloading this page mid-run reattaches to the same
+    // operation instead of losing all visibility (or, worse, tempting a
+    // second concurrent run).
+    const glBacklogStorageKey = `wc-gl-backlog-op-${company || ''}`;
+    const [glBacklogOperationId, setGlBacklogOperationId] = useState(() => {
+        try { return window.localStorage.getItem(glBacklogStorageKey) || null; } catch (e) { return null; }
+    });
+    const glBacklogOperation = usePostingOperationProgress(glBacklogOperationId);
+
+    useEffect(() => {
+        if (!glBacklogOperationId || !server) return;
+        // Reattach: fetch the current state immediately on mount/reload
+        // instead of waiting for the next SSE event, since the run may have
+        // finished (or failed) while this tab was closed.
+        checkPostingOperationStatus(glBacklogOperationId, server).then((status) => {
+            if (!status || status.status === 'unknown') {
+                try { window.localStorage.removeItem(glBacklogStorageKey); } catch (e) {}
+                setGlBacklogOperationId(null);
+            }
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [server]);
+
+    useEffect(() => {
+        if (!glBacklogOperation || glBacklogOperation.status === 'in-progress') return;
+        // Finished (completed or failed) — surface a final summary and clear
+        // the reattach pointer so a fresh run starts clean next time.
+        setAlertState(glBacklogOperation.status === 'completed' ? 'success' : 'error');
+        setAlert(`Backlog ${glBacklogOperation.status}: ${glBacklogOperation.posted || 0} posted, ${glBacklogOperation.alreadyPresent || 0} already present, ${glBacklogOperation.skipped || 0} skipped${glBacklogOperation.errors?.length ? `, ${glBacklogOperation.errors.length} errors` : ''}.`);
+        setAlertTimeout(8000);
+        try { window.localStorage.removeItem(glBacklogStorageKey); } catch (e) {}
+        setGlBacklogOperationId(null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [glBacklogOperation?.status]);
+
+    const handlePopulateGeneralLedgerBacklog = async () => {
+        if (!company) return;
+        if (!window.confirm('This posts real General Ledger entries for all historical Purchase, Inventory, Asset, and Business Partner records that don\'t have one yet. It can take a while for a tenant with a lot of history. Continue?')) {
+            return;
+        }
+        const operationId = generateOperationId();
+        try {
+            const resp = await fetchServer('POST', { operationId }, 'accounting/populateGeneralLedgerBacklog', server);
+            if (resp && resp.ok) {
+                try { window.localStorage.setItem(glBacklogStorageKey, resp.operationId || operationId); } catch (e) {}
+                setGlBacklogOperationId(resp.operationId || operationId);
+                setAlertState('success'); setAlert(`Backlog run started — ${resp.total || 0} records to process.`); setAlertTimeout(4000);
+            } else {
+                setAlertState('error'); setAlert(resp?.mess || 'Failed to start General Ledger backlog'); setAlertTimeout(4000);
+            }
+        } catch (e) {
+            console.error('populate GL backlog failed', e);
+            setAlertState('error'); setAlert(e.message || 'Failed to start General Ledger backlog'); setAlertTimeout(4000);
         }
     }
 
@@ -942,6 +1008,7 @@ const Journals = () => {
                 balAccountType: r.balAccountType || '',
                 documentNo: r.documentNo || '',
                 documentType: r.documentType || '',
+                entryType: r.entryType || '',
                 entryNo: r.entryNo || '',
                 handlerId: r.handlerId || '',
                 Source: r.source || '',
@@ -971,6 +1038,7 @@ const Journals = () => {
             { name: 'Bal Account Type', reference: 'balAccountType' },
             { name: 'Document No', reference: 'documentNo' },
             { name: 'Document Type', reference: 'documentType' },
+            { name: 'Entry Type', reference: 'entryType' },
             { name: 'Entry No', reference: 'entryNo' },
             { name: 'Handler Id', reference: 'handlerId' },
             { name: 'Source', reference: 'Source' },
@@ -1012,6 +1080,7 @@ const Journals = () => {
             balAccountType: r.balAccountType || '',
             documentNo: r.documentNo || '',
             documentType: r.documentType || '',
+            entryType: r.entryType || '',
             entryNo: r.entryNo || '',
             handlerId: r.handlerId || '',
             meta: r.meta || {},
@@ -1068,7 +1137,7 @@ const Journals = () => {
             doc.text(fmt(r.credit), pageWidth - margin, y, { align: 'right' });
 
             // metadata line (smaller font)
-            const metaText = `Acct: ${r.acountName || ''} (${r.accountcode || ''}) Type: ${r.accountType || ''} | Bal: ${r.balAccountCode || ''} (${r.balAccountType || ''}) | Doc: ${r.documentType || ''} ${r.documentNo || ''} | Entry: ${r.entryNo || ''} | Handler: ${r.handlerId || ''} | Src: ${r.source || ''}/${r.sourceId || ''} | Created: ${r.createdAt || ''}`;
+            const metaText = `Acct: ${r.acountName || ''} (${r.accountcode || ''}) Type: ${r.accountType || ''} | Bal: ${r.balAccountCode || ''} (${r.balAccountType || ''}) | Doc: ${r.documentType || ''} ${r.documentNo || ''} | Entry Type: ${r.entryType || ''} | Entry: ${r.entryNo || ''} | Handler: ${r.handlerId || ''} | Src: ${r.source || ''}/${r.sourceId || ''} | Created: ${r.createdAt || ''}`;
             const metaLines = doc.splitTextToSize(metaText, pageWidth - (margin * 2));
             doc.setFontSize(7);
             doc.text(metaLines, margin + 30, y + Math.max(6, descLines.length * 4));
@@ -1857,6 +1926,9 @@ const Journals = () => {
                                         <th>Date</th>
                                         <th>Description</th>
                                         <th>Source</th>
+                                        <th>Document Type</th>
+                                        <th>Entry Type</th>
+                                        <th>Handler Id</th>
                                         <th className="num-col">Debit</th>
                                         <th className="num-col">Credit</th>
                                     </tr>
@@ -1867,6 +1939,9 @@ const Journals = () => {
                                             <td className="dd-date">{fmtDate(r.date)}</td>
                                             <td className="dd-desc">{r.desc}</td>
                                             <td><span className={`dd-source-badge src-${(r.source||'').toLowerCase()}`}>{r.source}</span></td>
+                                            <td className="dd-doctype">{r.documentType || ''}</td>
+                                            <td className="dd-entrytype">{r.entryType || ''}</td>
+                                            <td className="dd-handler">{r.handlerId || ''}</td>
                                             <td className="num-col dd-debit">{fmtAmt(r.debit)}</td>
                                             <td className="num-col dd-credit">{fmtAmt(r.credit)}</td>
                                         </tr>
@@ -1874,7 +1949,7 @@ const Journals = () => {
                                 </tbody>
                                 <tfoot>
                                     <tr className="dd-totals">
-                                        <td colSpan="3"><strong>Totals ({filtered.length} transactions)</strong></td>
+                                        <td colSpan="6"><strong>Totals ({filtered.length} transactions)</strong></td>
                                         <td className="num-col" style={{ color: '#1d4ed8', fontWeight: 700 }}>{fmtAmt(totalD)}</td>
                                         <td className="num-col" style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtAmt(totalC)}</td>
                                     </tr>
@@ -3265,7 +3340,21 @@ const Journals = () => {
                                 {companyRecord?.status === 'admin' && (
                                     <button className="j-btn-danger" onClick={() => handleTriggerPendingRecomputes(true)} disabled={isClosingAction} title={closingActionHelp[5].title}>Admin Override Run</button>
                                 )}
+                                {companyRecord?.status === 'admin' && (
+                                    <button className="j-btn-danger" onClick={handlePopulateGeneralLedgerBacklog} disabled={isClosingAction || !!glBacklogOperationId} title="One-time (re-runnable) tool: posts real General Ledger entries for existing Purchase, Inventory, Asset, and Business Partner records that don't have one yet, including into already-locked historical periods.">
+                                        {glBacklogOperationId ? 'Backlog Running…' : 'Populate GL Backlog'}
+                                    </button>
+                                )}
                             </div>
+                            {glBacklogOperationId && (
+                                <div className="closing-meta" style={{ display: 'block' }}>
+                                    <div className="closing-line">
+                                        General Ledger backlog: {glBacklogOperation
+                                            ? `${glBacklogOperation.completed || 0} / ${glBacklogOperation.total || '?'} processed (${glBacklogOperation.posted || 0} posted, ${glBacklogOperation.alreadyPresent || 0} already present, ${glBacklogOperation.skipped || 0} skipped${glBacklogOperation.errors?.length ? `, ${glBacklogOperation.errors.length} errors` : ''})`
+                                            : 'connecting…'}
+                                    </div>
+                                </div>
+                            )}
                             <details className="accounting-actions-help" style={{ display: closingToolbarOpen ? 'block' : 'none' }}>
                                 <summary>What do these closing actions do?</summary>
                                 <div className="accounting-actions-help-grid">
