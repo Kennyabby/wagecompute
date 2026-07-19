@@ -753,6 +753,21 @@ function App() {
                 setReloadCount(c => c + 1)
               }
               break;
+            case 'PostingOperations':
+              // Live posting-progress feed (single postings and the GL
+              // backlog run alike) — re-dispatched as a plain CustomEvent,
+              // same fan-out pattern as accounting-live/dashboard-summary
+              // below, so any page can subscribe via
+              // Resources/postingOperations.js's usePostingOperationProgress
+              // without adding another case here.
+              try {
+                window.dispatchEvent(new CustomEvent('wc:posting-progress-update', {
+                  detail: payload.data || null,
+                }));
+              } catch (e) {
+                console.error('SSE PostingOperations apply error', e);
+              }
+              break;
             case 'AccountingLiveBalances':
               try {
                 const liveSnapshot = payload.data || null;
