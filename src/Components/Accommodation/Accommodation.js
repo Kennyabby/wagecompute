@@ -15,6 +15,7 @@ import Notify from '../../Resources/Notify/Notify';
 import { MdAdd, MdArrowBack } from "react-icons/md";
 import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
+import { postWithResumability, usePostingOperationProgress } from '../../Resources/postingOperations';
 
 const Accommodation = () => {
     const { storePath,
@@ -62,6 +63,8 @@ const Accommodation = () => {
     const [curPaymentAmount, setCurPaymentAmount] = useState(0)
     const [payPoints, setPayPoints] = useState({})
     const [rooms, setRooms] = useState({})
+    const [postingOperationId, setPostingOperationId] = useState(null)
+    const postingProgress = usePostingOperationProgress(postingOperationId)
 
     // ==========================================
     // HOSPITALITY DASHBOARD STATES
@@ -603,141 +606,94 @@ const Accommodation = () => {
         const newAccommodation = {
             ...accommodationFields,
             postingDate: postingDate,
-            createdAt: new Date().getTime(),
-        }
-        const initialPaymentEvent = buildPaymentHistoryEntry(newAccommodation)
-        if (initialPaymentEvent) {
-            newAccommodation.paymentHistory = [initialPaymentEvent]
         }
 
-        const newAccommodations = [newAccommodation, ...accommodations]
-        // const roomsToCheck =
-        //     selectedRooms.length
-        //         ? selectedRooms
-        //         : [newAccommodation.roomNo]
+        // Booking + GL charge posting (Dr Receivable, Cr Revenue) now happen
+        // together, server-side, in one atomic request — previously this was
+        // a bare createDoc insert with no documentNo/idempotency protection
+        // and no ledger entry at all.
+        const resps = await postWithResumability({
+            accommodation: newAccommodation,
+        }, "accommodations/postAccommodationCharge", server)
+        setPostingOperationId(resps.operationId || null)
 
-        // const unavailableRooms =
-        //     roomsToCheck.filter(room =>
-
-        //         !isRoomAvailable(
-        //             room,
-        //             newAccommodation.arrivalDate,
-        //             newAccommodation.departureDate
-        //         )
-
-        //     )
-
-        // if (
-        //     unavailableRooms.length
-        // ) {
-
-        //     setAlertState('error')
-        //     setAlert(`Room already booked:
-        //         ${unavailableRooms.join(', ')}`)
-        //     setAlertTimeout(4000)
-            
-
-        //     return
-
-        // }
-        // newAccommodation.roomNos =
-        //     selectedRooms.length
-        //         ? selectedRooms
-        //         : [newAccommodation.roomNo]
-
-        // newAccommodation.bookingType =
-        //     bookingType
-
-        // newAccommodation.groupName =
-        //     groupName
-        // const totalAmount =selectedRooms.reduce(
-        //     (sum, roomName) => {
-
-        //         const room =
-        //             products.find(
-        //                 p =>
-        //                 p.name === roomName
-        //             )
-
-        //         return (
-        //             sum +
-        //             Number(
-        //                 room?.salesPrice || 0
-        //             )
-        //         )
-
-        //     },
-        //     0
-        // )
-        // newAccommodation.accommodationAmount =totalAmount
-
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Accommodations",
-            update: newAccommodation
-        }, "createDoc", server)
-
-        if (resps.err) {
+        if (resps.err || !resps.ok) {
             console.log(resps.mess)
             setAlertState('info')
             setAlert(resps.mess)
             setAlertTimeout(5000)
             setAccommodationStatus('Post Accommodation')
             accommodationFields.posted = false
-        } else {
-            setAccommodations(newAccommodations)
-            setCurAccomodation(newAccommodation)
-            setIsView(true)
-            setAccommodationFields({ ...newAccommodation })
-            getAccommodations(company)
-            setAlertState('success')
-            setAlert('Accommodation Posted Successfully!')
-            setAlertTimeout(1000)
-            setAccommodationStatus('Post Accommodation')
-            setFillMode('payment')
+            return
         }
+
+        const createdAccommodation = resps.record
+        const newAccommodations = [createdAccommodation, ...accommodations]
+        setAccommodations(newAccommodations)
+        setCurAccomodation(createdAccommodation)
+        setIsView(true)
+        setAccommodationFields({ ...createdAccommodation })
+        getAccommodations(company)
+
+        // If the booking form already captured an initial payment, record it
+        // as a real payment right away (still one atomic, server-side call,
+        // rather than the two amounts/statuses being computed in this file).
+        const initialPaymentEvent = buildPaymentHistoryEntry(newAccommodation)
+        if (initialPaymentEvent && Number(initialPaymentEvent.paymentAmount) > 0) {
+            const paymentResp = await postWithResumability({
+                payment: {
+                    accommodationId: createdAccommodation._id,
+                    paymentAmount: initialPaymentEvent.paymentAmount,
+                    paymentDate: initialPaymentEvent.paymentDate,
+                    payPoint: initialPaymentEvent.payPoint,
+                    paymentReceipt: initialPaymentEvent.paymentReceipt,
+                    imgId: initialPaymentEvent.imgId,
+                    viewLink: initialPaymentEvent.viewLink,
+                    downloadLink: initialPaymentEvent.downloadLink,
+                },
+            }, "accommodations/postAccommodationPayment", server)
+            setPostingOperationId(paymentResp.operationId || null)
+            if (!paymentResp.err && paymentResp.ok) {
+                setCurAccomodation(paymentResp.record)
+                setAccommodationFields({ ...paymentResp.record })
+            }
+        }
+
+        setAlertState('success')
+        setAlert('Accommodation Posted Successfully!')
+        setAlertTimeout(1000)
+        setAccommodationStatus('Post Accommodation')
+        setFillMode('payment')
     }
 
     const postPayment = async (accommodationFields) => {
         setAlertState('info')
         setAlert(
-            `Updating Payment Status...`
+            `Posting Payment...`
         )
         setAlertTimeout(100000)
-        var paymentStatus = 'Partially Paid'
-        if (accommodationFields.paymentAmount > 0 && Number(accommodationFields.paymentAmount) === Number(accommodationFields.accommodationAmount)) {
-            paymentStatus = 'Fully Paid'
-        }
-        const updatedPayment = {
-            paymentAmount: accommodationFields.paymentAmount,
-            payPoint: accommodationFields.payPoint,
-            paymentReceipt: accommodationFields.paymentReceipt,
-            imgId: accommodationFields.imgId,
-            viewLink: accommodationFields.viewLink,
-            downloadLink: accommodationFields.downloadLink,
-            paymentStatus: paymentStatus
-        }
-        const existingHistory = Array.isArray(accommodationFields.paymentHistory)
-            ? accommodationFields.paymentHistory
-            : Array.isArray(curAccommodation?.paymentHistory)
-                ? curAccommodation.paymentHistory
-                : []
-        const paymentEvent = buildPaymentHistoryEntry({
-            ...accommodationFields,
-            postingDate: postingDate || accommodationFields.postingDate,
-            createdAt: accommodationFields.createdAt
-        })
-        if (paymentEvent) {
-            updatedPayment.paymentHistory = [...existingHistory, paymentEvent]
-        }
 
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Accommodations",
-            prop: [{ createdAt: accommodationFields.createdAt }, updatedPayment]
-        }, "updateOneDoc", server)
+        // Payment amount/status/history are now computed server-side from
+        // the stored booking (in accommodations/postAccommodationPayment),
+        // and the GL settlement posts atomically in the same request —
+        // previously this whole function computed paymentStatus in the
+        // browser and sent it as a raw field update with no ledger entry.
+        const resps = await postWithResumability({
+            payment: {
+                accommodationId: curAccommodation?._id,
+                createdAt: accommodationFields.createdAt,
+                paymentAmount: accommodationFields.paymentAmount,
+                paymentDate: postingDate || accommodationFields.postingDate,
+                payPoint: accommodationFields.payPoint,
+                paymentReceipt: accommodationFields.paymentReceipt,
+                imgId: accommodationFields.imgId,
+                viewLink: accommodationFields.viewLink,
+                downloadLink: accommodationFields.downloadLink,
+            },
+        }, "accommodations/postAccommodationPayment", server)
+        setPostingOperationId(resps.operationId || null)
 
-        if (resps.err) {
+        if (resps.err || !resps.ok) {
             console.log(resps.mess)
             setAlertState('error')
             setAlert(
@@ -750,8 +706,8 @@ const Accommodation = () => {
                 postingDate: accommodationFields.postingDate
             })
             getAccommodations(company)
-            setCurAccomodation({ ...curAccommodation, ...updatedPayment })
-            setAccommodationFields({ ...accommodationFields, ...updatedPayment })
+            setCurAccomodation(resps.record)
+            setAccommodationFields({ ...accommodationFields, ...resps.record })
             setIsView(true)
             setAlertState('success')
             setAlert(
@@ -2340,6 +2296,11 @@ const Accommodation = () => {
                             (curApproval ? (curApproval.approved ? 'Make Payment' : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Approve Request' : 'Request Approval')) :
                             accommodationStatus
                             }</div>}
+                        {postingProgress && postingProgress.status === 'in-progress' && (
+                            <div className='posting-progress-note' style={{ fontSize: '0.85em', color: '#666', marginTop: 4 }}>
+                                Posting ledger entries... ({postingProgress.completed || 0}/{postingProgress.total || 1})
+                            </div>
+                        )}
                         {salesOpts === 'customers' && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor: (customerFields.fullName && customerFields.phoneNo && !customerFields.posted) ? 'pointer' : 'not-allowed'
