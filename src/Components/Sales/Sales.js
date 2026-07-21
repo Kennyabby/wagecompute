@@ -20,6 +20,7 @@ import { RxReset } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 import { use } from 'react';
 import { BsPass } from 'react-icons/bs';
+import { postWithResumability, usePostingOperationProgress } from '../../Resources/postingOperations';
 
 const Sales = () => {
     const { storePath,
@@ -118,6 +119,8 @@ const Sales = () => {
     const [salesOpts1, setSalesOpts1] = useState('sales')
     const [postStatus, setPostStatus] = useState('Post Sales')
     const [rentalsStatus, setRentalsStatus] = useState('Post Rentals')
+    const [rentalPostingOperationId, setRentalPostingOperationId] = useState(null)
+    const rentalPostingProgress = usePostingOperationProgress(rentalPostingOperationId)
     const [recoveryStatus, setRecoveryStatus] = useState('Post Recovery')
     const [postingDate, setPostingDate] = useState('')
     const [curSale, setCurSale] = useState(null)
@@ -3087,22 +3090,26 @@ const Sales = () => {
         const newRental = {
             ...rentalFields,
             approvedBy: curApproval?.approvedBy || companyRecord?.emailid,
-            createdAt: new Date().getTime(),
         }
 
-        const resps = await fetchServer("POST", {
-            database: company,
-            collection: "Rentals",
-            update: newRental,
-        }, "createDoc", server)
+        // Booking + GL charge (Dr Receivable, Cr Revenue) + payment
+        // settlement (if a payment amount was entered) now post together,
+        // server-side, in one atomic request — previously a bare createDoc
+        // insert with no documentNo/idempotency protection and no ledger
+        // entry at all.
+        const resps = await postWithResumability({
+            rental: newRental,
+        }, "rentals/postRental", server)
+        setRentalPostingOperationId(resps.operationId || null)
 
-        if (resps.err) {
+        if (resps.err || !resps.ok) {
             console.log(resps.mess)
             setAlertState('info')
             setAlert(resps.mess)
             setAlertTimeout(5000)
             setRentalsStatus('Post Rentals')
         } else {
+            const newRental = resps.record
             let savedRental = newRental
             if (rentalReceiptUpload) {
                 try {
@@ -5498,6 +5505,11 @@ const Sales = () => {
                                 }
                             }}
                         >{curApproval ? (curApproval.approved ? rentalsStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Rental' : 'Request Approval')}</div>}
+                        {rentalPostingProgress && rentalPostingProgress.status === 'in-progress' && (
+                            <div className='posting-progress-note' style={{ fontSize: '0.85em', color: '#666', marginTop: 4 }}>
+                                Posting ledger entries... ({rentalPostingProgress.completed || 0}/{rentalPostingProgress.total || 1})
+                            </div>
+                        )}
                     </div>}
                 </div>
             </div>
