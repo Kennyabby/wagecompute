@@ -118,6 +118,8 @@ const Sales = () => {
     const [salesOpts, setSalesOpts] = useState('sales')
     const [salesOpts1, setSalesOpts1] = useState('sales')
     const [postStatus, setPostStatus] = useState('Post Sales')
+    const [salesPostingOperationId, setSalesPostingOperationId] = useState(null)
+    const salesPostingProgress = usePostingOperationProgress(salesPostingOperationId)
     const [rentalsStatus, setRentalsStatus] = useState('Post Rentals')
     const [rentalPostingOperationId, setRentalPostingOperationId] = useState(null)
     const rentalPostingProgress = usePostingOperationProgress(rentalPostingOperationId)
@@ -702,6 +704,19 @@ const Sales = () => {
                         })
                     }
                     kmultSessions = (structuredClone({ sessionCopy1 })).sessionCopy1
+                    // The kitchen-split clone must be tagged as belonging to
+                    // 'kitchen' at the session level too — otherwise, when the
+                    // session's own cashier (session.employee_id) is the one
+                    // whose totals are being tallied for wh==='kitchen', the
+                    // `session.wrh === wh` check below (used to avoid
+                    // double-counting session-level debt/unaccounted totals)
+                    // never matches (session.wrh is still the order's home
+                    // warehouse, e.g. 'bar'), so that employee's kitchen
+                    // portion of the split silently drops out of the total.
+                    // Kitchen sales attributed to a *different* delivering
+                    // employee already bypass this check entirely, which is
+                    // why the gap only shows up for self-handled sessions.
+                    kmultSessions.wrh = 'kitchen'
                 }
 
                 if (foundMult) {
@@ -1085,6 +1100,19 @@ const Sales = () => {
                         })
                     }
                     kmultSessions = (structuredClone({ sessionCopy1 })).sessionCopy1
+                    // The kitchen-split clone must be tagged as belonging to
+                    // 'kitchen' at the session level too — otherwise, when the
+                    // session's own cashier (session.employee_id) is the one
+                    // whose totals are being tallied for wh==='kitchen', the
+                    // `session.wrh === wh` check below (used to avoid
+                    // double-counting session-level debt/unaccounted totals)
+                    // never matches (session.wrh is still the order's home
+                    // warehouse, e.g. 'bar'), so that employee's kitchen
+                    // portion of the split silently drops out of the total.
+                    // Kitchen sales attributed to a *different* delivering
+                    // employee already bypass this check entirely, which is
+                    // why the gap only shows up for self-handled sessions.
+                    kmultSessions.wrh = 'kitchen'
                 }
 
                 if (foundMult) {
@@ -2400,14 +2428,18 @@ const Sales = () => {
             if (curSale === null) {
                 newSale.productsRef = reference
             }
-            const newSales = [newSale, ...sales]
-            const resps = await fetchServer("POST", {
-                database: company,
-                collection: "Sales",
-                update: newSale
-            }, "createDoc", server)
 
-            if (resps.err) {
+            // Session posting + GL debt entries (Dr Employee Receivable, Cr
+            // Revenue for any row with a shortfall) now post together,
+            // server-side, in one atomic request — previously a bare
+            // createDoc insert with no documentNo/idempotency protection and
+            // no ledger entry for the debt at all.
+            const resps = await postWithResumability({
+                sale: newSale,
+            }, "sales/postSalesSession", server)
+            setSalesPostingOperationId(resps.operationId || null)
+
+            if (resps.err || !resps.ok) {
                 console.log(resps.mess)
                 setAlertState('info')
                 setAlert(resps.mess)
@@ -2415,14 +2447,16 @@ const Sales = () => {
                 setPostStatus('Post Sales')
                 return true
             } else {
+                const savedSale = resps.record
+                const newSales = [savedSale, ...sales]
                 setSales(newSales)
                 setCurApproval(null)
                 getApprovals(company, companyRecord)
                 setKitchenRecords([])
-                setCurSale(newSale)
-                setCurSaleDate(newSale.postingDate)
+                setCurSale(savedSale)
+                setCurSaleDate(savedSale.postingDate)
                 setIsView(true)
-                setFields([...(newSale.record)])
+                setFields([...(savedSale.record)])
                 getSales(company)
                 setAlertState('success')
                 setAlert('Sales Posted Successfully!')
@@ -2656,221 +2690,74 @@ const Sales = () => {
         setAlertState('info')
         setAlert('Posting Recovery ....')
         setAlertTimeout(100000)
-        recoveryFields.forEach(async (field) => {
-            if (field.isInventoryShortage) {
-                const resp = await fetchServer('POST', {
-                    employee_id: recoveryEmployeeId,
-                    amountRecovered: field.recoveryAmount,
-                    recoveryPoint: field.recoveryPoint,
-                    recoveryReceipt: field.recoveryReceipt,
-                    recoveryTransferId: field.recoveryTransferId,
-                    imgId: field.imgId,
-                    viewLink: field.viewLink,
-                    downloadLink: field.downloadLink,
-                }, 'inventoryReconciliation/postShortageRecovery', server)
-                if (resp?.err || !resp?.ok) {
-                    setAlertState('error')
-                    setAlert(resp?.mess || 'Failed to post inventory shortage recovery.')
-                    setAlertTimeout(5000)
-                    setRecoveryStatus('Post Recovery')
-                    return
-                }
-                setRecoveryFields((fields) => fields.filter((ftrfield) => ftrfield !== field))
-                setAlertState('success')
-                setAlert('Inventory Shortage Recovered Successfully!')
-                setAlertTimeout(2000)
+
+        const inventoryShortageFields = recoveryFields.filter((field) => field.isInventoryShortage)
+        const debtFields = recoveryFields.filter((field) => !field.isInventoryShortage)
+
+        // Inventory shortage recoveries already go through a dedicated,
+        // atomic, GL-posting route from Phase 1 — sequential here (not the
+        // previous forEach(async...), which never awaited its callback and
+        // let every field in the batch race with no ordering).
+        for (const field of inventoryShortageFields) {
+            const resp = await fetchServer('POST', {
+                employee_id: recoveryEmployeeId,
+                amountRecovered: field.recoveryAmount,
+                recoveryPoint: field.recoveryPoint,
+                recoveryReceipt: field.recoveryReceipt,
+                recoveryTransferId: field.recoveryTransferId,
+                imgId: field.imgId,
+                viewLink: field.viewLink,
+                downloadLink: field.downloadLink,
+            }, 'inventoryReconciliation/postShortageRecovery', server)
+            if (resp?.err || !resp?.ok) {
+                setAlertState('error')
+                setAlert(resp?.mess || 'Failed to post inventory shortage recovery.')
+                setAlertTimeout(5000)
                 setRecoveryStatus('Post Recovery')
-                return
+                return result
             }
-            if (recoveryEmployeeId === (field.recoverySales).slice(0, field.recoverySales.indexOf('-'))) {
-                var updtEmployee = {}
-                employees.forEach((employee) => {
-                    if (employee.i_d === recoveryEmployeeId) {
-                        var totalDebtRecovered = employee.employeeDebtRecoverd ? employee.employeeDebtRecoverd : 0
-                        var employeeRecoveredList = employee.recoveryList !== undefined ? employee.recoveryList : []
-                        employee.employeeDebtList?.forEach((empDebt, index) => {
-                            if (
-                                months[new Date(empDebt.postingDate).getMonth()] === recoveryMonth &&
-                                String(new Date(empDebt.postingDate).getFullYear()) === String(recoveryYear) &&
-                                (empDebt.recoveryLocation ? (empDebt.recoveryLocation === field.recoveryLocation) : true) &&
-                                field.recoverySales === `${recoveryEmployeeId}-${index}`
-                            ) {
-                                const alreadyRecovered = empDebt.debtRecovered || 0
-                                empDebt.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
-                                totalDebtRecovered += Number(field.recoveryAmount)
-                                const recoveredList = empDebt.recoverdList !== undefined ? empDebt.recoverdList : []
-                                const recoveryDetails = {
-                                    recoveryReceipt: field.recoveryReceipt,
-                                    recoveryAmount: field.recoveryAmount,
-                                    recoveryPoint: field.recoveryPoint,
-                                    recoveryLocation: field.recoveryLocation,
-                                    recoveryDate: field.recoveryDate,
-                                    recoveryReason: field.recoveryReason,
-                                    imgId: field.imgId,
-                                    viewLink: field.viewLink,
-                                    downloadLink: field.downloadLink,
-                                    ...(field.receiptLastDeletedBy && { receiptLastDeletedBy: field.receiptLastDeletedBy }),
-                                    recoveryEmployeeId: recoveryEmployeeId,
-                                    recoveryTransferId: field.recoveryTransferId
-                                }
-                                empDebt.recoverdList = recoveredList.concat(recoveryDetails)
-                                employeeRecoveredList = employeeRecoveredList.concat(recoveryDetails)
-                            }
-                        })
-                        employee.employeeDebtRecoverd = totalDebtRecovered
-                        employee.recoveryList = employeeRecoveredList
-                        employee.approvedBy = curApproval?.approvedBy || companyRecord?.emailid
-                        updtEmployee = { ...employee }
-                    }
-                })
-                const ftrEmployees = employees.filter((employee) => {
-                    return employee.i_d !== updtEmployee.i_d
-                })
-                const updatedEmployees = [updtEmployee, ...ftrEmployees]
-                const updatedEmployee = { ...updtEmployee }
-                delete updatedEmployee._id
-                const resps = await fetchServer("POST", {
-                    database: company,
-                    collection: "Employees",
-                    prop: [{ i_d: updtEmployee.i_d }, updatedEmployee]
-                }, "updateOneDoc", server)
+            setRecoveryFields((fields) => fields.filter((ftrfield) => ftrfield !== field))
+        }
+        if (inventoryShortageFields.length) {
+            setAlertState('success')
+            setAlert('Inventory Shortage Recovered Successfully!')
+            setAlertTimeout(2000)
+            result = true
+        }
 
-                if (resps.err) {
-                    console.log(resps.mess)
-                    setAlertState('info')
-                    setAlert(resps.mess)
-                    setAlertTimeout(5000)
-                    setRecoveryStatus('Post Recovery')
-                    result = false
-                } else {
-                    setEmployees(updatedEmployees)
-                    getEmployees(company)
-                    getSales(company)
-                    setRecoveryFields([])
-                    setAlertState('success')
-                    setAlert('Debt Recovered Successfully!')
-                    setAlertTimeout(1000)
-                    setRecoveryStatus('Post Recovery')
-                    setRecoveryEmployeeId('')
-                    result = true
-                }
-            } else {
-                var updtSale = {}
-                sales.forEach((sale, index) => {
-                    if (
-                        months[new Date(sale.postingDate).getMonth()] === recoveryMonth &&
-                        String(new Date(sale.postingDate).getFullYear()) === String(recoveryYear) &&
-                        Number(field.recoverySales) === sale.createdAt
-                    ) {
-                        var totalDebtRecovered = sale.totalDebtRecovered ? sale.totalDebtRecovered : 0
-                        var saleRecoveredList = sale.recoveryList ? sale.recoveryList : []
-                        sale.record.forEach((record, index) => {
-                            if (record.employeeId === recoveryEmployeeId &&
-                                (record.debt || record.shortage) &&
-                                record.salesPoint === field.recoveryLocation
-                            ) {
-                                const alreadyRecovered = record.debtRecovered || 0
-                                record.debtRecovered = Number(alreadyRecovered) + Number(field.recoveryAmount)
-                                totalDebtRecovered += Number(field.recoveryAmount)
-                                const recoveredList = record.recoverdList !== undefined ? record.recoverdList : []
-                                const recoveryDetails = {
-                                    recoveryReceipt: field.recoveryReceipt,
-                                    recoveryAmount: field.recoveryAmount,
-                                    recoveryPoint: field.recoveryPoint,
-                                    recoveryLocation: field.recoveryLocation,
-                                    recoveryDate: field.recoveryDate,
-                                    recoveryReason: field.recoveryReason,
-                                    imgId: field.imgId,
-                                    viewLink: field.viewLink,
-                                    downloadLink: field.downloadLink,
-                                    ...(field.receiptLastDeletedBy && { receiptLastDeletedBy: field.receiptLastDeletedBy }),
-                                    recoveryEmployeeId: recoveryEmployeeId,
-                                    recoveryTransferId: field.recoveryTransferId
-                                }
-                                record.recoverdList = recoveredList.concat(recoveryDetails)
-                                saleRecoveredList = saleRecoveredList.concat(recoveryDetails)
+        // Sales-debt and employee-debt-list recoveries (plus any
+        // employee-to-employee transfers they trigger) now post together,
+        // server-side, in one atomic request — matching the correct
+        // Sales-row-vs-Employees-list target and posting the real GL
+        // settlement (Dr Cash/Bank/Salary Payable/Employee Receivable, Cr
+        // Employee Receivable) for each, instead of up to three separate,
+        // unsequenced, non-atomic updateOneDoc calls with no ledger entry.
+        if (debtFields.length) {
+            const resps = await postWithResumability({
+                recoveryEmployeeId,
+                recoveryFields: debtFields,
+            }, "sales/postDebtRecovery", server)
+            setSalesPostingOperationId(resps.operationId || null)
 
-                            }
-                        })
-                        sale.totalDebtRecovered = totalDebtRecovered
-                        sale.recoveryList = saleRecoveredList
-                        sale.approvedBy = curApproval?.approvedBy || companyRecord?.emailid
-                        updtSale = { ...sale }
-                    }
-                })
-                const ftrSales = sales.filter((sales) => {
-                    return sales.createdAt !== updtSale.createdAt
-                })
-                const updatedSales = [updtSale, ...ftrSales]
-                const updatedSale = { ...updtSale }
-                delete updatedSale._id
-                const resps = await fetchServer("POST", {
-                    database: company,
-                    collection: "Sales",
-                    prop: [{ createdAt: updtSale.createdAt }, updatedSale]
-                }, "updateOneDoc", server)
-
-                if (resps.err) {
-                    console.log(resps.mess)
-                    setAlertState('info')
-                    setAlert(resps.mess)
-                    setAlertTimeout(5000)
-                    setRecoveryStatus('Post Recovery')
-                    result = false
-                } else {
-                    setSales(updatedSales)
-                    getSales(company)
-                    setRecoveryFields([])
-                    setAlertState('success')
-                    setAlert('Debt Recovered Successfully!')
-                    setAlertTimeout(1000)
-                    setRecoveryStatus('Post Recovery')
-                    setRecoveryEmployeeId('')
-                    result = true
-                }
+            if (resps.err || !resps.ok) {
+                console.log(resps.mess)
+                setAlertState('error')
+                setAlert(resps.mess || 'Some debt recoveries failed to post.')
+                setAlertTimeout(5000)
+                setRecoveryStatus('Post Recovery')
+                return result
             }
-            if (field.recoveryPoint === 'Employee') {
-                const targetEmployee = employees.filter((emp) => {
-                    return emp.i_d === field.recoveryTransferId
-                })
-                const employeeDebt = targetEmployee[0]['employeeDebt'] ? targetEmployee[0]['employeeDebt'] : 0
-                var employeeDebtList = targetEmployee[0]['employeeDebtList'] !== undefined ? targetEmployee[0]['employeeDebtList'] : []
-                var newEmployeeDebtList = employeeDebtList.concat({
-                    transferedFrom: recoveryEmployeeId,
-                    postingDate: field.recoveryDate,
-                    debtAmount: Number(field.recoveryAmount),
-                    recoveryReason: field.recoveryReason,
-                    imgId: field.imgId,
-                    viewLink: field.viewLink,
-                    downloadLink: field.downloadLink,
-                    ...(field.receiptLastDeletedBy && { receiptLastDeletedBy: field.receiptLastDeletedBy }),
+            getEmployees(company)
+            getSales(company)
+            setRecoveryFields([])
+            setAlertState('success')
+            setAlert('Debt Recovered Successfully!')
+            setAlertTimeout(1000)
+            setRecoveryEmployeeId('')
+            result = true
+        }
 
-                })
-                const updatedEmployee = {
-                    ...targetEmployee[0],
-                    employeeDebt: Number(employeeDebt) + Number(field.recoveryAmount),
-                    employeeDebtList: newEmployeeDebtList
-                }
-                const filteredEmp = employees.filter((emp) => {
-                    return emp.i_d !== updatedEmployee.i_d
-                })
-                const updatedEmployees = [...filteredEmp, updatedEmployee]
-                delete updatedEmployee._id
-                const resps1 = await fetchServer("POST", {
-                    database: company,
-                    collection: "Employees",
-                    prop: [{ i_d: updatedEmployee.i_d }, updatedEmployee]
-                }, "updateOneDoc", server)
-                if (resps1.err) {
-                    console.log(resps1.mess)
-                } else {
-                    setEmployees(updatedEmployees)
-                    getEmployees(company)
-                    result = true
-                }
-            }
-        })
-
+        setRecoveryStatus('Post Recovery')
         return result
     }
 
@@ -5301,6 +5188,11 @@ const Sales = () => {
                                 }
                             }}
                         >{curApproval ? (curApproval.approved ? postStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Approve Request' : 'Request Approval')}</div>}
+                        {salesPostingProgress && salesPostingProgress.status === 'in-progress' && (
+                            <div className='posting-progress-note' style={{ fontSize: '0.85em', color: '#666', marginTop: 4 }}>
+                                Posting ledger entries... ({salesPostingProgress.completed || 0}/{salesPostingProgress.total || 1})
+                            </div>
+                        )}
                         {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
                             style={{
                                 cursor: (recoveryFields.length && !postingRecovery) ? 'pointer' : 'not-allowed'

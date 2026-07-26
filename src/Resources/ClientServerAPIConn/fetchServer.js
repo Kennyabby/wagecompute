@@ -17,6 +17,21 @@ export const clearInMemoryAccessToken = () => { inMemoryAccessToken = null; };
 // one) — a retried request (network timeout, offline-queue replay) carries the
 // same clientTxnId, so the server recognizes it as the same record instead of
 // creating a duplicate. Injected centrally so no create call site is missed.
+// Dedicated atomic posting routes (Accommodations/Rentals/Sales — bypass the
+// generic createDoc gateway so their booking + GL posting can happen in one
+// server-side request) each read their own numbered document's idempotency
+// key from a top-level `clientTxnId`, not `body.update.clientTxnId` — they
+// don't match either branch above, so every request from them arrived with
+// no clientTxnId at all, and the *second* one ever posted at each endpoint
+// collided with the first's `null` entry on the collection's unique index
+// (E11000 duplicate key error, document never created). Add any future
+// dedicated posting route's endpoint name here too.
+const TOP_LEVEL_CLIENT_TXN_ID_ENDPOINTS = [
+    'accommodations/postAccommodationCharge',
+    'rentals/postRental',
+    'sales/postSalesSession',
+];
+
 const ensureClientTxnId = (endpoint, body) => {
     if (!body || typeof body !== 'object') return body;
     if (endpoint === 'createDoc' && body.update && typeof body.update === 'object' && !Array.isArray(body.update)) {
@@ -29,6 +44,9 @@ const ensureClientTxnId = (endpoint, body) => {
             ...body,
             update: body.update.map((doc) => (doc && !doc.clientTxnId ? { ...doc, clientTxnId: generateClientTxnId() } : doc)),
         };
+    }
+    if (TOP_LEVEL_CLIENT_TXN_ID_ENDPOINTS.includes(endpoint) && !body.clientTxnId) {
+        return { ...body, clientTxnId: generateClientTxnId() };
     }
     return body;
 };
