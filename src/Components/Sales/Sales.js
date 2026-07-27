@@ -2630,11 +2630,12 @@ const Sales = () => {
         if (deleteCount === sale.createdAt) {
             setAlertState('info')
             setAlert('Reversing Sales...')
-            const resps = await fetchServer("POST", {
+            const resps = await postWithResumability({
                 database: company,
                 collection: "Sales",
                 update: { createdAt: sale.createdAt }
             }, "removeDoc", server)
+            setSalesPostingOperationId(resps.operationId || null)
             if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('info')
@@ -3029,11 +3030,12 @@ const Sales = () => {
         if (deleteCount === rent.createdAt) {
             setAlertState('info')
             setAlert('Deleting...')
-            const resps = await fetchServer("POST", {
+            const resps = await postWithResumability({
                 database: company,
                 collection: "Rentals",
                 update: { createdAt: rent.createdAt }
             }, "removeDoc", server)
+            setRentalPostingOperationId(resps.operationId || null)
             if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('info')
@@ -5190,7 +5192,7 @@ const Sales = () => {
                         >{curApproval ? (curApproval.approved ? postStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Approve Request' : 'Request Approval')}</div>}
                         {salesPostingProgress && salesPostingProgress.status === 'in-progress' && (
                             <div className='posting-progress-note' style={{ fontSize: '0.85em', color: '#666', marginTop: 4 }}>
-                                Posting ledger entries... ({salesPostingProgress.completed || 0}/{salesPostingProgress.total || 1})
+                                {salesPostingProgress.kind === 'removeDoc_reversal' ? 'Reversing ledger entries...' : 'Posting ledger entries...'} ({salesPostingProgress.completed || 0}/{salesPostingProgress.total || 1})
                             </div>
                         )}
                         {salesOpts === 'recovery' && ((companyRecord?.status === 'admin') || recoveryVal) && <div className='yesbtn salesyesbtn'
@@ -5399,7 +5401,7 @@ const Sales = () => {
                         >{curApproval ? (curApproval.approved ? rentalsStatus : (isApprover ? 'Approve Request' : 'Request Approval')) : (isApprover ? 'Post Rental' : 'Request Approval')}</div>}
                         {rentalPostingProgress && rentalPostingProgress.status === 'in-progress' && (
                             <div className='posting-progress-note' style={{ fontSize: '0.85em', color: '#666', marginTop: 4 }}>
-                                Posting ledger entries... ({rentalPostingProgress.completed || 0}/{rentalPostingProgress.total || 1})
+                                {rentalPostingProgress.kind === 'removeDoc_reversal' ? 'Reversing ledger entries...' : 'Posting ledger entries...'} ({rentalPostingProgress.completed || 0}/{rentalPostingProgress.total || 1})
                             </div>
                         )}
                     </div>}
