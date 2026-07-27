@@ -13,6 +13,7 @@ import { FaPlus } from "react-icons/fa";
 import { FaTableCells, FaPrint } from 'react-icons/fa6'
 import { FaAngleDown, FaAngleUp } from "react-icons/fa";
 import ExpensesReport from './ExpensesReport/ExpensesReport'
+import { postWithResumability, usePostingOperationProgress } from '../../Resources/postingOperations';
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 
 const Expenses = () => {
@@ -37,6 +38,8 @@ const Expenses = () => {
     const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [curExpense, setCurExpense] = useState(null)
     const [deleteCount, setDeleteCount] = useState(0)
+    const [expensesPostingOperationId, setExpensesPostingOperationId] = useState(null)
+    const expensesPostingProgress = usePostingOperationProgress(expensesPostingOperationId)
     const [isView, setIsView] = useState(false)
     const [showReport, setShowReport] = useState(false)
     const [isSyncing, setIsSyncing] = useState(false)
@@ -343,11 +346,12 @@ const Expenses = () => {
         if (deleteCount === expense.createdAt) {
             setAlertState('info')
             setAlert('Deleting Expenses...')
-            const resps = await fetchServer("POST", {
+            const resps = await postWithResumability({
                 database: company,
                 collection: "Expenses",
                 update: { createdAt: expense.createdAt }
             }, "removeDoc", server)
+            setExpensesPostingOperationId(resps.operationId || null)
             if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('info')
@@ -735,6 +739,11 @@ const Expenses = () => {
                             )
                         }
                     })}
+                    {expensesPostingProgress && expensesPostingProgress.status === 'in-progress' && (
+                        <div className='posting-progress-note' style={{ fontSize: '0.85em', color: '#666', marginTop: 4 }}>
+                            {expensesPostingProgress.kind === 'removeDoc_reversal' ? 'Reversing ledger entries...' : 'Posting ledger entries...'} ({expensesPostingProgress.completed || 0}/{expensesPostingProgress.total || 1})
+                        </div>
+                    )}
                 </div>
                 <div className='purinfo'>
                     <div className='expenses-detail-intro'>

@@ -850,11 +850,12 @@ const Accommodation = () => {
         if (deleteCount === accommodation.createdAt) {
             setAlertState('info')
             setAlert('Deleting...')
-            const resps = await fetchServer("POST", {
+            const resps = await postWithResumability({
                 database: company,
                 collection: "Accommodations",
                 update: { createdAt: accommodation.createdAt }
             }, "removeDoc", server)
+            setPostingOperationId(resps.operationId || null)
             if (resps.err) {
                 console.log(resps.mess)
                 setAlertState('info')
@@ -2298,7 +2299,7 @@ const Accommodation = () => {
                             }</div>}
                         {postingProgress && postingProgress.status === 'in-progress' && (
                             <div className='posting-progress-note' style={{ fontSize: '0.85em', color: '#666', marginTop: 4 }}>
-                                Posting ledger entries... ({postingProgress.completed || 0}/{postingProgress.total || 1})
+                                {postingProgress.kind === 'removeDoc_reversal' ? 'Reversing ledger entries...' : 'Posting ledger entries...'} ({postingProgress.completed || 0}/{postingProgress.total || 1})
                             </div>
                         )}
                         {salesOpts === 'customers' && <div className='yesbtn salesyesbtn'
