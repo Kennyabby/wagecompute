@@ -1496,7 +1496,7 @@ const DashView = () =>{
                         <div className='kpi-label'>Inventory</div>
                         <div className='kpi-value'>{fmt(kpis.inventoryQty)} units</div>
                         <div className='kpi-sub'>₦ {fmt(kpis.inventoryValue)} (Cost value)</div>
-                        <div className='kpi-sub'>₦ {fmt(kpis.inventorySales)} (Sales value)</div>
+                        <div className='kpi-sub'>₦ {fmt(kpis.inventorySales)} (Retail value of stock on hand)</div>
                     </div>
                     <div className='kpi-card' onClick={()=>{
                         navigate('/purchase')
