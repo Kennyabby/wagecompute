@@ -19,7 +19,7 @@ const Products = ({
         server, fetchServer, generateSeries, intervalPeriod,
         setAlert, setAlertState, setAlertTimeout, posSettings,
         products, company, setProducts, getProducts,
-        getProductsWithStock,
+        getProductsStockReport,
         settings, exportFile, importFile, companyRecord
     } = useContext(ContextProvider)
     const loadRef = useRef(null)
@@ -167,7 +167,7 @@ const Products = ({
     const refreshProductsData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
-        try { await getProductsWithStock(cmp_val, productsRef.current || []); } catch (e) { }
+        try { await getProductsStockReport(cmp_val, productsRef.current || []); } catch (e) { }
     }
 
     useEffect(() => {
@@ -266,7 +266,9 @@ const Products = ({
             const purchaseWrh = wrhs.find((warehouse) => {
                 return warehouse.purchase
             })
-            const { cost, quantity } = curProduct.locationStock?.[purchaseWrh?.name] || { cost: 0, quantity: 0 }
+            const purchaseWrhStock = curProduct.locationStockDetails?.[purchaseWrh?.name] || { closingCost: 0, closingQty: 0 }
+            const cost = purchaseWrhStock.closingCost
+            const quantity = purchaseWrhStock.closingQty
             let cummulativeUnitCostPrice = 0
             cummulativeUnitCostPrice = quantity ? parseFloat(Math.abs(Number(cost / quantity))).toFixed(2) : 0
             // console.log(curProduct)
@@ -721,7 +723,7 @@ const Products = ({
                 if (!productData.length) {
                     setProducts(newProducts)
                     if (!productView) {
-                        getProductsWithStock(company, newProducts)
+                        getProductsStockReport(company, newProducts)
                     } else {
                         getProducts(company)
                     }
@@ -1283,15 +1285,15 @@ const Products = ({
                                     <div>Location</div>
                                     <div>Quantity</div>
                                 </div>
-                                {Object.keys(productFields.locationStock || {}).map((location, index) => (
+                                {Object.keys(productFields.locationStockDetails || {}).map((location, index) => (
                                     <div className='stock-table-body' key={index}>
                                         <div>{location}</div>
-                                        <div>{productFields.locationStock[location].quantity}</div>
+                                        <div>{productFields.locationStockDetails[location].closingQty}</div>
                                     </div>
                                 ))}
                                 <div className='stock-table-body'>
                                     <div>All Locations</div>
-                                    <div>{Object.values(productFields.locationStock || {}).reduce((sum, item) => sum + item.quantity, 0)}</div>
+                                    <div>{Object.values(productFields.locationStockDetails || {}).reduce((sum, item) => sum + item.closingQty, 0)}</div>
                                 </div>
                             </div>
                         </div>
@@ -1487,7 +1489,7 @@ const Products = ({
                                     //         availableQty += Number(entry.baseQuantity)
                                     //     })
                                     // })
-                                    return <div className='product-card-others'>{`On Hand: ${Number(product.totalStock || 0).toLocaleString()} ${product.salesUom}`}</div>
+                                    return <div className='product-card-others'>{`On Hand: ${Number(product.stockSummary?.closingQty || 0).toLocaleString()} ${product.salesUom}`}</div>
                                 }) :
                                     <div className='product-card-others'>{product?.type?.toUpperCase()}</div>
                                 }
@@ -1577,7 +1579,7 @@ const Products = ({
                                     //         availableQty += Number(entry.baseQuantity)
                                     //     })
                                     // })
-                                    return <div className='product-list-others'>{`On Hand: ${Number(product.totalStock || 0).toLocaleString()} ${product.salesUom}`}</div>
+                                    return <div className='product-list-others'>{`On Hand: ${Number(product.stockSummary?.closingQty || 0).toLocaleString()} ${product.salesUom}`}</div>
                                 }) :
                                     <div className='product-list-others'>{product?.type?.toUpperCase()}</div>
                                 }
