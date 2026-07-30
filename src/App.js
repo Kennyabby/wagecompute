@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import './App.css';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import ContextProvider from './Resources/ContextProvider';
@@ -264,6 +264,13 @@ function App() {
   const [nextSales, setNextSales] = useState(null)
   const [allSessions, setAllSessions] = useState([])
   const [products, setProducts] = useState([])
+  // The global SSE subscription effect below has [company, companyRecord] as
+  // its only deps (re-subscribing on every products change would tear down
+  // and reopen the EventSource constantly) — its message handler therefore
+  // closes over whatever `products` was at subscribe time. A ref sidesteps
+  // that stale closure without changing the effect's dependency array.
+  const productsRef = useRef(products)
+  useEffect(() => { productsRef.current = products }, [products])
   const [accommodations, setAccommodations] = useState([])
   const [purchase, setPurchase] = useState([])
   const [expenses, setExpenses] = useState([])
@@ -896,10 +903,15 @@ function App() {
                       await putInventoryTransactions(company, companyRecord?.emailid, toApply).catch(() => { });
                     }
                   } catch (e) { console.error('SSE InventoryTransactions apply error', e) }
-                  // recompute lightweight stock view (best-effort)
+                  // recompute stock view (best-effort) — uses the ref so this
+                  // reads current products regardless of when this effect
+                  // last re-subscribed, and calls the same complete,
+                  // date-scoped aggregation every other stock surface uses
+                  // (Stock Report/Overview/Adjustments) rather than the
+                  // separate, incomplete, unconditional one.
                   try {
-                    if (products) {
-                      getProductsWithStock(company, products)
+                    if (productsRef.current) {
+                      getProductsStockReport(company, productsRef.current)
                     }
                   } catch (e) { }
                 })
@@ -915,8 +927,8 @@ function App() {
                     }
                   } catch (e) { console.error('SSE InventoryTransactions apply error', e) }
                   try {
-                    if (products) {
-                      getProductsWithStock(company, products)
+                    if (productsRef.current) {
+                      getProductsStockReport(company, productsRef.current)
                     }
                   } catch (e) { }
                 })
@@ -2863,9 +2875,31 @@ function App() {
           database: company,
           collection: "InventoryTransactions",
           prop: [
+            // Some historical InventoryTransactions documents have no
+            // postingDate field at all — a raw postingDate match silently
+            // excludes them from BOTH this "opening stock" query and the
+            // "in-range" query below, since neither $lt nor $gte/$lte ever
+            // matches a missing field. That made closing stock come out
+            // higher than the true ledger total (confirmed: excluded docs
+            // were net-negative, i.e. mostly sales, so dropping them
+            // inflated the count) instead of matching the Dashboard's own
+            // unconditional aggregation. Falling back to createdAt (then to
+            // the epoch, so a doc with neither field still lands in
+            // "opening" rather than vanishing) keeps every document in
+            // exactly one of the two buckets.
+            {
+              $addFields: {
+                __effPostingDate: {
+                  $ifNull: [
+                    '$postingDate',
+                    { $dateToString: { format: '%Y-%m-%d', date: { $convert: { input: '$createdAt', to: 'date', onError: new Date(0), onNull: new Date(0) } } } }
+                  ]
+                }
+              }
+            },
             {
               $match: {
-                postingDate: { $lt: formattedStartDate },
+                __effPostingDate: { $lt: formattedStartDate },
                 ...(location !== 'all' && { location }),
                 ...(productId && { productId }),
                 ...(transactionType !== 'all' && {
@@ -2955,12 +2989,25 @@ function App() {
           database: company,
           collection: "InventoryTransactions",
           prop: [
+            // Same missing-postingDate fallback as the opening-stock query
+            // above — without it, undated documents fall into neither
+            // bucket and closing stock comes out higher than the truth.
+            {
+              $addFields: {
+                __effPostingDate: {
+                  $ifNull: [
+                    '$postingDate',
+                    { $dateToString: { format: '%Y-%m-%d', date: { $convert: { input: '$createdAt', to: 'date', onError: new Date(0), onNull: new Date(0) } } } }
+                  ]
+                }
+              }
+            },
             {
               $match: {
                 $expr: {
                   $and: [
-                    { $gte: ["$postingDate", formattedStartDate] },
-                    { $lte: ["$postingDate", formattedEndDate] }
+                    { $gte: ["$__effPostingDate", formattedStartDate] },
+                    { $lte: ["$__effPostingDate", formattedEndDate] }
                   ],
                 },
                 ...(location !== 'all' && { location }),
@@ -3239,6 +3286,69 @@ function App() {
                       0
                     ]
                   }
+                },
+                // Production/Assembly/Deassembly — previously had no bucket
+                // at all here, so any product with production activity in
+                // the selected range silently diverged from Adjustments/
+                // Products/Dashboard/Chart-of-Accounts, which all count
+                // these via a different, complete pipeline. baseQuantity is
+                // already signed correctly at posting time (negative for
+                // consumption, positive for output), so these sum
+                // unconditionally like purchasedQty/soldQty above rather
+                // than filtering by sign like the adjustment buckets.
+                productionConsumptionQty: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Consumption"] },
+                      { $cond: [{ $isNumber: "$baseQuantity" }, "$baseQuantity", mongoNumber("$baseQuantity")] },
+                      0
+                    ]
+                  }
+                },
+                productionConsumptionCost: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Consumption"] },
+                      { $cond: [{ $isNumber: "$totalCost" }, "$totalCost", mongoNumber("$totalCost")] },
+                      0
+                    ]
+                  }
+                },
+                productionOutputQty: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Output"] },
+                      { $cond: [{ $isNumber: "$baseQuantity" }, "$baseQuantity", mongoNumber("$baseQuantity")] },
+                      0
+                    ]
+                  }
+                },
+                productionOutputCost: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Output"] },
+                      { $cond: [{ $isNumber: "$totalCost" }, "$totalCost", mongoNumber("$totalCost")] },
+                      0
+                    ]
+                  }
+                },
+                productionVarianceQty: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Variance"] },
+                      { $cond: [{ $isNumber: "$baseQuantity" }, "$baseQuantity", mongoNumber("$baseQuantity")] },
+                      0
+                    ]
+                  }
+                },
+                productionVarianceCost: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$entryType", "Variance"] },
+                      { $cond: [{ $isNumber: "$totalCost" }, "$totalCost", mongoNumber("$totalCost")] },
+                      0
+                    ]
+                  }
                 }
               }
             }
@@ -3322,13 +3432,24 @@ function App() {
           locationData.netAdjustmentQty = (item.positiveAdjustmentQty || 0) + (item.negativeAdjustmentQty || 0);
           locationData.netAdjustmentCost = (item.positiveAdjustmentCost || 0) + (item.negativeAdjustmentCost || 0);
 
+          // Production/Assembly/Deassembly
+          locationData.productionConsumptionQty = item.productionConsumptionQty || 0;
+          locationData.productionConsumptionCost = item.productionConsumptionCost || 0;
+          locationData.productionOutputQty = item.productionOutputQty || 0;
+          locationData.productionOutputCost = item.productionOutputCost || 0;
+          locationData.productionVarianceQty = item.productionVarianceQty || 0;
+          locationData.productionVarianceCost = item.productionVarianceCost || 0;
+
           // Calculate closing quantities
           locationData.closingQty = (locationData.openingQuantity || 0) +
             (locationData.purchasedQty || 0) +
             (locationData.transferInQty || 0) +
             (locationData.transferOutQty || 0) +
             (locationData.soldQty || 0) +
-            (locationData.netAdjustmentQty || 0);
+            (locationData.netAdjustmentQty || 0) +
+            (locationData.productionConsumptionQty || 0) +
+            (locationData.productionOutputQty || 0) +
+            (locationData.productionVarianceQty || 0);
 
           // Calculate closing cost (using average cost method)
           const totalCost = purchaseInfo[productId].purchaseCost
@@ -3367,6 +3488,14 @@ function App() {
           negativeAdjustmentCost: (acc.negativeAdjustmentCost || 0) + (loc.negativeAdjustmentCost || 0),
           netAdjustmentQty: (acc.netAdjustmentQty || 0) + (loc.netAdjustmentQty || 0),
           netAdjustmentCost: (acc.netAdjustmentCost || 0) + (loc.netAdjustmentCost || 0),
+
+          // Production/Assembly/Deassembly
+          productionConsumptionQty: (acc.productionConsumptionQty || 0) + (loc.productionConsumptionQty || 0),
+          productionConsumptionCost: (acc.productionConsumptionCost || 0) + (loc.productionConsumptionCost || 0),
+          productionOutputQty: (acc.productionOutputQty || 0) + (loc.productionOutputQty || 0),
+          productionOutputCost: (acc.productionOutputCost || 0) + (loc.productionOutputCost || 0),
+          productionVarianceQty: (acc.productionVarianceQty || 0) + (loc.productionVarianceQty || 0),
+          productionVarianceCost: (acc.productionVarianceCost || 0) + (loc.productionVarianceCost || 0),
 
           // Closing values
           closingQty: (acc.closingQty || 0) + (loc.closingQty || 0),
@@ -3431,6 +3560,12 @@ function App() {
     negativeAdjustmentCost: 0,
     netAdjustmentQty: 0,
     netAdjustmentCost: 0,
+    productionConsumptionQty: 0,
+    productionConsumptionCost: 0,
+    productionOutputQty: 0,
+    productionOutputCost: 0,
+    productionVarianceQty: 0,
+    productionVarianceCost: 0,
     closingQty: 0,
     closingCost: 0,
     closingSalesValue: 0,

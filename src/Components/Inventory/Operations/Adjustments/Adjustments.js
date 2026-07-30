@@ -15,7 +15,7 @@ const Adjustments = ({
 
     const {
         server, fetchServer, generateSeries, intervalPeriod,
-        setAlert, setAlertState, setAlertTimeout, getProductsWithStock,
+        setAlert, setAlertState, setAlertTimeout, getProductsStockReport,
         products, company, companyRecord, setProducts, getProducts,
         settings, exportFile, importFile,
     } = useContext(ContextProvider)
@@ -77,7 +77,7 @@ const Adjustments = ({
         }
         try {
             setIsLoading(true)
-            await withRequestTimeout(getProductsWithStock(cmp_val, latestProducts))
+            await withRequestTimeout(getProductsStockReport(cmp_val, latestProducts))
             setHasLoadedAdjustments(true)
         } catch (e) {
             setHasLoadedAdjustments(true)
@@ -146,7 +146,7 @@ const Adjustments = ({
             const cmp_val = window.localStorage.getItem('sessn-cmp');
             if (!products) return
             await Promise.all([
-                withRequestTimeout(getProductsWithStock(cmp_val, products))
+                withRequestTimeout(getProductsStockReport(cmp_val, products))
             ]).catch(() => { });
             if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
@@ -447,7 +447,9 @@ const Adjustments = ({
                                         const purchaseWrh = wrhs.find((warehouse) => {
                                             return warehouse.purchase
                                         })
-                                        const { cost, quantity } = product.locationStock?.[purchaseWrh?.name] || { cost: 0, quantity: 0 }
+                                        const purchaseWrhStock = product.locationStockDetails?.[purchaseWrh?.name] || { closingCost: 0, closingQty: 0 }
+                                        const cost = purchaseWrhStock.closingCost
+                                        const quantity = purchaseWrhStock.closingQty
                                         let cummulativeUnitCostPrice = 0
                                         cummulativeUnitCostPrice = quantity ? parseFloat(Math.abs(Number(cost / quantity))).toFixed(2) : 0
 
@@ -456,11 +458,11 @@ const Adjustments = ({
                                         if (['available quantity', 'difference', 'differenceCost', 'counted quantity'].includes(col.reference)) {
                                             wrhs.forEach((wrh) => {
                                                 if (curWarehouse === 'all') {
-                                                    availableQty = Number(product.totalStock || 0)
+                                                    availableQty = Number(product.stockSummary?.closingQty || 0)
                                                 } else {
                                                     if (wrh.name === curWarehouse) {
-                                                        const { cost, quantity } = product.locationStock?.[curWarehouse] || { cost: 0, quantity: 0 }
-                                                        availableQty = Number(quantity || 0);
+                                                        const wrhStock = product.locationStockDetails?.[curWarehouse] || { closingQty: 0 }
+                                                        availableQty = Number(wrhStock.closingQty || 0);
                                                     }
                                                 }
                                             })
