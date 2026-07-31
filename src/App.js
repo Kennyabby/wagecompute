@@ -2868,6 +2868,76 @@ function App() {
         .filter(product => product.salesPrice || product.vipPrice || product.i_d)
         .map(product => product.i_d || product.productId);
 
+      // Cancelled orders' Shipments are left in InventoryTransactions
+      // untouched (staff already have a manual Adjustment workaround for
+      // correcting stock when a cancellation's reversal misses, and
+      // touching the ledger here risks double-correcting it) — but their
+      // revenue never happened, so the sales VALUE figure below excludes
+      // them. soldQty (and therefore closingQty/physical stock) is
+      // deliberately left alone regardless of cancellation status.
+      // Best-effort: if this lookup fails (network blip), fall back to no
+      // exclusions rather than aborting the whole report — a transient miss
+      // here should degrade to the old behavior, not break page load.
+      let cancelledOrderNumbers = [];
+      try {
+        const cancelledOrdersResp = await fetchServer(
+          "POST",
+          {
+            database: company,
+            collection: "Orders",
+            prop: [
+              { $match: { status: 'cancelled', orderNumber: { $exists: true } } },
+              { $group: { _id: null, orderNumbers: { $addToSet: "$orderNumber" } } }
+            ]
+          },
+          "aggregateDocs",
+          SERVER
+        );
+        cancelledOrderNumbers = cancelledOrdersResp?.record?.[0]?.orderNumbers || [];
+      } catch (e) {
+        console.warn('getProductsStockReport: cancelled-orders lookup failed, proceeding without exclusion', e);
+      }
+
+      // The Overview "SALES" card must always tally with the Dashboard and
+      // Chart of Accounts, which are both driven by GeneralLedgerEntries —
+      // the authoritative, GL-reconciled figure (cancellations reversed via
+      // reverseGeneralLedgerEntriesForSource, no duplicate-posting risk).
+      // The InventoryTransactions-derived salesValue above stays as the
+      // source for the per-product/per-location breakdown table (useful for
+      // seeing WHICH products sold), but it can drift from GL when a
+      // shipment is duplicated or a record goes missing — data-integrity
+      // issues that get investigated/corrected separately and shouldn't
+      // require touching live records just to make this card's total
+      // correct. GL has no location/product granularity, so this override
+      // only applies to the fully-unscoped "all locations, all products"
+      // view the summary card actually represents.
+      // Best-effort too: if GL is unreachable, glSalesValue stays null and
+      // the card falls back to the per-product IT sum (the pre-existing
+      // behavior) rather than breaking the report.
+      let glSalesValue = null;
+      if (location === 'all' && !productId) {
+        try {
+          const glSalesResp = await fetchServer(
+            "POST",
+            {
+              database: company,
+              collection: "GeneralLedgerEntries",
+              prop: [
+                { $match: { postingDate: { $gte: formattedStartDate, $lte: formattedEndDate }, sourceCollection: 'Orders' } },
+                { $unwind: "$lines" },
+                { $match: { "lines.accountCode": { $in: [41010, 41020] } } },
+                { $group: { _id: null, credit: { $sum: "$lines.credit" } } },
+              ]
+            },
+            "aggregateDocs",
+            SERVER
+          );
+          glSalesValue = glSalesResp?.record?.[0]?.credit ?? null;
+        } catch (e) {
+          console.warn('getProductsStockReport: GL sales lookup failed, falling back to per-product sum', e);
+        }
+      }
+
       // 1. Get opening stock (stock before start date)
       const openingStockResp = await fetchServer(
         "POST",
@@ -3030,7 +3100,8 @@ function App() {
                 documentType: 1,
                 entryType: 1,
                 postingDate: 1,
-                postingStamp: 1
+                postingStamp: 1,
+                orderNumber: 1
               }
             },
             {
@@ -3097,7 +3168,12 @@ function App() {
                 salesValue: {
                   $sum: {
                     $cond: [
-                      { $eq: ["$entryType", "Sales"] },
+                      {
+                        $and: [
+                          { $eq: ["$entryType", "Sales"] },
+                          { $not: [{ $in: ["$orderNumber", cancelledOrderNumbers] }] }
+                        ]
+                      },
                       {
                         $cond: [
                           { $isNumber: "$totalSales" },
@@ -3112,7 +3188,12 @@ function App() {
                 costOfGoodsSold: {
                   $sum: {
                     $cond: [
-                      { $eq: ["$entryType", "Sales"] },
+                      {
+                        $and: [
+                          { $eq: ["$entryType", "Sales"] },
+                          { $not: [{ $in: ["$orderNumber", cancelledOrderNumbers] }] }
+                        ]
+                      },
                       {
                         $cond: [
                           { $isNumber: "$totalCost" },
@@ -3527,6 +3608,12 @@ function App() {
         // setAlertState('info');
         // setAlert('inventory data ready!');
         // setAlertTimeout(3000);
+      }
+      // Non-index property on the array — ignored by .map/.forEach/JSON
+      // rendering of the product list, read explicitly by summary cards
+      // that need the GL-tallying total instead of the per-product sum.
+      if (glSalesValue !== null) {
+        enrichedProducts.glSalesValue = Math.round(glSalesValue * 100) / 100;
       }
       setProducts(enrichedProducts)
       const freshCacheKey = makeStockReportCacheKey(dateRange);
