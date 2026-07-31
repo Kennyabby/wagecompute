@@ -1282,6 +1282,17 @@ const TransactionHistory = () => {
         summaryData.averageCost += product.stockSummary?.averageCost || 0;
       })
 
+      // GL is the authoritative, cancellation-reversed figure Dashboard and
+      // the Chart of Accounts already use — tallying the card to it (when
+      // the view is unscoped, the only case GL's location/product-less
+      // total actually corresponds to) is what keeps this card permanently
+      // in sync with them, independent of any InventoryTransactions data-
+      // integrity issue (duplicate/missing shipment records) that would
+      // otherwise need live-data correction to fix.
+      if ((!filters.location || filters.location === 'all') && !filters.productId && typeof products?.glSalesValue === 'number') {
+        summaryData.salesValue = products.glSalesValue;
+      }
+
       return {
         transactions,
         summaryData
@@ -1357,6 +1368,12 @@ const TransactionHistory = () => {
 
       const netTransferCost = transfersInCost + transfersOutCost;
       const netAdjustmentCost = positiveAdjustmentsCost + negativeAdjustmentsCost;
+
+      // Same GL tally as the other summary block above — keeps this path
+      // (used on initial/cached load) consistent with the freshly-fetched one.
+      if ((!filters.location || filters.location === 'all') && !filters.productId && typeof products?.glSalesValue === 'number') {
+        summaryData.salesValue = products.glSalesValue;
+      }
 
       const summaryForState = {
         openingStock: summaryData.openingStock,
