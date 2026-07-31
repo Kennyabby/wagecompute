@@ -274,6 +274,8 @@ const ReconciliationReview = ({
                                                             <th>Transfer In</th>
                                                             <th>Transfer Out</th>
                                                             <th>Damaged</th>
+                                                            <th>Adjustment</th>
+                                                            <th>Production</th>
                                                             <th>System Closing</th>
                                                             <th>Counted</th>
                                                             <th>Difference</th>
@@ -290,6 +292,8 @@ const ReconciliationReview = ({
                                                                 <td>{line.transferInQty}</td>
                                                                 <td>{Math.abs(line.transferOutQty || 0)}</td>
                                                                 <td>{Math.abs(line.damagedQty || 0)}</td>
+                                                                <td>{line.adjustmentQty ?? round2((line.positiveAdjustmentQty || 0) + (line.negativeAdjustmentQty || 0))}</td>
+                                                                <td>{line.productionQty ?? 0}</td>
                                                                 <td>{line.systemClosingQty}</td>
                                                                 <td>{line.countedQuantity ?? '-'}</td>
                                                                 <td>{line.qtyDifference}</td>
