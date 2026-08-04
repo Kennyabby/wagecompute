@@ -1706,7 +1706,7 @@ const PointOfSales = () => {
                 tableId: currentOrder.tableId,
                 handlerId: currentOrder.handlerId,
                 deliveredBy: companyRecord.emailid,
-                postingDate: new Date(Date.now()).toISOString().slice(0, 10),
+                postingDate: currentOrder.postingDate || new Date(Date.now()).toISOString().slice(0, 10),
                 postingStamp: new Date(Date.now()),
                 createdAt: createdAt,
             };
