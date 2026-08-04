@@ -2926,13 +2926,17 @@ function App() {
                 { $match: { postingDate: { $gte: formattedStartDate, $lte: formattedEndDate }, sourceCollection: 'Orders' } },
                 { $unwind: "$lines" },
                 { $match: { "lines.accountCode": { $in: [41010, 41020] } } },
-                { $group: { _id: null, credit: { $sum: "$lines.credit" } } },
+                { $group: { _id: null, credit: { $sum: "$lines.credit" }, debit: { $sum: "$lines.debit" } } },
               ]
             },
             "aggregateDocs",
             SERVER
           );
-          glSalesValue = glSalesResp?.record?.[0]?.credit ?? null;
+          // Net of debit — a reversed/cancelled order's revenue un-recognition
+          // posts as a debit against this same account; summing credit alone
+          // would keep counting revenue that was later reversed.
+          const row = glSalesResp?.record?.[0];
+          glSalesValue = row ? (row.credit || 0) - (row.debit || 0) : null;
         } catch (e) {
           console.warn('getProductsStockReport: GL sales lookup failed, falling back to per-product sum', e);
         }
