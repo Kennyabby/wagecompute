@@ -2,7 +2,8 @@ import './Accommodation.css'
 // import './AccommodationEnterprise.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal'
 import heic2any from "heic2any";
-import { useState, useEffect, useContext, use } from 'react'
+import { useState, useEffect, useContext, useRef, use } from 'react'
+import { useLocation } from 'react-router-dom'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
@@ -57,6 +58,41 @@ const Accommodation = () => {
     const [postingDate, setPostingDate] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [curAccommodation, setCurAccomodation] = useState(null)
     const [curCustomer, setCurCustomer] = useState(null)
+
+    // Deep-link from the General Ledger table (Journals module):
+    // ?openGlSource=Accommodations:<accommodationId> auto-opens that record's
+    // existing view panel once it's loaded. glDeepLinkAppliedRef stops this
+    // from re-fighting the user if they navigate away from the record.
+    const location = useLocation()
+    const glDeepLinkAppliedRef = useRef(false)
+    const [glDeepLinkTargetKey, setGlDeepLinkTargetKey] = useState(null)
+    const accommodationCardRefs = useRef({})
+    useEffect(() => {
+        if (glDeepLinkAppliedRef.current) return;
+        const params = new URLSearchParams(location.search)
+        const openGlSource = params.get('openGlSource') || ''
+        if (!openGlSource.startsWith('Accommodations:')) return;
+        const targetId = openGlSource.split(':')[1]
+        const match = (accommodations || []).find((a) => String(a._id) === String(targetId))
+        if (match) {
+            glDeepLinkAppliedRef.current = true
+            handleAccommodationViewClick(match)
+            setGlDeepLinkTargetKey(match.createdAt)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [accommodations])
+
+    // Runs after every render (no dep array) until the target card's ref
+    // shows up, since the list only renders once accommodations is loaded.
+    useEffect(() => {
+        if (!glDeepLinkTargetKey) return;
+        const el = accommodationCardRefs.current[glDeepLinkTargetKey]
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('gl-deep-link-highlight')
+        setTimeout(() => el.classList.remove('gl-deep-link-highlight'), 2500)
+        setGlDeepLinkTargetKey(null)
+    })
     const [unPaidAccommodations, setUnPaidAccommodations] = useState([])
     const [selectedUnPaidAccommodations, setSelectedUnPaidAccommodations] = useState([])
     const [curSelectedUnPaidAccommodation, setCurSelectedUnPaidAccommodation] = useState('')
@@ -1322,6 +1358,7 @@ const Accommodation = () => {
                         }
                         return (
                             <div className={'dept relative' + (curAccommodation?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                ref={(el) => { if (el && createdAt) accommodationCardRefs.current[createdAt] = el; }}
                                 onClick={(e) => {
                                     handleAccommodationViewClick(accommodation)
                                 }}

@@ -2,7 +2,7 @@ import './Sales.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal';
 import heic2any from "heic2any";
 import { useState, useEffect, useContext, useRef } from 'react'
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ContextProvider from '../../Resources/ContextProvider'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
@@ -127,6 +127,54 @@ const Sales = () => {
     const [postingDate, setPostingDate] = useState('')
     const [curSale, setCurSale] = useState(null)
     const [curRent, setCurRent] = useState(null)
+
+    // Deep-link from the General Ledger table (Journals module):
+    // ?openGlSource=Rentals:<rentalId> opens that rental's existing view
+    // panel; ?openGlSource=Sales:<saleId>-debt-<n> or -recovery-<n> (the
+    // legacy debt/recovery collection's composite sourceId) opens the
+    // session it belongs to — there's no stable per-row id for one debt/
+    // recovery line today, so the session view is as precise as this gets.
+    const glLocation = useLocation()
+    const glDeepLinkAppliedRef = useRef(false)
+    const [glDeepLinkTargetKey, setGlDeepLinkTargetKey] = useState(null)
+    const saleCardRefs = useRef({})
+    const rentCardRefs = useRef({})
+    useEffect(() => {
+        if (glDeepLinkAppliedRef.current) return;
+        const params = new URLSearchParams(glLocation.search)
+        const openGlSource = params.get('openGlSource') || ''
+        if (openGlSource.startsWith('Rentals:')) {
+            const targetId = openGlSource.split(':')[1]
+            const match = (rentals || []).find((r) => String(r._id) === String(targetId))
+            if (match) {
+                glDeepLinkAppliedRef.current = true
+                handleRentalViewClick(match)
+                setGlDeepLinkTargetKey(`rent:${match.createdAt}`)
+            }
+        } else if (openGlSource.startsWith('Sales:')) {
+            const targetId = openGlSource.split(':')[1].split('-debt-')[0].split('-recovery-')[0]
+            const match = (sales || []).find((s) => String(s._id) === String(targetId))
+            if (match) {
+                glDeepLinkAppliedRef.current = true
+                handleViewClick(match)
+                setGlDeepLinkTargetKey(`sale:${match.createdAt}`)
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rentals, sales])
+
+    // Runs after every render (no dep array) until the target card's ref
+    // shows up, since these lists only render once rentals/sales are loaded.
+    useEffect(() => {
+        if (!glDeepLinkTargetKey) return;
+        const [kind, createdAt] = glDeepLinkTargetKey.split(':')
+        const el = kind === 'rent' ? rentCardRefs.current[createdAt] : saleCardRefs.current[createdAt]
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('gl-deep-link-highlight')
+        setTimeout(() => el.classList.remove('gl-deep-link-highlight'), 2500)
+        setGlDeepLinkTargetKey(null)
+    })
 
     const [isApprover, setIsApprover] = useState(false)
     const [isProductApprover, setIsProductApprover] = useState(false)
@@ -3631,6 +3679,7 @@ const Sales = () => {
                             }
                             return (
                                 <div className={'dept sldept' + (curSale?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                    ref={(el) => { if (el && createdAt) saleCardRefs.current[createdAt] = el; }}
                                     onClick={(e) => {
                                         handleViewClick(sale)
                                     }}
@@ -3769,6 +3818,7 @@ const Sales = () => {
                             } = rent
                             return (
                                 <div className={'dept' + (curRent?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                    ref={(el) => { if (el && createdAt) rentCardRefs.current[createdAt] = el; }}
                                     onClick={(e) => {
                                         handleRentalViewClick(rent)
                                     }}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import PaymentReceiptsModal from '../../DashView/PaymentReceiptsModal';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -22,7 +22,18 @@ const TransactionReports = ({
     onClose,
     wrhCategories,
     fetchSessionsByRange,
-    fetchOrdersByRange
+    fetchOrdersByRange,
+    // Deep-link from the General Ledger table (Journals module) — see
+    // PointOfSales.js's glDeepLink / Delivery.js's equivalent wiring.
+    // initialOrderId auto-expands that order's session + the order card
+    // itself once loaded; initialSessionSourceId does the same for a
+    // session matched by _id/i_d/start (POS-session-shortage GL rows,
+    // which don't carry a clean order id). initialDateHint widens the
+    // default "today only" filter window so a historical entry is even in
+    // the loaded range to begin with.
+    initialOrderId = null,
+    initialSessionSourceId = null,
+    initialDateHint = null,
 }) => {
     const {
         company, server, fetchServer, user, companyRecord, allowBacklogs,
@@ -34,11 +45,40 @@ const TransactionReports = ({
     const [expandedSessions, setExpandedSessions] = useState({});
     const [showReceiptsModal, setShowReceiptsModal] = useState(false)
     const [payPointAccounts, setPayPointAccounts] = useState({})
+    const [glDeepLinkApplied, setGlDeepLinkApplied] = useState(false)
+    // Populated by ref callbacks on each session/order card as they render
+    // (session.i_d / order._id -> DOM node) — used only to scroll the
+    // deep-link target into view once it exists; not used for anything
+    // else, so a plain mutable ref (not state) is correct here.
+    const sessionCardRefs = useRef({})
+    const orderCardRefs = useRef({})
+    const [glDeepLinkScrollTarget, setGlDeepLinkScrollTarget] = useState(null)
+
+    // Temporary, unconditional diagnostic — logs exactly what this component
+    // received on mount, regardless of any later gating logic, so we can
+    // tell definitively whether the deep-link props are even arriving here
+    // at all before chasing anything further downstream.
+    useEffect(() => {
+        console.warn('[GL deep-link] TransactionReports mounted with:', { initialOrderId, initialSessionSourceId, initialDateHint })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    const initialDateRange = (() => {
+        if (!initialDateHint) return null;
+        const target = new Date(`${initialDateHint}T00:00:00`);
+        if (Number.isNaN(target.getTime())) return null;
+        // A few days of buffer either side — a shortage/recovery event's own
+        // date can differ slightly from the GL posting date, and this is
+        // cheap since it's just widening a client-side filter window.
+        const start = new Date(target); start.setDate(start.getDate() - 3); start.setHours(0, 0, 0, 0);
+        const end = new Date(target); end.setDate(end.getDate() + 3); end.setHours(23, 59, 59, 999);
+        return { start, end };
+    })();
 
     // State for filters
     const [filters, setFilters] = useState({
-        startDate: new Date(new Date().setHours(0, 0, 0, 0)),
-        endDate: new Date(new Date().setHours(23, 59, 59, 999)),
+        startDate: initialDateRange ? initialDateRange.start : new Date(new Date().setHours(0, 0, 0, 0)),
+        endDate: initialDateRange ? initialDateRange.end : new Date(new Date().setHours(23, 59, 59, 999)),
         sessionId: '',
         handlerId: '',
         wrh: '',
@@ -135,9 +175,15 @@ const TransactionReports = ({
         setPayPointAccounts({ ...payPoints, 'Employee': 'EMPLOYEE' })
     }, [paymentMethods])
 
-    // Clamp date filters for non-admin users to yesterday–today on mount
+    // Clamp date filters for non-admin users to yesterday–today on mount —
+    // but never when a GL "Go to source" deep-link pointed at a specific
+    // historical date, or this clamp silently overwrites that target date
+    // with "today" right after mount and the session/order it's trying to
+    // reach can never be found (this was a real, confirmed bug: the deep
+    // link's initialDateRange was being reset before the auto-expand effect
+    // below ever got a chance to run against the right window).
     useEffect(() => {
-        if (isNonAdmin) {
+        if (isNonAdmin && !initialDateRange) {
             const { minDate, maxDate } = getNonAdminDateBounds();
             setFilters(prev => ({
                 ...prev,
@@ -145,7 +191,22 @@ const TransactionReports = ({
                 endDate: maxDate
             }));
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [companyRecord, allowBacklogs]);
+
+    // Belt-and-suspenders re-assertion of the deep-link's date window: the
+    // useState(initialDateRange...) initializer above only ever runs once,
+    // the very first time this component mounts — if initialDateHint arrives
+    // a render late for any reason (or another effect resets the filters
+    // first), the target date would silently never take effect and the
+    // auto-expand below would have nothing to find. Runs once, guarded by
+    // glDeepLinkApplied so it doesn't fight the user's own date changes
+    // afterward.
+    useEffect(() => {
+        if (glDeepLinkApplied || !initialDateRange) return;
+        setFilters(prev => ({ ...prev, startDate: initialDateRange.start, endDate: initialDateRange.end }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialDateHint]);
 
     useEffect(()=>{
         const dateRange = {
@@ -401,6 +462,109 @@ const TransactionReports = ({
         setFilteredSessions(result)
         return result;
     }, [sessions, orders, filters]);
+
+    // Auto-expand the session/order a GL table "Go to source" link pointed
+    // at, once its data has actually loaded (widening the date filter above
+    // only fetches it — the match itself has to wait for that data to
+    // arrive). Runs once; glDeepLinkApplied stops it from re-fighting the
+    // user if they manually collapse the card afterward.
+    useEffect(() => {
+        if (glDeepLinkApplied) return;
+        if (!initialOrderId && !initialSessionSourceId) return;
+
+        let matchedOrder = null;
+        let matchedSession = null;
+        if (initialOrderId) {
+            matchedOrder = (orders || []).find((o) => String(o._id) === String(initialOrderId));
+            if (matchedOrder) {
+                setExpandedSessions((prev) => ({
+                    ...prev,
+                    [matchedOrder.sessionId]: true,
+                    [`order-${matchedOrder._id}`]: true,
+                }));
+                setGlDeepLinkApplied(true);
+                // Scrolling has to wait for the order card to actually be in
+                // the DOM, which only happens once its session is expanded
+                // (a render or two after the state update above) — the
+                // scroll effect below polls for the ref rather than trying
+                // to scroll synchronously here.
+                setGlDeepLinkScrollTarget(matchedOrder._id);
+            }
+        } else if (initialSessionSourceId) {
+            matchedSession = (sessions || []).find((s) => (
+                String(s._id) === String(initialSessionSourceId)
+                || String(s.i_d) === String(initialSessionSourceId)
+                || String(s.start) === String(initialSessionSourceId)
+            ));
+            if (matchedSession) {
+                setExpandedSessions((prev) => ({ ...prev, [matchedSession.i_d]: true }));
+                setGlDeepLinkApplied(true);
+                setGlDeepLinkScrollTarget(matchedSession.i_d);
+            }
+        }
+
+        // Temporary diagnostic: logs on every orders/sessions update (not
+        // just once) so the actual progression — empty on first render,
+        // then populated, then match-or-no-match — is visible in the
+        // console, instead of a single snapshot that could catch the
+        // arrays before they've finished loading.
+        const targetId = initialOrderId || initialSessionSourceId;
+        console.warn('[GL deep-link] match attempt', {
+            targetId,
+            lookingFor: initialOrderId ? 'order._id' : 'session._id/i_d/start',
+            found: Boolean(matchedOrder || matchedSession),
+            ordersLoaded: orders?.length || 0,
+            sessionsLoaded: sessions?.length || 0,
+            sampleOrderIds: (orders || []).slice(0, 5).map(o => o._id),
+            sampleSessionIds: (sessions || []).slice(0, 5).map(s => ({ _id: s._id, i_d: s.i_d, start: s.start })),
+        })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orders, sessions, initialOrderId, initialSessionSourceId, glDeepLinkApplied]);
+
+    // Scrolls the deep-link target into view once its card actually exists
+    // in the DOM. Deliberately no dependency array — it needs to re-check
+    // on every render because expanding a session is what makes the order
+    // card's own ref exist in the first place, and that happens a render
+    // (or a few, given nested expand state) after glDeepLinkScrollTarget is
+    // set above; polling on every render until the ref shows up is simpler
+    // and more robust here than trying to predict exactly which render.
+    useEffect(() => {
+        if (!glDeepLinkScrollTarget) return;
+        const el = orderCardRefs.current[glDeepLinkScrollTarget] || sessionCardRefs.current[glDeepLinkScrollTarget];
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('gl-deep-link-highlight');
+        setGlDeepLinkScrollTarget(null);
+    });
+
+    // Separate, once-only on-screen alert — fires 5s after mount (giving the
+    // fetch a chance to land) if still no match, so there's a visible signal
+    // even if nobody happens to have devtools open, without spamming a toast
+    // on every one of the console-logged attempts above.
+    //
+    // glDeepLinkAppliedRef mirrors the glDeepLinkApplied state on every
+    // render — the timeout callback below reads the ref, not the state
+    // variable, because this effect intentionally has an empty dependency
+    // array (it should only ever schedule once) and a plain closure over
+    // glDeepLinkApplied would freeze at its value from the very first
+    // render (false) forever, firing this alert even after a real match
+    // succeeded moments later. This was a real bug — confirmed live: the
+    // match-attempt log showed found:true, yet this alert still fired.
+    const glDeepLinkAppliedRef = useRef(glDeepLinkApplied)
+    useEffect(() => { glDeepLinkAppliedRef.current = glDeepLinkApplied }, [glDeepLinkApplied])
+
+    useEffect(() => {
+        if (!initialOrderId && !initialSessionSourceId) return;
+        const timer = setTimeout(() => {
+            if (glDeepLinkAppliedRef.current) return;
+            const targetId = initialOrderId || initialSessionSourceId;
+            setAlertState('error')
+            setAlert(`Could not auto-locate the linked ${initialOrderId ? 'order' : 'session'} (id ${targetId}) among ${orders?.length || 0} loaded orders / ${sessions?.length || 0} loaded sessions. See browser console for the [GL deep-link] logs.`)
+            setAlertTimeout(8000)
+        }, 5000)
+        return () => clearTimeout(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     // Toggle session expansion
     const toggleSession = (sessionId) => {
@@ -759,7 +923,7 @@ const TransactionReports = ({
             const { duplicates, count } = getDuplicates(session.orders, 'orderNumber')
 
             return (
-                <div key={session.i_d} className="session-card">
+                <div key={session.i_d} className="session-card" ref={(el) => { if (el) sessionCardRefs.current[session.i_d] = el; }}>
                     <div
                         className="session-header"
                         onClick={() => toggleSession(session.i_d)}
@@ -870,7 +1034,7 @@ const TransactionReports = ({
                                 {session.orders && session.orders.length > 0 ? (
                                     <div className="orders-list">
                                         {session.orders.map(order => (
-                                            <div key={order._id} className="order-card">
+                                            <div key={order._id} className="order-card" ref={(el) => { if (el) orderCardRefs.current[order._id] = el; }}>
                                                 <div
                                                     className="order-header"
                                                     onClick={() => toggleOrderExpansion(`order-${order._id}`)}

@@ -1163,6 +1163,214 @@
 .src-journal   { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
 .src-expenses  { background: rgba(245, 158, 11, 0.1); color: #d97706; }
 .src-inventory { background: rgba(16, 185, 129, 0.1); color: #059669; }
+.src-orders, .src-accommodations, .src-rentals { background: rgba(139, 92, 246, 0.1); color: #7c3aed; }
+.src-inventorytransactions { background: rgba(16, 185, 129, 0.1); color: #059669; }
+.src-sales, .src-employees { background: rgba(236, 72, 153, 0.1); color: #db2777; }
+.src-possessions { background: rgba(249, 115, 22, 0.1); color: #ea580c; }
+.src-salesinvoices, .src-customerpayments, .src-vendorbills, .src-vendorpayments { background: rgba(14, 165, 233, 0.1); color: #0284c7; }
+.src-fixedassets, .src-assetdepreciations, .src-assetdisposals { background: rgba(100, 116, 139, 0.1); color: #475569; }
+
+/* =============================================
+   General Ledger table (Journals tab)
+   ============================================= */
+.gl-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.gl-export-actions, .gl-create-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.gl-import-error-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.gl-import-error-list li {
+    color: #b91c1c;
+    font-size: 13px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.gl-filter-panel {
+    border: 1px solid #f3f4f6;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    background: #fafafa;
+}
+
+.gl-filter-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 12px;
+}
+
+.gl-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.gl-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.gl-filter-field label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.gl-filter-field select,
+.gl-filter-field input[type="text"],
+.gl-filter-field input[type="date"] {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    width: 100%;
+}
+
+.gl-filter-clear {
+    justify-content: flex-end;
+}
+
+.gl-filter-clear button {
+    margin-top: auto;
+}
+
+.gl-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #f3f4f6;
+    border-radius: 10px;
+}
+
+.gl-table th, .gl-table td { white-space: nowrap; }
+.gl-table .dd-desc { white-space: normal; }
+
+.gl-row-reversed { opacity: 0.55; }
+
+.gl-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.gl-actions .j-btn-icon {
+    width: auto;
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.gl-reverse-btn { color: #dc2626 !important; }
+
+.gl-reversed-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+}
+
+.gl-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 16px;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.gl-pagesize-label, .gl-jump-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gl-pagesize-label select {
+    padding: 5px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.gl-jump-label input[type="number"] {
+    width: 60px;
+    padding: 5px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.gl-detail-modal { max-width: 640px; }
+
+.gl-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+}
+
+.gl-detail-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gl-detail-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.gl-detail-value {
+    font-size: 14px;
+    color: #1f2937;
+    word-break: break-word;
+}
+
+/* Journal batch posting blocks */
+.j-posting-block {
+    border: 1px solid #f3f4f6;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.j-posting-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.j-add-posting-btn {
+    margin-bottom: 8px;
+}
 
 /* =============================================
    Init Progress Modal

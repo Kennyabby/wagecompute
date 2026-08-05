@@ -2,6 +2,19 @@
   text-align: center;
 }
 
+/* Shared across every module's General-Ledger "Go to source" deep link:
+   scrolled-to row/card gets a brief amber pulse so it's obvious which one matched. */
+.gl-deep-link-highlight {
+  animation: glDeepLinkPulse 2.5s ease-out 1;
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+@keyframes glDeepLinkPulse {
+  0% { background-color: rgba(245, 158, 11, 0.35); }
+  100% { background-color: transparent; }
+}
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;

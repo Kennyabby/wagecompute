@@ -1,6 +1,6 @@
 import './Reconciliation.css'
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import ContextProvider from '../../Resources/ContextProvider';
 import { exportReconciliationExcel, exportReconciliationPDF } from '../../utils/reconciliationExport';
 import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
@@ -11,13 +11,23 @@ const ReconciliationReview = ({
     companyRecord, getEmployeeName,
     allSessions, allDeliverySessions, setReviewOpen,
     setAlert, setAlertState, setAlertTimeout,
+    initialPostingDate, initialEmployeeId,
 }) => {
     const { fetchServer, server, company, getSessionStart, getSessionEnd } = useContext(ContextProvider)
     const isAdmin = companyRecord?.status === 'admin'
-    const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10))
+    const [postingDate, setPostingDate] = useState(initialPostingDate || new Date().toISOString().slice(0, 10))
     const [record, setRecord] = useState(null)
     const [loading, setLoading] = useState(false)
     const [expandedLocation, setExpandedLocation] = useState(null)
+    // Deep-link from the General Ledger table: a shortage charge/recovery
+    // GL entry names an employee, not a stable shortagePostings row id, so
+    // once the record for the linked posting date loads, find whichever
+    // location's shortagePostings includes that employee, expand it, and
+    // scroll/highlight that specific row.
+    const [glDeepLinkTarget, setGlDeepLinkTarget] = useState(null)
+    const [glDeepLinkApplied, setGlDeepLinkApplied] = useState(false)
+    const locationCardRefs = useRef({})
+    const shortageRowRefs = useRef({})
     const [shortageDraft, setShortageDraft] = useState(null) // { location, allocations: [{start, employee_id, amount}] }
     const [confirmAdjustment, setConfirmAdjustment] = useState(null) // location name pending confirm
     const [busyAction, setBusyAction] = useState(false)
@@ -47,6 +57,34 @@ const ReconciliationReview = ({
         fetchRecord(postingDate)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [postingDate])
+
+    useEffect(() => {
+        if (!initialEmployeeId || glDeepLinkApplied || !record) return;
+        const match = (record.locations || []).find((loc) => (loc.shortagePostings || [])
+            .some((posting) => String(posting.employee_id) === String(initialEmployeeId)))
+        if (match) {
+            setExpandedLocation(match.location)
+            setGlDeepLinkTarget(`${match.location}::${initialEmployeeId}`)
+        } else {
+            setAlertState('info')
+            setAlert('Could not find a shortage charge for this employee on this posting date — it may have been recomputed since.')
+            setAlertTimeout(5000)
+        }
+        setGlDeepLinkApplied(true)
+    }, [record, initialEmployeeId, glDeepLinkApplied, setAlert, setAlertState, setAlertTimeout])
+
+    // Runs after every render (no dep array) — the target row's ref only
+    // exists once the location card is expanded and re-rendered, which
+    // happens a render or two after the effect above fires.
+    useEffect(() => {
+        if (!glDeepLinkTarget) return;
+        const el = shortageRowRefs.current[glDeepLinkTarget] || locationCardRefs.current[glDeepLinkTarget.split('::')[0]]
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('gl-deep-link-highlight')
+        setTimeout(() => el.classList.remove('gl-deep-link-highlight'), 2500)
+        setGlDeepLinkTarget(null)
+    })
 
     const loadOutstandingShortage = async () => {
         const resp = await fetchServer('POST', {}, 'inventoryReconciliation/getOutstandingShortage', server)
@@ -208,7 +246,11 @@ const ReconciliationReview = ({
                             const shortageAvailable = round2(Math.abs(totals.negativeDifferenceValue || 0))
                             const isExpanded = expandedLocation === loc.location
                             return (
-                                <div key={loc.location} className='reconcile-review-location-card'>
+                                <div
+                                    key={loc.location}
+                                    className='reconcile-review-location-card'
+                                    ref={(el) => { if (el) locationCardRefs.current[loc.location] = el; }}
+                                >
                                     <div className='reconcile-review-location-head' onClick={() => setExpandedLocation(isExpanded ? null : loc.location)}>
                                         <span className='reconcile-review-location-name'>{loc.location}</span>
                                         <span>Over: {round2(totals.positiveDifferenceQty || 0)} ({round2(totals.positiveDifferenceValue || 0).toLocaleString()})</span>
@@ -239,7 +281,11 @@ const ReconciliationReview = ({
                                                     {loc.shortagePostings.map((posting, pIdx) => {
                                                         const outstanding = Number(outstandingByEmployee?.[posting.employee_id]) || 0
                                                         return (
-                                                            <div key={pIdx} className='reconcile-shortage-row'>
+                                                            <div
+                                                                key={pIdx}
+                                                                className='reconcile-shortage-row'
+                                                                ref={(el) => { if (el) shortageRowRefs.current[`${loc.location}::${posting.employee_id}`] = el; }}
+                                                            >
                                                                 <span>{getEmployeeName ? getEmployeeName(posting.employee_id) : posting.employee_id}</span>
                                                                 <span>Charged: ₦{Number(posting.amountCharged || 0).toLocaleString()}</span>
                                                                 <span>{new Date(posting.postedAt).toLocaleDateString()}</span>

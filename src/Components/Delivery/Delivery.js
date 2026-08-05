@@ -1,6 +1,7 @@
 import './Delivery.css'
 
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import ContextProvider from '../../Resources/ContextProvider';
 import '../PointOfSales/PointOfSales.css'
 import { MdShoppingBasket } from 'react-icons/md';
@@ -58,6 +59,30 @@ const Delivery = () => {
     const [countedStockList, setCountedStockList] = useState([])
     const [productAdd, setProductAdd] = useState(false)
     const [reviewOpen, setReviewOpen] = useState(false)
+    const [reviewDeepLink, setReviewDeepLink] = useState(null)
+    // Deep-link from the General Ledger table (Journals module): every
+    // POSSessions-sourced GL entry is an inventory shortage charge/recovery
+    // (deriveInventoryShortageRecoveryEntries), so it belongs here, not on
+    // the live POS terminal. This outer component mounts the instant
+    // /delivery loads, so detection lives here — it opens the reconciliation
+    // review directly (it isn't gated behind another screen the way
+    // POSDashboard is on /pos) and hands the target down so it can select
+    // the right posting date and expand the location holding the matching
+    // employee's shortage charge.
+    const deepLinkLocation = useLocation()
+    useEffect(() => {
+        const params = new URLSearchParams(deepLinkLocation.search)
+        const openGlSource = params.get('openGlSource')
+        if (!openGlSource) return;
+        const [sourceType] = openGlSource.split(':')
+        if (sourceType !== 'POSSessions') return;
+        setReviewDeepLink({
+            postingDate: params.get('openGlDate') || '',
+            employeeId: params.get('openGlHandler') || '',
+        })
+        setReviewOpen(true)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
     const [addingProducts, setAddingProducts] = useState(false)
     const [startSession, setStartSession] = useState(false);
     const [endSession, setEndSession] = useState(false);
@@ -1304,8 +1329,16 @@ const Delivery = () => {
                 tableId: currentOrder.tableId,
                 handlerId: currentOrder.handlerId,
                 deliveredBy: companyRecord.emailid,
-                postingDate: currentOrder.postingDate,
-                postingStamp: currentOrder.postingStamp,
+                // Orders never carries its own postingDate — PointOfSales.js's
+                // equivalent depletion code already falls back to "today" when
+                // this is blank; this path was missing that fallback, which is
+                // how InventoryTransactions docs with NO postingDate field at
+                // all (not just a wrong one) got created — undated documents
+                // then depend on every downstream report consistently falling
+                // back to createdAt, which inventoryReconciliation.js's Review
+                // wasn't doing until this same investigation fixed it there.
+                postingDate: currentOrder.postingDate || new Date(Date.now()).toISOString().slice(0, 10),
+                postingStamp: currentOrder.postingStamp || new Date(Date.now()),
                 createdAt: createdAt,
             };
 
@@ -2289,10 +2322,12 @@ const Delivery = () => {
                 getEmployeeName={getEmployeeName}
                 allSessions={allSessions}
                 allDeliverySessions={allDeliverySessions}
-                setReviewOpen={setReviewOpen}
+                setReviewOpen={(open) => { setReviewOpen(open); if (!open) setReviewDeepLink(null); }}
                 setAlert={setAlert}
                 setAlertState={setAlertState}
                 setAlertTimeout={setAlertTimeout}
+                initialPostingDate={reviewDeepLink?.postingDate || null}
+                initialEmployeeId={reviewDeepLink?.employeeId || null}
             />}
             {viewSesions ?
                 <DeliveryDashboard
