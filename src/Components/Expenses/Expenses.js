@@ -1,5 +1,6 @@
 import './Expenses.css'
-import { useEffect, useContext, useState } from 'react'
+import { useEffect, useContext, useState, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 // import { useInventory } from '../../Resources/InventoryContext';
@@ -38,6 +39,39 @@ const Expenses = () => {
     const [expensesDate, setExpensesDate] = useState(new Date(Date.now()).toISOString().slice(0, 10))
     const [curExpense, setCurExpense] = useState(null)
     const [deleteCount, setDeleteCount] = useState(0)
+
+    // Deep-link from the General Ledger table (Journals module):
+    // ?openGlSource=Expenses:<expenseId> auto-opens that record's view panel.
+    const glLocation = useLocation()
+    const glDeepLinkAppliedRef = useRef(false)
+    const [glDeepLinkTargetKey, setGlDeepLinkTargetKey] = useState(null)
+    const expenseCardRefs = useRef({})
+    useEffect(() => {
+        if (glDeepLinkAppliedRef.current) return;
+        const params = new URLSearchParams(glLocation.search)
+        const openGlSource = params.get('openGlSource') || ''
+        if (!openGlSource.startsWith('Expenses:')) return;
+        const targetId = openGlSource.split(':')[1]
+        const match = (expenses || []).find((e) => String(e._id) === String(targetId))
+        if (match) {
+            glDeepLinkAppliedRef.current = true
+            handleViewClick(match)
+            setGlDeepLinkTargetKey(match.createdAt)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [expenses])
+
+    // Runs after every render (no dep array) until the target card's ref
+    // shows up, since the list only renders once expenses is loaded.
+    useEffect(() => {
+        if (!glDeepLinkTargetKey) return;
+        const el = expenseCardRefs.current[glDeepLinkTargetKey]
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('gl-deep-link-highlight')
+        setTimeout(() => el.classList.remove('gl-deep-link-highlight'), 2500)
+        setGlDeepLinkTargetKey(null)
+    })
     const [expensesPostingOperationId, setExpensesPostingOperationId] = useState(null)
     const expensesPostingProgress = usePostingOperationProgress(expensesPostingOperationId)
     const [isView, setIsView] = useState(false)
@@ -683,6 +717,7 @@ const Expenses = () => {
                             })
                             return (
                                 <div className={'dept' + (curExpense?.createdAt === createdAt ? ' curview' : '')} key={index}
+                                    ref={(el) => { if (el && createdAt) expenseCardRefs.current[createdAt] = el; }}
                                     onClick={(e) => {
                                         handleViewClick(exp)
                                     }}

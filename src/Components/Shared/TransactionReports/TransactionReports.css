@@ -1761,3 +1761,16 @@ tbody tr:hover {
         padding: 6px 8px;
     }
 }
+
+/* Auto-highlight for a GL table "Go to source" deep-link target, cleared
+   automatically once the highlight animation finishes. */
+.gl-deep-link-highlight {
+    animation: glDeepLinkPulse 2.5s ease-out 1;
+    outline: 3px solid #f59e0b;
+    outline-offset: 2px;
+}
+
+@keyframes glDeepLinkPulse {
+    0% { background-color: rgba(245, 158, 11, 0.35); }
+    100% { background-color: transparent; }
+}

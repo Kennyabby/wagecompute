@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import ContextProvider from '../../../Resources/ContextProvider';
 import { putInventoryTransactions, getAppCache, setAppCache } from '../../../Resources/offlineDb';
 import { FaFilter, FaFileExport, FaSearch, FaSync, FaDownload, FaFilePdf } from 'react-icons/fa';
@@ -52,9 +53,41 @@ const TransactionHistory = () => {
     summary: {}
   });
   const [showTransferApprovals, setShowTransferApprovals] = useState(false);
+  // Deep-link from the General Ledger table (Journals module): a GL row
+  // sourced from InventoryTransactions (Purchases/Production/Transfer
+  // Orders/Inventory-Reconciliation adjustments/Sales-Shipment-COGS+Return
+  // all post under this one sourceCollection — see Journals.js's tier-B
+  // note) carries the GL entry's own postingDate as the closest available
+  // hint, plus the transaction's own _id as sourceId. The date narrows the
+  // fetch window; once the matching row shows up in `transactions` we jump
+  // to its page and scroll/highlight the row itself (it's keyed by _id
+  // already, just never had a reason to be scrolled to before).
+  const glLocation = useLocation();
+  const glDeepLinkTxId = (() => {
+    const params = new URLSearchParams(glLocation.search);
+    const openGlSource = params.get('openGlSource') || '';
+    if (!openGlSource.startsWith('InventoryTransactions:')) return null;
+    return openGlSource.split(':')[1] || null;
+  })();
+  const glDateHint = (() => {
+    const params = new URLSearchParams(glLocation.search);
+    const openGlSource = params.get('openGlSource') || '';
+    if (!openGlSource.startsWith('InventoryTransactions:')) return null;
+    const date = params.get('openGlDate');
+    if (!date) return null;
+    const target = new Date(`${date}T00:00:00`);
+    if (Number.isNaN(target.getTime())) return null;
+    const start = new Date(target); start.setDate(start.getDate() - 3);
+    const end = new Date(target); end.setDate(end.getDate() + 3);
+    return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+  })();
+  const glDeepLinkAppliedRef = useRef(false);
+  const [glDeepLinkScrollTarget, setGlDeepLinkScrollTarget] = useState(null);
+  const txRowRefs = useRef({});
+
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10), // 1st of current month
-    endDate: new Date().toISOString().slice(0, 10), // Today
+    startDate: glDateHint?.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10), // 1st of current month
+    endDate: glDateHint?.endDate || new Date().toISOString().slice(0, 10), // Today
     location: 'all',
     productId: '',
     transactionType: 'all',
@@ -1649,6 +1682,31 @@ const TransactionHistory = () => {
     return displayedTransactions.slice(start, start + rowsPerPage);
   }, [displayedTransactions, currentPage, rowsPerPage]);
 
+  // Jump to whichever page holds the deep-linked transaction once it shows
+  // up in the loaded (date-narrowed) set. Placed after the "reset to page 1
+  // on data change" effect above so this page assignment wins in the same
+  // commit instead of being immediately overwritten by it.
+  useEffect(() => {
+    if (!glDeepLinkTxId || glDeepLinkAppliedRef.current || !displayedTransactions.length) return;
+    const idx = displayedTransactions.findIndex((tx) => String(tx._id) === String(glDeepLinkTxId));
+    if (idx === -1) return;
+    glDeepLinkAppliedRef.current = true;
+    setCurrentPage(Math.floor(idx / rowsPerPage) + 1);
+    setGlDeepLinkScrollTarget(glDeepLinkTxId);
+  }, [displayedTransactions, glDeepLinkTxId, rowsPerPage]);
+
+  // Runs after every render (no dep array) until the target row's ref shows
+  // up, since it only exists once its page is actually rendered.
+  useEffect(() => {
+    if (!glDeepLinkScrollTarget) return;
+    const el = txRowRefs.current[glDeepLinkScrollTarget];
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('gl-deep-link-highlight');
+    setTimeout(() => el.classList.remove('gl-deep-link-highlight'), 2500);
+    setGlDeepLinkScrollTarget(null);
+  });
+
   const getPageNumbers = useMemo(() => {
     const pages = [];
     const maxVisible = 5;
@@ -2241,7 +2299,11 @@ const TransactionHistory = () => {
                 </tr>
               ) : (
                 paginatedTransactions.map((tx) => (
-                  <tr key={tx._id} className={`tx-type-${getTransactionType(tx).toLowerCase().replace(/\s+/g, '-')}`}>
+                  <tr
+                    key={tx._id}
+                    className={`tx-type-${getTransactionType(tx).toLowerCase().replace(/\s+/g, '-')}`}
+                    ref={(el) => { if (el && tx._id) txRowRefs.current[String(tx._id)] = el; }}
+                  >
                     {isAdmin && (
                       <td>
                         {tx.isDuplicate && (

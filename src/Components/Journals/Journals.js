@@ -1,12 +1,47 @@
 import './Journals.css'
 import { useState, useContext, useEffect, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import { MdSearch, MdAdd, MdEdit, MdDelete, MdFilterList, MdOutlineAccountBalance, MdOutlineReceiptLong, MdClose, MdRefresh, MdAnalytics, MdPictureAsPdf, MdDeleteSweep } from 'react-icons/md'
 import { FaFileExcel } from 'react-icons/fa'
 import jsPDF from 'jspdf'
 import { generateExcel } from '../../utils/exportUtils'
+import { exportGlToExcel, exportGlToPDF } from '../../utils/glExport'
+import * as XLSX from 'xlsx'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb'
 import { generateOperationId, checkPostingOperationStatus, usePostingOperationProgress } from '../../Resources/postingOperations'
+
+const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
+
+const JOURNAL_IMPORT_HEADERS = ['Posting Group', 'Posting Date', 'Reference', 'Notes', 'Account Code', 'Debit', 'Credit']
+
+// Where each real GL sourceCollection value can be browsed today — see the
+// GL-table navigation-tier research this feature was built from. A module
+// with no working id-keyed detail view at all (Employees debt-recovery) is
+// intentionally left unmapped: landing on that module's page without
+// anything to highlight isn't useful, so those show full detail inline in
+// the GL row's own details panel instead.
+const GL_SOURCE_ROUTE_MAP = {
+    Orders: '/pos',
+    Accommodations: '/accommodations',
+    Rentals: '/sales',
+    // Session-level only (no stable per-row id for one debt/recovery line
+    // in the legacy Sales collection today) — see Sales.js's deep-link effect.
+    Sales: '/sales',
+    Expenses: '/expenses',
+    FixedAssets: '/assets',
+    AssetDepreciations: '/assets',
+    AssetDisposals: '/assets',
+    SalesInvoices: '/business-partners',
+    CustomerPayments: '/business-partners',
+    VendorBills: '/business-partners',
+    VendorPayments: '/business-partners',
+    InventoryTransactions: '/inventory',
+    // Every POSSessions-sourced GL entry is an inventory shortage charge or
+    // recovery (deriveInventoryShortageRecoveryEntries) — its home is the
+    // Inventory Reconciliation review, not the live POS terminal.
+    POSSessions: '/delivery',
+}
 
 const ACCOUNTING_UI_CACHE_VERSION = 6
 const buildJournalCacheScope = (fromDate, toDate, filters = {}) => ({
@@ -43,6 +78,8 @@ const Journals = () => {
         storePath('journals')
         document.title = 'Accounting > Journals | Enterprise Compute Central'
     }, [storePath])
+
+    const navigate = useNavigate()
 
     const [activeTab, setActiveTab] = useState('COA') // 'COA', 'JOURNALS', or 'REPORTS'
     
@@ -972,192 +1009,6 @@ const Journals = () => {
         ], compInfo, dRange, 'Trial Balance Report', skipAutoTotals);
     };
 
-    const exportDrillDownToExcel = (accountCode) => {
-        const glCode = String(accountCode || drillDown?.glCode || '')
-        // build a global lookup of transaction keys -> lines so we can infer counterpart accounts
-        const globalMap = {};
-        Object.keys(rawLedger || {}).forEach(accCode => {
-            (rawLedger[accCode] || []).forEach(line => {
-                const key = `${line.source || ''}:${line.id || line.sourceId || line.date || ''}`;
-                if (!globalMap[key]) globalMap[key] = [];
-                globalMap[key].push({ accountCode: accCode, line });
-            })
-        })
-
-        const rows = (rawLedger?.[glCode] || []).map(r => {
-            const key = `${r.source || ''}:${r.id || r.sourceId || r.date || ''}`;
-            const peers = globalMap[key] || [];
-            const debitAccounts = peers.filter(p => Number(p.line.debit || 0) > 0).map(p => String(p.accountCode));
-            const creditAccounts = peers.filter(p => Number(p.line.credit || 0) > 0).map(p => String(p.accountCode));
-            const resolveNames = (codes) => codes.map(c => {
-                const acc = flattenedAccounts.find(a => String(a['g/l code']) === String(c));
-                return acc ? `${c} - ${acc.name}` : c;
-            }).join(', ');
-
-            return {
-                Date: r.date ? new Date(Number(r.date) || r.date).toLocaleDateString() : '',
-                postingDate: r.postingDate || r.date || '',
-                createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString() : '',
-                accountCode: r.accountCode || r.accountcode || glCode,
-                accountName: r.accountName || r.acountName || '',
-                accountType: r.accountType || '',
-                Description: r.desc || r.note || '',
-                'Debit Account': resolveNames(debitAccounts),
-                'Credit Account': resolveNames(creditAccounts),
-                balAccountCode: r.balAccountCode || '',
-                balAccountType: r.balAccountType || '',
-                documentNo: r.documentNo || '',
-                documentType: r.documentType || '',
-                entryType: r.entryType || '',
-                entryNo: r.entryNo || '',
-                handlerId: r.handlerId || '',
-                Source: r.source || '',
-                sourceId: r.sourceId || r.id || '',
-                amount: Number(r.amount || r.debit || r.credit || 0),
-                Debit: Number(r.debit || 0),
-                Credit: Number(r.credit || 0),
-                meta: r.meta ? JSON.stringify(r.meta) : '',
-            }
-        });
-
-        const compInfo = { name: companyRecord?.name || 'Enterprise' };
-        const dRange = { startDate: fromDate, endDate: toDate };
-        generateExcel([
-            ...rows,
-        ], [
-            { name: 'Date', reference: 'Date' },
-            { name: 'Posting Date', reference: 'postingDate' },
-            { name: 'Created At', reference: 'createdAt' },
-            { name: 'Account Code', reference: 'accountCode' },
-            { name: 'Account Name', reference: 'accountName' },
-            { name: 'Account Type', reference: 'accountType' },
-            { name: 'Description', reference: 'Description' },
-            { name: 'Debit Account', reference: 'Debit Account' },
-            { name: 'Credit Account', reference: 'Credit Account' },
-            { name: 'Bal Account Code', reference: 'balAccountCode' },
-            { name: 'Bal Account Type', reference: 'balAccountType' },
-            { name: 'Document No', reference: 'documentNo' },
-            { name: 'Document Type', reference: 'documentType' },
-            { name: 'Entry Type', reference: 'entryType' },
-            { name: 'Entry No', reference: 'entryNo' },
-            { name: 'Handler Id', reference: 'handlerId' },
-            { name: 'Source', reference: 'Source' },
-            { name: 'Source Id', reference: 'sourceId' },
-            { name: 'Amount', reference: 'amount', numeric: true },
-            { name: 'Debit', reference: 'Debit', numeric: true },
-            { name: 'Credit', reference: 'Credit', numeric: true },
-            { name: 'Meta', reference: 'meta' },
-        ], compInfo, dRange, `Ledger_${glCode}`);
-    }
-
-    const exportDrillDownToPDF = (accountCode) => {
-        const glCode = String(accountCode || drillDown?.glCode || '')
-        const ledgerRows = (rawLedger?.[glCode] || []);
-        // build global map once
-        const globalMap = {};
-        Object.keys(rawLedger || {}).forEach(accCode => {
-            (rawLedger[accCode] || []).forEach(line => {
-                const k = `${line.source || ''}:${line.id || line.sourceId || line.date || ''}`;
-                if (!globalMap[k]) globalMap[k] = [];
-                globalMap[k].push({ accountCode: accCode, line });
-            })
-        })
-
-        const rows = ledgerRows.map(r => ({
-            date: r.date ? new Date(Number(r.date) || r.date).toLocaleDateString() : '',
-            postingDate: r.postingDate || r.date || '',
-            createdAt: r.createdAt || '',
-            accountCode: r.accountCode || r.accountcode || glCode,
-            accountName: r.accountName || r.acountName || '',
-            accountType: r.accountType || '',
-            desc: r.desc || r.note || '',
-            source: r.source || '',
-            sourceId: r.sourceId || r.id || '',
-            debit: Number(r.debit || 0),
-            credit: Number(r.credit || 0),
-            amount: Number(r.amount || r.debit || r.credit || 0),
-            balAccountCode: r.balAccountCode || '',
-            balAccountType: r.balAccountType || '',
-            documentNo: r.documentNo || '',
-            documentType: r.documentType || '',
-            entryType: r.entryType || '',
-            entryNo: r.entryNo || '',
-            handlerId: r.handlerId || '',
-            meta: r.meta || {},
-            id: r.id || r.sourceId || r.date,
-        }));
-
-        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 12;
-        let y = 16;
-        const fmt = (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        doc.text(`${companyRecord?.name || 'Enterprise'} - Ledger ${glCode}`, margin, y);
-        y += 7;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.text(`Period: ${fromDate} to ${toDate}`, margin, y);
-        y += 8;
-
-        // header
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text('Date', margin, y);
-        doc.text('Description', margin + 30, y);
-        doc.text('Debit Account', margin + 30 + 60, y);
-        doc.text('Credit Account', margin + 30 + 160, y);
-        doc.text('Debit', pageWidth - margin - 40, y, { align: 'right' });
-        doc.text('Credit', pageWidth - margin, y, { align: 'right' });
-        y += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-
-        let totalD = 0, totalC = 0;
-        rows.forEach((r) => {
-            if (y > doc.internal.pageSize.getHeight() - 60) { doc.addPage(); y = 20; }
-            const descLines = doc.splitTextToSize(String(r.desc || ''), 80);
-            doc.text(r.date || '', margin, y);
-            doc.text(descLines, margin + 30, y);
-
-            // compute peer accounts from prebuilt globalMap
-            const key = `${r.source || ''}:${r.id || r.sourceId || r.date || ''}`;
-            const peers = globalMap[key] || [];
-            const debitAccounts = peers.filter(p => Number(p.line.debit || 0) > 0).map(p => String(p.accountCode));
-            const creditAccounts = peers.filter(p => Number(p.line.credit || 0) > 0).map(p => String(p.accountCode));
-            const resolveNames = (codes) => codes.map(c => {
-                const acc = flattenedAccounts.find(a => String(a['g/l code']) === String(c));
-                return acc ? `${c} - ${acc.name}` : c;
-            }).join(', ');
-
-            doc.text(resolveNames(debitAccounts), margin + 30 + 60, y);
-            doc.text(resolveNames(creditAccounts), margin + 30 + 160, y);
-            doc.text(fmt(r.debit), pageWidth - margin - 40, y, { align: 'right' });
-            doc.text(fmt(r.credit), pageWidth - margin, y, { align: 'right' });
-
-            // metadata line (smaller font)
-            const metaText = `Acct: ${r.acountName || ''} (${r.accountcode || ''}) Type: ${r.accountType || ''} | Bal: ${r.balAccountCode || ''} (${r.balAccountType || ''}) | Doc: ${r.documentType || ''} ${r.documentNo || ''} | Entry Type: ${r.entryType || ''} | Entry: ${r.entryNo || ''} | Handler: ${r.handlerId || ''} | Src: ${r.source || ''}/${r.sourceId || ''} | Created: ${r.createdAt || ''}`;
-            const metaLines = doc.splitTextToSize(metaText, pageWidth - (margin * 2));
-            doc.setFontSize(7);
-            doc.text(metaLines, margin + 30, y + Math.max(6, descLines.length * 4));
-            doc.setFontSize(8);
-
-            y += Math.max(5, descLines.length * 4) + (metaLines.length * 4);
-            totalD += r.debit || 0;
-            totalC += r.credit || 0;
-        });
-
-        // totals
-        if (y > doc.internal.pageSize.getHeight() - 30) { doc.addPage(); y = 20; }
-        doc.setFont('helvetica', 'bold');
-        doc.text('TOTALS', margin + 30, y + 6);
-        doc.text(fmt(totalD), pageWidth - margin - 40, y + 6, { align: 'right' });
-        doc.text(fmt(totalC), pageWidth - margin, y + 6, { align: 'right' });
-
-        doc.save(`Ledger_${glCode}.pdf`);
-    }
-
     // COA Form State
     const [editAcc, setEditAcc] = useState(null)
     const [coaForm, setCoaForm] = useState({
@@ -1168,8 +1019,12 @@ const Journals = () => {
         type: 'Balance Sheet'
     })
 
-    // Journals Form State
-    const [journalForm, setJournalForm] = useState({
+    // Journals Form State — an array of independently-balanced postings.
+    // One posting is the common case (looks identical to the old single-entry
+    // form); "Add Another Posting" appends a second linked posting so the
+    // whole submission becomes a batch (see createJournalBatch), reversible
+    // together as a set.
+    const emptyPosting = () => ({
         postingDate: new Date().toISOString().split('T')[0],
         reference: '',
         notes: '',
@@ -1178,6 +1033,33 @@ const Journals = () => {
             { accountCode: '', accountName: '', debit: 0, credit: 0 }
         ]
     })
+    const [journalForm, setJournalForm] = useState({ postings: [emptyPosting()] })
+    const [journalImportErrors, setJournalImportErrors] = useState(null)
+    const [journalImporting, setJournalImporting] = useState(false)
+    const journalImportFileRef = useRef(null)
+
+    // General Ledger table state (Journals tab)
+    const [glRows, setGlRows] = useState([])
+    const [glTotalCount, setGlTotalCount] = useState(0)
+    const [glLoading, setGlLoading] = useState(false)
+    const [glExporting, setGlExporting] = useState(false)
+    const [glPage, setGlPage] = useState(0)
+    const [glPageSize, setGlPageSize] = useState(50)
+    const [glJumpToPage, setGlJumpToPage] = useState('')
+    const emptyGlFilters = {
+        sourceCollection: '',
+        accountCode: '',
+        reversed: '',
+        documentType: '',
+        entryType: '',
+        handlerId: '',
+        reference: '',
+        notes: '',
+        documentNo: '',
+    }
+    const [glFilters, setGlFilters] = useState(emptyGlFilters)
+    const [glDetailRow, setGlDetailRow] = useState(null)
+    const [glReversing, setGlReversing] = useState(false)
 
     // Load COA via context (also refreshes SSE cache)
     const loadCOA = async () => {
@@ -1885,14 +1767,17 @@ const Journals = () => {
         if (!drillDown) return null;
         const rows = rawLedger[drillDown.glCode] || [];
         const filtered = drillDown.side === 'net' ? rows : rows.filter(r => r._side === drillDown.side);
-        const totalD = filtered.reduce((s, r) => s + (r.debit  || 0), 0);
-        const totalC = filtered.reduce((s, r) => s + (r.credit || 0), 0);
-        const fmtAmt = (n) => n ? n.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-';
-        const fmtDate = (d) => d ? new Date(Number(d) || d).toLocaleDateString() : '-';
+        const fmtAmt = fmtGlAmt;
         const sideLabel = drillDown.side === 'net' ? 'All' : drillDown.side === 'debit' ? 'Debit' : 'Credit';
         const balanceHint = drillDown.balance
             ? `Balance: debit ${fmtAmt(drillDown.balance.debit)} / credit ${fmtAmt(drillDown.balance.credit)} / net ${fmtAmt(drillDown.balance.net)}`
             : '';
+        const drillDownFiltersSummary = {
+            Account: `${drillDown.glCode} - ${drillDown.accountName}`,
+            Side: sideLabel,
+        }
+        const compInfo = { name: companyRecord?.name || 'Enterprise' }
+        const dRange = { startDate: fromDate, endDate: toDate }
 
         return (
             <div className="journals-modal-overlay" style={getModalOverlayStyle()} onClick={() => setDrillDown(null)}>
@@ -1903,8 +1788,8 @@ const Journals = () => {
                             <p className="dd-subtitle">G/L {drillDown.glCode} &mdash; {drillDown.accountName} &mdash; <span className="dd-side-label">{sideLabel}</span></p>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <button className="j-btn-secondary" onClick={() => exportDrillDownToExcel(drillDown.glCode)} disabled={(rawLedger?.[drillDown.glCode] || []).length === 0} title="Export ledger to Excel"><FaFileExcel /></button>
-                            <button className="j-btn-secondary" onClick={() => exportDrillDownToPDF(drillDown.glCode)} disabled={(rawLedger?.[drillDown.glCode] || []).length === 0} title="Export ledger to PDF"><MdPictureAsPdf /></button>
+                            <button className="j-btn-secondary" onClick={() => exportGlToExcel(filtered, compInfo, dRange, drillDownFiltersSummary, `Ledger_${drillDown.glCode}`)} disabled={filtered.length === 0} title="Export ledger to Excel"><FaFileExcel /></button>
+                            <button className="j-btn-secondary" onClick={() => exportGlToPDF(filtered, compInfo, dRange, drillDownFiltersSummary, `Ledger_${drillDown.glCode}`)} disabled={filtered.length === 0} title="Export ledger to PDF"><MdPictureAsPdf /></button>
                             <button className="journals-modal-close" onClick={() => setDrillDown(null)}><MdClose /></button>
                         </div>
                     </div>
@@ -1919,43 +1804,7 @@ const Journals = () => {
                                     <span>This balance may include opening values from the stored closing on {drillDown.openingBaseClosingDate}.</span>
                                 )}
                             </div>
-                        ) : (
-                            <table className="dd-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Description</th>
-                                        <th>Source</th>
-                                        <th>Document Type</th>
-                                        <th>Entry Type</th>
-                                        <th>Handler Id</th>
-                                        <th className="num-col">Debit</th>
-                                        <th className="num-col">Credit</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filtered.map((r, i) => (
-                                        <tr key={i}>
-                                            <td className="dd-date">{fmtDate(r.date)}</td>
-                                            <td className="dd-desc">{r.desc}</td>
-                                            <td><span className={`dd-source-badge src-${(r.source||'').toLowerCase()}`}>{r.source}</span></td>
-                                            <td className="dd-doctype">{r.documentType || ''}</td>
-                                            <td className="dd-entrytype">{r.entryType || ''}</td>
-                                            <td className="dd-handler">{r.handlerId || ''}</td>
-                                            <td className="num-col dd-debit">{fmtAmt(r.debit)}</td>
-                                            <td className="num-col dd-credit">{fmtAmt(r.credit)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot>
-                                    <tr className="dd-totals">
-                                        <td colSpan="6"><strong>Totals ({filtered.length} transactions)</strong></td>
-                                        <td className="num-col" style={{ color: '#1d4ed8', fontWeight: 700 }}>{fmtAmt(totalD)}</td>
-                                        <td className="num-col" style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtAmt(totalC)}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        )}
+                        ) : renderGlRowsTable(filtered, { showTotals: true })}
                     </div>
                 </div>
 
@@ -2395,92 +2244,256 @@ const Journals = () => {
     }
 
     // ---- Journal Logic ----
-    const handleAddJournalLine = () => {
-        setJournalForm(prev => ({
-            ...prev,
-            lines: [...prev.lines, { accountCode: '', accountName: '', debit: 0, credit: 0 }]
-        }))
-    }
-
-    const handleRemoveJournalLine = (index) => {
-        setJournalForm(prev => ({
-            ...prev,
-            lines: prev.lines.filter((_, i) => i !== index)
-        }))
-    }
-
-    const handleJournalLineChange = (index, field, value) => {
+    const handleAddJournalLine = (postingIndex) => {
         setJournalForm(prev => {
-            const newLines = [...prev.lines];
-            newLines[index][field] = value;
-            if (field === 'accountCode') {
-                const acc = flattenedAccounts.find(a => String(a['g/l code']) === String(value));
-                if (acc) newLines[index].accountName = acc.name;
-            }
-            return { ...prev, lines: newLines };
+            const postings = [...prev.postings];
+            postings[postingIndex] = { ...postings[postingIndex], lines: [...postings[postingIndex].lines, { accountCode: '', accountName: '', debit: 0, credit: 0 }] };
+            return { ...prev, postings };
         })
     }
 
-    const handleSaveJournal = async () => {
-        // Validate Debits == Credits
-        let totalDebit = 0;
-        let totalCredit = 0;
-        journalForm.lines.forEach(l => {
+    const handleRemoveJournalLine = (postingIndex, lineIndex) => {
+        setJournalForm(prev => {
+            const postings = [...prev.postings];
+            postings[postingIndex] = { ...postings[postingIndex], lines: postings[postingIndex].lines.filter((_, i) => i !== lineIndex) };
+            return { ...prev, postings };
+        })
+    }
+
+    const handleJournalLineChange = (postingIndex, lineIndex, field, value) => {
+        setJournalForm(prev => {
+            const postings = [...prev.postings];
+            const newLines = [...postings[postingIndex].lines];
+            newLines[lineIndex] = { ...newLines[lineIndex], [field]: value };
+            if (field === 'accountCode') {
+                const acc = flattenedAccounts.find(a => String(a['g/l code']) === String(value));
+                if (acc) newLines[lineIndex].accountName = acc.name;
+            }
+            postings[postingIndex] = { ...postings[postingIndex], lines: newLines };
+            return { ...prev, postings };
+        })
+    }
+
+    const handlePostingFieldChange = (postingIndex, field, value) => {
+        setJournalForm(prev => {
+            const postings = [...prev.postings];
+            postings[postingIndex] = { ...postings[postingIndex], [field]: value };
+            return { ...prev, postings };
+        })
+    }
+
+    const handleAddPosting = () => {
+        setJournalForm(prev => ({ ...prev, postings: [...prev.postings, emptyPosting()] }))
+    }
+
+    const handleRemovePosting = (postingIndex) => {
+        setJournalForm(prev => ({ ...prev, postings: prev.postings.filter((_, i) => i !== postingIndex) }))
+    }
+
+    const journalPostingTotals = (posting) => {
+        let totalDebit = 0, totalCredit = 0;
+        (posting.lines || []).forEach(l => {
             totalDebit += Number(l.debit) || 0;
             totalCredit += Number(l.credit) || 0;
         })
+        return { totalDebit, totalCredit };
+    }
 
-        if (totalDebit !== totalCredit) {
-            setAlertState('error')
-            setAlert(`Total Debits (${totalDebit}) must equal Total Credits (${totalCredit})`)
-            setAlertTimeout(4000)
-            return;
-        }
-
-        if (totalDebit === 0) {
-            setAlertState('error')
-            setAlert('Journal entry must have a non-zero amount.')
-            setAlertTimeout(3000)
-            return;
+    const handleSaveJournal = async () => {
+        // Each posting must independently balance — a batch doesn't average
+        // out across postings, every one of them is its own real document.
+        for (let i = 0; i < journalForm.postings.length; i += 1) {
+            const { totalDebit, totalCredit } = journalPostingTotals(journalForm.postings[i]);
+            if (totalDebit !== totalCredit) {
+                setAlertState('error')
+                setAlert(`Posting ${i + 1}: Total Debits (${totalDebit}) must equal Total Credits (${totalCredit})`)
+                setAlertTimeout(4000)
+                return;
+            }
+            if (totalDebit === 0) {
+                setAlertState('error')
+                setAlert(`Posting ${i + 1}: must have a non-zero amount.`)
+                setAlertTimeout(3000)
+                return;
+            }
         }
 
         setIsSaving(true)
         try {
-            const payload = {
-                ...journalForm,
-                totalAmount: totalDebit,
-                createdAt: Date.now(),
-                handlerId: companyRecord?.emailid
-            }
-
-            const resp = await fetchServer("POST", payload, "createGeneralLedgerEntry", server);
+            const resp = await fetchServer("POST", { postings: journalForm.postings }, "accounting/createJournalBatch", server);
 
             if (resp.err || !resp.ok) {
                 throw new Error(resp.mess || "Failed to save Journal Entry");
             }
 
             setAlertState('success')
-            setAlert('Journal Entry posted successfully!')
+            setAlert(resp.mess || 'Journal Entry posted successfully!')
             setAlertTimeout(3000)
             setShowJournalModal(false)
-            setJournalForm({
-                postingDate: new Date().toISOString().split('T')[0],
-                reference: '',
-                notes: '',
-                lines: [
-                    { accountCode: '', accountName: '', debit: 0, credit: 0 },
-                    { accountCode: '', accountName: '', debit: 0, credit: 0 }
-                ]
-            })
+            setJournalForm({ postings: [emptyPosting()] })
             hydrateFullAccountingSnapshot(true).catch((error) => {
                 console.error('Error refreshing accounting snapshot after saving journal entry:', error);
             });
+            loadGeneralLedger(0).catch(() => {});
         } catch (e) {
             setAlertState('error')
             setAlert(e.message || "An error occurred")
             setAlertTimeout(3000)
         } finally {
             setIsSaving(false)
+        }
+    }
+
+    // "Posting Group" is what lets several flat spreadsheet rows become
+    // several independently-balanced postings in one batch — rows sharing
+    // the same group value become one posting's lines[], matching
+    // createJournalBatch's shape exactly (see handleImportJournalFile).
+    const handleExportJournalTemplate = () => {
+        const wb = XLSX.utils.book_new()
+        const exampleRows = [
+            [1, new Date().toISOString().slice(0, 10), 'Example Ref 1', 'Example description', '', 1000, 0],
+            [1, new Date().toISOString().slice(0, 10), 'Example Ref 1', 'Example description', '', 0, 1000],
+        ]
+        const ws1 = XLSX.utils.aoa_to_sheet([JOURNAL_IMPORT_HEADERS, ...exampleRows])
+        ws1['!cols'] = JOURNAL_IMPORT_HEADERS.map(() => ({ width: 20 }))
+        XLSX.utils.book_append_sheet(wb, ws1, 'Journal Entries')
+
+        const accountsHeaders = ['G/L Code', 'Account Name', 'Category', 'Manual Posting Allowed']
+        const accountsRows = flattenedAccounts
+            .filter(a => a.headerType === 'leaf')
+            .map(a => [a['g/l code'], a.name, a.category, (a.allowManualPosting === false || a.systemOnly === true) ? 'No' : 'Yes'])
+        const ws2 = XLSX.utils.aoa_to_sheet([accountsHeaders, ...accountsRows])
+        ws2['!cols'] = accountsHeaders.map(() => ({ width: 22 }))
+        XLSX.utils.book_append_sheet(wb, ws2, 'Valid Accounts')
+
+        XLSX.writeFile(wb, `Journal_Entry_Template_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    }
+
+    // Strict, all-errors-before-creating-anything import: parses the filled
+    // template, validates every row against the same rules the server's
+    // validateJournalLines enforces (invalid/header/reserved account,
+    // debit+credit both-set-or-neither, per-group balance), and only calls
+    // createJournalBatch if the WHOLE sheet is clean.
+    const handleImportJournalFile = async (event) => {
+        const file = event.target.files?.[0]
+        if (!file) return
+        setJournalImporting(true)
+        setJournalImportErrors(null)
+        try {
+            const data = await file.arrayBuffer()
+            const wb = XLSX.read(data, { type: 'array' })
+            const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('journal')) || wb.SheetNames[0]
+            const sheet = wb.Sheets[sheetName]
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+
+            if (!rows.length) {
+                setJournalImportErrors(['The uploaded file has no rows.'])
+                return
+            }
+
+            const headerRow = (rows[0] || []).map(h => String(h || '').trim())
+            const headersMatch = headerRow.length === JOURNAL_IMPORT_HEADERS.length
+                && JOURNAL_IMPORT_HEADERS.every((h, i) => headerRow[i] === h)
+            if (!headersMatch) {
+                setJournalImportErrors([
+                    'Column headers do not match the expected template — export a fresh template and fill that in rather than changing column names/order.',
+                    `Expected columns (in this exact order): ${JOURNAL_IMPORT_HEADERS.join(' | ')}`,
+                    `Found columns: ${headerRow.filter(Boolean).join(' | ') || '(none)'}`,
+                ])
+                return
+            }
+
+            const dataRows = rows.slice(1).filter(r => (r || []).some(cell => String(cell || '').trim() !== ''))
+            if (!dataRows.length) {
+                setJournalImportErrors(['No data rows found below the header row.'])
+                return
+            }
+
+            const accountByCode = new Map(flattenedAccounts.map(a => [String(a['g/l code']), a]))
+            const errors = []
+            const groups = new Map()
+
+            dataRows.forEach((row, idx) => {
+                const rowNum = idx + 2 // +1 for header row, +1 for 1-indexing
+                const [groupRaw, postingDateRaw, reference, notes, accountCodeRaw, debitRaw, creditRaw] = row
+                const group = String(groupRaw || '').trim()
+                if (!group) {
+                    errors.push(`Row ${rowNum}: Posting Group is required.`)
+                    return
+                }
+
+                let normalizedDate = String(postingDateRaw || '').trim()
+                if (postingDateRaw instanceof Date) {
+                    normalizedDate = postingDateRaw.toISOString().slice(0, 10)
+                } else if (typeof postingDateRaw === 'number' && XLSX.SSF) {
+                    const parsed = XLSX.SSF.parse_date_code(postingDateRaw)
+                    normalizedDate = parsed ? `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}` : normalizedDate
+                }
+                if (!normalizedDate || Number.isNaN(new Date(normalizedDate).getTime())) {
+                    errors.push(`Row ${rowNum} (Posting Group ${group}): Posting Date "${postingDateRaw}" is not a valid date.`)
+                }
+
+                const accountCode = String(accountCodeRaw || '').trim()
+                const account = accountByCode.get(accountCode)
+                if (!accountCode) {
+                    errors.push(`Row ${rowNum} (Posting Group ${group}): Account Code is required.`)
+                } else if (!account) {
+                    errors.push(`Row ${rowNum} (Posting Group ${group}): G/L code "${accountCode}" does not exist in the Chart of Accounts.`)
+                } else {
+                    if (account.headerType === 'header' || account.headerType === 'sub-header') {
+                        errors.push(`Row ${rowNum} (Posting Group ${group}): G/L code ${accountCode} (${account.name}) is a header account, not a posting account.`)
+                    }
+                    if (account.allowManualPosting === false || account.systemOnly === true) {
+                        errors.push(`Row ${rowNum} (Posting Group ${group}): G/L code ${accountCode} (${account.name}) is a reserved/system-only account and cannot be posted manually.`)
+                    }
+                }
+
+                const debit = Number(debitRaw) || 0
+                const credit = Number(creditRaw) || 0
+                if ((debit > 0 && credit > 0) || (debit <= 0 && credit <= 0)) {
+                    errors.push(`Row ${rowNum} (Posting Group ${group}): must contain either a Debit or a Credit amount — not both, and not neither (incompatible entry).`)
+                }
+
+                if (!groups.has(group)) {
+                    groups.set(group, { postingDate: normalizedDate, reference: String(reference || ''), notes: String(notes || ''), lines: [] })
+                }
+                groups.get(group).lines.push({ accountCode, accountName: account?.name || '', debit, credit })
+            })
+
+            groups.forEach((groupData, key) => {
+                if (groupData.lines.length < 2) {
+                    errors.push(`Posting Group ${key}: needs at least two lines (has ${groupData.lines.length}).`)
+                }
+                const totalDebit = round2(groupData.lines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0))
+                const totalCredit = round2(groupData.lines.reduce((sum, l) => sum + (Number(l.credit) || 0), 0))
+                if (totalDebit !== totalCredit) {
+                    errors.push(`Posting Group ${key}: Total Debits (${totalDebit.toFixed(2)}) does not equal Total Credits (${totalCredit.toFixed(2)}).`)
+                }
+            })
+
+            if (errors.length) {
+                setJournalImportErrors(errors)
+                return
+            }
+
+            const postings = Array.from(groups.values()).map(g => ({ postingDate: g.postingDate, reference: g.reference, notes: g.notes, lines: g.lines }))
+            const resp = await fetchServer("POST", { postings }, "accounting/createJournalBatch", server)
+            if (resp.err || !resp.ok) {
+                setJournalImportErrors([resp.mess || 'Failed to post the imported journal batch.'])
+                return
+            }
+
+            setAlertState('success')
+            setAlert(resp.mess || 'Journal batch imported and posted successfully!')
+            setAlertTimeout(3000)
+            setShowJournalModal(false)
+            loadGeneralLedger(0).catch(() => {})
+            hydrateFullAccountingSnapshot(true).catch(() => {})
+        } catch (error) {
+            setJournalImportErrors([error.message || 'Failed to parse the uploaded file — make sure it is a valid .xlsx file exported from the template.'])
+        } finally {
+            setJournalImporting(false)
+            if (journalImportFileRef.current) journalImportFileRef.current.value = ''
         }
     }
 
@@ -2566,115 +2579,134 @@ const Journals = () => {
 
     const renderJournalModal = () => {
         if (!showJournalModal) return null;
-        let tDebit = 0, tCredit = 0;
-        journalForm.lines.forEach(l => {
-            tDebit += Number(l.debit) || 0;
-            tCredit += Number(l.credit) || 0;
-        });
+        const postingTotals = journalForm.postings.map(journalPostingTotals)
+        const anyImbalanced = postingTotals.some(t => t.totalDebit !== t.totalCredit)
+        const anyZero = postingTotals.some(t => t.totalDebit === 0)
+        const isBatch = journalForm.postings.length > 1
 
         return (
             <div className="journals-modal-overlay" style={getModalOverlayStyle()}>
                 <div className="journals-modal modal-large fade-in">
                     <div className="journals-modal-header">
-                        <h2>Create Journal Entry</h2>
+                        <h2>Create Journal Entry{isBatch ? ' Batch' : ''}</h2>
                         <button className="journals-modal-close" onClick={() => setShowJournalModal(false)}>×</button>
                     </div>
                     <div className="journals-modal-body">
-                        <div className="j-form-row">
-                            <div className="j-form-group">
-                                <label>Date</label>
-                                <input 
-                                    type="date" 
-                                    value={journalForm.postingDate} 
-                                    onChange={(e) => setJournalForm({...journalForm, postingDate: e.target.value})}
-                                />
-                            </div>
-                            <div className="j-form-group">
-                                <label>Reference #</label>
-                                <input 
-                                    type="text" 
-                                    value={journalForm.reference} 
-                                    onChange={(e) => setJournalForm({...journalForm, reference: e.target.value})}
-                                    placeholder="Optional"
-                                />
-                            </div>
-                        </div>
-                        <div className="j-form-group">
-                            <label>Description / Notes</label>
-                            <input 
-                                type="text" 
-                                value={journalForm.notes} 
-                                onChange={(e) => setJournalForm({...journalForm, notes: e.target.value})}
-                                placeholder="Purpose of entry"
-                            />
-                        </div>
+                        {isBatch && (
+                            <p className="dd-subtitle">{journalForm.postings.length} linked postings — each balances independently, and reversing any one later reverses the whole batch together.</p>
+                        )}
+                        {journalForm.postings.map((posting, postingIdx) => {
+                            const { totalDebit: tDebit, totalCredit: tCredit } = postingTotals[postingIdx]
+                            return (
+                                <div className="j-posting-block" key={postingIdx}>
+                                    {isBatch && (
+                                        <div className="j-posting-block-header">
+                                            <strong>Posting {postingIdx + 1}</strong>
+                                            <button className="j-btn-icon" onClick={() => handleRemovePosting(postingIdx)} disabled={journalForm.postings.length <= 1} title="Remove this posting">
+                                                <MdDelete />
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="j-form-row">
+                                        <div className="j-form-group">
+                                            <label>Date</label>
+                                            <input
+                                                type="date"
+                                                value={posting.postingDate}
+                                                onChange={(e) => handlePostingFieldChange(postingIdx, 'postingDate', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="j-form-group">
+                                            <label>Reference #</label>
+                                            <input
+                                                type="text"
+                                                value={posting.reference}
+                                                onChange={(e) => handlePostingFieldChange(postingIdx, 'reference', e.target.value)}
+                                                placeholder="Optional"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="j-form-group">
+                                        <label>Description / Notes</label>
+                                        <input
+                                            type="text"
+                                            value={posting.notes}
+                                            onChange={(e) => handlePostingFieldChange(postingIdx, 'notes', e.target.value)}
+                                            placeholder="Purpose of entry"
+                                        />
+                                    </div>
 
-                        <div className="j-lines-table">
-                            <div className="j-lines-header">
-                                <div className="jl-acc">Account</div>
-                                <div className="jl-amt">Debit</div>
-                                <div className="jl-amt">Credit</div>
-                                <div className="jl-act"></div>
-                            </div>
-                            {journalForm.lines.map((line, idx) => (
-                                <div className="j-line-row" key={idx}>
-                                    <div className="jl-acc">
-                                        <select 
-                                            value={line.accountCode} 
-                                            onChange={(e) => handleJournalLineChange(idx, 'accountCode', e.target.value)}
-                                        >
-                                            <option value="">Select Account</option>
-                                            {flattenedAccounts.filter(a => a.headerType === 'leaf').map(a => (
-                                                <option key={a['g/l code']} value={a['g/l code']}>
-                                                    {a['g/l code']} - {a.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                    <div className="j-lines-table">
+                                        <div className="j-lines-header">
+                                            <div className="jl-acc">Account</div>
+                                            <div className="jl-amt">Debit</div>
+                                            <div className="jl-amt">Credit</div>
+                                            <div className="jl-act"></div>
+                                        </div>
+                                        {posting.lines.map((line, lineIdx) => (
+                                            <div className="j-line-row" key={lineIdx}>
+                                                <div className="jl-acc">
+                                                    <select
+                                                        value={line.accountCode}
+                                                        onChange={(e) => handleJournalLineChange(postingIdx, lineIdx, 'accountCode', e.target.value)}
+                                                    >
+                                                        <option value="">Select Account</option>
+                                                        {flattenedAccounts.filter(a => a.headerType === 'leaf').map(a => (
+                                                            <option key={a['g/l code']} value={a['g/l code']}>
+                                                                {a['g/l code']} - {a.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="jl-amt">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        value={line.debit || ''}
+                                                        onChange={(e) => handleJournalLineChange(postingIdx, lineIdx, 'debit', e.target.value)}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <div className="jl-amt">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        value={line.credit || ''}
+                                                        onChange={(e) => handleJournalLineChange(postingIdx, lineIdx, 'credit', e.target.value)}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <div className="jl-act">
+                                                    <button className="j-btn-icon" onClick={() => handleRemoveJournalLine(postingIdx, lineIdx)} disabled={posting.lines.length <= 2}>
+                                                        <MdDelete />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <button className="j-add-line-btn" onClick={() => handleAddJournalLine(postingIdx)}>+ Add Line</button>
                                     </div>
-                                    <div className="jl-amt">
-                                        <input 
-                                            type="number" 
-                                            min="0"
-                                            value={line.debit || ''} 
-                                            onChange={(e) => handleJournalLineChange(idx, 'debit', e.target.value)}
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                    <div className="jl-amt">
-                                        <input 
-                                            type="number" 
-                                            min="0"
-                                            value={line.credit || ''} 
-                                            onChange={(e) => handleJournalLineChange(idx, 'credit', e.target.value)}
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                    <div className="jl-act">
-                                        <button className="j-btn-icon" onClick={() => handleRemoveJournalLine(idx)} disabled={journalForm.lines.length <= 2}>
-                                            <MdDelete />
-                                        </button>
+
+                                    <div className="j-lines-summary">
+                                        <div className={`j-summary-box ${tDebit !== tCredit ? 'error' : 'success'}`}>
+                                            <span>Total Debits: <strong>{tDebit.toFixed(2)}</strong></span>
+                                            <span>Total Credits: <strong>{tCredit.toFixed(2)}</strong></span>
+                                            {tDebit !== tCredit && <span className="j-diff">Difference: {Math.abs(tDebit - tCredit).toFixed(2)}</span>}
+                                        </div>
                                     </div>
                                 </div>
-                            ))}
-                            <button className="j-add-line-btn" onClick={handleAddJournalLine}>+ Add Line</button>
-                        </div>
+                            )
+                        })}
 
-                        <div className="j-lines-summary">
-                            <div className={`j-summary-box ${tDebit !== tCredit ? 'error' : 'success'}`}>
-                                <span>Total Debits: <strong>{tDebit.toFixed(2)}</strong></span>
-                                <span>Total Credits: <strong>{tCredit.toFixed(2)}</strong></span>
-                                {tDebit !== tCredit && <span className="j-diff">Difference: {Math.abs(tDebit - tCredit).toFixed(2)}</span>}
-                            </div>
-                        </div>
+                        <button className="j-btn-secondary j-add-posting-btn" onClick={handleAddPosting}>+ Add Another Posting</button>
                     </div>
                     <div className="journals-modal-footer">
                         <button className="j-btn-secondary" onClick={() => setShowJournalModal(false)}>Cancel</button>
-                        <button 
-                            className="j-btn-primary" 
-                            onClick={handleSaveJournal} 
-                            disabled={isSaving || (tDebit !== tCredit) || tDebit === 0}
+                        <button
+                            className="j-btn-primary"
+                            onClick={handleSaveJournal}
+                            disabled={isSaving || anyImbalanced || anyZero}
                         >
-                            {isSaving ? 'Posting...' : 'Post Journal Entry'}
+                            {isSaving ? 'Posting...' : isBatch ? `Post ${journalForm.postings.length} Postings` : 'Post Journal Entry'}
                         </button>
                     </div>
                 </div>
@@ -3280,16 +3312,482 @@ const Journals = () => {
         },
     ]
 
-    const renderJournalPostings = () => {
+    const buildGlQueryFilters = () => ({
+        fromDate,
+        toDate,
+        sourceCollection: glFilters.sourceCollection || undefined,
+        accountCode: glFilters.accountCode || undefined,
+        reversed: glFilters.reversed || undefined,
+        documentType: glFilters.documentType || undefined,
+        entryType: glFilters.entryType || undefined,
+        handlerId: glFilters.handlerId || undefined,
+        reference: glFilters.reference || undefined,
+        notes: glFilters.notes || undefined,
+        documentNo: glFilters.documentNo || undefined,
+    })
+
+    // A human-readable summary of every active filter, for the exported
+    // report's "Filters Applied" block — kept in sync with buildGlQueryFilters
+    // by construction (same source fields), just labeled for display.
+    const buildGlFiltersSummary = () => {
+        const sourceLabel = glFilters.sourceCollection === '__journal__' ? 'Journal (manual) only' : (glFilters.sourceCollection || '')
+        const accountLabel = glFilters.accountCode ? (flattenedAccounts.find(a => String(a['g/l code']) === String(glFilters.accountCode)) ? `${glFilters.accountCode} - ${flattenedAccounts.find(a => String(a['g/l code']) === String(glFilters.accountCode)).name}` : glFilters.accountCode) : ''
+        const reversedLabel = glFilters.reversed === 'reversed' ? 'Reversed only' : glFilters.reversed === 'not-reversed' ? 'Not reversed only' : ''
+        return {
+            Source: sourceLabel,
+            Account: accountLabel,
+            'Reversed status': reversedLabel,
+            'Document Type contains': glFilters.documentType,
+            'Entry Type contains': glFilters.entryType,
+            'Handler Id contains': glFilters.handlerId,
+            'Reference contains': glFilters.reference,
+            'Description contains': glFilters.notes,
+            'Document No contains': glFilters.documentNo,
+        }
+    }
+
+    const loadGeneralLedger = async (page = 0) => {
+        if (!company) return;
+        setGlLoading(true)
+        try {
+            const resp = await fetchServer("POST", {
+                ...buildGlQueryFilters(),
+                skip: page * glPageSize,
+                limit: glPageSize,
+            }, "accounting/general-ledger", server)
+
+            if (resp.err || !resp.ok) {
+                throw new Error(resp.mess || 'Failed to load general ledger')
+            }
+
+            setGlRows(Array.isArray(resp.rows) ? resp.rows : [])
+            setGlTotalCount(resp.totalCount || 0)
+            setGlPage(page)
+        } catch (error) {
+            setAlertState('error')
+            setAlert(error.message || 'Failed to load general ledger')
+            setAlertTimeout(4000)
+        } finally {
+            setGlLoading(false)
+        }
+    }
+
+    // Export needs every row matching the filters, not the current page —
+    // a separate fetch (exportAll:true bypasses the interactive pagination
+    // cap server-side) that doesn't touch the on-screen table's state.
+    const fetchAllMatchingGlRows = async () => {
+        const resp = await fetchServer("POST", {
+            ...buildGlQueryFilters(),
+            exportAll: true,
+        }, "accounting/general-ledger", server)
+        if (resp.err || !resp.ok) {
+            throw new Error(resp.mess || 'Failed to load general ledger for export')
+        }
+        return Array.isArray(resp.rows) ? resp.rows : []
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        if (company && activeTab === 'JOURNALS') {
+            loadGeneralLedger(0)
+        }
+    }, [
+        company, activeTab, fromDate, toDate, glPageSize,
+        glFilters.sourceCollection, glFilters.accountCode, glFilters.reversed,
+        glFilters.documentType, glFilters.entryType, glFilters.handlerId,
+        glFilters.reference, glFilters.notes, glFilters.documentNo,
+    ])
+
+    const handleGoToSource = (row) => {
+        const route = GL_SOURCE_ROUTE_MAP[row.source]
+        if (!route) {
+            setAlertState('info')
+            setAlert('This entry\'s module has no dedicated browsable record view yet — see the details panel for everything we know about it.')
+            setAlertTimeout(4000)
+            return;
+        }
+        const params = new URLSearchParams({ openGlSource: `${row.source}:${row.sourceId || ''}`, openGlDate: row.postingDate || '' })
+        // A shortage charge/recovery is identified in the reconciliation record
+        // by which employee it's charged to, not by the GL entry's sourceId —
+        // Delivery.js/ReconciliationReview.js match on this instead.
+        if (row.source === 'POSSessions' && row.handlerId) {
+            params.set('openGlHandler', row.handlerId)
+        }
+        navigate(`${route}?${params.toString()}`)
+    }
+
+    const handleReverseGlRow = async (row) => {
+        if (!row.canReverse) return;
+        const confirmMsg = row.journalBatchId
+            ? 'This posting is part of a linked Journal batch — reversing it will reverse every posting in that batch together. Continue?'
+            : 'Reverse this Journal entry? This posts a new offsetting entry; nothing is edited or deleted.'
+        // eslint-disable-next-line no-alert
+        if (!window.confirm(confirmMsg)) return;
+        setGlReversing(true)
+        try {
+            const resp = await fetchServer("POST", { entryId: row._id }, "reverseGeneralLedgerEntry", server)
+            if (resp.err || !resp.ok) {
+                throw new Error(resp.mess || 'Failed to reverse entry')
+            }
+            setAlertState('success')
+            setAlert(resp.mess || 'Entry reversed successfully.')
+            setAlertTimeout(3000)
+            setGlDetailRow(null)
+            loadGeneralLedger(glPage)
+            hydrateFullAccountingSnapshot(true).catch(() => {})
+        } catch (error) {
+            setAlertState('error')
+            setAlert(error.message || 'Failed to reverse entry')
+            setAlertTimeout(4000)
+        } finally {
+            setGlReversing(false)
+        }
+    }
+
+    const fmtGlAmt = (n) => (n ? Number(n).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-')
+    const fmtGlDate = (d) => (d ? new Date(Number(d) || d).toLocaleString() : '-')
+
+    const renderJournalImportErrors = () => {
+        if (!journalImportErrors) return null;
         return (
-            <div className="journal-postings-container fade-in">
+            <div className="journals-modal-overlay" style={getModalOverlayStyle()} onClick={() => setJournalImportErrors(null)}>
+                <div className="journals-modal modal-large" onClick={e => e.stopPropagation()}>
+                    <div className="journals-modal-header">
+                        <h2>Import rejected — nothing was posted</h2>
+                        <button className="journals-modal-close" onClick={() => setJournalImportErrors(null)}><MdClose /></button>
+                    </div>
+                    <div className="journals-modal-body">
+                        <p className="dd-subtitle">Fix every issue below in the spreadsheet and re-import. No postings are created while any error remains.</p>
+                        <ul className="gl-import-error-list">
+                            {journalImportErrors.map((err, idx) => <li key={idx}>{err}</li>)}
+                        </ul>
+                    </div>
+                    <div className="journals-modal-footer">
+                        <button className="j-btn-primary" onClick={() => setJournalImportErrors(null)}>Close</button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    const renderGlDetailPanel = () => {
+        if (!glDetailRow) return null;
+        const row = glDetailRow
+        const fields = [
+            ['Posting Date', row.postingDate],
+            ['Created At', fmtGlDate(row.createdAt)],
+            ['Document No', row.documentNo],
+            ['Reference', row.reference],
+            ['Description', row.desc],
+            ['Source Module', row.source],
+            ['Source Id', row.sourceId],
+            ['Document Type', row.documentType],
+            ['Entry Type', row.entryType],
+            ['Handler Id', row.handlerId],
+            ['Account Code', row.accountCode],
+            ['Account Name', row.accountName],
+            ['Account Type', row.accountType],
+            ['Balancing Account Code', row.balAccountCode],
+            ['Balancing Account Type', row.balAccountType],
+            ['Debit', fmtGlAmt(row.debit)],
+            ['Credit', fmtGlAmt(row.credit)],
+            ['Journal Batch Id', row.journalBatchId],
+            ['Reversed At', row.reversedAt ? fmtGlDate(row.reversedAt) : 'Not reversed'],
+            ['Reverses Entry Id', row.reversesEntryId],
+        ]
+        return (
+            <div className="journals-modal-overlay" style={getModalOverlayStyle()} onClick={() => setGlDetailRow(null)}>
+                <div className="journals-modal gl-detail-modal" onClick={e => e.stopPropagation()}>
+                    <div className="journals-modal-header">
+                        <h2>General Ledger Entry Detail</h2>
+                        <button className="journals-modal-close" onClick={() => setGlDetailRow(null)}><MdClose /></button>
+                    </div>
+                    <div className="journals-modal-body">
+                        <div className="gl-detail-grid">
+                            {fields.map(([label, value]) => (
+                                <div className="gl-detail-field" key={label}>
+                                    <span className="gl-detail-label">{label}</span>
+                                    <span className="gl-detail-value">{value === null || value === undefined || value === '' ? '-' : String(value)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="journals-modal-footer">
+                        {row.source !== 'Journal' && GL_SOURCE_ROUTE_MAP[row.source] && (
+                            <button className="j-btn-secondary" onClick={() => handleGoToSource(row)}>Go to source</button>
+                        )}
+                        {row.canReverse && (
+                            <button className="j-btn-primary gl-reverse-btn" onClick={() => handleReverseGlRow(row)} disabled={glReversing}>
+                                {glReversing ? 'Reversing...' : 'Reverse Entry'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Shared by the Journals-tab GL table and the COA drill-down modal —
+    // same columns, same actions, so the two views can never drift apart
+    // again the way the drill-down's old narrower table had.
+    const renderGlRowsTable = (rows, { emptyTitle = 'No General Ledger entries found', emptyBody = 'No entries match the current filters.', showTotals = false } = {}) => {
+        if (!rows.length) {
+            return (
                 <div className="journal-empty-state">
                     <div className="journal-empty-icon"><MdOutlineReceiptLong /></div>
-                    <h3>Journal Postings</h3>
-                    <p>Standard journal entry capabilities will appear here. You can debit and credit your active chart of accounts.</p>
-                    <button className="coa-add-btn" style={{marginTop: '20px'}} onClick={() => setShowJournalModal(true)}>
-                        <MdAdd /> Create Journal Entry
-                    </button>
+                    <h3>{emptyTitle}</h3>
+                    <p>{emptyBody}</p>
+                </div>
+            )
+        }
+        return (
+            <table className="dd-table gl-table">
+                <thead>
+                    <tr>
+                        <th>Posting Date</th>
+                        <th>Document No</th>
+                        <th>Reference</th>
+                        <th>Description</th>
+                        <th>Source</th>
+                        <th>Document Type</th>
+                        <th>Entry Type</th>
+                        <th>Handler Id</th>
+                        <th>Account Code</th>
+                        <th>Account Name</th>
+                        <th>Account Type</th>
+                        <th className="num-col">Debit</th>
+                        <th className="num-col">Credit</th>
+                        <th>Bal Account Code</th>
+                        <th>Bal Account Type</th>
+                        <th>Reversed</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((row, idx) => (
+                        <tr key={row.rowId || `${row._id}-${idx}`} className={row.reversedAt ? 'gl-row-reversed' : ''}>
+                            <td>{row.postingDate}</td>
+                            <td>{row.documentNo || '-'}</td>
+                            <td>{row.reference || '-'}</td>
+                            <td className="dd-desc">{row.desc}</td>
+                            <td><span className={`dd-source-badge src-${(row.source || '').toLowerCase()}`}>{row.source}</span></td>
+                            <td>{row.documentType || ''}</td>
+                            <td>{row.entryType || ''}</td>
+                            <td>{row.handlerId || ''}</td>
+                            <td>{row.accountCode}</td>
+                            <td>{row.accountName}</td>
+                            <td>{row.accountType}</td>
+                            <td className="num-col dd-debit">{fmtGlAmt(row.debit)}</td>
+                            <td className="num-col dd-credit">{fmtGlAmt(row.credit)}</td>
+                            <td>{row.balAccountCode}</td>
+                            <td>{row.balAccountType}</td>
+                            <td>{row.reversedAt ? 'Yes' : 'No'}</td>
+                            <td className="gl-actions">
+                                <button className="j-btn-icon" title="View details" onClick={() => setGlDetailRow(row)}>Details</button>
+                                {GL_SOURCE_ROUTE_MAP[row.source] && (
+                                    <button className="j-btn-icon" title="Go to source" onClick={() => handleGoToSource(row)}>Go to source</button>
+                                )}
+                                {row.canReverse && (
+                                    <button className="j-btn-icon gl-reverse-btn" title="Reverse this entry" onClick={() => handleReverseGlRow(row)}>Reverse</button>
+                                )}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+                {showTotals && (
+                    <tfoot>
+                        <tr className="dd-totals">
+                            <td colSpan="11"><strong>Totals ({rows.length} lines)</strong></td>
+                            <td className="num-col" style={{ color: '#1d4ed8', fontWeight: 700 }}>{fmtGlAmt(rows.reduce((s, r) => s + (r.debit || 0), 0))}</td>
+                            <td className="num-col" style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtGlAmt(rows.reduce((s, r) => s + (r.credit || 0), 0))}</td>
+                            <td colSpan="4"></td>
+                        </tr>
+                    </tfoot>
+                )}
+            </table>
+        )
+    }
+
+    const handleExportGl = async (format) => {
+        setGlExporting(true)
+        try {
+            const rows = await fetchAllMatchingGlRows()
+            const compInfo = { name: companyRecord?.name || 'Enterprise' }
+            const dRange = { startDate: fromDate, endDate: toDate }
+            const filtersSummary = buildGlFiltersSummary()
+            if (format === 'excel') {
+                exportGlToExcel(rows, compInfo, dRange, filtersSummary, 'General Ledger')
+            } else {
+                exportGlToPDF(rows, compInfo, dRange, filtersSummary, 'General Ledger')
+            }
+        } catch (error) {
+            setAlertState('error')
+            setAlert(error.message || 'Failed to export General Ledger')
+            setAlertTimeout(4000)
+        } finally {
+            setGlExporting(false)
+        }
+    }
+
+    const renderJournalPostings = () => {
+        const totalPages = Math.max(1, Math.ceil(glTotalCount / glPageSize))
+        const handleJumpToPage = () => {
+            const target = Math.min(Math.max(1, Number(glJumpToPage) || 1), totalPages)
+            loadGeneralLedger(target - 1)
+            setGlJumpToPage('')
+        }
+        return (
+            <div className="journal-postings-container fade-in">
+                <div className="gl-toolbar">
+                    <div className="gl-create-actions">
+                        <button className="coa-add-btn" onClick={() => setShowJournalModal(true)}>
+                            <MdAdd /> Create Journal Entry
+                        </button>
+                        <button className="j-btn-secondary" onClick={handleExportJournalTemplate} title="Download a blank Excel template to fill in and import back">
+                            <FaFileExcel /> Export Template
+                        </button>
+                        <button
+                            className="j-btn-secondary"
+                            onClick={() => journalImportFileRef.current?.click()}
+                            disabled={journalImporting}
+                            title="Import a filled-in journal template — validated strictly before anything is posted"
+                        >
+                            {journalImporting ? 'Importing...' : 'Import from Excel'}
+                        </button>
+                        <input
+                            ref={journalImportFileRef}
+                            type="file"
+                            accept=".xlsx,.xls"
+                            style={{ display: 'none' }}
+                            onChange={handleImportJournalFile}
+                        />
+                    </div>
+                    <div className="gl-export-actions">
+                        <button className="j-btn-secondary" onClick={() => handleExportGl('excel')} disabled={glExporting} title="Export every entry matching the current filters to Excel">
+                            <FaFileExcel /> {glExporting ? 'Exporting...' : 'Export Excel'}
+                        </button>
+                        <button className="j-btn-secondary" onClick={() => handleExportGl('pdf')} disabled={glExporting} title="Export every entry matching the current filters to PDF">
+                            <MdPictureAsPdf /> {glExporting ? 'Exporting...' : 'Export PDF'}
+                        </button>
+                        <button className="j-btn-secondary" onClick={() => loadGeneralLedger(glPage)} disabled={glLoading} title="Refresh"><MdRefresh /></button>
+                    </div>
+                </div>
+
+                <div className="gl-filter-panel">
+                    <div className="gl-filter-panel-title"><MdFilterList /> Filters</div>
+                    <div className="gl-filter-grid">
+                        <div className="gl-filter-field">
+                            <label>From Date</label>
+                            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                        </div>
+                        <div className="gl-filter-field">
+                            <label>To Date</label>
+                            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                        </div>
+                        <div className="gl-filter-field">
+                            <label>Source</label>
+                            <select
+                                value={glFilters.sourceCollection}
+                                onChange={(e) => setGlFilters(prev => ({ ...prev, sourceCollection: e.target.value }))}
+                            >
+                                <option value="">All sources</option>
+                                <option value="__journal__">Journal (manual) only</option>
+                                <option value="Orders">Orders</option>
+                                <option value="Accommodations">Accommodations</option>
+                                <option value="Rentals">Rentals</option>
+                                <option value="Expenses">Expenses</option>
+                                <option value="Sales">Sales (debt/recovery)</option>
+                                <option value="InventoryTransactions">Inventory (Purchases/Production/Transfers/Reconciliation)</option>
+                                <option value="FixedAssets">Fixed Assets</option>
+                                <option value="AssetDepreciations">Asset Depreciations</option>
+                                <option value="AssetDisposals">Asset Disposals</option>
+                                <option value="SalesInvoices">Sales Invoices</option>
+                                <option value="CustomerPayments">Customer Payments</option>
+                                <option value="VendorBills">Vendor Bills</option>
+                                <option value="VendorPayments">Vendor Payments</option>
+                                <option value="POSSessions">POS Session Shortages</option>
+                                <option value="Employees">Employee Debt Recovery</option>
+                            </select>
+                        </div>
+                        <div className="gl-filter-field">
+                            <label>Account</label>
+                            <select
+                                value={glFilters.accountCode}
+                                onChange={(e) => setGlFilters(prev => ({ ...prev, accountCode: e.target.value }))}
+                            >
+                                <option value="">All accounts</option>
+                                {flattenedAccounts.filter(a => a.headerType === 'leaf').map(a => (
+                                    <option key={a['g/l code']} value={a['g/l code']}>{a['g/l code']} - {a.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="gl-filter-field">
+                            <label>Reversed status</label>
+                            <select
+                                value={glFilters.reversed}
+                                onChange={(e) => setGlFilters(prev => ({ ...prev, reversed: e.target.value }))}
+                            >
+                                <option value="">All</option>
+                                <option value="reversed">Reversed only</option>
+                                <option value="not-reversed">Not reversed only</option>
+                            </select>
+                        </div>
+                        {[
+                            ['documentType', 'Document Type'],
+                            ['entryType', 'Entry Type'],
+                            ['handlerId', 'Handler Id'],
+                            ['reference', 'Reference'],
+                            ['notes', 'Description'],
+                            ['documentNo', 'Document No'],
+                        ].map(([field, label]) => (
+                            <div className="gl-filter-field" key={field}>
+                                <label>{label}</label>
+                                <input
+                                    type="text"
+                                    placeholder={`Search ${label.toLowerCase()}...`}
+                                    defaultValue={glFilters[field]}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { setGlFilters(prev => ({ ...prev, [field]: e.target.value })); } }}
+                                    onBlur={(e) => setGlFilters(prev => ({ ...prev, [field]: e.target.value }))}
+                                />
+                            </div>
+                        ))}
+                        <div className="gl-filter-field gl-filter-clear">
+                            <button className="j-btn-secondary" onClick={() => setGlFilters(emptyGlFilters)}>Clear filters</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="gl-table-wrap">
+                    {glLoading ? (
+                        <div className="dd-empty">Loading General Ledger entries...</div>
+                    ) : renderGlRowsTable(glRows, { emptyBody: 'No entries match the current date range/filters. Try widening the date range above, or create a Journal entry.' })}
+                </div>
+
+                <div className="gl-pagination">
+                    <button className="j-btn-secondary" disabled={glPage <= 0 || glLoading} onClick={() => loadGeneralLedger(glPage - 1)}>Previous</button>
+                    <span>Page {glPage + 1} of {totalPages} ({glTotalCount} lines)</span>
+                    <button className="j-btn-secondary" disabled={glPage + 1 >= totalPages || glLoading} onClick={() => loadGeneralLedger(glPage + 1)}>Next</button>
+                    <label className="gl-pagesize-label">
+                        Per page:
+                        <select value={glPageSize} onChange={(e) => { setGlPageSize(Number(e.target.value)); setGlPage(0); }}>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                            <option value={200}>200</option>
+                        </select>
+                    </label>
+                    <label className="gl-jump-label">
+                        Go to page:
+                        <input
+                            type="number"
+                            min={1}
+                            max={totalPages}
+                            value={glJumpToPage}
+                            onChange={(e) => setGlJumpToPage(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleJumpToPage(); }}
+                        />
+                        <button className="j-btn-secondary" onClick={handleJumpToPage} disabled={glLoading}>Go</button>
+                    </label>
                 </div>
             </div>
         )
@@ -3422,7 +3920,9 @@ const Journals = () => {
             {renderCOAModal()}
             {renderMappingsModal()}
             {renderJournalModal()}
+            {renderJournalImportErrors()}
             {renderDrillDown()}
+            {renderGlDetailPanel()}
             {renderImbalanceAnalysis()}
             {renderClosingsModal()}
             {renderClosingDetailsModal()}

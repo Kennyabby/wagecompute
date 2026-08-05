@@ -1,5 +1,6 @@
 import './BusinessPartners.css'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 import html2pdf from 'html2pdf.js'
@@ -45,6 +46,45 @@ const BusinessPartners = () => {
         storePath('business-partners')
         document.title = 'Business Partners | Enterprise Compute Central'
     }, [storePath])
+
+    // Deep-link from the General Ledger table (Journals module):
+    // ?openGlSource=SalesInvoices|CustomerPayments|VendorBills|VendorPayments:<id>
+    // switches to the tab that document lives on. SalesInvoices/VendorBills
+    // also get scrolled to and highlighted in their table (rows are keyed by
+    // _id already). CustomerPayments/VendorPayments have no history table on
+    // this screen at all (renderPayments is post-only), so landing on the
+    // right tab is as precise as this gets without adding new UI.
+    const glLocation = useLocation()
+    const glDeepLinkAppliedRef = useRef(false)
+    const [glDeepLinkTargetId, setGlDeepLinkTargetId] = useState(null)
+    const bpRowRefs = useRef({})
+    useEffect(() => {
+        if (glDeepLinkAppliedRef.current) return;
+        const params = new URLSearchParams(glLocation.search)
+        const openGlSource = params.get('openGlSource') || ''
+        const [sourceType, sourceId] = openGlSource.split(':')
+        const tabBySource = { SalesInvoices: 'sales', VendorBills: 'payables', CustomerPayments: 'payments', VendorPayments: 'payments' }
+        if (!tabBySource[sourceType]) return;
+        glDeepLinkAppliedRef.current = true
+        setActiveTab(tabBySource[sourceType])
+        if (sourceType === 'SalesInvoices' || sourceType === 'VendorBills') {
+            setGlDeepLinkTargetId(sourceId)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    // Runs after every render (no dep array) until the target row's ref
+    // shows up, since it only exists once the right tab is active and the
+    // snapshot has loaded.
+    useEffect(() => {
+        if (!glDeepLinkTargetId) return;
+        const el = bpRowRefs.current[glDeepLinkTargetId]
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('gl-deep-link-highlight')
+        setTimeout(() => el.classList.remove('gl-deep-link-highlight'), 2500)
+        setGlDeepLinkTargetId(null)
+    })
 
     const notify = (message, state = 'success', timeout = 3500) => {
         setAlertState(state)
@@ -614,7 +654,7 @@ const BusinessPartners = () => {
                         <thead><tr><th>Document</th><th>Type</th><th>Customer</th><th>Date</th><th>Source Order</th><th>Total</th><th>Print</th></tr></thead>
                         <tbody>{[...(snapshot.shipments || []), ...snapshot.invoices].slice(0, 50).map((doc) => {
                             const isShipment = !!doc.shipmentNo
-                            return <tr key={doc._id}>
+                            return <tr key={doc._id} ref={(el) => { if (el && doc._id) bpRowRefs.current[String(doc._id)] = el; }}>
                                 <td><strong>{doc.shipmentNo || doc.invoiceNo}</strong></td>
                                 <td>{isShipment ? 'Posted Shipment' : 'Posted Invoice'}</td>
                                 <td>{doc.customerName}</td>
@@ -651,7 +691,7 @@ const BusinessPartners = () => {
                 <div className='bp-table-wrap'>
                     <table className='bp-table'>
                         <thead><tr><th>No</th><th>Vendor</th><th>Date</th><th>Total</th></tr></thead>
-                        <tbody>{snapshot.vendorBills.slice(0, 30).map((doc) => <tr key={doc._id}><td><strong>{doc.billNo}</strong></td><td>{doc.vendorName}</td><td>{doc.postingDate}</td><td>{money(doc.total)}</td></tr>)}</tbody>
+                        <tbody>{snapshot.vendorBills.slice(0, 30).map((doc) => <tr key={doc._id} ref={(el) => { if (el && doc._id) bpRowRefs.current[String(doc._id)] = el; }}><td><strong>{doc.billNo}</strong></td><td>{doc.vendorName}</td><td>{doc.postingDate}</td><td>{money(doc.total)}</td></tr>)}</tbody>
                     </table>
                 </div>
             </section>

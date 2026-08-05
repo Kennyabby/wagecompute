@@ -1,6 +1,7 @@
 import './Assets.css'
 
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { FaBoxes, FaInfoCircle } from 'react-icons/fa'
 import { IoAdd, IoSave, IoCalculator, IoPrint, IoTrash } from 'react-icons/io5'
 import ContextProvider from '../../Resources/ContextProvider'
@@ -102,6 +103,42 @@ const Assets = () => {
     useEffect(() => {
         loadSnapshot()
     }, [loadSnapshot])
+
+    // Deep-link from the General Ledger table (Journals module):
+    // ?openGlSource=FixedAssets:<assetId> selects that asset directly (already
+    // _id-keyed here). AssetDepreciations/AssetDisposals have no equivalent
+    // selection UI yet, so those just land on this page without a highlight.
+    const glLocation = useLocation()
+    const glDeepLinkAppliedRef = useRef(false)
+    const [glDeepLinkTargetId, setGlDeepLinkTargetId] = useState(null)
+    const assetRowRefs = useRef({})
+    useEffect(() => {
+        if (glDeepLinkAppliedRef.current) return;
+        const params = new URLSearchParams(glLocation.search)
+        const openGlSource = params.get('openGlSource') || ''
+        if (!openGlSource.startsWith('FixedAssets:')) return;
+        const targetId = openGlSource.split(':')[1]
+        const match = (snapshot.assets || []).find((a) => String(a._id) === String(targetId))
+        if (match) {
+            glDeepLinkAppliedRef.current = true
+            setActivePanel('asset')
+            selectAsset(match)
+            setGlDeepLinkTargetId(String(match._id))
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [snapshot.assets])
+
+    // Runs after every render (no dep array) until the target row's ref
+    // shows up, since the table only renders once snapshot.assets is loaded.
+    useEffect(() => {
+        if (!glDeepLinkTargetId) return;
+        const el = assetRowRefs.current[glDeepLinkTargetId]
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('gl-deep-link-highlight')
+        setTimeout(() => el.classList.remove('gl-deep-link-highlight'), 2500)
+        setGlDeepLinkTargetId(null)
+    })
 
     const notifySuccess = (message) => {
         setAlertState('success')
@@ -317,7 +354,12 @@ const Assets = () => {
                             </thead>
                             <tbody>
                                 {snapshot.assets.map((asset) => (
-                                    <tr key={asset._id || asset.assetNo} onClick={() => selectAsset(asset)} className={selectedAsset?._id === asset._id ? 'selected' : ''}>
+                                    <tr
+                                        key={asset._id || asset.assetNo}
+                                        onClick={() => selectAsset(asset)}
+                                        className={selectedAsset?._id === asset._id ? 'selected' : ''}
+                                        ref={(el) => { if (el && asset._id) assetRowRefs.current[String(asset._id)] = el; }}
+                                    >
                                         <td><strong>{asset.assetNo || '--'}</strong><span>{asset.name}</span></td>
                                         <td>{asset.groupName || '--'}</td>
                                         <td><span className={`asset-status ${asset.status || 'draft'}`}>{asset.status || 'draft'}</span></td>

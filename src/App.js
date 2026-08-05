@@ -2356,7 +2356,18 @@ function App() {
       // finally apply pending orders (create/update) to override server
       for (const p of pendingOrders) if (p && p.orderNumber) map[p.orderNumber] = p;
 
-      const merged = Object.values(map);
+      // Object.values(map) has no defined order beyond insertion order, which
+      // shifts between calls whenever the server's own tie-break order for
+      // same-createdAt rows isn't identical run to run (or local/pending
+      // records get merged in at different points) — visible as View
+      // Reports' session/order cards and pay-point/location breakdown rows
+      // randomly swapping position on every periodic refresh. Sorting here,
+      // once, right after the merge, makes every consumer's render order
+      // deterministic regardless of how it got assembled.
+      const merged = Object.values(map).sort((a, b) => {
+        const diff = (Number(b?.createdAt) || 0) - (Number(a?.createdAt) || 0);
+        return diff !== 0 ? diff : String(a?.orderNumber || '').localeCompare(String(b?.orderNumber || ''));
+      });
       setPosOrders(merged);
       setAllPosOrders(merged)
       // persist server orders to IndexedDB except those that are pending locally
@@ -2396,7 +2407,13 @@ function App() {
       // finally apply pending orders (create/update) to override server
       for (const p of pendingSessions) if (p && p.start) map[p.start] = p;
 
-      const merged = Object.values(map);
+      // Same non-deterministic-order issue as mergeAndPersistOrders above —
+      // sort once, right after the merge, so session cards stop swapping
+      // position on every periodic refresh.
+      const merged = Object.values(map).sort((a, b) => {
+        const diff = (Number(b?.start) || 0) - (Number(a?.start) || 0);
+        return diff !== 0 ? diff : String(a?._id || '').localeCompare(String(b?._id || ''));
+      });
       setAllSessions(merged);
       setAllSalesSessions(merged.filter(sess => sess.type === 'sales'))
       setAllDeliverySessions(merged.filter(sess => sess.type === 'delivery'))

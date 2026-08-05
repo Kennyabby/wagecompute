@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ContextProvider from '../../Resources/ContextProvider';
 import './PointOfSales.css';
 import { MdShoppingBasket } from 'react-icons/md';
@@ -96,6 +96,27 @@ const PointOfSales = () => {
     const [sessionUser, setSessionUser] = useState(null);
     const [viewSesions, setViewSessions] = useState(false);
     const [loadSession, setLoadSession] = useState(true);
+
+    // Deep-link from the General Ledger table (Journals module):
+    // ?openGlSource=Orders:<orderId>&openGlDate=<postingDate>. This outer
+    // component is what's actually mounted the instant /pos loads
+    // (POSDashboard/"All Sessions" only mounts once viewSesions flips true),
+    // so detection has to live here — it flips viewSesions itself, then
+    // hands the parsed target down as a prop for POSDashboard/
+    // TransactionReports to open View Reports and auto-expand the matching
+    // order card once loaded.
+    const location = useLocation()
+    const [glDeepLink, setGlDeepLink] = useState(null)
+    useEffect(() => {
+        const params = new URLSearchParams(location.search)
+        const openGlSource = params.get('openGlSource')
+        if (!openGlSource) return;
+        const [sourceType, sourceId] = openGlSource.split(':')
+        if (sourceType !== 'Orders') return;
+        setGlDeepLink({ sourceType, sourceId, postingDate: params.get('openGlDate') || '' })
+        setViewSessions(true)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
     const posContainerRef = useRef(null)
     const orderControllerRef = useRef(null)
     const sessionControllerRef = useRef(null)
@@ -4095,6 +4116,7 @@ const PointOfSales = () => {
             {(loadSession || startSession || endSession) && renderSessionEntry()}
             {viewSesions ?
                 <POSDashboard
+                    glDeepLink={glDeepLink}
                     setViewSessions={setViewSessions}
                     setStartSession={setStartSession}
                     setEndSession={setEndSession}
@@ -4885,7 +4907,7 @@ const POSDashboard = ({
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd,
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,currSessionManager, createSessionManager, stopSessionManager,
     fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange, lastActiveSessions,
-    setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories
+    setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories, glDeepLink
 }) => {
     const { fetchServer, server, company, wrhs, formatDateToDefault, settings } = useContext(ContextProvider);
 
@@ -4909,6 +4931,18 @@ const POSDashboard = ({
     const [pendingLoading, setPendingLoading] = useState(false);
     const [pendingError, setPendingError] = useState(null);
     const Navigate = useNavigate()
+
+    // glDeepLink is detected up in the outer PointOfSales component (it has
+    // to be — that's what's mounted the instant /pos loads; this
+    // POSDashboard component only mounts once "All Sessions" is clicked/
+    // viewSesions becomes true, which is too late to catch the query
+    // param on a fresh navigation). Once it arrives as a prop, just open
+    // View Reports — TransactionReports itself does the date-window/
+    // session/order matching via the initialOrderId/initialSessionSourceId/
+    // initialDateHint props already wired up below.
+    useEffect(() => {
+        if (glDeepLink) setShowReports(true)
+    }, [glDeepLink])
 
     useEffect(() => {
         const isAdminUser = companyRecord?.access === 'admin'
@@ -5373,6 +5407,9 @@ const POSDashboard = ({
                         fetchOrdersByRange = {(range)=>{
                             fetchOrdersByRange(company, companyRecord, range)
                         }}
+                        initialOrderId={glDeepLink?.sourceType === 'Orders' ? glDeepLink.sourceId : null}
+                        initialSessionSourceId={glDeepLink?.sourceType === 'POSSessions' ? glDeepLink.sourceId : null}
+                        initialDateHint={glDeepLink?.postingDate || null}
                     />
                 )}
             </div>
