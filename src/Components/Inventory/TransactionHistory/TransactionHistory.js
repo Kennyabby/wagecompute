@@ -10,6 +10,93 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import './TransactionHistory.css';
 
+// Reusable checkbox-list multi-select dropdown for the filter bar. Options
+// can be searched internally (needed for the Product list, which can run
+// into the hundreds) — Location/Transaction Type just render with an empty
+// option set of a few items, so the search box is harmless there too.
+const MultiSelectDropdown = ({ label, options, selected, onChange, placeholder = 'All', searchable = false }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredOptions = searchable && query
+    ? options.filter((opt) => opt.label.toLowerCase().includes(query.toLowerCase()))
+    : options;
+
+  const toggleValue = (value) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter((v) => v !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  };
+
+  const summaryText = () => {
+    if (!selected.length) return placeholder;
+    if (selected.length === 1) {
+      return options.find((o) => o.value === selected[0])?.label || selected[0];
+    }
+    return `${selected.length} selected`;
+  };
+
+  return (
+    <div className="multiselect-wrapper" ref={wrapperRef}>
+      <button
+        type="button"
+        className={`multiselect-trigger${selected.length ? ' has-value' : ''}`}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className="multiselect-trigger-text">{summaryText()}</span>
+        <span className="multiselect-caret">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="multiselect-panel">
+          {searchable && (
+            <input
+              type="text"
+              className="multiselect-search"
+              placeholder={`Search ${label.toLowerCase()}...`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoFocus
+            />
+          )}
+          <div className="multiselect-actions">
+            <button type="button" onClick={() => onChange(options.map((o) => o.value))}>Select all</button>
+            <button type="button" onClick={() => onChange([])}>Clear</button>
+          </div>
+          <div className="multiselect-options">
+            {filteredOptions.length === 0 ? (
+              <div className="multiselect-empty">No matches</div>
+            ) : (
+              filteredOptions.map((opt) => (
+                <label key={opt.value} className="multiselect-option">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(opt.value)}
+                    onChange={() => toggleValue(opt.value)}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const TransactionHistory = () => {
   const {
@@ -28,6 +115,8 @@ const TransactionHistory = () => {
     updateApproval,
     removeApproval,
     getApprovals,
+    inventoryDateRange,
+    setInventoryDateRange,
   } = useContext(ContextProvider);
 
   const [transactions, setTransactions] = useState([]);
@@ -85,15 +174,29 @@ const TransactionHistory = () => {
   const [glDeepLinkScrollTarget, setGlDeepLinkScrollTarget] = useState(null);
   const txRowRefs = useRef({});
 
+  // location/productId/transactionType are arrays now (multi-select) — an
+  // empty array means "no restriction on this facet", matching the old
+  // 'all'/'' sentinels. These same values both build the server query (on
+  // mount and when Apply Filters is clicked) and drive instant client-side
+  // filtering of whatever's already loaded (see displayedTransactions).
+  // Falls back to the shared inventoryDateRange (App.js) — also used by
+  // Stock and Adjustments — so this page's date picker starts showing
+  // whatever range was last actually Applied on any of the three, instead
+  // of independently defaulting to "1st of month to today" every time. A
+  // GL deep-link's date hint still wins when present.
   const [filters, setFilters] = useState({
-    startDate: glDateHint?.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10), // 1st of current month
-    endDate: glDateHint?.endDate || new Date().toISOString().slice(0, 10), // Today
-    location: 'all',
-    productId: '',
-    transactionType: 'all',
+    startDate: glDateHint?.startDate || inventoryDateRange.startDate,
+    endDate: glDateHint?.endDate || inventoryDateRange.endDate,
+    location: [],
+    productId: [],
+    transactionType: [],
     page: 1,
     limit: 50,
   });
+  // Free-text search across orderNumber/product name/date/location/
+  // reference/document number — filters the already-loaded set instantly,
+  // and is cleared (not sent to the server) when Apply Filters is clicked.
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Non-admin date restriction: compute yesterday start and today end bounds
   const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
@@ -320,9 +423,10 @@ const TransactionHistory = () => {
       transactionType,
     } = f || {};
 
-    const loc = location || 'all';
-    const prod = productId || 'all';
-    const type = transactionType || 'all';
+    const serializeArr = (v) => (Array.isArray(v) && v.length ? [...v].sort().join(',') : 'all');
+    const loc = serializeArr(location);
+    const prod = serializeArr(productId);
+    const type = serializeArr(transactionType);
 
     return `tx-history:${db}:${startDate || ''}:${endDate || ''}:${loc}:${prod}:${type}`;
   }, []);
@@ -417,6 +521,19 @@ const TransactionHistory = () => {
     return tx.entryType || tx.documentType || 'Other';
   };
 
+  // Per-unit price the sale actually transacted at, derived from the line's
+  // own totalSales/baseQuantity rather than the product's current
+  // salesPrice/vipPrice — correct regardless of which price list applied
+  // (VIP vs regular) and immune to later price changes. null for non-Sales
+  // rows and for the (rare) shortage-recovery style docs with no baseQuantity.
+  const getUnitSalesPrice = (tx) => {
+    if (!tx || tx.entryType !== 'Sales') return null;
+    const qty = Number(tx.baseQuantity);
+    const sales = Number(tx.totalSales);
+    if (!qty || !Number.isFinite(sales)) return null;
+    return Math.round(Math.abs(sales / qty));
+  };
+
   // Helper function to fetch stock data
   const fetchStockData = async (type, startDate, endDate) => {
     try {
@@ -452,12 +569,12 @@ const TransactionHistory = () => {
       };
 
       // Add filters only if needed
-      if (filters.location && filters.location !== 'all') {
-        query.prop.location = filters.location;
+      if (Array.isArray(filters.location) && filters.location.length) {
+        query.prop.location = { $in: filters.location };
       }
 
-      if (filters.productId) {
-        query.prop.productId = filters.productId;
+      if (Array.isArray(filters.productId) && filters.productId.length) {
+        query.prop.productId = { $in: filters.productId };
       }
 
       // if (filters.transactionType) {
@@ -1083,13 +1200,13 @@ const TransactionHistory = () => {
           {
             $match: {
               postingDate: { $lt: formattedStartDate },
-              ...(location !== 'all' && { location }),
-              ...(productId && { productId }),
-              ...(transactionType !== 'all' && {
+              ...(Array.isArray(location) && location.length && { location: { $in: location } }),
+              ...(Array.isArray(productId) && productId.length && { productId: { $in: productId } }),
+              ...(Array.isArray(transactionType) && transactionType.length && {
                 $or: [
-                  { entryType: transactionType },
-                  { documentType: transactionType }
-                ].filter(Boolean)
+                  { entryType: { $in: transactionType } },
+                  { documentType: { $in: transactionType } }
+                ]
               })
             }
           },
@@ -1215,13 +1332,13 @@ const TransactionHistory = () => {
         collection: 'InventoryTransactions',
         prop: {
           postingDate: { $gte: formattedStartDate, $lte: formattedEndDate },
-          ...(filters.location !== 'all' && { location: filters.location }),
-          ...(filters.productId && { productId: filters.productId }),
-          ...(filters.transactionType !== 'all' && {
+          ...(Array.isArray(filters.location) && filters.location.length && { location: { $in: filters.location } }),
+          ...(Array.isArray(filters.productId) && filters.productId.length && { productId: { $in: filters.productId } }),
+          ...(Array.isArray(filters.transactionType) && filters.transactionType.length && {
             $or: [
-              { entryType: filters.transactionType },
-              { documentType: filters.transactionType }
-            ].filter(Boolean)
+              { entryType: { $in: filters.transactionType } },
+              { documentType: { $in: filters.transactionType } }
+            ]
           })
         },
         project: {
@@ -1322,7 +1439,7 @@ const TransactionHistory = () => {
       // in sync with them, independent of any InventoryTransactions data-
       // integrity issue (duplicate/missing shipment records) that would
       // otherwise need live-data correction to fix.
-      if ((!filters.location || filters.location === 'all') && !filters.productId && typeof products?.glSalesValue === 'number') {
+      if (!(filters.location || []).length && !(filters.productId || []).length && typeof products?.glSalesValue === 'number') {
         summaryData.salesValue = products.glSalesValue;
       }
 
@@ -1404,7 +1521,7 @@ const TransactionHistory = () => {
 
       // Same GL tally as the other summary block above — keeps this path
       // (used on initial/cached load) consistent with the freshly-fetched one.
-      if ((!filters.location || filters.location === 'all') && !filters.productId && typeof products?.glSalesValue === 'number') {
+      if (!(filters.location || []).length && !(filters.productId || []).length && typeof products?.glSalesValue === 'number') {
         summaryData.salesValue = products.glSalesValue;
       }
 
@@ -1635,7 +1752,7 @@ const TransactionHistory = () => {
   // Export to Excel
   const exportToExcel = () => {
     try {
-      const ws = utils.json_to_sheet(transactions.map(tx => ({
+      const ws = utils.json_to_sheet(displayedTransactions.map(tx => ({
         'Date': tx.formattedDate,
         'Type': getTransactionType(tx),
         'Document #': tx.documentNumber,
@@ -1644,7 +1761,9 @@ const TransactionHistory = () => {
         'Running Balance': tx.formattedBalance,
         'Quantity': tx.formattedQuantity,
         'Unit Cost': tx.formattedCost,
+        'Sales Price': getUnitSalesPrice(tx) !== null ? `₦${getUnitSalesPrice(tx).toLocaleString()}` : 'N/A',
         'Total Cost': tx.formattedTotalCost,
+        'Total Sales': tx.totalSales ? `₦${Math.abs(Number(tx.totalSales)).toLocaleString()}` : 'N/A',
         'Reference': tx.reference
       })));
 
@@ -1662,12 +1781,109 @@ const TransactionHistory = () => {
     }
   };
 
+  // Click-to-sort column headers. Clicking the same column again flips
+  // direction; clicking a different column starts it at ascending.
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => (
+      prev.key === key
+        ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'asc' }
+    ));
+  };
+
+  const NUMERIC_SORT_KEYS = new Set(['runningBalance', 'baseQuantity', 'costPrice', 'salesPrice', 'totalCost', 'totalSales']);
+
+  const renderSortableHeader = (label, sortKey) => (
+    <th key={sortKey} className="sortable-th" onClick={() => handleSort(sortKey)}>
+      <span className="sortable-th-inner">
+        {label}
+        <span className={`sort-indicator${sortConfig.key === sortKey ? ' active' : ''}`}>
+          {sortConfig.key === sortKey ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '⇅'}
+        </span>
+      </span>
+    </th>
+  );
+
+  const getSortValue = (tx, key) => {
+    switch (key) {
+      case 'date': return tx.postingDate || '';
+      case 'type': return getTransactionType(tx) || '';
+      case 'documentNumber': return tx.referenceNo || tx.orderNumber || '';
+      case 'product': return tx.name || tx.productId || '';
+      case 'location': return tx.location || '';
+      case 'runningBalance': return Number(tx.runningBalance) || 0;
+      case 'baseQuantity': return Number(tx.baseQuantity) || 0;
+      case 'costPrice': return Number(tx.costPrice) || 0;
+      case 'salesPrice': return getUnitSalesPrice(tx) || 0;
+      case 'totalCost': return Number(tx.totalCost) || 0;
+      case 'totalSales': return Number(tx.totalSales) || 0;
+      case 'reference': return tx.referenceNo || tx.orderNumber || tx.documentType || '';
+      default: return '';
+    }
+  };
+
   // Prepare CSV data
+  // Instant client-side filtering of whatever's already loaded — location/
+  // transactionType/productId/date range/search all apply here immediately
+  // as the user changes them; only Apply Filters goes back to the server
+  // (see handleApplyFilters/fetchTransactionHistory). Sorting (below) is
+  // applied last so pagination, CSV, and Excel exports all reflect whatever
+  // column the user last clicked.
   const displayedTransactions = useMemo(() => {
-    return showDuplicatesOnly
+    let list = showDuplicatesOnly
       ? transactions.filter((tx) => tx.isDuplicate)
       : transactions;
-  }, [transactions, showDuplicatesOnly]);
+
+    if (filters.startDate) {
+      list = list.filter((tx) => !tx.postingDate || tx.postingDate >= filters.startDate);
+    }
+    if (filters.endDate) {
+      list = list.filter((tx) => !tx.postingDate || tx.postingDate <= filters.endDate);
+    }
+    if (Array.isArray(filters.location) && filters.location.length) {
+      list = list.filter((tx) => filters.location.includes(tx.location));
+    }
+    if (Array.isArray(filters.transactionType) && filters.transactionType.length) {
+      list = list.filter((tx) => filters.transactionType.includes(tx.entryType) || filters.transactionType.includes(tx.documentType));
+    }
+    if (Array.isArray(filters.productId) && filters.productId.length) {
+      list = list.filter((tx) => filters.productId.includes(tx.productId));
+    }
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((tx) => {
+        const haystack = [
+          tx.orderNumber,
+          tx.name,
+          tx.productId,
+          tx.location,
+          tx.postingDate,
+          tx.formattedDate,
+          tx.referenceNo,
+          tx.reference,
+          tx.documentNumber,
+          tx.documentType,
+        ].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    if (sortConfig.key) {
+      const dir = sortConfig.direction === 'asc' ? 1 : -1;
+      const isNumeric = NUMERIC_SORT_KEYS.has(sortConfig.key);
+      list = [...list].sort((a, b) => {
+        const va = getSortValue(a, sortConfig.key);
+        const vb = getSortValue(b, sortConfig.key);
+        if (isNumeric) return (va - vb) * dir;
+        return String(va).localeCompare(String(vb), undefined, { sensitivity: 'base' }) * dir;
+      });
+    }
+
+    return list;
+  }, [transactions, showDuplicatesOnly, filters.startDate, filters.endDate, filters.location, filters.transactionType, filters.productId, searchQuery, sortConfig]);
 
   // Client-side pagination
   const totalPages = useMemo(() => Math.max(1, Math.ceil(displayedTransactions.length / rowsPerPage)), [displayedTransactions.length, rowsPerPage]);
@@ -1739,7 +1955,9 @@ const TransactionHistory = () => {
       'Running Balance': tx.runningBalance || 0,
       'Quantity': tx.baseQuantity,
       'Unit Cost': tx.costPrice || 0,
+      'Sales Price': getUnitSalesPrice(tx) || 0,
       'Total Cost': tx.totalCost ? Math.abs(Number(tx.totalCost)) : 0,
+      'Total Sales': tx.totalSales ? Math.abs(Number(tx.totalSales)) : 0,
       'Reference': tx.referenceNo || tx.orderNumber || tx.documentType || 'N/A',
     }));
   }, [displayedTransactions, getTransactionType]);
@@ -1867,6 +2085,13 @@ const TransactionHistory = () => {
     }));
   };
 
+  // Location/Transaction Type/Product multi-selects — updates apply
+  // instantly to whatever's already loaded via displayedTransactions below;
+  // no fetch happens here (that's what the Apply Filters button is for).
+  const handleMultiFilterChange = (name, values) => {
+    setFilters(prev => ({ ...prev, [name]: values, page: 1 }));
+  };
+
   const handleApplyFilters = () => {
     const { startDate, endDate, location, productId, transactionType } = filters;
     // Format dates to ISO strings (YYYY-MM-DD)
@@ -1882,14 +2107,36 @@ const TransactionHistory = () => {
     const formattedStartDate = new Date(effStart).toISOString().split('T')[0];
     const formattedEndDate = new Date(effEnd).toISOString().split('T')[0];
 
+    // The summary cards' figures come from getProductsStockReport (App.js),
+    // which only scopes by a single location/product/transactionType — pass
+    // one through only when exactly one is selected here; leave the cards
+    // unscoped by that facet otherwise (0 or 2+ selected reads as "all" for
+    // the cards specifically, the transaction list below still honors the
+    // full multi-select).
+    const singleLocation = location.length === 1 ? location[0] : null;
+    const singleProductId = productId.length === 1 ? productId[0] : null;
+    const singleTransactionType = transactionType.length === 1 ? transactionType[0] : null;
+
     // Trigger the stock report (which has its own caching in App.js)
     withRequestTimeout(getProductsStockReport(company, products, {
       startDate: formattedStartDate,
       endDate: formattedEndDate,
-      ...(location !== 'all' && { location }),
-      ...(productId && { productId }),
-      ...(transactionType !== 'all' && { transactionType })
+      ...(singleLocation && { location: singleLocation }),
+      ...(singleProductId && { productId: singleProductId }),
+      ...(singleTransactionType && { transactionType: singleTransactionType })
     })).catch(() => {});
+
+    // Share the applied date range with Stock/Adjustments (App.js) so
+    // switching to either of those pages shows this same period instead of
+    // silently defaulting to something else while their numbers already
+    // reflect this fetch (getProductsStockReport writes into the same
+    // shared `products` state every page reads from).
+    setInventoryDateRange({ startDate: formattedStartDate, endDate: formattedEndDate });
+
+    // Clear the free-text search — Apply Filters is specifically about
+    // getting a fresh, server-accurate set for the currently selected
+    // dropdown/date filters, not the ad-hoc text search.
+    setSearchQuery('');
 
     // Always refresh transaction history for the current filters
     fetchTransactionHistory();
@@ -1899,12 +2146,13 @@ const TransactionHistory = () => {
     setFilters({
       startDate: new Date(new Date().setDate(1)).toISOString().slice(0, 10),
       endDate: new Date().toISOString().slice(0, 10),
-      location: 'all',
-      productId: '',
-      transactionType: 'all',
+      location: [],
+      productId: [],
+      transactionType: [],
       page: 1,
       limit: 50,
     });
+    setSearchQuery('');
   };
 
   const formatDate = (dateString) => {
@@ -2021,54 +2269,57 @@ const TransactionHistory = () => {
 
         <div className="filter-group">
           <label>Location</label>
-          <select
-            name="location"
-            value={filters.location}
-            onChange={handleFilterChange}
-            className="select-input"
-          >
-            <option value="all">All Locations</option>
-            {locations.map((loc) => (
-              <option key={loc} value={loc}>
-                {loc}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Location"
+            options={locations.map((loc) => ({ value: loc, label: loc }))}
+            selected={filters.location}
+            onChange={(values) => handleMultiFilterChange('location', values)}
+            placeholder="All Locations"
+          />
         </div>
 
         <div className="filter-group">
           <label>Transaction Type</label>
-          <select
-            name="transactionType"
-            value={filters.transactionType}
-            onChange={handleFilterChange}
-            className="select-input"
-          >
-            <option value="all">All Types</option>
-            <option value="Purchase">Purchase</option>
-            <option value="Sales">Sales</option>
-            <option value="Transfer Shipment">Transfer Out</option>
-            <option value="Transfer Receipt">Transfer In</option>
-            <option value="Positive Entry">Positive Adjustment</option>
-            <option value="Nagative Entry">Negative Adjustment</option>
-          </select>
+          <MultiSelectDropdown
+            label="Transaction Type"
+            options={[
+              { value: 'Purchase', label: 'Purchase' },
+              { value: 'Sales', label: 'Sales' },
+              { value: 'Transfer Shipment', label: 'Transfer Out' },
+              { value: 'Transfer Receipt', label: 'Transfer In' },
+              { value: 'Positive Entry', label: 'Positive Adjustment' },
+              { value: 'Nagative Entry', label: 'Negative Adjustment' },
+            ]}
+            selected={filters.transactionType}
+            onChange={(values) => handleMultiFilterChange('transactionType', values)}
+            placeholder="All Types"
+          />
         </div>
 
         <div className="filter-group">
           <label>Product</label>
-          <select
-            name="productId"
-            value={filters.productId}
-            onChange={handleFilterChange}
-            className="select-input"
-          >
-            <option value="">All Products</option>
-            {products.filter((pr)=>pr.type === 'goods').map(product => (
-              <option key={product.i_d} value={product.i_d}>
-                {product.name} ({product.i_d})
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Product"
+            options={products.filter((pr) => pr.type === 'goods').map((product) => ({ value: product.i_d, label: `${product.name} (${product.i_d})` }))}
+            selected={filters.productId}
+            onChange={(values) => handleMultiFilterChange('productId', values)}
+            placeholder="All Products"
+            searchable
+          />
+        </div>
+
+        <div className="filter-group filter-group-search">
+          <label>Search</label>
+          <div className="date-range">
+            <FaSearch className="search-icon" />
+            <input
+              type="text"
+              className="date-input search-input"
+              placeholder="Order #, product, date, location, reference, document #..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="filter-actions">
@@ -2271,29 +2522,31 @@ const TransactionHistory = () => {
                     />
                   </th>
                 )}
-                <th>Date</th>
-                <th>Type</th>
-                <th>Document #</th>
-                <th>Product</th>
-                <th>Location</th>
-                <th>Running Balance</th>
-                <th>Quantity</th>
-                <th>Unit Cost</th>
-                <th>Total Cost</th>
-                <th>Reference</th>
+                {renderSortableHeader('Date', 'date')}
+                {renderSortableHeader('Type', 'type')}
+                {renderSortableHeader('Document #', 'documentNumber')}
+                {renderSortableHeader('Product', 'product')}
+                {renderSortableHeader('Location', 'location')}
+                {renderSortableHeader('Running Balance', 'runningBalance')}
+                {renderSortableHeader('Quantity', 'baseQuantity')}
+                {renderSortableHeader('Unit Cost', 'costPrice')}
+                {renderSortableHeader('Sales Price', 'salesPrice')}
+                {renderSortableHeader('Total Cost', 'totalCost')}
+                {renderSortableHeader('Total Sales', 'totalSales')}
+                {renderSortableHeader('Reference', 'reference')}
                 {isAdmin && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {loading && displayedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="loading-row">
+                  <td colSpan="13" className="loading-row">
                     Loading transactions...
                   </td>
                 </tr>
               ) : displayedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="no-data">
+                  <td colSpan="13" className="no-data">
                     {loading ? 'Loading...' : 'No transactions found for the selected filters.'}
                   </td>
                 </tr>
@@ -2325,7 +2578,9 @@ const TransactionHistory = () => {
                       {tx.baseQuantity > 0 ? '+' : ''}{tx.baseQuantity}
                     </td>
                     <td>{tx.costPrice ? `₦${Number(tx.costPrice).toLocaleString()}` : 'N/A'}</td>
+                    <td>{getUnitSalesPrice(tx) !== null ? `₦${getUnitSalesPrice(tx).toLocaleString()}` : 'N/A'}</td>
                     <td>{tx.totalCost ? `₦${Math.abs(Number(tx.totalCost)).toLocaleString()}` : 'N/A'}</td>
+                    <td>{tx.totalSales ? `₦${Math.abs(Number(tx.totalSales)).toLocaleString()}` : 'N/A'}</td>
                     <td>
                       {tx.referenceNo || tx.orderNumber || tx.documentType || 'N/A'}
                     </td>

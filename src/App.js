@@ -53,7 +53,8 @@ import {
 // Single source of truth for the API base URL: set REACT_APP_API_URL in the
 // environment used for each build (CRA inlines REACT_APP_* vars at build time).
 // Falls back to localhost only for local dev when the var isn't set.
-const SERVER = process.env.REACT_APP_API_URL || "http://localhost:3001"
+// const SERVER = process.env.REACT_APP_API_URL || "http://localhost:3001"
+const SERVER = process.env.REACT_APP_API_URL || "https://api.epxcentral.com"
 if (process.env.NODE_ENV === 'production' && SERVER.includes('localhost')) {
   // Loud, unmissable warning rather than a silent guaranteed-to-fail deploy —
   // a real build-time check belongs in CI, but this catches it at runtime too.
@@ -264,6 +265,16 @@ function App() {
   const [nextSales, setNextSales] = useState(null)
   const [allSessions, setAllSessions] = useState([])
   const [products, setProducts] = useState([])
+  // Shared across Inventory's Overview/Transaction History, Stock, and
+  // Adjustments pages — each has its own "Apply Filters" button, but they
+  // all read from and write to this single date range so that applying a
+  // new range in one page updates what the others show/report too, instead
+  // of one page's numbers silently reflecting a different period than what
+  // its own date picker still displays.
+  const [inventoryDateRange, setInventoryDateRange] = useState({
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10),
+    endDate: new Date().toISOString().slice(0, 10)
+  })
   // The global SSE subscription effect below has [company, companyRecord] as
   // its only deps (re-subscribing on every products change would tear down
   // and reopen the EventSource constantly) — its message handler therefore
@@ -3934,6 +3945,7 @@ function App() {
         nextSales, setNextSales,
         products, setProducts, getProducts,
         getProductsWithStock, getProductsStockReport,
+        inventoryDateRange, setInventoryDateRange,
         accommodations, setAccommodations, getAccommodations,
         purchase, setPurchase, getPurchase,
         expenses, setExpenses, getExpenses,

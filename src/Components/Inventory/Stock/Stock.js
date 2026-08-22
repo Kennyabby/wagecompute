@@ -25,16 +25,32 @@ const Stock = ({
         setAlert, setAlertState, setAlertTimeout, intervalPeriod,
         products, setProducts, settings, company, companyRecord,
           runApprovalWorkFlow, approvals, getApprovals, allowBacklogs,
+        inventoryDateRange, setInventoryDateRange,
     } = useContext(ContextProvider);
     const intervalRef = useRef(null);
     const [warehouses, setWarehouses] = useState([]);
     const [categories, setCategories] = useState([]);
 
-    // Initialize date range with first day of current month as start date and current date as end date
-    const [dateRange, setDateRange] = useState({
-        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10), // First day of current month
-        endDate: new Date().toISOString().slice(0, 10) // Today
-    });
+    // `dateRange` is the live draft bound to the date inputs, seeded from the
+    // shared `inventoryDateRange` (App.js) each time this page mounts —
+    // changing it no longer fetches anything by itself. The shared range
+    // itself is what's actually been fetched; it only changes when Apply
+    // Filters is clicked here (or on Stock/Adjustments/Overview, all three
+    // pages read and write the same value), and is what the periodic
+    // background refresh interval re-fetches on. Since only one of these
+    // Inventory tabs is ever mounted at a time, applying a new range on one
+    // and switching to another picks it up automatically via this same
+    // useState initializer, keeping every page's date picker honest about
+    // what period its numbers actually cover. Warehouse/Category/Search stay
+    // pure client-side filters over whatever's already loaded — no server
+    // round-trip needed for those.
+    const [dateRange, setDateRange] = useState(inventoryDateRange);
+    // 'idle' | 'loading' | 'success' | 'error' — drives the status section
+    // next to the Apply Filters button; 'loading' also gates the button
+    // against duplicate clicks so a slow request can't be fired twice.
+    const [applyStatus, setApplyStatus] = useState('idle');
+    const [applyMessage, setApplyMessage] = useState('');
+    const applyStatusTimeoutRef = useRef(null);
 
     // Non-admin date restriction: if not admin and no allowBacklogs permission, restrict to yesterday-today
     const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
@@ -127,7 +143,7 @@ const Stock = ({
             await Promise.all([
                 getWarehouses(),
                 getCategories(),
-                getProductsStockReport(cmp_val, products, { startDate: dateRange.startDate, endDate: dateRange.endDate })
+                getProductsStockReport(cmp_val, products, { startDate: inventoryDateRange.startDate, endDate: inventoryDateRange.endDate })
             ]);
         } catch (e) { }
     }
@@ -226,6 +242,9 @@ const Stock = ({
     //     endDate: dateRange.endDate
     // }), [dateRange.startDate.getTime(), dateRange.endDate.getTime()]);
 
+    // Periodic background refresh — re-fetches on whatever date range was
+    // last actually Applied, not the live draft in the date inputs, so
+    // typing/picking a new date doesn't itself trigger a server call.
     useEffect(() => {
         const cmp_val = window.localStorage.getItem('sessn-cmp');
         if (!isTransferClicked) {
@@ -234,13 +253,13 @@ const Stock = ({
             }
             if (cmp_val && products.length) {
                 getProductsStockReport(cmp_val, products, {
-                    startDate: dateRange.startDate,
-                    endDate: dateRange.endDate
+                    startDate: inventoryDateRange.startDate,
+                    endDate: inventoryDateRange.endDate
                 });
                 intervalRef.current = setInterval(() => {
                     getProductsStockReport(cmp_val, products, {
-                        startDate: dateRange.startDate,
-                        endDate: dateRange.endDate
+                        startDate: inventoryDateRange.startDate,
+                        endDate: inventoryDateRange.endDate
                     });
                 }, intervalPeriod);
             }
@@ -254,15 +273,30 @@ const Stock = ({
                 clearInterval(intervalRef.current);
             }
         }
-    }, [window.localStorage.getItem('sessn-cmp'), isTransferClicked, dateRange]);
+    }, [window.localStorage.getItem('sessn-cmp'), isTransferClicked, inventoryDateRange]);
 
-    // Clamp dateRange for non-admin users on mount
+    // Clamp dateRange/inventoryDateRange for non-admin users on mount
     useEffect(() => {
         if (companyRecord && isNonAdmin) {
             const bounds = getNonAdminDateBounds();
             setDateRange(prev => ({ ...prev, startDate: bounds.start, endDate: bounds.end }));
+            setInventoryDateRange(prev => ({ ...prev, startDate: bounds.start, endDate: bounds.end }));
         }
     }, [companyRecord, allowBacklogs]);
+
+    // Auto-clear the Apply Filters success/error status after a few seconds;
+    // 'loading' clears itself when the request settles, not on a timer.
+    useEffect(() => {
+        if (applyStatus !== 'success' && applyStatus !== 'error') return;
+        if (applyStatusTimeoutRef.current) clearTimeout(applyStatusTimeoutRef.current);
+        applyStatusTimeoutRef.current = setTimeout(() => {
+            setApplyStatus('idle');
+            setApplyMessage('');
+        }, 4000);
+        return () => {
+            if (applyStatusTimeoutRef.current) clearTimeout(applyStatusTimeoutRef.current);
+        };
+    }, [applyStatus]);
 
     // useEffect(() => {
     //     if (products){
@@ -333,8 +367,8 @@ const Stock = ({
                     if (products && products.length) {
                         // Use getProductsStockReport instead of getProductsWithStock
                         getProductsStockReport(company, products, {
-                            startDate: dateRange.startDate,
-                            endDate: dateRange.endDate
+                            startDate: inventoryDateRange.startDate,
+                            endDate: inventoryDateRange.endDate
                         });
                         // console.log(productsWithStock)
                         // Update products with the stock data
@@ -354,33 +388,8 @@ const Stock = ({
         };
 
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [company]);
-
-    useEffect(() => {
-        const updateStockData = async () => {
-            if (company && products.length) {
-                setIsLoading(true);
-                try {
-                    getProductsStockReport(company, products, {
-                        startDate: dateRange.startDate,
-                        endDate: dateRange.endDate
-                    });
-                    // if (updatedProducts) {
-                    //     setProducts(updatedProducts);
-                    // }
-                } catch (error) {
-                    console.error('Error updating stock data:', error);
-                    setAlertState('error');
-                    setAlert('Failed to update inventory data');
-                    setAlertTimeout(2000);
-                } finally {
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        updateStockData();
-    }, [dateRange]);
 
     const handleInputChange = ({ e, productId, costPrice }) => {
         const { name, value } = e.target;
@@ -525,8 +534,8 @@ const Stock = ({
                     setFromWarehouse('');
                     setToWarehouse('');
                     getProductsStockReport(company, products, {
-                        startDate: dateRange.startDate,
-                        endDate: dateRange.endDate
+                        startDate: inventoryDateRange.startDate,
+                        endDate: inventoryDateRange.endDate
                     })
                     getApprovals(company, companyRecord)
                     resetCount();
@@ -581,6 +590,60 @@ const Stock = ({
         }
         if (newEnd < newStart) newEnd = newStart;
         setDateRange({ startDate: newStart, endDate: newEnd });
+    };
+
+    const withApplyTimeout = (promise, timeoutMs = 60000) => {
+        let timeoutId;
+        const timeout = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+        });
+        return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+    };
+
+    // Apply Filters: the only thing here that actually needs a server round
+    // trip is the date range (Warehouse/Category/Search already filter the
+    // already-loaded products instantly, client-side). Guarded by
+    // applyStatus === 'loading' so a double-click (or an impatient second
+    // click) can't fire a second overlapping request.
+    const handleApplyFilters = async () => {
+        if (applyStatus === 'loading') return;
+        let newStart = dateRange.startDate;
+        let newEnd = dateRange.endDate;
+        if (isNonAdmin) {
+            const bounds = getNonAdminDateBounds();
+            if (newStart < bounds.start) newStart = bounds.start;
+            if (newEnd > bounds.end) newEnd = bounds.end;
+        }
+        if (newEnd < newStart) newEnd = newStart;
+        const nextRange = { startDate: newStart, endDate: newEnd };
+
+        setSearchTerm('');
+        setDateRange(nextRange);
+        setInventoryDateRange(nextRange);
+        setApplyStatus('loading');
+        setApplyMessage('Fetching updated data...');
+
+        try {
+            await withApplyTimeout(getProductsStockReport(company, products, {
+                startDate: nextRange.startDate,
+                endDate: nextRange.endDate
+            }));
+            setApplyStatus('success');
+            setApplyMessage('Data updated successfully.');
+        } catch (error) {
+            console.error('Apply Filters failed:', error);
+            setApplyStatus('error');
+            // getProductsStockReport swallows its own internal errors (shows
+            // its own alert and resolves normally) — a rejection reaching
+            // here is almost always this request's own timeout firing on a
+            // heavy/wide date range, so surface the real reason instead of a
+            // generic message.
+            setApplyMessage(
+                error?.message === 'Request timed out'
+                    ? 'Timed out waiting for the server — try a narrower date range.'
+                    : `Failed to fetch updated data${error?.message ? `: ${error.message}` : '.'}`
+            );
+        }
     };
 
     // Format currency values
@@ -736,7 +799,7 @@ const Stock = ({
                 visibleData,
                 exportColumns,
                 getCompanyInfo(),
-                dateRange,
+                inventoryDateRange,
                 'Stock Report',
                 filters
             );
@@ -807,7 +870,7 @@ const Stock = ({
                 visibleData,
                 exportColumns,
                 getCompanyInfo(),
-                dateRange,
+                inventoryDateRange,
                 'Stock Report',
                 filters
             );
@@ -952,7 +1015,7 @@ const Stock = ({
                     Filters
                 </div>
                 <div className='filter-row'>
-                    <div className="filter-group">
+                    <div className="filter-group filter-group-daterange">
                         <label>Date Range</label>
                         <div className="date-range">
                             <input
@@ -1017,7 +1080,7 @@ const Stock = ({
                             </select>
                         </div>
                     </div>
-                    
+
                     <div className='filter-group'>
                         <label>Search Product</label>
                         <input
@@ -1028,6 +1091,22 @@ const Stock = ({
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                </div>
+                <div className="filter-apply-row">
+                    <button
+                        type="button"
+                        className="apply-filters-btn"
+                        onClick={handleApplyFilters}
+                        disabled={applyStatus === 'loading'}
+                    >
+                        {applyStatus === 'loading' ? 'Applying...' : 'Apply Filters'}
+                    </button>
+                    {applyStatus !== 'idle' && (
+                        <span className={`filter-apply-status filter-apply-status-${applyStatus}`}>
+                            {applyStatus === 'loading' && <span className="filter-apply-spinner" />}
+                            {applyMessage}
+                        </span>
+                    )}
                 </div>
             </div>
 
