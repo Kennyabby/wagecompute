@@ -18,6 +18,7 @@ const Adjustments = ({
         setAlert, setAlertState, setAlertTimeout, getProductsStockReport,
         products, company, companyRecord, setProducts, getProducts,
         settings, exportFile, importFile,
+        inventoryDateRange, setInventoryDateRange,
     } = useContext(ContextProvider)
     const intervalRef = useRef(null);
     const productsRef = useRef(products);
@@ -54,12 +55,17 @@ const Adjustments = ({
     const [isLoading, setIsLoading] = useState(false)
     const [hasLoadedAdjustments, setHasLoadedAdjustments] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
-    const [dateRange, setDateRange] = useState({
-        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
-        endDate: new Date().toISOString().slice(0, 10)
-    })
+    // `dateRange` is the live draft bound to the date inputs, seeded from the
+    // shared `inventoryDateRange` (App.js) each time this page mounts — same
+    // split as Stock.js, and the same shared value, so applying a new range
+    // on Stock/Overview and switching to Adjustments picks it up automatically.
+    const [dateRange, setDateRange] = useState(inventoryDateRange)
+    // 'idle' | 'loading' | 'success' | 'error'
+    const [applyStatus, setApplyStatus] = useState('idle')
+    const [applyMessage, setApplyMessage] = useState('')
+    const applyStatusTimeoutRef = useRef(null)
 
-    const withRequestTimeout = (promise, timeoutMs = 25000) => {
+    const withRequestTimeout = (promise, timeoutMs = 60000) => {
         let timeoutId;
         const timeout = new Promise((_, reject) => {
             timeoutId = setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
@@ -77,7 +83,10 @@ const Adjustments = ({
         }
         try {
             setIsLoading(true)
-            await withRequestTimeout(getProductsStockReport(cmp_val, latestProducts))
+            await withRequestTimeout(getProductsStockReport(cmp_val, latestProducts, {
+                startDate: inventoryDateRange.startDate,
+                endDate: inventoryDateRange.endDate
+            }))
             setHasLoadedAdjustments(true)
         } catch (e) {
             setHasLoadedAdjustments(true)
@@ -133,7 +142,20 @@ const Adjustments = ({
                 }
             }
         }
-    }, [window.localStorage.getItem('sessn-cmp'), isNewEntry]);
+    }, [window.localStorage.getItem('sessn-cmp'), isNewEntry, inventoryDateRange]);
+
+    // Auto-clear the Apply Filters success/error status after a few seconds.
+    useEffect(() => {
+        if (applyStatus !== 'success' && applyStatus !== 'error') return;
+        if (applyStatusTimeoutRef.current) clearTimeout(applyStatusTimeoutRef.current);
+        applyStatusTimeoutRef.current = setTimeout(() => {
+            setApplyStatus('idle');
+            setApplyMessage('');
+        }, 4000);
+        return () => {
+            if (applyStatusTimeoutRef.current) clearTimeout(applyStatusTimeoutRef.current);
+        };
+    }, [applyStatus]);
 
     const handleSyncOfflineAdjustments = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -146,7 +168,10 @@ const Adjustments = ({
             const cmp_val = window.localStorage.getItem('sessn-cmp');
             if (!products) return
             await Promise.all([
-                withRequestTimeout(getProductsStockReport(cmp_val, products))
+                withRequestTimeout(getProductsStockReport(cmp_val, products, {
+                    startDate: inventoryDateRange.startDate,
+                    endDate: inventoryDateRange.endDate
+                }))
             ]).catch(() => { });
             if (Array.isArray(results)) {
                 const failed = results.filter(r => r.status === 'error');
@@ -320,6 +345,46 @@ const Adjustments = ({
         setIsSaveValue(false)
     }
 
+    // Apply Filters: Warehouse/Category/Search already filter the
+    // already-loaded products instantly, client-side — this is specifically
+    // what re-fetches from the server for a new date range. Guarded by
+    // applyStatus === 'loading' so duplicate clicks can't fire overlapping
+    // requests.
+    const handleApplyFilters = async () => {
+        if (applyStatus === 'loading') return;
+        const nextRange = { startDate: dateRange.startDate, endDate: dateRange.endDate };
+        if (nextRange.endDate < nextRange.startDate) nextRange.endDate = nextRange.startDate;
+
+        setSearchTerm('');
+        setDateRange(nextRange);
+        setInventoryDateRange(nextRange);
+        setApplyStatus('loading');
+        setApplyMessage('Fetching updated data...');
+
+        try {
+            const cmp_val = window.localStorage.getItem('sessn-cmp');
+            await withRequestTimeout(getProductsStockReport(cmp_val, products, {
+                startDate: nextRange.startDate,
+                endDate: nextRange.endDate
+            }));
+            setApplyStatus('success');
+            setApplyMessage('Data updated successfully.');
+        } catch (error) {
+            console.error('Apply Filters failed:', error);
+            setApplyStatus('error');
+            // getProductsStockReport swallows its own internal errors (shows
+            // its own alert and resolves normally) — a rejection reaching
+            // here is almost always this request's own timeout firing on a
+            // heavy/wide date range, so surface the real reason instead of a
+            // generic message.
+            setApplyMessage(
+                error?.message === 'Request timed out'
+                    ? 'Timed out waiting for the server — try a narrower date range.'
+                    : `Failed to fetch updated data${error?.message ? `: ${error.message}` : '.'}`
+            );
+        }
+    };
+
     return (
         <>
             <div className='adjustments'>
@@ -336,7 +401,7 @@ const Adjustments = ({
                         Filters
                     </div>
                     <div className='filter-row'>
-                        <div className='filter-group'>
+                        <div className='filter-group filter-group-daterange'>
                             <label>Date Range</label>
                             <div className='date-range'>
                                 <input
@@ -414,6 +479,22 @@ const Adjustments = ({
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
+                    </div>
+                    <div className="filter-apply-row">
+                        <button
+                            type="button"
+                            className="apply-filters-btn"
+                            onClick={handleApplyFilters}
+                            disabled={applyStatus === 'loading'}
+                        >
+                            {applyStatus === 'loading' ? 'Applying...' : 'Apply Filters'}
+                        </button>
+                        {applyStatus !== 'idle' && (
+                            <span className={`filter-apply-status filter-apply-status-${applyStatus}`}>
+                                {applyStatus === 'loading' && <span className="filter-apply-spinner" />}
+                                {applyMessage}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className='adj-right-header'>

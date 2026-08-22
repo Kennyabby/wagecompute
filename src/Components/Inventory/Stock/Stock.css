@@ -324,6 +324,17 @@
     min-width: 220px;
 }
 
+/* The date-range grid below needs ~340px to lay out both inputs without
+   clipping/overflowing (2 x 145px inputs + the "to" label + gaps) — without
+   this, .filter-group's generic 220px min-width lets flexbox squeeze this
+   group smaller than its grid content actually needs, and the overflow
+   visually bleeds into the next filter group (Warehouse) instead of wrapping
+   to a new line. */
+.filter-group-daterange {
+    flex: 1.4;
+    min-width: 340px;
+}
+
 .filter-group label {
     display: block;
     margin-bottom: 8px;
@@ -371,9 +382,77 @@
 }
 
 .filter-section .date-input:hover,
-.filter-section .filter-select:hover, 
+.filter-section .filter-select:hover,
 .filter-section .filter-input:hover {
     border-color: rgba(23, 56, 41, 0.2);
+}
+
+.filter-apply-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 20px 20px;
+}
+
+.apply-filters-btn {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 10px;
+    background-color: #173829;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'MontserratBold', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(23, 56, 41, 0.15);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.apply-filters-btn:hover:not(:disabled) {
+    background-color: #2b6a4b;
+    transform: translateY(-1px);
+}
+
+.apply-filters-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.filter-apply-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'MontserratRegular', sans-serif;
+}
+
+.filter-apply-status-loading {
+    color: rgba(23, 56, 41, 0.55);
+}
+
+.filter-apply-status-success {
+    color: #1f8a4c;
+}
+
+.filter-apply-status-error {
+    color: #c0392b;
+}
+
+.filter-apply-spinner {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(23, 56, 41, 0.2);
+    border-top-color: #173829;
+    animation: filterApplySpin 0.7s linear infinite;
+    display: inline-block;
+}
+
+@keyframes filterApplySpin {
+    to { transform: rotate(360deg); }
 }
 
 .stock-table-shell {
@@ -629,6 +708,10 @@
     .filter-row {
         flex-direction: column;
         gap: 16px;
+    }
+    .filter-group-daterange {
+        min-width: 0;
+        width: 100%;
     }
     .filter-section .date-range {
         grid-template-columns: 1fr;

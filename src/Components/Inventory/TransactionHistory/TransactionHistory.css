@@ -73,6 +73,181 @@
   margin-top: 0;
 }
 
+/* Multi-select filter dropdown (Location / Transaction Type / Product) */
+.multiselect-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.multiselect-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid rgba(23, 56, 41, 0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: 'MontserratRegular', sans-serif;
+  color: rgba(23, 56, 41, 0.45);
+  background: #f8faf9;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.multiselect-trigger.has-value {
+  color: #173829;
+  font-family: 'MontserratBold', sans-serif;
+}
+
+.multiselect-trigger:hover,
+.multiselect-trigger:focus {
+  border-color: #2b6a4b;
+  background: white;
+  outline: none;
+}
+
+.multiselect-trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiselect-caret {
+  font-size: 9px;
+  margin-left: 8px;
+  color: rgba(23, 56, 41, 0.4);
+}
+
+.multiselect-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  min-width: 240px;
+  max-width: 320px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(23, 56, 41, 0.16);
+  border: 1px solid rgba(23, 56, 41, 0.08);
+  padding: 10px;
+}
+
+.multiselect-search {
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border: 1.5px solid rgba(23, 56, 41, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'MontserratRegular', sans-serif;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.multiselect-search:focus {
+  border-color: #2b6a4b;
+}
+
+.multiselect-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(23, 56, 41, 0.08);
+}
+
+.multiselect-actions button {
+  background: none;
+  border: none;
+  color: #2b6a4b;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'MontserratBold', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.multiselect-actions button:hover {
+  text-decoration: underline;
+}
+
+.multiselect-options {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.multiselect-panel label.multiselect-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: 'MontserratRegular', sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #173829;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.multiselect-option:hover {
+  background: #f8faf9;
+}
+
+.multiselect-option input[type="checkbox"] {
+  cursor: pointer;
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
+.multiselect-option span {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiselect-empty {
+  padding: 10px 8px;
+  font-size: 12px;
+  color: rgba(23, 56, 41, 0.4);
+  text-align: center;
+}
+
+.filter-group-search {
+  min-width: 260px;
+  flex: 1.5;
+}
+
+.search-input {
+  padding-left: 34px !important;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: rgba(23, 56, 41, 0.35);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.filter-group-search .date-range {
+  position: relative;
+}
+
 .btn {
   padding: 10px 20px;
   border: none;
@@ -429,6 +604,33 @@
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 1px;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.sortable-th:hover {
+  color: #173829;
+  background-color: rgba(23, 56, 41, 0.05);
+}
+
+.sortable-th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-indicator {
+  font-size: 9px;
+  opacity: 0.35;
+}
+
+.sort-indicator.active {
+  opacity: 1;
+  color: #2b6a4b;
 }
 
 .transactions-table tbody tr {
