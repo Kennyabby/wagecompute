@@ -639,6 +639,19 @@ function App() {
                 })
               }
               break;
+            case 'SessionManagers':
+              // Session Manager start/stop (the POS "All Sessions" board's
+              // day-level gate) previously only refreshed on mount/login —
+              // other open tabs/terminals wouldn't see a Start/Stop until
+              // reload. Merging the broadcast doc here feeds PointOfSales'
+              // existing [sessionManagers]-keyed effect that derives
+              // currSessionManager, so it now updates live like POSSessions.
+              try {
+                setSessionManagers((prev) => applySseCollectionChange(prev, payload));
+              } catch (e) {
+                console.error('SSE SessionManagers apply error', e);
+              }
+              break;
             case 'Products':
               try {
                 setProducts((prev) => {
@@ -2189,7 +2202,6 @@ function App() {
       if (cached) {
         setPaymentReceipts(cached)
       }
-      const paymentPoints = paymentMethods.map((method) => method.name)
       const recoveryReceipts = []
       const accommodationReceipts = []
       const posOrderReceipts = []
@@ -2199,21 +2211,25 @@ function App() {
       if (sales.length) {
         sales?.forEach((sale) => {
           (sale.recoveryList || []).forEach((recovery) => {
-            if (paymentPoints.includes(recovery.recoveryPoint)) {
-              let dateVar = new Date(recovery.recoveryDate).toISOString().slice(0, 10)
-              if (dateVar >= dateBoundary) {
-                recoveryReceipts.push({
-                  paymentModule: 'recovery',
-                  paymentPoint: recovery.recoveryPoint,
-                  paymentAmount: Number(recovery.recoveryAmount),
-                  paymentReceipt: Number(recovery.recoveryReceipt) || recovery.recoveryReceipt,
-                  paymentFor: `For ${sale.postingDate} Debt`,
-                  paymentDate: recovery.recoveryDate,
-                  paymentHandler: recovery.recoveryEmployeeId,
-                  paymentModuleRef: sale.createdAt,
-                  paymentApprover: 'Default'
-                })
-              }
+            // No longer gated on "is this payPoint one of the CURRENTLY
+            // configured payment method names" — a payment method renamed in
+            // Settings (e.g. adding an account number suffix) after this
+            // recovery was recorded made the exact-name check fail forever,
+            // silently dropping real historical payments from this report.
+            // What actually happened shouldn't depend on today's Settings.
+            let dateVar = new Date(recovery.recoveryDate).toISOString().slice(0, 10)
+            if (dateVar >= dateBoundary) {
+              recoveryReceipts.push({
+                paymentModule: 'recovery',
+                paymentPoint: recovery.recoveryPoint,
+                paymentAmount: Number(recovery.recoveryAmount),
+                paymentReceipt: Number(recovery.recoveryReceipt) || recovery.recoveryReceipt,
+                paymentFor: `For ${sale.postingDate} Debt`,
+                paymentDate: recovery.recoveryDate,
+                paymentHandler: recovery.recoveryEmployeeId,
+                paymentModuleRef: sale.createdAt,
+                paymentApprover: 'Default'
+              })
             }
           })
         })
@@ -2221,20 +2237,18 @@ function App() {
       if (accommodations.length) {
         accommodations?.forEach((acc) => {
           let dateVar = new Date(acc.postingDate).toISOString().slice(0, 10)
-          if (paymentPoints.includes(acc.payPoint)) {
-            if (dateVar >= dateBoundary) {
-              accommodationReceipts.push({
-                paymentModule: 'accommodation',
-                paymentPoint: acc.payPoint,
-                paymentAmount: Number(acc.paymentAmount),
-                paymentReceipt: Number(acc.paymentReceipt) || acc.paymentReceipt,
-                paymentFor: `For Room ${acc.roomNo}`,
-                paymentDate: acc.postingDate,
-                paymentHandler: acc.employeeId,
-                paymentModuleRef: acc.createdAt,
-                paymentApprover: 'Default'
-              })
-            }
+          if (dateVar >= dateBoundary) {
+            accommodationReceipts.push({
+              paymentModule: 'accommodation',
+              paymentPoint: acc.payPoint,
+              paymentAmount: Number(acc.paymentAmount),
+              paymentReceipt: Number(acc.paymentReceipt) || acc.paymentReceipt,
+              paymentFor: `For Room ${acc.roomNo}`,
+              paymentDate: acc.postingDate,
+              paymentHandler: acc.employeeId,
+              paymentModuleRef: acc.createdAt,
+              paymentApprover: 'Default'
+            })
           }
         })
       }
@@ -2243,31 +2257,29 @@ function App() {
         allPosOrders?.forEach((order) => {
           if (order.salesPosts && order.status !== 'cancelled') {
             Object.keys(order.salesPosts).forEach((payPoint) => {
-              if (paymentPoints.includes(payPoint)) {
-                // if (!order.createdAt){
-                //   console.log(order, order.createdAt)
-                // }
-                let dateVar = order.createdAt ? new Date(order.createdAt).toISOString().slice(0, 10) : dateBoundary
-                if (dateVar >= dateBoundary) {
-                  const location = order.salesPosts[payPoint]
-                  const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]
-                  const amount = Number(order[payPoint])
-                  const session = allSessions?.find(session => (session.start === order.sessionId))
-                  const sessionApprover = session?.endedby || 'Active Session'
-                  posOrderReceipts.push({
-                    paymentModule: `POS Order-${location}`,
-                    paymentPoint: payPoint,
-                    paymentAmount: amount,
-                    paymentReceipt: Number(receiptNo) || receiptNo,
-                    paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
-                    paymentTable: order.tableId,
-                    paymentOrder: order.orderNumber,
-                    paymentDate: dateVar,
-                    paymentHandler: order.handlerId,
-                    paymentModuleRef: order.createdAt,
-                    paymentApprover: sessionApprover
-                  })
-                }
+              // if (!order.createdAt){
+              //   console.log(order, order.createdAt)
+              // }
+              let dateVar = order.createdAt ? new Date(order.createdAt).toISOString().slice(0, 10) : dateBoundary
+              if (dateVar >= dateBoundary) {
+                const location = order.salesPosts[payPoint]
+                const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]
+                const amount = Number(order[payPoint])
+                const session = allSessions?.find(session => (session.start === order.sessionId))
+                const sessionApprover = session?.endedby || 'Active Session'
+                posOrderReceipts.push({
+                  paymentModule: `POS Order-${location}`,
+                  paymentPoint: payPoint,
+                  paymentAmount: amount,
+                  paymentReceipt: Number(receiptNo) || receiptNo,
+                  paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
+                  paymentTable: order.tableId,
+                  paymentOrder: order.orderNumber,
+                  paymentDate: dateVar,
+                  paymentHandler: order.handlerId,
+                  paymentModuleRef: order.createdAt,
+                  paymentApprover: sessionApprover
+                })
               }
             })
           }

@@ -14,6 +14,7 @@ import { FaPlus } from "react-icons/fa";
 import { FaTableCells, FaPrint } from 'react-icons/fa6'
 import { FaAngleDown, FaAngleUp } from "react-icons/fa";
 import ExpensesReport from './ExpensesReport/ExpensesReport'
+import { exportExpenseDocumentToPDF } from '../DashView/pdfUtils'
 import { postWithResumability, usePostingOperationProgress } from '../../Resources/postingOperations';
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 
@@ -92,6 +93,7 @@ const Expenses = () => {
         || companyRecord?.permissions?.includes('all')
         || companyRecord?.permissions?.includes('approve_postexpense')
 
+    const emptyExpenseLine = { description: '', quantity: 1, unitPrice: '' }
     const defaultFields = {
         expensesDepartment: '',
         expensesHandler: '',
@@ -100,6 +102,13 @@ const Expenses = () => {
         expensesBank: '',
         expensesVendor: '',
         expensesDescription: '',
+        // Line items replace the old free-text-only description — each
+        // line's amount is derived (quantity * unitPrice), never entered
+        // directly, and the sum must equal expensesAmount before posting
+        // (enforced in addExpenses). expensesDescription is still populated
+        // (auto-joined from these lines) since deriveExpenseEntries and
+        // ExpensesReport already read it for the GL note/summary.
+        expenseLines: [{ ...emptyExpenseLine }],
     }
 
     const [payPoints, setPayPoints] = useState([])
@@ -284,6 +293,31 @@ const Expenses = () => {
         }
     }
 
+    const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
+
+    const updateExpenseLine = (index, field, value) => {
+        setFields((prev) => {
+            const lines = [...(prev.expenseLines || [])]
+            lines[index] = { ...lines[index], [field]: value }
+            return { ...prev, expenseLines: lines }
+        })
+    }
+
+    const addExpenseLine = () => {
+        setFields((prev) => ({ ...prev, expenseLines: [...(prev.expenseLines || []), { ...emptyExpenseLine }] }))
+    }
+
+    const removeExpenseLine = (index) => {
+        setFields((prev) => {
+            const lines = (prev.expenseLines || []).filter((_, i) => i !== index)
+            return { ...prev, expenseLines: lines.length ? lines : [{ ...emptyExpenseLine }] }
+        })
+    }
+
+    const getExpenseLinesTotal = (lines = []) => round2(
+        lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0)
+    )
+
     const handleViewClick = (exp) => {
         setIsView(true)
         setCurApproval(null)
@@ -363,9 +397,30 @@ const Expenses = () => {
         if (fields.expensesAmount && fields.expenseCategory &&
             fields.expensesDepartment && fields.expensesHandler &&
             fields.expensesVendor && fields.expensesBank
-        ) {            
+        ) {
+            const lines = (fields.expenseLines || []).filter((line) => line.description || Number(line.quantity) || Number(line.unitPrice))
+            if (!lines.length) {
+                setAlertState('error')
+                setAlert('Add at least one item line (Description, Qty, Unit Price).')
+                setAlertTimeout(4000)
+                return
+            }
+            const linesTotal = getExpenseLinesTotal(lines)
+            const expenseAmount = round2(fields.expensesAmount)
+            if (Math.abs(linesTotal - expenseAmount) > 0.01) {
+                setAlertState('error')
+                setAlert(`Item lines total ₦${linesTotal.toLocaleString()} but Expenses Amount is ₦${expenseAmount.toLocaleString()} — they must match before posting.`)
+                setAlertTimeout(6000)
+                return
+            }
+            // expensesDescription is auto-derived from the lines (rather than
+            // typed separately) — deriveExpenseEntries (GL note) and
+            // ExpensesReport still read this field, so keep it populated.
+            const derivedDescription = lines.map((line) => line.description).filter(Boolean).join(', ')
+            const nextFields = { ...fields, expenseLines: lines, expensesDescription: derivedDescription || fields.expensesDescription }
+            setFields(nextFields)
             const newExpense = {
-                ...fields,
+                ...nextFields,
                 postingDate: expensesDate,
                 createdAt: Date.now()
             }
@@ -466,6 +521,38 @@ const Expenses = () => {
             jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
+    };
+
+    // PO is available as soon as the expense exists; Payment Invoice too —
+    // per the confirmed one-step flow, an Expense settles in full the moment
+    // it's submitted, so there's no separate "mark as paid" gate here (unlike
+    // Purchase, which now has one). Both print together once saved.
+    const printExpenseDocument = async (expenseRecord, type) => {
+        setAlertState('info')
+        setAlert('Generating expense document...')
+        setAlertTimeout(100000)
+        try {
+            await exportExpenseDocumentToPDF({
+                type,
+                title: type === 'expenseInvoice' ? 'PAYMENT INVOICE' : 'PURCHASE ORDER',
+                companyRecord,
+                fields: expenseRecord,
+                entries: expenseRecord.expenseLines || [],
+                expenseDate: expenseRecord.postingDate,
+                curApproval,
+                getDate,
+                server,
+                fetchServer,
+            })
+            setAlertState('success')
+            setAlert('Document generated successfully!')
+            setAlertTimeout(1000)
+        } catch (error) {
+            console.error('Error generating expense document:', error)
+            setAlertState('error')
+            setAlert('Failed to generate expense document. Please try again.')
+            setAlertTimeout(5000)
+        }
     };
 
     const approvalExpenseRecords = expenseApprovals.map((approval) => ({
@@ -731,6 +818,13 @@ const Expenses = () => {
                                                 onClick={(e) => { printToPDF(e) }}
                                             />
                                         }
+                                        {(curExpense?.createdAt === createdAt && curExpense.showDetails) &&
+                                            (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && (
+                                            <div className='purchase-doc-print-actions' onClick={(e) => e.stopPropagation()}>
+                                                <button type='button' onClick={() => printExpenseDocument(exp, 'expensePO')}>Print PO</button>
+                                                <button type='button' onClick={() => printExpenseDocument(exp, 'expenseInvoice')}>Print Invoice</button>
+                                            </div>
+                                        )}
                                         {(curExpense?.createdAt === createdAt && curExpense.showDetails) ?
                                             (<FaAngleUp
                                                 className='desc-btn-bottom'
@@ -899,16 +993,59 @@ const Expenses = () => {
                                 })}
                             </select>
                         </div>
-                        <div className='inpcov'>
-                            <div>Description of Item</div>
-                            <textarea
-                                className='forminp  exparea'
-                                name='expensesDescription'
-                                type='text'
-                                placeholder='Description of Item'
-                                value={fields.expensesDescription}
-                                disabled={isView}
-                            />
+                        <div className='inpcov' style={{ gridColumn: '1 / -1' }}>
+                            <div>Items</div>
+                            <div className='exp-lines-table'>
+                                <div className='exp-lines-header' style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr auto', gap: '8px', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '6px' }}>
+                                    <div>Description</div>
+                                    <div>Qty</div>
+                                    <div>Unit Price</div>
+                                    <div>Amount</div>
+                                    <div></div>
+                                </div>
+                                {(fields.expenseLines || []).map((line, index) => (
+                                    <div key={index} className='exp-line-row' style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr auto', gap: '8px', marginBottom: '6px' }}>
+                                        <input
+                                            className='forminp'
+                                            placeholder='Description'
+                                            value={line.description}
+                                            disabled={isView}
+                                            onChange={(e) => updateExpenseLine(index, 'description', e.target.value)}
+                                        />
+                                        <input
+                                            className='forminp'
+                                            type='number'
+                                            placeholder='Qty'
+                                            value={line.quantity}
+                                            disabled={isView}
+                                            onChange={(e) => updateExpenseLine(index, 'quantity', e.target.value)}
+                                        />
+                                        <input
+                                            className='forminp'
+                                            type='number'
+                                            placeholder='Unit Price'
+                                            value={line.unitPrice}
+                                            disabled={isView}
+                                            onChange={(e) => updateExpenseLine(index, 'unitPrice', e.target.value)}
+                                        />
+                                        <input
+                                            className='forminp'
+                                            value={((Number(line.quantity) || 0) * (Number(line.unitPrice) || 0)).toLocaleString()}
+                                            disabled
+                                        />
+                                        {!isView && (fields.expenseLines || []).length > 1 && (
+                                            <button type='button' className='edit' onClick={() => removeExpenseLine(index)}>✕</button>
+                                        )}
+                                    </div>
+                                ))}
+                                {!isView && (
+                                    <button type='button' className='exp-line-add-btn' onClick={addExpenseLine}>+ Add Item</button>
+                                )}
+                                <div style={{ marginTop: '8px', fontWeight: 'bold' }}>
+                                    Items Total: ₦{getExpenseLinesTotal(fields.expenseLines || []).toLocaleString()}
+                                    {' '}(must match Expenses Amount below)
+                                </div>
+                            </div>
                         </div>
                         <div className='inpcov'>
                             <div>Expenses Amount</div>

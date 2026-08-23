@@ -487,3 +487,203 @@ export async function exportPurchaseDocumentToPDF({
   const filename = `${fileTitle}_${formatValue(getDate(documentDate)).replace(/\s+/g, '_') || 'DOCUMENT'}.pdf`;
   doc.save(filename);
 }
+
+// Same visual scaffold as exportPurchaseDocumentToPDF (company header/logo,
+// title, date/party block, line-item table, grand total, signature) but for
+// Expenses' actual shape — free-text description/qty/unit-price lines
+// (expenseLines) rather than a product-catalog lookup, and Vendor/Department/
+// Category/Handler fields instead of Purchase's. `type` is 'expensePO' or
+// 'expenseInvoice' — the invoice variant additionally shows the payment
+// method used (expensesBank); the PO variant doesn't, since nothing's been
+// paid yet at PO time.
+export async function exportExpenseDocumentToPDF({
+  type = 'expensePO',
+  title = 'PURCHASE ORDER',
+  companyRecord = {},
+  fields = {},
+  entries = [],
+  expenseDate = '',
+  curApproval = null,
+  getDate = (value) => value || '',
+  server = null,
+  fetchServer = null
+}) {
+  let centralCompany = null;
+  try {
+    if (fetchServer && server) {
+      const cpResp = await fetchServer('POST', {}, 'getCompanyProfile', server);
+      if (cpResp && !cpResp.err && cpResp.record) centralCompany = cpResp.record;
+    }
+  } catch (e) { /* ignore */ }
+
+  const logoUrl = centralCompany?.logoUrl || companyRecord?.logoUrl;
+  const signatureUrl = centralCompany?.signatureUrl || companyRecord?.signatureUrl;
+
+  const doc = new jsPDF({ orientation: 'portrait' });
+  const marginLeft = 10;
+  const marginRight = 10;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const contentWidth = pageWidth - marginLeft - marginRight;
+  const rowHeight = 8;
+  let y = 12;
+
+  const logoBase64 = await loadImageAsBase64(logoUrl);
+  const signatureBase64 = await loadImageAsBase64(signatureUrl);
+
+  const formatValue = (value) => (value === undefined || value === null ? '' : String(value));
+  const formatCurrency = (value) => {
+    const amount = Number(value || 0);
+    return amount ? `${amount.toLocaleString()}` : '0';
+  };
+
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', marginLeft, y, 20, 20);
+    } catch (e) {
+      console.warn('Failed to add logo to PDF:', e);
+    }
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  const titleX = logoBase64 ? marginLeft + 25 : marginLeft;
+  doc.text(title, titleX, y + 6);
+  y += 24;
+
+  const documentDate = expenseDate || fields.postingDate || '';
+  const vendorName = fields.expensesVendor || '';
+  const department = fields.expensesDepartment || '';
+  const category = fields.expenseCategory || '';
+  const handler = fields.expensesHandler || '';
+  const totalAmount = fields.expensesAmount || 0;
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(formatValue(companyRecord.name || 'COMPANY NAME'), marginLeft, y);
+  y += rowHeight;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  if (companyRecord.address) {
+    doc.text(formatValue(companyRecord.address), marginLeft, y);
+    y += rowHeight;
+  }
+  const contactLine = [companyRecord.phone || companyRecord.mobile, companyRecord.email].filter(Boolean).join(' | ');
+  if (contactLine) {
+    doc.text(contactLine, marginLeft, y);
+    y += rowHeight;
+  }
+
+  y += 4;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Document: ${formatValue(fields.createdAt || curApproval?.createdAt || 'N/A')}`, marginLeft, y);
+  doc.text(`Date: ${formatValue(getDate(documentDate))}`, pageWidth - marginRight, y, { align: 'right' });
+  y += rowHeight;
+  doc.text(`Vendor/Payee: ${vendorName}`, marginLeft, y);
+  doc.text(`Department: ${department}`, pageWidth - marginRight, y, { align: 'right' });
+  y += rowHeight;
+  doc.text(`Category: ${category}`, marginLeft, y);
+  doc.text(`Handler: ${formatValue(handler)}`, pageWidth - marginRight, y, { align: 'right' });
+  y += rowHeight;
+  if (type === 'expenseInvoice') {
+    doc.text(`Payment Method: ${formatValue(fields.expensesBank)}`, marginLeft, y);
+    doc.text(`Total Amount: ${formatCurrency(totalAmount)}`, pageWidth - marginRight, y, { align: 'right' });
+  } else {
+    doc.text(`Total Amount: ${formatCurrency(totalAmount)}`, pageWidth - marginRight, y, { align: 'right' });
+  }
+  y += rowHeight;
+
+  if (curApproval?.approved) {
+    doc.text(`Approved By: ${formatValue(curApproval.approvedBy || '')}`, marginLeft, y);
+    y += rowHeight;
+  }
+
+  y += 6;
+
+  const headers = ['Description', 'Qty', 'Unit Price', 'Amount'];
+  const colWidths = [96, 24, 33, 43];
+  let x = marginLeft;
+  doc.setFillColor(25, 118, 210);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  headers.forEach((heading, index) => {
+    doc.rect(x, y, colWidths[index], rowHeight, 'F');
+    doc.text(String(heading), x + 2, y + 6);
+    x += colWidths[index];
+    doc.setFillColor(25, 118, 210);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+  });
+  y += rowHeight;
+
+  doc.setFontSize(9);
+  doc.setTextColor(40, 40, 40);
+
+  const sanitizeText = (text, maxLength) => {
+    const value = formatValue(text);
+    return value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value;
+  };
+
+  let lineTotalSum = 0;
+  const visibleEntries = Array.isArray(entries) ? entries.filter((entry) => entry && (entry.description || entry.quantity || entry.unitPrice)) : [];
+  visibleEntries.forEach((entry) => {
+    if (y > 270) {
+      doc.addPage();
+      y = 18;
+    }
+    x = marginLeft;
+    const quantity = Number(entry.quantity) || 0;
+    const unitPrice = Number(entry.unitPrice) || 0;
+    const lineAmount = quantity * unitPrice;
+    const rowValues = [
+      sanitizeText(entry.description || '', 46),
+      formatValue(quantity),
+      formatCurrency(unitPrice),
+      formatCurrency(lineAmount)
+    ];
+    rowValues.forEach((value, index) => {
+      doc.rect(x, y, colWidths[index], rowHeight);
+      doc.text(String(value), x + 2, y + 6);
+      x += colWidths[index];
+    });
+    y += rowHeight;
+    lineTotalSum += lineAmount;
+  });
+
+  if (!visibleEntries.length) {
+    x = marginLeft;
+    doc.rect(x, y, contentWidth, rowHeight);
+    doc.text('No item lines available for this document.', x + 2, y + 6);
+    y += rowHeight;
+  }
+
+  y += 8;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Grand Total: ${formatCurrency(lineTotalSum || totalAmount)}`, marginLeft, y);
+
+  if (type === 'expenseInvoice') {
+    y += rowHeight;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('PAID', marginLeft, y);
+  }
+
+  if (curApproval?.approved && signatureBase64) {
+    y += 24;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Authorized Signature:', marginLeft, y);
+    y += 2;
+    try {
+      doc.addImage(signatureBase64, 'PNG', marginLeft, y, 40, 16);
+    } catch (e) {
+      console.warn('Failed to add signature to PDF:', e);
+    }
+  }
+
+  const fileTitle = title.replace(/\s+/g, '_').toUpperCase();
+  const filename = `${fileTitle}_${formatValue(getDate(documentDate)).replace(/\s+/g, '_') || 'DOCUMENT'}.pdf`;
+  doc.save(filename);
+}

@@ -611,6 +611,15 @@ const Delivery = () => {
 
     const getSessionSales = (orders) => {
         const payPointList = Object.keys(payPoints)
+        // See PointOfSales.js's getSessionSales for why: an order paid under
+        // a payment method's prior name (before a rename in Settings) still
+        // has its amount stored on that old field.
+        const paymentKeysByPoint = {}
+        payPointList.forEach((payPoint) => {
+            const method = (paymentMethods || []).find((m) => m.name === payPoint)
+            const aliases = Array.isArray(method?.aliases) ? method.aliases : []
+            paymentKeysByPoint[payPoint] = [payPoint, ...aliases]
+        })
         const allSales = {}
         var totalCashChange = 0
         var totalPendingSales = 0
@@ -629,7 +638,9 @@ const Delivery = () => {
                     }
                 } else {
                     payPointList.forEach((payPoint) => {
-                        allSales[payPoint] += Number(order[payPoint] || 0)
+                        paymentKeysByPoint[payPoint].forEach((key) => {
+                            allSales[payPoint] += Number(order[key] || 0)
+                        })
                     })
                 }
                 totalCashChange += Number(order.cashChange || 0)

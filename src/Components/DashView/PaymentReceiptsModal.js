@@ -356,7 +356,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
               >
                 {!multiPaypoint && <option value="">All</option>}
                 {paypoints.map(p => (
-                  <option key={p} value={p}>{payPointAccounts[p]}</option>
+                  <option key={p} value={p}>{payPointAccounts[p] || p}</option>
                 ))}
               </select>
               <label style={{ fontSize: '0.95em', color: '#1976d2' }}>
@@ -569,7 +569,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                         return (
                           <tr key={receiptNum + '-' + idx} style={{ background: '#fff' }}>
                             <td style={{ padding: '8px', border: '1px solid #90caf9', fontWeight: 'bold' }}>{r.paymentModule.toUpperCase()}</td>
-                            <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{payPointAccounts[r.paymentPoint]}</td>
+                            <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{payPointAccounts[r.paymentPoint] || r.paymentPoint}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>₦{Number(r.paymentAmount).toLocaleString()}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.paymentReceipt}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{new Date(r.paymentDate).toLocaleDateString()}</td>
@@ -597,7 +597,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                         return (
                           <tr key={idx} style={{ background: '#fff' }}>
                             <td style={{ padding: '8px', border: '1px solid #90caf9', fontWeight: 'bold' }}>{r.paymentModule.toUpperCase()}</td>
-                            <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{payPointAccounts[r.paymentPoint]}</td>
+                            <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{payPointAccounts[r.paymentPoint] || r.paymentPoint}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>₦{Number(r.paymentAmount).toLocaleString()}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.paymentReceipt}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{new Date(r.paymentDate).toLocaleDateString()}</td>
