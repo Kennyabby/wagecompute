@@ -445,6 +445,40 @@
     font-weight: 700;
 }
 
+.exp-line-add-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(23, 56, 41, 0.14);
+    background: #174f37;
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+.purchase-doc-print-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.purchase-doc-print-actions button {
+    border: 1px solid rgba(22, 59, 43, 0.14);
+    border-radius: 12px;
+    background: #174f37;
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+    padding: 8px 12px;
+}
+
 .expenses-page .purinfocontent {
     flex: 1;
     width: calc(100% - 40px);

@@ -411,7 +411,7 @@ const Purchase = () => {
     }, [approvals])
 
     useEffect(() => {
-        if (companyRecord?.permissions.includes('postPurchase') || companyRecord?.status === 'admin') {
+        if ((companyRecord?.permissions || []).includes('postPurchase') || companyRecord?.status === 'admin') {
             setIsApprover(true)
         }
     }, [companyRecord])
@@ -656,7 +656,7 @@ const Purchase = () => {
                 }
             }
             if (curApproval && curApproval?.approved) {
-                if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_purchase_posts')) {
+                if (companyRecord?.status !== 'admin' && !(companyRecord?.permissions || []).includes('allow_purchase_posts')) {
                     setAlertState('error')
                     setAlert('You are not allowed to post purchases!')
                     setAlertTimeout(3000)
@@ -902,15 +902,24 @@ const Purchase = () => {
         return settledAt < PAYMENT_TRACKING_CUTOVER
     }
 
+    // Purchase.paymentStatus/paidAmount are written directly onto the
+    // document server-side (businessPartners.js's syncPurchasePaymentStatus)
+    // the moment a payment posts, so they're already correct in the very
+    // first fetch of the purchase list — no need to wait on the separate
+    // purchasePaidTotals aggregation, which was the cause of every purchase
+    // visibly flashing UNPAID (the default) until that second round trip
+    // resolved. purchasePaidTotals is kept only as a fallback for purchases
+    // predating this field (before the one-time backfill/this deploy).
     const getPurchaseRemainingBalance = (pur) => {
         if (wasAutoSettledLegacy(pur)) return 0
         const amount = Number(pur?.purchaseAmount) || 0
-        const paid = Number(purchasePaidTotals[pur?.createdAt]) || 0
+        const paid = pur?.paymentStatus !== undefined ? (Number(pur?.paidAmount) || 0) : (Number(purchasePaidTotals[pur?.createdAt]) || 0)
         return Math.round((amount - paid) * 100) / 100
     }
 
     const getPurchasePaymentStatus = (pur) => {
         if (wasAutoSettledLegacy(pur)) return 'PAID'
+        if (pur?.paymentStatus !== undefined) return pur.paymentStatus
         const paid = Number(purchasePaidTotals[pur?.createdAt]) || 0
         const amount = Number(pur?.purchaseAmount) || 0
         if (paid <= 0) return 'UNPAID'
@@ -1092,6 +1101,7 @@ const Purchase = () => {
                     fetchServer={fetchServer}
                     isSubmittingPurchase={isSubmittingPurchase}
                     setIsSubmittingPurchase={setIsSubmittingPurchase}
+                    paymentStatus={getPurchasePaymentStatus(curPurchase)}
                 />}
                 {showReport && <PurchaseReport
                     reportPurchases={reportPurchase}
@@ -1651,7 +1661,7 @@ export default Purchase
 const AddProduct = ({
     products, category, purchaseDate, setPurchaseDate, fields, setFields, curPurchase, setProductAdd, uoms, isProductView, setIsProductView,
     handleProductPurchase, purchaseEntries, setPurchaseEntries, companyRecord, curApproval, server, fetchServer,
-    isSubmittingPurchase, setIsSubmittingPurchase,
+    isSubmittingPurchase, setIsSubmittingPurchase, paymentStatus,
 }) => {
     const [productSearch, setProductSearch] = useState('')
     const [nullFieldsCount, setNullFieldsCount] = useState(0)
@@ -1812,10 +1822,16 @@ const AddProduct = ({
                         <div>
                             <label>Product Purchase Details</label>
                         </div>
-                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && <div className='purchase-doc-print-actions'>
+                        {(companyRecord?.status === 'admin' || (companyRecord?.permissions || []).includes('print_purchase_doc')) && <div className='purchase-doc-print-actions'>
                             <button type='button' onClick={() => printToPDF('purchaseOrder')}>Print PO</button>
-                            <button type='button' onClick={() => printToPDF('grn')}>Print GRN</button>
-                            <button type='button' onClick={() => printToPDF('purchaseInvoice')}>Print Invoice</button>
+                            {/* GRN only exists once goods have actually been received. */}
+                            {['posted', null, undefined].includes(fields.stage) && (
+                                <button type='button' onClick={() => printToPDF('grn')}>Print GRN</button>
+                            )}
+                            {/* Invoice only exists once at least one payment has been recorded. */}
+                            {paymentStatus !== 'UNPAID' && (
+                                <button type='button' onClick={() => printToPDF('purchaseInvoice')}>Print Invoice</button>
+                            )}
                         </div>}
                     </div>
                     <div className='add-products-button'>
@@ -1940,7 +1956,7 @@ const AddProduct = ({
                                     <div key={index} className='add-products-content-entry'>
                                         <div>{entry.name}</div>
                                         <div>{entry.productId}</div>
-                                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('allow_purchase_posts')) && curApproval &&
+                                        {(companyRecord?.status === 'admin' || (companyRecord?.permissions || []).includes('allow_purchase_posts')) && curApproval &&
                                             <div>{currentStock}</div>
                                         }
                                         <div>

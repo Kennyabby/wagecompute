@@ -2169,6 +2169,7 @@ const Journals = () => {
                                 {renderMappingSelect(modules.inventory?.payableAccount, (value) => updateMappingField('inventory', 'payableAccount', value), 'Inventory Payable')}
                                 {renderMappingSelect(modules.inventory?.costOfSalesAccount, (value) => updateMappingField('inventory', 'costOfSalesAccount', value), 'Cost of Sales')}
                                 {renderMappingSelect(modules.inventory?.adjustmentAccount, (value) => updateMappingField('inventory', 'adjustmentAccount', value), 'Adjustment Account')}
+                                {renderMappingSelect(modules.inventory?.shortageReceivableAccount, (value) => updateMappingField('inventory', 'shortageReceivableAccount', value), 'Shortage Receivable')}
                             </div>
                         </div>
 
@@ -2221,6 +2222,7 @@ const Journals = () => {
                                 {renderMappingSelect(modules.payroll?.salaryExpenseAccount, (value) => updateMappingField('payroll', 'salaryExpenseAccount', value), 'Salary Expense')}
                                 {renderMappingSelect(modules.payroll?.salaryPayableAccount, (value) => updateMappingField('payroll', 'salaryPayableAccount', value), 'Salary Payable')}
                                 {renderMappingSelect(modules.payroll?.employeeReceivableAccount, (value) => updateMappingField('payroll', 'employeeReceivableAccount', value), 'Employee Receivable')}
+                                {renderMappingSelect(modules.payroll?.penaltyIncomeAccount, (value) => updateMappingField('payroll', 'penaltyIncomeAccount', value), 'Penalty Income')}
                             </div>
                         </div>
 

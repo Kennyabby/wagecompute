@@ -683,6 +683,18 @@ const PointOfSales = () => {
 
     const getSessionSales = (orders) => {
         const payPointList = Object.keys(payPoints)
+        // An order paid under a payment method's prior name (before it was
+        // renamed in Settings) still has its amount stored on that old field
+        // — summing only `order[payPoint]` under the CURRENT name would
+        // silently drop that order's amount out of the session total the
+        // moment the method is renamed, even though the payment itself never
+        // changed.
+        const paymentKeysByPoint = {}
+        payPointList.forEach((payPoint) => {
+            const method = (paymentMethods || []).find((m) => m.name === payPoint)
+            const aliases = Array.isArray(method?.aliases) ? method.aliases : []
+            paymentKeysByPoint[payPoint] = [payPoint, ...aliases]
+        })
         const allSales = {}
         var totalCashChange = 0
         var totalPendingSales = 0
@@ -712,7 +724,9 @@ const PointOfSales = () => {
                         totalPendngDeliveries += Number(order.totalSales || 0)
                     }
                     payPointList.forEach((payPoint) => {
-                        allSales[payPoint] += Number(order[payPoint] || 0)
+                        paymentKeysByPoint[payPoint].forEach((key) => {
+                            allSales[payPoint] += Number(order[key] || 0)
+                        })
                     })
                 }
                 totalCashChange += Number(order.cashChange || 0)
@@ -4926,7 +4940,6 @@ const POSDashboard = ({
     const [activeSessions, setActiveSessions] = useState([])
     const [filteredSessions, setFilteredSessions] = useState(null);
     const [sessionsState, setSessionsState] = useState('general');
-    const [reconciliationRecord, setReconciliationRecord] = useState(null)
 
     const [showPendingModal, setShowPendingModal] = useState(false);
     const [pendingChanges, setPendingChanges] = useState([]);
@@ -5027,56 +5040,6 @@ const POSDashboard = ({
             }
         })()
     }, [])
-
-    useEffect(()=>{
-        // `useEffect`'s callback must be sync (it may return a cleanup
-        // function; an async function instead returns a Promise, which React
-        // can't call as cleanup) — the async work is wrapped in an inner
-        // function and invoked immediately instead of marking the effect
-        // itself `async`.
-        const checkReconciliation = async () => {
-            // Reconciliation isn't required at all if the admin has disabled
-            // it, or hasn't selected any locations for it, in Settings.
-            if (!reconciliationEnabled || !reconciliationRequiredLocations.length) {
-                setReconciliationRecord({})
-                return
-            }
-            if (currSessionManager && getSessionEnd(currSessionManager?.start) <= new Date().getTime()){
-                const postingDate = formatDateToDefault(currSessionManager?.start)
-                let resp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
-                if (resp?.err) {
-                    // A transient network/auth hiccup (e.g. the access token
-                    // refreshing) shouldn't be treated the same as "reconciliation
-                    // genuinely not done" — that was blocking session end on a
-                    // request failure that had nothing to do with whether the
-                    // reconciliation was actually saved. One quick retry first,
-                    // then fail OPEN (don't block) rather than closed if it's
-                    // still failing — the reconciliation posting itself is still
-                    // enforced server-side; this is just a soft client-side
-                    // reminder, so wrongly blocking someone from ending their
-                    // shift is worse than occasionally skipping the reminder.
-                    await new Promise((resolve) => setTimeout(resolve, 1200))
-                    resp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
-                }
-                if (resp?.err) {
-                    setAlertState('error')
-                    setAlert(resp?.mess || 'Could not verify inventory reconciliation status — allowing session end without blocking.')
-                    setAlertTimeout(6000)
-                    setReconciliationRecord({ unverified: true })
-                    return
-                }
-                // `exists` only means a reconciliation doc was created for
-                // this date, not that every required location was
-                // reconciled — one saved location was enough to pass this
-                // check before, letting sessions end while other locations'
-                // stock was never counted.
-                const recordLocations = new Set((resp?.record?.locations || []).map((loc) => loc.location))
-                const isComplete = !!resp?.exists && reconciliationRequiredLocations.every((name) => recordLocations.has(name))
-                setReconciliationRecord(isComplete ? resp.record : null)
-            }
-        }
-        checkReconciliation()
-    },[currSessionManager, reconciliationEnabled, reconciliationRequiredLocations.join(',')])
 
     const loadPendingOfflineChanges = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -5293,11 +5256,47 @@ const POSDashboard = ({
                                                                         setAlert('This User Still Has Pending Delivery(s) for Order(s) that have been paid for. Please place all deliveries before proceeding!')
                                                                         setAlertTimeout(3000)
                                                                     }
-                                                                    if (!reconciliationRecord){
-                                                                        viewModal = false
-                                                                        setAlertState('error')
-                                                                        setAlert('Inventory Reconciliation Pending. Please Save Closing Stock for yesterday before ending session!')
-                                                                        setAlertTimeout(3000)
+                                                                    if (reconciliationEnabled && reconciliationRequiredLocations.length) {
+                                                                        // Checked against the specific session's own
+                                                                        // business day (not whatever the currently
+                                                                        // active Session Manager happens to be) — a
+                                                                        // lingering session from a prior day needs
+                                                                        // that day's stock reconciled, regardless of
+                                                                        // whether a newer Session Manager has since
+                                                                        // been started for today. Fetched fresh right
+                                                                        // here rather than relying on a background
+                                                                        // effect's cached state, which could sit
+                                                                        // stale (or never populate at all) depending
+                                                                        // on which Session Manager was "current" at
+                                                                        // the time it last ran.
+                                                                        const postingDate = formatDateToDefault(employeeSession.start)
+                                                                        let reconResp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
+                                                                        if (reconResp?.err) {
+                                                                            await new Promise((resolve) => setTimeout(resolve, 1200))
+                                                                            reconResp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
+                                                                        }
+                                                                        if (reconResp?.err) {
+                                                                            // Fail open on a verification failure — the
+                                                                            // reconciliation posting itself is still
+                                                                            // enforced server-side; wrongly blocking a
+                                                                            // session end is worse than occasionally
+                                                                            // skipping this soft client-side reminder.
+                                                                            setAlertState('error')
+                                                                            setAlert(reconResp?.mess || 'Could not verify inventory reconciliation status — allowing session end without blocking.')
+                                                                            setAlertTimeout(6000)
+                                                                        } else {
+                                                                            const recordLocations = new Set((reconResp?.record?.locations || []).map((loc) => loc.location))
+                                                                            const missingLocations = reconciliationRequiredLocations.filter((name) => !recordLocations.has(name))
+                                                                            if (!reconResp?.exists || missingLocations.length) {
+                                                                                viewModal = false
+                                                                                setAlertState('error')
+                                                                                const gapDetail = missingLocations.length
+                                                                                    ? ` Still missing for ${postingDate}: ${missingLocations.join(', ')}.`
+                                                                                    : ` Nothing saved yet for ${postingDate}.`
+                                                                                setAlert(`Inventory Reconciliation Pending. Please Save Closing Stock before ending session!${gapDetail}`)
+                                                                                setAlertTimeout(6000)
+                                                                            }
+                                                                        }
                                                                     }
                                                                 }
                                                             }

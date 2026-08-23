@@ -980,9 +980,23 @@ const Settings = () => {
                         }, 3000)
                     }
                 } else {
+                    // Every module that records a payment (Orders, POS/Delivery
+                    // session totals, GL posting, reports) stores it keyed by
+                    // this method's `name` string at the time the payment was
+                    // made — there's no stable id on those historical records.
+                    // Renaming the method here would silently orphan all of
+                    // that prior data (it'd stop showing up anywhere, and stop
+                    // posting to the right GL account) unless the old name is
+                    // preserved as an alias so lookups can still find it.
                     const updatedPaymentMethods = paymentMethods.map((method) => {
                         if (method.i_d === curPropSet.i_d) {
-                            return curPropSet
+                            const previousName = method.name
+                            const nameChanged = previousName && previousName !== curPropSet.name
+                            const aliases = Array.isArray(method.aliases) ? [...method.aliases] : []
+                            if (nameChanged && !aliases.includes(previousName)) {
+                                aliases.push(previousName)
+                            }
+                            return { ...curPropSet, aliases }
                         }
                         return method
                     })
