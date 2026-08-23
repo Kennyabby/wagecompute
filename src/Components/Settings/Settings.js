@@ -95,9 +95,26 @@ const Settings = () => {
         name: '',
         type: '',
         account: '',
-        isSalesAccount: false,
-        isExpenseAccount: false,
+        // Which modules this payment method is available for — replaces the
+        // old isSalesAccount/isExpenseAccount booleans with a real per-module
+        // assignment so, e.g., a bank account used only for rent collection
+        // doesn't also show up as a Product Sales checkout option.
+        modules: [],
+        // Whether Purchase/Expenses/Vendor payments from this account are
+        // allowed to go through even if the account's GL balance can't
+        // cover them. Defaults to true (unrestricted) to match today's
+        // actual behavior — no balance check exists until an admin
+        // explicitly turns this off for a specific account. Journal
+        // postings never consult this field at all.
+        allowOverdraft: true,
     }
+    const PAYMENT_METHOD_MODULES = [
+        { value: 'productSales', label: 'Product Sales' },
+        { value: 'accommodationSales', label: 'Accommodation Sales' },
+        { value: 'rentalSales', label: 'Rental Sales' },
+        { value: 'purchase', label: 'Purchase' },
+        { value: 'expense', label: 'Expense' },
+    ]
     const defaultPosSettings = {
         name: '',
         type: '',
@@ -184,8 +201,16 @@ const Settings = () => {
                         case 'warehouses':
                             setting.desc = 'Warehouses'
                             setting.prop = 'warehouses'
-                            setCurPropSet(defaultWarehouse)
-                            setCurrentSetting(setting)
+                            // Only pick Warehouses as the default landing
+                            // section on first load (currentSetting still
+                            // null) — this whole block re-runs every time
+                            // `settings` refreshes (i.e. after every save),
+                            // and without this guard it was jumping back to
+                            // Warehouses after saving anywhere else.
+                            if (!currentSetting) {
+                                setCurPropSet(defaultWarehouse)
+                                setCurrentSetting(setting)
+                            }
                             return setting.desc
                         case 'paymentMethods':
                             setting.desc = 'Payment Methods'
@@ -207,6 +232,20 @@ const Settings = () => {
                 }
             })
             setSettingGroups(groups)
+
+            // Whatever section is currently open needs to point at the
+            // freshly-reloaded object (not the one from before the save),
+            // otherwise the list on screen (currentSetting[currentSetting.prop])
+            // keeps showing pre-save data until you navigate away and back.
+            // Only for the normal list-based sections (the switch above
+            // tagged them with a `.prop`) — posReconciliation and other
+            // one-off sidebar entries build their own currentSetting object
+            // and aren't part of this array-backed list.
+            setCurrentSetting((prev) => {
+                if (!prev) return prev
+                const fresh = settings.find((s) => s.name === prev.name)
+                return (fresh && fresh.prop) ? fresh : prev
+            })
 
             const uomSetFilt = settings.filter((setting) => {
                 return setting.name === 'uom'
@@ -756,6 +795,15 @@ const Settings = () => {
         const { name, type, value, checked } = e.target
         setCurPropSet((curPropSet) => {
             return { ...curPropSet, [name]: type === 'checkbox' ? checked : value }
+        })
+    }
+    const toggleCurPropSetModule = (moduleValue) => {
+        setCurPropSet((prev) => {
+            const mods = prev.modules || []
+            return {
+                ...prev,
+                modules: mods.includes(moduleValue) ? mods.filter((m) => m !== moduleValue) : [...mods, moduleValue]
+            }
         })
     }
 
@@ -2159,32 +2207,51 @@ const Settings = () => {
 
                                     {/* Payment Method Specific */}
                                     {['paymentMethods'].includes(currentSetting.name) && (
-                                        <div className="type-options-grid" style={{ marginTop: '20px' }}>
-                                            <div className='inpcov toggle-row'>
-                                                <div>Sales Account</div>
+                                        <>
+                                            <div className="type-options-grid" style={{ marginTop: '20px' }}>
+                                                <div className='inpcov' style={{ gridColumn: 'span 2' }}>
+                                                    <div>Bank/Account Number</div>
+                                                    <input
+                                                        className='forminp'
+                                                        name='account'
+                                                        value={curPropSet.account}
+                                                        placeholder='Enter bank account number or wallet reference'
+                                                        onChange={handlePropSetChange}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="section-divider">Assign To</div>
+                                            <div className='permissions'>
+                                                {PAYMENT_METHOD_MODULES.map((mod) => (
+                                                    <label key={mod.value} className='permission-label'>
+                                                        <input
+                                                            type='checkbox'
+                                                            checked={(curPropSet.modules || []).includes(mod.value)}
+                                                            onChange={() => toggleCurPropSetModule(mod.value)}
+                                                        />
+                                                        <span className='permission-text'>{mod.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            {!(curPropSet.modules || []).length && (
+                                                <div className='settings-toggle-hint'>Not assigned to any module yet — it won't be selectable anywhere until you check at least one above.</div>
+                                            )}
+                                            <div className='inpcov toggle-row' style={{ marginTop: '16px' }}>
+                                                <div>
+                                                    Allow payment without enough money
+                                                    <div className='settings-toggle-hint'>When off, Purchase, Expenses, and Corporate Vendor payments from this account are blocked once its balance can't cover the amount. Manual Journal postings are never affected either way.</div>
+                                                </div>
                                                 <label className='toggle-switch'>
-                                                    <input type='checkbox' name='isSalesAccount' checked={curPropSet.isSalesAccount} onChange={handlePropSetChange} />
+                                                    <input
+                                                        type='checkbox'
+                                                        name='allowOverdraft'
+                                                        checked={curPropSet.allowOverdraft !== false}
+                                                        onChange={handlePropSetChange}
+                                                    />
                                                     <span className='slider'></span>
                                                 </label>
                                             </div>
-                                            <div className='inpcov toggle-row'>
-                                                <div>Expense Account</div>
-                                                <label className='toggle-switch'>
-                                                    <input type='checkbox' name='isExpenseAccount' checked={curPropSet.isExpenseAccount} onChange={handlePropSetChange} />
-                                                    <span className='slider'></span>
-                                                </label>
-                                            </div>
-                                            <div className='inpcov' style={{ gridColumn: 'span 2' }}>
-                                                <div>Bank/Account Number</div>
-                                                <input
-                                                    className='forminp'
-                                                    name='account'
-                                                    value={curPropSet.account}
-                                                    placeholder='Enter bank account number or wallet reference'
-                                                    onChange={handlePropSetChange}
-                                                />
-                                            </div>
-                                        </div>
+                                        </>
                                     )}
 
                                     {/* POS Settings Specific */}

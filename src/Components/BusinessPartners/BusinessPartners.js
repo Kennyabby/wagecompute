@@ -145,6 +145,72 @@ const BusinessPartners = () => {
         return { total, paid, balance: total - paid }
     }
 
+    // Drill-down modal for the Total/Paid/Balance due metrics on a
+    // vendor/customer card — { partnerId, kind: 'total'|'paid'|'balance', isVendor }.
+    const [drillDown, setDrillDown] = useState(null)
+
+    const getDrillDownRows = (partnerId, kind, isVendor) => {
+        if (kind === 'total') {
+            if (isVendor) {
+                const bills = snapshot.vendorBills.filter((row) => row.vendorId === partnerId).map((row) => ({ date: row.postingDate, doc: row.billNo, type: 'Vendor Bill', amount: Number(row.total) || 0 }))
+                const purchases = snapshot.purchases.filter((row) => row.vendorId === partnerId).map((row) => ({ date: row.postingDate, doc: `PUR-${row.createdAt}`, type: 'Direct Purchase', amount: Number(row.purchaseAmount) || 0 }))
+                return [...bills, ...purchases].sort((a, b) => String(a.date).localeCompare(String(b.date)))
+            }
+            return snapshot.invoices.filter((row) => row.customerId === partnerId).map((row) => ({ date: row.postingDate, doc: row.invoiceNo, type: 'Sales Invoice', amount: Number(row.total) || 0 }))
+        }
+        if (kind === 'paid') {
+            if (isVendor) {
+                return snapshot.vendorPayments.filter((row) => row.vendorId === partnerId).map((row) => ({
+                    date: row.postingDate, doc: row.paymentNo, type: 'Vendor Payment', amount: Number(row.amount) || 0,
+                    method: row.payPoint, appliedTo: row.billNo || (row.sourceCollection === 'Purchase' ? `PUR-${row.sourceId}` : 'General'),
+                }))
+            }
+            return snapshot.customerPayments.filter((row) => row.customerId === partnerId).map((row) => ({
+                date: row.postingDate, doc: row.receiptNo || row.paymentNo, type: 'Customer Payment', amount: Number(row.amount) || 0, method: row.payPoint, appliedTo: row.invoiceNo || 'General',
+            }))
+        }
+        // 'balance' — same debit documents as 'total', each carrying its own
+        // remaining balance after netting payments against it (tagged first,
+        // then the partner's shared oldest-first pool) — a single-partner
+        // version of the same logic the server's calculateAging uses.
+        const debitDocs = isVendor
+            ? [
+                ...snapshot.vendorBills.filter((r) => r.vendorId === partnerId).map((r) => ({ postingDate: r.postingDate, docNo: r.billNo, type: 'Vendor Bill', amount: Number(r.total) || 0 })),
+                ...snapshot.purchases.filter((r) => r.vendorId === partnerId).map((r) => ({ postingDate: r.postingDate, docNo: `PUR-${r.createdAt}`, type: 'Direct Purchase', amount: Number(r.purchaseAmount) || 0 })),
+            ]
+            : snapshot.invoices.filter((r) => r.customerId === partnerId).map((r) => ({ postingDate: r.postingDate, docNo: r.invoiceNo, type: 'Sales Invoice', amount: Number(r.total) || 0 }))
+        const creditDocs = isVendor ? snapshot.vendorPayments.filter((r) => r.vendorId === partnerId) : snapshot.customerPayments.filter((r) => r.customerId === partnerId)
+
+        const taggedByDoc = new Map()
+        let untagged = 0
+        creditDocs.forEach((payment) => {
+            const amount = Number(payment.amount) || 0
+            const tag = payment.invoiceNo || payment.billNo || (payment.sourceCollection === 'Purchase' ? `PUR-${payment.sourceId}` : '')
+            if (tag) taggedByDoc.set(tag, (taggedByDoc.get(tag) || 0) + amount)
+            else untagged += amount
+        })
+
+        const rows = []
+        debitDocs
+            .sort((a, b) => String(a.postingDate).localeCompare(String(b.postingDate)))
+            .forEach((doc) => {
+                let remainingTagged = taggedByDoc.get(doc.docNo) || 0
+                const appliedTagged = Math.min(doc.amount, remainingTagged)
+                remainingTagged -= appliedTagged
+                if (remainingTagged > 0) { untagged += remainingTagged; remainingTagged = 0 }
+                taggedByDoc.set(doc.docNo, remainingTagged)
+
+                const afterTagged = doc.amount - appliedTagged
+                const appliedUntagged = Math.min(afterTagged, untagged)
+                untagged -= appliedUntagged
+                const balance = afterTagged - appliedUntagged
+                if (balance > 0.001) {
+                    rows.push({ date: doc.postingDate, doc: doc.docNo, type: doc.type, amount: doc.amount, balance })
+                }
+            })
+        return rows
+    }
+
     const vendorTotals = (vendorId) => {
         if (snapshot.vendorSummaries?.[vendorId]) return snapshot.vendorSummaries[vendorId]
         const bills = snapshot.vendorBills.filter((row) => row.vendorId === vendorId).reduce((sum, row) => sum + Number(row.total || 0), 0)
@@ -509,6 +575,65 @@ const BusinessPartners = () => {
 
     const addLine = (setter) => setter((prev) => ({ ...prev, lines: [...(prev.lines || []), emptyLine] }))
 
+    const renderDrillDownModal = () => {
+        if (!drillDown) return null
+        const { partnerId, partnerName, kind, isVendor } = drillDown
+        const rows = getDrillDownRows(partnerId, kind, isVendor)
+        const title = kind === 'total' ? 'Total' : kind === 'paid' ? 'Paid' : 'Balance Due'
+        const showMethod = kind === 'paid'
+        const showAppliedTo = kind === 'paid'
+        const showBalance = kind === 'balance'
+        const sum = rows.reduce((s, r) => s + Number(showBalance ? r.balance : r.amount), 0)
+        return (
+            <div className='bp-drilldown-overlay' onClick={() => setDrillDown(null)}>
+                <div className='bp-drilldown-panel' onClick={(e) => e.stopPropagation()}>
+                    <div className='bp-drilldown-header'>
+                        <div>
+                            <h3>{title} — {partnerName}</h3>
+                            <p className='bp-muted'>{rows.length} document{rows.length === 1 ? '' : 's'}</p>
+                        </div>
+                        <button className='bp-soft-btn' onClick={() => setDrillDown(null)}>Close</button>
+                    </div>
+                    <div className='bp-table-wrap'>
+                        <table className='bp-table'>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Document</th>
+                                    <th>Type</th>
+                                    {showMethod && <th>Method</th>}
+                                    {showAppliedTo && <th>Applied To</th>}
+                                    <th>{showBalance ? 'Balance' : 'Amount'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row, index) => (
+                                    <tr key={`${row.doc}-${index}`}>
+                                        <td>{row.date}</td>
+                                        <td>{row.doc || '-'}</td>
+                                        <td>{row.type}</td>
+                                        {showMethod && <td>{row.method || '-'}</td>}
+                                        {showAppliedTo && <td>{row.appliedTo || 'General'}</td>}
+                                        <td>{money(showBalance ? row.balance : row.amount)}</td>
+                                    </tr>
+                                ))}
+                                {!rows.length && <tr><td colSpan={showMethod || showAppliedTo ? 5 : 4} className='bp-empty'>No documents.</td></tr>}
+                            </tbody>
+                            {!!rows.length && (
+                                <tfoot>
+                                    <tr>
+                                        <td colSpan={(showMethod || showAppliedTo ? 4 : 3)}><strong>Total</strong></td>
+                                        <td><strong>{money(sum)}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            )}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     const renderPartnerList = (kind) => {
         const isVendor = kind === 'vendor'
         const list = isVendor ? snapshot.vendors : snapshot.customers
@@ -537,9 +662,9 @@ const BusinessPartners = () => {
                             <strong>{item.vendorNo || item.customerNo} - {item.name}</strong>
                             <span>{item.type || 'General'} - {item.contactPerson || 'No contact person'}</span>
                             <div className='bp-card-metrics'>
-                                <small>Total: {money(totals.total)}</small>
-                                <small>Paid: {money(totals.paid)}</small>
-                                <small>Balance due: {money(totals.balance)}</small>
+                                <small className='bp-metric-link' onClick={(e) => { e.stopPropagation(); setDrillDown({ partnerId: item._id, partnerName: item.name, kind: 'total', isVendor }) }}>Total: {money(totals.total)}</small>
+                                <small className='bp-metric-link' onClick={(e) => { e.stopPropagation(); setDrillDown({ partnerId: item._id, partnerName: item.name, kind: 'paid', isVendor }) }}>Paid: {money(totals.paid)}</small>
+                                <small className='bp-metric-link' onClick={(e) => { e.stopPropagation(); setDrillDown({ partnerId: item._id, partnerName: item.name, kind: 'balance', isVendor }) }}>Balance due: {money(totals.balance)}</small>
                             </div>
                         </div>
                         )
@@ -706,7 +831,7 @@ const BusinessPartners = () => {
                 <label>Partner<select value={payment.partnerId} onChange={(e) => setPayment({ ...payment, partnerId: e.target.value })}><option value=''>Select partner</option>{(payment.partnerType === 'vendor' ? snapshot.vendors : snapshot.customers).map((item) => <option key={item._id} value={item._id}>{item.vendorNo || item.customerNo} - {item.name}</option>)}</select></label>
                 <label>Date<input type='date' value={payment.postingDate} onChange={(e) => setPayment({ ...payment, postingDate: e.target.value })} /></label>
                 <label>Amount<input type='number' value={payment.amount} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} /></label>
-                <label>Payment Method<select value={payment.payPoint} onChange={(e) => setPayment({ ...payment, payPoint: e.target.value })}><option value=''>Select payment method</option>{paymentMethods.map((method) => <option key={method.i_d || method.name} value={method.name}>{method.name} - {method.type}</option>)}</select></label>
+                <label>Payment Method<select value={payment.payPoint} onChange={(e) => setPayment({ ...payment, payPoint: e.target.value })}><option value=''>Select payment method</option>{paymentMethods.filter((method) => payment.partnerType !== 'vendor' || !Array.isArray(method.modules) || method.modules.includes('purchase')).map((method) => <option key={method.i_d || method.name} value={method.name}>{method.name} - {method.type}</option>)}</select></label>
                 <label>{payment.partnerType === 'vendor' ? 'Payment Proof / Ref No' : 'Customer Receipt No'}<input value={payment.receiptNo} onChange={(e) => setPayment({ ...payment, receiptNo: e.target.value })} /></label>
                 <label>Payment Proof Image<input type='file' accept='image/*' onChange={(e) => setPaymentProof(e.target.files?.[0] || null)} /></label>
                 <label className='bp-wide'>Notes<textarea value={payment.notes} onChange={(e) => setPayment({ ...payment, notes: e.target.value })} /></label>
@@ -717,6 +842,59 @@ const BusinessPartners = () => {
             </div>
         </section>
     )
+
+    const renderPaymentsHistory = () => {
+        const vendorRows = [...snapshot.vendorPayments].sort((a, b) => String(b.postingDate).localeCompare(String(a.postingDate)))
+        const customerRows = [...snapshot.customerPayments].sort((a, b) => String(b.postingDate).localeCompare(String(a.postingDate)))
+        return (
+            <>
+                <section className='bp-panel' style={{ marginTop: 20 }}>
+                    <h2>Vendor Payments</h2>
+                    <p className='bp-muted'>Every payment recorded against a vendor bill or a direct purchase.</p>
+                    <div className='bp-table-wrap'>
+                        <table className='bp-table'>
+                            <thead><tr><th>Date</th><th>Vendor</th><th>Amount</th><th>Method</th><th>Reference</th><th>Applied To</th></tr></thead>
+                            <tbody>
+                                {vendorRows.map((row) => (
+                                    <tr key={row._id}>
+                                        <td>{row.postingDate}</td>
+                                        <td>{row.vendorName}</td>
+                                        <td>{money(row.amount)}</td>
+                                        <td>{row.payPoint}</td>
+                                        <td>{row.receiptNo || '-'}</td>
+                                        <td>{row.billNo || (row.sourceCollection === 'Purchase' ? `PUR-${row.sourceId}` : 'General')}</td>
+                                    </tr>
+                                ))}
+                                {!vendorRows.length && <tr><td colSpan={6} className='bp-empty'>No vendor payments yet.</td></tr>}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                <section className='bp-panel' style={{ marginTop: 20 }}>
+                    <h2>Customer Payments</h2>
+                    <p className='bp-muted'>Every receipt recorded against a customer invoice.</p>
+                    <div className='bp-table-wrap'>
+                        <table className='bp-table'>
+                            <thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Method</th><th>Reference</th><th>Applied To</th></tr></thead>
+                            <tbody>
+                                {customerRows.map((row) => (
+                                    <tr key={row._id}>
+                                        <td>{row.postingDate}</td>
+                                        <td>{row.customerName}</td>
+                                        <td>{money(row.amount)}</td>
+                                        <td>{row.payPoint}</td>
+                                        <td>{row.receiptNo || '-'}</td>
+                                        <td>{row.invoiceNo || 'General'}</td>
+                                    </tr>
+                                ))}
+                                {!customerRows.length && <tr><td colSpan={6} className='bp-empty'>No customer payments yet.</td></tr>}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </>
+        )
+    }
 
     const renderReportBody = () => {
         if (!report) return <div className='bp-empty'>Choose a report to preview balances, aging, or subsidiary ledger entries.</div>
@@ -797,6 +975,7 @@ const BusinessPartners = () => {
 
     return (
         <div className='bp-module'>
+            {renderDrillDownModal()}
             <section className='bp-hero'>
                 <div>
                     <span className='bp-kicker'>Business partners</span>
@@ -826,7 +1005,7 @@ const BusinessPartners = () => {
             {activeTab === 'vendors' && <div className='bp-grid'>{renderPartnerList('vendor')}{renderPartnerForm('vendor')}</div>}
             {activeTab === 'sales' && renderDocuments()}
             {activeTab === 'payables' && renderPayables()}
-            {activeTab === 'payments' && renderPayments()}
+            {activeTab === 'payments' && <>{renderPayments()}{renderPaymentsHistory()}</>}
             {activeTab === 'reports' && renderReports()}
         </div>
     )

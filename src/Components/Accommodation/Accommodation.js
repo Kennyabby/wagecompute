@@ -397,7 +397,9 @@ const Accommodation = () => {
 
 
     useEffect(() => {
-        const payPoints = paymentMethods.reduce((obj, method) => {
+        // Only payment methods assigned to Accommodation Sales in Settings
+        // show up here.
+        const payPoints = paymentMethods.filter((method) => !Array.isArray(method.modules) || method.modules.includes('accommodationSales')).reduce((obj, method) => {
             if (method.name !== 'cash') {
                 obj[method.name] = `${method.i_d}-${method.account}`
             } else {

@@ -180,7 +180,9 @@ const PointOfSales = () => {
         receipt: '',
     }
     const paymentDetailClone = structuredClone({ paymentDetail })
-    const [payPoints, setPayPoints] = useState(paymentMethods.reduce((acc, method) => {
+    // Only payment methods assigned to Product Sales in Settings are offered
+    // here as checkout payment points.
+    const [payPoints, setPayPoints] = useState(paymentMethods.filter((method) => !Array.isArray(method.modules) || method.modules.includes('productSales')).reduce((acc, method) => {
         acc[method.name] = { ...paymentDetailClone.paymentDetail };
         return acc;
     }, {}));
