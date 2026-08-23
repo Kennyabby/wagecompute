@@ -113,9 +113,11 @@ const Expenses = () => {
     }, [storePath])
 
     useEffect(() => {
-        const payPoints = paymentMethods.map((pay) => pay.name)
+        // Only payment methods assigned to Expense in Settings show up here.
+        const expensePayPoints = paymentMethods.filter((pay) => !Array.isArray(pay.modules) || pay.modules.includes('expense'))
+        const payPoints = expensePayPoints.map((pay) => pay.name)
         setPayPoints(payPoints)
-        setExpenseAccount(paymentMethods.find((pay) => { return pay.isExpenseAccount }) || {})
+        setExpenseAccount(expensePayPoints.find((pay) => pay.isExpenseAccount) || expensePayPoints[0] || {})
     }, [paymentMethods])
 
     useEffect(() => {

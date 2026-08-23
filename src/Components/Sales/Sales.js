@@ -4737,7 +4737,10 @@ const Sales = () => {
                                     }}
                                 >
                                     <option value=''>Select Payment Point</option>
-                                    {Object.keys(payPoints).map((payPoint, index) => {
+                                    {Object.keys(payPoints)
+                                        // Only payment methods assigned to Rental Sales in Settings.
+                                        .filter((payPoint) => { const m = paymentMethods.find((mm) => mm.name === payPoint); return !Array.isArray(m?.modules) || m.modules.includes('rentalSales'); })
+                                        .map((payPoint, index) => {
                                         if (isView) {
                                             return <option key={index} value={payPoint}>{payPointAccounts[payPoint]}</option>
                                         }

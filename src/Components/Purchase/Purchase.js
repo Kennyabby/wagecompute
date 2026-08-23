@@ -23,7 +23,8 @@ const Purchase = () => {
         showApprovalBox, setShowApprovalBox,
         curApproval, setCurApproval,
         approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval,
-        setApprovalStatus, setApprovalMessage, getProductsStockReport
+        setApprovalStatus, setApprovalMessage, getProductsStockReport,
+        paymentMethods,
     } = useContext(ContextProvider)
 
     const getEntriesController = useRef(null)
@@ -59,6 +60,18 @@ const Purchase = () => {
     const [waybillUpload, setWaybillUpload] = useState(null)
     const [uploadingWaybill, setUploadingWaybill] = useState(false)
     const [deletingWaybill, setDeletingWaybill] = useState(false)
+
+    // Payment tracking — a separate layer on top of Purchase, not stored on
+    // the Purchase doc itself. purchasePaidTotals maps a purchase's own
+    // createdAt (its stable key) to the sum of VendorPayments recorded
+    // against it (sourceCollection:'Purchase', sourceId:<createdAt>).
+    const [purchasePaidTotals, setPurchasePaidTotals] = useState({})
+    // sourceId -> array of distinct payment method names used against that
+    // purchase (a partial payment plan could legitimately use more than one).
+    const [purchasePaymentMethodsUsed, setPurchasePaymentMethodsUsed] = useState({})
+    const [showPaymentForm, setShowPaymentForm] = useState(false)
+    const [paymentForm, setPaymentForm] = useState({ amount: '', payPoint: '', postingDate: new Date(Date.now()).toISOString().slice(0, 10), receiptNo: '', notes: '' })
+    const [isPostingPayment, setIsPostingPayment] = useState(false)
 
     const defaultFields = {
         purchaseDepartment: '',
@@ -235,9 +248,43 @@ const Purchase = () => {
             setDepartments(['Purchase'])
         }
     }, [posSettings])
+    // Payments live entirely in VendorPayments (a layer on top of Purchase,
+    // never stored on the Purchase doc) — grouping by sourceId here gives
+    // "how much has been paid so far" per purchase in one round trip instead
+    // of a query per purchase.
+    const refreshPurchasePaidTotals = async () => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return;
+        try {
+            const resp = await fetchServer("POST", {
+                database: cmp_val,
+                collection: "VendorPayments",
+                prop: [
+                    { $match: { sourceCollection: 'Purchase' } },
+                    { $sort: { createdAt: 1 } },
+                    { $group: { _id: '$sourceId', paid: { $sum: '$amount' }, methods: { $addToSet: '$payPoint' } } },
+                ],
+            }, "aggregateDocs", server)
+            if (!resp.err && Array.isArray(resp.record)) {
+                const totals = {}
+                const methods = {}
+                resp.record.forEach((row) => {
+                    totals[row._id] = Number(row.paid) || 0
+                    methods[row._id] = (row.methods || []).filter(Boolean)
+                })
+                setPurchasePaidTotals(totals)
+                setPurchasePaymentMethodsUsed(methods)
+            }
+        } catch (e) { }
+    }
+
     const refreshPurchaseData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
+        // Fire-and-forget, deliberately outside the tasks below — a hiccup
+        // refreshing payment totals must never be able to block loading
+        // purchases/vendors (which the vendor dropdown depends on).
+        refreshPurchasePaidTotals().catch(() => {});
         try {
             const tasks = [];
             if (products.length) {
@@ -832,6 +879,110 @@ const Purchase = () => {
         })
         setReportPurchase(filteredReportPurchases)
     }
+
+    // Payment methods eligible for a Purchase — same filtered-dropdown
+    // pattern used across the app for the 'purchase' module (Settings ->
+    // Payment Methods -> Assign To). A method missing `modules` entirely is
+    // treated as available everywhere (legacy/back-compat), never as
+    // available nowhere.
+    const purchasePaymentMethods = (paymentMethods || []).filter((m) => !Array.isArray(m.modules) || m.modules.includes('purchase'))
+
+    // Purchases received before this feature shipped were auto-settled to
+    // cash in full by the old code (postPurchaseReceipt used to post both a
+    // receipt leg AND a settlement leg unconditionally) — there's no
+    // VendorPayments record for them since that mechanism didn't exist yet,
+    // so without this they'd incorrectly show as Unpaid. `updatedAt` is when
+    // postPurchaseReceipt actually ran (createdAt is the original draft's
+    // timestamp, which can predate the actual receipt by any amount of
+    // time), falling back to createdAt only for very old docs with neither.
+    const PAYMENT_TRACKING_CUTOVER = new Date('2026-08-23T12:00:28.000Z').getTime()
+    const wasAutoSettledLegacy = (pur) => {
+        if (pur?.stage !== 'posted') return false
+        const settledAt = Number(pur?.updatedAt) || Number(pur?.createdAt) || 0
+        return settledAt < PAYMENT_TRACKING_CUTOVER
+    }
+
+    const getPurchaseRemainingBalance = (pur) => {
+        if (wasAutoSettledLegacy(pur)) return 0
+        const amount = Number(pur?.purchaseAmount) || 0
+        const paid = Number(purchasePaidTotals[pur?.createdAt]) || 0
+        return Math.round((amount - paid) * 100) / 100
+    }
+
+    const getPurchasePaymentStatus = (pur) => {
+        if (wasAutoSettledLegacy(pur)) return 'PAID'
+        const paid = Number(purchasePaidTotals[pur?.createdAt]) || 0
+        const amount = Number(pur?.purchaseAmount) || 0
+        if (paid <= 0) return 'UNPAID'
+        if (paid >= amount) return 'PAID'
+        return 'PARTIALLY PAID'
+    }
+
+    // The old auto-settlement code always defaulted to cash (purchaseBank
+    // was never actually set by any UI), so a legacy purchase's real
+    // payment method is known even without a VendorPayments record.
+    const getPurchasePaymentMethodsLabel = (pur) => {
+        if (wasAutoSettledLegacy(pur)) return 'Cash (legacy)'
+        const methods = purchasePaymentMethodsUsed[pur?.createdAt] || []
+        return methods.length ? methods.join(', ') : '—'
+    }
+
+    const handlePostPurchasePayment = async () => {
+        if (!curPurchase?.vendorId) return
+        const amount = Number(paymentForm.amount)
+        if (!amount || amount <= 0) {
+            setAlertState('error')
+            setAlert('Enter a payment amount greater than zero.')
+            setAlertTimeout(3000)
+            return
+        }
+        if (!paymentForm.payPoint) {
+            setAlertState('error')
+            setAlert('Select a payment method.')
+            setAlertTimeout(3000)
+            return
+        }
+        const remaining = getPurchaseRemainingBalance(curPurchase)
+        if (amount > remaining && remaining > 0) {
+            setAlertState('info')
+            setAlert(`Heads up — this payment (₦${amount.toLocaleString()}) exceeds the remaining balance (₦${remaining.toLocaleString()}). Posting anyway.`)
+            setAlertTimeout(4000)
+        }
+        setIsPostingPayment(true)
+        try {
+            const resp = await fetchServer('POST', {
+                payment: {
+                    vendorId: curPurchase.vendorId,
+                    amount,
+                    payPoint: paymentForm.payPoint,
+                    postingDate: paymentForm.postingDate,
+                    receiptNo: paymentForm.receiptNo,
+                    notes: paymentForm.notes,
+                    sourceCollection: 'Purchase',
+                    sourceId: curPurchase.createdAt,
+                },
+            }, 'business-partners/postVendorPayment', server)
+            if (resp.err || !resp.ok) {
+                setAlertState('error')
+                setAlert(resp.mess || 'Unable to post payment.')
+                setAlertTimeout(4000)
+                return
+            }
+            setAlertState('success')
+            setAlert('Payment posted successfully!')
+            setAlertTimeout(1500)
+            setShowPaymentForm(false)
+            setPaymentForm({ amount: '', payPoint: '', postingDate: new Date(Date.now()).toISOString().slice(0, 10), receiptNo: '', notes: '' })
+            await refreshPurchasePaidTotals()
+        } catch (e) {
+            setAlertState('error')
+            setAlert('Unable to post payment. Please try again.')
+            setAlertTimeout(4000)
+        } finally {
+            setIsPostingPayment(false)
+        }
+    }
+
     return (
         <>
             <div className={`purchase purchase-page${mobileDetailOpen ? ' mobile-detail-open' : ''}`}>
@@ -849,6 +1000,77 @@ const Purchase = () => {
                         curApproval.posted = false
                     }}
                 />}
+                {showPaymentForm && curPurchase && (
+                    <div
+                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+                        onClick={() => setShowPaymentForm(false)}
+                    >
+                        <div
+                            style={{ background: '#fff', borderRadius: '16px', padding: '24px', maxWidth: '480px', width: '100%', maxHeight: '85vh', overflow: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.3)' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h3 style={{ marginTop: 0 }}>Mark Purchase as Paid</h3>
+                            <p style={{ color: '#666', fontSize: '0.9rem' }}>
+                                Remaining balance: ₦{getPurchaseRemainingBalance(curPurchase).toLocaleString()}
+                            </p>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+                                <div className='inpcov'>
+                                    <div>Amount</div>
+                                    <input
+                                        className='forminp'
+                                        type='number'
+                                        value={paymentForm.amount}
+                                        onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Payment Method</div>
+                                    <select
+                                        className='forminp'
+                                        value={paymentForm.payPoint}
+                                        onChange={(e) => setPaymentForm((prev) => ({ ...prev, payPoint: e.target.value }))}
+                                    >
+                                        <option value=''>Select payment method</option>
+                                        {purchasePaymentMethods.map((m) => (
+                                            <option key={m.i_d || m.name} value={m.name}>{m.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Date</div>
+                                    <input
+                                        className='forminp'
+                                        type='date'
+                                        value={paymentForm.postingDate}
+                                        onChange={(e) => setPaymentForm((prev) => ({ ...prev, postingDate: e.target.value }))}
+                                    />
+                                </div>
+                                <div className='inpcov'>
+                                    <div>Reference (optional)</div>
+                                    <input
+                                        className='forminp'
+                                        value={paymentForm.receiptNo}
+                                        onChange={(e) => setPaymentForm((prev) => ({ ...prev, receiptNo: e.target.value }))}
+                                    />
+                                </div>
+                                <div className='inpcov' style={{ gridColumn: '1 / -1' }}>
+                                    <div>Notes (optional)</div>
+                                    <input
+                                        className='forminp'
+                                        value={paymentForm.notes}
+                                        onChange={(e) => setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+                                <div className='edit' style={{ cursor: isPostingPayment ? 'not-allowed' : 'pointer', opacity: isPostingPayment ? 0.6 : 1 }} onClick={() => { if (!isPostingPayment) handlePostPurchasePayment() }}>
+                                    {isPostingPayment ? 'Posting...' : 'Submit Payment'}
+                                </div>
+                                <div className='edit' style={{ cursor: 'pointer' }} onClick={() => setShowPaymentForm(false)}>Cancel</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {productAdd && <AddProduct
                     products={products}
                     category={fields.itemCategory}
@@ -1048,6 +1270,7 @@ const Purchase = () => {
                                         <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM.toUpperCase()} of ${itemCategory}`}</b></div>
                                         <div className='deptdesc'>{`Purchase Handled By:`}<b>{`${handlerName}`}</b></div>
                                         {stage === 'receipt' && <div className='deptdesc' style={{ fontSize: '1rem', color: 'red' }}><b>PENDING RECEIPT</b></div>}
+                                        {pur.vendorId && <div className='deptdesc' style={{ fontSize: '0.85rem', color: getPurchasePaymentStatus(pur) === 'PAID' ? 'green' : (getPurchasePaymentStatus(pur) === 'PARTIALLY PAID' ? '#b8860b' : 'red') }}><b>{getPurchasePaymentStatus(pur)}</b></div>}
                                     </div>
                                     {(companyRecord.status === 'admin') && <div
                                         className='edit'
@@ -1095,6 +1318,34 @@ const Purchase = () => {
                         </div>}
                     </div>
                     <div className='purinfocontent' onChange={handlePurchaseEntry}>
+                        {curPurchase && curPurchase.vendorId && (
+                            <div className='purchase-payment-panel' style={{ marginBottom: '14px', padding: '12px', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                                <div>
+                                    <div><b>Payment status:</b> {getPurchasePaymentStatus(curPurchase)}</div>
+                                    <div>Paid so far: ₦{(wasAutoSettledLegacy(curPurchase) ? Number(curPurchase.purchaseAmount) || 0 : Number(purchasePaidTotals[curPurchase.createdAt]) || 0).toLocaleString()}</div>
+                                    <div>Remaining balance: ₦{getPurchaseRemainingBalance(curPurchase).toLocaleString()}</div>
+                                    <div>Payment method: {getPurchasePaymentMethodsLabel(curPurchase)}</div>
+                                </div>
+                                {getPurchasePaymentStatus(curPurchase) !== 'PAID' && (
+                                    <div
+                                        className='edit'
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => {
+                                            setPaymentForm({
+                                                amount: getPurchaseRemainingBalance(curPurchase) > 0 ? String(getPurchaseRemainingBalance(curPurchase)) : '',
+                                                payPoint: '',
+                                                postingDate: new Date(Date.now()).toISOString().slice(0, 10),
+                                                receiptNo: '',
+                                                notes: '',
+                                            })
+                                            setShowPaymentForm(true)
+                                        }}
+                                    >
+                                        Mark as Paid
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className='formtitle padtitle'>
                             <div className={'frmttle'}>
                                 {`DIRECT COST ENTRY`}
