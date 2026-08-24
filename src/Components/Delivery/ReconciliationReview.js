@@ -7,6 +7,29 @@ import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 
 const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
+// Column-wise sum across a location's lines — same fields/abs/fallback logic
+// as the table's own row rendering below, reused for both the card-level
+// summary and the table's top/bottom TOTAL rows so all three always agree.
+const sumLocationLines = (lines = []) => lines.reduce((acc, line) => {
+    acc.openingQty += Number(line.openingQty) || 0
+    acc.purchasedQty += Number(line.purchasedQty) || 0
+    acc.soldQty += Math.abs(Number(line.soldQty) || 0)
+    acc.transferInQty += Number(line.transferInQty) || 0
+    acc.transferOutQty += Math.abs(Number(line.transferOutQty) || 0)
+    acc.damagedQty += Math.abs(Number(line.damagedQty) || 0)
+    acc.adjustmentQty += Number(line.adjustmentQty ?? round2((line.positiveAdjustmentQty || 0) + (line.negativeAdjustmentQty || 0)))
+    acc.productionQty += Number(line.productionQty) || 0
+    acc.systemClosingQty += Number(line.systemClosingQty) || 0
+    acc.countedQuantity += Number(line.countedQuantity) || 0
+    acc.qtyDifference += Number(line.qtyDifference) || 0
+    acc.salesDifference += Number(line.salesDifference) || 0
+    return acc
+}, {
+    openingQty: 0, purchasedQty: 0, soldQty: 0, transferInQty: 0, transferOutQty: 0,
+    damagedQty: 0, adjustmentQty: 0, productionQty: 0, systemClosingQty: 0,
+    countedQuantity: 0, qtyDifference: 0, salesDifference: 0,
+})
+
 const ReconciliationReview = ({
     companyRecord, getEmployeeName,
     allSessions, allDeliverySessions, setReviewOpen,
@@ -245,6 +268,7 @@ const ReconciliationReview = ({
                             const totals = loc.totals || {}
                             const shortageAvailable = round2(Math.abs(totals.negativeDifferenceValue || 0))
                             const isExpanded = expandedLocation === loc.location
+                            const locTotals = sumLocationLines(loc.lines || [])
                             return (
                                 <div
                                     key={loc.location}
@@ -257,6 +281,13 @@ const ReconciliationReview = ({
                                         <span>Short: {round2(Math.abs(totals.negativeDifferenceQty || 0))} ({shortageAvailable.toLocaleString()})</span>
                                         <span>Counted Sales Value: {round2(totals.countedSalesValue || 0).toLocaleString()}</span>
                                         {loc.locked && <span className='reconcile-locked-tag'>Locked ({loc.lockedReason})</span>}
+                                    </div>
+                                    <div className='reconcile-review-location-summary'>
+                                        <span>Purchased: <b>{locTotals.purchasedQty}</b></span>
+                                        <span>Transfers: <b>{round2(locTotals.transferInQty + locTotals.transferOutQty)}</b> (In {locTotals.transferInQty} / Out {locTotals.transferOutQty})</span>
+                                        <span>Sold: <b>{locTotals.soldQty}</b></span>
+                                        <span>Damaged: <b>{locTotals.damagedQty}</b></span>
+                                        <span>Adjusted: <b>{locTotals.adjustmentQty}</b></span>
                                     </div>
 
                                     {isExpanded && (
@@ -329,6 +360,21 @@ const ReconciliationReview = ({
                                                         </tr>
                                                     </thead>
                                                     <tbody>
+                                                        <tr key='totals-top' className='reconcile-totals-row'>
+                                                            <td><b>TOTAL</b></td>
+                                                            <td><b>{locTotals.openingQty}</b></td>
+                                                            <td><b>{locTotals.purchasedQty}</b></td>
+                                                            <td><b>{locTotals.soldQty}</b></td>
+                                                            <td><b>{locTotals.transferInQty}</b></td>
+                                                            <td><b>{locTotals.transferOutQty}</b></td>
+                                                            <td><b>{locTotals.damagedQty}</b></td>
+                                                            <td><b>{locTotals.adjustmentQty}</b></td>
+                                                            <td><b>{locTotals.productionQty}</b></td>
+                                                            <td><b>{locTotals.systemClosingQty}</b></td>
+                                                            <td><b>{locTotals.countedQuantity}</b></td>
+                                                            <td><b>{locTotals.qtyDifference}</b></td>
+                                                            <td><b>{locTotals.salesDifference.toLocaleString()}</b></td>
+                                                        </tr>
                                                         {(loc.lines || []).map((line) => (
                                                             <tr key={line.productId} className={line.qtyDifference > 0 ? 'diff-positive' : line.qtyDifference < 0 ? 'diff-negative' : ''}>
                                                                 <td>{line.name}</td>
@@ -346,6 +392,21 @@ const ReconciliationReview = ({
                                                                 <td>{round2(line.salesDifference).toLocaleString()}</td>
                                                             </tr>
                                                         ))}
+                                                        <tr key='totals-bottom' className='reconcile-totals-row'>
+                                                            <td><b>TOTAL</b></td>
+                                                            <td><b>{locTotals.openingQty}</b></td>
+                                                            <td><b>{locTotals.purchasedQty}</b></td>
+                                                            <td><b>{locTotals.soldQty}</b></td>
+                                                            <td><b>{locTotals.transferInQty}</b></td>
+                                                            <td><b>{locTotals.transferOutQty}</b></td>
+                                                            <td><b>{locTotals.damagedQty}</b></td>
+                                                            <td><b>{locTotals.adjustmentQty}</b></td>
+                                                            <td><b>{locTotals.productionQty}</b></td>
+                                                            <td><b>{locTotals.systemClosingQty}</b></td>
+                                                            <td><b>{locTotals.countedQuantity}</b></td>
+                                                            <td><b>{locTotals.qtyDifference}</b></td>
+                                                            <td><b>{locTotals.salesDifference.toLocaleString()}</b></td>
+                                                        </tr>
                                                     </tbody>
                                                 </table>
                                             </div>

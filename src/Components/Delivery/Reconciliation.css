@@ -164,6 +164,22 @@
     font-size: 0.85rem;
 }
 
+.reconcile-review-location-summary {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 6px 14px;
+    background: #fafafa;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: #555;
+}
+
+.reconcile-totals-row {
+    background: #eef1f4;
+}
+
 .reconcile-review-location-name {
     font-weight: 700;
     text-transform: uppercase;
