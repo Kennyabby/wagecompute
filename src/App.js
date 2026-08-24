@@ -2238,16 +2238,28 @@ function App() {
         accommodations?.forEach((acc) => {
           let dateVar = new Date(acc.postingDate).toISOString().slice(0, 10)
           if (dateVar >= dateBoundary) {
-            accommodationReceipts.push({
-              paymentModule: 'accommodation',
-              paymentPoint: acc.payPoint,
-              paymentAmount: Number(acc.paymentAmount),
-              paymentReceipt: Number(acc.paymentReceipt) || acc.paymentReceipt,
-              paymentFor: `For Room ${acc.roomNo}`,
-              paymentDate: acc.postingDate,
-              paymentHandler: acc.employeeId,
-              paymentModuleRef: acc.createdAt,
-              paymentApprover: 'Default'
+            // A booking's payment can be split across multiple payment
+            // methods in one submission (Accommodation.js's "Also Paid in
+            // Cash" split-bill) — one receipt per paymentHistory entry, not
+            // one receipt using the booking's top-level payPoint/
+            // paymentAmount (now the LAST leg's payPoint and the
+            // CUMULATIVE total received, not any single payment's amount).
+            const history = Array.isArray(acc.paymentHistory) ? acc.paymentHistory : []
+            const events = history.length
+              ? history
+              : (acc.payPoint && Number(acc.paymentAmount) > 0 ? [{ payPoint: acc.payPoint, paymentAmount: acc.paymentAmount, paymentReceipt: acc.paymentReceipt }] : [])
+            events.forEach((event) => {
+              accommodationReceipts.push({
+                paymentModule: 'accommodation',
+                paymentPoint: event.payPoint,
+                paymentAmount: Number(event.paymentAmount),
+                paymentReceipt: Number(event.paymentReceipt) || event.paymentReceipt,
+                paymentFor: `For Room ${acc.roomNo}`,
+                paymentDate: event.paymentDate || acc.postingDate,
+                paymentHandler: acc.employeeId,
+                paymentModuleRef: acc.createdAt,
+                paymentApprover: 'Default'
+              })
             })
           }
         })

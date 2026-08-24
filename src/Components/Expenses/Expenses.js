@@ -453,8 +453,13 @@ const Expenses = () => {
                 setCurExpense(null)
                 setFields({ ...defaultFields })
                 setAlertState('success')
-                setAlert('Expenses Deleted Successfully!')
-                setAlertTimeout(1000)
+                // /removeDoc reverses any posted GL entries for this expense
+                // before deleting it (server-side, aborts the delete instead
+                // of ever leaving the ledger inconsistent) — the original
+                // toast gave no indication of that, reading identically to
+                // "deleted, ledger untouched".
+                setAlert('Expense deleted and its ledger entries reversed.')
+                setAlertTimeout(2000)
                 setDeleteCount(0)
                 getExpenses(company)
             }
@@ -763,6 +768,13 @@ const Expenses = () => {
                                             </div>
                                         }
                                     </div>
+                                    {(curApproval?.createdAt === createdAt) &&
+                                        (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && (
+                                        <div className='purchase-doc-print-actions' onClick={(e) => e.stopPropagation()}>
+                                            <button type='button' onClick={() => printExpenseDocument({ ...(exp.data || {}), createdAt, postingDate: postingDate || exp.data?.postingDate }, 'expensePO')}>Print PO</button>
+                                            <button type='button' onClick={() => printExpenseDocument({ ...(exp.data || {}), createdAt, postingDate: postingDate || exp.data?.postingDate }, 'expenseInvoice')}>Print Invoice</button>
+                                        </div>
+                                    )}
                                     {(companyRecord.status === 'admin') && <div
                                         className='edit'
                                         name='delete'

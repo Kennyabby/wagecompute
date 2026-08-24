@@ -97,6 +97,12 @@ const Accommodation = () => {
     const [selectedUnPaidAccommodations, setSelectedUnPaidAccommodations] = useState([])
     const [curSelectedUnPaidAccommodation, setCurSelectedUnPaidAccommodation] = useState('')
     const [curPaymentAmount, setCurPaymentAmount] = useState(0)
+    // Split-bill: the main Payment Amount/Payment Point/Receipt fields above
+    // still cover one payment method (unchanged) — this is an ADDITIONAL
+    // cash leg paid at the same time, so one booking's payment can be split
+    // across cash + a bank/other method in a single submission instead of
+    // requiring two separate "Make Payment" round trips.
+    const [splitCashAmount, setSplitCashAmount] = useState('')
     const [payPoints, setPayPoints] = useState({})
     const [rooms, setRooms] = useState({})
     const [postingOperationId, setPostingOperationId] = useState(null)
@@ -716,19 +722,43 @@ const Accommodation = () => {
         // and the GL settlement posts atomically in the same request —
         // previously this whole function computed paymentStatus in the
         // browser and sent it as a raw field update with no ledger entry.
-        const resps = await postWithResumability({
-            payment: {
-                accommodationId: curAccommodation?._id,
-                createdAt: accommodationFields.createdAt,
-                paymentAmount: accommodationFields.paymentAmount,
-                paymentDate: postingDate || accommodationFields.postingDate,
-                payPoint: accommodationFields.payPoint,
-                paymentReceipt: accommodationFields.paymentReceipt,
-                imgId: accommodationFields.imgId,
-                viewLink: accommodationFields.viewLink,
-                downloadLink: accommodationFields.downloadLink,
-            },
-        }, "accommodations/postAccommodationPayment", server)
+        const primaryLeg = {
+            accommodationId: curAccommodation?._id,
+            createdAt: accommodationFields.createdAt,
+            paymentAmount: accommodationFields.paymentAmount,
+            paymentDate: postingDate || accommodationFields.postingDate,
+            payPoint: accommodationFields.payPoint,
+            paymentReceipt: accommodationFields.paymentReceipt,
+            imgId: accommodationFields.imgId,
+            viewLink: accommodationFields.viewLink,
+            downloadLink: accommodationFields.downloadLink,
+        }
+        const cashSplit = Number(splitCashAmount) || 0
+        // Split-bill: an additional cash leg paid alongside the main
+        // payPoint above, in the same submission — cash needs no receipt
+        // number/image (consistent with every other cash entry point in
+        // this form). Sending `payments` (array) instead of the legacy
+        // `payment` (single object) only when there's actually a split
+        // keeps every other caller of this route (single-payment bookings,
+        // the "apply receipt to other pending accommodations" bulk flow)
+        // on the exact request shape it already sends.
+        const resps = await postWithResumability(
+            cashSplit > 0
+                ? {
+                    payments: [
+                        primaryLeg,
+                        {
+                            accommodationId: curAccommodation?._id,
+                            createdAt: accommodationFields.createdAt,
+                            paymentAmount: cashSplit,
+                            paymentDate: postingDate || accommodationFields.postingDate,
+                            payPoint: 'cash',
+                            paymentReceipt: 'cash',
+                        },
+                    ],
+                }
+                : { payment: primaryLeg },
+            "accommodations/postAccommodationPayment", server)
         setPostingOperationId(resps.operationId || null)
 
         if (resps.err || !resps.ok) {
@@ -746,6 +776,7 @@ const Accommodation = () => {
             getAccommodations(company)
             setCurAccomodation(resps.record)
             setAccommodationFields({ ...accommodationFields, ...resps.record })
+            setSplitCashAmount('')
             setIsView(true)
             setAlertState('success')
             setAlert(
@@ -1858,6 +1889,18 @@ const Accommodation = () => {
                                     })}
                                 </select>
                             </div>
+                            {accommodationFields.payPoint && accommodationFields.payPoint !== 'cash' && <div className='inpcov'>
+                                <div>Also Paid in Cash (optional split)</div>
+                                <input
+                                    className='forminp'
+                                    name='splitCashAmount'
+                                    type='number'
+                                    placeholder='Cash portion of this payment, if any'
+                                    value={splitCashAmount}
+                                    disabled={isView && (['Partially Paid', 'Fully Paid'].includes(accommodationFields.paymentStatus) || curApproval?.approved)}
+                                    onChange={(e) => setSplitCashAmount(e.target.value)}
+                                />
+                            </div>}
                             <div className='inpcov'>
                                 <div>Payment Receipt</div>
                                 <input

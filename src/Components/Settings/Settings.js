@@ -2265,6 +2265,26 @@ const Settings = () => {
                                                     <span className='slider'></span>
                                                 </label>
                                             </div>
+                                            <div className='inpcov toggle-row' style={{ marginTop: '16px' }}>
+                                                <div>
+                                                    Automatic Account Clearing
+                                                    <div className='settings-toggle-hint'>When on, after Session Manager closes and automatic sales posting runs, this method's account balance is swept to the receiving account below (Dr receiving account, Cr this account) so it starts the next day at zero.</div>
+                                                </div>
+                                                <label className='toggle-switch'>
+                                                    <input
+                                                        type='checkbox'
+                                                        name='autoClearEnabled'
+                                                        checked={!!curPropSet.autoClearEnabled}
+                                                        onChange={handlePropSetChange}
+                                                    />
+                                                    <span className='slider'></span>
+                                                </label>
+                                            </div>
+                                            {curPropSet.autoClearEnabled && renderAccountingSelect(
+                                                'Auto-Clear Receiving Account',
+                                                curPropSet.clearingAccountCode,
+                                                (value) => setCurPropSet((prev) => ({ ...prev, clearingAccountCode: value }))
+                                            )}
                                         </>
                                     )}
 

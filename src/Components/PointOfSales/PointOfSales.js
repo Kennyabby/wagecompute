@@ -32,7 +32,7 @@ const PointOfSales = () => {
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         alert, alertState, alertTimeout, actionMessage,
         settings, getDate, posWrhAccess, employees,
-        profiles, fetchProfiles, getSessionEnd, getSessionStart,
+        profiles, fetchProfiles, getSessionEnd, getSessionStart, formatDateToDefault,
         products, getProducts, setProducts, getEmployeeName,
         fetchSessions, fetchAllSessions, sessions, setSessions, posOrders,
         fetchSessionManagers, sessionManagers, setSessionManagers,
@@ -900,6 +900,15 @@ const PointOfSales = () => {
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessionManagers(company, companyRecord)
+                    // Settings > Payment Methods > "Automatic Account Clearing" —
+                    // sweeps any auto-clear-enabled method's balance to its
+                    // receiving account for the day that just closed. Best-effort:
+                    // a failure here shouldn't undo the Session Manager stop that
+                    // already succeeded above, and it's safe to also fire from
+                    // Sales.js's automatic sales posting (idempotent per day/method).
+                    try {
+                        await fetchServer("POST", { postingDate: formatDateToDefault(closedSessionManager?.start) }, "accounting/runPaymentMethodClearing", server)
+                    } catch (e) {}
                 } catch (e) {
 
                 }
@@ -4950,6 +4959,14 @@ const POSDashboard = ({
     const reconciliationEnabled = !!posReconciliationSetting?.enabled
     const reconciliationRequiredLocations = posReconciliationSetting?.locations || []
 
+    // Manual re-run of Settings > Payment Methods > "Automatic Account
+    // Clearing" — lets an admin re-trigger it from the Session Manager panel
+    // if the automatic run (after Session Manager stop / automatic sales
+    // posting) failed for some reason, without waiting for the next cycle.
+    const [showClearingModal, setShowClearingModal] = useState(false)
+    const [clearingPreview, setClearingPreview] = useState([])
+    const [clearingPostingDate, setClearingPostingDate] = useState('')
+    const [clearingLoading, setClearingLoading] = useState(false)
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
     const [stableSalesSessions, setStableSalesSessions] = useState([]);
@@ -5056,6 +5073,58 @@ const POSDashboard = ({
             }
         })()
     }, [])
+
+    // Dry-run first: fetches what WOULD move (method, debit/credit account
+    // code+name, amount) without posting anything, so the admin can see
+    // exactly what's about to happen before committing to it. Dated to the
+    // current active Session Manager's day (matching the automatic trigger
+    // after Session Manager stop) rather than "today" — this button exists
+    // specifically to re-run clearing for the day that manager covers,
+    // falling back to today only if no Session Manager is active at all.
+    const openClearingPreview = async () => {
+        setClearingLoading(true)
+        const previewDate = formatDateToDefault(currSessionManager?.start || Date.now())
+        const resp = await fetchServer("POST", { postingDate: previewDate, dryRun: true }, "accounting/runPaymentMethodClearing", server)
+        setClearingLoading(false)
+        if (resp?.err || !resp?.ok) {
+            setAlertState('error')
+            setAlert(resp?.mess || 'Could not preview automatic account clearing.')
+            setAlertTimeout(4000)
+            return
+        }
+        setClearingPostingDate(previewDate)
+        setClearingPreview(Array.isArray(resp.results) ? resp.results : [])
+        setShowClearingModal(true)
+    }
+
+    // Double-posting protection isn't client-side debouncing — it's that the
+    // server recomputes each account's ACTUAL balance fresh at post time
+    // (never trusting the preview's amounts) and skips anything already at
+    // zero, and every posting's clientTxnId is deterministic
+    // (sourceCollection+sourceId+postingKind), so Mongo's unique index on it
+    // rejects a genuine duplicate outright — the automatic trigger firing
+    // moments before/after this manual confirm, or this button being clicked
+    // twice, can never post the same clearing entry twice for the same
+    // method/day.
+    const confirmClearing = async () => {
+        setClearingLoading(true)
+        const resp = await fetchServer("POST", { postingDate: clearingPostingDate }, "accounting/runPaymentMethodClearing", server)
+        setClearingLoading(false)
+        if (resp?.err || !resp?.ok) {
+            setAlertState('error')
+            setAlert(resp?.mess || 'Could not run automatic account clearing.')
+            setAlertTimeout(4000)
+            return
+        }
+        setShowClearingModal(false)
+        setClearingPreview([])
+        const posted = (resp.results || []).filter((row) => row.created)
+        setAlertState('success')
+        setAlert(posted.length
+            ? `Automatic account clearing posted (${posted.length} entr${posted.length === 1 ? 'y' : 'ies'}).`
+            : 'Nothing left to clear — already posted (by the automatic run or an earlier confirm).')
+        setAlertTimeout(3000)
+    }
 
     const loadPendingOfflineChanges = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -5165,7 +5234,68 @@ const POSDashboard = ({
                         >
                             {((currSessionManager === null || currSessionManager?.end)) ? 'Start' : 'Stop'}
                         </div>
+                        {/* Only once there's an actual stopped Session Manager to clear
+                            for — clearing sweeps that manager's own day (still its
+                            `start` date even after stopping), so there's nothing
+                            meaningful to run while it's still active or before one has
+                            ever been started. */}
+                        {currSessionManager && currSessionManager?.end && <button
+                            className='pos-session-board-btn'
+                            style={{ marginTop: '12px' }}
+                            disabled={clearingLoading}
+                            onClick={openClearingPreview}
+                            title='Manually re-run automatic account clearing (Settings > Payment Methods) — e.g. if it failed during automatic posting.'
+                        >
+                            {clearingLoading ? 'Checking...' : 'Run Automatic Account Clearing'}
+                        </button>}
                     </div>}
+                    {showClearingModal && (
+                        <div className='closingsession' onClick={() => { if (!clearingLoading) setShowClearingModal(false) }}>
+                            <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                                <div className='modal-header'>
+                                    <h2>{`Automatic Account Clearing (${clearingPostingDate})`}</h2>
+                                    <button className='close-btn' disabled={clearingLoading} onClick={() => setShowClearingModal(false)}>×</button>
+                                </div>
+                                {!clearingPreview.length ? (
+                                    <p>Nothing to clear — every auto-clear-enabled payment method's account is already at zero, or none are configured (Settings &gt; Payment Methods).</p>
+                                ) : (
+                                    <>
+                                        <p>This will post one journal entry per payment method below, debiting its configured receiving account and crediting the payment method's own account to bring it to zero.</p>
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table className='dd-table'>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Payment Method</th>
+                                                        <th>Debit (Dr)</th>
+                                                        <th>Credit (Cr)</th>
+                                                        <th>Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {clearingPreview.map((row, index) => (
+                                                        <tr key={index}>
+                                                            <td>{row.method}</td>
+                                                            <td>{`${row.debitAccountCode} - ${row.debitAccountName}`}</td>
+                                                            <td>{`${row.creditAccountCode} - ${row.creditAccountName}`}</td>
+                                                            <td>{'₦' + Number(row.amount || 0).toLocaleString()}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                                    <button className='pos-session-board-btn' disabled={clearingLoading} onClick={() => setShowClearingModal(false)}>Cancel</button>
+                                    {!!clearingPreview.length && (
+                                        <button className='pos-session-board-btn' disabled={clearingLoading} onClick={confirmClearing}>
+                                            {clearingLoading ? 'Posting...' : 'Confirm & Post'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div className='pos-session-card-list' style={{ display: 'flex', flexWrap: 'wrap' }}>
                         {profiles?.map((profile) => {
                             if (profile.status !== 'admin' || companyRecord.status === 'admin') {

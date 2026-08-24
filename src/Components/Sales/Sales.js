@@ -1656,6 +1656,16 @@ const Sales = () => {
                     setIsView(true)
                     setFields([...(posted.saleDoc.record || [])])
                     appendAutoPostLog(`Automatic sales posting completed for ${targetDate}.`, 'success')
+                    // Settings > Payment Methods > "Automatic Account Clearing" —
+                    // sweeps any auto-clear-enabled method's balance to its
+                    // receiving account for THIS day, once its automatic sales
+                    // posting is done. Best-effort: a failure here shouldn't stop
+                    // the backlog loop from moving on to the next pending day, and
+                    // it's safe to also fire from PointOfSales.js's Session Manager
+                    // stop (idempotent per day/method).
+                    try {
+                        await fetchServer("POST", { postingDate: formatDateToDefault(targetDate) }, "accounting/runPaymentMethodClearing", server)
+                    } catch (e) {}
                 }
             }
 
