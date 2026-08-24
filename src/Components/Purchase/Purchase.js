@@ -267,7 +267,14 @@ const Purchase = () => {
                 prop: [
                     { $match: { sourceCollection: 'Purchase' } },
                     { $sort: { createdAt: 1 } },
-                    { $group: { _id: '$sourceId', paid: { $sum: '$amount' }, methods: { $addToSet: '$payPoint' } } },
+                    // Grouped first by (purchase, payPoint) so a split payment
+                    // across multiple methods keeps each method's own amount
+                    // distinct, then regrouped by purchase into a per-method
+                    // breakdown — a plain $addToSet of payPoint names alone
+                    // couldn't show "Cash: N5,000, Bank: N3,000", only the
+                    // method names with no amounts.
+                    { $group: { _id: { sourceId: '$sourceId', payPoint: '$payPoint' }, amount: { $sum: '$amount' } } },
+                    { $group: { _id: '$_id.sourceId', paid: { $sum: '$amount' }, methods: { $push: { payPoint: '$_id.payPoint', amount: '$amount' } } } },
                 ],
             }, "aggregateDocs", server)
             if (!resp.err && Array.isArray(resp.record)) {
@@ -275,7 +282,7 @@ const Purchase = () => {
                 const methods = {}
                 resp.record.forEach((row) => {
                     totals[row._id] = Number(row.paid) || 0
-                    methods[row._id] = (row.methods || []).filter(Boolean)
+                    methods[row._id] = (row.methods || []).filter((m) => m?.payPoint)
                 })
                 setPurchasePaidTotals(totals)
                 setPurchasePaymentMethodsUsed(methods)
@@ -938,7 +945,9 @@ const Purchase = () => {
     const getPurchasePaymentMethodsLabel = (pur) => {
         if (wasAutoSettledLegacy(pur)) return 'Cash (legacy)'
         const methods = purchasePaymentMethodsUsed[pur?.createdAt] || []
-        return methods.length ? methods.join(', ') : '—'
+        return methods.length
+            ? methods.map((m) => `${m.payPoint}: ₦${Number(m.amount || 0).toLocaleString()}`).join(', ')
+            : '—'
     }
 
     const handlePostPurchasePayment = async () => {

@@ -94,12 +94,21 @@ const Expenses = () => {
         || companyRecord?.permissions?.includes('approve_postexpense')
 
     const emptyExpenseLine = { description: '', quantity: 1, unitPrice: '' }
+    // Split-bill: an expense's payment can be divided across multiple
+    // payment methods in one submission — one {payPoint, amount} per leg,
+    // summing to expensesAmount (enforced in addExpenses). expensesBank is
+    // still set (to the first/primary leg) on submit for every existing
+    // reader of that single field (deriveExpenseEntries falls back to it
+    // for legacy docs, reports/pdfUtils display it) — paymentMethods is the
+    // authoritative source once present.
+    const emptyPaymentMethod = { payPoint: '', amount: '' }
     const defaultFields = {
         expensesDepartment: '',
         expensesHandler: '',
         expenseCategory: '',
         expensesAmount: '',
         expensesBank: '',
+        paymentMethods: [{ ...emptyPaymentMethod }],
         expensesVendor: '',
         expensesDescription: '',
         // Line items replace the old free-text-only description — each
@@ -318,11 +327,41 @@ const Expenses = () => {
         lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0)
     )
 
+    const addPaymentMethodRow = () => {
+        setFields((prev) => ({ ...prev, paymentMethods: [...(prev.paymentMethods || []), { ...emptyPaymentMethod }] }))
+    }
+
+    const removePaymentMethodRow = (index) => {
+        setFields((prev) => {
+            const rows = (prev.paymentMethods || []).filter((_, i) => i !== index)
+            return { ...prev, paymentMethods: rows.length ? rows : [{ ...emptyPaymentMethod }] }
+        })
+    }
+
+    const updatePaymentMethodRow = (index, field, value) => {
+        setFields((prev) => {
+            const rows = [...(prev.paymentMethods || [])]
+            rows[index] = { ...rows[index], [field]: value }
+            return { ...prev, paymentMethods: rows }
+        })
+    }
+
+    const getPaymentMethodsTotal = (rows = []) => round2(
+        rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
+    )
+
     const handleViewClick = (exp) => {
         setIsView(true)
         setCurApproval(null)
         setCurExpense(exp)
-        setFields({ ...exp })        
+        // Legacy expenses (posted before split-bill existed) only have the
+        // single expensesBank field — synthesize a one-row paymentMethods
+        // array so they still display correctly instead of showing an
+        // empty payment methods list.
+        const paymentMethods = Array.isArray(exp.paymentMethods) && exp.paymentMethods.length
+            ? exp.paymentMethods
+            : (exp.expensesBank ? [{ payPoint: exp.expensesBank, amount: exp.expensesAmount }] : [{ ...emptyPaymentMethod }])
+        setFields({ ...exp, paymentMethods })
     }
 
     useEffect(() => {
@@ -394,9 +433,10 @@ const Expenses = () => {
         }
     }
     const addExpenses = async () => {
+        const paymentRows = (fields.paymentMethods || []).filter((row) => row.payPoint || Number(row.amount))
         if (fields.expensesAmount && fields.expenseCategory &&
             fields.expensesDepartment && fields.expensesHandler &&
-            fields.expensesVendor && fields.expensesBank
+            fields.expensesVendor && paymentRows.length
         ) {
             const lines = (fields.expenseLines || []).filter((line) => line.description || Number(line.quantity) || Number(line.unitPrice))
             if (!lines.length) {
@@ -413,11 +453,33 @@ const Expenses = () => {
                 setAlertTimeout(6000)
                 return
             }
+            if (paymentRows.some((row) => !row.payPoint || !(Number(row.amount) > 0))) {
+                setAlertState('error')
+                setAlert('Select a payment method and enter an amount greater than zero for every payment row.')
+                setAlertTimeout(4000)
+                return
+            }
+            const paymentTotal = getPaymentMethodsTotal(paymentRows)
+            if (Math.abs(paymentTotal - expenseAmount) > 0.01) {
+                setAlertState('error')
+                setAlert(`Payment methods total ₦${paymentTotal.toLocaleString()} but Expenses Amount is ₦${expenseAmount.toLocaleString()} — they must match before posting.`)
+                setAlertTimeout(6000)
+                return
+            }
             // expensesDescription is auto-derived from the lines (rather than
             // typed separately) — deriveExpenseEntries (GL note) and
             // ExpensesReport still read this field, so keep it populated.
             const derivedDescription = lines.map((line) => line.description).filter(Boolean).join(', ')
-            const nextFields = { ...fields, expenseLines: lines, expensesDescription: derivedDescription || fields.expensesDescription }
+            const nextFields = {
+                ...fields,
+                expenseLines: lines,
+                expensesDescription: derivedDescription || fields.expensesDescription,
+                paymentMethods: paymentRows,
+                // Kept in sync (first/primary leg) for every existing reader
+                // of this single field — deriveExpenseEntries's legacy
+                // fallback, reports, printed documents.
+                expensesBank: paymentRows[0].payPoint,
+            }
             setFields(nextFields)
             const newExpense = {
                 ...nextFields,
@@ -1071,20 +1133,43 @@ const Expenses = () => {
                                 disabled={isView}
                             />
                         </div>
-                        <div className='inpcov'>
-                            <div>Expenses Bank</div>
-                            <select
-                                className='forminp'
-                                name='expensesBank'
-                                type='text'
-                                value={fields.expensesBank}
-                                disabled={isView}
-                            >
-                                <option value={''}>Select Expenses Bank</option>
-                                {payPoints.map((payPoint, id) => {
-                                    return <option key={id} value={payPoint}>{payPoint.toUpperCase()}</option>
-                                })}
-                            </select>
+                        <div className='inpcov' style={{ gridColumn: '1 / -1' }}>
+                            <div>Payment Method(s)</div>
+                            <div className='exp-lines-table'>
+                                {(fields.paymentMethods || []).map((row, index) => (
+                                    <div key={index} className='exp-line-row' style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '8px', marginBottom: '6px' }}>
+                                        <select
+                                            className='forminp'
+                                            value={row.payPoint}
+                                            disabled={isView}
+                                            onChange={(e) => updatePaymentMethodRow(index, 'payPoint', e.target.value)}
+                                        >
+                                            <option value={''}>Select Expenses Bank</option>
+                                            {payPoints.map((payPoint, id) => (
+                                                <option key={id} value={payPoint}>{payPoint.toUpperCase()}</option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            className='forminp'
+                                            type='number'
+                                            placeholder='Amount'
+                                            value={row.amount}
+                                            disabled={isView}
+                                            onChange={(e) => updatePaymentMethodRow(index, 'amount', e.target.value)}
+                                        />
+                                        {!isView && (fields.paymentMethods || []).length > 1 && (
+                                            <button type='button' className='edit' onClick={() => removePaymentMethodRow(index)}>✕</button>
+                                        )}
+                                    </div>
+                                ))}
+                                {!isView && (
+                                    <button type='button' className='exp-line-add-btn' onClick={addPaymentMethodRow}>+ Split Across Another Payment Method</button>
+                                )}
+                                <div style={{ marginTop: '8px', fontWeight: 'bold' }}>
+                                    Payment Methods Total: ₦{getPaymentMethodsTotal(fields.paymentMethods || []).toLocaleString()}
+                                    {' '}(must match Expenses Amount above)
+                                </div>
+                            </div>
                         </div>
                     </div>
                     {(!isView || curApproval) && <div className='expensesbuttom'>
