@@ -1058,6 +1058,12 @@ const Journals = () => {
         documentNo: '',
     }
     const [glFilters, setGlFilters] = useState(emptyGlFilters)
+    // Draft mirrors of the applied GL filters/date-range — every filter
+    // input below is bound to these so editing them live-filters whatever
+    // rows are already on screen (see displayedGlRows) without hitting the
+    // server on every keystroke; Apply/Refresh commits them into
+    // glFilters/fromDate/toDate, which is what actually triggers a fetch.
+    const [draftGlFilters, setDraftGlFilters] = useState(emptyGlFilters)
     const [glDetailRow, setGlDetailRow] = useState(null)
     const [glReversing, setGlReversing] = useState(false)
 
@@ -3314,18 +3320,18 @@ const Journals = () => {
         },
     ]
 
-    const buildGlQueryFilters = () => ({
-        fromDate,
-        toDate,
-        sourceCollection: glFilters.sourceCollection || undefined,
-        accountCode: glFilters.accountCode || undefined,
-        reversed: glFilters.reversed || undefined,
-        documentType: glFilters.documentType || undefined,
-        entryType: glFilters.entryType || undefined,
-        handlerId: glFilters.handlerId || undefined,
-        reference: glFilters.reference || undefined,
-        notes: glFilters.notes || undefined,
-        documentNo: glFilters.documentNo || undefined,
+    const buildGlQueryFilters = (filtersOverride = glFilters, fromOverride = fromDate, toOverride = toDate) => ({
+        fromDate: fromOverride,
+        toDate: toOverride,
+        sourceCollection: filtersOverride.sourceCollection || undefined,
+        accountCode: filtersOverride.accountCode || undefined,
+        reversed: filtersOverride.reversed || undefined,
+        documentType: filtersOverride.documentType || undefined,
+        entryType: filtersOverride.entryType || undefined,
+        handlerId: filtersOverride.handlerId || undefined,
+        reference: filtersOverride.reference || undefined,
+        notes: filtersOverride.notes || undefined,
+        documentNo: filtersOverride.documentNo || undefined,
     })
 
     // A human-readable summary of every active filter, for the exported
@@ -3348,12 +3354,12 @@ const Journals = () => {
         }
     }
 
-    const loadGeneralLedger = async (page = 0) => {
+    const loadGeneralLedger = async (page = 0, filtersOverride = glFilters, fromOverride = fromDate, toOverride = toDate) => {
         if (!company) return;
         setGlLoading(true)
         try {
             const resp = await fetchServer("POST", {
-                ...buildGlQueryFilters(),
+                ...buildGlQueryFilters(filtersOverride, fromOverride, toOverride),
                 skip: page * glPageSize,
                 limit: glPageSize,
             }, "accounting/general-ledger", server)
@@ -3374,6 +3380,46 @@ const Journals = () => {
         }
     }
 
+    // Commits the draft filters/date-range (freely editable, live-filtering
+    // whatever's already on screen — see displayedGlRows) into the applied
+    // state that actually queries the server. This is the only thing that
+    // should trigger a GL fetch from filter changes — the effect below no
+    // longer depends on glFilters/fromDate/toDate directly, so editing a
+    // dropdown alone never hits the network.
+    const applyGlFilters = () => {
+        setGlFilters(draftGlFilters)
+        setFromDate(draftFromDate)
+        setToDate(draftToDate)
+        loadGeneralLedger(0, draftGlFilters, draftFromDate, draftToDate)
+    }
+
+    // Client-side pass over whatever page of GL rows is already loaded, using
+    // the DRAFT filters — gives instant feedback while typing/selecting,
+    // without waiting for Apply/Refresh's server round trip. Only covers
+    // fields present on the flattened row shape the server already returns;
+    // anything not comparable here just isn't narrowed until Apply commits
+    // it into an actual server query.
+    const displayedGlRows = glRows.filter((row) => {
+        const contains = (value, needle) => String(value || '').toLowerCase().includes(String(needle).toLowerCase())
+        if (draftGlFilters.sourceCollection) {
+            if (draftGlFilters.sourceCollection === '__journal__') {
+                if (row.source) return false
+            } else if (row.source !== draftGlFilters.sourceCollection) {
+                return false
+            }
+        }
+        if (draftGlFilters.accountCode && String(row.accountCode) !== String(draftGlFilters.accountCode)) return false
+        if (draftGlFilters.reversed === 'reversed' && !row.reversedAt) return false
+        if (draftGlFilters.reversed === 'not-reversed' && row.reversedAt) return false
+        if (draftGlFilters.documentType && !contains(row.documentType, draftGlFilters.documentType)) return false
+        if (draftGlFilters.entryType && !contains(row.entryType, draftGlFilters.entryType)) return false
+        if (draftGlFilters.handlerId && !contains(row.handlerId, draftGlFilters.handlerId)) return false
+        if (draftGlFilters.reference && !contains(row.reference, draftGlFilters.reference)) return false
+        if (draftGlFilters.notes && !contains(row.desc, draftGlFilters.notes)) return false
+        if (draftGlFilters.documentNo && !contains(row.documentNo, draftGlFilters.documentNo)) return false
+        return true
+    })
+
     // Export needs every row matching the filters, not the current page —
     // a separate fetch (exportAll:true bypasses the interactive pagination
     // cap server-side) that doesn't touch the on-screen table's state.
@@ -3388,17 +3434,17 @@ const Journals = () => {
         return Array.isArray(resp.rows) ? resp.rows : []
     }
 
+    // Only re-fetches on tab entry/company switch or a page-size change —
+    // filter/date-range edits no longer trigger a server round trip on their
+    // own; they sit in draftGlFilters/draftFromDate/draftToDate (live-
+    // filtering whatever's already loaded, see displayedGlRows) until Apply
+    // or Refresh commits them via applyGlFilters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (company && activeTab === 'JOURNALS') {
             loadGeneralLedger(0)
         }
-    }, [
-        company, activeTab, fromDate, toDate, glPageSize,
-        glFilters.sourceCollection, glFilters.accountCode, glFilters.reversed,
-        glFilters.documentType, glFilters.entryType, glFilters.handlerId,
-        glFilters.reference, glFilters.notes, glFilters.documentNo,
-    ])
+    }, [company, activeTab, glPageSize])
 
     const handleGoToSource = (row) => {
         const route = GL_SOURCE_ROUTE_MAP[row.source]
@@ -3671,7 +3717,7 @@ const Journals = () => {
                         <button className="j-btn-secondary" onClick={() => handleExportGl('pdf')} disabled={glExporting} title="Export every entry matching the current filters to PDF">
                             <MdPictureAsPdf /> {glExporting ? 'Exporting...' : 'Export PDF'}
                         </button>
-                        <button className="j-btn-secondary" onClick={() => loadGeneralLedger(glPage)} disabled={glLoading} title="Refresh"><MdRefresh /></button>
+                        <button className="j-btn-secondary" onClick={() => applyGlFilters()} disabled={glLoading} title="Refresh"><MdRefresh /></button>
                     </div>
                 </div>
 
@@ -3680,17 +3726,17 @@ const Journals = () => {
                     <div className="gl-filter-grid">
                         <div className="gl-filter-field">
                             <label>From Date</label>
-                            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                            <input type="date" value={draftFromDate} onChange={(e) => setDraftFromDate(e.target.value)} />
                         </div>
                         <div className="gl-filter-field">
                             <label>To Date</label>
-                            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                            <input type="date" value={draftToDate} onChange={(e) => setDraftToDate(e.target.value)} />
                         </div>
                         <div className="gl-filter-field">
                             <label>Source</label>
                             <select
-                                value={glFilters.sourceCollection}
-                                onChange={(e) => setGlFilters(prev => ({ ...prev, sourceCollection: e.target.value }))}
+                                value={draftGlFilters.sourceCollection}
+                                onChange={(e) => setDraftGlFilters(prev => ({ ...prev, sourceCollection: e.target.value }))}
                             >
                                 <option value="">All sources</option>
                                 <option value="__journal__">Journal (manual) only</option>
@@ -3714,8 +3760,8 @@ const Journals = () => {
                         <div className="gl-filter-field">
                             <label>Account</label>
                             <select
-                                value={glFilters.accountCode}
-                                onChange={(e) => setGlFilters(prev => ({ ...prev, accountCode: e.target.value }))}
+                                value={draftGlFilters.accountCode}
+                                onChange={(e) => setDraftGlFilters(prev => ({ ...prev, accountCode: e.target.value }))}
                             >
                                 <option value="">All accounts</option>
                                 {flattenedAccounts.filter(a => a.headerType === 'leaf').map(a => (
@@ -3726,8 +3772,8 @@ const Journals = () => {
                         <div className="gl-filter-field">
                             <label>Reversed status</label>
                             <select
-                                value={glFilters.reversed}
-                                onChange={(e) => setGlFilters(prev => ({ ...prev, reversed: e.target.value }))}
+                                value={draftGlFilters.reversed}
+                                onChange={(e) => setDraftGlFilters(prev => ({ ...prev, reversed: e.target.value }))}
                             >
                                 <option value="">All</option>
                                 <option value="reversed">Reversed only</option>
@@ -3747,14 +3793,18 @@ const Journals = () => {
                                 <input
                                     type="text"
                                     placeholder={`Search ${label.toLowerCase()}...`}
-                                    defaultValue={glFilters[field]}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') { setGlFilters(prev => ({ ...prev, [field]: e.target.value })); } }}
-                                    onBlur={(e) => setGlFilters(prev => ({ ...prev, [field]: e.target.value }))}
+                                    value={draftGlFilters[field]}
+                                    onChange={(e) => setDraftGlFilters(prev => ({ ...prev, [field]: e.target.value }))}
                                 />
                             </div>
                         ))}
                         <div className="gl-filter-field gl-filter-clear">
-                            <button className="j-btn-secondary" onClick={() => setGlFilters(emptyGlFilters)}>Clear filters</button>
+                            <button className="j-btn-secondary" onClick={() => {
+                                setDraftGlFilters(emptyGlFilters)
+                                setGlFilters(emptyGlFilters)
+                                loadGeneralLedger(0, emptyGlFilters, draftFromDate, draftToDate)
+                            }}>Clear filters</button>
+                            <button className="j-btn-primary" onClick={() => applyGlFilters()} disabled={glLoading} title="Fetch matching entries from the server">Apply</button>
                         </div>
                     </div>
                 </div>
@@ -3762,7 +3812,7 @@ const Journals = () => {
                 <div className="gl-table-wrap">
                     {glLoading ? (
                         <div className="dd-empty">Loading General Ledger entries...</div>
-                    ) : renderGlRowsTable(glRows, { emptyBody: 'No entries match the current date range/filters. Try widening the date range above, or create a Journal entry.' })}
+                    ) : renderGlRowsTable(displayedGlRows, { emptyBody: 'No entries match the current date range/filters. Try widening the date range above, or create a Journal entry.' })}
                 </div>
 
                 <div className="gl-pagination">
