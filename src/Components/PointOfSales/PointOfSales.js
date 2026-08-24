@@ -693,7 +693,11 @@ const PointOfSales = () => {
         payPointList.forEach((payPoint) => {
             const method = (paymentMethods || []).find((m) => m.name === payPoint)
             const aliases = Array.isArray(method?.aliases) ? method.aliases : []
-            paymentKeysByPoint[payPoint] = [payPoint, ...aliases]
+            // Deduped — if aliases ever contains the method's own current
+            // name (or the same alias twice), summing order[key] per key
+            // below would count that same order field more than once,
+            // doubling the session total for that payment method.
+            paymentKeysByPoint[payPoint] = [...new Set([payPoint, ...aliases])]
         })
         const allSales = {}
         var totalCashChange = 0
