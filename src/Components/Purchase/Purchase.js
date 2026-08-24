@@ -70,7 +70,12 @@ const Purchase = () => {
     // purchase (a partial payment plan could legitimately use more than one).
     const [purchasePaymentMethodsUsed, setPurchasePaymentMethodsUsed] = useState({})
     const [showPaymentForm, setShowPaymentForm] = useState(false)
-    const [paymentForm, setPaymentForm] = useState({ amount: '', payPoint: '', postingDate: new Date(Date.now()).toISOString().slice(0, 10), receiptNo: '', notes: '' })
+    // Split-bill: `rows` lets one payment submission be divided across
+    // multiple payment methods (e.g. part cash, part bank) in a single go —
+    // date/reference/notes stay shared across all rows since they represent
+    // one payment event, submitted as N independent VendorPayments records.
+    const emptyPaymentRow = { amount: '', payPoint: '' }
+    const [paymentForm, setPaymentForm] = useState({ rows: [{ ...emptyPaymentRow }], postingDate: new Date(Date.now()).toISOString().slice(0, 10), receiptNo: '', notes: '' })
     const [isPostingPayment, setIsPostingPayment] = useState(false)
 
     const defaultFields = {
@@ -938,50 +943,61 @@ const Purchase = () => {
 
     const handlePostPurchasePayment = async () => {
         if (!curPurchase?.vendorId) return
-        const amount = Number(paymentForm.amount)
-        if (!amount || amount <= 0) {
+        const rows = (paymentForm.rows || []).map((row) => ({ ...row, amount: Number(row.amount) }))
+        if (!rows.length || rows.some((row) => !row.amount || row.amount <= 0)) {
             setAlertState('error')
-            setAlert('Enter a payment amount greater than zero.')
+            setAlert('Enter a payment amount greater than zero for every payment method row.')
             setAlertTimeout(3000)
             return
         }
-        if (!paymentForm.payPoint) {
+        if (rows.some((row) => !row.payPoint)) {
             setAlertState('error')
-            setAlert('Select a payment method.')
+            setAlert('Select a payment method for every row.')
             setAlertTimeout(3000)
             return
         }
+        const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0)
         const remaining = getPurchaseRemainingBalance(curPurchase)
-        if (amount > remaining && remaining > 0) {
+        if (totalAmount > remaining && remaining > 0) {
             setAlertState('info')
-            setAlert(`Heads up — this payment (₦${amount.toLocaleString()}) exceeds the remaining balance (₦${remaining.toLocaleString()}). Posting anyway.`)
+            setAlert(`Heads up — this payment (₦${totalAmount.toLocaleString()}) exceeds the remaining balance (₦${remaining.toLocaleString()}). Posting anyway.`)
             setAlertTimeout(4000)
         }
         setIsPostingPayment(true)
         try {
-            const resp = await fetchServer('POST', {
-                payment: {
-                    vendorId: curPurchase.vendorId,
-                    amount,
-                    payPoint: paymentForm.payPoint,
-                    postingDate: paymentForm.postingDate,
-                    receiptNo: paymentForm.receiptNo,
-                    notes: paymentForm.notes,
-                    sourceCollection: 'Purchase',
-                    sourceId: curPurchase.createdAt,
-                },
-            }, 'business-partners/postVendorPayment', server)
-            if (resp.err || !resp.ok) {
-                setAlertState('error')
-                setAlert(resp.mess || 'Unable to post payment.')
-                setAlertTimeout(4000)
-                return
+            // Split-bill: one VendorPayments record per row, posted
+            // sequentially (not Promise.all) — postVendorPayment's
+            // syncPurchasePaymentStatus recomputes the Purchase's cumulative
+            // paidAmount by re-summing every VendorPayments row each time it
+            // runs, so concurrent calls could race that read-then-write;
+            // awaiting each in turn avoids that entirely, and each row's own
+            // GL entries post correctly and independently either way.
+            for (const row of rows) {
+                // eslint-disable-next-line no-await-in-loop
+                const resp = await fetchServer('POST', {
+                    payment: {
+                        vendorId: curPurchase.vendorId,
+                        amount: row.amount,
+                        payPoint: row.payPoint,
+                        postingDate: paymentForm.postingDate,
+                        receiptNo: paymentForm.receiptNo,
+                        notes: paymentForm.notes,
+                        sourceCollection: 'Purchase',
+                        sourceId: curPurchase.createdAt,
+                    },
+                }, 'business-partners/postVendorPayment', server)
+                if (resp.err || !resp.ok) {
+                    setAlertState('error')
+                    setAlert(resp.mess || `Unable to post the ${row.payPoint} portion of this payment.`)
+                    setAlertTimeout(4000)
+                    return
+                }
             }
             setAlertState('success')
-            setAlert('Payment posted successfully!')
+            setAlert(rows.length > 1 ? `Payment posted successfully across ${rows.length} payment methods!` : 'Payment posted successfully!')
             setAlertTimeout(1500)
             setShowPaymentForm(false)
-            setPaymentForm({ amount: '', payPoint: '', postingDate: new Date(Date.now()).toISOString().slice(0, 10), receiptNo: '', notes: '' })
+            setPaymentForm({ rows: [{ ...emptyPaymentRow }], postingDate: new Date(Date.now()).toISOString().slice(0, 10), receiptNo: '', notes: '' })
             await refreshPurchasePaidTotals()
         } catch (e) {
             setAlertState('error')
@@ -1022,29 +1038,59 @@ const Purchase = () => {
                             <p style={{ color: '#666', fontSize: '0.9rem' }}>
                                 Remaining balance: ₦{getPurchaseRemainingBalance(curPurchase).toLocaleString()}
                             </p>
+                            {paymentForm.rows.map((row, rowIndex) => (
+                                <div key={rowIndex} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '10px' }}>
+                                    <div className='inpcov' style={{ flex: 1 }}>
+                                        <div>{paymentForm.rows.length > 1 ? `Amount (${rowIndex + 1})` : 'Amount'}</div>
+                                        <input
+                                            className='forminp'
+                                            type='number'
+                                            value={row.amount}
+                                            onChange={(e) => setPaymentForm((prev) => ({
+                                                ...prev,
+                                                rows: prev.rows.map((r, i) => i === rowIndex ? { ...r, amount: e.target.value } : r),
+                                            }))}
+                                        />
+                                    </div>
+                                    <div className='inpcov' style={{ flex: 1 }}>
+                                        <div>Payment Method</div>
+                                        <select
+                                            className='forminp'
+                                            value={row.payPoint}
+                                            onChange={(e) => setPaymentForm((prev) => ({
+                                                ...prev,
+                                                rows: prev.rows.map((r, i) => i === rowIndex ? { ...r, payPoint: e.target.value } : r),
+                                            }))}
+                                        >
+                                            <option value=''>Select payment method</option>
+                                            {purchasePaymentMethods.map((m) => (
+                                                <option key={m.i_d || m.name} value={m.name}>{m.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {paymentForm.rows.length > 1 && (
+                                        <div
+                                            className='edit'
+                                            style={{ cursor: 'pointer', padding: '10px 12px' }}
+                                            title='Remove this payment method'
+                                            onClick={() => setPaymentForm((prev) => ({ ...prev, rows: prev.rows.filter((_, i) => i !== rowIndex) }))}
+                                        >×</div>
+                                    )}
+                                </div>
+                            ))}
+                            <div
+                                className='edit'
+                                style={{ cursor: 'pointer', fontSize: '0.85rem', width: 'fit-content', marginBottom: '14px' }}
+                                onClick={() => setPaymentForm((prev) => ({ ...prev, rows: [...prev.rows, { ...emptyPaymentRow }] }))}
+                            >
+                                + Split across another payment method
+                            </div>
+                            {paymentForm.rows.length > 1 && (
+                                <p style={{ color: '#666', fontSize: '0.85rem', marginTop: '-8px' }}>
+                                    Total across all rows: ₦{paymentForm.rows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0).toLocaleString()}
+                                </p>
+                            )}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
-                                <div className='inpcov'>
-                                    <div>Amount</div>
-                                    <input
-                                        className='forminp'
-                                        type='number'
-                                        value={paymentForm.amount}
-                                        onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
-                                    />
-                                </div>
-                                <div className='inpcov'>
-                                    <div>Payment Method</div>
-                                    <select
-                                        className='forminp'
-                                        value={paymentForm.payPoint}
-                                        onChange={(e) => setPaymentForm((prev) => ({ ...prev, payPoint: e.target.value }))}
-                                    >
-                                        <option value=''>Select payment method</option>
-                                        {purchasePaymentMethods.map((m) => (
-                                            <option key={m.i_d || m.name} value={m.name}>{m.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
                                 <div className='inpcov'>
                                     <div>Date</div>
                                     <input
@@ -1341,9 +1387,9 @@ const Purchase = () => {
                                         className='edit'
                                         style={{ cursor: 'pointer' }}
                                         onClick={() => {
+                                            const remaining = getPurchaseRemainingBalance(curPurchase)
                                             setPaymentForm({
-                                                amount: getPurchaseRemainingBalance(curPurchase) > 0 ? String(getPurchaseRemainingBalance(curPurchase)) : '',
-                                                payPoint: '',
+                                                rows: [{ amount: remaining > 0 ? String(remaining) : '', payPoint: '' }],
                                                 postingDate: new Date(Date.now()).toISOString().slice(0, 10),
                                                 receiptNo: '',
                                                 notes: '',
@@ -1677,12 +1723,24 @@ const AddProduct = ({
         setAlert('Generating purchase document...')
         setAlertTimeout(100000)
         try {
+            // PO shows what was ORDERED (the original line items captured when
+            // this purchase was first drafted, preserved on `fields.data` even
+            // after receiving — see postPurchaseReceipt). GRN and Invoice both
+            // show what was actually RECEIVED (`purchaseEntries`, sourced from
+            // the posted InventoryTransactions) — a GRN records what physically
+            // arrived, and an invoice bills for what was received, not what was
+            // originally ordered. Falls back to purchaseEntries for a purchase
+            // still in 'receipt' stage, where the ordered lines are all that
+            // exists yet (no InventoryTransactions posted).
+            const documentEntries = type === 'purchaseOrder'
+                ? (fields.data?.validEntries?.length ? fields.data.validEntries : purchaseEntries)
+                : purchaseEntries
             await exportPurchaseDocumentToPDF({
                 type,
                 title: getPurchasePrintTitle(type),
                 companyRecord,
                 fields,
-                entries: purchaseEntries,
+                entries: documentEntries,
                 purchaseDate: purchaseDate || fields.postingDate,
                 curApproval,
                 getDate,
