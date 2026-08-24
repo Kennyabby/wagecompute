@@ -1675,6 +1675,10 @@ const PointOfSales = () => {
 
         const isDeplete = action === 'deplete';
         const createdAt = new Date().getTime();
+        // Settings > POS Settings > "Use Order Date for Inventory Posting" —
+        // defaults on. When off, admins have explicitly chosen to post
+        // Shipment/Return transactions on whatever date they're processed.
+        const useOrderDateForPosting = curPosSettings?.useOrderDateForPosting !== false;
         const transactions = [];
 
         if (!items.length){
@@ -1749,11 +1753,14 @@ const PointOfSales = () => {
                 // "now" here means an order that sat pending and only got
                 // depleted/returned later (backlog, next-day cleanup, etc.)
                 // posted its Shipment/Return to the day it was PROCESSED
-                // instead of the day it was SOLD.
-                postingDate: currentOrder.postingDate
-                    || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)).toISOString().slice(0, 10) : new Date(Date.now()).toISOString().slice(0, 10)),
-                postingStamp: currentOrder.postingStamp
-                    || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)) : new Date(Date.now())),
+                // instead of the day it was SOLD — gated by the POS Settings
+                // toggle so an admin can opt back into the old behavior.
+                postingDate: useOrderDateForPosting
+                    ? (currentOrder.postingDate || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)).toISOString().slice(0, 10) : new Date(Date.now()).toISOString().slice(0, 10)))
+                    : new Date(Date.now()).toISOString().slice(0, 10),
+                postingStamp: useOrderDateForPosting
+                    ? (currentOrder.postingStamp || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)) : new Date(Date.now())))
+                    : new Date(Date.now()),
                 createdAt: createdAt,
             };
 
