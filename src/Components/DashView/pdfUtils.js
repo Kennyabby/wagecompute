@@ -361,6 +361,11 @@ export async function exportPurchaseDocumentToPDF({
     return amount ? `${amount.toLocaleString()}` : '0';
   };
 
+  // A GRN is a quantity-only receiving record — no cost/Amount figures
+  // belong on it at all, unlike the PO (what was ordered, priced) and the
+  // Invoice (what was received, priced — what's actually being billed for).
+  const isGrn = type === 'grn';
+
   const documentDate = purchaseDate || fields.postingDate || '';
   const vendorName = fields.purchaseVendor || fields.vendorName || '';
   const department = fields.purchaseDepartment || '';
@@ -395,7 +400,9 @@ export async function exportPurchaseDocumentToPDF({
   doc.text(`Department: ${department}`, pageWidth - marginRight, y, { align: 'right' });
   y += rowHeight;
   doc.text(`Quantity: ${formatValue(purchaseQuantity)} ${purchaseUOM}`.trim(), marginLeft, y);
-  doc.text(`Total Amount: ${formatCurrency(purchaseAmount)}`, pageWidth - marginRight, y, { align: 'right' });
+  if (!isGrn) {
+    doc.text(`Total Amount: ${formatCurrency(purchaseAmount)}`, pageWidth - marginRight, y, { align: 'right' });
+  }
   y += rowHeight;
 
   if (curApproval?.approved) {
@@ -405,8 +412,10 @@ export async function exportPurchaseDocumentToPDF({
 
   y += 6;
 
-  const headers = ['Product', 'Product ID', 'Qty', 'UOM', 'Unit Cost', 'Total'];
-  const colWidths = [66, 24, 22, 24, 30, 30];
+  const headers = isGrn
+    ? ['Product', 'Product ID', 'Qty', 'UOM']
+    : ['Product', 'Product ID', 'Qty', 'UOM', 'Unit Cost', 'Total'];
+  const colWidths = isGrn ? [90, 32, 30, 44] : [66, 24, 22, 24, 30, 30];
   let x = marginLeft;
   doc.setFillColor(25, 118, 210);
   doc.setTextColor(255, 255, 255);
@@ -440,14 +449,21 @@ export async function exportPurchaseDocumentToPDF({
     const quantity = entry.quantity || entry.baseQuantity || '';
     const totalCost = Number(entry.totalCost || 0);
     const unitCost = quantity ? (totalCost / Number(quantity || 1)) : 0;
-    const rowValues = [
-      sanitizeText(entry.name || entry.productName || '', 30),
-      sanitizeText(entry.productId || entry.i_d || '', 12),
-      formatValue(quantity),
-      formatValue(entry.purchaseUom || entry.purchaseUOM || purchaseUOM),
-      unitCost ? formatCurrency(unitCost.toFixed(2)) : '-',
-      totalCost ? formatCurrency(totalCost) : formatCurrency(0)
-    ];
+    const rowValues = isGrn
+      ? [
+        sanitizeText(entry.name || entry.productName || '', 40),
+        sanitizeText(entry.productId || entry.i_d || '', 16),
+        formatValue(quantity),
+        formatValue(entry.purchaseUom || entry.purchaseUOM || purchaseUOM),
+      ]
+      : [
+        sanitizeText(entry.name || entry.productName || '', 30),
+        sanitizeText(entry.productId || entry.i_d || '', 12),
+        formatValue(quantity),
+        formatValue(entry.purchaseUom || entry.purchaseUOM || purchaseUOM),
+        unitCost ? formatCurrency(unitCost.toFixed(2)) : '-',
+        totalCost ? formatCurrency(totalCost) : formatCurrency(0)
+      ];
     rowValues.forEach((value, index) => {
       doc.rect(x, y, colWidths[index], rowHeight);
       doc.text(String(value), x + 2, y + 6);
@@ -464,10 +480,12 @@ export async function exportPurchaseDocumentToPDF({
     y += rowHeight;
   }
 
-  y += 8;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Grand Total: ${formatCurrency(totalCostSum || purchaseAmount)}`, marginLeft, y);
+  if (!isGrn) {
+    y += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Grand Total: ${formatCurrency(totalCostSum || purchaseAmount)}`, marginLeft, y);
+  }
 
   // Add authorized signature if approved
   if (curApproval?.approved && signatureBase64) {

@@ -830,8 +830,9 @@ const Expenses = () => {
                                                 onClick={(e) => { printToPDF(e) }}
                                             />
                                         }
-                                        {(curExpense?.createdAt === createdAt && curExpense.showDetails) &&
-                                            (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && (
+                                        {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && (
+                                            // Available on every posted expense card directly — printing a PO/
+                                            // Payment Invoice shouldn't require first expanding the card's details.
                                             <div className='purchase-doc-print-actions' onClick={(e) => e.stopPropagation()}>
                                                 <button type='button' onClick={() => printExpenseDocument(exp, 'expensePO')}>Print PO</button>
                                                 <button type='button' onClick={() => printExpenseDocument(exp, 'expenseInvoice')}>Print Invoice</button>
