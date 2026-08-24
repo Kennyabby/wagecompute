@@ -2349,6 +2349,16 @@ const Settings = () => {
                                                         <span className='slider'></span>
                                                     </label>
                                                 </div>
+                                                <div className='inpcov toggle-row'>
+                                                    <div>
+                                                        Use Order Date for Inventory Posting
+                                                        <div className='settings-toggle-hint'>When on, Sales Shipment/Return transactions from the POS and Delivery modules post to the order's own date. When off, they post to whatever date they're processed on.</div>
+                                                    </div>
+                                                    <label className='toggle-switch'>
+                                                        <input type='checkbox' name='useOrderDateForPosting' checked={curPropSet.useOrderDateForPosting !== false} onChange={handlePropSetChange} />
+                                                        <span className='slider'></span>
+                                                    </label>
+                                                </div>
                                                 {curPropSet.type === 'restaurant' && (
                                                     <div className='inpcov toggle-row'>
                                                         <div>Automate Kitchen Delivery</div>
