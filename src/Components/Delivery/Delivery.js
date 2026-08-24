@@ -1343,16 +1343,17 @@ const Delivery = () => {
                 tableId: currentOrder.tableId,
                 handlerId: currentOrder.handlerId,
                 deliveredBy: companyRecord.emailid,
-                // Orders never carries its own postingDate — PointOfSales.js's
-                // equivalent depletion code already falls back to "today" when
-                // this is blank; this path was missing that fallback, which is
-                // how InventoryTransactions docs with NO postingDate field at
-                // all (not just a wrong one) got created — undated documents
-                // then depend on every downstream report consistently falling
-                // back to createdAt, which inventoryReconciliation.js's Review
-                // wasn't doing until this same investigation fixed it there.
-                postingDate: currentOrder.postingDate || new Date(Date.now()).toISOString().slice(0, 10),
-                postingStamp: currentOrder.postingStamp || new Date(Date.now()),
+                // Orders never carry their own postingDate/postingStamp field
+                // — the order's `createdAt` (stamped once, when it was placed)
+                // is the actual date/time this sale happened. Falling back to
+                // "now" here means an order that sat pending and only got
+                // depleted/returned later (backlog, next-day cleanup, etc.)
+                // posted its Shipment/Return to the day it was PROCESSED
+                // instead of the day it was SOLD.
+                postingDate: currentOrder.postingDate
+                    || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)).toISOString().slice(0, 10) : new Date(Date.now()).toISOString().slice(0, 10)),
+                postingStamp: currentOrder.postingStamp
+                    || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)) : new Date(Date.now())),
                 createdAt: createdAt,
             };
 
