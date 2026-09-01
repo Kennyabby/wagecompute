@@ -1225,12 +1225,6 @@ const Settings = () => {
         } else {
             if (loginDetails.email && loginDetails.password && loginDetails.permissions.length) {
                 setSaveStatus('Saving...')
-                const newDBProfile = {
-                    emailid: loginDetails.email,
-                    name: companyRecord.name,
-                    password: loginDetails.password,
-                    db: company
-                }
                 const companyRecordClone = structuredClone({ companyRecord })
                 const defaultCompanyRecord = companyRecordClone.companyRecord
                 delete defaultCompanyRecord._id
@@ -1244,6 +1238,14 @@ const Settings = () => {
                     status: 'user',
                     access: 'user'
                 }
+                // postUserDetails now creates BOTH the per-company Profile
+                // (permissions, this newProfile payload) AND the cross-tenant
+                // login-routing record (WCDatabase/Profiles) in one server-side
+                // call — a separate /createDoc call for WCDatabase/Profiles used
+                // to follow this one, but the generic gateway's collection
+                // allowlist deliberately rejects that cross-tenant target
+                // (403 "not permitted... use the dedicated route"), so that
+                // second call could never actually succeed.
                 const resps = await fetchServer("POST", {
                     database: company,
                     collection: "Profile",
@@ -1256,28 +1258,17 @@ const Settings = () => {
                         setSaveStatus('')
                     }, 3000)
                 } else {
-                    const resps1 = await fetchServer("POST", {
-                        database: "WCDatabase",
-                        collection: "Profiles",
-                        update: newDBProfile
-                    }, "createDoc", server)
-                    if (resps1.err) {
-                        console.log(resps1.mess)
-                        setSaveStatus(resps.mess)
-                        setTimeout(() => {
-                            setSaveStatus('')
-                        }, 3000)
-                    } else {
-                        setSaveStatus('Profile Created')
-                        fetchProfiles(company)
+                    setSaveStatus('Profile Created')
+                    fetchProfiles(company)
+                    if (resps.dbProfile) {
                         setDBProfiles((DBProfiles) => {
-                            return [...DBProfiles, newDBProfile]
+                            return [...DBProfiles, resps.dbProfile]
                         })
-                        handleProfileSelect(newProfile)
-                        setTimeout(() => {
-                            setSaveStatus('')
-                        }, 3000)
                     }
+                    handleProfileSelect(newProfile)
+                    setTimeout(() => {
+                        setSaveStatus('')
+                    }, 3000)
                 }
             } else {
                 setAlertState('error')
@@ -1295,11 +1286,16 @@ const Settings = () => {
         if (deleteCount === selectedEmployee.emailid) {
             setSaveStatus('Deleting...')
             if (selectedEmployee) {
+                // One dedicated server-side call that deletes the per-company
+                // Profile AND (only once no duplicate Profile remains for this
+                // emailid) the cross-tenant login record — a second /removeDoc
+                // call for WCDatabase/Profiles used to follow this one, but the
+                // generic gateway's collection allowlist deliberately rejects
+                // that cross-tenant target, so it could never actually succeed
+                // and the delete never completed.
                 const resps = await fetchServer("POST", {
-                    database: company,
-                    collection: "Profile",
-                    update: { emailid: selectedEmployee.emailid }
-                }, "removeDoc", server)
+                    emailid: selectedEmployee.emailid
+                }, "deleteUserDetails", server)
                 if (resps.err) {
                     console.log(resps.mess)
                     setSaveStatus(resps.mess)
@@ -1307,32 +1303,21 @@ const Settings = () => {
                         setSaveStatus('')
                     }, 3000)
                 } else {
-                    const resps1 = await fetchServer("POST", {
-                        database: "WCDatabase",
-                        collection: "Profiles",
-                        update: { emailid: selectedEmployee.emailid }
-                    }, "removeDoc", server)
-                    if (resps1.err) {
-                        console.log(resps.mess)
-                        setSaveStatus(resps.mess)
-                        setTimeout(() => {
-                            setSaveStatus('')
-                        }, 3000)
-                    } else {
-                        setSaveStatus('Profile Deleted')
-                        setTimeout(() => {
-                            setSaveStatus('')
-                        }, 3000)
-                        fetchProfiles(company)
-                        setSelectedEmployee(null)
-                        setLoginDetails({
-                            email: '',
-                            password: '',
-                            permissions: [],
-                            enableLogin: false,
-                            enableDebtRecovery: false
-                        })
-                    }
+                    setSaveStatus(resps.remainingDuplicates > 0
+                        ? `Duplicate removed (${resps.remainingDuplicates} still remaining).`
+                        : 'Profile Deleted')
+                    setTimeout(() => {
+                        setSaveStatus('')
+                    }, 3000)
+                    fetchProfiles(company)
+                    setSelectedEmployee(null)
+                    setLoginDetails({
+                        email: '',
+                        password: '',
+                        permissions: [],
+                        enableLogin: false,
+                        enableDebtRecovery: false
+                    })
                 }
             }
         } else {
