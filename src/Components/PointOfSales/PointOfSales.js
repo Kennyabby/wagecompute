@@ -906,13 +906,15 @@ const PointOfSales = () => {
                     fetchSessionManagers(company, companyRecord)
                     // Settings > Payment Methods > "Automatic Account Clearing" —
                     // sweeps any auto-clear-enabled method's balance to its
-                    // receiving account for the day that just closed. Best-effort:
-                    // a failure here shouldn't undo the Session Manager stop that
-                    // already succeeded above, and it's safe to also fire from
-                    // Sales.js's automatic sales posting (idempotent per day/method).
-                    try {
-                        await fetchServer("POST", { postingDate: formatDateToDefault(closedSessionManager?.start) }, "accounting/runPaymentMethodClearing", server)
-                    } catch (e) {}
+                    // receiving account for the day that just closed.
+                    // Fire-and-forget, deliberately NOT awaited — this is a
+                    // best-effort side effect (a failure here shouldn't undo the
+                    // Session Manager stop that already succeeded above, and
+                    // it's safe to also fire from Sales.js's automatic sales
+                    // posting, idempotent per day/method), so it must never add
+                    // its own network round trip to the critical path of
+                    // stopping the Session Manager.
+                    fetchServer("POST", { postingDate: formatDateToDefault(closedSessionManager?.start) }, "accounting/runPaymentMethodClearing", server).catch(() => {})
                 } catch (e) {
 
                 }

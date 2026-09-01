@@ -1,5 +1,6 @@
 import './Purchase.css'
 import { useEffect, useContext, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import { exportPurchaseDocumentToPDF } from '../DashView/pdfUtils';
@@ -12,6 +13,7 @@ import heic2any from "heic2any";
 import { uploadFile, deleteFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 
 const Purchase = () => {
+    const Navigate = useNavigate()
 
     const { storePath,
         server, intervalPeriod,
@@ -459,11 +461,7 @@ const Purchase = () => {
                 }))
             } else {
                 setFields((fields) => {
-                    return {
-                        ...fields,
-                        [name]: value,
-                        ...(name === 'purchaseVendor' && !fields.vendorId ? { vendorName: value } : {})
-                    }
+                    return { ...fields, [name]: value }
                 })
             }
         }
@@ -510,7 +508,13 @@ const Purchase = () => {
 
     const updateInventory = async (action) => {
         // console.log(fields)
-        if (fields.purchaseAmount && fields.purchaseVendor && fields.purchaseQuantity &&
+        // vendorId (not purchaseVendor) is the required check — every
+        // purchase must be linked to a Registered Vendor now, no more
+        // free-text vendor name. purchaseVendor/vendorName are still auto-
+        // derived from the selected vendor (handlePurchaseEntry) and used
+        // for display/reports, but they're no longer independently editable
+        // or sufficient on their own.
+        if (fields.purchaseAmount && fields.vendorId && fields.purchaseQuantity &&
             (fields.purchaseUOM || fields.stage === 'receipt') && fields.purchaseHandler && fields.purchaseDepartment
         ) {
             let validEntries = purchaseEntries.filter((entry) => {
@@ -1335,7 +1339,11 @@ const Purchase = () => {
                                         <div>Purchase Details: <b>{`${Number(purchaseQuantity).toLocaleString()} ${purchaseUOM.toUpperCase()} of ${itemCategory}`}</b></div>
                                         <div className='deptdesc'>{`Purchase Handled By:`}<b>{`${handlerName}`}</b></div>
                                         {stage === 'receipt' && <div className='deptdesc' style={{ fontSize: '1rem', color: 'red' }}><b>PENDING RECEIPT</b></div>}
-                                        {pur.vendorId && <div className='deptdesc' style={{ fontSize: '0.85rem', color: getPurchasePaymentStatus(pur) === 'PAID' ? 'green' : (getPurchasePaymentStatus(pur) === 'PARTIALLY PAID' ? '#b8860b' : 'red') }}><b>{getPurchasePaymentStatus(pur)}</b></div>}
+                                        {pur.vendorId ? (
+                                            <div className='deptdesc' style={{ fontSize: '0.85rem', color: getPurchasePaymentStatus(pur) === 'PAID' ? 'green' : (getPurchasePaymentStatus(pur) === 'PARTIALLY PAID' ? '#b8860b' : 'red') }}><b>{getPurchasePaymentStatus(pur)}</b></div>
+                                        ) : (
+                                            <div className='deptdesc' style={{ fontSize: '0.8rem', color: '#b8860b' }}>No registered vendor linked — payment tracking unavailable</div>
+                                        )}
                                     </div>
                                     {(companyRecord.status === 'admin') && <div
                                         className='edit'
@@ -1383,6 +1391,15 @@ const Purchase = () => {
                         </div>}
                     </div>
                     <div className='purinfocontent' onChange={handlePurchaseEntry}>
+                        {curPurchase && !curPurchase.vendorId && (
+                            <div className='purchase-payment-panel' style={{ marginBottom: '14px', padding: '12px', border: '1px solid rgba(200,120,0,0.3)', background: 'rgba(200,120,0,0.06)', borderRadius: '8px' }}>
+                                <b>No payment tracking available for this purchase.</b>
+                                <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>
+                                    This purchase's vendor ({curPurchase.purchaseVendor || 'unnamed'}) was entered as free text, not selected from "Registered Vendor" —
+                                    payment status/amount/method can only be tracked for a purchase linked to a registered vendor record.
+                                </div>
+                            </div>
+                        )}
                         {curPurchase && curPurchase.vendorId && (
                             <div className='purchase-payment-panel' style={{ marginBottom: '14px', padding: '12px', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                                 <div>
@@ -1448,18 +1465,15 @@ const Purchase = () => {
                                     </option>
                                 ))}
                             </select>
-                        </div>
-                        <div className='inpcov'>
-                            <div>Vendor Name</div>
-                            <input
-                                className='forminp'
-                                name='purchaseVendor'
-                                type='text'
-                                autoComplete='on'
-                                placeholder='Vendor name'
-                                value={fields.purchaseVendor}
-                                disabled={isView || !!fields.vendorId}
-                            />
+                            {/* Free-text vendor entry removed — every purchase must be
+                                linked to a Registered Vendor so payment tracking (status,
+                                amount, method) is always available; new vendors are
+                                created on the Corporate Vendors/Partners page instead. */}
+                            {!isView && (
+                                <div className='prd-link' style={{ marginTop: '6px', fontSize: '0.8rem' }} onClick={() => Navigate('/business-partners')}>
+                                    + Add New Vendor
+                                </div>
+                            )}
                         </div>
                         <div className='inpcov'>
                             <div>Select Purchase Handler</div>
@@ -1588,13 +1602,13 @@ const Purchase = () => {
                                 onClick={() => {
                                     // setIsProductView(false)
                                     // setProductAdd(true)
-                                    if (fields.purchaseVendor) {
+                                    if (fields.vendorId) {
                                         setIsProductView(false)
                                         setProductAdd(true)
                                     }
                                     else {
                                         setAlertState('error')
-                                        setAlert('Please select Vendor before linking products!')
+                                        setAlert('Please select a Registered Vendor before linking products!')
                                         setAlertTimeout(1000)
                                     }
                                 }}
