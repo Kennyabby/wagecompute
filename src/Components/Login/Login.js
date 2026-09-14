@@ -261,6 +261,11 @@ const Login = () => {
         window.localStorage.setItem('sess-recg-id', now + "-" + sess)
         window.localStorage.setItem('idt-curr-usr', now + "")
         window.localStorage.setItem('sessn-id', idVal)
+        // Electron desktop build only: tells main.js it's now safe to show
+        // an update-available prompt, if one was found and held — see
+        // checkForAppUpdates in electron/main.js. No-op on the web build
+        // (window.electronAPI is only ever defined inside the desktop shell).
+        window.electronAPI?.notifyUserLoggedIn?.()
         setField((field) => {
           return ({ ...field, emailid: "", password: "" })
         })

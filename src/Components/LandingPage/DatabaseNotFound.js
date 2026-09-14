@@ -58,11 +58,30 @@ const DatabaseNotFound = ({ isProduction }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <button className="btn-back" onClick={() => window.open(isProduction ? 'https://epxcentral.com' : 'http://localhost:3000', '_self')}>
+          <button
+            className="btn-back"
+            onClick={() => {
+              // Electron desktop build: the app's own origin (whatever port
+              // electron/main.js's spawned wageserver ended up on) is the
+              // only place to go back to — a hardcoded localhost:3000/
+              // epxcentral.com URL below is the WEB deployment's separate
+              // marketing site, unreachable/irrelevant from inside the
+              // desktop shell. Client-side navigate('/') lands back on
+              // TenantSetup (see App.js's '/' route) instead.
+              if (window.electronAPI?.isElectron) { navigate('/'); return }
+              window.open(isProduction ? 'https://epxcentral.com' : 'http://localhost:3000', '_self')
+            }}
+          >
             <HiArrowLeft /> Back to Home
           </button>
           {(
-            <button className="btn-secondary" onClick={() => window.open(isProduction ? 'https://epxcentral.com/signup': 'http://localhost:3000/signup', '_self')}>
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                if (window.electronAPI?.isElectron) { navigate('/'); return }
+                window.open(isProduction ? 'https://epxcentral.com/signup' : 'http://localhost:3000/signup', '_self')
+              }}
+            >
               Create Company
             </button>
           )}
