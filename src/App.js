@@ -2137,7 +2137,17 @@ function App() {
     setCompanyRecord(null)
     setCompany(null)
     setLoadedCurPath('')
-    const isPublicPath = ['/', '/payment/confirm', '/login', '/signup', '/forgot-password', '/pricing', '/renew', '/license-expired'].includes(window.location.pathname);
+    // Every route registered without requiring a session (see the <Routes>
+    // block below) belongs here — this was missing most of them (privacy,
+    // terms, and the rest of the public marketing/docs pages), so visiting
+    // any of those with no active session force-redirected to /login even
+    // though the page itself needs no session at all.
+    const isPublicPath = [
+      '/', '/loading', '/payment/confirm', '/login', '/signup', '/forgot-password', '/pricing', '/renew', '/license-expired',
+      '/database-not-found', '/community', '/help', '/about', '/careers', '/partners',
+      '/docs', '/tutorials', '/api', '/privacy', '/terms', '/cookie-policy', '/security',
+      '/offline-license-portal/login', '/offline-license/payment-complete',
+    ].includes(window.location.pathname);
     if (!isPublicPath) Navigate('/login')
   }
 
