@@ -150,7 +150,13 @@ const CentralAdminApp = () => {
 
   const [globalSettingsForm, setGlobalSettingsForm] = useState({
     defaultFreeTrialDays: 14,
+    desktopOfflineIntervalDays: 15,
   })
+  const [offlineAccounts, setOfflineAccounts] = useState([])
+  const [offlineModulePricing, setOfflineModulePricing] = useState([])
+  const [desktopReleases, setDesktopReleases] = useState([])
+  const [editingLicense, setEditingLicense] = useState(null) // { licenseId, modules, expiresAt, status }
+  const [newOfflineLicenseForm, setNewOfflineLicenseForm] = useState(null)
   const [feedback, setFeedback] = useState({ type: '', message: '' })
   const [isBusy, setIsBusy] = useState(false)
   const [actionDatabase, setActionDatabase] = useState('')
@@ -312,7 +318,8 @@ const CentralAdminApp = () => {
         settings: response.settings || { defaultFreeTrialDays: 14 },
       })
       setGlobalSettingsForm({
-        defaultFreeTrialDays: response.settings?.defaultFreeTrialDays || 14
+        defaultFreeTrialDays: response.settings?.defaultFreeTrialDays || 14,
+        desktopOfflineIntervalDays: response.settings?.desktopOfflineIntervalDays || 15,
       })
       setManualForm((current) => ({
         ...current,
@@ -622,6 +629,43 @@ const CentralAdminApp = () => {
     })
   }
 
+  // Shared by both offline-license admin forms (manual create + edit) — a
+  // checkbox picker with the same automatic-dependency-expansion behavior
+  // as toggleDraftModule above, plus an always-visible, non-interactive list
+  // of essential/free modules (auto-granted to every tenant regardless of
+  // selection — see resolveEffectiveModules in moduleCatalog.js — so there's
+  // nothing to check, just something worth showing so an admin isn't left
+  // wondering why core modules aren't in the picker).
+  const toggleOfflineFormModule = (currentModules, setModules, key) => {
+    const next = new Set(currentModules)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    setModules(resolveModuleDepsClientSide(offlineModulePricing, Array.from(next)))
+  }
+
+  const renderOfflineModulePicker = (selectedModules, setModules) => (
+    <div className='full'>
+      <span style={{ display: 'block', marginBottom: 6 }}>Modules</span>
+      <div style={{ fontSize: 12, color: 'var(--ca-text-muted)', marginBottom: 8 }}>
+        Essential (always included automatically, no selection needed): {offlineModulePricing.filter(m => m.tier === 'free').map(m => m.name).join(', ') || '—'}
+      </div>
+      {offlineModulePricing.filter(m => m.tier === 'standard').map((m) => (
+        <label key={m.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', cursor: 'pointer' }}>
+          <span>
+            <input
+              type='checkbox'
+              checked={selectedModules.includes(m.key)}
+              onChange={() => toggleOfflineFormModule(selectedModules, setModules, m.key)}
+              style={{ marginRight: 8 }}
+            />
+            {m.name}
+          </span>
+          <span>₦{Number(m.offlineYearlyPriceNaira || 0).toLocaleString()}/yr</span>
+        </label>
+      ))}
+    </div>
+  )
+
   const handleSaveTenantModules = async () => {
     if (!selectedTenant) return
     setIsSavingModules(true)
@@ -752,6 +796,96 @@ const CentralAdminApp = () => {
 
   const editPlan = (plan) => {
     setPlanForm({ ...plan });
+  }
+
+  // ================================================================
+  // Offline licenses — full visibility + direct edit, per requirement.
+  // ================================================================
+  const loadOfflineLicenses = async () => {
+    setIsBusy(true)
+    try {
+      const response = await requestAdmin('GET', 'admin/offline-licenses/list')
+      if (response.err || !response.ok) throw new Error(response.mess || 'Failed to load offline licenses.')
+      setOfflineAccounts(response.accounts || [])
+    } catch (error) {
+      setNotice('error', error.message)
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  const loadDesktopReleases = async () => {
+    setIsBusy(true)
+    try {
+      const response = await requestAdmin('GET', 'admin/desktop-releases/list')
+      if (response.err || !response.ok) throw new Error(response.mess || 'Failed to load desktop releases.')
+      setDesktopReleases(response.releases || [])
+    } catch (error) {
+      setNotice('error', error.message)
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  const loadOfflineModulePricing = async () => {
+    setIsBusy(true)
+    try {
+      const response = await requestAdmin('GET', 'admin/billing/module-pricing/list')
+      if (response.err || !response.ok) throw new Error(response.mess || 'Failed to load module pricing.')
+      setOfflineModulePricing(response.pricing || [])
+    } catch (error) {
+      setNotice('error', error.message)
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  const handleUpdateModulePricing = async (key, priceNaira, offlineYearlyPriceNaira) => {
+    setIsBusy(true)
+    try {
+      const response = await requestAdmin('POST', 'admin/billing/update-module-pricing', { key, priceNaira, offlineYearlyPriceNaira })
+      if (response.err || !response.ok) throw new Error(response.mess || 'Failed to update module pricing.')
+      setNotice('success', response.mess)
+      await loadOfflineModulePricing()
+    } catch (error) {
+      setNotice('error', error.message)
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  const handleUpdateOfflineLicense = async (e) => {
+    if (e) e.preventDefault()
+    if (!editingLicense?.licenseId) return
+    setIsBusy(true)
+    try {
+      const response = await requestAdmin('POST', 'admin/offline-licenses/update', editingLicense)
+      if (response.err || !response.ok) throw new Error(response.mess || 'Failed to update license.')
+      setNotice('success', response.mess)
+      setEditingLicense(null)
+      await loadOfflineLicenses()
+    } catch (error) {
+      setNotice('error', error.message)
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  const handleCreateOfflineLicense = async (e) => {
+    if (e) e.preventDefault()
+    if (!newOfflineLicenseForm) return
+    setIsBusy(true)
+    try {
+      const response = await requestAdmin('POST', 'admin/offline-licenses/create', newOfflineLicenseForm)
+      if (response.err || !response.ok) throw new Error(response.mess || 'Failed to create license.')
+      setNotice('success', response.mess)
+      setNewOfflineLicenseForm(null)
+      await loadOfflineLicenses()
+    } catch (error) {
+      setNotice('error', error.message)
+    } finally {
+      setIsBusy(false)
+    }
   }
 
   const filteredTenants = useMemo(() => {
@@ -896,6 +1030,8 @@ const CentralAdminApp = () => {
             ['connectivity', 'Live Connectivity', '📡'],
             ['health', 'System Health', '🩺'],
             ['subscriptions', 'Subscriptions', '💳'],
+            ['offlineLicenses', 'Offline Licenses', '🔑'],
+            ['desktopReleases', 'Desktop Releases', '💿'],
             ['support', 'Help & Support', '💬'],
             ['maintenance', 'Maintenance', '🛠️'],
             ['settings', 'Settings', '⚙️'],
@@ -910,6 +1046,8 @@ const CentralAdminApp = () => {
                 if (key === 'support') loadEnquiries();
                 if (key === 'sessions' || key === 'connectivity') loadSessions();
                 if (key === 'health') loadPlatformHealth();
+                if (key === 'offlineLicenses') { loadOfflineLicenses(); loadOfflineModulePricing(); }
+                if (key === 'desktopReleases') loadDesktopReleases();
               }}
             >
               <span className='ca-nav-icon'>
@@ -936,7 +1074,7 @@ const CentralAdminApp = () => {
         <header className='ca-header'>
           <div>
             <div className='ca-page-kicker'>Central admin platform</div>
-            <h2>{activeTab === 'overview' ? 'Global operations view' : activeTab === 'tenants' ? 'Tenant estate' : activeTab === 'subscriptions' ? 'Subscriptions & billing' : activeTab === 'maintenance' ? 'Maintenance & migrations' : 'Admin settings'}</h2>
+            <h2>{activeTab === 'overview' ? 'Global operations view' : activeTab === 'tenants' ? 'Tenant estate' : activeTab === 'subscriptions' ? 'Subscriptions & billing' : activeTab === 'offlineLicenses' ? 'Offline licenses' : activeTab === 'desktopReleases' ? 'Desktop app releases' : activeTab === 'maintenance' ? 'Maintenance & migrations' : 'Admin settings'}</h2>
             <p>Generated {formatDateTime(snapshot.generatedAt || Date.now())}</p>
           </div>
           <div className='ca-header-actions'>
@@ -1107,6 +1245,17 @@ const CentralAdminApp = () => {
                       <div className='ca-mini-card'><span>Expires</span><strong>{formatDateTime(tenantDetails.subscriptionStatus?.expiresAt)}</strong></div>
                       <div className='ca-mini-card'><span>Trial status</span><strong>{formatStatus(tenantDetails.subscriptionStatus?.trialSuspended ? 'trial_suspended' : (tenantDetails.subscriptionStatus?.trialActive ? 'trial_active' : tenantDetails.subscriptionStatus?.trialExpired ? 'trial_expired' : 'not_on_trial'))}</strong></div>
                       <div className='ca-mini-card'><span>Trial expiry</span><strong>{formatDateTime(tenantDetails.subscriptionStatus?.trialExpiresAt)}</strong></div>
+                      <div className='ca-mini-card'>
+                        <span>Access channel</span>
+                        <strong>{tenantDetails.offlineLicenseInfo ? `Offline (${tenantDetails.offlineLicenseInfo.isPrimary ? 'primary' : 'branch'})` : 'Online'}</strong>
+                      </div>
+                      {tenantDetails.offlineLicenseInfo && (
+                        <>
+                          <div className='ca-mini-card'><span>Offline license key</span><strong>{tenantDetails.offlineLicenseInfo.licenseKey || '--'}</strong></div>
+                          <div className='ca-mini-card'><span>Offline license status</span><strong>{formatStatus(tenantDetails.offlineLicenseInfo.licenseStatus)}</strong></div>
+                          <div className='ca-mini-card'><span>Offline license expires</span><strong>{formatDateTime(tenantDetails.offlineLicenseInfo.expiresAt)}</strong></div>
+                        </>
+                      )}
                     </div>
 
                     <div className='ca-control-strip'>
@@ -1454,6 +1603,7 @@ const CentralAdminApp = () => {
                         <tr key={`${payment.reference}-${index}`}>
                           <td>
                             {payment.companyName || payment.database}
+                            {payment.licenseAccountId && <span className="ca-badge mini" style={{ marginLeft: '8px', fontSize: '9px', padding: '2px 6px' }}>OFFLINE</span>}
                             {payment.isTest && <span className="ca-badge danger mini" style={{ marginLeft: '8px', fontSize: '9px', padding: '2px 6px' }}>TEST</span>}
                           </td>
                           <td>{payment.invoiceNumber || '--'}</td>
@@ -1609,6 +1759,141 @@ const CentralAdminApp = () => {
                     </details>
                   </div>
                 )}
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeTab === 'desktopReleases' && (
+          <>
+            <section className='ca-panel' style={{ marginBottom: 24 }}>
+              <div className='ca-panel-head'><h3>Current version</h3></div>
+              <div className='ca-panel-content'>
+                {!desktopReleases.length && <p>No desktop release published yet — run "npm run release" from the Electron wrapper project.</p>}
+                {desktopReleases[0] && (
+                  <div className='ca-tenant-card'>
+                    <h4>v{desktopReleases[0].version}</h4>
+                    <p>Published {formatDateTime(desktopReleases[0].publishedAt)} by {desktopReleases[0].publishedBy || '--'}</p>
+                    <p>Download method: <strong>{desktopReleases[0].downloadMethod || 'direct'}</strong>{desktopReleases[0].downloadMethod === 'proxy' && ' (Drive public links didn\'t work for this release — routed through wageserver instead)'}</p>
+                    {(desktopReleases[0].files || []).map((f) => (
+                      <div key={f.name} style={{ padding: '4px 0' }}>
+                        {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB) — <a href={f.downloadLink} target='_blank' rel='noreferrer'>Download</a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className='ca-panel'>
+              <div className='ca-panel-head'><h3>Release history</h3></div>
+              <div className='ca-panel-content'>
+                {desktopReleases.slice(1).map((release) => (
+                  <div key={release.version} className='ca-tenant-card'>
+                    <h4>v{release.version}</h4>
+                    <p>Published {formatDateTime(release.publishedAt)} by {release.publishedBy || '--'} — download method: {release.downloadMethod || 'direct'}</p>
+                    {(release.files || []).map((f) => (
+                      <div key={f.name} style={{ padding: '4px 0' }}>
+                        {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB) — <a href={f.downloadLink} target='_blank' rel='noreferrer'>Download</a>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {desktopReleases.length <= 1 && <p className='ca-empty'>No earlier releases yet.</p>}
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeTab === 'offlineLicenses' && (
+          <>
+            <section className='ca-panel' style={{ marginBottom: 24 }}>
+              <div className='ca-panel-head'>
+                <h3>Offline license accounts</h3>
+                <button className='ca-primary-btn' onClick={() => setNewOfflineLicenseForm({ email: '', password: '', fullName: '', companyName: '', primarySubdomain: '', modules: [] })}>
+                  + Manually Create License
+                </button>
+              </div>
+              <div className='ca-panel-content'>
+                {offlineAccounts.length === 0 && <p>No offline license accounts yet.</p>}
+                {offlineAccounts.map((account) => (
+                  <div key={account.accountId} className='ca-tenant-card'>
+                    <h4>{account.companyName} — {account.email}</h4>
+                    <p>Primary subdomain: {account.primarySubdomain} | Account status: {account.status}</p>
+                    {(account.licenses || []).map((license) => (
+                      <div key={license.licenseId} style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8, padding: 10, marginTop: 8 }}>
+                        <div><strong>License key:</strong> {license.licenseKey}</div>
+                        <div><strong>Status:</strong> {license.status}</div>
+                        <div><strong>Expires:</strong> {new Date(license.expiresAt).toLocaleDateString()} ({Math.ceil((license.expiresAt - Date.now()) / (24 * 60 * 60 * 1000))} day(s) remaining)</div>
+                        <div><strong>Modules:</strong> {(license.modules || []).join(', ') || 'none'}</div>
+                        <div><strong>Branches:</strong> {(license.branches || []).map(b => b.subdomain).join(', ') || 'none'}</div>
+                        <button className='ca-secondary-btn' style={{ marginTop: 8 }}
+                          onClick={() => setEditingLicense({ licenseId: license.licenseId, modules: license.modules || [], expiresAt: license.expiresAt, status: license.status })}>
+                          Edit
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {editingLicense && (
+              <section className='ca-panel' style={{ marginBottom: 24 }}>
+                <div className='ca-panel-head'><h3>Edit license</h3></div>
+                <form className='ca-form-grid' onSubmit={handleUpdateOfflineLicense}>
+                  {renderOfflineModulePicker(editingLicense.modules || [], (mods) => setEditingLicense({ ...editingLicense, modules: mods }))}
+                  <label>
+                    <span>Expires at</span>
+                    <input type='date' value={new Date(editingLicense.expiresAt).toISOString().slice(0, 10)}
+                      onChange={(e) => setEditingLicense({ ...editingLicense, expiresAt: new Date(e.target.value).getTime() })} />
+                  </label>
+                  <label>
+                    <span>Status</span>
+                    <select value={editingLicense.status} onChange={(e) => setEditingLicense({ ...editingLicense, status: e.target.value })}>
+                      <option value='active'>active</option>
+                      <option value='expired'>expired</option>
+                      <option value='terminated'>terminated</option>
+                    </select>
+                  </label>
+                  <div className='full'>
+                    <button className='ca-primary-btn' type='submit' disabled={isBusy}>Save</button>
+                    <button className='ca-secondary-btn' type='button' onClick={() => setEditingLicense(null)}>Cancel</button>
+                  </div>
+                </form>
+              </section>
+            )}
+
+            {newOfflineLicenseForm && (
+              <section className='ca-panel' style={{ marginBottom: 24 }}>
+                <div className='ca-panel-head'><h3>Manually create offline license</h3></div>
+                <form className='ca-form-grid' onSubmit={handleCreateOfflineLicense}>
+                  <label><span>Email</span><input type='email' value={newOfflineLicenseForm.email} onChange={(e) => setNewOfflineLicenseForm({ ...newOfflineLicenseForm, email: e.target.value })} required /></label>
+                  <label><span>Password</span><input type='text' value={newOfflineLicenseForm.password} onChange={(e) => setNewOfflineLicenseForm({ ...newOfflineLicenseForm, password: e.target.value })} required /></label>
+                  <label><span>Full name</span><input type='text' value={newOfflineLicenseForm.fullName} onChange={(e) => setNewOfflineLicenseForm({ ...newOfflineLicenseForm, fullName: e.target.value })} required /></label>
+                  <label><span>Company name</span><input type='text' value={newOfflineLicenseForm.companyName} onChange={(e) => setNewOfflineLicenseForm({ ...newOfflineLicenseForm, companyName: e.target.value })} required /></label>
+                  <label><span>Primary subdomain</span><input type='text' value={newOfflineLicenseForm.primarySubdomain} onChange={(e) => setNewOfflineLicenseForm({ ...newOfflineLicenseForm, primarySubdomain: e.target.value })} required /></label>
+                  {renderOfflineModulePicker(newOfflineLicenseForm.modules, (mods) => setNewOfflineLicenseForm({ ...newOfflineLicenseForm, modules: mods }))}
+                  <div className='full'>
+                    <button className='ca-primary-btn' type='submit' disabled={isBusy}>Create</button>
+                    <button className='ca-secondary-btn' type='button' onClick={() => setNewOfflineLicenseForm(null)}>Cancel</button>
+                  </div>
+                </form>
+              </section>
+            )}
+
+            <section className='ca-panel'>
+              <div className='ca-panel-head'><h3>Offline yearly module pricing</h3></div>
+              <div className='ca-panel-content'>
+                {offlineModulePricing.map((m) => (
+                  <div key={m.key} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0' }}>
+                    <span style={{ flex: 1 }}>{m.name}</span>
+                    <span>Online monthly: ₦{m.priceNaira}</span>
+                    <input type='number' style={{ width: 140 }} defaultValue={m.offlineYearlyPriceNaira}
+                      onBlur={(e) => handleUpdateModulePricing(m.key, m.priceNaira, Number(e.target.value))} />
+                    <span>/yr</span>
+                  </div>
+                ))}
               </div>
             </section>
           </>
@@ -1805,6 +2090,16 @@ const CentralAdminApp = () => {
                       min='1'
                       value={globalSettingsForm.defaultFreeTrialDays}
                       onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, defaultFreeTrialDays: Number(e.target.value) })}
+                      required
+                    />
+                  </label>
+                  <label>
+                    <span>Offline desktop: must connect within (days)</span>
+                    <input
+                      type='number'
+                      min='1'
+                      value={globalSettingsForm.desktopOfflineIntervalDays}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, desktopOfflineIntervalDays: Number(e.target.value) })}
                       required
                     />
                   </label>

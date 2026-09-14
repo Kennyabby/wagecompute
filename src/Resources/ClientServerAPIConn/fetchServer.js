@@ -12,6 +12,31 @@ let inMemoryAccessToken = null;
 export const setInMemoryAccessToken = (token) => { inMemoryAccessToken = token || null; };
 export const clearInMemoryAccessToken = () => { inMemoryAccessToken = null; };
 
+// Electron desktop build only — set once TenantSetup.js's workspace picker
+// resolves a local tenant, read on every request afterward so
+// wageserver/InitializingModule/InitializeApp.js's tenant-resolution
+// middleware can bind this request to it (there's no subdomain to resolve
+// from when loaded at 127.0.0.1). window.electronAPI only exists when
+// electron/preload.js actually ran (i.e. only inside the desktop shell), so
+// a normal web page never has anything to read here and never sends this
+// header — the whole mechanism is a no-op for the web build.
+const DESKTOP_TENANT_STORAGE_KEY = 'desktop-selected-tenant';
+export const setDesktopTenant = (tenantDb) => {
+    try {
+        if (tenantDb) window.localStorage.setItem(DESKTOP_TENANT_STORAGE_KEY, tenantDb);
+        else window.localStorage.removeItem(DESKTOP_TENANT_STORAGE_KEY);
+    } catch (e) { /* ignore */ }
+};
+const getDesktopTenantHeader = () => {
+    if (!window.electronAPI?.isElectron) return {};
+    try {
+        const tenantDb = window.localStorage.getItem(DESKTOP_TENANT_STORAGE_KEY);
+        return tenantDb ? { 'x-desktop-tenant': tenantDb } : {};
+    } catch (e) {
+        return {};
+    }
+};
+
 // Every document create call gets a stable idempotency key generated exactly
 // once here (rather than requiring every calling component to remember to add
 // one) — a retried request (network timeout, offline-queue replay) carries the
@@ -111,14 +136,16 @@ const fetchServer = async (method, rawBody, endpoint, server, signal) => {
 
     // Attach in-memory access token (if any) to Authorization header for cross-origin requests
     const storedToken = inMemoryAccessToken;
+    const desktopTenantHeader = getDesktopTenantHeader();
 
     const data = {
         method: normalizedMethod,
         credentials: 'include',
         headers: supportsRequestBody ? {
             'Content-Type': 'application/json',
-            ...(storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {})
-        } : (storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {}),
+            ...(storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {}),
+            ...desktopTenantHeader,
+        } : { ...(storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {}), ...desktopTenantHeader },
     };
 
     if (supportsRequestBody) {

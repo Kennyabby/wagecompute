@@ -5,6 +5,7 @@ import ContextProvider from './Resources/ContextProvider';
 import PauseView from './Components/PauseView/PauseView';
 import LoadingPage from './Components/LoadingPage/LoadingPage';
 import LandingPage from './Components/LandingPage/LandingPage';
+import TenantSetup from './Components/TenantSetup/TenantSetup';
 import PricingPage from './Components/LandingPage/PricingPage';
 import CommunityPage from './Components/LandingPage/CommunityPage';
 import PaymentConfirmPage from './Components/LandingPage/PaymentConfirmPage';
@@ -12,6 +13,8 @@ import HelpPage from './Components/LandingPage/HelpPage';
 import Login from './Components/Login/Login';
 import Signup from './Components/Login/Signup';
 import ForgotPassword from './Components/Login/ForgotPassword';
+import OfflineLicensePortal from './Components/LandingPage/OfflineLicensePortal';
+import OfflineLicensePaymentComplete from './Components/LandingPage/OfflineLicensePaymentComplete';
 import DatabaseNotFound from './Components/LandingPage/DatabaseNotFound';
 import LicenseExpired from './Components/LandingPage/LicenseExpired';
 import TenantRenewal from './Components/LandingPage/TenantRenewal';
@@ -53,7 +56,14 @@ import {
 // Single source of truth for the API base URL: set REACT_APP_API_URL in the
 // environment used for each build (CRA inlines REACT_APP_* vars at build time).
 // Falls back to localhost only for local dev when the var isn't set.
-const SERVER = process.env.REACT_APP_API_URL || "http://localhost:3001"
+// Electron desktop build only: wageserver always serves this same bundle
+// from whatever port it's actually listening on (electron/main.js sets that
+// via PORT, currently 5001, kept off 3001 so a web-dev backend can run
+// alongside it) — window.location.origin is always correct there rather
+// than a hardcoded port guess, and window.electronAPI only exists when
+// electron/preload.js ran, so the web build's fallback is untouched.
+const SERVER = process.env.REACT_APP_API_URL
+  || (window.electronAPI?.isElectron ? window.location.origin : "http://localhost:3001")
 // const SERVER = process.env.REACT_APP_API_URL || "https://api.epxcentral.com"
 if (process.env.NODE_ENV === 'production' && SERVER.includes('localhost')) {
   // Loud, unmissable warning rather than a silent guaranteed-to-fail deploy —
@@ -198,6 +208,25 @@ function App() {
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
   const [centralCompany, setCentralCompany] = useState(null)
   const [showSubscriptionBanner, setShowSubscriptionBanner] = useState(false)
+  // Electron desktop build only — reflects electron-updater's download
+  // progress (see electron/main.js's 'update-download-progress'/
+  // 'update-downloaded-ready' IPC events, bridged via electron/preload.js).
+  // null = nothing in progress, so the banner below stays hidden.
+  const [updateDownloadProgress, setUpdateDownloadProgress] = useState(null)
+
+  useEffect(() => {
+    if (!window.electronAPI?.onUpdateDownloadProgress) return
+    const unsubscribeProgress = window.electronAPI.onUpdateDownloadProgress((progress) => {
+      setUpdateDownloadProgress({ percent: progress?.percent || 0, done: false })
+    })
+    const unsubscribeDownloaded = window.electronAPI.onUpdateDownloaded?.(() => {
+      setUpdateDownloadProgress({ percent: 100, done: true })
+    })
+    return () => {
+      unsubscribeProgress?.()
+      unsubscribeDownloaded?.()
+    }
+  }, [])
   const [saleNextFrom, setSaleNextFrom] = useState(null)
   const [saleFrom, setSaleFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
   const [saleTo, setSaleTo] = useState(new Date(Date.now()).toISOString().slice(0, 10))
@@ -486,6 +515,16 @@ function App() {
   }, [company, companyRecord?.emailid]);
 
   useEffect(() => {
+    // Electron desktop build: before a workspace is selected there's no
+    // tenant to scope this connection to, and EventSource can't carry the
+    // x-desktop-tenant header fetchServer.js attaches to normal requests
+    // (browsers don't support custom headers on EventSource at all) — the
+    // request would reach InitializeApp.js's tenant-resolution middleware
+    // with nothing identifying a tenant and 404 as "Invalid Tenant". Skip
+    // connecting until TenantSetup has actually picked one.
+    if (window.electronAPI?.isElectron && !window.localStorage.getItem('desktop-selected-tenant')) {
+      return
+    }
     // subscribe to server-sent events for realtime updates
     let es = null
     try {
@@ -2140,6 +2179,30 @@ function App() {
   }
 
   const getViewAccess = async () => {
+    // Electron desktop build: never calls /getActivationDetails at all, not
+    // just before a workspace is selected. This app was paid for once,
+    // manually, outside the app (or licensed via the offline-license system —
+    // see LicenseActivation.js) — there is no online trial/subscription
+    // state for a locally-created tenant to check, and this codepath (built
+    // for hosted-tenant billing) has no concept of the offline license that
+    // actually gates usage now. That gating happens earlier, in
+    // LicenseActivation/TenantSetup, before this ever runs.
+    if (window.electronAPI?.isElectron) {
+      // pauseView defaults to true (no 'ps-vw' flag set yet on a fresh
+      // launch) and PauseView.js renders a bare empty <label> while it's
+      // true. Setting it false here isn't enough on its own — a separate
+      // effect (App.js, watching window.localStorage.getItem('ps-vw'))
+      // unconditionally re-runs setPauseView(!ps-vw) on mount too, and
+      // since nothing in this early-return path ever wrote 'ps-vw', that
+      // effect immediately flipped pauseView back to true right after this
+      // set it false, which is exactly why the window stayed permanently
+      // blank instead of ever reaching TenantSetup. Writing the same flag
+      // the normal success path writes (below) keeps both effects agreeing.
+      window.localStorage.setItem('ps-vw', 'true')
+      setPauseView(false)
+      setShowLoading(false)
+      return
+    }
     if (!window.localStorage.getItem('acc-vw')) {
       const resps = await fetchServer("POST", {
         prop: {}
@@ -3905,6 +3968,13 @@ function App() {
   }, [sessId])
 
   useEffect(()=>{
+    // Electron desktop build: no in-app billing/trial UI at all, regardless
+    // of the offline-license system — this app was never going to sell
+    // subscriptions from inside itself (see getViewAccess above).
+    if (window.electronAPI?.isElectron) {
+      setShowSubscriptionBanner(false)
+      return
+    }
     const showSubscriptionBanner = !!(
       companyRecord?.emailid &&
       subscriptionState &&
@@ -4010,7 +4080,11 @@ function App() {
       }}>        
 
         {!pauseView ? <Routes>
-          <Route path='/' element={<LandingPage />}></Route>
+          {/* window.electronAPI only exists when electron/preload.js ran —
+              i.e. only inside the desktop shell (see electron/main.js's
+              webPreferences.preload). A normal web page never has this, so
+              LandingPage renders exactly as it always has for the web build. */}
+          <Route path='/' element={window.electronAPI?.isElectron ? <TenantSetup /> : <LandingPage />}></Route>
           <Route path='/loading' element={<LoadingPage />}></Route>
           <Route path='/pricing' element={<PricingPage />}></Route>
           <Route path='/payment/confirm' element={<PaymentConfirmPage />}></Route>
@@ -4028,6 +4102,8 @@ function App() {
           <Route path='/security' element={<LegalPage type="security" />}></Route>
           <Route path='/login' element={<Login />}></Route>
           <Route path='/signup' element={<Signup />}></Route>
+          <Route path='/offline-license-portal/login' element={<OfflineLicensePortal />}></Route>
+          <Route path='/offline-license/payment-complete' element={<OfflineLicensePaymentComplete />}></Route>
           <Route path='/forgot-password' element={<ForgotPassword />}></Route>
           <Route path='/database-not-found' element={<DatabaseNotFound isProduction={isProduction} />}></Route>
           <Route path='/license-expired' element={<LicenseExpired />}></Route>
@@ -4057,6 +4133,17 @@ function App() {
               cancel={cancel}
             />
           )
+        )}
+        {updateDownloadProgress && (
+          <div style={{
+            position: 'fixed', bottom: 16, right: 16, zIndex: 99999,
+            background: '#173829', color: '#fff', padding: '12px 18px',
+            borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.25)', fontSize: 13,
+          }}>
+            {updateDownloadProgress.done
+              ? 'Update downloaded — installing shortly...'
+              : `Downloading update: ${Math.round(updateDownloadProgress.percent)}%`}
+          </div>
         )}
       </ContextProvider.Provider>
     </>

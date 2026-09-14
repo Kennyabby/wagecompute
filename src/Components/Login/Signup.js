@@ -84,6 +84,92 @@ const Signup = () => {
   const [signupOtp, setSignupOtp] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
 
+  // 'online' (existing flow, unchanged below) vs 'offline' (purchases a
+  // desktop-app license instead of creating a hosted tenant — see
+  // /offline-license/register in wageserver/UserModule/OfflineLicense).
+  const [usageType, setUsageType] = useState('online');
+  const [moduleCatalog, setModuleCatalog] = useState([]);
+  const [offlinePricing, setOfflinePricing] = useState({});
+  const [selectedModules, setSelectedModules] = useState([]);
+  const [isSubmittingOffline, setIsSubmittingOffline] = useState(false);
+
+  useEffect(() => {
+    fetch(`${server}/platform-modules`).then(r => r.json()).then((data) => {
+      if (data?.ok) {
+        setModuleCatalog(data.catalog || []);
+        setOfflinePricing(data.offlinePricing || {});
+      }
+    }).catch(() => {});
+  }, [server]);
+
+  // Client-side dependency expansion for snappy checkbox UX only — the
+  // server (resolveModuleDependencies, called from offlineLicense.js) always
+  // re-resolves and is authoritative for what's actually billed/granted.
+  const toggleModule = (key) => {
+    setSelectedModules((prev) => {
+      const isSelected = prev.includes(key);
+      let next = isSelected ? prev.filter((k) => k !== key) : [...prev, key];
+      if (!isSelected) {
+        let changed = true;
+        while (changed) {
+          changed = false;
+          moduleCatalog.forEach((m) => {
+            if (next.includes(m.key) && m.deps?.length) {
+              m.deps.forEach((dep) => {
+                if (!next.includes(dep)) { next.push(dep); changed = true; }
+              });
+            }
+          });
+        }
+      }
+      return next;
+    });
+  };
+
+  const offlineTotalNaira = selectedModules.reduce((sum, key) => sum + (Number(offlinePricing[key]) || 0), 0);
+
+  const handleOfflineRegister = async () => {
+    if (!field.emailid || !field.password || !field.companyName || !field.subdomain || !field.fullName) {
+      showMsg("Please fill in all fields", 'error')
+      return
+    }
+    if (field.password.length < 8) {
+      showMsg("Password must be at least 8 characters.", 'error')
+      return
+    }
+    if (!selectedModules.length) {
+      showMsg("Select at least one module.", 'error')
+      return
+    }
+
+    setIsSubmittingOffline(true)
+    try {
+      const response = await fetch(`${server}/offline-license/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: field.emailid,
+          password: field.password,
+          fullName: field.fullName,
+          companyName: field.companyName,
+          primarySubdomain: field.subdomain,
+          modules: selectedModules,
+        }),
+      })
+      const data = await response.json()
+      if (!data.ok) {
+        showMsg(data.mess || "Could not start your offline license purchase.", 'error')
+        setIsSubmittingOffline(false)
+        return
+      }
+      showMsg("Redirecting you to payment...", 'success')
+      window.location.href = data.authorizationUrl
+    } catch (err) {
+      showMsg("Network error. Please try again.", 'error')
+      setIsSubmittingOffline(false)
+    }
+  }
+
   const handleSendSignupOTP = async () => {
     if (!field.emailid || !field.emailid.includes('@')) {
       showMsg("Please enter a valid email address.", 'error')
@@ -290,9 +376,26 @@ const Signup = () => {
               </motion.div>
             )}
 
+            {/* Step 2.5: Online vs Offline usage choice */}
+            {isEmailVerified && (
+              <div className="input-group" style={{ marginTop: '20px' }}>
+                <label>How will you use Enterprise Compute?</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button type="button" className="main-login-btn" onClick={() => setUsageType('online')}
+                    style={{ background: usageType === 'online' ? undefined : '#888' }}>
+                    Online (Hosted)
+                  </button>
+                  <button type="button" className="main-login-btn" onClick={() => setUsageType('offline')}
+                    style={{ background: usageType === 'offline' ? undefined : '#888' }}>
+                    Offline (Desktop App)
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Step 3: Full Registration Details */}
             <AnimatePresence>
-              {isEmailVerified && (
+              {isEmailVerified && usageType === 'online' && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -431,6 +534,64 @@ const Signup = () => {
 
                   <button className="main-login-btn" onClick={validateSignup} style={{ marginTop: '24px' }}>
                     {signupStatus}
+                  </button>
+                </motion.div>
+              )}
+
+              {isEmailVerified && usageType === 'offline' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  transition={{ duration: 0.4 }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div className="form-grid" style={{ marginTop: '20px' }}>
+                    <div className="input-group">
+                      <label>Company Name</label>
+                      <input name="companyName" type="text" placeholder="Your Business Name" value={field.companyName} onChange={getFieldInput} />
+                    </div>
+                    <div className="input-group">
+                      <label>Primary Workspace Subdomain</label>
+                      <input name="subdomain" type="text" placeholder="my-company"
+                        value={field.subdomain}
+                        onChange={(e) => {
+                          const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                          setField(f => ({ ...f, subdomain: val }));
+                        }} />
+                      <p style={{ fontSize: '12px', color: '#777', marginTop: '4px' }}>
+                        Must match exactly what you enter when creating your first workspace in the desktop app.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="form-grid">
+                    <div className="input-group">
+                      <label>Full Name</label>
+                      <input name="fullName" type="text" placeholder="Your Full Name" value={field.fullName} onChange={getFieldInput} />
+                    </div>
+                    <div className="input-group">
+                      <label>Password</label>
+                      <input name="password" type={showpass ? "text" : "password"} placeholder="Create a secure password" value={field.password} onChange={getFieldInput} />
+                    </div>
+                  </div>
+
+                  <div className="input-group" style={{ marginTop: '10px' }}>
+                    <label>Select Modules (yearly)</label>
+                    {moduleCatalog.filter(m => m.tier === 'standard').map((m) => (
+                      <label key={m.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer' }}>
+                        <span>
+                          <input type="checkbox" checked={selectedModules.includes(m.key)} onChange={() => toggleModule(m.key)} style={{ marginRight: '10px' }} />
+                          {m.name}
+                        </span>
+                        <span>₦{(Number(offlinePricing[m.key]) || 0).toLocaleString()}/yr</span>
+                      </label>
+                    ))}
+                    <div style={{ marginTop: '12px', fontWeight: 'bold', textAlign: 'right' }}>
+                      Total: ₦{offlineTotalNaira.toLocaleString()}/yr
+                    </div>
+                  </div>
+
+                  <button className="main-login-btn" onClick={handleOfflineRegister} disabled={isSubmittingOffline} style={{ marginTop: '24px' }}>
+                    {isSubmittingOffline ? 'Redirecting to payment...' : 'Continue to Payment'}
                   </button>
                 </motion.div>
               )}

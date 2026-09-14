@@ -1,8 +1,9 @@
 import './Settings.css'
 import { useEffect, useState, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from 'framer-motion'
-import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff } from 'react-icons/io5'
+import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
 import { uploadCompanyFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 import heic2any from 'heic2any'
@@ -41,6 +42,15 @@ const Settings = () => {
         chartOfAccounts, getChartOfAccounts, enabledModules,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
+
+    const Navigate = useNavigate()
+    // Electron desktop build only — the installed app's own version, shown
+    // in the About panel so the user always has a straightforward way to
+    // see what they're running (e.g. before reporting an issue).
+    const [appVersion, setAppVersion] = useState('')
+    useEffect(() => {
+        window.electronAPI?.getAppVersion?.().then((v) => setAppVersion(v || '')).catch(() => {})
+    }, [])
 
     const [colname, setColname] = useState('')
     const [writeStatus, setWriteStatus] = useState('Add')
@@ -2476,6 +2486,26 @@ const Settings = () => {
                         </div>
                     </motion.div>
                 )
+            case 'about':
+                return (
+                    <motion.div
+                        className='general-settings'
+                        initial="initial" animate="animate" exit="exit" variants={variants}
+                        transition={{ duration: 0.4 }}
+                    >
+                        <div className='sidebar-title'><IoInformationCircle /> About</div>
+                        {window.electronAPI?.isElectron && (
+                            <div style={{ margin: '16px 0' }}>
+                                <div>App Version</div>
+                                <input className='forminp' value={appVersion || 'Loading...'} disabled />
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                            <button className='savebtn' onClick={() => Navigate('/privacy')}>Privacy Policy</button>
+                            <button className='savebtn' onClick={() => Navigate('/terms')}>Terms of Service</button>
+                        </div>
+                    </motion.div>
+                )
             default:
                 return null
         }
@@ -2531,6 +2561,9 @@ const Settings = () => {
                     )}
                     <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>
                         <IoCard /> Payroll Labels
+                    </div>
+                    <div className={`settings-nav-item ${currentView === 'about' ? 'active' : ''}`} onClick={() => setCurrentView('about')}>
+                        <IoInformationCircle /> About
                     </div>
                 </div>
             </header>
