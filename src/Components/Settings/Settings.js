@@ -3,7 +3,7 @@ import { useEffect, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from 'framer-motion'
-import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle } from 'react-icons/io5'
+import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle, IoServer } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
 import DesktopLicensePanel from './DesktopLicensePanel'
 import { uploadCompanyFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
@@ -2524,6 +2524,32 @@ const Settings = () => {
                         </div>
                     </motion.div>
                 )
+            case 'databases':
+                return (
+                    <motion.div
+                        className='general-settings'
+                        initial="initial" animate="animate" exit="exit" variants={variants}
+                        transition={{ duration: 0.4 }}
+                    >
+                        <div className='sidebar-title'><IoServer /> Databases</div>
+                        <p>
+                            This install can hold more than one local database (e.g. a
+                            separate company, or a branch under the same license). You're
+                            currently in <strong>{companyProfile?.name || company}</strong>.
+                        </p>
+                        <p>
+                            Switching requires the master password set up for this
+                            installation. Databases you don't explicitly log out of, and
+                            whose session hasn't expired, resume instantly without logging
+                            in again — switching here never logs out any other database.
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                            <button className='savebtn' onClick={() => Navigate('/?desktopSwitch=1')}>
+                                Switch or Create Database
+                            </button>
+                        </div>
+                    </motion.div>
+                )
             default:
                 return null
         }
@@ -2575,6 +2601,11 @@ const Settings = () => {
                     {isTenantAdmin && (
                         <div className={`settings-nav-item ${currentView === 'company' ? 'active' : ''}`} onClick={() => setCurrentView('company')}>
                             <IoPerson /> Company Profile
+                        </div>
+                    )}
+                    {window.electronAPI?.isElectron && isTenantAdmin && (
+                        <div className={`settings-nav-item ${currentView === 'databases' ? 'active' : ''}`} onClick={() => setCurrentView('databases')}>
+                            <IoServer /> Databases
                         </div>
                     )}
                     <div className={`settings-nav-item ${currentView === 'payroll' ? 'active' : ''}`} onClick={() => setCurrentView('payroll')}>

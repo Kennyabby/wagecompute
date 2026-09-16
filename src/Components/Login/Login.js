@@ -35,7 +35,14 @@ const Login = () => {
   const hostname = window.location.hostname
   const isLocalRootLogin = ['localhost', '127.0.0.1'].includes(hostname)
   const isProductionRootLogin = ['epxcentral.com', 'www.epxcentral.com'].includes(hostname)
-  const isRootDomainLogin = isProductionRootLogin || isLocalRootLogin
+  // Electron always loads http://127.0.0.1:5001 — that hostname is
+  // indistinguishable from the web build's real root-domain login by
+  // hostname alone, but the desktop app already knows exactly which tenant
+  // it means (x-desktop-tenant, set by TenantSetup's picker) and should
+  // never go through the root-domain admin-lookup + cross-origin handoff
+  // redirect (that flow exists so a web user who doesn't know their
+  // subdomain can be found by email; Electron never has that ambiguity).
+  const isRootDomainLogin = !window.electronAPI?.isElectron && (isProductionRootLogin || isLocalRootLogin)
 
   const buildTenantRedirectUrl = (subdomain, handoffCode) => {
     const protocol = window.location.protocol
@@ -266,6 +273,12 @@ const Login = () => {
         // checkForAppUpdates in electron/main.js. No-op on the web build
         // (window.electronAPI is only ever defined inside the desktop shell).
         window.electronAPI?.notifyUserLoggedIn?.()
+        // Electron desktop build only: authenticateUser only includes
+        // refreshToken in the body for desktop clients (see the matching
+        // comment server-side) — hand it to the main process for encrypted,
+        // per-database safekeeping so Settings > Databases can silently
+        // resume back into this database later without a password.
+        if (resp.refreshToken && company) window.electronAPI?.saveTenantRefreshToken?.(company, resp.refreshToken)
         setField((field) => {
           return ({ ...field, emailid: "", password: "" })
         })
@@ -285,6 +298,10 @@ const Login = () => {
 
   // Handle logout
   const handleLogout = () => {
+    // Electron only: this database must not be silently resumable from
+    // Settings > Databases after an explicit sign-out. No-op on web.
+    const outgoingDb = window.localStorage.getItem('sessn-cmp')
+    if (outgoingDb) window.electronAPI?.clearTenantRefreshToken?.(outgoingDb)
     window.localStorage.removeItem('sessn-cmp');
     window.localStorage.removeItem('sess-recg-id');
     window.localStorage.removeItem('idt-curr-usr');
