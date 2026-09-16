@@ -3961,6 +3961,16 @@ function App() {
               isValid = (Math.round(Number(sesn) / Number(session)) === sess || Number(sesn) / Number(session) === sess);
             }
             if (isValid) {
+              // Electron desktop build only: a resumed/persisted session
+              // never goes through Login.js's own validateLogin() success
+              // path, so without this, electron/main.js's hasUserLoggedIn
+              // flag (which gates the update-available prompt) would stay
+              // false for the entire lifetime of any session that started
+              // from an already-open app rather than a fresh login — the
+              // exact case of someone leaving the app open across days,
+              // which is precisely when the periodic update check matters
+              // most. No-op on the web build.
+              window.electronAPI?.notifyUserLoggedIn?.()
               loadPage(sid, currPath)
             } else {
               removeSessions()
