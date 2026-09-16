@@ -159,6 +159,13 @@ const SideNav = () => {
             window.localStorage.removeItem('pos-wrh')
             window.localStorage.removeItem('ps-vw')
             window.localStorage.removeItem('acc-vw')
+            // Electron desktop build only: an explicit logout must fully
+            // invalidate this database's ability to be silently resumed
+            // later via Settings > Databases — otherwise the cached refresh
+            // token would let someone switch straight back in without a
+            // password, defeating the point of logging out. No-op on web
+            // (electronAPI only exists inside the desktop shell).
+            if (company) window.electronAPI?.clearTenantRefreshToken?.(company)
         }
 
         try {

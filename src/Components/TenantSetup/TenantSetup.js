@@ -18,46 +18,30 @@ import '../Login/Login.css'
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
-import { setDesktopTenant } from '../../Resources/ClientServerAPIConn/fetchServer'
+import { setDesktopTenant, callDesktop } from '../../Resources/ClientServerAPIConn/fetchServer'
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
-
-// These desktop-only routes run before any tenant/session exists, so they're
-// called directly with fetch (not the shared fetchServer helper, which is
-// built around an already-known tenant/session) — same server origin either
-// way, since `server` here already resolves to window.location.origin for
-// the desktop build (App.js's SERVER constant), i.e. wherever
-// electron/main.js's spawned wageserver actually ends up listening.
-const callDesktop = async (server, path, body, setupToken) => {
-    try {
-        const resp = await fetch(`${server}/${path}`, {
-            method: body === undefined ? 'GET' : 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(setupToken ? { 'x-desktop-setup-token': setupToken } : {}),
-            },
-            credentials: 'include',
-            ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-        })
-        const data = await resp.json().catch(() => ({}))
-        return { ...data, ok: resp.ok && data.ok !== false }
-    } catch (e) {
-        return { ok: false, mess: 'Could not connect to the local server. Please try again.' }
-    }
-}
 
 const emptyCreateFields = {
     companyName: '', subdomain: '', fullName: '', emailid: '', password: '',
     address: '', city: '', country: 'Nigeria', state: '',
 }
 
-const TenantSetup = () => {
-    const { server } = useContext(ContextProvider)
+// mode='initial' (default): the full first-run chain — terms, license,
+// master-password setup-or-entry, picker/create. Used at '/' whenever no
+// database has ever been selected on this install.
+// mode='switch': terms/license are install-wide one-time gates unrelated to
+// which database is active, so this skips straight to the master-password
+// gate (already set, by definition, in this mode) then the picker/create —
+// reached only via Settings > Databases once a database is already in use,
+// which is the one deliberate door back into this screen after first run.
+const TenantSetup = ({ mode = 'initial' }) => {
+    const { server, loadPage } = useContext(ContextProvider)
     const Navigate = useNavigate()
 
     // 'termsChecking' | 'termsGate' |
     // 'licenseChecking' | 'licenseActivate' | 'licenseBlocked' |
     // 'checking' | 'setMaster' | 'enterMaster' | 'picker' | 'create'
-    const [stage, setStage] = useState('termsChecking')
+    const [stage, setStage] = useState(mode === 'switch' ? 'checking' : 'termsChecking')
     const [termsAgreed, setTermsAgreed] = useState(false)
     const [licenseKeyInput, setLicenseKeyInput] = useState('')
     const [licenseBlockInfo, setLicenseBlockInfo] = useState(null) // { reachedCentral, mess }
@@ -115,6 +99,16 @@ const TenantSetup = () => {
     // launch; the license flow below only starts once this clears.
     useEffect(() => {
         (async () => {
+            if (mode === 'switch') {
+                // Terms/license were already satisfied to get this install
+                // into a usable state at all — re-checking them here would
+                // just be the exact "why am I being asked this again"
+                // fatigue this mode exists to avoid. Master password is not
+                // skippable: it's the one gate this entry point exists to
+                // enforce every time.
+                await proceedPastLicenseGate()
+                return
+            }
             const status = await callDesktop(server, 'desktop/terms/status')
             if (status.ok && status.accepted) {
                 await startLicenseFlow()
@@ -215,9 +209,39 @@ const TenantSetup = () => {
         await loadTenants(resp.setupToken)
     }
 
-    const handleSelectTenant = (tenant) => {
+    // Tries to silently resume a database's session using whatever refresh
+    // token Electron's main process may have stored for it (see
+    // electron/main.js and wageserver's POST /desktop/session/resume) —
+    // this is what lets switching back to a database not logged out of, and
+    // not expired, skip login entirely. Returns whether it succeeded;
+    // callers fall back to the normal /login screen for that database
+    // otherwise (first-ever visit to a database, an expired session, or a
+    // database explicitly logged out of all resolve to no stored token or a
+    // rejected resume, both handled identically here).
+    const attemptResumeSession = async (db) => {
+        const refreshToken = await window.electronAPI?.getTenantRefreshToken?.(db)
+        if (!refreshToken) return false
+        const resp = await callDesktop(server, 'desktop/session/resume', { refreshToken, db })
+        if (!resp.ok || !resp.id) return false
+        const now = Date.now()
+        let sess = 0
+        String(resp.id).split('').forEach((chr) => { sess += chr.codePointAt(0) })
+        window.localStorage.setItem('sessn-cmp', db)
+        window.localStorage.setItem('sess-recg-id', now + '-' + sess)
+        window.localStorage.setItem('idt-curr-usr', now + '')
+        window.localStorage.setItem('sessn-id', resp.id)
+        if (resp.refreshToken) window.electronAPI?.saveTenantRefreshToken?.(db, resp.refreshToken)
+        window.electronAPI?.notifyUserLoggedIn?.()
+        loadPage(resp.id, 'dashboard')
+        return true
+    }
+
+    const handleSelectTenant = async (tenant) => {
         setDesktopTenant(tenant.db)
-        Navigate('/login')
+        setBusy(true)
+        const resumed = await attemptResumeSession(tenant.db)
+        setBusy(false)
+        if (!resumed) Navigate('/login')
     }
 
     const handleCreateFieldChange = (e) => {

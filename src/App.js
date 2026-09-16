@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, useContext } from 'react';
 import './App.css';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import ContextProvider from './Resources/ContextProvider';
@@ -32,7 +32,7 @@ import LegalPage from './Components/LandingPage/LegalPage';
 
 import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
-import fetchServer, { setConnectivityStatus } from './Resources/ClientServerAPIConn/fetchServer'
+import fetchServer, { setConnectivityStatus, callDesktop } from './Resources/ClientServerAPIConn/fetchServer'
 import createSSE from './Resources/ClientServerAPIConn/sseClient'
 import { syncPendingChanges } from './Resources/offlineSync';
 import { useConnectionStatus } from './Resources/useConnectionStatus';
@@ -200,6 +200,61 @@ const applySseCollectionChange = (existing = [], payload = {}) => {
 };
 
 const ACCOUNTING_UI_CACHE_VERSION = 6;
+
+// Electron desktop build only — rendered at '/', the route Electron's
+// BrowserWindow always loads on launch (electron/main.js:
+// mainWindow.loadURL('http://127.0.0.1:5001')). Used to previously always
+// mean "show TenantSetup", which meant the terms/license/master-password
+// chain ran on *every* launch, even for a database already set up and in
+// daily use. Now: TenantSetup (and its master-password gate) only renders
+// on a true first run (no database ever selected yet) or when explicitly
+// requested via Settings > Databases (?desktopSwitch=1, set by that panel's
+// "Switch or Create Database" button). Otherwise this tries to silently
+// resume the already-selected database's session (using whatever refresh
+// token Electron's main process may have stored for it — see
+// electron/main.js and wageserver's POST /desktop/session/resume) and falls
+// back to that database's own direct login screen if it can't.
+const DesktopEntry = () => {
+  const { loadPage } = useContext(ContextProvider)
+  const Navigate = useNavigate()
+  const location = useLocation()
+  const params = new URLSearchParams(location.search)
+  const forceSwitch = params.get('desktopSwitch') === '1'
+  const selectedDb = window.localStorage.getItem('desktop-selected-tenant')
+  const showPicker = forceSwitch || !selectedDb
+
+  useEffect(() => {
+    if (showPicker) return // TenantSetup (rendered below) owns this case entirely
+    ;(async () => {
+      const refreshToken = await window.electronAPI?.getTenantRefreshToken?.(selectedDb)
+      if (refreshToken) {
+        const resp = await callDesktop(SERVER, 'desktop/session/resume', { refreshToken, db: selectedDb })
+        if (resp.ok && resp.id) {
+          const now = Date.now()
+          let sess = 0
+          String(resp.id).split('').forEach((chr) => { sess += chr.codePointAt(0) })
+          window.localStorage.setItem('sessn-cmp', selectedDb)
+          window.localStorage.setItem('sess-recg-id', now + '-' + sess)
+          window.localStorage.setItem('idt-curr-usr', now + '')
+          window.localStorage.setItem('sessn-id', resp.id)
+          if (resp.refreshToken) window.electronAPI?.saveTenantRefreshToken?.(selectedDb, resp.refreshToken)
+          window.electronAPI?.notifyUserLoggedIn?.()
+          loadPage(resp.id, 'dashboard')
+          return
+        }
+      }
+      // No stored token, or it was rejected (expired / explicitly logged
+      // out / mismatched) — that database's own direct tenant login (see
+      // Login.js's isElectron-gated isRootDomainLogin) is exactly what
+      // should show next, no master password involved.
+      Navigate('/login')
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  if (showPicker) return <TenantSetup mode={forceSwitch ? 'switch' : 'initial'} />
+  return <div className="login-page"><div className="login-container"><p style={{ padding: 40 }}>Loading...</p></div></div>
+}
 
 function App() {
 
@@ -1311,6 +1366,11 @@ function App() {
     } catch (error) {
       console.warn('Remote session close failed; clearing local session.', error)
     } finally {
+      // Electron desktop build only: an explicit logout must fully
+      // invalidate this database's ability to be silently resumed later via
+      // Settings > Databases — otherwise the cached refresh token would let
+      // someone switch straight back in without a password. No-op on web.
+      if (company) window.electronAPI?.clearTenantRefreshToken?.(company)
       removeSessions()
       if (!pauseView) {
         window.localStorage.setItem('lgt-mess', 'Login Access Denied. Please Request For Access!')
@@ -4104,7 +4164,7 @@ function App() {
               i.e. only inside the desktop shell (see electron/main.js's
               webPreferences.preload). A normal web page never has this, so
               LandingPage renders exactly as it always has for the web build. */}
-          <Route path='/' element={window.electronAPI?.isElectron ? <TenantSetup /> : <LandingPage />}></Route>
+          <Route path='/' element={window.electronAPI?.isElectron ? <DesktopEntry /> : <LandingPage />}></Route>
           <Route path='/loading' element={<LoadingPage />}></Route>
           <Route path='/pricing' element={<PricingPage />}></Route>
           <Route path='/payment/confirm' element={<PaymentConfirmPage />}></Route>

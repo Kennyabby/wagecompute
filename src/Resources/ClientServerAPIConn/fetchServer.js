@@ -37,6 +37,32 @@ const getDesktopTenantHeader = () => {
     }
 };
 
+// Electron desktop build only. These /desktop/* routes run before any
+// tenant/session exists (setup, license, master password, the workspace
+// picker, and resuming a different local database's session), so they're
+// called directly with fetch rather than the main fetchServer function below
+// (that one assumes an already-known tenant/session). Same server origin
+// either way — `server` here already resolves to window.location.origin for
+// the desktop build (App.js's SERVER constant), i.e. wherever
+// electron/main.js's spawned wageserver actually ends up listening.
+export const callDesktop = async (server, path, body, setupToken) => {
+    try {
+        const resp = await fetch(`${server}/${path}`, {
+            method: body === undefined ? 'GET' : 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(setupToken ? { 'x-desktop-setup-token': setupToken } : {}),
+            },
+            credentials: 'include',
+            ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        })
+        const data = await resp.json().catch(() => ({}))
+        return { ...data, ok: resp.ok && data.ok !== false }
+    } catch (e) {
+        return { ok: false, mess: 'Could not connect to the local server. Please try again.' }
+    }
+}
+
 // Every document create call gets a stable idempotency key generated exactly
 // once here (rather than requiring every calling component to remember to add
 // one) — a retried request (network timeout, offline-queue replay) carries the
