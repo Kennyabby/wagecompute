@@ -336,6 +336,25 @@ const CentralAdminApp = () => {
     }
   }
 
+  // "Refresh Central Data" previously only called loadSnapshot — the core
+  // tenants/payments/settings snapshot — leaving every section added since
+  // (offline licenses, offline module pricing, desktop releases, live
+  // sessions, platform health) stale until its own tab was clicked again.
+  // This refreshes everything the whole app can show, in parallel, from one
+  // button, regardless of which tab happens to be active — each loader
+  // already sets only the state relevant to its own section, so calling
+  // ones for tabs the admin isn't currently looking at is harmless.
+  const refreshAllCentralAdminData = async () => {
+    await Promise.all([
+      loadSnapshot(),
+      loadSessions(),
+      loadPlatformHealth(),
+      loadOfflineLicenses(),
+      loadOfflineModulePricing(),
+      loadDesktopReleases(),
+    ])
+  }
+
   const checkAuth = async () => {
     setIsAuthChecking(true)
     const response = await requestAdmin('POST', 'admin/auth/me', {})
@@ -1062,7 +1081,7 @@ const CentralAdminApp = () => {
         </nav>
 
         <div className='ca-sidebar-footer'>
-          <button className='ca-ghost-btn' onClick={loadSnapshot} disabled={isBusy} title={isSidebarCollapsed ? "Refresh" : ""}>
+          <button className='ca-ghost-btn' onClick={refreshAllCentralAdminData} disabled={isBusy} title={isSidebarCollapsed ? "Refresh" : ""}>
              {isSidebarCollapsed ? '🔄' : (isBusy ? 'Refreshing...' : 'Refresh Central Data')}
           </button>
           {!isSidebarCollapsed && <button className='ca-logout-btn' onClick={handleLogout}>Log out</button>}

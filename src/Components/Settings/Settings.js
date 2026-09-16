@@ -5,6 +5,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
+import DesktopLicensePanel from './DesktopLicensePanel'
 import { uploadCompanyFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 import heic2any from 'heic2any'
 
@@ -235,6 +236,21 @@ const Settings = () => {
                             // (it's a singleton config, not a list), so it's
                             // excluded here to avoid a duplicate entry once
                             // this doc exists in `settings`.
+                            return false
+                        case 'approvalConfig':
+                            // Already has its own dedicated "Approval Rules"
+                            // top-level tab (see currentView === 'approvals')
+                            // — excluded here for the same reason
+                            // posReconciliation is: avoid a duplicate entry.
+                            return false
+                        case 'remediationFlags':
+                            // Internal engineering feature flags for a phased
+                            // backend rollout (see remediationFlags.js) —
+                            // never meant to be shown to any tenant, online
+                            // or offline. Its own "(internal — do not
+                            // remove)" description is a note to developers
+                            // not to delete the underlying flag mechanism,
+                            // not a hint that it belongs in this list.
                             return false
                         default:
                             return setting.desc
@@ -1929,7 +1945,9 @@ const Settings = () => {
                     </motion.div>
                 )
             case 'billing':
-                return <BillingSettingsPanel variants={variants} />
+                return window.electronAPI?.isElectron
+                    ? <DesktopLicensePanel variants={variants} />
+                    : <BillingSettingsPanel variants={variants} />
             case 'accounting':
                 return renderAccountingView(variants)
             case 'approvals':
@@ -2551,7 +2569,7 @@ const Settings = () => {
                     )}
                     {isTenantAdmin && (
                         <div className={`settings-nav-item ${currentView === 'billing' ? 'active' : ''}`} onClick={() => setCurrentView('billing')}>
-                            <IoCard /> Billing & Plan
+                            <IoCard /> {window.electronAPI?.isElectron ? 'License' : 'Billing & Plan'}
                         </div>
                     )}
                     {isTenantAdmin && (
