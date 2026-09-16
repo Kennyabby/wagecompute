@@ -268,14 +268,20 @@ function App() {
   // 'update-downloaded-ready' IPC events, bridged via electron/preload.js).
   // null = nothing in progress, so the banner below stays hidden.
   const [updateDownloadProgress, setUpdateDownloadProgress] = useState(null)
+  // Starts expanded (so the "keep this app open" warning is actually seen
+  // once, right when a download starts) but collapsible to a one-line pill
+  // — the full text is long enough that leaving it permanently expanded
+  // would sit on top of page content for however long the download takes.
+  const [updateBannerCollapsed, setUpdateBannerCollapsed] = useState(false)
 
   useEffect(() => {
     if (!window.electronAPI?.onUpdateDownloadProgress) return
     const unsubscribeProgress = window.electronAPI.onUpdateDownloadProgress((progress) => {
-      setUpdateDownloadProgress({ percent: progress?.percent || 0, done: false })
+      setUpdateDownloadProgress({ percent: progress?.percent || 0, done: false, version: progress?.version || null })
     })
-    const unsubscribeDownloaded = window.electronAPI.onUpdateDownloaded?.(() => {
-      setUpdateDownloadProgress({ percent: 100, done: true })
+    const unsubscribeDownloaded = window.electronAPI.onUpdateDownloaded?.((info) => {
+      setUpdateDownloadProgress((prev) => ({ percent: 100, done: true, version: info?.version || prev?.version || null }))
+      setUpdateBannerCollapsed(false) // re-expand for the "downloaded" state even if collapsed mid-download
     })
     return () => {
       unsubscribeProgress?.()
@@ -4216,13 +4222,29 @@ function App() {
         )}
         {updateDownloadProgress && (
           <div style={{
-            position: 'fixed', bottom: 16, right: 16, zIndex: 99999,
-            background: '#173829', color: '#fff', padding: '12px 18px',
+            position: 'fixed', bottom: 16, right: 16, zIndex: 99999, maxWidth: 300,
+            background: '#173829', color: '#fff',
             borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.25)', fontSize: 13,
+            overflow: 'hidden',
           }}>
-            {updateDownloadProgress.done
-              ? 'Update downloaded — installing shortly...'
-              : `Downloading update: ${Math.round(updateDownloadProgress.percent)}%`}
+            <div
+              onClick={() => setUpdateBannerCollapsed((collapsed) => !collapsed)}
+              style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer' }}
+            >
+              <span>
+                {updateDownloadProgress.done
+                  ? `Update${updateDownloadProgress.version ? ` v${updateDownloadProgress.version}` : ''} downloaded`
+                  : `Downloading${updateDownloadProgress.version ? ` v${updateDownloadProgress.version}` : ''}: ${Math.round(updateDownloadProgress.percent)}%`}
+              </span>
+              <span style={{ opacity: 0.75, flexShrink: 0 }}>{updateBannerCollapsed ? '▸' : '▾'}</span>
+            </div>
+            {!updateBannerCollapsed && (
+              <div style={{ padding: '0 14px 12px', opacity: 0.9, lineHeight: 1.4 }}>
+                {updateDownloadProgress.done
+                  ? "Installing shortly — a popup will let you install now or ask again later."
+                  : 'Keep this app open until the download finishes. Closing it now cancels the download (it will not resume) — you would need to start over.'}
+              </div>
+            )}
           </div>
         )}
       </ContextProvider.Provider>
