@@ -189,9 +189,15 @@ const BillingSettingsPanel = ({ variants }) => {
     })
   }
 
-  const addableModules = moduleCatalog.filter((app) => app.tier === 'standard' && !(enabledModules || []).includes(app.key))
+  // Epsilon is deliberately excluded from this general grid — it's a
+  // per-seat add-on with its own dedicated purchase flow and pricing model
+  // (see EpsilonBillingCard, rendered separately on this same billing view),
+  // not a flat per-tenant module like everything else here.
+  const addableModules = moduleCatalog.filter((app) => app.tier === 'standard' && app.key !== 'epsilon' && !(enabledModules || []).includes(app.key))
   const currentMonthlyNaira = moduleCatalog
-    .filter((app) => app.tier === 'standard' && (enabledModules || []).includes(app.key))
+    // Epsilon excluded here too — its real per-seat cost (seats × price) is
+    // shown in EpsilonBillingCard, not this flat-per-module total.
+    .filter((app) => app.tier === 'standard' && app.key !== 'epsilon' && (enabledModules || []).includes(app.key))
     .reduce((sum, app) => sum + (Number(modulePricing[app.key]) || 0), 0)
   const addedMonthlyNaira = selectedNewModules.reduce((sum, key) => sum + (Number(modulePricing[key]) || 0), 0)
 

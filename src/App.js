@@ -6,6 +6,7 @@ import PauseView from './Components/PauseView/PauseView';
 import LoadingPage from './Components/LoadingPage/LoadingPage';
 import LandingPage from './Components/LandingPage/LandingPage';
 import TenantSetup from './Components/TenantSetup/TenantSetup';
+import Epsilon from './Components/Epsilon/Epsilon';
 import PricingPage from './Components/LandingPage/PricingPage';
 import CommunityPage from './Components/LandingPage/CommunityPage';
 import PaymentConfirmPage from './Components/LandingPage/PaymentConfirmPage';
@@ -4246,6 +4247,22 @@ function App() {
               </div>
             )}
           </div>
+        )}
+        {/* Online platform only (see the Epsilon plan) — not shown in the
+            Electron desktop build, on login/signup/forgot-password, or
+            before a session is actually established. Mounted once here so
+            it's available across every module without per-page wiring.
+            Additionally requires this specific employee's own aiAccess
+            toggle (Settings > Team Access) — Epsilon is a paid, per-seat
+            add-on, never on by default for anyone, admins included; the
+            backend enforces this independently regardless of what's shown
+            here, but hiding the button for someone without a seat avoids a
+            confusing "AI assistant" bubble that just replies "you don't
+            have access" every time. Same known staleness as every other
+            permission field here: a toggle change only reaches an already
+            logged-in session on its next login/token refresh, not live. */}
+        {!window.electronAPI?.isElectron && !isAuthPage && companyRecord && companyRecord.aiAccess === true && (
+          <Epsilon />
         )}
       </ContextProvider.Provider>
     </>

@@ -163,7 +163,9 @@ const PricingPage = () => {
   // a much lower one in the calculator) — modular pricing has no single
   // "the" price, so the card now points at the calculator instead of quoting
   // a number that isn't actually what most tenants would pay.
-  const standardTierPrices = moduleCatalog.filter(a => a.tier === 'standard').map(a => Number(modulePricing[a.key]) || 0).filter(Boolean)
+  // 'epsilon' excluded — its price is per-seat, not a flat monthly module
+  // price, so it can't be meaningfully compared against the rest here.
+  const standardTierPrices = moduleCatalog.filter(a => a.tier === 'standard' && a.key !== 'epsilon').map(a => Number(modulePricing[a.key]) || 0).filter(Boolean)
   const cheapestModuleNaira = standardTierPrices.length ? Math.min(...standardTierPrices) : (liveStandardPlan?.amountNaira ?? FALLBACK_STANDARD_PRICE)
 
   const plans = useMemo(() => ([
@@ -272,7 +274,10 @@ const PricingPage = () => {
 
     // Standard tier: real per-module pricing (server-provided) — the actual
     // amount charged at checkout is this same sum, not a proportional guess.
-    const standardApps = moduleCatalog.filter(a => a.tier === 'standard')
+    // 'epsilon' is excluded — it's a per-seat add-on with its own dedicated
+    // purchase flow (inside the tenant, Settings > Billing), never part of
+    // this flat per-module picker/estimate.
+    const standardApps = moduleCatalog.filter(a => a.tier === 'standard' && a.key !== 'epsilon')
     const coreApps = moduleCatalog.filter(a => a.tier === 'free' || a.tier === 'core')
     const selectedStandardApps = standardApps.filter(a => selectedOptionalApps.includes(a.key))
 
@@ -656,7 +661,7 @@ const PricingPage = () => {
                   modules your business needs below — dependencies (e.g. Sales requires Inventory) are added automatically.
                 </p>
                 <div className="sp-optional-list">
-                  {selectedPlan === 'standard' && moduleCatalog.filter(a => a.tier === 'standard').map(app => (
+                  {selectedPlan === 'standard' && moduleCatalog.filter(a => a.tier === 'standard' && a.key !== 'epsilon').map(app => (
                     <div key={app.key} className="sp-app-card">
                       <label className="sp-app-select">
                         <input

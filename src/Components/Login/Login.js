@@ -158,6 +158,15 @@ const Login = () => {
   };
 
   useEffect(() => {
+    // Signup.js appends ?epsilonSeats=1 to this tenant's own /login URL when
+    // the new admin opted in to Epsilon during registration (signupNewCompany
+    // never grants seats for free — this is only an intent signal). Stashed
+    // in localStorage HERE, on this subdomain's own origin, because a flag
+    // set on the central signup page's origin would never be visible here —
+    // localStorage doesn't cross subdomains. Settings.js reads and clears it.
+    if (new URLSearchParams(location.search).get('epsilonSeats') === '1') {
+      try { window.localStorage.setItem('wantsEpsilonSeats', '1') } catch (e) { /* ignore */ }
+    }
     storePath('login');
     // set page title
     document.title = "Login | Enterprise Compute Central";
