@@ -6,6 +6,7 @@ import NavBar from './NavBar'
 import Footer from './Footer'
 import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from "framer-motion";
+import MODULE_ICONS from '../../Resources/moduleIcons'
 
 const FALLBACK_STANDARD_PRICE = 92000
 const FREE_TRIAL_DAYS = 14
@@ -661,7 +662,9 @@ const PricingPage = () => {
                   modules your business needs below — dependencies (e.g. Sales requires Inventory) are added automatically.
                 </p>
                 <div className="sp-optional-list">
-                  {selectedPlan === 'standard' && moduleCatalog.filter(a => a.tier === 'standard' && a.key !== 'epsilon').map(app => (
+                  {selectedPlan === 'standard' && moduleCatalog.filter(a => a.tier === 'standard' && a.key !== 'epsilon').map(app => {
+                    const Icon = MODULE_ICONS[app.key]
+                    return (
                     <div key={app.key} className="sp-app-card">
                       <label className="sp-app-select">
                         <input
@@ -670,7 +673,7 @@ const PricingPage = () => {
                           onChange={() => toggleOptionalApp(app.key)}
                         />
                         <div className="sp-app-logo" aria-hidden>
-                          {getAppInitials(app.name)}
+                          {Icon ? <Icon /> : getAppInitials(app.name)}
                         </div>
                         <div className="sp-app-meta">
                           <div className="sp-app-meta-head">
@@ -681,7 +684,8 @@ const PricingPage = () => {
                         </div>
                       </label>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
+import MODULE_ICONS from '../../Resources/moduleIcons'
 import '../Login/Login.css'
 
 const TOKEN_KEY = 'offline-portal-token'
@@ -237,15 +238,22 @@ const OfflineLicensePortal = () => {
               <>
                 <h3>Register a New License</h3>
                 <p>This issues a brand new license key (a new purchase) under your existing account. Enter the new key in the desktop app's license screen once payment completes.</p>
-                {moduleCatalog.filter(m => m.tier === 'standard').map((m) => (
-                  <label key={m.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer' }}>
-                    <span>
-                      <input type="checkbox" checked={selectedModules.includes(m.key)} onChange={() => toggleModule(m.key)} style={{ marginRight: '10px' }} />
-                      {m.name}
-                    </span>
-                    <span>₦{(Number(offlinePricing[m.key]) || 0).toLocaleString()}/yr</span>
-                  </label>
-                ))}
+                {/* Epsilon excluded — never available on the offline/desktop
+                    build (no Anthropic key, no per-seat billing there); the
+                    server already strips it from computeOfflinePrice too. */}
+                <div className='module-picker-grid'>
+                  {moduleCatalog.filter(m => m.tier === 'standard' && m.key !== 'epsilon').map((m) => {
+                    const Icon = MODULE_ICONS[m.key]
+                    return (
+                      <label key={m.key} className='module-picker-chip'>
+                        <input type="checkbox" checked={selectedModules.includes(m.key)} onChange={() => toggleModule(m.key)} />
+                        {Icon && <span className='module-picker-icon'><Icon /></span>}
+                        <span className='module-picker-name'>{m.name}</span>
+                        <span className='module-picker-price'>₦{(Number(offlinePricing[m.key]) || 0).toLocaleString()}/yr</span>
+                      </label>
+                    )
+                  })}
+                </div>
                 <div style={{ marginTop: '12px', fontWeight: 'bold', textAlign: 'right' }}>
                   Total: ₦{newLicenseTotalNaira.toLocaleString()}/yr
                 </div>

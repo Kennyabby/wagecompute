@@ -1237,10 +1237,25 @@ input:checked + .slider:before {
     flex-shrink: 0;
 }
 
+.settings-billing-module-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: rgba(43, 106, 75, 0.08);
+    color: var(--ec-secondary, #2b6a4b);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
 .settings-billing-module-name {
     font-weight: 700;
     color: var(--ec-primary, #173829);
     flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
 }
 
 .settings-billing-module-price {

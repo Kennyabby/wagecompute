@@ -544,7 +544,7 @@
 .sp-app-select { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(23,56,41,0.06); background: #fff; cursor: pointer; transition: box-shadow 0.18s ease, transform 0.12s ease; }
 .sp-app-select:hover { box-shadow: 0 10px 24px rgba(23,56,41,0.04); transform: translateY(-2px); }
 .sp-app-select input { width: 18px; height: 18px; margin-top: 12px; accent-color: #2b6a4b; flex-shrink: 0; }
-.sp-app-logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: #fff; background: linear-gradient(135deg, #2b6a4b, #173829); font-family: 'MontserratBold', sans-serif; flex-shrink: 0; }
+.sp-app-logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 20px; color: #fff; background: linear-gradient(135deg, #2b6a4b, #173829); font-family: 'MontserratBold', sans-serif; flex-shrink: 0; }
 /* `min-width: 0` intentionally overrides the flex-item default of
    `min-width: auto` (which otherwise refuses to shrink below content size)
    — required so the name can truncate instead of overflowing its box. The
@@ -630,7 +630,7 @@
   .sp-plan-chip { padding: 8px 12px; font-size: 0.76rem; }
   .sp-pricing-card { padding: 26px 18px; }
   .sp-amount { font-size: 2.1rem; }
-  .sp-app-logo { width: 38px; height: 38px; }
+  .sp-app-logo { width: 38px; height: 38px; font-size: 17px; }
   .sp-app-tag { font-size: 0.76rem; padding: 5px 8px; }
   .sp-checkout-submit, .sp-confirm-secondary-btn, .sp-plan-cta { padding: 14px; font-size: 0.9rem; }
 }
