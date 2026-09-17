@@ -1,6 +1,7 @@
 import './CentralAdmin.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import MODULE_ICONS from '../../Resources/moduleIcons'
 
 // Same single source of truth as the tenant app (App.js) — REACT_APP_API_URL.
 // Previously fell back to the hardcoded "https://api.epxcentral.com" — a
@@ -690,20 +691,23 @@ const CentralAdminApp = () => {
           offline build entirely (no Anthropic key, no per-seat billing
           concept there), so a desktop license could never actually use it
           even if selected. */}
-      {offlineModulePricing.filter(m => m.tier === 'standard' && m.key !== 'epsilon').map((m) => (
-        <label key={m.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', cursor: 'pointer' }}>
-          <span>
-            <input
-              type='checkbox'
-              checked={selectedModules.includes(m.key)}
-              onChange={() => toggleOfflineFormModule(selectedModules, setModules, m.key)}
-              style={{ marginRight: 8 }}
-            />
-            {m.name}
-          </span>
-          <span>₦{Number(m.offlineYearlyPriceNaira || 0).toLocaleString()}/yr</span>
-        </label>
-      ))}
+      <div className='ca-module-grid'>
+        {offlineModulePricing.filter(m => m.tier === 'standard' && m.key !== 'epsilon').map((m) => {
+          const Icon = MODULE_ICONS[m.key]
+          return (
+            <label key={m.key} className='ca-module-chip'>
+              <input
+                type='checkbox'
+                checked={selectedModules.includes(m.key)}
+                onChange={() => toggleOfflineFormModule(selectedModules, setModules, m.key)}
+              />
+              {Icon && <span className='ca-module-icon'><Icon /></span>}
+              <span className='ca-module-chip-name'>{m.name}</span>
+              <span className='ca-module-chip-price'>₦{Number(m.offlineYearlyPriceNaira || 0).toLocaleString()}/yr</span>
+            </label>
+          )
+        })}
+      </div>
     </div>
   )
 
@@ -1400,7 +1404,9 @@ const CentralAdminApp = () => {
                             Checking it in this generic grid would add
                             'epsilon' to enabledModules with zero seats behind
                             it, which is a misleading, broken state. */}
-                        {(tenantDetails.moduleCatalog || []).filter((app) => app.key !== 'epsilon').map((app) => (
+                        {(tenantDetails.moduleCatalog || []).filter((app) => app.key !== 'epsilon').map((app) => {
+                          const Icon = MODULE_ICONS[app.key]
+                          return (
                           <label key={app.key} className={`ca-module-chip ${app.tier === 'free' ? 'locked' : ''}`}>
                             <input
                               type='checkbox'
@@ -1408,9 +1414,11 @@ const CentralAdminApp = () => {
                               disabled={app.tier === 'free'}
                               onChange={() => toggleDraftModule(app.key)}
                             />
+                            {Icon && <span className='ca-module-icon'><Icon /></span>}
                             <span>{app.name}{app.tier === 'free' ? ' (always on)' : ''}</span>
                           </label>
-                        ))}
+                          )
+                        })}
                       </div>
                       <div className='ca-inline-action-row'>
                         <button

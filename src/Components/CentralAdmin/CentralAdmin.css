@@ -1084,6 +1084,33 @@ body {
   flex-shrink: 0;
 }
 
+.ca-module-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(43, 106, 75, 0.1);
+  color: var(--ca-primary);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.ca-module-chip-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.ca-module-chip-price {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ca-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 @media (max-width: 640px) {
   .ca-module-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

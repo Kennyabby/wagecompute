@@ -11,6 +11,11 @@ import { generateClientTxnId } from '../clientTxnId';
 let inMemoryAccessToken = null;
 export const setInMemoryAccessToken = (token) => { inMemoryAccessToken = token || null; };
 export const clearInMemoryAccessToken = () => { inMemoryAccessToken = null; };
+// Read-only access for the rare call site that can't go through fetchServer
+// itself (e.g. Epsilon's streaming fetch, which needs a raw Response to read
+// its body incrementally rather than the JSON-only shape fetchServer returns)
+// but still wants the same same-tab Authorization header everything else gets.
+export const getInMemoryAccessToken = () => inMemoryAccessToken;
 
 // Electron desktop build only — set once TenantSetup.js's workspace picker
 // resolves a local tenant, read on every request afterward so

@@ -100,6 +100,78 @@
   }
 }
 
+/* Offline-license module picker (Signup.js) — a responsive grid of chips,
+   each with an icon + name + price, matching the module-picker layout used
+   elsewhere (Settings billing, Central Admin). Was a single-column
+   inline-styled list before; this keeps it from overlapping/cramping on
+   narrow screens the way a plain stacked list with long names could. */
+.module-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.module-picker-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.18s ease, transform 0.12s ease;
+}
+
+.module-picker-chip:hover {
+  box-shadow: 0 8px 20px rgba(23, 56, 41, 0.08);
+  transform: translateY(-1px);
+}
+
+.module-picker-chip input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ec-secondary, #2b6a4b);
+  flex-shrink: 0;
+}
+
+.module-picker-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(43, 106, 75, 0.08);
+  color: var(--ec-secondary, #2b6a4b);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.module-picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ec-primary, #173829);
+}
+
+.module-picker-price {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ec-secondary, #2b6a4b);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .module-picker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .input-group {
   display: block;
 }

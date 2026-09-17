@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import ContextProvider from '../../Resources/ContextProvider'
+import MODULE_ICONS from '../../Resources/moduleIcons'
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
   style: 'currency',
@@ -509,17 +510,21 @@ const BillingSettingsPanel = ({ variants }) => {
           {addableModules.length ? (
             <>
               <div className='settings-billing-module-grid'>
-                {addableModules.map((app) => (
+                {addableModules.map((app) => {
+                  const Icon = MODULE_ICONS[app.key]
+                  return (
                   <label key={app.key} className='settings-billing-module-chip'>
                     <input
                       type='checkbox'
                       checked={selectedNewModules.includes(app.key)}
                       onChange={() => toggleNewModule(app.key)}
                     />
+                    {Icon && <span className='settings-billing-module-icon'><Icon /></span>}
                     <span className='settings-billing-module-name'>{app.name}</span>
                     <span className='settings-billing-module-price'>{formatMoney(modulePricing[app.key])}/mo</span>
                   </label>
-                ))}
+                  )
+                })}
               </div>
               <div className='settings-billing-module-footer'>
                 <span>
