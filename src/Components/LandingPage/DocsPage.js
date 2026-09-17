@@ -613,6 +613,21 @@ const DocsPage = () => {
       <NavBar />
       
       <div className="docs-layout">
+        <select
+          className="docs-mobile-nav"
+          value={activeTab}
+          onChange={(e) => { setActiveTab(e.target.value); window.scrollTo(0, 0) }}
+          aria-label="Jump to documentation topic"
+        >
+          {sections.map((section) => (
+            <optgroup key={section.id} label={section.title}>
+              {section.topics.map((topic) => (
+                <option key={topic.id} value={topic.id}>{topic.title}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+
         <aside className="docs-sidebar">
           {sections.map((section) => (
             <div key={section.id} className="docs-nav-group">

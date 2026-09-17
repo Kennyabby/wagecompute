@@ -6,6 +6,9 @@ import LoadingPage from '../LoadingPage/LoadingPage'
 import ContextProvider from '../../Resources/ContextProvider'
 import NavBar from './NavBar'
 import Footer from './Footer'
+import MODULE_ICONS from '../../Resources/moduleIcons'
+
+const EpsilonIcon = MODULE_ICONS.epsilon
 
 const LandingPage = () => {
   const { storePath, showLoading, getViewAccess } = useContext(ContextProvider)
@@ -15,7 +18,7 @@ const LandingPage = () => {
   useEffect(() => {
     if (!showLoading) {
       storePath('')
-      document.title = 'Enterprise Compute Central | Home'
+      document.title = 'Enterprise Compute | All-in-One ERP, POS & Accounting Platform'
     }
   }, [storePath, showLoading])
 
@@ -68,22 +71,26 @@ const LandingPage = () => {
     },
   ]
 
+  // Real module icons (the same ones used in the app's own sidebar — see
+  // Resources/moduleIcons.js) instead of raw emoji, so the marketing page
+  // looks like the product it's selling rather than a generic template.
   const appCards = [
-    { n: 'Dashboard', e: '📈', c: 'rgba(43,106,75,0.1)' },
-    { n: 'Employees', e: '👥', c: 'rgba(255,226,154,0.3)' },
-    { n: 'Departments', e: '🏢', c: 'rgba(106,242,173,0.15)' },
-    { n: 'Positions', e: '📋', c: 'rgba(59,130,246,0.1)' },
-    { n: 'Attendance', e: '⏰', c: 'rgba(43,106,75,0.1)' },
-    { n: 'Payroll', e: '💵', c: 'rgba(255,226,154,0.3)' },
-    { n: 'POS', e: '🏪', c: 'rgba(106,242,173,0.15)' },
-    { n: 'Delivery', e: '🚚', c: 'rgba(240,93,94,0.1)' },
-    { n: 'Sales', e: '💰', c: 'rgba(43,106,75,0.1)' },
-    { n: 'Inventory', e: '📦', c: 'rgba(59,130,246,0.1)' },
-    { n: 'Accommodation', e: '🏨', c: 'rgba(255,226,154,0.3)' },
-    { n: 'Purchase', e: '🛒', c: 'rgba(106,242,173,0.15)' },
-    { n: 'Expenses', e: '💸', c: 'rgba(240,93,94,0.1)' },
-    { n: 'Journals & COA', e: '📊', c: 'rgba(43,106,75,0.1)' },
-    { n: 'Settings', e: '⚙️', c: 'rgba(59,130,246,0.1)' },
+    { n: 'Dashboard', icon: MODULE_ICONS.dashboard, c: 'rgba(43,106,75,0.1)' },
+    { n: 'Employees', icon: MODULE_ICONS.employees, c: 'rgba(255,226,154,0.3)' },
+    { n: 'Departments', icon: MODULE_ICONS.departments, c: 'rgba(106,242,173,0.15)' },
+    { n: 'Positions', icon: MODULE_ICONS.positions, c: 'rgba(59,130,246,0.1)' },
+    { n: 'Attendance', icon: MODULE_ICONS.attendance, c: 'rgba(43,106,75,0.1)' },
+    { n: 'Payroll', icon: MODULE_ICONS.payroll, c: 'rgba(255,226,154,0.3)' },
+    { n: 'POS', icon: MODULE_ICONS.pos, c: 'rgba(106,242,173,0.15)' },
+    { n: 'Delivery', icon: MODULE_ICONS.delivery, c: 'rgba(240,93,94,0.1)' },
+    { n: 'Sales', icon: MODULE_ICONS.sales, c: 'rgba(43,106,75,0.1)' },
+    { n: 'Inventory', icon: MODULE_ICONS.inventory, c: 'rgba(59,130,246,0.1)' },
+    { n: 'Accommodation', icon: MODULE_ICONS.accommodations, c: 'rgba(255,226,154,0.3)' },
+    { n: 'Purchase', icon: MODULE_ICONS.purchase, c: 'rgba(106,242,173,0.15)' },
+    { n: 'Expenses', icon: MODULE_ICONS.expenses, c: 'rgba(240,93,94,0.1)' },
+    { n: 'Journals & COA', icon: MODULE_ICONS.journals, c: 'rgba(43,106,75,0.1)' },
+    { n: 'Settings', icon: MODULE_ICONS.settings, c: 'rgba(59,130,246,0.1)' },
+    { n: 'Epsilon AI', icon: MODULE_ICONS.epsilon, c: 'rgba(59,130,246,0.1)', tag: 'AI · Paid add-on' },
   ]
 
   const allInOneCards = [
@@ -113,16 +120,18 @@ const LandingPage = () => {
       <section className="ec-hero" id="top">
         <div className="ec-hero-inner">
           <div>
-            <div className="ec-hero-kicker">All-in-One Business Platform</div>
+            <div className="ec-hero-kicker">All-in-One ERP, POS &amp; AI Platform</div>
             <h1>Run Your Entire Business with <span className="ec-highlight">One Platform</span></h1>
             <p>
               Enterprise Compute unifies HR, inventory, POS, sales, payroll, delivery, accommodation,
-              and live accounting into one operating platform with real-time summaries and closing-aware reporting.
+              and live accounting into one operating platform — with Epsilon, a built-in AI assistant that
+              understands your real data, plus real-time summaries and closing-aware reporting.
             </p>
             <div className="sp-badge-row" style={{ justifyContent: 'flex-start', marginTop: 0, marginBottom: 24 }}>
               <span className="sp-plan-chip">14-day free trial</span>
               <span className="sp-plan-chip">All apps included</span>
-              <span className="sp-plan-chip">Live accounting and dashboard summaries</span>
+              <span className="sp-plan-chip">Built-in AI assistant</span>
+              <span className="sp-plan-chip">Works online or offline</span>
             </div>
             <div className="ec-hero-btns">
               <button className="ec-btn-primary" onClick={() => navigate('/pricing')}>View Pricing</button>
@@ -130,9 +139,23 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="ec-hero-visual">
-            <div className="logo-link" onClick={() => navigate('/')}>
-              <img src={applogo} alt="Enterprise Compute Dashboard" className="ec-hero-mockup" />
+            <div className="ec-hero-panel">
+              <div className="ec-hero-panel-top">
+                <img src={applogo} alt="Enterprise Compute" className="ec-hero-panel-logo" />
+                <span>Live Operations Dashboard</span>
+              </div>
+              <div className="ec-hero-panel-stats">
+                <div className="ec-hero-stat"><span>Revenue Today</span><strong>₦2.4M</strong></div>
+                <div className="ec-hero-stat"><span>Orders</span><strong>148</strong></div>
+                <div className="ec-hero-stat"><span>Active Staff</span><strong>32</strong></div>
+              </div>
+              <div className="ec-hero-panel-chart">
+                {[42, 68, 50, 82, 60, 94, 74].map((h, i) => (
+                  <div key={i} className="ec-hero-bar" style={{ height: `${h}%` }} />
+                ))}
+              </div>
             </div>
+            <div className="ec-hero-float-badge">🔒 Enterprise-grade security</div>
           </div>
         </div>
       </section>
@@ -141,9 +164,7 @@ const LandingPage = () => {
         <p>Trusted by businesses across industries</p>
         <div className="ec-trust-logos">
           {['Retail Co.', 'TechVenture', 'GreenField', 'Metro Group', 'AlphaServ', 'BlueChip Inc.'].map((name) => (
-            <div key={name} style={{ padding: '12px 24px', borderRadius: 12, background: '#f4f7f4', fontWeight: 700, color: 'rgba(23,56,41,0.3)', fontSize: '0.95rem', letterSpacing: '-0.5px' }}>
-              {name}
-            </div>
+            <div key={name} className="ec-trust-chip">{name}</div>
           ))}
         </div>
       </section>
@@ -177,12 +198,46 @@ const LandingPage = () => {
           <p className="ec-section-sub">Run daily operations, approvals, reporting, and accounting from one connected system.</p>
         </div>
         <div className="ec-apps-grid">
-          {appCards.map((app) => (
-            <div className="ec-app-card" key={app.n}>
-              <div className="ec-app-card-icon" style={{ background: app.c }}>{app.e}</div>
-              <strong>{app.n}</strong>
+          {appCards.map((app) => {
+            const Icon = app.icon
+            return (
+              <div
+                className="ec-app-card"
+                key={app.n}
+                onClick={app.tag ? () => navigate('/pricing#epsilon') : undefined}
+              >
+                {app.tag && <span className="ec-app-card-tag">{app.tag}</span>}
+                <div className="ec-app-card-icon" style={{ background: app.c }}>{Icon && <Icon />}</div>
+                <strong>{app.n}</strong>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="ec-section" style={{ background: 'var(--ec-light-bg)' }}>
+        <div className="ec-feature-block">
+          <div className="ec-feature-text">
+            <div className="ec-section-kicker">AI Assistant · Paid add-on</div>
+            <h2>Meet Epsilon, an AI That Actually Knows Your Data</h2>
+            <p>
+              Built into every workspace, Epsilon is wired directly into your real records — not a generic chatbot.
+              It diagnoses blocked transactions, traces exactly why a number is what it is, and tells you who can
+              approve something instead of just saying "ask your admin."
+            </p>
+            <ul className="ec-feature-list">
+              <li>Explains blockers and traces real transaction history, across every module</li>
+              <li>Interprets accounting trends and generates reports from your live figures</li>
+              <li>Recommends reorders and flags profit opportunities from real data</li>
+              <li>Proposes purchase orders and data corrections — nothing changes without your confirmation</li>
+            </ul>
+            <button className="ec-btn-secondary" onClick={() => navigate('/pricing#epsilon')}>See Epsilon Pricing</button>
+          </div>
+          <div>
+            <div style={{ width: '100%', height: 340, borderRadius: 24, background: 'linear-gradient(135deg, #173829, #2b6a4b)', display: 'grid', placeItems: 'center' }}>
+              {EpsilonIcon && <EpsilonIcon size={88} color="#fff" />}
             </div>
-          ))}
+          </div>
         </div>
       </section>
 

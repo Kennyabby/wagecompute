@@ -178,16 +178,6 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* Adjust main content when sidebar is collapsed */
-.main-content {
-    margin-left: 280px;
-    transition: margin 0.3s ease-in-out;
-}
-
-.sidenav.collapsed + .main-content {
-    margin-left: 60px;
-}
-
 /* Mobile menu button */
 .mobile-menu-btn {
     display: flex;

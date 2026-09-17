@@ -1,0 +1,116 @@
+/* Single source of truth for the platform visual identity — color,
+   spacing, type, radius, shadow, and the shared responsive breakpoint
+   scale every page should design against. Imported once from index.css,
+   before any component CSS, so every value below is available everywhere.
+
+   Existing per-page :root blocks (LandingPage.css --ec-*, Login.css
+   --login-*, Settings.css --settings-*, etc.) keep their own variable
+   NAMES on purpose — every existing var(--ec-primary) call site across
+   the app keeps working unchanged. Only their VALUES get repointed to
+   reference these shared tokens (e.g. --ec-primary: var(--brand-primary))
+   so there is one real source of truth for the actual color instead of
+   several copies that can silently drift apart, the way --ec-, --login-,
+   and --settings- prefixed tokens already had before this file existed.
+
+   Shared breakpoint scale (CSS cannot share @media values without a
+   preprocessor, so this is a documented convention every migrated file
+   follows, not an enforced mechanism):
+     1280px — large desktop / small laptop
+     1024px — tablet landscape / small laptop (account for a ~310px sidebar
+              eating into the visible content column on authenticated pages)
+     768px  — tablet portrait
+     480px  — phone
+*/
+:root {
+  /* ---- Brand (tenant-facing app) — the real, existing identity, not a
+     new one: ported 1:1 from LandingPage.css/Login.css/Settings.css. ---- */
+  --brand-primary: #173829;      /* deep forest green — primary text, headers */
+  --brand-secondary: #2b6a4b;    /* mid green — buttons, links, accents */
+  --brand-accent: #6af2ad;       /* mint — highlights, active states */
+  --brand-gold: #ffe29a;         /* gold — premium/callout accents */
+  --brand-bg: #f7f4eb;           /* cream page background (landing) */
+  --brand-bg-alt: #f5f8f6;       /* alternate cream, slightly cooler (login) */
+  --brand-bg-soft: #f8faf9;      /* softest cream, card-adjacent (settings) */
+  --brand-card: #ffffff;
+  --brand-text: #173829;
+  --brand-text-muted: rgba(23, 56, 41, 0.6);
+  --brand-border: rgba(23, 56, 41, 0.1);
+  --brand-shadow: 0 10px 40px rgba(23, 56, 41, 0.08);
+  --brand-shadow-lg: 0 20px 60px rgba(23, 56, 41, 0.14);
+  --brand-radius: 20px;
+
+  /* ---- Neutral scale ---- */
+  --gray-50: #f8faf9;
+  --gray-100: #f0f3f1;
+  --gray-200: #e2e8e4;
+  --gray-300: #cbd5cf;
+  --gray-400: #9aa89f;
+  --gray-500: #6b7b71;
+  --gray-600: #4d5c52;
+  --gray-700: #35423a;
+  --gray-800: #212b24;
+  --gray-900: #131a15;
+
+  /* ---- Semantic ---- */
+  --color-success: #1d6b2f;
+  --color-success-bg: #edf9ef;
+  --color-success-border: #b7e3bd;
+  --color-warning: #8a6100;
+  --color-warning-bg: #fff8e8;
+  --color-warning-border: #f0dca8;
+  --color-error: #c0392b;
+  --color-error-bg: #fdf0ee;
+  --color-error-border: #f5d5cf;
+  --color-info: #1d5a9c;
+  --color-info-bg: #eef3fb;
+  --color-info-border: #bcd4f0;
+
+  /* ---- Radius ---- */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* ---- Spacing scale ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- Type scale ---- */
+  --font-xs: 12px;
+  --font-sm: 13px;
+  --font-base: 14px;
+  --font-md: 16px;
+  --font-lg: 20px;
+  --font-xl: 26px;
+  --font-2xl: 34px;
+  --font-3xl: 46px;
+
+  /* ---- Elevation ---- */
+  --shadow-sm: 0 2px 8px rgba(23, 56, 41, 0.06);
+  --shadow-md: 0 8px 24px rgba(23, 56, 41, 0.08);
+  --shadow-lg: 0 20px 60px rgba(23, 56, 41, 0.14);
+}
+
+/* Central Admin uses a deliberately distinct accent palette (confirmed
+   with the user: the internal tool should never be visually mistaken for
+   the live customer product) but is built on the same spacing/type/radius/
+   shadow system above. Scoped to .central-admin-app so it can never leak
+   into the tenant-facing app. Values are the existing CentralAdminApp
+   emerald/indigo/slate identity, refined rather than replaced — wired up
+   when the Central Admin redesign stage lands.
+*/
+.central-admin-app {
+  --ca-primary: #10b981;
+  --ca-primary-hover: #059669;
+  --ca-accent: #6366f1;
+  --ca-sidebar: #0f172a;
+}

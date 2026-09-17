@@ -1,6 +1,8 @@
 import { useContext, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import ContextProvider from '../../Resources/ContextProvider'
+import StatCardGrid from '../Shared/ui/StatCardGrid'
+import StatCard from '../Shared/ui/StatCard'
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
   style: 'currency',
@@ -123,32 +125,33 @@ const EpsilonBillingCard = ({ variants }) => {
             </div>
           </div>
 
-          <div className='settings-billing-summary-grid'>
-            <div className='settings-billing-summary-card'>
-              <span className='settings-billing-label'>Seats owned</span>
-              <strong>{seatInfo.epsilonSeats}</strong>
-              <p>{seatInfo.usedSeats} of {seatInfo.epsilonSeats || 0} currently granted to employees.</p>
-            </div>
-            <div className='settings-billing-summary-card'>
-              <span className='settings-billing-label'>Price per seat</span>
-              <strong>{formatMoney(seatInfo.priceNaira)}</strong>
-              <p>Billed monthly, per seat purchased.</p>
-            </div>
-            <div className={`settings-billing-summary-card ${seatInfo.epsilonTokenBalance <= 0 ? 'epsilon-balance-empty' : ''}`}>
-              <span className='settings-billing-label'>Token balance remaining</span>
-              <strong>{formatNumber(seatInfo.epsilonTokenBalance)}</strong>
-              <p>
-                {seatInfo.epsilonTokenBalance <= 0
+          <StatCardGrid min={220}>
+            <StatCard
+              label="Seats owned"
+              value={seatInfo.epsilonSeats}
+              description={`${seatInfo.usedSeats} of ${seatInfo.epsilonSeats || 0} currently granted to employees.`}
+            />
+            <StatCard
+              label="Price per seat"
+              value={formatMoney(seatInfo.priceNaira)}
+              description="Billed monthly, per seat purchased."
+            />
+            <StatCard
+              label="Token balance remaining"
+              value={formatNumber(seatInfo.epsilonTokenBalance)}
+              tone={seatInfo.epsilonTokenBalance <= 0 ? 'error' : 'default'}
+              description={
+                seatInfo.epsilonTokenBalance <= 0
                   ? 'Empty — Epsilon is blocked for this workspace until you purchase more or the platform admin tops it up.'
-                  : `Every message uses real tokens from this balance. Purchases add more at ${formatMoney(seatInfo.tokenPriceNaira)} per 1,000 tokens.`}
-              </p>
-            </div>
-            <div className='settings-billing-summary-card'>
-              <span className='settings-billing-label'>Consumed to date</span>
-              <strong>{formatNumber(seatInfo.epsilonTokensConsumedTotal)}</strong>
-              <p>of {formatNumber(seatInfo.epsilonTokensPurchasedTotal)} tokens ever purchased/granted.</p>
-            </div>
-          </div>
+                  : `Every message uses real tokens from this balance. Purchases add more at ${formatMoney(seatInfo.tokenPriceNaira)} per 1,000 tokens.`
+              }
+            />
+            <StatCard
+              label="Consumed to date"
+              value={formatNumber(seatInfo.epsilonTokensConsumedTotal)}
+              description={`of ${formatNumber(seatInfo.epsilonTokensPurchasedTotal)} tokens ever purchased/granted.`}
+            />
+          </StatCardGrid>
 
           <div className='epsilon-billing-purchase-row'>
             <label className='epsilon-billing-field'>

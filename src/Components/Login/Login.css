@@ -1,13 +1,15 @@
 :root {
-  /* Premium Palette */
-  --login-primary: #173829;
-  --login-secondary: #2b6a4b;
-  --login-accent: #6af2ad;
-  --login-bg: #f5f8f6;
-  --login-card-bg: #ffffff;
-  --login-text: #173829;
-  --login-text-muted: rgba(23, 56, 41, 0.6);
-  --login-shadow: 0 10px 40px rgba(23, 56, 41, 0.08);
+  /* Values now sourced from the shared platform tokens (src/styles/tokens.css)
+     instead of being duplicated here — same names, same visual result,
+     one real source of truth. */
+  --login-primary: var(--brand-primary);
+  --login-secondary: var(--brand-secondary);
+  --login-accent: var(--brand-accent);
+  --login-bg: var(--brand-bg-alt);
+  --login-card-bg: var(--brand-card);
+  --login-text: var(--brand-text);
+  --login-text-muted: var(--brand-text-muted);
+  --login-shadow: var(--brand-shadow);
   --login-radius: 24px;
 }
 

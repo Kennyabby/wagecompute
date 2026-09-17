@@ -647,6 +647,16 @@ body {
   margin-top: 20px;
   font-size: 14px;
   font-weight: 500;
+  /* .ca-main (this alert's scrolling ancestor) is a tall, always-scrollable
+     pane — this sits right after the header, so scrolling down to reach any
+     form/action further down the tab (which is most of them) carried the
+     success/error feedback for whatever was just clicked off-screen along
+     with it, making every action look like it silently did nothing. Sticky
+     keeps it pinned in view regardless of scroll position. */
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 .ca-alert.success {
@@ -1591,6 +1601,13 @@ body {
   margin: 0;
   font-size: 14px;
   color: var(--ca-text-muted);
+}
+
+.ca-panel-note {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--ca-text-muted);
+  line-height: 1.5;
 }
 
 .ca-log-filter-bar {

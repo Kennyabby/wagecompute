@@ -1,0 +1,80 @@
+/* Shared layout primitives — StatCardGrid/StatCard, PageShell,
+   ResponsiveTableWrap. Built entirely on the platform design tokens
+   (src/styles/tokens.css); no page-specific values live here. */
+
+.ui-stat-grid {
+    display: grid;
+    gap: var(--space-5);
+    width: 100%;
+    min-width: 0;
+}
+
+.ui-stat-card {
+    background: var(--brand-card);
+    border: 1px solid var(--brand-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-5) var(--space-6);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.ui-stat-label {
+    font-size: var(--font-xs);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--brand-text-muted);
+}
+
+.ui-stat-value {
+    font-size: var(--font-2xl);
+    font-weight: 800;
+    color: var(--brand-primary);
+    line-height: 1.15;
+    word-break: break-word;
+}
+
+.ui-stat-value-success { color: var(--color-success); }
+.ui-stat-value-warning { color: var(--color-warning); }
+.ui-stat-value-error { color: var(--color-error); }
+.ui-stat-value-info { color: var(--color-info); }
+
+.ui-stat-desc {
+    margin: 0;
+    font-size: var(--font-sm);
+    color: var(--brand-text-muted);
+    line-height: 1.5;
+}
+
+.ui-page-shell {
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--space-10);
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.ui-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+}
+
+@media (max-width: 1024px) {
+    .ui-page-shell { padding: var(--space-8) var(--space-5); }
+}
+
+@media (max-width: 768px) {
+    .ui-stat-grid { gap: var(--space-4); }
+    .ui-stat-value { font-size: var(--font-xl); }
+    .ui-page-shell { padding: var(--space-6) var(--space-4); }
+}
+
+@media (max-width: 480px) {
+    .ui-stat-card { padding: var(--space-4) var(--space-5); }
+}

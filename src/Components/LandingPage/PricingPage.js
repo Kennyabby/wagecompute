@@ -13,6 +13,8 @@ const FREE_TRIAL_DAYS = 14
 
 const formatCurrency = (value) => `NGN ${Number(value || 0).toLocaleString()}`
 
+const EpsilonIcon = MODULE_ICONS.epsilon
+
 const RESERVED_SUBDOMAINS = new Set(['www', 'api', 'app', 'server', 'wcdatabase', 'docs', 'doc', 'admin', 'localhost'])
 
 const detectWorkspaceSubdomain = () => {
@@ -304,6 +306,14 @@ const PricingPage = () => {
   useEffect(() => {
     storePath('pricing')
     document.title = 'Pricing | Enterprise Compute Central'
+    // Links into this page (NavBar mega-menu, the landing page app grid)
+    // point at /pricing#epsilon — react-router does not auto-scroll to a
+    // hash, so do it manually once the section has rendered.
+    if (window.location.hash === '#epsilon') {
+      setTimeout(() => {
+        document.getElementById('epsilon')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
   }, [storePath])
 
   useEffect(() => {
@@ -812,6 +822,45 @@ const PricingPage = () => {
                 </form>
               )}
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="ec-section" id="epsilon">
+        <div className="sp-community-block">
+          <div className="sp-community-icon-box" style={{ background: 'linear-gradient(135deg, #173829, #2b6a4b)' }}>
+            {EpsilonIcon && <EpsilonIcon size={84} color="#fff" />}
+          </div>
+          <div className="sp-community-content">
+            <div className="ec-section-kicker">AI Assistant · Paid add-on</div>
+            <h2>Epsilon: an AI that actually knows your data</h2>
+            <p>
+              Epsilon is built into every workspace but never included in a plan or free trial — it is purchased
+              separately, per seat, from inside your workspace. Unlike a generic chatbot, it is wired directly into
+              your real records: it diagnoses why a specific transaction is blocked, traces exactly why a stock
+              quantity or balance is what it is, and tells you the actual person who can approve something instead
+              of just saying "ask your admin."
+            </p>
+            <ul className="sp-feature-list">
+              <li><span className="sp-check">✓</span> Explains blockers and traces the real transaction history behind any number, across every module — not just inventory.</li>
+              <li><span className="sp-check">✓</span> Interprets your accounting trends and generates reports on demand, grounded in your live figures.</li>
+              <li><span className="sp-check">✓</span> Recommends reorders and flags profit opportunities from your actual revenue and expense data.</li>
+              <li><span className="sp-check">✓</span> Can draft a purchase order or a data correction, but only ever proposes — nothing changes until you confirm it.</li>
+            </ul>
+            <div className="sp-epsilon-cta-row">
+              <div className="sp-epsilon-price">
+                <span>Per seat, per month</span>
+                <strong>{formatCurrency(modulePricing.epsilon)}</strong>
+              </div>
+              <button className="sp-plan-cta primary" type="button" onClick={() => navigate('/signup')}>
+                Create Your Workspace
+              </button>
+            </div>
+            <p className="sp-epsilon-note">
+              Epsilon has no free trial of its own — create a workspace first, then add seats anytime from
+              Settings → Billing, plus a per-1,000-token usage balance. It is not part of the module calculator
+              above since its pricing works differently from every other module.
+            </p>
           </div>
         </div>
       </section>

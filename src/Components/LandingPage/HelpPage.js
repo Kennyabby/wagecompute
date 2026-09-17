@@ -30,7 +30,8 @@ const HelpPage = () => {
     { icon: '💰', title: 'Sales & Purchase', desc: 'Revenue and procurement', count: 20, color: 'rgba(240,93,94,0.1)' },
     { icon: '💵', title: 'Payroll', desc: 'Salary and compensation', count: 10, color: 'rgba(43,106,75,0.1)' },
     { icon: '📊', title: 'Reports', desc: 'Analytics and insights', count: 8, color: 'rgba(255,226,154,0.3)' },
-    { icon: '⚙️', title: 'Settings & Admin', desc: 'System configuration', count: 16, color: 'rgba(106,242,173,0.15)' }
+    { icon: '⚙️', title: 'Settings & Admin', desc: 'System configuration', count: 16, color: 'rgba(106,242,173,0.15)' },
+    { icon: '🤖', title: 'Epsilon AI', desc: 'Using the AI assistant', count: 9, color: 'rgba(59,130,246,0.1)' }
   ]
 
   const faqs = [
