@@ -317,21 +317,9 @@ body {
 /* Summary Cards */
 .ca-summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 24px;
   margin-bottom: 40px;
-}
-
-@media (max-width: 1200px) {
-  .ca-summary-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .ca-summary-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .ca-card {
@@ -423,7 +411,6 @@ body {
   border-collapse: collapse;
   text-align: left;
   overflow: auto;
-  width: 50%;
 }
 
 .ca-table.wide {
@@ -687,6 +674,23 @@ body {
   width: 100%;
   max-width: 440px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border-top: 4px solid transparent;
+  border-image: linear-gradient(90deg, var(--ca-primary), var(--ca-accent)) 1;
+}
+
+.ca-login-mark {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--ca-primary), var(--ca-accent));
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.25);
 }
 
 .ca-login-card h1 {
@@ -828,14 +832,54 @@ body {
   color: var(--ca-text-muted);
 }
 
+.ca-input-with-icon {
+  position: relative;
+  display: block;
+}
+
+.ca-input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.ca-login-form .ca-toggle-pass {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: auto;
+  width: auto;
+  margin: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px;
+  line-height: 1;
+}
+
+.ca-login-form .ca-toggle-pass:hover:not(:disabled) {
+  background: none;
+  transform: translateY(-50%);
+}
+
 .ca-login-form input {
+  width: 100%;
   height: 48px;
-  padding: 0 14px;
+  padding: 0 40px 0 44px;
   border: 1.5px solid var(--ca-border);
   border-radius: 10px;
+  background: var(--ca-bg);
   font-family: inherit;
   font-size: 15px;
   color: var(--ca-text);
+  box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -863,27 +907,34 @@ body {
   transform: translateY(-1px);
 }
 
-.ca-default-cred {
-  margin-top: 20px;
-  padding: 12px 14px;
-  background: #f8fafc;
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--ca-text-muted);
-  border: 1px solid var(--ca-border);
-}
-
 .ca-login-points {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ca-border);
 }
 
 .ca-login-points div {
   display: flex;
   align-items: baseline;
   gap: 8px;
+}
+
+.ca-login-points div::before {
+  content: '✓';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--ca-primary);
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 
 .ca-login-points strong {
@@ -995,7 +1046,7 @@ body {
 /* Mini grid for tenant detail stats */
 .ca-mini-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
   padding: 20px 24px;
   border-bottom: 1px solid var(--ca-border);
@@ -1101,7 +1152,7 @@ body {
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: rgba(43, 106, 75, 0.1);
+  background: rgba(16, 185, 129, 0.1);
   color: var(--ca-primary);
   font-size: 12px;
   flex-shrink: 0;
@@ -1131,7 +1182,37 @@ body {
 .ca-detail-stack {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 24px;
+}
+
+.ca-detail-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 16px 24px 0;
+}
+
+.ca-detail-tab {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1.5px solid var(--ca-border);
+  background: #fff;
+  color: var(--ca-text-muted);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.ca-detail-tab:hover {
+  border-color: var(--ca-primary);
+  color: var(--ca-primary);
+}
+
+.ca-detail-tab.active {
+  background: var(--ca-primary);
+  border-color: var(--ca-primary);
+  color: #fff;
 }
 
 /* Activity columns */
@@ -2217,22 +2298,22 @@ body {
 .ca-loading-mark {
   width: 80px;
   height: 80px;
-  background: #6af2ad;
-  color: #173829;
+  background: var(--ca-accent);
+  color: #fff;
   border-radius: 20px;
   display: grid;
   place-items: center;
   font-size: 32px;
   font-weight: 900;
   margin: 0 auto 32px;
-  box-shadow: 0 0 40px rgba(106, 242, 173, 0.3);
+  box-shadow: 0 0 40px rgba(99, 102, 241, 0.35);
   animation: caLogoPulse 2s infinite ease-in-out;
 }
 
 @keyframes caLogoPulse {
-  0% { transform: scale(1); box-shadow: 0 0 40px rgba(106, 242, 173, 0.3); }
-  50% { transform: scale(1.05); box-shadow: 0 0 60px rgba(106, 242, 173, 0.5); }
-  100% { transform: scale(1); box-shadow: 0 0 40px rgba(106, 242, 173, 0.3); }
+  0% { transform: scale(1); box-shadow: 0 0 40px rgba(99, 102, 241, 0.35); }
+  50% { transform: scale(1.05); box-shadow: 0 0 60px rgba(99, 102, 241, 0.55); }
+  100% { transform: scale(1); box-shadow: 0 0 40px rgba(99, 102, 241, 0.35); }
 }
 
 .ca-loading-content h2 {
@@ -2260,7 +2341,7 @@ body {
 .ca-loading-progress {
   width: 40%;
   height: 100%;
-  background: #6af2ad;
+  background: var(--ca-accent);
   border-radius: 10px;
   animation: caProgressLoop 2s infinite ease-in-out;
 }
