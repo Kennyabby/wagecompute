@@ -5,6 +5,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle, IoServer } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
+import EpsilonBillingCard from './EpsilonBillingCard'
 import DesktopLicensePanel from './DesktopLicensePanel'
 import { uploadCompanyFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 import heic2any from 'heic2any'
@@ -52,6 +53,25 @@ const Settings = () => {
     useEffect(() => {
         window.electronAPI?.getAppVersion?.().then((v) => setAppVersion(v || '')).catch(() => {})
     }, [])
+
+    // Epsilon AI seat entitlement — a paid, per-seat add-on tracked
+    // separately from enabledModules (see the Epsilon plan/moduleCatalog.js);
+    // fetched here purely to render "X of Y seats used" and to disable the
+    // per-employee toggle below once every purchased/granted seat is spoken
+    // for. Never fetched on the Electron build — epsilonBilling's routes
+    // aren't even registered on that backend.
+    const [epsilonSeatInfo, setEpsilonSeatInfo] = useState({ epsilonSeats: 0, usedSeats: 0, priceNaira: 0 })
+    const fetchEpsilonSeatInfo = async (cmp_val) => {
+        if (window.electronAPI?.isElectron) return
+        const resp = await fetchServer('GET', {}, 'billing/epsilon/seat-info', server)
+        if (resp && !resp.err && resp.ok) {
+            setEpsilonSeatInfo({
+                epsilonSeats: Number(resp.epsilonSeats || 0),
+                usedSeats: Number(resp.usedSeats || 0),
+                priceNaira: Number(resp.priceNaira || 0),
+            })
+        }
+    }
 
     const [colname, setColname] = useState('')
     const [writeStatus, setWriteStatus] = useState('Add')
@@ -146,7 +166,8 @@ const Settings = () => {
         password: '',
         permissions: [],
         enableLogin: false,
-        enableDebtRecovery: false
+        enableDebtRecovery: false,
+        aiAccess: false
     })
 
     const [sessionPeriods, setSessionPeriods] = useState([])
@@ -507,6 +528,7 @@ const Settings = () => {
             getEmployees(cmp_val, companyRecord)
             fetchProfiles(cmp_val, companyRecord)
             fetchDBProfiles(cmp_val, companyRecord)
+            fetchEpsilonSeatInfo(cmp_val)
             if (!chartOfAccounts?.length) {
                 getChartOfAccounts(cmp_val, companyRecord)
             }
@@ -515,7 +537,15 @@ const Settings = () => {
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search)
-        if (params.get('paystack') === 'settings' || params.get('view') === 'billing') {
+        // wantsEpsilonSeats is set by Signup.js right before redirecting a
+        // brand-new admin to /login, when they opted in to Epsilon during
+        // registration — signupNewCompany never grants seats for free, so
+        // this just lands them straight on the purchase card to finish that
+        // request with real payment. One-shot: cleared immediately so it
+        // doesn't keep reopening Billing on every later Settings visit.
+        const wantedEpsilonAtSignup = window.localStorage.getItem('wantsEpsilonSeats') === '1'
+        if (wantedEpsilonAtSignup) window.localStorage.removeItem('wantsEpsilonSeats')
+        if (params.get('paystack') === 'settings' || params.get('view') === 'billing' || wantedEpsilonAtSignup) {
             setCurrentView('billing')
         } else if (params.get('view') === 'accounting') {
             setCurrentView('accounting')
@@ -1177,7 +1207,8 @@ const Settings = () => {
             password: '',
             permissions: profile.permissions || [],
             enableLogin: profile.enableLogin || false,
-            enableDebtRecovery: profile.enableDebtRecovery || false
+            enableDebtRecovery: profile.enableDebtRecovery || false,
+            aiAccess: profile.aiAccess || false
         })
     }
 
@@ -1209,7 +1240,8 @@ const Settings = () => {
                 ...selectedEmployee,
                 permissions: loginDetails.permissions,
                 enableLogin: loginDetails.enableLogin,
-                enableDebtRecovery: loginDetails.enableDebtRecovery
+                enableDebtRecovery: loginDetails.enableDebtRecovery,
+                aiAccess: loginDetails.aiAccess
             }
             const resps = await fetchServer("POST", {
                 database: company,
@@ -1239,6 +1271,7 @@ const Settings = () => {
                             setSaveStatus('')
                         }, 3000)
                         fetchProfiles(company)
+                        fetchEpsilonSeatInfo(company)
                     }
                 } else {
                     setSaveStatus('Saved')
@@ -1246,6 +1279,7 @@ const Settings = () => {
                         setSaveStatus('')
                     }, 3000)
                     fetchProfiles(company)
+                    fetchEpsilonSeatInfo(company)
                 }
             }
         } else {
@@ -1260,6 +1294,12 @@ const Settings = () => {
                     permissions: loginDetails.permissions,
                     enableLogin: loginDetails.enableLogin,
                     enableDebtRecovery: loginDetails.enableDebtRecovery,
+                    // Explicitly overridden, not inherited from the spread above —
+                    // defaultCompanyRecord is a clone of the ADMIN's own profile,
+                    // which could itself have aiAccess:true; without this override
+                    // a brand-new employee would silently inherit an Epsilon seat
+                    // instead of the admin explicitly granting one via this toggle.
+                    aiAccess: loginDetails.aiAccess,
                     sessionId: '',
                     status: 'user',
                     access: 'user'
@@ -1286,6 +1326,7 @@ const Settings = () => {
                 } else {
                     setSaveStatus('Profile Created')
                     fetchProfiles(company)
+                    fetchEpsilonSeatInfo(company)
                     if (resps.dbProfile) {
                         setDBProfiles((DBProfiles) => {
                             return [...DBProfiles, resps.dbProfile]
@@ -1342,7 +1383,8 @@ const Settings = () => {
                         password: '',
                         permissions: [],
                         enableLogin: false,
-                        enableDebtRecovery: false
+                        enableDebtRecovery: false,
+                        aiAccess: false
                     })
                 }
             }
@@ -1364,7 +1406,8 @@ const Settings = () => {
             password: '',
             permissions: [],
             enableLogin: false,
-            enableDebtRecovery: false
+            enableDebtRecovery: false,
+            aiAccess: false
         })
     }
 
@@ -1925,6 +1968,37 @@ const Settings = () => {
                                                 <span className='slider'></span>
                                             </label>
                                         </div>
+                                        <div className='inpcov'>
+                                            <div>
+                                                Epsilon AI Access
+                                                {epsilonSeatInfo.epsilonSeats > 0 && (
+                                                    <span className='ai-seat-usage'> ({epsilonSeatInfo.usedSeats} of {epsilonSeatInfo.epsilonSeats} seats used)</span>
+                                                )}
+                                            </div>
+                                            <label className='toggle-switch'>
+                                                <input
+                                                    type='checkbox'
+                                                    name='aiAccess'
+                                                    checked={loginDetails.aiAccess}
+                                                    disabled={
+                                                        epsilonSeatInfo.epsilonSeats <= 0 ||
+                                                        (!selectedEmployee?.aiAccess && epsilonSeatInfo.usedSeats >= epsilonSeatInfo.epsilonSeats)
+                                                    }
+                                                    onChange={handleLoginDetailsChange}
+                                                />
+                                                <span className='slider'></span>
+                                            </label>
+                                            {epsilonSeatInfo.epsilonSeats <= 0 && (
+                                                <div className='settings-toggle-hint'>
+                                                    No Epsilon AI seats yet — purchase seats from Settings &gt; Billing, or ask the platform admin to grant some.
+                                                </div>
+                                            )}
+                                            {epsilonSeatInfo.epsilonSeats > 0 && !selectedEmployee?.aiAccess && epsilonSeatInfo.usedSeats >= epsilonSeatInfo.epsilonSeats && (
+                                                <div className='settings-toggle-hint'>
+                                                    All {epsilonSeatInfo.epsilonSeats} seat(s) are in use — free one up or purchase more before granting this employee access.
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="form-actions">
@@ -1947,7 +2021,12 @@ const Settings = () => {
             case 'billing':
                 return window.electronAPI?.isElectron
                     ? <DesktopLicensePanel variants={variants} />
-                    : <BillingSettingsPanel variants={variants} />
+                    : (
+                        <>
+                            <BillingSettingsPanel variants={variants} />
+                            <EpsilonBillingCard variants={variants} />
+                        </>
+                    )
             case 'accounting':
                 return renderAccountingView(variants)
             case 'approvals':

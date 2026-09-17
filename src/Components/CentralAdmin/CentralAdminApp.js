@@ -1,5 +1,6 @@
 import './CentralAdmin.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 // Same single source of truth as the tenant app (App.js) — REACT_APP_API_URL.
 // Previously fell back to the hardcoded "https://api.epxcentral.com" — a
@@ -151,6 +152,11 @@ const CentralAdminApp = () => {
   const [globalSettingsForm, setGlobalSettingsForm] = useState({
     defaultFreeTrialDays: 14,
     desktopOfflineIntervalDays: 15,
+    epsilonEnabled: true,
+    epsilonModel: 'claude-sonnet-5',
+    epsilonTokenPriceNaira: 5,
+    epsilonRateLimitTokens: 50000,
+    epsilonRateLimitWindowHours: 5,
   })
   const [offlineAccounts, setOfflineAccounts] = useState([])
   const [offlineModulePricing, setOfflineModulePricing] = useState([])
@@ -166,6 +172,13 @@ const CentralAdminApp = () => {
   const [tenantDetails, setTenantDetails] = useState(null)
   const [tenantDetailsLoading, setTenantDetailsLoading] = useState(false)
   const [draftModules, setDraftModules] = useState([])
+  const [epsilonSeatsGrantDraft, setEpsilonSeatsGrantDraft] = useState(null)
+  const [isGrantingEpsilonSeats, setIsGrantingEpsilonSeats] = useState(false)
+  const [epsilonUsage, setEpsilonUsage] = useState(null)
+  const [epsilonUsageLoading, setEpsilonUsageLoading] = useState(false)
+  const [epsilonTokensGrantDraft, setEpsilonTokensGrantDraft] = useState(null)
+  const [isGrantingEpsilonTokens, setIsGrantingEpsilonTokens] = useState(false)
+  const [epsilonOverview, setEpsilonOverview] = useState(null)
   const [isSavingModules, setIsSavingModules] = useState(false)
   const [isCleaningTestData, setIsCleaningTestData] = useState(false)
   const [enquiries, setEnquiries] = useState([])
@@ -320,6 +333,11 @@ const CentralAdminApp = () => {
       setGlobalSettingsForm({
         defaultFreeTrialDays: response.settings?.defaultFreeTrialDays || 14,
         desktopOfflineIntervalDays: response.settings?.desktopOfflineIntervalDays || 15,
+        epsilonEnabled: response.settings?.epsilonEnabled !== false,
+        epsilonModel: response.settings?.epsilonModel || 'claude-sonnet-5',
+        epsilonTokenPriceNaira: response.settings?.epsilonTokenPriceNaira || 5,
+        epsilonRateLimitTokens: response.settings?.epsilonRateLimitTokens || 50000,
+        epsilonRateLimitWindowHours: response.settings?.epsilonRateLimitWindowHours || 5,
       })
       setManualForm((current) => ({
         ...current,
@@ -668,7 +686,11 @@ const CentralAdminApp = () => {
       <div style={{ fontSize: 12, color: 'var(--ca-text-muted)', marginBottom: 8 }}>
         Essential (always included automatically, no selection needed): {offlineModulePricing.filter(m => m.tier === 'free').map(m => m.name).join(', ') || '—'}
       </div>
-      {offlineModulePricing.filter(m => m.tier === 'standard').map((m) => (
+      {/* Epsilon is never offered here — it's excluded from the Electron/
+          offline build entirely (no Anthropic key, no per-seat billing
+          concept there), so a desktop license could never actually use it
+          even if selected. */}
+      {offlineModulePricing.filter(m => m.tier === 'standard' && m.key !== 'epsilon').map((m) => (
         <label key={m.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', cursor: 'pointer' }}>
           <span>
             <input
@@ -697,6 +719,24 @@ const CentralAdminApp = () => {
     setNotice('success', 'Tenant modules updated.')
     await loadTenantDetails(selectedTenant)
     setIsSavingModules(false)
+  }
+
+  const handleGrantEpsilonSeats = async (database) => {
+    if (!database) return
+    const seats = epsilonSeatsGrantDraft !== null
+      ? epsilonSeatsGrantDraft
+      : Number(tenantDetails.companyProfile?.epsilonSeats || 0)
+    setIsGrantingEpsilonSeats(true)
+    const response = await requestAdmin('POST', 'admin/billing/grantEpsilonSeats', { database, seats })
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || 'Unable to update Epsilon seats.')
+      setIsGrantingEpsilonSeats(false)
+      return
+    }
+    setNotice('success', `Epsilon seats set to ${response.epsilonSeats}.`)
+    setEpsilonSeatsGrantDraft(null)
+    await loadTenantDetails(database)
+    setIsGrantingEpsilonSeats(false)
   }
 
   const handleVerifyPendingPayments = async () => {
@@ -961,6 +1001,51 @@ const CentralAdminApp = () => {
     } finally {
       setTenantDetailsLoading(false)
     }
+    loadEpsilonTenantUsage(database)
+  }
+
+  const loadEpsilonTenantUsage = async (database) => {
+    if (!database) return
+    setEpsilonUsageLoading(true)
+    try {
+      const response = await requestAdmin('GET', `billing/epsilon/tenant-usage?database=${encodeURIComponent(database)}`)
+      if (response.err || !response.ok) throw new Error(response.mess || 'Unable to load Epsilon usage.')
+      setEpsilonUsage(response)
+    } catch (error) {
+      setEpsilonUsage(null)
+      setNotice('error', error.message || 'Unable to load Epsilon usage.')
+    } finally {
+      setEpsilonUsageLoading(false)
+    }
+  }
+
+  const handleGrantEpsilonTokens = async (database) => {
+    if (!database) return
+    const tokens = epsilonTokensGrantDraft !== null
+      ? epsilonTokensGrantDraft
+      : Number(epsilonUsage?.epsilonTokenBalance || 0)
+    setIsGrantingEpsilonTokens(true)
+    const response = await requestAdmin('POST', 'admin/billing/epsilon/grant-tokens', { database, tokens })
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || 'Unable to update Epsilon token balance.')
+      setIsGrantingEpsilonTokens(false)
+      return
+    }
+    setNotice('success', `Epsilon token balance set to ${response.epsilonTokenBalance.toLocaleString()}.`)
+    setEpsilonTokensGrantDraft(null)
+    await loadEpsilonTenantUsage(database)
+    setIsGrantingEpsilonTokens(false)
+  }
+
+  const loadEpsilonOverview = async () => {
+    try {
+      const response = await requestAdmin('GET', 'billing/epsilon/overview')
+      if (response.err || !response.ok) return
+      setEpsilonOverview(response)
+    } catch (error) {
+      // Non-fatal — the overview cards just stay empty; the rest of the
+      // dashboard doesn't depend on this.
+    }
   }
 
   if (isAuthChecking) {
@@ -1049,6 +1134,7 @@ const CentralAdminApp = () => {
             ['connectivity', 'Live Connectivity', '📡'],
             ['health', 'System Health', '🩺'],
             ['subscriptions', 'Subscriptions', '💳'],
+            ['epsilonUsage', 'Epsilon AI Usage', '🤖'],
             ['offlineLicenses', 'Offline Licenses', '🔑'],
             ['desktopReleases', 'Desktop Releases', '💿'],
             ['support', 'Help & Support', '💬'],
@@ -1065,6 +1151,7 @@ const CentralAdminApp = () => {
                 if (key === 'support') loadEnquiries();
                 if (key === 'sessions' || key === 'connectivity') loadSessions();
                 if (key === 'health') loadPlatformHealth();
+                if (key === 'epsilonUsage') loadEpsilonOverview();
                 if (key === 'offlineLicenses') { loadOfflineLicenses(); loadOfflineModulePricing(); }
                 if (key === 'desktopReleases') loadDesktopReleases();
               }}
@@ -1093,7 +1180,7 @@ const CentralAdminApp = () => {
         <header className='ca-header'>
           <div>
             <div className='ca-page-kicker'>Central admin platform</div>
-            <h2>{activeTab === 'overview' ? 'Global operations view' : activeTab === 'tenants' ? 'Tenant estate' : activeTab === 'subscriptions' ? 'Subscriptions & billing' : activeTab === 'offlineLicenses' ? 'Offline licenses' : activeTab === 'desktopReleases' ? 'Desktop app releases' : activeTab === 'maintenance' ? 'Maintenance & migrations' : 'Admin settings'}</h2>
+            <h2>{activeTab === 'overview' ? 'Global operations view' : activeTab === 'tenants' ? 'Tenant estate' : activeTab === 'subscriptions' ? 'Subscriptions & billing' : activeTab === 'epsilonUsage' ? 'Epsilon AI usage & billing' : activeTab === 'offlineLicenses' ? 'Offline licenses' : activeTab === 'desktopReleases' ? 'Desktop app releases' : activeTab === 'maintenance' ? 'Maintenance & migrations' : 'Admin settings'}</h2>
             <p>Generated {formatDateTime(snapshot.generatedAt || Date.now())}</p>
           </div>
           <div className='ca-header-actions'>
@@ -1306,7 +1393,14 @@ const CentralAdminApp = () => {
                         <span>Only checked modules are available to this tenant's admin and employees. Dependencies are selected automatically.</span>
                       </div>
                       <div className='ca-module-grid'>
-                        {(tenantDetails.moduleCatalog || []).map((app) => (
+                        {/* Epsilon is deliberately excluded here — unlike every
+                            other module, its real entitlement isn't
+                            enabledModules membership at all, but a dedicated
+                            seat count (see the grant control just below).
+                            Checking it in this generic grid would add
+                            'epsilon' to enabledModules with zero seats behind
+                            it, which is a misleading, broken state. */}
+                        {(tenantDetails.moduleCatalog || []).filter((app) => app.key !== 'epsilon').map((app) => (
                           <label key={app.key} className={`ca-module-chip ${app.tier === 'free' ? 'locked' : ''}`}>
                             <input
                               type='checkbox'
@@ -1328,6 +1422,111 @@ const CentralAdminApp = () => {
                         </button>
                       </div>
                     </div>
+
+                    <div className='ca-control-strip'>
+                      <div>
+                        <strong>Epsilon AI seats (free grant)</strong>
+                        <span>
+                          Sets this tenant's Epsilon seat count directly, bypassing payment — the other way a
+                          tenant gets seats is the tenant admin purchasing them from Settings &gt; Billing.
+                          Currently: {Number(tenantDetails.companyProfile?.epsilonSeats || 0)} seat(s).
+                        </span>
+                      </div>
+                      <div className='ca-inline-action-row'>
+                        <input
+                          type='number'
+                          min='0'
+                          style={{ width: 100 }}
+                          defaultValue={Number(tenantDetails.companyProfile?.epsilonSeats || 0)}
+                          key={selectedTenant}
+                          onBlur={(e) => setEpsilonSeatsGrantDraft(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                        />
+                        <button
+                          className='ca-inline-btn primary'
+                          onClick={() => handleGrantEpsilonSeats(selectedTenant)}
+                          disabled={isGrantingEpsilonSeats}
+                        >
+                          {isGrantingEpsilonSeats ? 'Saving...' : 'Set Epsilon Seats'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className='ca-control-strip'>
+                      <div>
+                        <strong>Epsilon AI token balance (free grant)</strong>
+                        <span>
+                          Sets this tenant's token balance directly, bypassing payment — separate from seats. The
+                          other way a tenant gets tokens is a seat purchase, which also funds the wallet at the
+                          configured ₦-per-1000-tokens rate (Settings tab). Currently: {(epsilonUsage?.epsilonTokenBalance ?? 0).toLocaleString()} token(s).
+                        </span>
+                      </div>
+                      <div className='ca-inline-action-row'>
+                        <input
+                          type='number'
+                          min='0'
+                          style={{ width: 140 }}
+                          defaultValue={epsilonUsage?.epsilonTokenBalance ?? 0}
+                          key={`${selectedTenant}-tokens`}
+                          onBlur={(e) => setEpsilonTokensGrantDraft(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                        />
+                        <button
+                          className='ca-inline-btn primary'
+                          onClick={() => handleGrantEpsilonTokens(selectedTenant)}
+                          disabled={isGrantingEpsilonTokens}
+                        >
+                          {isGrantingEpsilonTokens ? 'Saving...' : 'Set Token Balance'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <section className='ca-panel' style={{ margin: '18px 0' }}>
+                      <div className='ca-panel-head'>
+                        <div className='ca-panel-title'>
+                          <h3>Epsilon AI usage — this tenant</h3>
+                          <p>Lifetime purchased: {(epsilonUsage?.epsilonTokensPurchasedTotal ?? 0).toLocaleString()} tokens · consumed: {(epsilonUsage?.epsilonTokensConsumedTotal ?? 0).toLocaleString()} tokens</p>
+                        </div>
+                        <button className='ca-inline-btn' onClick={() => loadEpsilonTenantUsage(selectedTenant)} disabled={epsilonUsageLoading}>
+                          {epsilonUsageLoading ? 'Loading...' : '🔄 Refresh'}
+                        </button>
+                      </div>
+
+                      {epsilonUsage?.dailySeries?.length ? (
+                        <div style={{ width: '100%', height: 220, marginBottom: 20 }}>
+                          <ResponsiveContainer>
+                            <AreaChart data={epsilonUsage.dailySeries}>
+                              <CartesianGrid strokeDasharray='3 3' />
+                              <XAxis dataKey='date' tick={{ fontSize: 11 }} />
+                              <YAxis tick={{ fontSize: 11 }} />
+                              <Tooltip formatter={(value, name) => [value.toLocaleString(), name === 'totalTokens' ? 'Tokens' : 'Naira']} />
+                              <Area type='monotone' dataKey='totalTokens' stroke='#2b6a4b' fill='#6af2ad' fillOpacity={0.4} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className='ca-empty'>No daily usage yet for the last 30 days.</div>
+                      )}
+
+                      <div className='ca-table-wrap'>
+                        <table className='ca-table'>
+                          <thead>
+                            <tr><th>Employee</th><th>Messages</th><th>Tokens</th><th>≈ Naira</th><th>Last used</th></tr>
+                          </thead>
+                          <tbody>
+                            {epsilonUsage?.perUser?.length ? epsilonUsage.perUser.map((row) => (
+                              <tr key={row.userEmail}>
+                                <td>{row.userEmail}</td>
+                                <td>{row.messageCount}</td>
+                                <td>{row.totalTokens.toLocaleString()}</td>
+                                <td>₦{row.totalNaira.toLocaleString()}</td>
+                                <td>{formatDateTime(row.lastUsedAt)}</td>
+                              </tr>
+                            )) : (
+                              <tr><td colSpan='5' className='ca-empty'>No Epsilon usage recorded for this tenant yet.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
 
                     <div className='ca-table-wrap'>
                       <table className='ca-table'>
@@ -1906,11 +2105,17 @@ const CentralAdminApp = () => {
               <div className='ca-panel-content'>
                 {offlineModulePricing.map((m) => (
                   <div key={m.key} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0' }}>
-                    <span style={{ flex: 1 }}>{m.name}</span>
-                    <span>Online monthly: ₦{m.priceNaira}</span>
-                    <input type='number' style={{ width: 140 }} defaultValue={m.offlineYearlyPriceNaira}
-                      onBlur={(e) => handleUpdateModulePricing(m.key, m.priceNaira, Number(e.target.value))} />
-                    <span>/yr</span>
+                    <span style={{ flex: 1 }}>{m.name}{m.key === 'epsilon' ? ' (per seat/month)' : ''}</span>
+                    <span>{m.key === 'epsilon' ? 'Per seat, monthly:' : 'Online monthly:'} ₦</span>
+                    <input type='number' style={{ width: 120 }} defaultValue={m.priceNaira}
+                      onBlur={(e) => handleUpdateModulePricing(m.key, Number(e.target.value), m.offlineYearlyPriceNaira)} />
+                    {m.key !== 'epsilon' && (
+                      <>
+                        <input type='number' style={{ width: 140 }} defaultValue={m.offlineYearlyPriceNaira}
+                          onBlur={(e) => handleUpdateModulePricing(m.key, m.priceNaira, Number(e.target.value))} />
+                        <span>/yr</span>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2120,6 +2325,53 @@ const CentralAdminApp = () => {
                       value={globalSettingsForm.desktopOfflineIntervalDays}
                       onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, desktopOfflineIntervalDays: Number(e.target.value) })}
                       required
+                    />
+                  </label>
+                  <label>
+                    <span>Epsilon (AI assistant)</span>
+                    <select
+                      value={globalSettingsForm.epsilonEnabled ? 'enabled' : 'disabled'}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonEnabled: e.target.value === 'enabled' })}
+                    >
+                      <option value='enabled'>Enabled</option>
+                      <option value='disabled'>Disabled</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Epsilon model</span>
+                    <input
+                      type='text'
+                      value={globalSettingsForm.epsilonModel}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonModel: e.target.value })}
+                      placeholder='claude-sonnet-5'
+                    />
+                  </label>
+                  <label>
+                    <span>Epsilon token price (₦ per 1,000 tokens)</span>
+                    <input
+                      type='number'
+                      min='0'
+                      step='0.01'
+                      value={globalSettingsForm.epsilonTokenPriceNaira}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonTokenPriceNaira: Number(e.target.value) })}
+                    />
+                  </label>
+                  <label>
+                    <span>Epsilon rate limit (tokens per window)</span>
+                    <input
+                      type='number'
+                      min='0'
+                      value={globalSettingsForm.epsilonRateLimitTokens}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonRateLimitTokens: Number(e.target.value) })}
+                    />
+                  </label>
+                  <label>
+                    <span>Epsilon rate limit window (hours)</span>
+                    <input
+                      type='number'
+                      min='1'
+                      value={globalSettingsForm.epsilonRateLimitWindowHours}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonRateLimitWindowHours: Number(e.target.value) })}
                     />
                   </label>
                   <div className='full'>
@@ -2514,6 +2766,96 @@ const CentralAdminApp = () => {
                       <span>Mail Transport</span>
                       <strong className='text-success'>Ready</strong>
                     </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'epsilonUsage' && (
+          <div className='ca-health-view'>
+            <section className='ca-health-stats'>
+              <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon status'></div>
+                <div className='ca-stat-info'>
+                  <span>Tokens Today</span>
+                  <strong>{(epsilonOverview?.today?.totalTokens || 0).toLocaleString()}</strong>
+                  <p>≈ ₦{(epsilonOverview?.today?.totalNaira || 0).toLocaleString()} across every workspace</p>
+                </div>
+              </div>
+              <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon errors'></div>
+                <div className='ca-stat-info'>
+                  <span>Tokens This Month</span>
+                  <strong>{(epsilonOverview?.month?.totalTokens || 0).toLocaleString()}</strong>
+                  <p>≈ ₦{(epsilonOverview?.month?.totalNaira || 0).toLocaleString()} across every workspace</p>
+                </div>
+              </div>
+              <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon sources'></div>
+                <div className='ca-stat-info'>
+                  <span>Active Tenants (30d)</span>
+                  <strong>{epsilonOverview?.topTenants?.length || 0}</strong>
+                  <p>Workspaces that have sent Epsilon at least one message</p>
+                </div>
+              </div>
+              <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon active-users'></div>
+                <div className='ca-stat-info'>
+                  <span>Active Users (30d)</span>
+                  <strong>{epsilonOverview?.topUsers?.length || 0}</strong>
+                  <p>Employees that have sent Epsilon at least one message</p>
+                </div>
+              </div>
+            </section>
+
+            <div className='ca-health-grid'>
+              <div className='ca-logs-section'>
+                <div className='ca-panel'>
+                  <div className='ca-panel-head'>
+                    <div className='ca-panel-title'>
+                      <h3>Top tenants using Epsilon (last 30 days)</h3>
+                      <p>Who's actually using the AI assistant — click a tenant in the Tenants tab for the full per-user breakdown and chart.</p>
+                    </div>
+                    <button className='ca-inline-btn' onClick={loadEpsilonOverview}>🔄 Refresh</button>
+                  </div>
+                  <div className='ca-table-wrap'>
+                    <table className='ca-table'>
+                      <thead>
+                        <tr><th>Tenant</th><th>Tokens</th><th>≈ Naira</th></tr>
+                      </thead>
+                      <tbody>
+                        {epsilonOverview?.topTenants?.length ? epsilonOverview.topTenants.map((row) => (
+                          <tr key={row.database}>
+                            <td>
+                              <strong>{row.companyName}</strong>
+                              <button className='ca-inline-btn' style={{ marginLeft: 10 }} onClick={() => { setActiveTab('tenants'); loadTenantDetails(row.database); }}>View</button>
+                            </td>
+                            <td>{row.totalTokens.toLocaleString()}</td>
+                            <td>₦{row.totalNaira.toLocaleString()}</td>
+                          </tr>
+                        )) : (
+                          <tr><td colSpan='3' className='ca-empty'>No Epsilon usage recorded in the last 30 days.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <aside className='ca-health-metrics'>
+                <div className='ca-panel'>
+                  <div className='ca-panel-head'><h3>Top users (last 30 days)</h3></div>
+                  <div className='ca-metrics-list'>
+                    {epsilonOverview?.topUsers?.length ? epsilonOverview.topUsers.map((row) => (
+                      <div className='ca-metric-row' key={`${row.database}:${row.userEmail}`}>
+                        <span className='ca-metric-label'>{row.userEmail} <small>({row.companyName})</small></span>
+                        <span className='ca-metric-value'>{row.totalTokens.toLocaleString()} tok</span>
+                      </div>
+                    )) : (
+                      <div className='ca-empty'>No user activity yet.</div>
+                    )}
                   </div>
                 </div>
               </aside>

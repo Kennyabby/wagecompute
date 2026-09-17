@@ -11,6 +11,7 @@ const PaymentConfirmPage = () => {
   const checkout = new URLSearchParams(location.search).get('checkout') || ''
   const isTenantCheckout = checkout === 'tenant-settings'
   const isTenantRenewal = checkout === 'tenant-renewal'
+  const isEpsilonSeatsCheckout = checkout === 'epsilon-seats'
 
   useEffect(() => {
     storePath('payment-confirm')
@@ -28,14 +29,24 @@ const PaymentConfirmPage = () => {
           ? 'billing/verifyTenantSubscription'
           : checkout === 'tenant-renewal'
             ? 'public/tenant/renewal/verify'
-            : 'public/payments/paystack/verify'
+            : checkout === 'epsilon-seats'
+              ? 'billing/epsilon/verify-purchase'
+              : 'public/payments/paystack/verify'
         const response = await fetchServer('GET', { reference }, endpoint, server)
         if (cancelled) return
         if (!response || !response.ok) {
           setState({ verifying: false, type: 'error', message: response?.message || response?.mess || 'Could not verify payment.', reference })
           return
         }
-        setState({ verifying: false, type: response.status === 'active' ? 'success' : 'info', message: response.message || 'Verification complete.', reference })
+        const successMessage = checkout === 'epsilon-seats'
+          ? `Epsilon seats confirmed — this workspace now has ${response.epsilonSeats ?? '?'} seat(s).${response.grantedSelfAccess ? ' You have been granted one of them — log out and back in for it to take effect.' : ''}`
+          : (response.message || 'Verification complete.')
+        setState({
+          verifying: false,
+          type: checkout === 'epsilon-seats' ? 'success' : (response.status === 'active' ? 'success' : 'info'),
+          message: successMessage,
+          reference,
+        })
       } catch (err) {
         if (cancelled) return
         setState({ verifying: false, type: 'error', message: err.message || 'Verification failed.', reference })
@@ -62,7 +73,7 @@ const PaymentConfirmPage = () => {
         <div className="sp-confirm-shell">
           <div className={`sp-confirm-card ${state.type || 'info'}`}>
             <div className="sp-confirm-pill-row">
-              <span className="sp-confirm-pill">{isTenantRenewal ? 'Workspace renewal' : isTenantCheckout ? 'Tenant billing checkout' : 'Public pricing checkout'}</span>
+              <span className="sp-confirm-pill">{isTenantRenewal ? 'Workspace renewal' : isEpsilonSeatsCheckout ? 'Epsilon AI seat purchase' : isTenantCheckout ? 'Tenant billing checkout' : 'Public pricing checkout'}</span>
               <span className="sp-confirm-pill">{state.verifying ? 'Verification in progress' : (state.type || 'pending')}</span>
             </div>
 
@@ -86,17 +97,19 @@ const PaymentConfirmPage = () => {
                 <div className="sp-input-help">
                   {isTenantRenewal
                     ? 'Your workspace should now be reactivated. Please log in to continue.'
-                    : isTenantCheckout
-                      ? 'Return to tenant settings to review the subscription snapshot, payments, invoices, and current workspace status.'
-                      : 'Return to pricing to continue your onboarding path or start a new free trial tenant.'}
+                    : isEpsilonSeatsCheckout
+                      ? 'Return to Settings > Billing to see your updated Epsilon seat count, or Team Access to grant seats to employees.'
+                      : isTenantCheckout
+                        ? 'Return to tenant settings to review the subscription snapshot, payments, invoices, and current workspace status.'
+                        : 'Return to pricing to continue your onboarding path or start a new free trial tenant.'}
                 </div>
                 <button
                   className="sp-checkout-submit"
-                  onClick={() => navigate(isTenantRenewal ? '/login' : isTenantCheckout ? '/settings' : '/pricing')}
+                  onClick={() => navigate(isTenantRenewal ? '/login' : (isTenantCheckout || isEpsilonSeatsCheckout) ? '/settings' : '/pricing')}
                 >
-                  {isTenantRenewal ? 'Return to Login' : isTenantCheckout ? 'Return to Billing Settings' : 'Back to Pricing'}
+                  {isTenantRenewal ? 'Return to Login' : isEpsilonSeatsCheckout ? 'Return to Settings' : isTenantCheckout ? 'Return to Billing Settings' : 'Back to Pricing'}
                 </button>
-                {!isTenantCheckout && !isTenantRenewal ? (
+                {!isTenantCheckout && !isTenantRenewal && !isEpsilonSeatsCheckout ? (
                   <button className="sp-confirm-secondary-btn" onClick={() => navigate('/signup')}>
                     Start Free Trial Instead
                   </button>

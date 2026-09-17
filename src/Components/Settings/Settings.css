@@ -534,6 +534,13 @@
     margin-top: 4px;
 }
 
+.ai-seat-usage {
+    text-transform: none;
+    font-weight: 600;
+    letter-spacing: normal;
+    color: var(--settings-muted, #888);
+}
+
 .section-divider {
     font-weight: 800;
     font-size: 12px;
@@ -1122,6 +1129,82 @@ input:checked + .slider:before {
 
 .settings-billing-modules-panel {
     margin: 18px 0;
+}
+
+.epsilon-billing-card {
+    margin-top: 18px;
+}
+
+.epsilon-billing-panel {
+    padding: 28px;
+    border: 1px solid rgba(106, 242, 173, 0.35);
+    background: linear-gradient(135deg, rgba(106, 242, 173, 0.06), rgba(255, 255, 255, 0.98));
+}
+
+.epsilon-billing-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--settings-primary);
+    background: rgba(106, 242, 173, 0.18);
+    border-radius: 999px;
+    padding: 6px 14px;
+    margin-bottom: 10px;
+}
+
+.epsilon-billing-purchase-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(23, 56, 41, 0.08);
+}
+
+.epsilon-billing-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--settings-text-muted);
+}
+
+.epsilon-billing-field input,
+.epsilon-billing-field select {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(23, 56, 41, 0.15);
+    font-size: 14px;
+    min-width: 140px;
+}
+
+.epsilon-billing-token-estimate {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--settings-primary);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.epsilon-balance-empty strong {
+    color: #d11212;
+}
+
+.epsilon-billing-total {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.epsilon-billing-total strong {
+    font-size: 22px;
+    color: var(--settings-primary);
 }
 
 .settings-billing-module-grid {
