@@ -121,20 +121,27 @@ const DEFAULT_APPROVAL_CONFIG = {
 };
 
 // App-level cache helpers now backed by IndexedDB (appCache store)
-const CACHE_TTL_MS = 1 * 60 * 1000; // 1 minute TTL
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minute TTL — used opt-in via getCached's ttlMs param
 
 const makeCacheKey = (company, resource) => {
   const db = company || 'global';
   return `wc-cache:${db}:${resource}`;
 };
 
-// getCached returns a Promise resolving to cached data or null
-const getCached = async (companyKey, resource, emailid) => {
+// getCached returns a Promise resolving to cached data or null.
+// ttlMs is opt-in: omitted (the ~20 existing call sites), this behaves
+// exactly as before — cached data of any age is returned, purely to paint
+// instantly while the caller still always re-fetches live afterward. Passed
+// explicitly, a stale entry (older than ttlMs) is treated as a miss (null),
+// letting a caller skip the live re-fetch entirely when data is fresh enough
+// — see fetchProfiles/fetchDBProfiles/getChartOfAccounts/getEmployees/
+// getSettings's useCache param, added to fix the Settings page always
+// re-fetching everything (including modules Settings doesn't even need,
+// like employees/chart of accounts) on every mount/refresh.
+const getCached = async (companyKey, resource, emailid, ttlMs) => {
   const rec = await getAppCache(companyKey, emailid, resource);
   if (!rec) return null;
-  // if (!rec || !rec.updatedAt) return null;
-  // const isFresh = Date.now() - rec.updatedAt < CACHE_TTL_MS;
-  // return isFresh ? rec.data : null;
+  if (ttlMs && rec.updatedAt && (Date.now() - rec.updatedAt >= ttlMs)) return null;
   return rec.data;
 };
 
@@ -2448,11 +2455,18 @@ function App() {
     }
   }
 
-  const fetchProfiles = async (company) => {
+  // useCache: opt-in, only passed true by callers that are fine with data up
+  // to CACHE_TTL_MS old (e.g. a plain page load/refresh) — skips the live
+  // re-fetch entirely when the cache is that fresh. Defaults false so every
+  // existing call site (almost all of them post-save refreshes that must
+  // see this tenant's own just-written change) keeps its current always-
+  // fetch-live behavior unchanged.
+  const fetchProfiles = async (company, _unused, useCache = false) => {
     if (company && companyRecord?.emailid) {
-      const cached = await getCached(company, 'profiles', companyRecord?.emailid);
+      const cached = await getCached(company, 'profiles', companyRecord?.emailid, useCache ? CACHE_TTL_MS : undefined);
       if (cached && Array.isArray(cached)) {
         setProfiles(cached);
+        if (useCache) return
       }
       const resps = await fetchServer("POST", {
         database: company,
@@ -2468,11 +2482,12 @@ function App() {
     }
   }
 
-  const fetchDBProfiles = async (company) => {
+  const fetchDBProfiles = async (company, _unused, useCache = false) => {
     if (company && companyRecord?.emailid) {
-      const cached = await getCached(company, 'dbProfiles', companyRecord?.emailid);
+      const cached = await getCached(company, 'dbProfiles', companyRecord?.emailid, useCache ? CACHE_TTL_MS : undefined);
       if (cached && Array.isArray(cached)) {
         setDBProfiles(cached);
+        if (useCache) return
       }
       const resps = await fetchServer("POST", {
         prop: { 'db': company }
@@ -2486,14 +2501,15 @@ function App() {
     }
   }
 
-  const getChartOfAccounts = async (company) => {
+  const getChartOfAccounts = async (company, _unused, useCache = false) => {
     if (company && companyRecord?.emailid) {
       setChartOfAccountsLoadState({ loading: true, loaded: false, company })
       try {
-        const cached = await getCached(company, 'chartOfAccounts', companyRecord?.emailid);
+        const cached = await getCached(company, 'chartOfAccounts', companyRecord?.emailid, useCache ? CACHE_TTL_MS : undefined);
         if (cached && Array.isArray(cached)) {
           setChartOfAccounts(cached);
           setChartOfAccountsLoadState({ loading: true, loaded: true, company })
+          if (useCache) return
         }
         const resp = await fetchServer("POST", {
           database: company,
@@ -2799,10 +2815,11 @@ function App() {
     }
   }
 
-  const getEmployees = async (company) => {
-    const cached = await getCached(company, 'employees', companyRecord?.emailid);
+  const getEmployees = async (company, _unused, useCache = false) => {
+    const cached = await getCached(company, 'employees', companyRecord?.emailid, useCache ? CACHE_TTL_MS : undefined);
     if (cached) {
       setEmployees(cached);
+      if (useCache) return
     }
     const resp = await fetchServer("POST", {
       database: company,
@@ -3940,14 +3957,15 @@ function App() {
     }
   }
 
-  const getSettings = async (company) => {
+  const getSettings = async (company, _unused, useCache = false) => {
     if (!company) return
     setSettingsLoadState({ loading: true, loaded: false, company })
     try {
-      const cached = await getCached(company, 'settings', companyRecord?.emailid);
+      const cached = await getCached(company, 'settings', companyRecord?.emailid, useCache ? CACHE_TTL_MS : undefined);
       if (cached) {
         setSettings(cached);
         setSettingsLoadState({ loading: true, loaded: true, company })
+        if (useCache) return
       }
       const resp = await fetchServer("POST", {
         collection: "Settings",

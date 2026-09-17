@@ -2,6 +2,8 @@ import { useContext, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import ContextProvider from '../../Resources/ContextProvider'
 import MODULE_ICONS from '../../Resources/moduleIcons'
+import StatCardGrid from '../Shared/ui/StatCardGrid'
+import StatCard from '../Shared/ui/StatCard'
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
   style: 'currency',
@@ -430,43 +432,47 @@ const BillingSettingsPanel = ({ variants }) => {
           </div>
         </div>
 
-        <div className='settings-billing-summary-grid'>
-          <div className='settings-billing-summary-card'>
-            <span className='settings-billing-label'>Current status</span>
-            <strong>{formatStatus(currentStatus?.statusLabel || currentStatus?.computedStatus)}</strong>
-            <p>
-              {currentStatus?.trialActive
+        <StatCardGrid min={230}>
+          <StatCard
+            label="Current status"
+            value={formatStatus(currentStatus?.statusLabel || currentStatus?.computedStatus)}
+            tone={currentStatus?.isSuspended ? 'error' : 'success'}
+            description={
+              currentStatus?.trialActive
                 ? `Free trial active. ${currentStatus?.trialDaysRemaining ?? '--'} day(s) remaining before payment is required.`
                 : (currentStatus?.isSuspended
                   ? 'This workspace is currently suspended until subscription issues are cleared.'
-                  : 'This workspace is presently available for use.')}
-            </p>
-          </div>
-          <div className='settings-billing-summary-card'>
-            <span className='settings-billing-label'>Plan</span>
-            <strong>{snapshot.plan?.name || 'Standard Monthly'}</strong>
-            <p>{formatMoney(snapshot.plan?.amountNaira || 92000)} / {snapshot.plan?.interval || 'monthly'}</p>
-            <p style={{ marginTop: 6 }}>
-              Paystack mode: <strong>{String(snapshot.plan?.paystackMode || 'live').toUpperCase()}</strong>
-            </p>
-          </div>
-          <div className='settings-billing-summary-card'>
-            <span className='settings-billing-label'>Next expiry</span>
-            <strong>{formatDate(currentStatus?.trialActive ? currentStatus?.trialExpiresAt : currentStatus?.expiresAt)}</strong>
-            <p>
-              {currentStatus?.trialActive
+                  : 'This workspace is presently available for use.')
+            }
+          />
+          <StatCard
+            label="Plan"
+            value={snapshot.plan?.name || 'Standard Monthly'}
+            description={(
+              <>
+                {formatMoney(snapshot.plan?.amountNaira || 92000)} / {snapshot.plan?.interval || 'monthly'}
+                <br />
+                Paystack mode: <strong>{String(snapshot.plan?.paystackMode || 'live').toUpperCase()}</strong>
+              </>
+            )}
+          />
+          <StatCard
+            label="Next expiry"
+            value={formatDate(currentStatus?.trialActive ? currentStatus?.trialExpiresAt : currentStatus?.expiresAt)}
+            description={
+              currentStatus?.trialActive
                 ? `${currentStatus?.trialDaysRemaining ?? '--'} day(s) left on free trial.`
                 : (currentStatus?.daysToExpiry === null || currentStatus?.daysToExpiry === undefined
                   ? 'No active billing window yet.'
-                  : `${currentStatus.daysToExpiry} day(s) remaining.`)}
-            </p>
-          </div>
-          <div className='settings-billing-summary-card'>
-            <span className='settings-billing-label'>Latest invoice</span>
-            <strong>{currentStatus?.lastInvoiceNumber || '--'}</strong>
-            <p>{currentStatus?.lastPaymentAt ? `Paid ${formatDate(currentStatus.lastPaymentAt)}` : 'No subscription payment recorded yet.'}</p>
-          </div>
-        </div>
+                  : `${currentStatus.daysToExpiry} day(s) remaining.`)
+            }
+          />
+          <StatCard
+            label="Latest invoice"
+            value={currentStatus?.lastInvoiceNumber || '--'}
+            description={currentStatus?.lastPaymentAt ? `Paid ${formatDate(currentStatus.lastPaymentAt)}` : 'No subscription payment recorded yet.'}
+          />
+        </StatCardGrid>
 
         <section className='settings-billing-panel settings-billing-card-panel'>
           <div className='settings-billing-panel-header'>

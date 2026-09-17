@@ -9,17 +9,21 @@
 // verbatim from SideNav.js's own navItems icon assignments — deliberately
 // NOT refactored to import from here, since it's a complex, already-working
 // nav component and this file's whole job is to match its existing look,
-// not risk changing it. reports/epsilon have no sidebar nav entry today,
-// so their icons are new, chosen to fit the same react-icons sets already
-// in use elsewhere in this file.
+// not risk changing it. reports has no sidebar nav entry today, so its icon
+// is new, chosen to fit the same react-icons sets already in use elsewhere
+// in this file. epsilon uses the actual Epsilon brand mark (the same "ε"
+// glyph the chat launcher renders, see Components/Epsilon/Epsilon.css
+// .epsilon-mark) rather than a generic react-icons AI/robot glyph, so every
+// picker/nav/marketing surface shows the same real mark as the product.
 import { BiSolidDashboard } from 'react-icons/bi'
-import { BsTable, BsRobot } from 'react-icons/bs'
+import { BsTable } from 'react-icons/bs'
 import { FaUsers, FaHotel, FaBoxes, FaHandshake } from 'react-icons/fa'
 import { SiPayloadcms } from 'react-icons/si'
 import { MdInventory, MdSubject, MdDeliveryDining, MdAssessment } from 'react-icons/md'
 import { GiPayMoney, GiPlayerTime, GiBuyCard, GiExpense } from 'react-icons/gi'
 import { RiSettings2Fill } from 'react-icons/ri'
 import { CgArrangeBack } from 'react-icons/cg'
+import EpsilonMark from './EpsilonMark'
 
 const MODULE_ICONS = {
   dashboard: BiSolidDashboard,
@@ -40,7 +44,7 @@ const MODULE_ICONS = {
   expenses: GiExpense,
   journals: BsTable,
   reports: MdAssessment,
-  epsilon: BsRobot,
+  epsilon: EpsilonMark,
 }
 
 export default MODULE_ICONS

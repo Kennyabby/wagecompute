@@ -3,7 +3,7 @@ import { useEffect, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from 'framer-motion'
-import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle, IoServer } from 'react-icons/io5'
+import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle, IoServer, IoRefresh } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
 import EpsilonBillingCard from './EpsilonBillingCard'
 import DesktopLicensePanel from './DesktopLicensePanel'
@@ -61,15 +61,41 @@ const Settings = () => {
     // for. Never fetched on the Electron build — epsilonBilling's routes
     // aren't even registered on that backend.
     const [epsilonSeatInfo, setEpsilonSeatInfo] = useState({ epsilonSeats: 0, usedSeats: 0, priceNaira: 0 })
-    const fetchEpsilonSeatInfo = async (cmp_val) => {
+    // Session-scoped cache (survives a page refresh within the same tab,
+    // unlike a plain JS variable) — same useCache opt-in pattern as the
+    // App.js context fetches: default false means every existing call site
+    // (right after granting/revoking an employee's AI access) keeps getting
+    // genuinely fresh seat counts, never a stale cached number.
+    const fetchEpsilonSeatInfo = async (cmp_val, useCache = false) => {
         if (window.electronAPI?.isElectron) return
+        const cacheKey = `settings-epsilon-seat-info-${cmp_val}`
+        if (useCache) {
+            try {
+                const raw = window.sessionStorage.getItem(cacheKey)
+                if (raw) {
+                    const { data, ts } = JSON.parse(raw)
+                    if (Date.now() - ts < 5 * 60 * 1000) {
+                        setEpsilonSeatInfo(data)
+                        return
+                    }
+                }
+            } catch (e) {
+                // sessionStorage is a best-effort cache — fall through to a live fetch
+            }
+        }
         const resp = await fetchServer('GET', {}, 'billing/epsilon/seat-info', server)
         if (resp && !resp.err && resp.ok) {
-            setEpsilonSeatInfo({
+            const data = {
                 epsilonSeats: Number(resp.epsilonSeats || 0),
                 usedSeats: Number(resp.usedSeats || 0),
                 priceNaira: Number(resp.priceNaira || 0),
-            })
+            }
+            setEpsilonSeatInfo(data)
+            try {
+                window.sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() }))
+            } catch (e) {
+                // best-effort — quota exceeded or private-mode storage block
+            }
         }
     }
 
@@ -90,6 +116,12 @@ const Settings = () => {
     const [selectedPaymentMethods, setSelectedPaymentMethods] = useState([])
     const [selectedEmployee, setSelectedEmployee] = useState(null)
     const [currentSetting, setCurrentSetting] = useState(null)
+    const [billingTab, setBillingTab] = useState('billing')
+    // Bumped by the Refresh button — used as BillingSettingsPanel/
+    // EpsilonBillingCard's `key`, so React remounts whichever is active and
+    // its own internal fetch effect runs fresh, without touching either
+    // child component's own fetch logic.
+    const [billingRefreshKey, setBillingRefreshKey] = useState(0)
     const [approvalConfig, setApprovalConfig] = useState(DEFAULT_APPROVAL_CONFIG)
     const [posReconciliationConfig, setPosReconciliationConfig] = useState(DEFAULT_POS_RECONCILIATION_CONFIG)
     const [propState, setPropState] = useState('new')
@@ -514,6 +546,25 @@ const Settings = () => {
             'edit_ended_sessions', 'place_multiple_deliveries', ...overridePerms])
     }, [wrhs])
 
+    // useCache=true (mount + the periodic timer's leading edge is fine to
+    // skip re-fetching everything the settings page pulls in — employees,
+    // profiles, chart of accounts — none of which change every few seconds)
+    // lets each fetch skip its live call entirely when data already cached
+    // within the last few minutes is fresh enough, instead of the page
+    // always blocking on 5 full live fetches on every mount/refresh no
+    // matter which section (e.g. Billing) the user actually landed on.
+    // Force refreshes (the Refresh button, and the periodic timer below)
+    // pass useCache=false to guarantee genuinely live data.
+    const refreshSettingsData = (cmp_val, useCache) => {
+        if (!cmp_val) return
+        getSettings(cmp_val, companyRecord, useCache)
+        getEmployees(cmp_val, companyRecord, useCache)
+        fetchProfiles(cmp_val, companyRecord, useCache)
+        fetchDBProfiles(cmp_val, companyRecord, useCache)
+        fetchEpsilonSeatInfo(cmp_val, useCache)
+        getChartOfAccounts(cmp_val, companyRecord, useCache)
+    }
+
     useEffect(() => {
         const periods = []
         for (let i = 0; i < 24; i++) {
@@ -523,16 +574,14 @@ const Settings = () => {
         setSessionPeriods(periods)
 
         const cmp_val = window.localStorage.getItem('sessn-cmp')
-        if (cmp_val) {
-            getSettings(cmp_val, companyRecord)
-            getEmployees(cmp_val, companyRecord)
-            fetchProfiles(cmp_val, companyRecord)
-            fetchDBProfiles(cmp_val, companyRecord)
-            fetchEpsilonSeatInfo(cmp_val)
-            if (!chartOfAccounts?.length) {
-                getChartOfAccounts(cmp_val, companyRecord)
-            }
-        }
+        refreshSettingsData(cmp_val, true)
+
+        // Periodic real-time-ish refresh while the Settings page stays open
+        // — genuinely live (bypasses the cache), not just re-checking it.
+        const intervalId = setInterval(() => {
+            refreshSettingsData(window.localStorage.getItem('sessn-cmp'), false)
+        }, 5 * 60 * 1000)
+        return () => clearInterval(intervalId)
     }, [])
 
     useEffect(() => {
@@ -2022,10 +2071,42 @@ const Settings = () => {
                 return window.electronAPI?.isElectron
                     ? <DesktopLicensePanel variants={variants} />
                     : (
-                        <>
-                            <BillingSettingsPanel variants={variants} />
-                            <EpsilonBillingCard variants={variants} />
-                        </>
+                        // Tab-switched rather than stacked — Plan & Billing and
+                        // Epsilon are unrelated billing concerns with their own
+                        // stat grids; showing both at once meant scrolling past
+                        // one to reach the other. Only the active one renders.
+                        <div className='settings-billing-stack'>
+                            <div className='settings-billing-tabs'>
+                                <button
+                                    type='button'
+                                    className={`settings-billing-tab ${billingTab === 'billing' ? 'active' : ''}`}
+                                    onClick={() => setBillingTab('billing')}
+                                >
+                                    Plan &amp; Billing
+                                </button>
+                                <button
+                                    type='button'
+                                    className={`settings-billing-tab ${billingTab === 'epsilon' ? 'active' : ''}`}
+                                    onClick={() => setBillingTab('epsilon')}
+                                >
+                                    Epsilon AI
+                                </button>
+                                <button
+                                    type='button'
+                                    className='settings-billing-refresh'
+                                    title='Refresh billing data'
+                                    onClick={() => {
+                                        refreshSettingsData(window.localStorage.getItem('sessn-cmp'), false)
+                                        setBillingRefreshKey((prev) => prev + 1)
+                                    }}
+                                >
+                                    <IoRefresh />
+                                </button>
+                            </div>
+                            {billingTab === 'billing'
+                                ? <BillingSettingsPanel key={billingRefreshKey} variants={variants} />
+                                : <EpsilonBillingCard key={billingRefreshKey} variants={variants} />}
+                        </div>
                     )
             case 'accounting':
                 return renderAccountingView(variants)

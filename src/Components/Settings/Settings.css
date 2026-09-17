@@ -1,13 +1,16 @@
 :root {
-  --settings-primary: #173829;
-  --settings-secondary: #2b6a4b;
-  --settings-accent: #6af2ad;
-  --settings-bg: #f8faf9;
-  --settings-card-bg: #ffffff;
-  --settings-text: #173829;
-  --settings-text-muted: rgba(23, 56, 41, 0.6);
-  --settings-shadow: 0 10px 40px rgba(23, 56, 41, 0.08);
-  --settings-radius: 20px;
+  /* Values now sourced from the shared platform tokens (src/styles/tokens.css)
+     instead of being duplicated here — same names, same visual result,
+     one real source of truth. */
+  --settings-primary: var(--brand-primary);
+  --settings-secondary: var(--brand-secondary);
+  --settings-accent: var(--brand-accent);
+  --settings-bg: var(--brand-bg-soft);
+  --settings-card-bg: var(--brand-card);
+  --settings-text: var(--brand-text);
+  --settings-text-muted: var(--brand-text-muted);
+  --settings-shadow: var(--brand-shadow);
+  --settings-radius: var(--brand-radius);
 }
 
 .settings {
@@ -952,6 +955,72 @@ input:checked + .slider:before {
     gap: 24px;
     min-width: 0;
     box-sizing: border-box;
+}
+
+/* Wraps the billing tab bar + whichever panel (Plan & Billing or Epsilon) is
+   active — guarantees a vertical layout regardless of what ancestor renders
+   it, rather than risking a row layout that squeezes stat-grids into half
+   the available width (the root cause of the original cramped screenshot). */
+.settings-billing-stack {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Only one of BillingSettingsPanel / EpsilonBillingCard renders at a time —
+   they are unrelated billing concerns with their own stat grids, and
+   stacking both meant scrolling past one to reach the other. */
+.settings-billing-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin: 12px 0 28px;
+    flex-wrap: wrap;
+}
+
+.settings-billing-tab {
+    padding: 12px 28px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(23, 56, 41, 0.1);
+    background: #fff;
+    color: var(--settings-text-muted);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.2s;
+    font-family: 'MontserratRegular', sans-serif;
+}
+
+.settings-billing-tab:hover {
+    border-color: rgba(43, 106, 75, 0.3);
+    color: var(--settings-primary);
+}
+
+.settings-billing-tab.active {
+    background: var(--settings-primary);
+    border-color: var(--settings-primary);
+    color: #fff;
+}
+
+.settings-billing-refresh {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    border: 1.5px solid rgba(23, 56, 41, 0.1);
+    background: #fff;
+    color: var(--settings-text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.settings-billing-refresh:hover {
+    border-color: rgba(43, 106, 75, 0.3);
+    color: var(--settings-primary);
+    transform: rotate(90deg);
 }
 
 .settings-billing-hero,

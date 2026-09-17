@@ -1,5 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
+import { FaXTwitter, FaLinkedinIn, FaYoutube, FaFacebookF } from 'react-icons/fa6'
+
+const SOCIALS = [
+  { Icon: FaXTwitter, label: 'X (Twitter)' },
+  { Icon: FaLinkedinIn, label: 'LinkedIn' },
+  { Icon: FaYoutube, label: 'YouTube' },
+  { Icon: FaFacebookF, label: 'Facebook' }
+]
 
 const Footer = () => {
   const Navigate = useNavigate()
@@ -9,15 +17,16 @@ const Footer = () => {
       <div className="ec-footer-inner">
         <div className="ec-footer-grid">
           <div className="ec-footer-brand">
-            <div className="logo-link" style={{ display: 'flex', alignItems: 'center', gap: 12 }} onClick={() => Navigate('/')}>
-              <img src={applogo} alt="EC" style={{ height: 40, width: 40, borderRadius: 12 }} />
-              <span style={{ fontFamily: "'MontserratBold',sans-serif", fontSize: '1.1rem' }}>Enterprise Compute</span>
+            <div className="ec-footer-logo" onClick={() => Navigate('/')}>
+              <img src={applogo} alt="EC" />
+              <span>Enterprise Compute</span>
             </div>
             <p>Powering productivity with precision. The all-in-one business management platform.</p>
           </div>
           <div className="ec-footer-col">
             <h4>Products</h4>
             {['Dashboard','Employees','Attendance','Payroll','POS','Inventory','Sales'].map((l, i) => <a key={i} href="/">{l}</a>)}
+            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/pricing#epsilon') }}>Epsilon AI</a>
           </div>
           <div className="ec-footer-col">
             <h4>Company</h4>
@@ -46,7 +55,7 @@ const Footer = () => {
         <div className="ec-footer-bottom">
           <span>© {new Date().getFullYear()} Enterprise Compute Central. All rights reserved.</span>
           <div className="ec-footer-socials">
-            {['𝕏','in','▶','📘'].map((s, i) => <a key={i} href="/">{s}</a>)}
+            {SOCIALS.map(({ Icon, label }) => <a key={label} href="/" aria-label={label}><Icon /></a>)}
           </div>
         </div>
       </div>

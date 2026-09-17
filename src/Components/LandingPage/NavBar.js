@@ -2,6 +2,10 @@ import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
 import ContextProvider from '../../Resources/ContextProvider'
+import MODULE_ICONS from '../../Resources/moduleIcons'
+import { MdSync } from 'react-icons/md'
+import { FiMenu, FiX } from 'react-icons/fi'
+import { FaShoppingCart, FaIndustry, FaHardHat, FaHospital, FaHotel, FaGraduationCap, FaTools, FaUniversity } from 'react-icons/fa'
 
 const NavBar = () => {
   const { companyRecord, loadedCurPath } = useContext(ContextProvider)
@@ -21,43 +25,42 @@ const NavBar = () => {
 
   const appColumns = [
     { title: 'Human Resources', color: 'green', items: [
-      { name: 'Employees', desc: 'People management' },
-      { name: 'Attendance', desc: 'Time tracking' },
-      { name: 'Payroll', desc: 'Salary processing' },
-      { name: 'Departments', desc: 'Org structure' },
-      { name: 'Positions', desc: 'Role management' }
+      { name: 'Employees', desc: 'People management', icon: MODULE_ICONS.employees },
+      { name: 'Attendance', desc: 'Time tracking', icon: MODULE_ICONS.attendance },
+      { name: 'Payroll', desc: 'Salary processing', icon: MODULE_ICONS.payroll },
+      { name: 'Departments', desc: 'Org structure', icon: MODULE_ICONS.departments },
+      { name: 'Positions', desc: 'Role management', icon: MODULE_ICONS.positions }
     ]},
     { title: 'Finance', color: 'gold', items: [
-      { name: 'Sales', desc: 'Revenue tracking' },
-      { name: 'Purchase', desc: 'Procurement' },
-      { name: 'Expenses', desc: 'Cost management' },
-      { name: 'Journals & COA', desc: 'Live accounting' }
+      { name: 'Sales', desc: 'Revenue tracking', icon: MODULE_ICONS.sales },
+      { name: 'Purchase', desc: 'Procurement', icon: MODULE_ICONS.purchase },
+      { name: 'Expenses', desc: 'Cost management', icon: MODULE_ICONS.expenses },
+      { name: 'Journals & COA', desc: 'Live accounting', icon: MODULE_ICONS.journals }
     ]},
     { title: 'Operations', color: 'teal', items: [
-      { name: 'Inventory', desc: 'Stock control' },
-      { name: 'POS', desc: 'Point of Sale' },
-      { name: 'Delivery', desc: 'Order dispatch' },
-      { name: 'Accommodation', desc: 'Hospitality mgmt' }
+      { name: 'Inventory', desc: 'Stock control', icon: MODULE_ICONS.inventory },
+      { name: 'POS', desc: 'Point of Sale', icon: MODULE_ICONS.pos },
+      { name: 'Delivery', desc: 'Order dispatch', icon: MODULE_ICONS.delivery },
+      { name: 'Accommodation', desc: 'Hospitality mgmt', icon: MODULE_ICONS.accommodations }
     ]},
     { title: 'Platform', color: 'blue', items: [
-      { name: 'Dashboard', desc: 'Operations overview' },
-      { name: 'Settings', desc: 'System config' },
-      { name: 'Offline Sync', desc: 'Work anywhere' }
+      { name: 'Dashboard', desc: 'Operations overview', icon: MODULE_ICONS.dashboard },
+      { name: 'Settings', desc: 'System config', icon: MODULE_ICONS.settings },
+      { name: 'Offline Sync', desc: 'Work anywhere', icon: MdSync },
+      { name: 'Epsilon AI', desc: 'AI assistant, paid add-on', icon: MODULE_ICONS.epsilon, path: '/pricing#epsilon' }
     ]}
   ]
 
   const industries = [
-    { title: 'Retail', items: ['CRM', 'Sales', 'Inventory'] },
-    { title: 'Manufacturing', items: ['Purchase', 'Inventory'] },
-    { title: 'Construction', items: ['Expenses', 'Payroll'] },
-    { title: 'Healthcare', items: ['Attendance', 'Employees'] },
-    { title: 'Hospitality', items: ['POS', 'Accommodation'] },
-    { title: 'Education', items: ['Attendance', 'Payroll'] },
-    { title: 'Services', items: ['Sales', 'Expenses'] },
-    { title: 'Finance', items: ['Reports', 'Sales'] }
+    { title: 'Retail', items: ['CRM', 'Sales', 'Inventory'], icon: FaShoppingCart },
+    { title: 'Manufacturing', items: ['Purchase', 'Inventory'], icon: FaIndustry },
+    { title: 'Construction', items: ['Expenses', 'Payroll'], icon: FaHardHat },
+    { title: 'Healthcare', items: ['Attendance', 'Employees'], icon: FaHospital },
+    { title: 'Hospitality', items: ['POS', 'Accommodation'], icon: FaHotel },
+    { title: 'Education', items: ['Attendance', 'Payroll'], icon: FaGraduationCap },
+    { title: 'Services', items: ['Sales', 'Expenses'], icon: FaTools },
+    { title: 'Finance', items: ['Reports', 'Sales'], icon: FaUniversity }
   ]
-
-  const indIcons = ['🛒','🏭','🏗️','🏥','🏨','📚','🔧','🏦']
 
   const handleDashboardRedirect = () => {
     if (companyRecord.status === 'admin') {
@@ -83,14 +86,22 @@ const NavBar = () => {
                 {appColumns.map((col, i) => (
                   <div key={i}>
                     <div className="ec-mega-col-title">{col.title}</div>
-                    {col.items.map((item, j) => (
-                      <div className="ec-mega-link" key={j}>
-                        <div className={`ec-mega-icon ${col.color}`}>
-                          {['👥','⏰','💵','🏢','📋','💰','📦','💸','📊','📦','🏪','🚚','🏨','📈','⚙️','🔄'][i * 5 + j] || '📋'}
+                    {col.items.map((item, j) => {
+                      const Icon = item.icon
+                      return (
+                        <div
+                          className="ec-mega-link"
+                          key={j}
+                          onClick={item.path ? () => Navigate(item.path) : undefined}
+                          style={item.path ? { cursor: 'pointer' } : undefined}
+                        >
+                          <div className={`ec-mega-icon ${col.color}`}>
+                            {Icon && <Icon />}
+                          </div>
+                          <div className="ec-mega-link-text"><strong>{item.name}</strong><span>{item.desc}</span></div>
                         </div>
-                        <div className="ec-mega-link-text"><strong>{item.name}</strong><span>{item.desc}</span></div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ))}
               </div>
@@ -102,12 +113,15 @@ const NavBar = () => {
             Industries ▾
             <div className="ec-mega-menu">
               <div className="ec-mega-cols">
-                {industries.map((ind, i) => (
-                  <div className="ec-mega-link" key={i}>
-                    <div className="ec-mega-icon green">{indIcons[i]}</div>
-                    <div className="ec-mega-link-text"><strong>{ind.title}</strong><span>{ind.items.join(', ')}</span></div>
-                  </div>
-                ))}
+                {industries.map((ind, i) => {
+                  const Icon = ind.icon
+                  return (
+                    <div className="ec-mega-link" key={i}>
+                      <div className="ec-mega-icon green">{Icon && <Icon />}</div>
+                      <div className="ec-mega-link-text"><strong>{ind.title}</strong><span>{ind.items.join(', ')}</span></div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -126,7 +140,7 @@ const NavBar = () => {
               <button className="ec-nav-cta" onClick={() => Navigate('/signup')}>Try it free</button>
             </>
           )}
-          <button className="ec-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? '✕' : '☰'}</button>
+          <button className="ec-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <FiX /> : <FiMenu />}</button>
         </div>
       </nav>
 

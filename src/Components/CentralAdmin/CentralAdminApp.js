@@ -180,6 +180,14 @@ const CentralAdminApp = () => {
   const [epsilonTokensGrantDraft, setEpsilonTokensGrantDraft] = useState(null)
   const [isGrantingEpsilonTokens, setIsGrantingEpsilonTokens] = useState(false)
   const [epsilonOverview, setEpsilonOverview] = useState(null)
+  // Standalone tenant-picker form on the Epsilon AI Usage tab — grants seats
+  // directly by database, without first drilling into the Tenants tab's
+  // per-tenant detail view (where the same free-grant action already
+  // existed, just hard to find). Deliberately separate state/handler from
+  // handleGrantEpsilonSeats above, which is wired to that drill-down view's
+  // own tenantDetails/epsilonSeatsGrantDraft state.
+  const [epsilonSubForm, setEpsilonSubForm] = useState({ database: '', seats: 1 })
+  const [isCreatingEpsilonSub, setIsCreatingEpsilonSub] = useState(false)
   const [isSavingModules, setIsSavingModules] = useState(false)
   const [isCleaningTestData, setIsCleaningTestData] = useState(false)
   const [enquiries, setEnquiries] = useState([])
@@ -743,6 +751,39 @@ const CentralAdminApp = () => {
     setIsGrantingEpsilonSeats(false)
   }
 
+  const handleEpsilonSubField = (e) => {
+    const { name, value } = e.target
+    setEpsilonSubForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  // Same admin/billing/grantEpsilonSeats endpoint as handleGrantEpsilonSeats
+  // — a free grant that bypasses Paystack entirely, exactly like the manual
+  // "Create or extend tenant subscription" form does for the general
+  // subscription. Setting seats to 0 here is how an admin revokes an
+  // Epsilon subscription this same way, without a separate control.
+  const handleCreateEpsilonSubscription = async (e) => {
+    e.preventDefault()
+    if (!epsilonSubForm.database) {
+      setNotice('error', 'Select a tenant first.')
+      return
+    }
+    const seats = Math.max(0, Math.floor(Number(epsilonSubForm.seats) || 0))
+    setIsCreatingEpsilonSub(true)
+    const response = await requestAdmin('POST', 'admin/billing/grantEpsilonSeats', { database: epsilonSubForm.database, seats })
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || 'Unable to create the Epsilon subscription for this tenant.')
+      setIsCreatingEpsilonSub(false)
+      return
+    }
+    setNotice('success', `Epsilon subscription set for ${epsilonSubForm.database} — ${response.epsilonSeats} seat(s) granted.`)
+    // Keep the drill-down view in sync if the admin already has this same
+    // tenant open there.
+    if (epsilonSubForm.database === selectedTenant) {
+      await loadTenantDetails(epsilonSubForm.database)
+    }
+    setIsCreatingEpsilonSub(false)
+  }
+
   const handleVerifyPendingPayments = async () => {
     setIsReconcilingPending(true)
     setNotice('', '')
@@ -1155,7 +1196,7 @@ const CentralAdminApp = () => {
                 if (key === 'support') loadEnquiries();
                 if (key === 'sessions' || key === 'connectivity') loadSessions();
                 if (key === 'health') loadPlatformHealth();
-                if (key === 'epsilonUsage') loadEpsilonOverview();
+                if (key === 'epsilonUsage') { loadEpsilonOverview(); loadOfflineModulePricing(); }
                 if (key === 'offlineLicenses') { loadOfflineLicenses(); loadOfflineModulePricing(); }
                 if (key === 'desktopReleases') loadDesktopReleases();
               }}
@@ -2815,6 +2856,75 @@ const CentralAdminApp = () => {
                   <strong>{epsilonOverview?.topUsers?.length || 0}</strong>
                   <p>Employees that have sent Epsilon at least one message</p>
                 </div>
+              </div>
+            </section>
+
+            <section className='ca-grid-two'>
+              <form className='ca-panel' onSubmit={handleCreateEpsilonSubscription}>
+                <div className='ca-panel-head'>
+                  <h3>Create Epsilon subscription for a tenant</h3>
+                </div>
+                <p className='ca-panel-note'>
+                  Free grant, bypasses Paystack entirely — same as the manual subscription/offline-license forms.
+                  Set seats to 0 to revoke.
+                </p>
+                <div className='ca-form-grid'>
+                  <label>
+                    <span>Tenant database</span>
+                    <select name='database' value={epsilonSubForm.database} onChange={handleEpsilonSubField}>
+                      <option value=''>Select tenant</option>
+                      {snapshot.tenants.map((tenant) => (
+                        <option key={tenant.database} value={tenant.database}>{tenant.companyName} ({tenant.database})</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Seats</span>
+                    <input type='number' min='0' name='seats' value={epsilonSubForm.seats} onChange={handleEpsilonSubField} />
+                  </label>
+                </div>
+                <button className='ca-primary-btn' type='submit' disabled={isCreatingEpsilonSub}>
+                  {isCreatingEpsilonSub ? 'Processing...' : 'Create Epsilon Subscription'}
+                </button>
+              </form>
+
+              <div className='ca-panel'>
+                <div className='ca-panel-head'>
+                  <h3>Epsilon pricing</h3>
+                </div>
+                <p className='ca-panel-note'>
+                  What every tenant actually pays for Epsilon — both figures feed the pricing page and the
+                  in-app purchase flow directly. These were previously only editable from Offline Licenses
+                  (per-seat price) and Admin Settings (token rate); consolidated here since they are both
+                  Epsilon-specific.
+                </p>
+                <div className='ca-form-grid'>
+                  <label>
+                    <span>Price per seat, per month (₦)</span>
+                    <input
+                      type='number'
+                      min='0'
+                      defaultValue={offlineModulePricing.find((m) => m.key === 'epsilon')?.priceNaira || 0}
+                      onBlur={(e) => handleUpdateModulePricing(
+                        'epsilon',
+                        Number(e.target.value),
+                        offlineModulePricing.find((m) => m.key === 'epsilon')?.offlineYearlyPriceNaira
+                      )}
+                    />
+                  </label>
+                  <label>
+                    <span>Token price (₦ per 1,000 tokens)</span>
+                    <input
+                      type='number'
+                      min='0'
+                      value={globalSettingsForm.epsilonTokenPriceNaira}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonTokenPriceNaira: Number(e.target.value) })}
+                    />
+                  </label>
+                </div>
+                <button className='ca-primary-btn' type='button' onClick={() => handleUpdateGlobalSettings()} disabled={isBusy}>
+                  {isBusy ? 'Saving...' : 'Save Token Price'}
+                </button>
               </div>
             </section>
 

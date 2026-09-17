@@ -5,6 +5,10 @@
     background: #fcfdfc;
 }
 
+.docs-mobile-nav {
+    display: none;
+}
+
 .docs-sidebar {
     position: sticky;
     top: 80px;
@@ -176,6 +180,18 @@
     }
     .docs-sidebar {
         display: none;
+    }
+    .docs-mobile-nav {
+        display: block;
+        width: calc(100% - 40px);
+        margin: 20px 20px 0;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid #dde5e0;
+        background: #fff;
+        color: #173829;
+        font-size: 0.95rem;
+        font-weight: 600;
     }
     .docs-content {
         padding: 40px 20px;
