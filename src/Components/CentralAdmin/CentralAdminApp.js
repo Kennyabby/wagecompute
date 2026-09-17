@@ -115,6 +115,7 @@ const CentralAdminApp = () => {
     username: '',
     password: '',
   })
+  const [showLoginPassword, setShowLoginPassword] = useState(false)
   const [migrationTenant, setMigrationTenant] = useState('')
   const [migrationRunAll, setMigrationRunAll] = useState(false)
   const [migrationDropOldIndexes, setMigrationDropOldIndexes] = useState(false)
@@ -188,6 +189,33 @@ const CentralAdminApp = () => {
   // own tenantDetails/epsilonSeatsGrantDraft state.
   const [epsilonSubForm, setEpsilonSubForm] = useState({ database: '', seats: 1 })
   const [isCreatingEpsilonSub, setIsCreatingEpsilonSub] = useState(false)
+  // Direct per-employee grant — a tenant's own super admin cannot edit their
+  // own profile from Settings > Team Access (that screen only edits other
+  // employees), so a seat granted to them here from Central Admin had no
+  // self-service way to actually reach them. This is the immediate fix.
+  const [epsilonEmployeeGrantForm, setEpsilonEmployeeGrantForm] = useState({ database: '', emailid: '' })
+  const [isGrantingEmployeeAccess, setIsGrantingEmployeeAccess] = useState(false)
+  // The tenant detail drill-down used to stack ~9 unrelated sections
+  // (billing, modules, Epsilon seats/tokens/usage, WC + tenant profile
+  // tables, employees, activity) into one continuous two-column scroll with
+  // no separation. Split into sub-tabs instead — the stats grid stays
+  // always visible above them since it's a genuine at-a-glance summary.
+  const [tenantDetailTab, setTenantDetailTab] = useState('billing')
+  // Admin Settings stacked 3 unrelated concerns (account security, pricing
+  // plans, global config) in one continuous scroll — split into sub-tabs.
+  const [settingsSubTab, setSettingsSubTab] = useState('security')
+  // Controlled + explicit-save, replacing an earlier onBlur-triggered save —
+  // onBlur fired (and showed a "saved" notice) any time focus left the
+  // field for any reason, including just clicking a Refresh button
+  // elsewhere on the same tab, which looked like a spontaneous, unrequested
+  // save to anyone using the page.
+  const [epsilonSeatPriceDraft, setEpsilonSeatPriceDraft] = useState(0)
+  const [isSavingSeatPrice, setIsSavingSeatPrice] = useState(false)
+  // Deliberately NOT the shared isBusy flag — that's also toggled by
+  // unrelated background loads on this same tab (loadOfflineModulePricing,
+  // loadEpsilonOverview), which made this button flash "Saving..." any time
+  // one of those fired, not just when this action itself was in flight.
+  const [isSavingTokenPrice, setIsSavingTokenPrice] = useState(false)
   const [isSavingModules, setIsSavingModules] = useState(false)
   const [isCleaningTestData, setIsCleaningTestData] = useState(false)
   const [enquiries, setEnquiries] = useState([])
@@ -439,6 +467,14 @@ const CentralAdminApp = () => {
 
     return () => sse.close()
   }, [adminUser])
+
+  // Keeps the Epsilon seat-price field showing the live value whenever
+  // module pricing (re)loads, without fighting an admin who is mid-edit —
+  // see epsilonSeatPriceDraft's own comment for why this replaced onBlur.
+  useEffect(() => {
+    const row = offlineModulePricing.find((m) => m.key === 'epsilon')
+    if (row) setEpsilonSeatPriceDraft(row.priceNaira || 0)
+  }, [offlineModulePricing])
 
   const handleLoginInput = (event) => {
     const { name, value } = event.target
@@ -784,6 +820,41 @@ const CentralAdminApp = () => {
     setIsCreatingEpsilonSub(false)
   }
 
+  const handleEpsilonEmployeeGrantField = (e) => {
+    const { name, value } = e.target
+    setEpsilonEmployeeGrantForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleGrantEmployeeEpsilonAccess = async (e) => {
+    e.preventDefault()
+    if (!epsilonEmployeeGrantForm.database || !epsilonEmployeeGrantForm.emailid) {
+      setNotice('error', 'Select a tenant and enter the employee email.')
+      return
+    }
+    setIsGrantingEmployeeAccess(true)
+    const response = await requestAdmin('POST', 'admin/billing/epsilon/grant-employee-access', {
+      database: epsilonEmployeeGrantForm.database,
+      emailid: epsilonEmployeeGrantForm.emailid.trim(),
+    })
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || 'Unable to grant Epsilon access to this employee.')
+      setIsGrantingEmployeeAccess(false)
+      return
+    }
+    setNotice('success', `Epsilon access granted to ${response.emailid}. They may need to log out and back in for it to appear.`)
+    setIsGrantingEmployeeAccess(false)
+  }
+
+  const handleSaveEpsilonSeatPrice = async () => {
+    setIsSavingSeatPrice(true)
+    await handleUpdateModulePricing(
+      'epsilon',
+      Number(epsilonSeatPriceDraft) || 0,
+      offlineModulePricing.find((m) => m.key === 'epsilon')?.offlineYearlyPriceNaira
+    )
+    setIsSavingSeatPrice(false)
+  }
+
   const handleVerifyPendingPayments = async () => {
     setIsReconcilingPending(true)
     setNotice('', '')
@@ -1113,25 +1184,27 @@ const CentralAdminApp = () => {
     return (
       <div className='ca-login-page'>
         <div className='ca-login-card'>
+          <div className='ca-login-mark'>EC</div>
           <div className='ca-login-kicker'>Enterprise Compute Central Admin</div>
           <h1>Independent platform control plane</h1>
-          <p>
-            Manage all tenants, subscriptions, database usage, users, profiles, and platform-level controls from one secure admin surface.
-          </p>
-          <div className='ca-login-points'>
-            <div><strong>Tenants</strong><span>Watch the full estate from one place</span></div>
-            <div><strong>Subscriptions</strong><span>Control renewals, suspensions, and billing</span></div>
-            <div><strong>Accounts</strong><span>Inspect users, profiles, and live activity</span></div>
-          </div>
           {feedback.message ? <div className={`ca-alert ${feedback.type}`}>{feedback.message}</div> : null}
           <form className='ca-login-form' onSubmit={handleLogin}>
             <label>
               <span>Admin username</span>
-              <input name='username' value={loginForm.username} onChange={handleLoginInput} />
+              <div className='ca-input-with-icon'>
+                <span className='ca-input-icon'>👤</span>
+                <input name='username' value={loginForm.username} onChange={handleLoginInput} />
+              </div>
             </label>
             <label>
               <span>Password</span>
-              <input name='password' type='password' value={loginForm.password} onChange={handleLoginInput} />
+              <div className='ca-input-with-icon'>
+                <span className='ca-input-icon'>🔒</span>
+                <input name='password' type={showLoginPassword ? 'text' : 'password'} value={loginForm.password} onChange={handleLoginInput} />
+                <button type='button' className='ca-toggle-pass' onClick={() => setShowLoginPassword((prev) => !prev)} tabIndex={-1}>
+                  {showLoginPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </label>
             <button type='submit' disabled={isBusy}>{isBusy ? 'Signing in...' : 'Sign in to Central Admin'}</button>
           </form>
@@ -1382,13 +1455,12 @@ const CentralAdminApp = () => {
             </section>
 
             {(selectedTenant || tenantDetailsLoading) && (
-              <section className='ca-grid-two'>
-              <div className='ca-panel'>
+              <section className='ca-panel'>
                 <div className='ca-panel-head'>
-                  <h3>{tenantDetailsLoading ? 'Loading tenant details...' : `Tenant accounts and profiles: ${tenantDetails?.companyProfile?.name || selectedTenant}`}</h3>
+                  <h3>{tenantDetailsLoading ? 'Loading tenant details...' : `Tenant detail: ${tenantDetails?.companyProfile?.name || selectedTenant}`}</h3>
                 </div>
                 {!tenantDetailsLoading && tenantDetails && (
-                  <div className='ca-detail-stack'>
+                  <>
                     <div className='ca-mini-grid'>
                       <div className='ca-mini-card'><span>Database</span><strong>{tenantDetails.companyProfile?.db || '--'}</strong></div>
                       <div className='ca-mini-card'><span>Subdomain</span><strong>{tenantDetails.companyProfile?.subdomain || '--'}</strong></div>
@@ -1409,275 +1481,293 @@ const CentralAdminApp = () => {
                       )}
                     </div>
 
-                    <div className='ca-control-strip'>
-                      <div>
-                        <strong>Paystack card subscription</strong>
-                        <span>{tenantDetails.subscriptionStatus?.subscriptionAutoRenew ? 'Auto-renewal is enabled for this tenant.' : 'No active auto-renewal is currently enabled.'}</span>
-                      </div>
-                      <div className='ca-inline-action-row'>
-                        <button
-                          className='ca-inline-btn danger'
-                          onClick={() => handleTenantBillingControl(selectedTenant, 'cancel-subscription')}
-                          disabled={actionDatabase === selectedTenant}
-                        >
-                          {actionDatabase === selectedTenant ? 'Updating...' : 'Cancel Auto-renewal'}
-                        </button>
-                        <button
-                          className='ca-inline-btn danger'
-                          onClick={() => handleTenantBillingControl(selectedTenant, 'remove-card', tenantDetails.subscriptionCards?.[0]?.authorizationCode || '')}
-                          disabled={actionDatabase === selectedTenant || !tenantDetails.subscriptionCards?.length}
-                        >
-                          {actionDatabase === selectedTenant ? 'Updating...' : 'Remove Linked Card'}
-                        </button>
-                      </div>
+                    <div className='ca-detail-tabs'>
+                      <button type='button' className={`ca-detail-tab ${tenantDetailTab === 'billing' ? 'active' : ''}`} onClick={() => setTenantDetailTab('billing')}>Billing</button>
+                      <button type='button' className={`ca-detail-tab ${tenantDetailTab === 'modules' ? 'active' : ''}`} onClick={() => setTenantDetailTab('modules')}>Modules</button>
+                      <button type='button' className={`ca-detail-tab ${tenantDetailTab === 'epsilon' ? 'active' : ''}`} onClick={() => setTenantDetailTab('epsilon')}>Epsilon AI</button>
+                      <button type='button' className={`ca-detail-tab ${tenantDetailTab === 'users' ? 'active' : ''}`} onClick={() => setTenantDetailTab('users')}>Users</button>
+                      <button type='button' className={`ca-detail-tab ${tenantDetailTab === 'activity' ? 'active' : ''}`} onClick={() => setTenantDetailTab('activity')}>Activity</button>
                     </div>
 
-                    <div className='ca-control-strip ca-module-panel'>
-                      <div>
-                        <strong>Enabled modules</strong>
-                        <span>Only checked modules are available to this tenant's admin and employees. Dependencies are selected automatically.</span>
+                    {tenantDetailTab === 'billing' && (
+                      <div className='ca-detail-stack'>
+                        <div className='ca-control-strip'>
+                          <div>
+                            <strong>Paystack card subscription</strong>
+                            <span>{tenantDetails.subscriptionStatus?.subscriptionAutoRenew ? 'Auto-renewal is enabled for this tenant.' : 'No active auto-renewal is currently enabled.'}</span>
+                          </div>
+                          <div className='ca-inline-action-row'>
+                            <button
+                              className='ca-inline-btn danger'
+                              onClick={() => handleTenantBillingControl(selectedTenant, 'cancel-subscription')}
+                              disabled={actionDatabase === selectedTenant}
+                            >
+                              {actionDatabase === selectedTenant ? 'Updating...' : 'Cancel Auto-renewal'}
+                            </button>
+                            <button
+                              className='ca-inline-btn danger'
+                              onClick={() => handleTenantBillingControl(selectedTenant, 'remove-card', tenantDetails.subscriptionCards?.[0]?.authorizationCode || '')}
+                              disabled={actionDatabase === selectedTenant || !tenantDetails.subscriptionCards?.length}
+                            >
+                              {actionDatabase === selectedTenant ? 'Updating...' : 'Remove Linked Card'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className='ca-module-grid'>
-                        {/* Epsilon is deliberately excluded here — unlike every
-                            other module, its real entitlement isn't
-                            enabledModules membership at all, but a dedicated
-                            seat count (see the grant control just below).
-                            Checking it in this generic grid would add
-                            'epsilon' to enabledModules with zero seats behind
-                            it, which is a misleading, broken state. */}
-                        {(tenantDetails.moduleCatalog || []).filter((app) => app.key !== 'epsilon').map((app) => {
-                          const Icon = MODULE_ICONS[app.key]
-                          return (
-                          <label key={app.key} className={`ca-module-chip ${app.tier === 'free' ? 'locked' : ''}`}>
+                    )}
+
+                    {tenantDetailTab === 'modules' && (
+                      <div className='ca-detail-stack'>
+                        <div className='ca-control-strip ca-module-panel'>
+                          <div>
+                            <strong>Enabled modules</strong>
+                            <span>Only checked modules are available to this tenant's admin and employees. Dependencies are selected automatically.</span>
+                          </div>
+                          <div className='ca-module-grid'>
+                            {/* Epsilon is deliberately excluded here — unlike every
+                                other module, its real entitlement isn't
+                                enabledModules membership at all, but a dedicated
+                                seat count (see the Epsilon AI tab). Checking it
+                                in this generic grid would add 'epsilon' to
+                                enabledModules with zero seats behind it, which
+                                is a misleading, broken state. */}
+                            {(tenantDetails.moduleCatalog || []).filter((app) => app.key !== 'epsilon').map((app) => {
+                              const Icon = MODULE_ICONS[app.key]
+                              return (
+                              <label key={app.key} className={`ca-module-chip ${app.tier === 'free' ? 'locked' : ''}`}>
+                                <input
+                                  type='checkbox'
+                                  checked={app.tier === 'free' || draftModules.includes(app.key)}
+                                  disabled={app.tier === 'free'}
+                                  onChange={() => toggleDraftModule(app.key)}
+                                />
+                                {Icon && <span className='ca-module-icon'><Icon /></span>}
+                                <span>{app.name}{app.tier === 'free' ? ' (always on)' : ''}</span>
+                              </label>
+                              )
+                            })}
+                          </div>
+                          <div className='ca-inline-action-row'>
+                            <button
+                              className='ca-inline-btn primary'
+                              onClick={handleSaveTenantModules}
+                              disabled={isSavingModules}
+                            >
+                              {isSavingModules ? 'Saving...' : 'Save Modules'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {tenantDetailTab === 'epsilon' && (
+                      <div className='ca-detail-stack'>
+                        <div className='ca-control-strip'>
+                          <div>
+                            <strong>Epsilon AI seats (free grant)</strong>
+                            <span>
+                              Sets this tenant's Epsilon seat count directly, bypassing payment — the other way a
+                              tenant gets seats is the tenant admin purchasing them from Settings &gt; Billing.
+                              Currently: {Number(tenantDetails.companyProfile?.epsilonSeats || 0)} seat(s).
+                            </span>
+                          </div>
+                          <div className='ca-inline-action-row'>
                             <input
-                              type='checkbox'
-                              checked={app.tier === 'free' || draftModules.includes(app.key)}
-                              disabled={app.tier === 'free'}
-                              onChange={() => toggleDraftModule(app.key)}
+                              type='number'
+                              min='0'
+                              style={{ width: 100 }}
+                              defaultValue={Number(tenantDetails.companyProfile?.epsilonSeats || 0)}
+                              key={selectedTenant}
+                              onBlur={(e) => setEpsilonSeatsGrantDraft(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
                             />
-                            {Icon && <span className='ca-module-icon'><Icon /></span>}
-                            <span>{app.name}{app.tier === 'free' ? ' (always on)' : ''}</span>
-                          </label>
-                          )
-                        })}
-                      </div>
-                      <div className='ca-inline-action-row'>
-                        <button
-                          className='ca-inline-btn primary'
-                          onClick={handleSaveTenantModules}
-                          disabled={isSavingModules}
-                        >
-                          {isSavingModules ? 'Saving...' : 'Save Modules'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className='ca-control-strip'>
-                      <div>
-                        <strong>Epsilon AI seats (free grant)</strong>
-                        <span>
-                          Sets this tenant's Epsilon seat count directly, bypassing payment — the other way a
-                          tenant gets seats is the tenant admin purchasing them from Settings &gt; Billing.
-                          Currently: {Number(tenantDetails.companyProfile?.epsilonSeats || 0)} seat(s).
-                        </span>
-                      </div>
-                      <div className='ca-inline-action-row'>
-                        <input
-                          type='number'
-                          min='0'
-                          style={{ width: 100 }}
-                          defaultValue={Number(tenantDetails.companyProfile?.epsilonSeats || 0)}
-                          key={selectedTenant}
-                          onBlur={(e) => setEpsilonSeatsGrantDraft(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-                        />
-                        <button
-                          className='ca-inline-btn primary'
-                          onClick={() => handleGrantEpsilonSeats(selectedTenant)}
-                          disabled={isGrantingEpsilonSeats}
-                        >
-                          {isGrantingEpsilonSeats ? 'Saving...' : 'Set Epsilon Seats'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className='ca-control-strip'>
-                      <div>
-                        <strong>Epsilon AI token balance (free grant)</strong>
-                        <span>
-                          Sets this tenant's token balance directly, bypassing payment — separate from seats. The
-                          other way a tenant gets tokens is a seat purchase, which also funds the wallet at the
-                          configured ₦-per-1000-tokens rate (Settings tab). Currently: {(epsilonUsage?.epsilonTokenBalance ?? 0).toLocaleString()} token(s).
-                        </span>
-                      </div>
-                      <div className='ca-inline-action-row'>
-                        <input
-                          type='number'
-                          min='0'
-                          style={{ width: 140 }}
-                          defaultValue={epsilonUsage?.epsilonTokenBalance ?? 0}
-                          key={`${selectedTenant}-tokens`}
-                          onBlur={(e) => setEpsilonTokensGrantDraft(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-                        />
-                        <button
-                          className='ca-inline-btn primary'
-                          onClick={() => handleGrantEpsilonTokens(selectedTenant)}
-                          disabled={isGrantingEpsilonTokens}
-                        >
-                          {isGrantingEpsilonTokens ? 'Saving...' : 'Set Token Balance'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <section className='ca-panel' style={{ margin: '18px 0' }}>
-                      <div className='ca-panel-head'>
-                        <div className='ca-panel-title'>
-                          <h3>Epsilon AI usage — this tenant</h3>
-                          <p>Lifetime purchased: {(epsilonUsage?.epsilonTokensPurchasedTotal ?? 0).toLocaleString()} tokens · consumed: {(epsilonUsage?.epsilonTokensConsumedTotal ?? 0).toLocaleString()} tokens</p>
+                            <button
+                              className='ca-inline-btn primary'
+                              onClick={() => handleGrantEpsilonSeats(selectedTenant)}
+                              disabled={isGrantingEpsilonSeats}
+                            >
+                              {isGrantingEpsilonSeats ? 'Saving...' : 'Set Epsilon Seats'}
+                            </button>
+                          </div>
                         </div>
-                        <button className='ca-inline-btn' onClick={() => loadEpsilonTenantUsage(selectedTenant)} disabled={epsilonUsageLoading}>
-                          {epsilonUsageLoading ? 'Loading...' : '🔄 Refresh'}
-                        </button>
-                      </div>
 
-                      {epsilonUsage?.dailySeries?.length ? (
-                        <div style={{ width: '100%', height: 220, marginBottom: 20 }}>
-                          <ResponsiveContainer>
-                            <AreaChart data={epsilonUsage.dailySeries}>
-                              <CartesianGrid strokeDasharray='3 3' />
-                              <XAxis dataKey='date' tick={{ fontSize: 11 }} />
-                              <YAxis tick={{ fontSize: 11 }} />
-                              <Tooltip formatter={(value, name) => [value.toLocaleString(), name === 'totalTokens' ? 'Tokens' : 'Naira']} />
-                              <Area type='monotone' dataKey='totalTokens' stroke='#2b6a4b' fill='#6af2ad' fillOpacity={0.4} />
-                            </AreaChart>
-                          </ResponsiveContainer>
+                        <div className='ca-control-strip'>
+                          <div>
+                            <strong>Epsilon AI token balance (free grant)</strong>
+                            <span>
+                              Sets this tenant's token balance directly, bypassing payment — separate from seats. The
+                              other way a tenant gets tokens is a seat purchase, which also funds the wallet at the
+                              configured ₦-per-1000-tokens rate (Settings tab). Currently: {(epsilonUsage?.epsilonTokenBalance ?? 0).toLocaleString()} token(s).
+                            </span>
+                          </div>
+                          <div className='ca-inline-action-row'>
+                            <input
+                              type='number'
+                              min='0'
+                              style={{ width: 140 }}
+                              defaultValue={epsilonUsage?.epsilonTokenBalance ?? 0}
+                              key={`${selectedTenant}-tokens`}
+                              onBlur={(e) => setEpsilonTokensGrantDraft(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                            />
+                            <button
+                              className='ca-inline-btn primary'
+                              onClick={() => handleGrantEpsilonTokens(selectedTenant)}
+                              disabled={isGrantingEpsilonTokens}
+                            >
+                              {isGrantingEpsilonTokens ? 'Saving...' : 'Set Token Balance'}
+                            </button>
+                          </div>
                         </div>
-                      ) : (
-                        <div className='ca-empty'>No daily usage yet for the last 30 days.</div>
-                      )}
 
-                      <div className='ca-table-wrap'>
-                        <table className='ca-table'>
-                          <thead>
-                            <tr><th>Employee</th><th>Messages</th><th>Tokens</th><th>≈ Naira</th><th>Last used</th></tr>
-                          </thead>
-                          <tbody>
-                            {epsilonUsage?.perUser?.length ? epsilonUsage.perUser.map((row) => (
-                              <tr key={row.userEmail}>
-                                <td>{row.userEmail}</td>
-                                <td>{row.messageCount}</td>
-                                <td>{row.totalTokens.toLocaleString()}</td>
-                                <td>₦{row.totalNaira.toLocaleString()}</td>
-                                <td>{formatDateTime(row.lastUsedAt)}</td>
+                        <section className='ca-panel'>
+                          <div className='ca-panel-head'>
+                            <div className='ca-panel-title'>
+                              <h3>Epsilon AI usage — this tenant</h3>
+                              <p>Lifetime purchased: {(epsilonUsage?.epsilonTokensPurchasedTotal ?? 0).toLocaleString()} tokens · consumed: {(epsilonUsage?.epsilonTokensConsumedTotal ?? 0).toLocaleString()} tokens</p>
+                            </div>
+                            <button className='ca-inline-btn' onClick={() => loadEpsilonTenantUsage(selectedTenant)} disabled={epsilonUsageLoading}>
+                              {epsilonUsageLoading ? 'Loading...' : '🔄 Refresh'}
+                            </button>
+                          </div>
+
+                          {epsilonUsage?.dailySeries?.length ? (
+                            <div style={{ width: '100%', height: 220, marginBottom: 20 }}>
+                              <ResponsiveContainer>
+                                <AreaChart data={epsilonUsage.dailySeries}>
+                                  <CartesianGrid strokeDasharray='3 3' />
+                                  <XAxis dataKey='date' tick={{ fontSize: 11 }} />
+                                  <YAxis tick={{ fontSize: 11 }} />
+                                  <Tooltip formatter={(value, name) => [value.toLocaleString(), name === 'totalTokens' ? 'Tokens' : 'Naira']} />
+                                  <Area type='monotone' dataKey='totalTokens' stroke='#10b981' fill='#10b981' fillOpacity={0.4} />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </div>
+                          ) : (
+                            <div className='ca-empty'>No daily usage yet for the last 30 days.</div>
+                          )}
+
+                          <div className='ca-table-wrap'>
+                            <table className='ca-table'>
+                              <thead>
+                                <tr><th>Employee</th><th>Messages</th><th>Tokens</th><th>≈ Naira</th><th>Last used</th></tr>
+                              </thead>
+                              <tbody>
+                                {epsilonUsage?.perUser?.length ? epsilonUsage.perUser.map((row) => (
+                                  <tr key={row.userEmail}>
+                                    <td>{row.userEmail}</td>
+                                    <td>{row.messageCount}</td>
+                                    <td>{row.totalTokens.toLocaleString()}</td>
+                                    <td>₦{row.totalNaira.toLocaleString()}</td>
+                                    <td>{formatDateTime(row.lastUsedAt)}</td>
+                                  </tr>
+                                )) : (
+                                  <tr><td colSpan='5' className='ca-empty'>No Epsilon usage recorded for this tenant yet.</td></tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </section>
+                      </div>
+                    )}
+
+                    {tenantDetailTab === 'users' && (
+                      <div className='ca-detail-stack'>
+                        <div className='ca-table-wrap'>
+                          <table className='ca-table'>
+                            <thead>
+                              <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Dismissed</th>
                               </tr>
-                            )) : (
-                              <tr><td colSpan='5' className='ca-empty'>No Epsilon usage recorded for this tenant yet.</td></tr>
-                            )}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {tenantDetails.employees?.length ? tenantDetails.employees.map((employee, index) => (
+                                <tr key={`${employee.i_d}-${index}`}>
+                                  <td>{employee.i_d}</td>
+                                  <td>{`${employee.firstName || ''} ${employee.lastName || ''}`.trim() || '--'}</td>
+                                  <td>{employee.dismissalDate ? 'Yes' : 'No'}</td>
+                                </tr>
+                              )) : <tr><td colSpan='3' className='ca-empty'>No employee records found.</td></tr>}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className='ca-table-wrap'>
+                          <table className='ca-table'>
+                            <thead>
+                              <tr>
+                                <th>Tenant profiles</th>
+                                <th>Status</th>
+                                <th>Permissions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tenantDetails.tenantProfiles?.length ? tenantDetails.tenantProfiles.map((profile, index) => (
+                                <tr key={`${profile.emailid}-${index}`}>
+                                  <td>{profile.emailid}</td>
+                                  <td>{profile.status || profile.access || '--'}</td>
+                                  <td>{Array.isArray(profile.permissions) ? profile.permissions.slice(0, 4).join(', ') : '--'}</td>
+                                </tr>
+                              )) : <tr><td colSpan='3' className='ca-empty'>No tenant profile records found.</td></tr>}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className='ca-table-wrap'>
+                          <table className='ca-table'>
+                            <thead>
+                              <tr>
+                                <th>Central users</th>
+                                <th>Name</th>
+                                <th>Tenant DB</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tenantDetails.wcProfiles?.length ? tenantDetails.wcProfiles.map((profile, index) => (
+                                <tr key={`${profile.emailid}-${index}`}>
+                                  <td>{profile.emailid}</td>
+                                  <td>{profile.name || '--'}</td>
+                                  <td>{profile.db || '--'}</td>
+                                </tr>
+                              )) : <tr><td colSpan='3' className='ca-empty'>No WCDatabase profile records found.</td></tr>}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </section>
+                    )}
 
-                    <div className='ca-table-wrap'>
-                      <table className='ca-table'>
-                        <thead>
-                          <tr>
-                            <th>Central users</th>
-                            <th>Name</th>
-                            <th>Tenant DB</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {tenantDetails.wcProfiles?.length ? tenantDetails.wcProfiles.map((profile, index) => (
-                            <tr key={`${profile.emailid}-${index}`}>
-                              <td>{profile.emailid}</td>
-                              <td>{profile.name || '--'}</td>
-                              <td>{profile.db || '--'}</td>
-                            </tr>
-                          )) : <tr><td colSpan='3' className='ca-empty'>No WCDatabase profile records found.</td></tr>}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className='ca-table-wrap'>
-                      <table className='ca-table'>
-                        <thead>
-                          <tr>
-                            <th>Tenant profiles</th>
-                            <th>Status</th>
-                            <th>Permissions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {tenantDetails.tenantProfiles?.length ? tenantDetails.tenantProfiles.map((profile, index) => (
-                            <tr key={`${profile.emailid}-${index}`}>
-                              <td>{profile.emailid}</td>
-                              <td>{profile.status || profile.access || '--'}</td>
-                              <td>{Array.isArray(profile.permissions) ? profile.permissions.slice(0, 4).join(', ') : '--'}</td>
-                            </tr>
-                          )) : <tr><td colSpan='3' className='ca-empty'>No tenant profile records found.</td></tr>}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                    {tenantDetailTab === 'activity' && (
+                      <div className='ca-detail-stack'>
+                        <div className='ca-activity-columns'>
+                          <div>
+                            <h4>Recent sales</h4>
+                            <ul className='ca-activity-list'>
+                              {(tenantDetails.recentSales || []).map((entry, index) => (
+                                <li key={`sale-${index}`}>{entry.customerName || 'Sale'} • {formatDateTime(entry.postingDate)}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4>Recent orders</h4>
+                            <ul className='ca-activity-list'>
+                              {(tenantDetails.recentOrders || []).map((entry, index) => (
+                                <li key={`order-${index}`}>{entry.orderNumber || 'Order'} • {formatDateTime(entry.createdAt)}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4>Recent expenses</h4>
+                            <ul className='ca-activity-list'>
+                              {(tenantDetails.recentExpenses || []).map((entry, index) => (
+                                <li key={`expense-${index}`}>{entry.category || 'Expense'} • {formatDateTime(entry.postingDate)}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
-
-              <div className='ca-panel'>
-                <div className='ca-panel-head'>
-                  <h3>Employees and recent operational activity</h3>
-                </div>
-                {!tenantDetailsLoading && tenantDetails && (
-                  <div className='ca-detail-stack'>
-                    <div className='ca-table-wrap'>
-                      <table className='ca-table'>
-                        <thead>
-                          <tr>
-                            <th>Employee ID</th>
-                            <th>Name</th>
-                            <th>Dismissed</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {tenantDetails.employees?.length ? tenantDetails.employees.map((employee, index) => (
-                            <tr key={`${employee.i_d}-${index}`}>
-                              <td>{employee.i_d}</td>
-                              <td>{`${employee.firstName || ''} ${employee.lastName || ''}`.trim() || '--'}</td>
-                              <td>{employee.dismissalDate ? 'Yes' : 'No'}</td>
-                            </tr>
-                          )) : <tr><td colSpan='3' className='ca-empty'>No employee records found.</td></tr>}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className='ca-activity-columns'>
-                      <div>
-                        <h4>Recent sales</h4>
-                        <ul className='ca-activity-list'>
-                          {(tenantDetails.recentSales || []).map((entry, index) => (
-                            <li key={`sale-${index}`}>{entry.customerName || 'Sale'} • {formatDateTime(entry.postingDate)}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4>Recent orders</h4>
-                        <ul className='ca-activity-list'>
-                          {(tenantDetails.recentOrders || []).map((entry, index) => (
-                            <li key={`order-${index}`}>{entry.orderNumber || 'Order'} • {formatDateTime(entry.createdAt)}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4>Recent expenses</h4>
-                        <ul className='ca-activity-list'>
-                          {(tenantDetails.recentExpenses || []).map((entry, index) => (
-                            <li key={`expense-${index}`}>{entry.category || 'Expense'} • {formatDateTime(entry.postingDate)}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
               </section>
             )}
           </>
@@ -2174,6 +2264,13 @@ const CentralAdminApp = () => {
 
         {activeTab === 'settings' && (
           <>
+            <div className='ca-detail-tabs' style={{ marginBottom: 24, padding: 0 }}>
+              <button type='button' className={`ca-detail-tab ${settingsSubTab === 'security' ? 'active' : ''}`} onClick={() => setSettingsSubTab('security')}>Security</button>
+              <button type='button' className={`ca-detail-tab ${settingsSubTab === 'plans' ? 'active' : ''}`} onClick={() => setSettingsSubTab('plans')}>Plans</button>
+              <button type='button' className={`ca-detail-tab ${settingsSubTab === 'global' ? 'active' : ''}`} onClick={() => setSettingsSubTab('global')}>Global Settings</button>
+            </div>
+
+            {settingsSubTab === 'security' && (
             <section className='ca-grid-two' style={{ marginBottom: 24 }}>
               <form className='ca-panel' onSubmit={handleChangePassword}>
                 <div className='ca-panel-head'>
@@ -2226,7 +2323,9 @@ const CentralAdminApp = () => {
                 </div>
               </div>
             </section>
+            )}
 
+            {settingsSubTab === 'plans' && (
             <section className='ca-panel'>
               <div className='ca-panel-head'>
                 <h3>Platform Pricing & Plans</h3>
@@ -2349,7 +2448,9 @@ const CentralAdminApp = () => {
                 )}
               </div>
             </section>
+            )}
 
+            {settingsSubTab === 'global' && (
             <section className='ca-panel'>
               <div className='ca-panel-head'>
                 <h3>Global Platform Settings</h3>
@@ -2395,16 +2496,11 @@ const CentralAdminApp = () => {
                       placeholder='claude-sonnet-5'
                     />
                   </label>
-                  <label>
-                    <span>Epsilon token price (₦ per 1,000 tokens)</span>
-                    <input
-                      type='number'
-                      min='0'
-                      step='0.01'
-                      value={globalSettingsForm.epsilonTokenPriceNaira}
-                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonTokenPriceNaira: Number(e.target.value) })}
-                    />
-                  </label>
+                  {/* Epsilon token price lives on the Epsilon AI Usage tab
+                      now, next to the per-seat price it's priced alongside —
+                      editing it here too would be two places for the same
+                      value with no indication either was just changed
+                      elsewhere. */}
                   <label>
                     <span>Epsilon rate limit (tokens per window)</span>
                     <input
@@ -2431,6 +2527,7 @@ const CentralAdminApp = () => {
                 </form>
               </div>
             </section>
+            )}
           </>
         )}
 
@@ -2904,12 +3001,8 @@ const CentralAdminApp = () => {
                     <input
                       type='number'
                       min='0'
-                      defaultValue={offlineModulePricing.find((m) => m.key === 'epsilon')?.priceNaira || 0}
-                      onBlur={(e) => handleUpdateModulePricing(
-                        'epsilon',
-                        Number(e.target.value),
-                        offlineModulePricing.find((m) => m.key === 'epsilon')?.offlineYearlyPriceNaira
-                      )}
+                      value={epsilonSeatPriceDraft}
+                      onChange={(e) => setEpsilonSeatPriceDraft(e.target.value)}
                     />
                   </label>
                   <label>
@@ -2922,10 +3015,53 @@ const CentralAdminApp = () => {
                     />
                   </label>
                 </div>
-                <button className='ca-primary-btn' type='button' onClick={() => handleUpdateGlobalSettings()} disabled={isBusy}>
-                  {isBusy ? 'Saving...' : 'Save Token Price'}
-                </button>
+                <div className='ca-panel-head-actions'>
+                  <button className='ca-primary-btn' type='button' onClick={handleSaveEpsilonSeatPrice} disabled={isSavingSeatPrice}>
+                    {isSavingSeatPrice ? 'Saving...' : 'Save Seat Price'}
+                  </button>
+                  <button
+                    className='ca-primary-btn'
+                    type='button'
+                    onClick={async () => {
+                      setIsSavingTokenPrice(true)
+                      await handleUpdateGlobalSettings()
+                      setIsSavingTokenPrice(false)
+                    }}
+                    disabled={isSavingTokenPrice}
+                  >
+                    {isSavingTokenPrice ? 'Saving...' : 'Save Token Price'}
+                  </button>
+                </div>
               </div>
+
+              <form className='ca-panel' style={{ gridColumn: '1 / -1' }} onSubmit={handleGrantEmployeeEpsilonAccess}>
+                <div className='ca-panel-head'>
+                  <h3>Grant an employee Epsilon access directly</h3>
+                </div>
+                <p className='ca-panel-note'>
+                  Bypasses Team Access entirely — use this when a tenant's own super admin needs a seat right
+                  now (they cannot edit their own profile from Settings, so a seat granted to them above has
+                  no self-service way to actually reach them).
+                </p>
+                <div className='ca-form-grid'>
+                  <label>
+                    <span>Tenant database</span>
+                    <select name='database' value={epsilonEmployeeGrantForm.database} onChange={handleEpsilonEmployeeGrantField}>
+                      <option value=''>Select tenant</option>
+                      {snapshot.tenants.map((tenant) => (
+                        <option key={tenant.database} value={tenant.database}>{tenant.companyName} ({tenant.database})</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Employee email</span>
+                    <input type='email' name='emailid' value={epsilonEmployeeGrantForm.emailid} onChange={handleEpsilonEmployeeGrantField} placeholder='admin@company.com' />
+                  </label>
+                </div>
+                <button className='ca-primary-btn' type='submit' disabled={isGrantingEmployeeAccess}>
+                  {isGrantingEmployeeAccess ? 'Granting...' : 'Grant Epsilon Access'}
+                </button>
+              </form>
             </section>
 
             <div className='ca-health-grid'>
