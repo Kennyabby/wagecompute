@@ -31,6 +31,22 @@ const SideNav = () => {
     const [expenseApprovals, setExpenseApprovals] = useState([])
     const [inventoryApprovals, setInventoryApprovals] = useState([])
     const [allApprovals, setAllApprovals] = useState([])
+    // Green "approved" counterparts to the red pending badges above — only
+    // ever visible to the person who raised the request (via handlerId,
+    // set to companyRecord.emailid at request time — App.js's
+    // executeApprovalAction, and preserved through the later approve/reject
+    // update since that write is a partial $set) or an admin. Clears itself
+    // automatically the moment the underlying Approvals doc is posted or
+    // deleted — nothing here ever needs a manual dismiss, since `approvals`
+    // (the shared context array these all filter from) simply won't contain
+    // that entry anymore once it's gone.
+    const [salesApproved, setSalesApproved] = useState([])
+    const [purchaseApproved, setPurchaseApproved] = useState([])
+    const [attendanceApproved, setAttendanceApproved] = useState([])
+    const [accommodationApproved, setAccommodationApproved] = useState([])
+    const [expenseApproved, setExpenseApproved] = useState([])
+    const [inventoryApproved, setInventoryApproved] = useState([])
+    const [allApproved, setAllApproved] = useState([])
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [offlinePendingCount, setOfflinePendingCount] = useState(0);
     const [showOfflineModal, setShowOfflineModal] = useState(false);
@@ -84,7 +100,18 @@ const SideNav = () => {
                 (appr.module === 'inventory' && (!appr.approved && !appr.message))
             )
         }))
-    }, [approvals])
+
+        const isAdminViewer = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('all')
+        const isMine = (appr) => appr.handlerId === companyRecord?.emailid
+        const visibleToMe = (appr) => isAdminViewer || isMine(appr)
+        setAllApproved(approvals.filter((appr) => appr.approved && visibleToMe(appr)))
+        setSalesApproved(approvals.filter((appr) => appr.module === 'sales' && appr.approved && visibleToMe(appr)))
+        setPurchaseApproved(approvals.filter((appr) => appr.module === 'purchase' && appr.approved && visibleToMe(appr)))
+        setAccommodationApproved(approvals.filter((appr) => appr.module === 'accommodation' && appr.approved && visibleToMe(appr)))
+        setAttendanceApproved(approvals.filter((appr) => appr.module === 'attendance' && appr.approved && visibleToMe(appr)))
+        setExpenseApproved(approvals.filter((appr) => appr.module === 'expense' && appr.approved && visibleToMe(appr)))
+        setInventoryApproved(approvals.filter((appr) => appr.module === 'inventory' && appr.approved && visibleToMe(appr)))
+    }, [approvals, companyRecord])
 
     useEffect(() => {
         if (companyRecord) {
@@ -251,7 +278,8 @@ const SideNav = () => {
             label: 'Attendance',
             meta: 'Time sheets',
             icon: GiPlayerTime,
-            badge: hasPermission('approve_postattendance') ? attendanceApprovals.length : 0
+            badge: hasPermission('approve_postattendance') ? attendanceApprovals.length : 0,
+            approvedBadge: attendanceApproved.length
         },
         hasModuleAccess('payroll') && { name: 'payroll', label: 'Payroll', meta: 'Payouts', icon: SiPayloadcms },
         hasModuleAccess('inventory') && {
@@ -259,7 +287,8 @@ const SideNav = () => {
             label: 'Inventory',
             meta: 'Stock',
             icon: MdInventory,
-            badge: hasPermission('approve_posttransfer') ? inventoryApprovals.length : 0
+            badge: hasPermission('approve_posttransfer') ? inventoryApprovals.length : 0,
+            approvedBadge: inventoryApproved.length
         },
         hasModuleAccess('assets') && { name: 'assets', label: 'Assets', meta: 'Fixed assets', icon: FaBoxes },
         hasModuleAccess('sales') && {
@@ -267,7 +296,8 @@ const SideNav = () => {
             label: 'Sales',
             meta: 'Revenue',
             icon: GiPayMoney,
-            badge: hasPermission('approve_postsales') ? salesApprovals.length : 0
+            badge: hasPermission('approve_postsales') ? salesApprovals.length : 0,
+            approvedBadge: salesApproved.length
         },
         hasModuleAccess('business-partners') && {
             name: 'business-partners',
@@ -293,27 +323,37 @@ const SideNav = () => {
             label: 'Accommodation',
             meta: 'Hospitality',
             icon: FaHotel,
-            badge: hasPermission('approve_postaccommodation') ? accommodationApprovals.length : 0
+            badge: hasPermission('approve_postaccommodation') ? accommodationApprovals.length : 0,
+            approvedBadge: accommodationApproved.length
         },
         hasModuleAccess('purchase') && {
             name: 'purchase',
             label: 'Direct Purchase',
             meta: 'Procurement',
             icon: GiBuyCard,
-            badge: hasPermission('approve_postpurchase') ? purchaseApprovals.length : 0
+            badge: hasPermission('approve_postpurchase') ? purchaseApprovals.length : 0,
+            approvedBadge: purchaseApproved.length
         },
         hasModuleAccess('expenses') && {
             name: 'expenses',
             label: 'Admin Expenses',
             meta: 'Overheads',
             icon: GiExpense,
-            badge: hasPermission('approve_postexpense') ? expenseApprovals.length : 0
+            badge: hasPermission('approve_postexpense') ? expenseApprovals.length : 0,
+            approvedBadge: expenseApproved.length
         },
         hasModuleAccess('settings') && { name: 'settings', label: 'Settings', meta: 'Control room', icon: RiSettings2Fill }
     ].filter(Boolean)
 
-    const renderNavItem = ({ name, label, meta, icon: Icon, badge, action }) => {
+    // badge (red, pending — needs your action) and approvedBadge (green,
+    // approved — your request just cleared) are independent and can both be
+    // non-zero on the same item at once (e.g. you're both an approver with
+    // something pending AND a requester whose own request just got
+    // approved) — rendered as two separate small indicators, never merged
+    // into one count.
+    const renderNavItem = ({ name, label, meta, icon: Icon, badge, approvedBadge, action }) => {
         const displayBadge = Number(badge || 0)
+        const displayApproved = Number(approvedBadge || 0)
         return (
             <div
                 key={name}
@@ -329,7 +369,10 @@ const SideNav = () => {
                     <div className='navdivlabel'>{label}</div>
                     <div className='navdivmeta'>{meta}</div>
                 </div>
-                {displayBadge > 0 && <div className='navdivcount'>{displayBadge > 99 ? '99+' : displayBadge}</div>}
+                <div className='navdivbadges'>
+                    {displayApproved > 0 && <div className='navdivcount navdivcount-approved' title='Approved — ready to post'>{displayApproved > 99 ? '99+' : displayApproved}</div>}
+                    {displayBadge > 0 && <div className='navdivcount' title='Pending approval'>{displayBadge > 99 ? '99+' : displayBadge}</div>}
+                </div>
             </div>
         )
     }
@@ -342,8 +385,13 @@ const SideNav = () => {
                 aria-label="Toggle menu"
             >
                 {isMenuOpen ? <MdClose /> : <BiMenu />}
+                {allApproved?.length > 0 && (
+                    <span className="mobile-menu-badge mobile-menu-badge-approved" title="Approved — ready to post">
+                        {allApproved.length}
+                    </span>
+                )}
                 {allApprovals?.length > 0 && (
-                    <span className="mobile-menu-badge">
+                    <span className="mobile-menu-badge" title="Pending approval">
                         {allApprovals.length}
                     </span>
                 )}

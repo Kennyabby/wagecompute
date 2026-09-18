@@ -2494,6 +2494,7 @@ const CentralAdminApp = () => {
                       value={globalSettingsForm.epsilonModel}
                       onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonModel: e.target.value })}
                       placeholder='claude-sonnet-5'
+                      title="Must be a model that supports thinking:{type:'adaptive'} — epsilon.js's getCompletion always requests it. An older model that only supports thinking via budget_tokens (or none at all) will reject every request outright."
                     />
                   </label>
                   {/* Epsilon token price lives on the Epsilon AI Usage tab
