@@ -22,6 +22,12 @@ import { getAppCache, setAppCache } from '../../Resources/offlineDb';
 
 const fmt = (n)=> Number(n||0).toLocaleString()
 const DASHBOARD_SUMMARY_ENGINE_VERSION = 5
+// Minimum gap between background (SSE-triggered) recommend_reorders
+// refetches — that computation runs a couple of real aggregates and
+// wc:dashboard-summary-update can fire often during normal POS activity;
+// without a floor here every single event re-ran it, which visibly
+// flickered the "Generate PO" button enabled/disabled on each round trip.
+const REORDER_REFRESH_THROTTLE_MS = 20000
 
 const DashView = () =>{
     // Modal state for payment receipts
@@ -144,7 +150,6 @@ const DashView = () =>{
     // once this dashboard has genuinely loaded fresh data, never on stale
     // or empty state.
     const [reorderRecommendations, setReorderRecommendations] = useState([])
-    const [reorderLoading, setReorderLoading] = useState(false)
     const [lastReorderFetchedAt, setLastReorderFetchedAt] = useState(null)
     const [topExpenseCategories, setTopExpenseCategories] = useState([])
     const [topProductsBySales, setTopProductsBySales] = useState([])
@@ -948,14 +953,34 @@ const DashView = () =>{
     // above for why. Grouped by location here only to keep the existing
     // restock-panel JSX (location list -> expand -> product list) working
     // unchanged; the underlying numbers now come from recommend_reorders.
-    const loadReorderRecommendations = useCallback(async () => {
+    //
+    // This computation (sales-velocity aggregate + stock aggregate) isn't
+    // free, and wc:dashboard-summary-update can fire frequently during
+    // normal POS activity — calling it unthrottled on every single event
+    // made the "Generate PO" button visibly flicker enabled/disabled on
+    // every round trip. reorderFetchInFlightRef/lastReorderFetchStartRef
+    // throttle background (non-forced) refreshes to at most once every
+    // REORDER_REFRESH_THROTTLE_MS. isFirstLoad only affects whether a
+    // failure clears the panel — the button's enabled state is driven
+    // purely by lastReorderFetchedAt/reorderRecommendations (see the JSX
+    // below), so a background refresh never touches it at all.
+    const reorderFetchInFlightRef = useRef(false)
+    const lastReorderFetchStartRef = useRef(0)
+    const loadReorderRecommendations = useCallback(async (options = {}) => {
         if (!company) return
-        setReorderLoading(true)
+        const force = options.force === true
+        if (!force) {
+            if (reorderFetchInFlightRef.current) return
+            if (Date.now() - lastReorderFetchStartRef.current < REORDER_REFRESH_THROTTLE_MS) return
+        }
+        reorderFetchInFlightRef.current = true
+        lastReorderFetchStartRef.current = Date.now()
+        const isFirstLoad = !lastReorderFetchedAt
         try {
             const query = locationFilter ? `?location=${encodeURIComponent(locationFilter)}` : ''
             const resp = await fetchServer('GET', {}, `purchase/recommendReorders${query}`, server)
             if (resp?.err || !resp?.ok || resp?.authorized === false) {
-                setReorderRecommendations([])
+                if (isFirstLoad) setReorderRecommendations([])
                 return
             }
             const recommendations = Array.isArray(resp.recommendations) ? resp.recommendations : []
@@ -975,15 +1000,16 @@ const DashView = () =>{
             setRestock(Object.entries(grouped).map(([location, lowStockProducts]) => ({ location, lowStockProducts })))
             setLastReorderFetchedAt(Date.now())
         } catch (e) {
-            setReorderRecommendations([])
+            if (isFirstLoad) setReorderRecommendations([])
         } finally {
-            setReorderLoading(false)
+            reorderFetchInFlightRef.current = false
         }
-    }, [company, locationFilter, fetchServer, server])
+    }, [company, locationFilter, fetchServer, server, lastReorderFetchedAt])
 
     useEffect(() => {
-        loadReorderRecommendations()
-    }, [loadReorderRecommendations])
+        loadReorderRecommendations({ force: true })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [company, locationFilter])
 
     useEffect(() => {
         const handleRefresh = () => loadReorderRecommendations()
@@ -1309,17 +1335,20 @@ const DashView = () =>{
                             <button
                                 type='button'
                                 onClick={handleAutoGeneratePoForInspection}
-                                disabled={reorderLoading || !lastReorderFetchedAt || reorderRecommendations.length === 0}
-                                title={!lastReorderFetchedAt || reorderLoading ? 'Waiting for current stock data to load…' : reorderRecommendations.length === 0 ? 'Nothing currently below its reorder threshold' : 'Ask Epsilon to draft a purchase order for these items'}
+                                // Driven only by whether data has ever loaded / is non-empty —
+                                // a background SSE-triggered refresh (see loadReorderRecommendations)
+                                // never toggles a separate loading flag, so this never flickers.
+                                disabled={!lastReorderFetchedAt || reorderRecommendations.length === 0}
+                                title={!lastReorderFetchedAt ? 'Waiting for current stock data to load…' : reorderRecommendations.length === 0 ? 'Nothing currently below its reorder threshold' : 'Ask Epsilon to draft a purchase order for these items'}
                                 style={{
                                     padding: '8px 14px',
                                     borderRadius: '8px',
                                     border: '1px solid #173829',
-                                    background: (reorderLoading || !lastReorderFetchedAt || reorderRecommendations.length === 0) ? '#f0f3f1' : '#173829',
-                                    color: (reorderLoading || !lastReorderFetchedAt || reorderRecommendations.length === 0) ? '#9aa89f' : '#fff',
+                                    background: (!lastReorderFetchedAt || reorderRecommendations.length === 0) ? '#f0f3f1' : '#173829',
+                                    color: (!lastReorderFetchedAt || reorderRecommendations.length === 0) ? '#9aa89f' : '#fff',
                                     fontWeight: 700,
                                     fontSize: '0.85em',
-                                    cursor: (reorderLoading || !lastReorderFetchedAt || reorderRecommendations.length === 0) ? 'default' : 'pointer',
+                                    cursor: (!lastReorderFetchedAt || reorderRecommendations.length === 0) ? 'default' : 'pointer',
                                 }}
                             >
                                 Automatically Generate PO for Inspection
