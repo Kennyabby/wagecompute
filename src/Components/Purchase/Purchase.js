@@ -8,6 +8,7 @@ import { useScroll } from 'framer-motion'
 import { MdAdd, MdArrowBack } from 'react-icons/md'
 import { FaTableCells } from 'react-icons/fa6'
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
+import ApprovalDatesPanel from '../../Resources/ApprovalDatesPanel/ApprovalDatesPanel';
 import PurchaseReport from './PurchaseReport/PurchaseReport'
 import heic2any from "heic2any";
 import { uploadFile, deleteFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
@@ -58,6 +59,13 @@ const Purchase = () => {
 
     const [purchaseApprovals, setPurchaseApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
+    // Split, badge-facing counterparts to purchaseApprovals (which stays
+    // untouched — it deliberately mixes pending+approved for the existing
+    // merged list view below). Pending mirrors the red badge logic used
+    // elsewhere; approved is visible only to whoever raised the request or
+    // an admin, matching SideNav's green-badge visibility rule exactly.
+    const [purchasePending, setPurchasePending] = useState([])
+    const [purchaseApproved, setPurchaseApproved] = useState([])
 
     const [waybillUpload, setWaybillUpload] = useState(null)
     const [uploadingWaybill, setUploadingWaybill] = useState(false)
@@ -423,6 +431,23 @@ const Purchase = () => {
         }))
 
     }, [approvals])
+
+    useEffect(() => {
+        const isMine = (appr) => (
+            companyRecord?.status === 'admin'
+            || companyRecord?.access === 'admin'
+            || companyRecord?.permissions?.includes('all')
+            || appr.handlerId === companyRecord?.emailid
+        )
+        setPurchasePending((approvals || []).filter((appr) => (
+            appr.module === 'purchase' && appr.section?.toUpperCase() === 'postPurchase'.toUpperCase()
+            && !appr.approved && !appr.message
+        )))
+        setPurchaseApproved((approvals || []).filter((appr) => (
+            appr.module === 'purchase' && appr.section?.toUpperCase() === 'postPurchase'.toUpperCase()
+            && appr.approved && isMine(appr)
+        )))
+    }, [approvals, companyRecord?.emailid, companyRecord?.status, companyRecord?.access, companyRecord?.permissions])
 
     useEffect(() => {
         if ((companyRecord?.permissions || []).includes('postPurchase') || companyRecord?.status === 'admin') {
@@ -1196,7 +1221,14 @@ const Purchase = () => {
                                 <span>Pending Approvals</span>
                                 <strong>{purchaseApprovals.length}</strong>
                             </div>
+                            {purchaseApproved.length > 0 && <div className='purchase-stat-card'>
+                                <span>Approved (awaiting posting)</span>
+                                <strong style={{ color: '#1d6b2f' }}>{purchaseApproved.length}</strong>
+                            </div>}
                         </div>
+                        <ApprovalDatesPanel sections={[
+                            { label: 'Purchase', pending: purchasePending, approved: purchaseApproved },
+                        ]} />
                     </div>
                     {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'

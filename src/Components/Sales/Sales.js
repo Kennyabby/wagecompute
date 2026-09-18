@@ -21,6 +21,7 @@ import { MdDelete } from "react-icons/md";
 import { use } from 'react';
 import { BsPass } from 'react-icons/bs';
 import { postWithResumability, usePostingOperationProgress } from '../../Resources/postingOperations';
+import ApprovalDatesPanel from '../../Resources/ApprovalDatesPanel/ApprovalDatesPanel';
 
 const Sales = () => {
     const { storePath,
@@ -183,6 +184,13 @@ const Sales = () => {
     const [salesApprovals, setSalesApprovals] = useState([])
     const [rentalsApprovals, setRentalsApprovals] = useState([])
     const [recoveryApprovals, setRecoveryApprovals] = useState([])
+    // Green "approved" counterparts to the three red pending-badge arrays
+    // above — same per-section split (sales/rentals/recovery), but visible
+    // only to whoever raised the request plus admins (never just any
+    // approver), matching SideNav's badge visibility rule exactly.
+    const [salesApproved, setSalesApproved] = useState([])
+    const [rentalsApproved, setRentalsApproved] = useState([])
+    const [recoveryApproved, setRecoveryApproved] = useState([])
 
     const [curSaleDate, setCurSaleDate] = useState(null)
     const [activeSessions, setActiveSessions] = useState([])
@@ -1844,7 +1852,33 @@ const Sales = () => {
                 && (!appr.approved && !appr.message)
             )
         }))
-    }, [approvals])
+
+        // Green badges: only the requester (via handlerId) or an admin should
+        // see these — never just any employee who happens to hold the
+        // approve permission for that section, since a plain approver isn't
+        // who's waiting on the outcome. Disappears on its own the moment the
+        // Approvals doc is posted or deleted, same as the red badges above —
+        // both are pure live counts of the shared approvals array.
+        const isMine = (appr) => (
+            companyRecord?.status === 'admin'
+            || companyRecord?.access === 'admin'
+            || companyRecord?.permissions?.includes('all')
+            || appr.handlerId === companyRecord?.emailid
+        )
+        setSalesApproved(approvals.filter((appr) => (
+            (appr.section.toUpperCase() === 'postSales'.toUpperCase()
+                || appr.section.toUpperCase() === 'addSalesProduct'.toUpperCase())
+            && appr.approved && isMine(appr)
+        )))
+        setRentalsApproved(approvals.filter((appr) => (
+            appr.section.toUpperCase() === 'postRentals'.toUpperCase()
+            && appr.approved && isMine(appr)
+        )))
+        setRecoveryApproved(approvals.filter((appr) => (
+            appr.section.toUpperCase() === 'postRecovery'.toUpperCase()
+            && appr.approved && isMine(appr)
+        )))
+    }, [approvals, companyRecord?.emailid, companyRecord?.status, companyRecord?.access, companyRecord?.permissions])
 
     useEffect(() => {
         if (curSale) {
@@ -4057,16 +4091,24 @@ const Sales = () => {
                             <div name='sales' className={salesOpts === 'sales' ? 'slopts' : ''}>
                                 <div name='sales'>Sales</div>
                                 {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approveSales')) && salesApprovals.length > 0 && <div className='navdivicon1' name="sales">{salesApprovals.length}</div>}
+                                {salesApproved.length > 0 && <div className='navdivicon1 navdivicon1-approved' name="sales">{salesApproved.length}</div>}
                             </div>
                             <div name='rentals' className={salesOpts === 'rentals' ? 'slopts' : ''}>
                                 <div name='rentals'>Rentals</div>
                                 {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approveRentals')) && rentalsApprovals.length > 0 && <div className='navdivicon1' name="rentals">{rentalsApprovals.length}</div>}
+                                {rentalsApproved.length > 0 && <div className='navdivicon1 navdivicon1-approved' name="rentals">{rentalsApproved.length}</div>}
                             </div>
                             {<div name='recovery' className={salesOpts === 'recovery' ? 'slopts' : ''}>
                                 <div name='recovery'>Debt Recovery</div>
                                 {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('approveRecovery')) && recoveryApprovals.length > 0 && <div className='navdivicon1' name="recovery">{recoveryApprovals.length}</div>}
+                                {recoveryApproved.length > 0 && <div className='navdivicon1 navdivicon1-approved' name="recovery">{recoveryApproved.length}</div>}
                             </div>}
                         </div>}
+                        <ApprovalDatesPanel sections={[
+                            { label: 'Sales', pending: salesApprovals, approved: salesApproved },
+                            { label: 'Rentals', pending: rentalsApprovals, approved: rentalsApproved },
+                            { label: 'Debt Recovery', pending: recoveryApprovals, approved: recoveryApproved },
+                        ]} />
                         {salesOpts === 'sales' && (!isView && <div className='addnewsales'>
                             <div className='inpcov'>
                                 <div>Kitchen Person ID</div>
