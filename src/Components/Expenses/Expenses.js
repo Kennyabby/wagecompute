@@ -3,6 +3,7 @@ import { useEffect, useContext, useState, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
+import ApprovalDatesPanel from '../../Resources/ApprovalDatesPanel/ApprovalDatesPanel';
 // import { useInventory } from '../../Resources/InventoryContext';
 // import { useAttendance } from '../../Resources/AttendanceContext';
 // import { useApproval } from '../../Resources/ApprovalContext';
@@ -89,6 +90,12 @@ const Expenses = () => {
     const [expenseFilter, setExpenseFilter] = useState('')
     const [expenseAccount, setExpenseAccount] = useState({})
     const [expenseApprovals, setExpenseApprovals] = useState([])
+    // Split, badge-facing counterparts to expenseApprovals (left untouched —
+    // it deliberately mixes pending+approved for the existing merged list
+    // view). Approved is visible only to whoever raised the request or an
+    // admin, matching SideNav's green-badge visibility rule.
+    const [expensePending, setExpensePending] = useState([])
+    const [expenseApproved, setExpenseApproved] = useState([])
     const isExpenseApprover = companyRecord?.status === 'admin'
         || companyRecord?.permissions?.includes('all')
         || companyRecord?.permissions?.includes('approve_postexpense')
@@ -174,6 +181,23 @@ const Expenses = () => {
             approval.section === 'postexpense'
         )))
     }, [approvals])
+
+    useEffect(() => {
+        const isMine = (appr) => (
+            companyRecord?.status === 'admin'
+            || companyRecord?.access === 'admin'
+            || companyRecord?.permissions?.includes('all')
+            || appr.handlerId === companyRecord?.emailid
+        )
+        setExpensePending((approvals || []).filter((appr) => (
+            appr.module === 'expense' && appr.section === 'postexpense'
+            && !appr.approved && !appr.message
+        )))
+        setExpenseApproved((approvals || []).filter((appr) => (
+            appr.module === 'expense' && appr.section === 'postexpense'
+            && appr.approved && isMine(appr)
+        )))
+    }, [approvals, companyRecord?.emailid, companyRecord?.status, companyRecord?.access, companyRecord?.permissions])
 
     const handleSyncOfflineExpenses = async () => {
         if (!company || !companyRecord?.emailid) return;
@@ -678,11 +702,22 @@ const Expenses = () => {
                                 <span>Posted Records</span>
                                 <strong>{expenses.length}</strong>
                             </div>
+                            {expensePending.length > 0 && <div className='expenses-stat-card'>
+                                <span>Pending Approvals</span>
+                                <strong>{expensePending.length}</strong>
+                            </div>}
+                            {expenseApproved.length > 0 && <div className='expenses-stat-card'>
+                                <span>Approved (awaiting posting)</span>
+                                <strong style={{ color: '#1d6b2f' }}>{expenseApproved.length}</strong>
+                            </div>}
                             {/* <div className='expenses-stat-card'>
                                 <span>Salary Entries</span>
                                 <strong>{salaryDetails?.length || 0}</strong>
                             </div> */}
                         </div>
+                        <ApprovalDatesPanel sections={[
+                            { label: 'Expenses', pending: expensePending, approved: expenseApproved },
+                        ]} />
                     </div>
                     {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'

@@ -2,6 +2,7 @@ import './Attendance.css'
 
 import { useEffect, useState, useContext, useRef } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import ApprovalDatesPanel from '../../Resources/ApprovalDatesPanel/ApprovalDatesPanel';
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
 import { mkConfig, generateCsv, asString } from "export-to-csv";
 
@@ -34,6 +35,12 @@ const Attendance = () => {
     const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
 
     const [attendanceApprovals, setAttendanceApprovals] = useState([])
+    // Split, badge-facing counterparts to attendanceApprovals (left
+    // untouched — it mixes pending+approved). Approved is visible only to
+    // whoever raised the request or an admin, matching SideNav's
+    // green-badge visibility rule.
+    const [attendancePending, setAttendancePending] = useState([])
+    const [attendanceApproved, setAttendanceApproved] = useState([])
     const [isApprover, setIsApprover] = useState(false)
     const selectedAttendance = curApproval?.data || attendance.find((att) => String(att.no) === String(viewNo)) || null
 
@@ -82,6 +89,23 @@ const Attendance = () => {
         }))
 
     }, [approvals])
+
+    useEffect(() => {
+        const isMine = (appr) => (
+            companyRecord?.status === 'admin'
+            || companyRecord?.access === 'admin'
+            || companyRecord?.permissions?.includes('all')
+            || appr.handlerId === companyRecord?.emailid
+        )
+        setAttendancePending((approvals || []).filter((appr) => (
+            appr.module === 'attendance' && appr.section?.toUpperCase() === 'postAttendance'.toUpperCase()
+            && !appr.approved && !appr.message
+        )))
+        setAttendanceApproved((approvals || []).filter((appr) => (
+            appr.module === 'attendance' && appr.section?.toUpperCase() === 'postAttendance'.toUpperCase()
+            && appr.approved && isMine(appr)
+        )))
+    }, [approvals, companyRecord?.emailid, companyRecord?.status, companyRecord?.access, companyRecord?.permissions])
 
     useEffect(() => {
         if (companyRecord?.permissions.includes('postAttendance') || companyRecord?.status === 'admin') {
@@ -387,7 +411,14 @@ const Attendance = () => {
                                 <span>Pending Approvals</span>
                                 <strong>{attendanceApprovals.length}</strong>
                             </div>
+                            {attendanceApproved.length > 0 && <div className='attendance-stat-card'>
+                                <span>Approved (awaiting posting)</span>
+                                <strong style={{ color: '#1d6b2f' }}>{attendanceApproved.length}</strong>
+                            </div>}
                         </div>
+                        <ApprovalDatesPanel sections={[
+                            { label: 'Attendance', pending: attendancePending, approved: attendanceApproved },
+                        ]} />
                     </div>
                     <div className='add'
                         onClick={() => {

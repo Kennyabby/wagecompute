@@ -1,0 +1,146 @@
+.approval-dates-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f7faf8;
+    border: 1px solid #dbe7df;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: #173829;
+    cursor: pointer;
+    margin: 6px 0 10px;
+}
+
+.approval-dates-trigger:hover {
+    background: #eef4f0;
+}
+
+.approval-dates-trigger-count {
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 0.9em;
+    font-weight: 700;
+    color: #fff;
+}
+
+.approval-dates-trigger-count-pending {
+    background: #b00020;
+}
+
+.approval-dates-trigger-count-approved {
+    background: #1d6b2f;
+}
+
+.approval-dates-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.approval-dates-modal {
+    background: #fff;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.approval-dates-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #edf4ef;
+    font-weight: 700;
+    color: #173829;
+    font-size: 1em;
+}
+
+.approval-dates-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.4em;
+    line-height: 1;
+    cursor: pointer;
+    color: #506b5d;
+    padding: 0 4px;
+}
+
+.approval-dates-modal-body {
+    padding: 14px 18px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.approval-dates-section-label {
+    font-size: 0.85em;
+    font-weight: 700;
+    color: #173829;
+    margin-bottom: 6px;
+}
+
+.approval-dates-group {
+    margin-bottom: 8px;
+}
+
+.approval-dates-group-label {
+    font-size: 0.72em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.approval-dates-group-label-pending {
+    color: #b00020;
+}
+
+.approval-dates-group-label-approved {
+    color: #1d6b2f;
+}
+
+.approval-dates-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.approval-date-chip {
+    font-size: 0.78em;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.approval-date-chip-pending {
+    background: #fdeaea;
+    color: #b00020;
+    border: 1px solid #f3c6c6;
+}
+
+.approval-date-chip-approved {
+    background: #e6f3ea;
+    color: #1d6b2f;
+    border: 1px solid #bfe0cb;
+}

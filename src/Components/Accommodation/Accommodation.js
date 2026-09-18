@@ -6,6 +6,7 @@ import { useState, useEffect, useContext, useRef, use } from 'react'
 import { useLocation } from 'react-router-dom'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
+import ApprovalDatesPanel from '../../Resources/ApprovalDatesPanel/ApprovalDatesPanel';
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import AccommodationReceipt from './AccommodationReport/AccommodationReceipt';
 import AccommodationReport from './AccommodationReport/AccommodationReport';
@@ -50,6 +51,12 @@ const Accommodation = () => {
 
     const [accommodationApprovals, setAccommodationApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
+    // Split, badge-facing counterparts to accommodationApprovals (left
+    // untouched — it's used for per-booking link matching elsewhere).
+    // Approved is visible only to whoever raised the request or an admin,
+    // matching SideNav's green-badge visibility rule.
+    const [accommodationPending, setAccommodationPending] = useState([])
+    const [accommodationApproved, setAccommodationApproved] = useState([])
 
     
     const [accommodationStatus, setAccommodationStatus] = useState('Post Accommodation')
@@ -442,6 +449,23 @@ const Accommodation = () => {
         }))
 
     }, [approvals])
+
+    useEffect(() => {
+        const isMine = (appr) => (
+            companyRecord?.status === 'admin'
+            || companyRecord?.access === 'admin'
+            || companyRecord?.permissions?.includes('all')
+            || appr.handlerId === companyRecord?.emailid
+        )
+        setAccommodationPending((approvals || []).filter((appr) => (
+            appr.module === 'accommodation' && appr.section?.toUpperCase() === 'postAccommodation'.toUpperCase()
+            && !appr.approved && !appr.message
+        )))
+        setAccommodationApproved((approvals || []).filter((appr) => (
+            appr.module === 'accommodation' && appr.section?.toUpperCase() === 'postAccommodation'.toUpperCase()
+            && appr.approved && isMine(appr)
+        )))
+    }, [approvals, companyRecord?.emailid, companyRecord?.status, companyRecord?.access, companyRecord?.permissions])
 
     useEffect(() => {
         if (curAccommodation?.paymentStatus === 'Make Payment') {
@@ -1244,7 +1268,18 @@ const Accommodation = () => {
                                 <span>Customers</span>
                                 <strong>{customers.length}</strong>
                             </div>
+                            {accommodationPending.length > 0 && <div className='accommodation-stat-card'>
+                                <span>Pending Approvals</span>
+                                <strong>{accommodationPending.length}</strong>
+                            </div>}
+                            {accommodationApproved.length > 0 && <div className='accommodation-stat-card'>
+                                <span>Approved (awaiting posting)</span>
+                                <strong style={{ color: '#1d6b2f' }}>{accommodationApproved.length}</strong>
+                            </div>}
                         </div>
+                        <ApprovalDatesPanel sections={[
+                            { label: 'Accommodation', pending: accommodationPending, approved: accommodationApproved },
+                        ]} />
                     </div>
                     {companyRecord.status === 'admin' && <FaTableCells
                         className='allslrepicon'

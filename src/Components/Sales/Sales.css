@@ -291,6 +291,12 @@
     justify-content: center;
     align-items: center;
 }
+/* Green "approved" counterpart — rendered as a second sibling right after
+   the red pending badge (see Sales.js), not a replacement for it, so both
+   can show at once per section without hiding one another. */
+.navdivicon1-approved{
+    background: #1d6b2f;
+}
 .salesunit{
     width: 95%;
     display: flex;
