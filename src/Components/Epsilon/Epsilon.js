@@ -9,10 +9,11 @@
 // component already uses, so it's automatically tenant/permission-scoped to
 // whoever is logged in.
 import './Epsilon.css'
-import { useState, useEffect, useRef, useContext } from 'react'
+import { useState, useEffect, useRef, useContext, useMemo } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import renderMarkdownLite from './markdownLite'
 import streamEpsilonMessage from './streamEpsilon'
+import { generatePDF, generateExcel } from '../../utils/exportUtils'
 
 const STYLE_OPTIONS = [
     { value: 'quick', label: 'Quick' },
@@ -21,6 +22,46 @@ const STYLE_OPTIONS = [
 ]
 const STYLE_STORAGE_KEY = 'epsilon-response-style'
 const THEME_STORAGE_KEY = 'epsilon-theme'
+
+// Friendly status text per backend tool name (see epsilon.js's TOOLS list) —
+// falls back to a title-cased version of the raw name for any tool not
+// listed here, so a newly-added tool never shows up blank.
+const TOOL_STATUS_LABELS = {
+    diagnose_blockage: 'Checking why that’s blocked…',
+    trace_record_history: 'Tracing the transaction history…',
+    who_can_approve: 'Checking who can approve this…',
+    check_document_approval_status: 'Checking approval status…',
+    check_session_close_readiness: 'Checking session close readiness…',
+    explain_topic: 'Looking that up…',
+    interpret_accounting_view: 'Reading the accounting figures…',
+    generate_report: 'Generating the report…',
+    recommend_reorders: 'Checking stock levels…',
+    propose_purchase_order: 'Drafting a purchase order…',
+    propose_script_correction: 'Preparing a data correction…',
+    analyze_profit_opportunities: 'Analyzing revenue and expenses…',
+    explain_purchase_reversal_block: 'Checking the purchase reversal…',
+    explain_reconciliation_status: 'Checking reconciliation status…',
+    explain_accommodation_balance: 'Checking the accommodation balance…',
+    explain_rental_balance: 'Checking the rental balance…',
+    explain_sales_debt: 'Checking outstanding sales debt…',
+    explain_outstanding_shortage: 'Checking the outstanding shortage…',
+    explain_account_validity: 'Checking the account…',
+    explain_chart_of_accounts_block: 'Checking the chart of accounts…',
+    explain_gl_mapping: 'Checking the GL mapping…',
+    explain_order_discrepancy: 'Checking the order discrepancy…',
+    explain_module_entitlement: 'Checking your plan entitlement…',
+    explain_payslip: 'Reading the payslip…',
+    explain_attendance_block: 'Checking attendance…',
+    explain_employee_receivable: 'Checking the employee receivable…',
+    explain_partner_aging: 'Checking partner aging…',
+    check_partner_ledger_drift: 'Checking the partner ledger…',
+    explain_asset_value: 'Checking asset value…',
+    explain_depreciation_due: 'Checking depreciation…',
+}
+const toolStatusLabel = (toolName) => (
+    TOOL_STATUS_LABELS[toolName]
+    || `Checking ${String(toolName || '').replace(/_/g, ' ')}…`
+)
 
 const formatTime = (date) => {
     try {
@@ -55,7 +96,17 @@ const resolveDefaultTheme = () => {
 }
 
 const Epsilon = () => {
-    const { server, fetchServer } = useContext(ContextProvider)
+    const { server, fetchServer, company, companyRecord } = useContext(ContextProvider)
+    // Same shape every real export caller already builds (e.g.
+    // BusinessPartners.js) — exportUtils.js's generatePDF reads
+    // companyInfo.name directly with no fallback, so this must never be
+    // undefined by the time an export button is clickable.
+    const companyInfo = useMemo(() => ({
+        name: companyRecord?.name || company || 'Company',
+        address: companyRecord?.address || '',
+        phone: companyRecord?.phone || companyRecord?.mobile || '',
+        email: companyRecord?.email || companyRecord?.emailid || '',
+    }), [company, companyRecord])
     const [open, setOpen] = useState(false)
     const [expanded, setExpanded] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)
@@ -66,6 +117,7 @@ const Epsilon = () => {
     const [historyLoaded, setHistoryLoaded] = useState(false)
     const [error, setError] = useState('')
     const [copiedIndex, setCopiedIndex] = useState(null)
+    const [expandedThinkingIndex, setExpandedThinkingIndex] = useState(null)
     const [style, setStyle] = useState(() => {
         try { return localStorage.getItem(STYLE_STORAGE_KEY) || 'balanced' } catch (e) { return 'balanced' }
     })
@@ -73,10 +125,20 @@ const Epsilon = () => {
     const [conversations, setConversations] = useState([])
     const [conversationsLoaded, setConversationsLoaded] = useState(false)
     const [activeConversationId, setActiveConversationId] = useState(null)
+    // A thought typed while Epsilon is still streaming a reply — can't be
+    // injected into that in-flight request (the API has no such thing), so
+    // it's queued and auto-sent as soon as the current reply finishes,
+    // rather than making the user watch the reply finish, remember what
+    // they wanted to add, and retype it into a brand new message.
+    const [queuedFollowUp, setQueuedFollowUp] = useState('')
     const bottomRef = useRef(null)
     const inputRef = useRef(null)
     const mountedRef = useRef(true)
     const abortControllerRef = useRef(null)
+    // Mirrors queuedFollowUp for reliable reads from inside sendMessage's
+    // async closure — the closure's own `queuedFollowUp` binding is captured
+    // at call time and won't see a state update made mid-stream via setState.
+    const queuedFollowUpRef = useRef('')
 
     useEffect(() => () => {
         mountedRef.current = false
@@ -111,11 +173,21 @@ const Epsilon = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [expanded])
 
+    // Collapsed and expanded are two separate, mutually-exclusive DOM
+    // subtrees (see the conditional render below) — switching `expanded`
+    // unmounts one and mounts the other, so bottomRef points at a brand new
+    // node that has never been scrolled. Without `expanded` in the deps,
+    // this effect never re-ran on that toggle, which is why expanding used
+    // to land at the top of the conversation instead of the last message.
+    // Jump instantly on open/expand transitions (nothing to animate through
+    // yet); keep the smooth scroll for new messages arriving while already open.
+    const prevExpandedRef = useRef(expanded)
     useEffect(() => {
-        if (open && bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: 'smooth' })
-        }
-    }, [messages.length, sending, open])
+        if (!open || !bottomRef.current) return
+        const justToggledExpanded = prevExpandedRef.current !== expanded
+        prevExpandedRef.current = expanded
+        bottomRef.current.scrollIntoView({ behavior: justToggledExpanded ? 'auto' : 'smooth' })
+    }, [messages.length, sending, open, expanded])
 
     useEffect(() => {
         if (open) {
@@ -154,6 +226,11 @@ const Epsilon = () => {
         })
     }
 
+    const clearQueuedFollowUp = () => {
+        queuedFollowUpRef.current = ''
+        setQueuedFollowUp('')
+    }
+
     // Purely a client-side reset now — no server call. The next message sent
     // creates a fresh conversation server-side; nothing is deleted here.
     const startNewChat = () => {
@@ -164,6 +241,7 @@ const Epsilon = () => {
         setMessages([])
         setActiveConversationId(null)
         setError('')
+        clearQueuedFollowUp()
         setTimeout(() => inputRef.current?.focus(), 50)
     }
 
@@ -174,6 +252,7 @@ const Epsilon = () => {
         setToolStatus(null)
         setMenuOpen(false)
         setError('')
+        clearQueuedFollowUp()
         setMessages([])
         setActiveConversationId(conversationId)
         const resp = await fetchServer('GET', { conversationId }, 'ai/epsilon/history', server)
@@ -192,13 +271,29 @@ const Epsilon = () => {
         await fetchServer('POST', { conversationId }, 'ai/epsilon/clear', server)
     }
 
-    const sendMessage = async () => {
-        const text = draft.trim()
-        if (!text || sending) return
+    // overrideText is set only when this call is the auto-fired queued
+    // follow-up (see the 'done' handling below) — never a real user action,
+    // so it must never itself be treated as "still sending, queue it".
+    const sendMessage = async (overrideText) => {
+        const text = (overrideText ?? draft).trim()
+        if (!text) return
+        if (sending && overrideText === undefined) {
+            // Can't inject this into the reply that's already streaming — the
+            // API has no such thing — so queue it (appending to anything
+            // already queued) and it fires automatically the instant this
+            // turn's 'done' event lands, further down.
+            setQueuedFollowUp((prev) => {
+                const combined = prev ? `${prev}\n${text}` : text
+                queuedFollowUpRef.current = combined
+                return combined
+            })
+            setDraft('')
+            return
+        }
         setError('')
         setDraft('')
         const now = Date.now()
-        setMessages((prev) => [...prev, { role: 'user', text, at: now }, { role: 'assistant', text: '', at: null, streaming: true }])
+        setMessages((prev) => [...prev, { role: 'user', text, at: now }, { role: 'assistant', text: '', thinking: '', at: null, streaming: true }])
         setSending(true)
         setToolStatus(null)
 
@@ -211,7 +306,15 @@ const Epsilon = () => {
             signal: abortControllerRef.current.signal,
             onEvent: (type, data) => {
                 if (!mountedRef.current) return
-                if (type === 'text_delta') {
+                if (type === 'thinking_delta') {
+                    setMessages((prev) => {
+                        const lastIdx = prev.length - 1
+                        if (!prev[lastIdx]?.streaming) return prev
+                        const next = [...prev]
+                        next[lastIdx] = { ...next[lastIdx], thinking: (next[lastIdx].thinking || '') + (data.text || '') }
+                        return next
+                    })
+                } else if (type === 'text_delta') {
                     setToolStatus(null)
                     setMessages((prev) => {
                         const lastIdx = prev.length - 1
@@ -221,7 +324,7 @@ const Epsilon = () => {
                         return next
                     })
                 } else if (type === 'tool_start') {
-                    setToolStatus('Checking the data…')
+                    setToolStatus(toolStatusLabel(data.tools?.[0]))
                 } else if (type === 'tool_end') {
                     setToolStatus(null)
                 } else if (type === 'done') {
@@ -244,11 +347,14 @@ const Epsilon = () => {
                     } else if (data.pendingPurchaseOrderProposal) {
                         proposal = { ...data.pendingPurchaseOrderProposal, kind: 'purchase_order', title: 'Proposed purchase order', status: 'pending' }
                     }
+                    // Read-only, no confirm step — a sibling to proposal, not
+                    // a variant of it.
+                    const report = data.pendingReport || null
                     setMessages((prev) => {
                         const lastIdx = prev.length - 1
                         if (!prev[lastIdx]?.streaming) return prev
                         const next = [...prev]
-                        next[lastIdx] = { ...next[lastIdx], text: data.text || next[lastIdx].text, at: Date.now(), streaming: false, proposal }
+                        next[lastIdx] = { ...next[lastIdx], text: data.text || next[lastIdx].text, at: Date.now(), streaming: false, proposal, report }
                         return next
                     })
                     if (conversationsLoaded) loadConversations()
@@ -259,6 +365,15 @@ const Epsilon = () => {
         if (mountedRef.current && !settled) {
             setSending(false)
             setToolStatus(null)
+        }
+
+        // Fire whatever got queued while this turn was streaming — read from
+        // the ref (not the `queuedFollowUp` closed-over above, which is
+        // stale by now) so this sees updates made mid-stream via setState.
+        if (mountedRef.current && queuedFollowUpRef.current) {
+            const queued = queuedFollowUpRef.current
+            clearQueuedFollowUp()
+            sendMessage(queued)
         }
     }
 
@@ -291,6 +406,25 @@ const Epsilon = () => {
             ? `Purchase order ${resp.documentNo || ''} created.`
             : 'Applied successfully.'
         updateProposal(token, { status: 'done', resultMess, resultOutput: resp.output })
+    }
+
+    // exportUtils.js's generatePDF/generateExcel expect columns as
+    // {name, reference, numeric?} (see BusinessPartners.js's own callers) —
+    // a different shape from the {key, label} the report card's own inline
+    // table uses, so it's adapted here rather than changing either contract.
+    const exportReport = (report, format) => {
+        const columns = (report.tabular?.columns || []).map((col) => ({ name: col.label, reference: col.key }))
+        const rows = report.tabular?.rows || []
+        const dateRange = report.fromDate && report.toDate ? { startDate: report.fromDate, endDate: report.toDate } : null
+        try {
+            if (format === 'pdf') {
+                generatePDF(rows, columns, companyInfo, dateRange, report.title || 'Report')
+            } else {
+                generateExcel(rows, columns, companyInfo, dateRange, report.title || 'Report')
+            }
+        } catch (e) {
+            setError(`Could not export this report as ${format === 'pdf' ? 'PDF' : 'Excel'}.`)
+        }
     }
 
     const handleKeyDown = (e) => {
@@ -340,7 +474,28 @@ const Epsilon = () => {
             {messages.map((m, i) => (
                 <div key={i} className={`epsilon-bubble-row epsilon-bubble-row-${m.role}`}>
                     <div className={`epsilon-bubble epsilon-bubble-${m.role}`}>
-                        {m.streaming && !m.text && !toolStatus && (
+                        {m.role === 'assistant' && m.thinking && (
+                            m.streaming && !m.text ? (
+                                <div className="epsilon-thinking-live">
+                                    <span className="epsilon-thinking-live-label">Thinking…</span>
+                                    <div className="epsilon-thinking-live-text">{m.thinking}</div>
+                                </div>
+                            ) : (
+                                <div className="epsilon-thinking-block">
+                                    <button
+                                        type="button"
+                                        className="epsilon-thinking-toggle"
+                                        onClick={() => setExpandedThinkingIndex((cur) => (cur === i ? null : i))}
+                                    >
+                                        {expandedThinkingIndex === i ? '▾' : '▸'} Thinking process
+                                    </button>
+                                    {expandedThinkingIndex === i && (
+                                        <div className="epsilon-thinking-text">{m.thinking}</div>
+                                    )}
+                                </div>
+                            )
+                        )}
+                        {m.streaming && !m.text && !m.thinking && !toolStatus && (
                             <span className="epsilon-typing-inline">
                                 <span className="epsilon-typing-dot" />
                                 <span className="epsilon-typing-dot" />
@@ -398,6 +553,44 @@ const Epsilon = () => {
                             )}
                         </div>
                     )}
+                    {m.report && (
+                        <div className="epsilon-report-card">
+                            <div className="epsilon-report-title">{m.report.title || 'Report'}</div>
+                            {(m.report.fromDate || m.report.location) && (
+                                <div className="epsilon-report-meta">
+                                    {m.report.fromDate && m.report.toDate ? `${m.report.fromDate} – ${m.report.toDate}` : ''}
+                                    {m.report.location ? ` · ${m.report.location}` : ''}
+                                </div>
+                            )}
+                            {m.report.tabular?.rows?.length ? (
+                                <div className="epsilon-md-table-wrap">
+                                    <table className="epsilon-md-table">
+                                        <thead>
+                                            <tr>{m.report.tabular.columns.map((col) => <th key={col.key}>{col.label}</th>)}</tr>
+                                        </thead>
+                                        <tbody>
+                                            {m.report.tabular.rows.slice(0, 100).map((row, rowIdx) => (
+                                                <tr key={rowIdx}>
+                                                    {m.report.tabular.columns.map((col) => <td key={col.key}>{String(row[col.key] ?? '')}</td>)}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {m.report.tabular.rows.length > 100 && (
+                                        <div className="epsilon-report-truncated">Showing first 100 of {m.report.tabular.rows.length} rows — export for the full report.</div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="epsilon-report-empty">No tabular data to display for this report.</div>
+                            )}
+                            {!!m.report.tabular?.rows?.length && (
+                                <div className="epsilon-report-actions">
+                                    <button className="epsilon-report-export-btn" onClick={() => exportReport(m.report, 'pdf')}>Export as PDF</button>
+                                    <button className="epsilon-report-export-btn" onClick={() => exportReport(m.report, 'excel')}>Export as Excel</button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             ))}
             {error && <div className="epsilon-error">{error}</div>}
@@ -406,20 +599,52 @@ const Epsilon = () => {
     )
 
     const inputRowJsx = (
-        <div className="epsilon-input-row">
-            <textarea
-                ref={inputRef}
-                className="epsilon-input"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask Epsilon..."
-                rows={1}
-                maxLength={4000}
-            />
-            <button className="epsilon-send-btn" onClick={sendMessage} disabled={sending || !draft.trim()} aria-label="Send">
-                ➤
-            </button>
+        <div className="epsilon-input-wrap">
+            {queuedFollowUp && (
+                <div className="epsilon-queued-chip">
+                    <span className="epsilon-queued-chip-label">Will send after this reply:</span>
+                    <span className="epsilon-queued-chip-text">{queuedFollowUp}</span>
+                    <button
+                        type="button"
+                        className="epsilon-queued-chip-edit"
+                        title="Move back into the input to edit"
+                        aria-label="Edit queued message"
+                        onClick={() => {
+                            setDraft((prev) => (prev ? `${queuedFollowUp}\n${prev}` : queuedFollowUp))
+                            clearQueuedFollowUp()
+                            inputRef.current?.focus()
+                        }}
+                    >✎</button>
+                    <button
+                        type="button"
+                        className="epsilon-queued-chip-remove"
+                        title="Remove"
+                        aria-label="Remove queued message"
+                        onClick={clearQueuedFollowUp}
+                    >×</button>
+                </div>
+            )}
+            <div className="epsilon-input-row">
+                <textarea
+                    ref={inputRef}
+                    className="epsilon-input"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={sending ? "Add something before Epsilon replies..." : "Ask Epsilon..."}
+                    rows={1}
+                    maxLength={4000}
+                />
+                <button
+                    className="epsilon-send-btn"
+                    onClick={() => sendMessage()}
+                    disabled={!draft.trim()}
+                    aria-label={sending ? 'Queue for after this reply' : 'Send'}
+                    title={sending ? 'Queue — sends automatically once Epsilon finishes replying' : 'Send'}
+                >
+                    {sending ? '⏱' : '➤'}
+                </button>
+            </div>
         </div>
     )
 

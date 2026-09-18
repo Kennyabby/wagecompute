@@ -13,6 +13,12 @@ const formatMoney = (value) => currencyFormatter.format(Number(value || 0))
 const numberFormatter = new Intl.NumberFormat('en-US')
 const formatNumber = (value) => numberFormatter.format(Number(value || 0))
 
+const TONE_OPTIONS = [
+  { value: 'professional', label: 'Professional', desc: 'Clear, businesslike language. The default.' },
+  { value: 'friendly', label: 'Friendly', desc: 'Warm and approachable, still clear and useful.' },
+  { value: 'casual', label: 'Casual', desc: 'Relaxed, like a knowledgeable colleague.' },
+]
+
 // Deliberately its own dedicated card/checkout — NOT a row inside
 // BillingSettingsPanel's general "Add modules" grid. Epsilon is a per-seat
 // paid add-on, priced and purchased completely differently from every other
@@ -42,6 +48,14 @@ const EpsilonBillingCard = ({ variants }) => {
   const [seatsToBuy, setSeatsToBuy] = useState(1)
   const [months, setMonths] = useState(1)
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false)
+  const [tone, setTone] = useState('professional')
+  const [isSavingTone, setIsSavingTone] = useState(false)
+  // Matches isTenantAdmin in wageserver/UserModule/Billing/billing.js exactly
+  // (also POST /billing/epsilon/tone's own check) — without the permissions
+  // clause, a user granted admin rights via the 'all' permission rather than
+  // status/access:'admin' would see this control disabled even though the
+  // server would actually accept their change.
+  const isWorkspaceAdmin = companyRecord?.status === 'admin' || companyRecord?.access === 'admin' || companyRecord?.permissions?.includes('all')
 
   const loadSeatInfo = async () => {
     if (!company || !companyRecord?.emailid) return
@@ -58,6 +72,7 @@ const EpsilonBillingCard = ({ variants }) => {
         epsilonTokensConsumedTotal: Number(response.epsilonTokensConsumedTotal || 0),
         tokenPriceNaira: Number(response.tokenPriceNaira || 0),
       })
+      setTone(response.epsilonTone || 'professional')
     } catch (error) {
       // Non-fatal — the card just shows zeroes/loading state; other billing
       // panels on this page already surface a load failure of their own.
@@ -70,6 +85,27 @@ const EpsilonBillingCard = ({ variants }) => {
   useEffect(() => {
     loadSeatInfo()
   }, [company, companyRecord?.emailid])
+
+  // Tenant-wide default, applies to every user at this workspace — distinct
+  // from the per-user "response style" each employee already picks for
+  // themselves inside the chat panel itself.
+  const handleSetTone = async (nextTone) => {
+    if (nextTone === tone || isSavingTone) return
+    const previous = tone
+    setTone(nextTone)
+    setIsSavingTone(true)
+    try {
+      const response = await fetchServer('POST', { tone: nextTone }, 'billing/epsilon/tone', server)
+      if (response.err || !response.ok) throw new Error(response.mess || 'Unable to update Epsilon tone.')
+    } catch (error) {
+      setTone(previous)
+      setAlertState('error')
+      setAlert(error.message || 'Unable to update Epsilon tone.')
+      setAlertTimeout(4000)
+    } finally {
+      setIsSavingTone(false)
+    }
+  }
 
   const estimatedTotalNaira = seatInfo.priceNaira * Math.max(1, seatsToBuy) * Math.max(1, months)
   // Every Naira this purchase pays also funds the token wallet, at the same
@@ -152,6 +188,28 @@ const EpsilonBillingCard = ({ variants }) => {
               description={`of ${formatNumber(seatInfo.epsilonTokensPurchasedTotal)} tokens ever purchased/granted.`}
             />
           </StatCardGrid>
+
+          <div className='epsilon-tone-section'>
+            <div className='epsilon-tone-header'>
+              <strong>Epsilon's tone</strong>
+              <span>Applies to every conversation across the whole workspace. {isWorkspaceAdmin ? '' : 'Only a workspace admin can change this.'}</span>
+            </div>
+            <div className='epsilon-tone-options'>
+              {TONE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type='button'
+                  className={`epsilon-tone-btn ${tone === opt.value ? 'active' : ''}`}
+                  onClick={() => handleSetTone(opt.value)}
+                  disabled={!isWorkspaceAdmin || isSavingTone}
+                  title={opt.desc}
+                >
+                  <span className='epsilon-tone-btn-label'>{opt.label}</span>
+                  <span className='epsilon-tone-btn-desc'>{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className='epsilon-billing-purchase-row'>
             <label className='epsilon-billing-field'>

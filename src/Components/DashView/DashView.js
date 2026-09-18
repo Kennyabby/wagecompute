@@ -137,6 +137,15 @@ const DashView = () =>{
     const [topEmployeesServices, setTopEmployeesServices] = useState([])
     const [series, setSeries] = useState([]) // [{date, sales, expenses, purchases, accommodations, rentals}]
     const [restock, setRestock] = useState([])
+    // Reorder recommendations — the single source of truth for low stock
+    // (GET /purchase/recommendReorders, same function Epsilon's own
+    // recommend_reorders tool calls). lastReorderFetchedAt gates the
+    // "Automatically generate PO for inspection" button: it only enables
+    // once this dashboard has genuinely loaded fresh data, never on stale
+    // or empty state.
+    const [reorderRecommendations, setReorderRecommendations] = useState([])
+    const [reorderLoading, setReorderLoading] = useState(false)
+    const [lastReorderFetchedAt, setLastReorderFetchedAt] = useState(null)
     const [topExpenseCategories, setTopExpenseCategories] = useState([])
     const [topProductsBySales, setTopProductsBySales] = useState([])
     const [topPurchaseItems, setTopPurchaseItems] = useState([])
@@ -201,7 +210,10 @@ const DashView = () =>{
         if (Array.isArray(snap.series)) setSeries(snap.series);
         if (Array.isArray(snap.monthlySeries)) setMonthlySeries(snap.monthlySeries);
         if (Array.isArray(snap.revenueMix)) setRevenueMix(snap.revenueMix);
-        if (Array.isArray(snap.restock)) setRestock(snap.restock);
+        // restock is intentionally NOT restored from this cache snapshot —
+        // it's owned exclusively by loadReorderRecommendations now (see
+        // below), which always fetches live so it can never disagree with
+        // what Epsilon itself would suggest reordering.
         if (Array.isArray(snap.topProducts)) setTopProducts(snap.topProducts);
         if (Array.isArray(snap.topLocations)) setTopLocations(snap.topLocations);
         if (Array.isArray(snap.topProductsBySales)) setTopProductsBySales(snap.topProductsBySales);
@@ -521,42 +533,16 @@ const DashView = () =>{
                 .map(([location, amount])=>({ location, amount }))
                 .sort((a,b)=> b.amount - a.amount)
 
-            // Average daily sales for each product in range using transactions -> better restock logic
-            const dayCount = Math.max(1, (new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000*60*60*24) + 1)
-            const avgDailySales = new Map() // pid -> avg qty/day
-            topProdArr.forEach(({pid, qty})=>{
-                avgDailySales.set(pid, Number(qty)/dayCount)
-            })
-            // Location-based restock alerts
-            const locationMap = {};
-            (products || []).forEach(p => {
-                const pid = p.i_d || p.productId || p.name;
-                const name = p.name;
-                const locStock = p.locationStock || {};
-                Object.entries(locStock).forEach(([location, stock]) => {
-                    // Compute avg daily sales for this product at this location
-                    const avg = (productLocMap.get(pid)?.get(location) || 0) / dayCount;
-                    let threshold = avg * 7;
-                    threshold = threshold > 7 ? threshold : (threshold > 0 ? 7 : 0); // Minimum threshold of 7 units
-                    if (threshold > 0 && stock.quantity < threshold) {
-                        if (!locationMap[location]) locationMap[location] = [];
-                        locationMap[location].push({
-                            id: pid,
-                            name,
-                            stock: stock.quantity,
-                            threshold,
-                            avgDailySales: avg
-                        });
-                    }
-                });
-            });
-            const locationRestockAlerts = Object.entries(locationMap).map(([location, lowStockProducts]) => ({
-                location,
-                lowStockProducts
-            }));
+            // Restock alerts used to be computed here from a separate,
+            // client-side-only heuristic (avg daily sales * 7, floored at 7
+            // units) that disagreed with Epsilon's own recommend_reorders
+            // tool — a tenant could see one "low stock" list here and a
+            // different one if they asked the AI. Both now read the exact
+            // same source (GET /purchase/recommendReorders, which just
+            // wraps recommend_reorders) — see loadReorderRecommendations
+            // and the effect that calls it, below. Restock state is set
+            // there, not here.
             if (dashboardRequestRef.current !== requestId) return
-            // Use this for UI rendering
-            setRestock(locationRestockAlerts);
 
             const { total: expensesTotal, topExpenses } = sumExpenses(expenses, fromDate, toDate)
             // Store top data for KPI displays
@@ -726,7 +712,6 @@ const DashView = () =>{
             const topLocationsData = topLocArr.slice(0,10)
             setTopProducts(topProductsData)
             setTopLocations(topLocationsData)
-            setRestock(locationRestockAlerts)
             // Build productLocationBreakdown (quantity based)
             const prodLocArr = topProdArr.slice(0,10).map(p=>{
                 const lm = productLocMap.get(p.pid) || new Map()
@@ -820,7 +805,6 @@ const DashView = () =>{
                     series: seriesData,
                     monthlySeries: monthlyData,
                     revenueMix: revenueMixData,
-                    restock: locationRestockAlerts,
                     topProducts: topProductsData,
                     topLocations: topLocationsData,
                     topProductsBySales: topSalesProducts,
@@ -959,6 +943,62 @@ const DashView = () =>{
         window.addEventListener('wc:dashboard-summary-update', handleDashboardSummaryUpdate)
         return () => window.removeEventListener('wc:dashboard-summary-update', handleDashboardSummaryUpdate)
     }, [company, fromDate, toDate, locationFilter, productFilter, employeeFilter, seasonFilter])
+
+    // Single source of truth for low stock — see the state declarations
+    // above for why. Grouped by location here only to keep the existing
+    // restock-panel JSX (location list -> expand -> product list) working
+    // unchanged; the underlying numbers now come from recommend_reorders.
+    const loadReorderRecommendations = useCallback(async () => {
+        if (!company) return
+        setReorderLoading(true)
+        try {
+            const query = locationFilter ? `?location=${encodeURIComponent(locationFilter)}` : ''
+            const resp = await fetchServer('GET', {}, `purchase/recommendReorders${query}`, server)
+            if (resp?.err || !resp?.ok || resp?.authorized === false) {
+                setReorderRecommendations([])
+                return
+            }
+            const recommendations = Array.isArray(resp.recommendations) ? resp.recommendations : []
+            setReorderRecommendations(recommendations)
+            const grouped = {}
+            recommendations.forEach((rec) => {
+                const location = rec.location || 'Unspecified'
+                if (!grouped[location]) grouped[location] = []
+                grouped[location].push({
+                    id: rec.productId,
+                    name: rec.productName,
+                    stock: rec.currentStock,
+                    threshold: rec.threshold,
+                    daysUntilStockout: rec.daysUntilStockout,
+                })
+            })
+            setRestock(Object.entries(grouped).map(([location, lowStockProducts]) => ({ location, lowStockProducts })))
+            setLastReorderFetchedAt(Date.now())
+        } catch (e) {
+            setReorderRecommendations([])
+        } finally {
+            setReorderLoading(false)
+        }
+    }, [company, locationFilter, fetchServer, server])
+
+    useEffect(() => {
+        loadReorderRecommendations()
+    }, [loadReorderRecommendations])
+
+    useEffect(() => {
+        const handleRefresh = () => loadReorderRecommendations()
+        window.addEventListener('wc:dashboard-summary-update', handleRefresh)
+        return () => window.removeEventListener('wc:dashboard-summary-update', handleRefresh)
+    }, [loadReorderRecommendations])
+
+    // Opens Epsilon pre-seeded, reusing its already-built
+    // recommend_reorders -> propose_purchase_order -> confirm chain rather
+    // than writing a second, parallel path to create a Purchase document.
+    const handleAutoGeneratePoForInspection = () => {
+        window.dispatchEvent(new CustomEvent('wc:epsilon-ask', {
+            detail: { question: 'Generate a purchase order for inspection covering the current low-stock items.' },
+        }))
+    }
 
     // Helpers to map names
     const productName = useMemo(()=>{
@@ -1264,7 +1304,27 @@ const DashView = () =>{
                         
                     {/* Low Stock Alerts */}
                     <div className='alert-panel'>
-                        <h3><FaExclamationTriangle className='icon' /> Stock Alerts</h3>
+                        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px'}}>
+                            <h3><FaExclamationTriangle className='icon' /> Stock Alerts</h3>
+                            <button
+                                type='button'
+                                onClick={handleAutoGeneratePoForInspection}
+                                disabled={reorderLoading || !lastReorderFetchedAt || reorderRecommendations.length === 0}
+                                title={!lastReorderFetchedAt || reorderLoading ? 'Waiting for current stock data to load…' : reorderRecommendations.length === 0 ? 'Nothing currently below its reorder threshold' : 'Ask Epsilon to draft a purchase order for these items'}
+                                style={{
+                                    padding: '8px 14px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #173829',
+                                    background: (reorderLoading || !lastReorderFetchedAt || reorderRecommendations.length === 0) ? '#f0f3f1' : '#173829',
+                                    color: (reorderLoading || !lastReorderFetchedAt || reorderRecommendations.length === 0) ? '#9aa89f' : '#fff',
+                                    fontWeight: 700,
+                                    fontSize: '0.85em',
+                                    cursor: (reorderLoading || !lastReorderFetchedAt || reorderRecommendations.length === 0) ? 'default' : 'pointer',
+                                }}
+                            >
+                                Automatically Generate PO for Inspection
+                            </button>
+                        </div>
                         <div className='alert-content'>
                                 {restock.length > 0 ? (
                                     <div className='location-labels-row' style={{display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '16px'}}>
@@ -1300,9 +1360,8 @@ const DashView = () =>{
                                                     locAlert.lowStockProducts.map((item, idx) => (
                                                         <div key={`low-stock-${locAlert.location}-${idx}`} className='alert-item'>
                                                             <span className='alert-item-name'>{item.name}</span>
-                                                            <span className='alert-item-detail'>Stock: {fmt(item.stock)} (Min: {Math.ceil(item.threshold)})</span>
-                                                            <span className='alert-item-detail'>Coverage: {item.threshold > 0 ? (item.stock / (item.threshold / 7)).toFixed(1) : 'N/A'} days</span>
-                                                            {/* <span className='alert-item-detail'>{item.threshold > 0 && (item.stock / (item.threshold / 7)) < 3 ? 'Low stock' : ''}</span> */}
+                                                            <span className='alert-item-detail'>Stock: {fmt(item.stock)} (Reorder at: {Math.ceil(item.threshold)})</span>
+                                                            <span className='alert-item-detail'>{item.daysUntilStockout !== null && item.daysUntilStockout !== undefined ? `Runs out in ~${item.daysUntilStockout} day${item.daysUntilStockout === 1 ? '' : 's'} at current sales pace` : 'No recent sales pace to estimate runout'}</span>
                                                         </div>
                                                     ))
                                                 ) : (

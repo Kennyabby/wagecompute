@@ -380,6 +380,65 @@
     padding: 3px 0;
 }
 
+.epsilon-thinking-live {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--epsilon-bg-secondary);
+    border-left: 2px solid var(--epsilon-border);
+}
+
+.epsilon-thinking-live-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--epsilon-text-muted);
+    margin-bottom: 4px;
+}
+
+.epsilon-thinking-live-text {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--epsilon-text-muted);
+    font-style: italic;
+    white-space: pre-wrap;
+    max-height: 110px;
+    overflow-y: auto;
+}
+
+.epsilon-thinking-block {
+    margin-bottom: 8px;
+}
+
+.epsilon-thinking-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 0;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--epsilon-text-muted);
+}
+
+.epsilon-thinking-toggle:hover {
+    color: var(--epsilon-text);
+}
+
+.epsilon-thinking-text {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--epsilon-bg-secondary);
+    border-left: 2px solid var(--epsilon-border);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--epsilon-text-muted);
+    font-style: italic;
+    white-space: pre-wrap;
+}
+
 .epsilon-cursor {
     display: inline-block;
     width: 2px;
@@ -664,6 +723,114 @@
     color: var(--epsilon-error-text);
 }
 
+/* Read-only report card — sibling to .epsilon-proposal-card, not a variant
+   of it (no confirm step, nothing to run). */
+.epsilon-report-card {
+    margin-top: 6px;
+    max-width: 95%;
+    background: var(--epsilon-bg);
+    border: 1px solid var(--epsilon-border-soft);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.epsilon-report-title {
+    font-weight: 700;
+    color: var(--epsilon-text);
+    font-size: 12.5px;
+    margin-bottom: 2px;
+}
+
+.epsilon-report-meta {
+    color: var(--epsilon-text-muted);
+    font-size: 11px;
+    margin-bottom: 8px;
+}
+
+.epsilon-report-truncated {
+    color: var(--epsilon-text-muted);
+    font-size: 11px;
+    padding: 6px 2px 0;
+}
+
+.epsilon-report-empty {
+    color: var(--epsilon-text-muted);
+    font-size: 11.5px;
+    font-style: italic;
+}
+
+.epsilon-report-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.epsilon-report-export-btn {
+    background: none;
+    border: 1px solid var(--epsilon-border);
+    border-radius: 7px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--epsilon-text);
+}
+
+.epsilon-report-export-btn:hover {
+    background: var(--epsilon-sidebar-item-hover);
+}
+
+.epsilon-input-wrap {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.epsilon-queued-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--epsilon-proposal-bg);
+    border-top: 1px solid var(--epsilon-proposal-border);
+    font-size: 12px;
+}
+
+.epsilon-queued-chip-label {
+    font-weight: 700;
+    color: var(--epsilon-proposal-title);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.epsilon-queued-chip-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--epsilon-text);
+}
+
+.epsilon-queued-chip-edit,
+.epsilon-queued-chip-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--epsilon-text-muted);
+    padding: 2px 6px;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+
+.epsilon-queued-chip-edit:hover,
+.epsilon-queued-chip-remove:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--epsilon-text);
+}
+
 .epsilon-input-row {
     display: flex;
     align-items: flex-end;
@@ -942,9 +1109,30 @@
     }
 }
 
-@media (max-width: 480px) {
+/* Collapsed panel on phone/tablet — was previously sized via
+   `calc(100vh - 90px)` while still living inside .epsilon-root's
+   bottom-anchored flex column (panel stacked above the launcher button).
+   That math left the stack's total height almost exactly equal to the
+   viewport, so any real-device variance (mobile browser chrome collapsing/
+   expanding, a notch's safe-area inset, sub-pixel rounding) pushed the
+   panel's top — where the header with the collapse/close icons lives —
+   above y=0, off-screen above the visible viewport. Taking the panel fully
+   out of that flex-stack via position:fixed removes the fragile math
+   entirely, the same way the expanded overlay already works safely. A
+   fixed-position element also naturally paints above the launcher (a
+   static-position sibling) per normal CSS stacking rules, so the panel
+   correctly covers it with no z-index needed. */
+@media (max-width: 768px) {
     .epsilon-panel {
-        width: calc(100vw - 24px);
-        height: calc(100vh - 90px);
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        box-sizing: border-box;
     }
 }

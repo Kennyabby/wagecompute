@@ -1223,6 +1223,74 @@ input:checked + .slider:before {
     margin-bottom: 10px;
 }
 
+.epsilon-tone-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(23, 56, 41, 0.08);
+}
+
+.epsilon-tone-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+}
+
+.epsilon-tone-header strong {
+    font-size: 14px;
+    color: var(--settings-text);
+}
+
+.epsilon-tone-header span {
+    font-size: 12px;
+    color: var(--settings-text-muted);
+}
+
+.epsilon-tone-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.epsilon-tone-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(23, 56, 41, 0.1);
+    background: #fff;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.epsilon-tone-btn:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.epsilon-tone-btn:not(:disabled):hover {
+    border-color: rgba(43, 106, 75, 0.3);
+}
+
+.epsilon-tone-btn.active {
+    border-color: var(--settings-primary);
+    background: rgba(106, 242, 173, 0.1);
+}
+
+.epsilon-tone-btn-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--settings-text);
+}
+
+.epsilon-tone-btn-desc {
+    font-size: 11.5px;
+    color: var(--settings-text-muted);
+    line-height: 1.4;
+}
+
 .epsilon-billing-purchase-row {
     display: flex;
     align-items: flex-end;
