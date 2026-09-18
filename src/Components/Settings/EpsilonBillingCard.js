@@ -3,6 +3,12 @@ import { motion } from 'framer-motion'
 import ContextProvider from '../../Resources/ContextProvider'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
 import StatCard from '../Shared/ui/StatCard'
+import { getAppCache, setAppCache } from '../../Resources/offlineDb'
+
+const EPSILON_BILLING_CACHE_KEY = 'epsilonBillingSeatInfo'
+// Silent background refresh only — never clears what's already on screen,
+// just replaces it once fresh data actually arrives.
+const EPSILON_BILLING_AUTO_REFRESH_MS = 5 * 60 * 1000
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
   style: 'currency',
@@ -57,13 +63,13 @@ const EpsilonBillingCard = ({ variants }) => {
   // server would actually accept their change.
   const isWorkspaceAdmin = companyRecord?.status === 'admin' || companyRecord?.access === 'admin' || companyRecord?.permissions?.includes('all')
 
-  const loadSeatInfo = async () => {
+  const loadSeatInfo = async (showSpinner = true) => {
     if (!company || !companyRecord?.emailid) return
-    setIsLoading(true)
+    if (showSpinner) setIsLoading(true)
     try {
       const response = await fetchServer('GET', {}, 'billing/epsilon/seat-info', server)
       if (response.err || !response.ok) throw new Error(response.mess || 'Unable to load Epsilon seat info.')
-      setSeatInfo({
+      const nextSeatInfo = {
         epsilonSeats: Number(response.epsilonSeats || 0),
         usedSeats: Number(response.usedSeats || 0),
         priceNaira: Number(response.priceNaira || 0),
@@ -71,19 +77,54 @@ const EpsilonBillingCard = ({ variants }) => {
         epsilonTokensPurchasedTotal: Number(response.epsilonTokensPurchasedTotal || 0),
         epsilonTokensConsumedTotal: Number(response.epsilonTokensConsumedTotal || 0),
         tokenPriceNaira: Number(response.tokenPriceNaira || 0),
+      }
+      const nextTone = response.epsilonTone || 'professional'
+      setSeatInfo(nextSeatInfo)
+      setTone(nextTone)
+      setAppCache(company, companyRecord.emailid, EPSILON_BILLING_CACHE_KEY, {
+        seatInfo: nextSeatInfo,
+        tone: nextTone,
       })
-      setTone(response.epsilonTone || 'professional')
     } catch (error) {
-      // Non-fatal — the card just shows zeroes/loading state; other billing
-      // panels on this page already surface a load failure of their own.
+      // A silent background/auto refresh failing shouldn't disturb data
+      // that's still correctly on screen — only log it.
       console.error('Failed to load Epsilon seat info', error)
     } finally {
-      setIsLoading(false)
+      if (showSpinner) setIsLoading(false)
     }
   }
 
+  // Cache-first mount: paint the last cached seat info (IndexedDB — survives
+  // tab switches, Settings navigation, and full page reloads) instantly with
+  // no spinner, then silently revalidate in the background. Only when there
+  // is no cache yet do we fall back to the original spinner-blocking fetch.
   useEffect(() => {
-    loadSeatInfo()
+    if (!company || !companyRecord?.emailid) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const cached = await getAppCache(company, companyRecord.emailid, EPSILON_BILLING_CACHE_KEY)
+        if (!cancelled && cached?.data) {
+          if (cached.data.seatInfo) setSeatInfo(cached.data.seatInfo)
+          if (cached.data.tone) setTone(cached.data.tone)
+          loadSeatInfo(false)
+          return
+        }
+      } catch (error) {
+        console.error('Error reading Epsilon billing cache', error)
+      }
+      if (!cancelled) loadSeatInfo(true)
+    })()
+    return () => { cancelled = true }
+  }, [company, companyRecord?.emailid])
+
+  // Periodic silent auto-refresh — keeps seat/token info from going stale
+  // without ever clearing what's displayed; state only changes once new
+  // data actually arrives (see loadSeatInfo's success branch above).
+  useEffect(() => {
+    if (!company || !companyRecord?.emailid) return
+    const intervalId = setInterval(() => loadSeatInfo(false), EPSILON_BILLING_AUTO_REFRESH_MS)
+    return () => clearInterval(intervalId)
   }, [company, companyRecord?.emailid])
 
   // Tenant-wide default, applies to every user at this workspace — distinct

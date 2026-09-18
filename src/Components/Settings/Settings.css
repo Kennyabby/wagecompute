@@ -979,6 +979,19 @@ input:checked + .slider:before {
     flex-wrap: wrap;
 }
 
+/* Both billing sub-panels stay mounted at all times (see Settings.js) so
+   tab-switching never re-triggers their data fetch; only the inactive one is
+   hidden. display:none (not unmounting) is what preserves already-fetched
+   state across a tab switch. */
+.settings-billing-panel-slot {
+    width: 100%;
+    min-width: 0;
+}
+
+.settings-billing-panel-hidden {
+    display: none;
+}
+
 .settings-billing-tab {
     padding: 12px 28px;
     border-radius: 12px;

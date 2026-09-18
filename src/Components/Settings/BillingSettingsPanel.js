@@ -4,6 +4,12 @@ import ContextProvider from '../../Resources/ContextProvider'
 import MODULE_ICONS from '../../Resources/moduleIcons'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
 import StatCard from '../Shared/ui/StatCard'
+import { getAppCache, setAppCache } from '../../Resources/offlineDb'
+
+const BILLING_SNAPSHOT_CACHE_KEY = 'billingSettingsSnapshot'
+// Silent background refresh only — never clears what's already on screen,
+// just replaces it once fresh data actually arrives.
+const BILLING_AUTO_REFRESH_MS = 5 * 60 * 1000
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
   style: 'currency',
@@ -135,17 +141,57 @@ const BillingSettingsPanel = ({ variants }) => {
       if (response.currentStatus && typeof refreshSubscriptionState === 'function') {
         refreshSubscriptionState(response.currentStatus)
       }
+      setAppCache(company, companyRecord.emailid, BILLING_SNAPSHOT_CACHE_KEY, {
+        snapshot: nextSnapshot,
+        disablePaystackPayment: !!response.disablePaystackPayment,
+      })
     } catch (error) {
-      setAlertState('error')
-      setAlert(error.message || 'Unable to load subscription snapshot.')
-      setAlertTimeout(3000)
+      // A silent background/auto refresh failing shouldn't pop an error toast
+      // over data that's still correctly on screen — only a user-visible
+      // (spinner) refresh surfaces the failure.
+      if (showSpinner) {
+        setAlertState('error')
+        setAlert(error.message || 'Unable to load subscription snapshot.')
+        setAlertTimeout(3000)
+      } else {
+        console.error('Background billing snapshot refresh failed', error)
+      }
     } finally {
       if (showSpinner) setIsSnapshotLoading(false)
     }
   }
 
+  // Cache-first mount: paint whatever was last cached (IndexedDB — survives
+  // tab switches, Settings navigation, and full page reloads) instantly with
+  // no spinner, then silently revalidate in the background. Only when there
+  // is no cache yet do we fall back to the original spinner-blocking fetch.
   useEffect(() => {
-    loadTenantSnapshot()
+    if (!company || !companyRecord?.emailid) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const cached = await getAppCache(company, companyRecord.emailid, BILLING_SNAPSHOT_CACHE_KEY)
+        if (!cancelled && cached?.data) {
+          setSnapshot(cached.data.snapshot || {})
+          setDisablePaystackPayment(!!cached.data.disablePaystackPayment)
+          loadTenantSnapshot(false)
+          return
+        }
+      } catch (error) {
+        console.error('Error reading billing snapshot cache', error)
+      }
+      if (!cancelled) loadTenantSnapshot(true)
+    })()
+    return () => { cancelled = true }
+  }, [company, companyRecord?.emailid])
+
+  // Periodic silent auto-refresh — keeps the snapshot from going stale
+  // without ever clearing what's displayed; state only changes once new
+  // data actually arrives (see loadTenantSnapshot's success branch above).
+  useEffect(() => {
+    if (!company || !companyRecord?.emailid) return
+    const intervalId = setInterval(() => loadTenantSnapshot(false), BILLING_AUTO_REFRESH_MS)
+    return () => clearInterval(intervalId)
   }, [company, companyRecord?.emailid])
 
   useEffect(() => {
