@@ -2103,9 +2103,21 @@ const Settings = () => {
                                     <IoRefresh />
                                 </button>
                             </div>
-                            {billingTab === 'billing'
-                                ? <BillingSettingsPanel key={billingRefreshKey} variants={variants} />
-                                : <EpsilonBillingCard key={billingRefreshKey} variants={variants} />}
+                            {/* Both panels stay mounted the whole time the Billing view is
+                                active — only their visibility toggles with billingTab. Each
+                                panel fetches its own data once (with IndexedDB caching that
+                                paints instantly on future mounts, plus its own periodic
+                                background auto-refresh), so switching between "Plan & Billing"
+                                and "Epsilon AI" no longer unmounts/remounts the other panel
+                                and re-triggers a network fetch. key={billingRefreshKey} still
+                                forces a true remount (and refetch) of BOTH panels when the
+                                refresh button is clicked. */}
+                            <div className={`settings-billing-panel-slot ${billingTab === 'billing' ? '' : 'settings-billing-panel-hidden'}`}>
+                                <BillingSettingsPanel key={billingRefreshKey} variants={variants} />
+                            </div>
+                            <div className={`settings-billing-panel-slot ${billingTab === 'epsilon' ? '' : 'settings-billing-panel-hidden'}`}>
+                                <EpsilonBillingCard key={billingRefreshKey} variants={variants} />
+                            </div>
                         </div>
                     )
             case 'accounting':
