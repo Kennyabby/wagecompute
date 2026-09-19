@@ -32,6 +32,7 @@ const TOOL_STATUS_LABELS = {
     who_can_approve: 'Checking who can approve this…',
     check_document_approval_status: 'Checking approval status…',
     check_session_close_readiness: 'Checking session close readiness…',
+    search_directory: 'Looking that up…',
     explain_topic: 'Looking that up…',
     interpret_accounting_view: 'Reading the accounting figures…',
     generate_report: 'Generating the report…',
