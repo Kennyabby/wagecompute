@@ -156,9 +156,20 @@ const CentralAdminApp = () => {
     desktopOfflineIntervalDays: 15,
     epsilonEnabled: true,
     epsilonModel: 'claude-sonnet-5',
+    epsilonFastModel: 'claude-haiku-4-5-20251001',
+    epsilonFastModelEnabled: true,
     epsilonTokenPriceNaira: 5,
     epsilonRateLimitTokens: 50000,
     epsilonRateLimitWindowHours: 5,
+    epsilonUsdToNgn: 1600,
+    epsilonModelRatesUsd: {
+      'claude-sonnet-5': {
+        inputPerM: 3, outputPerM: 15, cacheWritePerM: 3.75, cacheReadPerM: 0.3,
+      },
+      'claude-haiku-4-5-20251001': {
+        inputPerM: 1, outputPerM: 5, cacheWritePerM: 1.25, cacheReadPerM: 0.1,
+      },
+    },
   })
   const [offlineAccounts, setOfflineAccounts] = useState([])
   const [offlineModulePricing, setOfflineModulePricing] = useState([])
@@ -195,6 +206,11 @@ const CentralAdminApp = () => {
   // self-service way to actually reach them. This is the immediate fix.
   const [epsilonEmployeeGrantForm, setEpsilonEmployeeGrantForm] = useState({ database: '', emailid: '' })
   const [isGrantingEmployeeAccess, setIsGrantingEmployeeAccess] = useState(false)
+  // Holds the emailid currently being reset (or '' when idle) — a string,
+  // not a boolean, so only that one row's button shows "Resetting..." when
+  // several rows each have their own reset button (see the tenant profiles
+  // table below).
+  const [isResettingEmployeeRateLimit, setIsResettingEmployeeRateLimit] = useState('')
   // The tenant detail drill-down used to stack ~9 unrelated sections
   // (billing, modules, Epsilon seats/tokens/usage, WC + tenant profile
   // tables, employees, activity) into one continuous two-column scroll with
@@ -372,9 +388,20 @@ const CentralAdminApp = () => {
         desktopOfflineIntervalDays: response.settings?.desktopOfflineIntervalDays || 15,
         epsilonEnabled: response.settings?.epsilonEnabled !== false,
         epsilonModel: response.settings?.epsilonModel || 'claude-sonnet-5',
+        epsilonFastModel: response.settings?.epsilonFastModel || 'claude-haiku-4-5-20251001',
+        epsilonFastModelEnabled: response.settings?.epsilonFastModelEnabled !== false,
         epsilonTokenPriceNaira: response.settings?.epsilonTokenPriceNaira || 5,
         epsilonRateLimitTokens: response.settings?.epsilonRateLimitTokens || 50000,
         epsilonRateLimitWindowHours: response.settings?.epsilonRateLimitWindowHours || 5,
+        epsilonUsdToNgn: response.settings?.epsilonUsdToNgn || 1600,
+        epsilonModelRatesUsd: response.settings?.epsilonModelRatesUsd || {
+          'claude-sonnet-5': {
+            inputPerM: 3, outputPerM: 15, cacheWritePerM: 3.75, cacheReadPerM: 0.3,
+          },
+          'claude-haiku-4-5-20251001': {
+            inputPerM: 1, outputPerM: 5, cacheWritePerM: 1.25, cacheReadPerM: 0.1,
+          },
+        },
       })
       setManualForm((current) => ({
         ...current,
@@ -843,6 +870,31 @@ const CentralAdminApp = () => {
     }
     setNotice('success', `Epsilon access granted to ${response.emailid}. They may need to log out and back in for it to appear.`)
     setIsGrantingEmployeeAccess(false)
+  }
+
+  // Deliberately platform-operator-only (see epsilonBilling.js's route
+  // comment) — a workspace's own admin can't self-serve an early rate-limit
+  // reset, since that would defeat the point of the limit. Takes explicit
+  // database/emailid so it works both from the standalone form below AND
+  // from a per-row button next to every actual AI-seat holder in the
+  // tenant detail view (Profile.aiAccess) — not just whichever email
+  // happens to be typed into the form, so the action is genuinely
+  // available for every seated user, not only the one the operator already
+  // knows to look for.
+  const handleResetEmployeeRateLimit = async (database, emailid) => {
+    if (!database || !emailid) {
+      setNotice('error', 'Select a tenant and enter the employee email.')
+      return
+    }
+    setIsResettingEmployeeRateLimit(emailid)
+    const response = await requestAdmin('POST', 'admin/billing/epsilon/reset-rate-limit', { database, emailid })
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || 'Unable to reset this employee\'s rate limit.')
+      setIsResettingEmployeeRateLimit('')
+      return
+    }
+    setNotice('success', response.mess || 'Rate limit reset.')
+    setIsResettingEmployeeRateLimit('')
   }
 
   const handleSaveEpsilonSeatPrice = async () => {
@@ -1699,6 +1751,7 @@ const CentralAdminApp = () => {
                                 <th>Tenant profiles</th>
                                 <th>Status</th>
                                 <th>Permissions</th>
+                                <th>Epsilon AI</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1707,8 +1760,20 @@ const CentralAdminApp = () => {
                                   <td>{profile.emailid}</td>
                                   <td>{profile.status || profile.access || '--'}</td>
                                   <td>{Array.isArray(profile.permissions) ? profile.permissions.slice(0, 4).join(', ') : '--'}</td>
+                                  <td>
+                                    {profile.aiAccess ? (
+                                      <button
+                                        className='ca-inline-btn'
+                                        type='button'
+                                        onClick={() => handleResetEmployeeRateLimit(selectedTenant, profile.emailid)}
+                                        disabled={isResettingEmployeeRateLimit === profile.emailid}
+                                      >
+                                        {isResettingEmployeeRateLimit === profile.emailid ? 'Resetting...' : 'Reset Rate Limit'}
+                                      </button>
+                                    ) : '--'}
+                                  </td>
                                 </tr>
-                              )) : <tr><td colSpan='3' className='ca-empty'>No tenant profile records found.</td></tr>}
+                              )) : <tr><td colSpan='4' className='ca-empty'>No tenant profile records found.</td></tr>}
                             </tbody>
                           </table>
                         </div>
@@ -2940,6 +3005,18 @@ const CentralAdminApp = () => {
                 </div>
               </div>
               <div className='ca-card ca-stat-card'>
+                <div className='ca-stat-icon status'></div>
+                <div className='ca-stat-info'>
+                  <span>Real Margin This Month</span>
+                  <strong>₦{(epsilonOverview?.month?.marginNaira || 0).toLocaleString()}</strong>
+                  <p>
+                    ₦{(epsilonOverview?.month?.totalNaira || 0).toLocaleString()} charged − real Anthropic cost
+                    (${(epsilonOverview?.month?.totalUsd || 0).toLocaleString()} ≈ ₦{(epsilonOverview?.month?.totalNgnEquivalent || 0).toLocaleString()} at ₦{epsilonOverview?.usdToNgn || '—'}/$).
+                    {(epsilonOverview?.month?.costCoveredTokens || 0) < (epsilonOverview?.month?.totalTokens || 0) && ' Some tokens predate cost tracking and are excluded — this is a floor, not the exact figure.'}
+                  </p>
+                </div>
+              </div>
+              <div className='ca-card ca-stat-card'>
                 <div className='ca-stat-icon sources'></div>
                 <div className='ca-stat-info'>
                   <span>Active Tenants (30d)</span>
@@ -3035,6 +3112,78 @@ const CentralAdminApp = () => {
                 </div>
               </div>
 
+              <div className='ca-panel'>
+                <div className='ca-panel-head'>
+                  <h3>Epsilon real cost / margin tracking</h3>
+                </div>
+                <p className='ca-panel-note'>
+                  What Epsilon actually costs from Anthropic, vs. the token price charged above — the gap is
+                  real margin (see the "Real Margin This Month" card). Manually maintained: Anthropic's rates
+                  and the exchange rate both drift over time and aren't fetched automatically, so keep these
+                  current yourself.
+                </p>
+                <div className='ca-form-grid'>
+                  <label>
+                    <span>Exchange rate (₦ per $1)</span>
+                    <input
+                      type='number'
+                      min='0'
+                      value={globalSettingsForm.epsilonUsdToNgn}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonUsdToNgn: Number(e.target.value) })}
+                    />
+                  </label>
+                  <label>
+                    <span>Fast model (tried first, escalates only if a tool call is needed)</span>
+                    <input
+                      type='text'
+                      value={globalSettingsForm.epsilonFastModel}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonFastModel: e.target.value })}
+                      placeholder='claude-haiku-4-5-20251001'
+                    />
+                  </label>
+                  <label>
+                    <span>Fast-model routing</span>
+                    <select
+                      value={globalSettingsForm.epsilonFastModelEnabled ? 'enabled' : 'disabled'}
+                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonFastModelEnabled: e.target.value === 'enabled' })}
+                    >
+                      <option value='enabled'>Enabled</option>
+                      <option value='disabled'>Disabled (Sonnet-only)</option>
+                    </select>
+                  </label>
+                </div>
+                {Object.entries(globalSettingsForm.epsilonModelRatesUsd || {}).map(([modelId, rates]) => (
+                  <div key={modelId}>
+                    <p className='ca-panel-note' style={{ marginBottom: 4 }}><strong>{modelId}</strong> — USD per 1,000,000 tokens</p>
+                    <div className='ca-form-grid'>
+                      {['inputPerM', 'outputPerM', 'cacheWritePerM', 'cacheReadPerM'].map((field) => (
+                        <label key={field}>
+                          <span>{field.replace('PerM', '')}</span>
+                          <input
+                            type='number'
+                            min='0'
+                            step='0.01'
+                            value={rates[field]}
+                            onChange={(e) => setGlobalSettingsForm({
+                              ...globalSettingsForm,
+                              epsilonModelRatesUsd: {
+                                ...globalSettingsForm.epsilonModelRatesUsd,
+                                [modelId]: { ...rates, [field]: Number(e.target.value) },
+                              },
+                            })}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div className='ca-panel-head-actions'>
+                  <button className='ca-primary-btn' type='button' onClick={handleUpdateGlobalSettings} disabled={isBusy}>
+                    {isBusy ? 'Saving...' : 'Save Cost Tracking Config'}
+                  </button>
+                </div>
+              </div>
+
               <form className='ca-panel' style={{ gridColumn: '1 / -1' }} onSubmit={handleGrantEmployeeEpsilonAccess}>
                 <div className='ca-panel-head'>
                   <h3>Grant an employee Epsilon access directly</h3>
@@ -3042,7 +3191,9 @@ const CentralAdminApp = () => {
                 <p className='ca-panel-note'>
                   Bypasses Team Access entirely — use this when a tenant's own super admin needs a seat right
                   now (they cannot edit their own profile from Settings, so a seat granted to them above has
-                  no self-service way to actually reach them).
+                  no self-service way to actually reach them). The rate-limit reset below uses the same
+                  tenant/email fields — deliberately platform-operator-only: a workspace admin resetting their
+                  own limit would defeat the point of having one.
                 </p>
                 <div className='ca-form-grid'>
                   <label>
@@ -3059,9 +3210,19 @@ const CentralAdminApp = () => {
                     <input type='email' name='emailid' value={epsilonEmployeeGrantForm.emailid} onChange={handleEpsilonEmployeeGrantField} placeholder='admin@company.com' />
                   </label>
                 </div>
-                <button className='ca-primary-btn' type='submit' disabled={isGrantingEmployeeAccess}>
-                  {isGrantingEmployeeAccess ? 'Granting...' : 'Grant Epsilon Access'}
-                </button>
+                <div className='ca-panel-head-actions'>
+                  <button className='ca-primary-btn' type='submit' disabled={isGrantingEmployeeAccess}>
+                    {isGrantingEmployeeAccess ? 'Granting...' : 'Grant Epsilon Access'}
+                  </button>
+                  <button
+                    className='ca-primary-btn'
+                    type='button'
+                    onClick={() => handleResetEmployeeRateLimit(epsilonEmployeeGrantForm.database, epsilonEmployeeGrantForm.emailid.trim())}
+                    disabled={!!isResettingEmployeeRateLimit}
+                  >
+                    {isResettingEmployeeRateLimit ? 'Resetting...' : 'Reset Their Rate Limit Now'}
+                  </button>
+                </div>
               </form>
             </section>
 
