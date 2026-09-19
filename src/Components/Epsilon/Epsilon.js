@@ -169,6 +169,38 @@ const Epsilon = () => {
         setConversationsLoaded(true)
     }
 
+    // Manual refresh — re-fetches whatever conversation is currently open
+    // (not necessarily the most recent one) plus the sidebar list, without
+    // requiring a full close/reopen of the widget. Resets the loaded flags
+    // first so the same loading state the initial open uses shows here too,
+    // rather than silently swapping content in.
+    const [isRefreshingChat, setIsRefreshingChat] = useState(false)
+    const refreshChat = async () => {
+        if (isRefreshingChat) return
+        setIsRefreshingChat(true)
+        setHistoryLoaded(false)
+        try {
+            const resp = await fetchServer(
+                'GET',
+                activeConversationId ? { conversationId: activeConversationId } : {},
+                'ai/epsilon/history',
+                server
+            )
+            if (!mountedRef.current) return
+            if (!resp.err && resp.ok && Array.isArray(resp.messages)) {
+                setMessages(resp.messages)
+                if (resp.conversationId) setActiveConversationId(resp.conversationId)
+            }
+        } finally {
+            if (mountedRef.current) setHistoryLoaded(true)
+        }
+        if (conversationsLoaded) {
+            setConversationsLoaded(false)
+            await loadConversations()
+        }
+        if (mountedRef.current) setIsRefreshingChat(false)
+    }
+
     useEffect(() => {
         if (expanded && !conversationsLoaded) loadConversations()
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -466,7 +498,18 @@ const Epsilon = () => {
 
     const messagesListJsx = (
         <div className="epsilon-messages">
-            {messages.length === 0 && (
+            {/* Distinguish "still fetching history" from "genuinely no history
+                yet" — without this, opening the chat showed the empty-state
+                invite text immediately, then had it pop away and get replaced
+                by real messages a moment later once ai/epsilon/history
+                actually resolved, which read as if nothing was happening. */}
+            {!historyLoaded && messages.length === 0 && (
+                <div className="epsilon-empty-state epsilon-loading-state">
+                    <div className="epsilon-empty-mark epsilon-loading-mark">ε</div>
+                    <p>Loading your conversation…</p>
+                </div>
+            )}
+            {historyLoaded && messages.length === 0 && (
                 <div className="epsilon-empty-state">
                     <div className="epsilon-empty-mark">ε</div>
                     <p>Ask me how to do something, why a transaction is blocked, what your numbers mean, or to generate a report.</p>
@@ -653,7 +696,10 @@ const Epsilon = () => {
         <div className="epsilon-sidebar">
             <button className="epsilon-sidebar-new-btn" onClick={startNewChat}>+ New chat</button>
             <div className="epsilon-sidebar-list">
-                {conversations.length === 0 && (
+                {!conversationsLoaded && conversations.length === 0 && (
+                    <div className="epsilon-sidebar-empty epsilon-sidebar-loading">Loading conversations…</div>
+                )}
+                {conversationsLoaded && conversations.length === 0 && (
                     <div className="epsilon-sidebar-empty">No conversations yet.</div>
                 )}
                 {conversations.map((c) => (
@@ -709,6 +755,9 @@ const Epsilon = () => {
                                     <span className="epsilon-panel-subtitle">AI assistant</span>
                                 </div>
                                 <div className="epsilon-header-actions">
+                                    <button className="epsilon-icon-btn" onClick={refreshChat} disabled={isRefreshingChat} aria-label="Refresh" title="Refresh conversation">
+                                        <span className={isRefreshingChat ? 'epsilon-refresh-spinning' : ''}>↻</span>
+                                    </button>
                                     <button className="epsilon-icon-btn" onClick={() => setExpanded(false)} aria-label="Collapse" title="Collapse">⤡</button>
                                     <button className="epsilon-icon-btn" onClick={() => { setOpen(false); setExpanded(false) }} aria-label="Close" title="Close">×</button>
                                 </div>
@@ -728,6 +777,9 @@ const Epsilon = () => {
                             <span className="epsilon-panel-subtitle">AI assistant</span>
                         </div>
                         <div className="epsilon-header-actions">
+                            <button className="epsilon-icon-btn" onClick={refreshChat} disabled={isRefreshingChat} aria-label="Refresh" title="Refresh conversation">
+                                <span className={isRefreshingChat ? 'epsilon-refresh-spinning' : ''}>↻</span>
+                            </button>
                             <button className="epsilon-icon-btn" onClick={() => setExpanded(true)} aria-label="Expand" title="Expand">⤢</button>
                             <button
                                 className="epsilon-icon-btn"

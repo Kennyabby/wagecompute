@@ -2047,6 +2047,11 @@ const Settings = () => {
                                                     All {epsilonSeatInfo.epsilonSeats} seat(s) are in use — free one up or purchase more before granting this employee access.
                                                 </div>
                                             )}
+                                            {selectedEmployee?.aiAccess && (
+                                                <div className='settings-toggle-hint'>
+                                                    Locked out of Epsilon until the usage window resets? Only the platform admin can reset that early (Central Admin) — this is a deliberate cost control, not something a workspace can bypass on its own.
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
