@@ -31,6 +31,7 @@ const TOOL_STATUS_LABELS = {
     trace_record_history: 'Tracing the transaction history…',
     who_can_approve: 'Checking who can approve this…',
     check_document_approval_status: 'Checking approval status…',
+    list_approval_requests: 'Checking the approvals queue…',
     check_session_close_readiness: 'Checking session close readiness…',
     search_directory: 'Looking that up…',
     explain_topic: 'Looking that up…',
@@ -374,20 +375,31 @@ const Epsilon = () => {
                         setError(data.mess || 'Epsilon ran into an error. Please try again.')
                         return
                     }
-                    let proposal = null
+                    // An array, not a single value — a request spanning several
+                    // locations/vendors in one turn (e.g. "use vendor X for bar1
+                    // and vip, vendor Y for kitchen") makes the model call
+                    // propose_purchase_order once per location, and each one
+                    // needs its own independent confirm button. A single
+                    // `pendingPurchaseOrderProposal` used to keep only the last
+                    // one, silently dropping the rest (confirmed live: three
+                    // proposed, only one ever confirmable).
+                    const proposals = []
                     if (data.pendingScriptProposal) {
-                        proposal = { ...data.pendingScriptProposal, kind: 'script', title: 'Proposed correction', status: 'pending' }
-                    } else if (data.pendingPurchaseOrderProposal) {
-                        proposal = { ...data.pendingPurchaseOrderProposal, kind: 'purchase_order', title: 'Proposed purchase order', status: 'pending' }
+                        proposals.push({ ...data.pendingScriptProposal, kind: 'script', title: 'Proposed correction', status: 'pending' })
                     }
-                    // Read-only, no confirm step — a sibling to proposal, not
+                    if (Array.isArray(data.pendingPurchaseOrderProposals)) {
+                        data.pendingPurchaseOrderProposals.forEach((p) => {
+                            proposals.push({ ...p, kind: 'purchase_order', title: 'Proposed purchase order', status: 'pending' })
+                        })
+                    }
+                    // Read-only, no confirm step — a sibling to proposals, not
                     // a variant of it.
                     const report = data.pendingReport || null
                     setMessages((prev) => {
                         const lastIdx = prev.length - 1
                         if (!prev[lastIdx]?.streaming) return prev
                         const next = [...prev]
-                        next[lastIdx] = { ...next[lastIdx], text: data.text || next[lastIdx].text, at: Date.now(), streaming: false, proposal, report }
+                        next[lastIdx] = { ...next[lastIdx], text: data.text || next[lastIdx].text, at: Date.now(), streaming: false, proposals, report }
                         return next
                     })
                     if (conversationsLoaded) loadConversations()
@@ -415,30 +427,58 @@ const Epsilon = () => {
         purchase_order: 'ai/epsilon/purchase-orders/confirm',
     }
 
-    // Updates just the proposal on whichever message currently holds this
-    // token — there's only ever one live proposal at a time in practice, but
-    // matching by token (not "the last message") keeps this correct even if
-    // that ever changes.
+    // Updates just the one proposal matching this token, wherever it lives —
+    // a message can hold several (see the proposals array built above), so
+    // this must patch by token within the array, not replace a single value.
     const updateProposal = (token, patch) => {
         setMessages((prev) => prev.map((m) => (
-            m.proposal?.token === token ? { ...m, proposal: { ...m.proposal, ...patch } } : m
+            Array.isArray(m.proposals) && m.proposals.some((p) => p.token === token)
+                ? { ...m, proposals: m.proposals.map((p) => (p.token === token ? { ...p, ...patch } : p)) }
+                : m
         )))
     }
 
-    const dismissProposal = (token) => updateProposal(token, { status: 'dismissed' })
+    // Purchase-order proposals are deliberately non-expiring and re-runnable
+    // server-side (see purchaseAdvisor.js) — dismissing one is the only
+    // thing that actually removes it, so this tells the server to forget it
+    // too, not just hide the card locally. Script-correction proposals stay
+    // one-shot/short-lived server-side, so a local-only hide is enough for
+    // those (the token naturally expires and was likely already consumed).
+    const dismissProposal = async (token, kind) => {
+        updateProposal(token, { status: 'dismissed' })
+        if (kind === 'purchase_order') {
+            fetchServer('POST', { token }, 'ai/epsilon/purchase-orders/dismiss', server).catch(() => {})
+        }
+    }
 
-    const confirmProposal = async (token, kind) => {
+    const confirmProposal = async (token, kind, editedUnitCost) => {
         updateProposal(token, { status: 'running' })
-        const resp = await fetchServer('POST', { token }, CONFIRM_ENDPOINTS[kind] || CONFIRM_ENDPOINTS.script, server)
+        // unitCost is only meaningful for purchase_order — the confirm route
+        // ignores it for every other kind. Undefined/blank means "use
+        // whatever was already computed at propose time," not "zero."
+        const body = { token }
+        if (kind === 'purchase_order' && editedUnitCost !== undefined && editedUnitCost !== '') {
+            body.unitCost = Number(editedUnitCost)
+        }
+        const resp = await fetchServer('POST', body, CONFIRM_ENDPOINTS[kind] || CONFIRM_ENDPOINTS.script, server)
         if (!mountedRef.current) return
         if (resp.err || !resp.ok) {
-            updateProposal(token, { status: 'error', resultMess: resp.mess || 'That action failed to run.' })
+            // Purchase orders stay interactive after a failed run (kind stays
+            // pending-equivalent, not a dead end) — the user should be able
+            // to fix the price/etc and just try again without re-asking
+            // Epsilon to propose it from scratch.
+            updateProposal(token, { status: kind === 'purchase_order' ? 'pending' : 'error', resultMess: resp.mess || 'That action failed to run.' })
             return
         }
         const resultMess = kind === 'purchase_order'
             ? `Purchase order ${resp.documentNo || ''} created.`
             : 'Applied successfully.'
-        updateProposal(token, { status: 'done', resultMess, resultOutput: resp.output })
+        // Purchase orders go back to 'pending' (fully interactive — edit
+        // price, run again) rather than a terminal 'done'; only Dismiss
+        // actually ends this card's life, per the user's explicit ask.
+        updateProposal(token, kind === 'purchase_order'
+            ? { status: 'pending', resultMess, resultOutput: resp.output }
+            : { status: 'done', resultMess, resultOutput: resp.output })
     }
 
     // exportUtils.js's generatePDF/generateExcel expect columns as
@@ -565,38 +605,67 @@ const Epsilon = () => {
                             </div>
                         )}
                     </div>
-                    {m.proposal && m.proposal.status !== 'dismissed' && (
-                        <div className="epsilon-proposal-card">
-                            <div className="epsilon-proposal-title">{m.proposal.title}</div>
-                            {m.proposal.description && <div className="epsilon-proposal-desc">{m.proposal.description}</div>}
-                            {m.proposal.kind === 'purchase_order' && m.proposal.preview && (
+                    {Array.isArray(m.proposals) && m.proposals.filter((p) => p.status !== 'dismissed').map((p) => (
+                        <div className="epsilon-proposal-card" key={p.token}>
+                            <div className="epsilon-proposal-title">{p.title}</div>
+                            {p.description && <div className="epsilon-proposal-desc">{p.description}</div>}
+                            {p.kind === 'purchase_order' && p.preview && (
                                 <div className="epsilon-proposal-desc">
-                                    {m.proposal.preview.quantity}× {m.proposal.preview.productName} from {m.proposal.preview.vendor}
-                                    {m.proposal.preview.unitCost ? ` @ ${m.proposal.preview.unitCost}/unit (est. total ${m.proposal.preview.purchaseAmount})` : ''}
-                                    {' — posting '}{m.proposal.preview.postingDate}
+                                    {p.preview.quantity}× {p.preview.productName} from {p.preview.vendor}
+                                    {' — posting '}{p.preview.postingDate}
                                 </div>
                             )}
-                            {m.proposal.preview?.output && (
-                                <pre className="epsilon-proposal-preview">{m.proposal.preview.output}</pre>
+                            {p.kind === 'purchase_order' && p.status === 'pending' && (
+                                <label className="epsilon-proposal-price-field">
+                                    <span>Unit cost (₦)</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={p.editedUnitCost ?? p.preview?.unitCost ?? ''}
+                                        placeholder="0.00"
+                                        onChange={(e) => updateProposal(p.token, { editedUnitCost: e.target.value })}
+                                    />
+                                    {(() => {
+                                        const cost = Number(p.editedUnitCost ?? p.preview?.unitCost ?? 0)
+                                        const qty = Number(p.preview?.quantity ?? 0)
+                                        return cost > 0 && qty > 0
+                                            ? <span className="epsilon-proposal-price-total">est. total {(cost * qty).toLocaleString()}</span>
+                                            : null
+                                    })()}
+                                </label>
                             )}
-                            {m.proposal.note && <div className="epsilon-proposal-note">{m.proposal.note}</div>}
-                            {m.proposal.status === 'pending' && (
+                            {p.preview?.output && (
+                                <pre className="epsilon-proposal-preview">{p.preview.output}</pre>
+                            )}
+                            {p.note && <div className="epsilon-proposal-note">{p.note}</div>}
+                            {/* Purchase orders revert to 'pending' after every run (success
+                                or failure) instead of a terminal 'done'/'error' — the card
+                                stays fully interactive (editable price, runnable again)
+                                until the user explicitly dismisses it, per the user's
+                                explicit ask that these never just expire on their own. */}
+                            {p.kind === 'purchase_order' && p.status === 'pending' && p.resultMess && (
+                                <div className="epsilon-proposal-status epsilon-proposal-status-done">
+                                    {p.resultMess}
+                                </div>
+                            )}
+                            {p.status === 'pending' && (
                                 <div className="epsilon-proposal-actions">
-                                    <button className="epsilon-proposal-run-btn" onClick={() => confirmProposal(m.proposal.token, m.proposal.kind)}>Run it</button>
-                                    <button className="epsilon-proposal-dismiss-btn" onClick={() => dismissProposal(m.proposal.token)}>Dismiss</button>
+                                    <button className="epsilon-proposal-run-btn" onClick={() => confirmProposal(p.token, p.kind, p.editedUnitCost)}>Run it</button>
+                                    <button className="epsilon-proposal-dismiss-btn" onClick={() => dismissProposal(p.token, p.kind)}>Dismiss</button>
                                 </div>
                             )}
-                            {m.proposal.status === 'running' && (
+                            {p.status === 'running' && (
                                 <div className="epsilon-proposal-status">Running…</div>
                             )}
-                            {(m.proposal.status === 'done' || m.proposal.status === 'error') && (
-                                <div className={`epsilon-proposal-status ${m.proposal.status === 'error' ? 'epsilon-proposal-status-error' : 'epsilon-proposal-status-done'}`}>
-                                    {m.proposal.resultMess}
-                                    {m.proposal.resultOutput && <pre className="epsilon-proposal-preview">{m.proposal.resultOutput}</pre>}
+                            {(p.status === 'done' || p.status === 'error') && (
+                                <div className={`epsilon-proposal-status ${p.status === 'error' ? 'epsilon-proposal-status-error' : 'epsilon-proposal-status-done'}`}>
+                                    {p.resultMess}
+                                    {p.resultOutput && <pre className="epsilon-proposal-preview">{p.resultOutput}</pre>}
                                 </div>
                             )}
                         </div>
-                    )}
+                    ))}
                     {m.report && (
                         <div className="epsilon-report-card">
                             <div className="epsilon-report-title">{m.report.title || 'Report'}</div>

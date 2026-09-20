@@ -706,6 +706,33 @@
     margin-bottom: 6px;
 }
 
+.epsilon-proposal-price-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.epsilon-proposal-price-field span:first-child {
+    font-size: 11px;
+    color: var(--epsilon-text-muted);
+}
+
+.epsilon-proposal-price-field input {
+    width: 90px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--epsilon-border-soft);
+    background: var(--epsilon-bg);
+    color: var(--epsilon-text);
+    font-size: 12px;
+}
+
+.epsilon-proposal-price-total {
+    font-size: 11px;
+    color: var(--epsilon-text-muted);
+}
+
 .epsilon-proposal-actions {
     display: flex;
     gap: 8px;
