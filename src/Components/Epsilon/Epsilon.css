@@ -611,6 +611,10 @@
     text-align: left;
     border-bottom: 1px solid var(--epsilon-table-border);
     white-space: nowrap;
+    /* Explicit — without it td text inherits an unreadable color in dark
+       mode (same bug and same fix already confirmed live on the purchase-
+       order table: see .epsilon-po-table td's own comment). */
+    color: var(--epsilon-text);
 }
 
 .epsilon-md-table th {
@@ -625,6 +629,15 @@
 
 .epsilon-md-table tbody tr:last-child td {
     border-bottom: none;
+}
+
+/* Same completely unscoped global rule (TransactionReports.css: `tbody
+   tr:hover { background-color: #f8f9fa; }`) bleeds into every table in the
+   app, this one included — a light hover background combined with dark-
+   theme text color makes a hovered row's text disappear, same as the
+   purchase-order table. */
+.epsilon-md-table tbody tr:hover {
+    background-color: transparent;
 }
 
 .epsilon-bubble-typing {
