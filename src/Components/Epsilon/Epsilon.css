@@ -407,6 +407,52 @@
     padding: 3px 0;
 }
 
+/* Live "which model / how many tokens so far" indicator, shown while a
+   reply is still streaming — see currentModel/liveTokens in Epsilon.js. */
+.epsilon-model-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0 5px;
+}
+
+.epsilon-model-badge {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--epsilon-brand);
+    background: var(--epsilon-bg-secondary);
+    border: 1px solid var(--epsilon-border);
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+
+.epsilon-root[data-theme="dark"] .epsilon-model-badge {
+    color: var(--epsilon-accent);
+}
+
+.epsilon-token-count {
+    font-size: 11px;
+    color: var(--epsilon-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Settled end-of-turn cost/rate-limit summary, shown under every completed
+   assistant reply — tokens used this reply, tokens left in the current
+   rate-limit window, and when that window resets. */
+.epsilon-usage-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px 10px;
+    margin-top: 4px;
+    padding-top: 5px;
+    border-top: 1px dashed var(--epsilon-border-soft);
+    font-size: 10.5px;
+    color: var(--epsilon-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
 .epsilon-thinking-live {
     margin-bottom: 8px;
     padding: 8px 10px;
@@ -1500,6 +1546,35 @@
     font-size: 15px;
     line-height: 1.5;
     min-height: 22px;
+}
+
+/* Same live model/token visibility as the text-mode bubble, for voice mode's
+   dark overlay — deliberately fixed light-on-dark colors (not the
+   --epsilon-* theme vars, which flip per app theme and would be wrong here
+   since this overlay is always dark regardless of app theme). */
+.epsilon-voice-status-sub {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.epsilon-voice-status-sub .epsilon-model-badge {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #cfe6d6;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+
+.epsilon-voice-status-sub .epsilon-token-count {
+    font-size: 11px;
+    color: rgba(207, 230, 214, 0.75);
+    font-variant-numeric: tabular-nums;
 }
 
 @media (prefers-reduced-motion: reduce) {

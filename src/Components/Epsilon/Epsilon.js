@@ -67,6 +67,36 @@ const toolStatusLabel = (toolName) => (
     || `Checking ${String(toolName || '').replace(/_/g, ' ')}…`
 )
 
+// Friendly names for the raw Anthropic model ids epsilon.js's 'model_start'/
+// 'done' events carry — falls back to the raw id for any model not listed
+// here so a future/renamed model never shows up blank.
+const MODEL_LABELS = {
+    'claude-sonnet-5': 'Sonnet 5',
+    'claude-opus-5': 'Opus 5',
+    'claude-haiku-4-5-20251001': 'Haiku 4.5',
+    'claude-fable-5-1': 'Fable 5.1',
+}
+const modelLabel = (modelId) => MODEL_LABELS[modelId] || modelId || ''
+
+const formatTokens = (n) => {
+    const num = Number(n || 0)
+    if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}k`
+    return String(num)
+}
+
+// "resets at 4:32 PM (in 45m)" — short enough for an inline footer.
+const formatResetIn = (resetAt) => {
+    if (!resetAt) return ''
+    const diffMs = Number(resetAt) - Date.now()
+    if (diffMs <= 0) return 'now'
+    const mins = Math.round(diffMs / 60000)
+    if (mins < 1) return 'in under a minute'
+    if (mins < 60) return `in ${mins}m`
+    const hours = Math.floor(mins / 60)
+    const remMins = mins % 60
+    return remMins ? `in ${hours}h ${remMins}m` : `in ${hours}h`
+}
+
 const formatTime = (date) => {
     try {
         return new Date(date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -118,6 +148,13 @@ const Epsilon = () => {
     const [draft, setDraft] = useState('')
     const [sending, setSending] = useState(false)
     const [toolStatus, setToolStatus] = useState(null)
+    // Live "which model / how many tokens so far" indicator — mirrors what
+    // this coding assistant's own UI shows while thinking, per the user's
+    // explicit request. currentModel/liveTokens reset to null/0 at the start
+    // of every turn and stop updating once 'done' lands (the final, settled
+    // usage figures then live on the message itself — see m.usage below).
+    const [currentModel, setCurrentModel] = useState(null)
+    const [liveTokens, setLiveTokens] = useState(0)
     const [historyLoaded, setHistoryLoaded] = useState(false)
     const [error, setError] = useState('')
     const [copiedIndex, setCopiedIndex] = useState(null)
@@ -152,6 +189,13 @@ const Epsilon = () => {
     const [voicePhase, setVoicePhase] = useState('idle') // idle | listening | processing | speaking
     const voiceModeOpenRef = useRef(false)
     useEffect(() => { voiceModeOpenRef.current = voiceModeOpen }, [voiceModeOpen])
+    // Mirrors voicePhase for the same reason sendingRef mirrors sending —
+    // the "still working" timer below fires from a setTimeout callback,
+    // which closes over whatever render was active when it was armed and
+    // would otherwise see a stale phase.
+    const voicePhaseRef = useRef('idle')
+    useEffect(() => { voicePhaseRef.current = voicePhase }, [voicePhase])
+    const stillWorkingTimerRef = useRef(null)
     const bottomRef = useRef(null)
     const inputRef = useRef(null)
     const mountedRef = useRef(true)
@@ -197,6 +241,7 @@ const Epsilon = () => {
         recognitionRef.current?.abort()
         stopSpeaking()
         stopSpeakLevelLoop()
+        clearStillWorkingTimer()
     }, [])
 
     // Tenant-wide voice preference an admin set in Settings > Billing >
@@ -462,6 +507,71 @@ const Epsilon = () => {
         setIsSpeaking(false)
     }
 
+    // ===== Voice-mode progress narration — confirmed live: while a turn was
+    // doing real work (tool calls, a slow generation), voice mode just sat
+    // in total silence until the final answer, indistinguishable from being
+    // stuck. This speaks the same tool-status labels already shown visually
+    // in text mode (toolStatusLabel), plus a periodic "still working" nudge
+    // for a single long-running step with no new tool_start to announce. =====
+
+    // Every speak() call (interim status or the final answer) gets the next
+    // generation number; a callback only acts if its generation is still
+    // current — prevents a slow-to-fire interim onEnd from clobbering state
+    // a NEWER speak call (the final answer, or a later status update)
+    // already moved past. speak() itself cancels whatever's currently
+    // playing before starting the next one, so at most one is ever
+    // "current" at a time regardless of how many were requested.
+    const speakGenerationRef = useRef(0)
+
+    const clearStillWorkingTimer = () => {
+        if (stillWorkingTimerRef.current) clearTimeout(stillWorkingTimerRef.current)
+        stillWorkingTimerRef.current = null
+    }
+
+    // Speaks a short interim status (a tool label, or the "still working"
+    // nudge) without triggering the auto-relisten the FINAL answer's own
+    // speak() call does in the 'done' handler below — this is mid-turn, not
+    // the end of one.
+    const speakInterim = (text) => {
+        if (!ttsSupported || !text || !voiceModeOpenRef.current) return
+        const myGen = ++speakGenerationRef.current
+        speak(text, {
+            gender: voicePreference.gender,
+            accent: voicePreference.accent,
+            onStart: () => {
+                if (speakGenerationRef.current !== myGen) return
+                setIsSpeaking(true)
+                setVoicePhase('speaking')
+            },
+            onEnd: () => {
+                if (speakGenerationRef.current !== myGen) return
+                setIsSpeaking(false)
+                if (voiceModeOpenRef.current) {
+                    setVoicePhase('processing')
+                    armStillWorkingTimer()
+                }
+            },
+            onError: () => {
+                if (speakGenerationRef.current !== myGen) return
+                setIsSpeaking(false)
+                if (voiceModeOpenRef.current) setVoicePhase('processing')
+            },
+        })
+    }
+
+    // Re-arms itself (via speakInterim's own onEnd above) for as long as the
+    // turn stays in 'processing' with nothing new to announce — a single
+    // slow tool call or generation still gets a periodic audible nudge
+    // instead of the silence that prompted this feature.
+    const armStillWorkingTimer = () => {
+        clearStillWorkingTimer()
+        stillWorkingTimerRef.current = setTimeout(() => {
+            if (voiceModeOpenRef.current && voicePhaseRef.current === 'processing') {
+                speakInterim('Still working on it…')
+            }
+        }, 7000)
+    }
+
     // Stops the current SpeechRecognition session. `cancel: true` (mic
     // clicked again, orb tapped while listening, voice mode closed) discards
     // whatever was heard so far; `cancel: false` (browser detected trailing
@@ -542,7 +652,10 @@ const Epsilon = () => {
             recognitionRef.current = null
             const finalText = finalTranscript.trim()
             if (finalText && !recognitionCancelledRef.current) {
-                if (voiceModeOpenRef.current) setVoicePhase('processing')
+                if (voiceModeOpenRef.current) {
+                    setVoicePhase('processing')
+                    armStillWorkingTimer()
+                }
                 sendMessage(finalText)
             } else if (voiceModeOpenRef.current) {
                 setVoicePhase('idle')
@@ -587,6 +700,8 @@ const Epsilon = () => {
         setVoicePhase('idle')
         stopListening(true)
         stopEpsilonSpeaking()
+        clearStillWorkingTimer()
+        speakGenerationRef.current += 1 // stale-proofs any interim speak still in flight
     }
 
     // Tap-to-interrupt, ChatGPT-style: tapping the orb while it's talking
@@ -641,6 +756,8 @@ const Epsilon = () => {
         setMessages((prev) => [...prev, { role: 'user', text, at: now }, { role: 'assistant', text: '', thinking: '', at: null, streaming: true }])
         setSending(true)
         setToolStatus(null)
+        setCurrentModel(null)
+        setLiveTokens(0)
 
         abortControllerRef.current = new AbortController()
         let settled = false
@@ -669,13 +786,21 @@ const Epsilon = () => {
                         return next
                     })
                 } else if (type === 'tool_start') {
-                    setToolStatus(toolStatusLabel(data.tools?.[0]))
+                    const label = toolStatusLabel(data.tools?.[0])
+                    setToolStatus(label)
+                    if (voiceModeOpenRef.current) speakInterim(label)
                 } else if (type === 'tool_end') {
                     setToolStatus(null)
+                } else if (type === 'model_start') {
+                    setCurrentModel(data.model || null)
+                } else if (type === 'usage_update') {
+                    setLiveTokens(Number(data.totalTokens || 0))
                 } else if (type === 'done') {
                     settled = true
                     setSending(false)
                     setToolStatus(null)
+                    setCurrentModel(null)
+                    setLiveTokens(0)
                     if (data.conversationId) setActiveConversationId(data.conversationId)
                     if (!data.ok) {
                         setMessages((prev) => {
@@ -684,6 +809,8 @@ const Epsilon = () => {
                             return prev
                         })
                         setError(data.mess || 'Epsilon ran into an error. Please try again.')
+                        clearStillWorkingTimer()
+                        speakGenerationRef.current += 1 // stale-proofs any interim speak still in flight
                         // Don't auto-relisten into an error loop — leave voice
                         // mode open (if it is) with the orb idle so the user
                         // can read/hear the problem and tap to retry.
@@ -714,10 +841,24 @@ const Epsilon = () => {
                         const lastIdx = prev.length - 1
                         if (!prev[lastIdx]?.streaming) return prev
                         const next = [...prev]
-                        next[lastIdx] = { ...next[lastIdx], text: data.text || next[lastIdx].text, at: Date.now(), streaming: false, proposals, report }
+                        next[lastIdx] = {
+                            ...next[lastIdx], text: data.text || next[lastIdx].text, at: Date.now(), streaming: false, proposals, report,
+                            // Settled per-turn cost/rate-limit figures — see
+                            // runEpsilonTurn's final return in epsilon.js. Shown
+                            // as this specific reply's own footer summary
+                            // ("this reply used 1.2k tokens, 8.8k left this hour,
+                            // resets in 42m") per the user's explicit request to
+                            // always know consumption/remaining/reset time.
+                            usage: data.usage || null,
+                        }
                         return next
                     })
                     if (conversationsLoaded) loadConversations()
+                    // The turn is over — no more "still working" nudges, and any
+                    // interim status speech still in flight is now stale (its
+                    // generation check makes its callbacks no-op from here on).
+                    clearStillWorkingTimer()
+                    speakGenerationRef.current += 1
                     // Spoken replies: either the standalone "read replies aloud"
                     // toggle (text-mode convenience) or full voice mode (always
                     // speaks, and loops back into listening once done — a real
@@ -957,6 +1098,15 @@ const Epsilon = () => {
                             </span>
                         )}
                         {m.streaming && toolStatus && <span className="epsilon-tool-status">🔧 {toolStatus}</span>}
+                        {/* Live "which model / how many tokens so far" — only meaningful
+                            on the message currently streaming, since currentModel/liveTokens
+                            are reset for every new turn (see sendMessage above). */}
+                        {m.streaming && (currentModel || liveTokens > 0) && (
+                            <span className="epsilon-model-status">
+                                {currentModel && <span className="epsilon-model-badge">{modelLabel(currentModel)}</span>}
+                                {liveTokens > 0 && <span className="epsilon-token-count">{formatTokens(liveTokens)} tokens</span>}
+                            </span>
+                        )}
                         {m.role === 'assistant' ? renderMarkdownLite(m.text) : m.text}
                         {m.streaming && m.text ? <span className="epsilon-cursor" /> : null}
                         {(!m.streaming || m.text) && (
@@ -971,6 +1121,24 @@ const Epsilon = () => {
                                     >
                                         {copiedIndex === i ? 'Copied' : 'Copy'}
                                     </button>
+                                )}
+                            </div>
+                        )}
+                        {/* Settled end-of-turn cost/rate-limit summary — "how many
+                            tokens consumed, how many remaining, how long before my
+                            rate limit ends and when next it will restart", per the
+                            user's explicit request, shown on every completed reply. */}
+                        {!m.streaming && m.role === 'assistant' && m.usage && (
+                            <div className="epsilon-usage-footer">
+                                <span>
+                                    {m.usage.modelsUsed?.length ? m.usage.modelsUsed.map(modelLabel).join(' → ') : 'Instant reply'}
+                                </span>
+                                <span>{formatTokens(m.usage.totalTokens)} tokens used</span>
+                                {m.usage.rateLimitTokensRemaining != null && (
+                                    <span>{formatTokens(m.usage.rateLimitTokensRemaining)} left this window</span>
+                                )}
+                                {m.usage.rateLimitResetAt != null && (
+                                    <span>resets {formatResetIn(m.usage.rateLimitResetAt)}</span>
                                 )}
                             </div>
                         )}
@@ -1253,10 +1421,19 @@ const Epsilon = () => {
             </div>
             <div className="epsilon-voice-caption">
                 {voicePhase === 'listening' && (draft || 'Listening…')}
-                {voicePhase === 'processing' && 'Thinking…'}
+                {voicePhase === 'processing' && (toolStatus || 'Thinking…')}
                 {voicePhase === 'speaking' && 'Speaking…'}
                 {voicePhase === 'idle' && (error || 'Tap the orb to talk')}
             </div>
+            {/* Same live model/token visibility as the text-mode bubble above —
+                spoken aloud too (see speakInterim's tool_start wiring), but shown
+                here as well so it's visible without needing sound on. */}
+            {voicePhase === 'processing' && (currentModel || liveTokens > 0) && (
+                <div className="epsilon-voice-status-sub">
+                    {currentModel && <span className="epsilon-model-badge">{modelLabel(currentModel)}</span>}
+                    {liveTokens > 0 && <span className="epsilon-token-count">{formatTokens(liveTokens)} tokens</span>}
+                </div>
+            )}
         </div>
     )
 
