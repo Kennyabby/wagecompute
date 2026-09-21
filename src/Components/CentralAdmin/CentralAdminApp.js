@@ -211,6 +211,9 @@ const CentralAdminApp = () => {
   // several rows each have their own reset button (see the tenant profiles
   // table below).
   const [isResettingEmployeeRateLimit, setIsResettingEmployeeRateLimit] = useState('')
+  // Which employee's Epsilon seat is currently being granted/revoked from
+  // the tenant-detail table — an emailid string while in flight, '' when idle.
+  const [isTogglingAiAccess, setIsTogglingAiAccess] = useState('')
   // The tenant detail drill-down used to stack ~9 unrelated sections
   // (billing, modules, Epsilon seats/tokens/usage, WC + tenant profile
   // tables, employees, activity) into one continuous two-column scroll with
@@ -895,6 +898,39 @@ const CentralAdminApp = () => {
     }
     setNotice('success', response.mess || 'Rate limit reset.')
     setIsResettingEmployeeRateLimit('')
+  }
+
+  // Operator-level grant/revoke of one employee's Epsilon seat, straight
+  // from the tenant-detail table — the platform side of the same toggle a
+  // tenant's own admin already has in their Settings > Team Access screen
+  // (Profile.aiAccess). Deliberately does NOT check the tenant's purchased
+  // seat count/usedSeats here: this is a support/override action (same
+  // spirit as Reset Rate Limit above, which a tenant can't self-serve
+  // either), not the normal per-tenant seat-purchase flow — an operator
+  // granting access is an intentional exception, not something that should
+  // be silently blocked by a seat count a tenant admin would also be bound
+  // by. Reuses the existing /admin/billing/epsilon/grant-employee-access
+  // route (billing.js) — already supported true/false, it just had no
+  // general-purpose UI in Central Admin before this.
+  const handleToggleEmployeeAiAccess = async (database, emailid, nextAiAccess) => {
+    if (!database || !emailid) {
+      setNotice('error', 'Select a tenant and enter the employee email.')
+      return
+    }
+    setIsTogglingAiAccess(emailid)
+    const response = await requestAdmin('POST', 'admin/billing/epsilon/grant-employee-access', { database, emailid, aiAccess: nextAiAccess })
+    if (response.err || !response.ok) {
+      setNotice('error', response.mess || `Unable to ${nextAiAccess ? 'grant' : 'revoke'} Epsilon access for this employee.`)
+      setIsTogglingAiAccess('')
+      return
+    }
+    setNotice('success', `Epsilon access ${nextAiAccess ? 'granted to' : 'revoked from'} ${emailid}.`)
+    // Refetch the whole tenant-detail view (same pattern the tenant-facing
+    // Settings screen uses after its own aiAccess toggle) rather than
+    // patching tenantDetails.tenantProfiles locally — keeps this in sync
+    // with whatever else loadTenantDetails already bundles for this tenant.
+    await loadTenantDetails(database)
+    setIsTogglingAiAccess('')
   }
 
   const handleSaveEpsilonSeatPrice = async () => {
@@ -1744,16 +1780,31 @@ const CentralAdminApp = () => {
                           </table>
                         </div>
 
-                        <div className='ca-table-wrap'>
-                          <table className='ca-table'>
-                            <thead>
-                              <tr>
-                                <th>Tenant profiles</th>
-                                <th>Status</th>
-                                <th>Permissions</th>
-                                <th>Epsilon AI</th>
-                              </tr>
-                            </thead>
+                        {(() => {
+                          // Computed straight from what's already loaded — no
+                          // extra fetch — and reused by both the summary line
+                          // and the Grant button's disabled state right below,
+                          // so they can never disagree with each other.
+                          const epsilonSeatsTotal = Number(tenantDetails.companyProfile?.epsilonSeats || 0)
+                          const epsilonSeatsUsed = (tenantDetails.tenantProfiles || []).filter((p) => p.aiAccess === true).length
+                          const epsilonSeatsFull = epsilonSeatsTotal <= 0 || epsilonSeatsUsed >= epsilonSeatsTotal
+                          return (
+                            <div className='ca-table-wrap'>
+                              <div style={{ padding: '10px 14px', fontSize: '13px', color: '#5b6b63' }}>
+                                Epsilon seats: <strong>{epsilonSeatsUsed} of {epsilonSeatsTotal}</strong> in use
+                                {epsilonSeatsFull && (epsilonSeatsTotal > 0
+                                  ? ' — all seats are in use; revoke one below before granting another.'
+                                  : ' — this tenant has not purchased/been granted any Epsilon seats yet.')}
+                              </div>
+                              <table className='ca-table'>
+                                <thead>
+                                  <tr>
+                                    <th>Tenant profiles</th>
+                                    <th>Status</th>
+                                    <th>Permissions</th>
+                                    <th>Epsilon AI</th>
+                                  </tr>
+                                </thead>
                             <tbody>
                               {tenantDetails.tenantProfiles?.length ? tenantDetails.tenantProfiles.map((profile, index) => (
                                 <tr key={`${profile.emailid}-${index}`}>
@@ -1761,22 +1812,43 @@ const CentralAdminApp = () => {
                                   <td>{profile.status || profile.access || '--'}</td>
                                   <td>{Array.isArray(profile.permissions) ? profile.permissions.slice(0, 4).join(', ') : '--'}</td>
                                   <td>
-                                    {profile.aiAccess ? (
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                                       <button
                                         className='ca-inline-btn'
                                         type='button'
-                                        onClick={() => handleResetEmployeeRateLimit(selectedTenant, profile.emailid)}
-                                        disabled={isResettingEmployeeRateLimit === profile.emailid}
+                                        onClick={() => handleToggleEmployeeAiAccess(selectedTenant, profile.emailid, !profile.aiAccess)}
+                                        disabled={isTogglingAiAccess === profile.emailid || (!profile.aiAccess && epsilonSeatsFull)}
+                                        title={
+                                          profile.aiAccess
+                                            ? 'Revoke this employee\'s Epsilon seat'
+                                            : epsilonSeatsFull
+                                              ? 'No spare seats — revoke one from another employee first, or purchase more.'
+                                              : 'Grant this employee an Epsilon seat'
+                                        }
                                       >
-                                        {isResettingEmployeeRateLimit === profile.emailid ? 'Resetting...' : 'Reset Rate Limit'}
+                                        {isTogglingAiAccess === profile.emailid
+                                          ? (profile.aiAccess ? 'Revoking...' : 'Granting...')
+                                          : (profile.aiAccess ? 'Revoke Seat' : 'Grant Seat')}
                                       </button>
-                                    ) : '--'}
+                                      {profile.aiAccess && (
+                                        <button
+                                          className='ca-inline-btn'
+                                          type='button'
+                                          onClick={() => handleResetEmployeeRateLimit(selectedTenant, profile.emailid)}
+                                          disabled={isResettingEmployeeRateLimit === profile.emailid}
+                                        >
+                                          {isResettingEmployeeRateLimit === profile.emailid ? 'Resetting...' : 'Reset Rate Limit'}
+                                        </button>
+                                      )}
+                                    </div>
                                   </td>
                                 </tr>
                               )) : <tr><td colSpan='4' className='ca-empty'>No tenant profile records found.</td></tr>}
-                            </tbody>
-                          </table>
-                        </div>
+                                </tbody>
+                              </table>
+                            </div>
+                          )
+                        })()}
 
                         <div className='ca-table-wrap'>
                           <table className='ca-table'>
