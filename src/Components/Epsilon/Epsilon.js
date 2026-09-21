@@ -512,11 +512,28 @@ const Epsilon = () => {
     const startListening = () => {
         if (!sttSupported) return
         if (isListening) { stopListening(true); return }
+        // Clear any leftover error from a previous attempt/turn before this
+        // one starts — otherwise the onend fallback's setError(prev => prev
+        // || …) below could preserve a stale, unrelated message instead of
+        // reflecting THIS attempt's own outcome.
+        setError('')
         // Never let Epsilon's own voice bleed into the mic.
         stopEpsilonSpeaking()
         const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition
         const recognition = new SpeechRecognitionCtor()
-        recognition.lang = voicePreference.accent || 'en-US'
+        // Deliberately NOT voicePreference.accent — that's an admin-set
+        // preference for how EPSILON's spoken replies sound (TTS), matched
+        // loosely/gracefully against whatever voices the browser happens to
+        // have (see speechVoice.js's pickVoice). Speech RECOGNITION is a
+        // completely different, much stricter API — confirmed live: setting
+        // recognition.lang to "en-NG" (a real, valid accent option in this
+        // same Settings screen) made recognition silently produce zero
+        // results on every attempt, with no visible cause (the resulting
+        // empty transcript looked identical to "the user said nothing" —
+        // see the onerror/onend fix below for the other half of this).
+        // en-US is universally supported by every browser implementing this
+        // API and handles a wide range of real accents reasonably well.
+        recognition.lang = 'en-US'
         recognition.continuous = false
         recognition.interimResults = true
         recognition.maxAlternatives = 1
@@ -532,14 +549,24 @@ const Epsilon = () => {
             }
             setDraft((finalTranscript + interim).trim())
         }
+        // 'aborted' is the one real silent case — it only fires when WE
+        // called recognition.abort() ourselves (the user cancelled), so
+        // there's nothing to tell them that they don't already know.
+        // Everything else, including 'no-speech', now surfaces something —
+        // confirmed live: silently swallowing 'no-speech' made a genuine
+        // recognition failure (e.g. an unsupported language, confirmed
+        // separately above) look EXACTLY like "you didn't say anything",
+        // with zero visible difference between the two — "I don't see any
+        // sign that a prompt was sent at all" had no way to be diagnosed.
         recognition.onerror = (event) => {
-            if (event.error !== 'no-speech' && event.error !== 'aborted') {
-                setError(
-                    event.error === 'not-allowed' || event.error === 'service-not-allowed'
-                        ? 'Microphone access was denied — allow microphone permission in your browser to use voice input.'
-                        : 'Voice input failed — please try again.'
-                )
-            }
+            if (event.error === 'aborted') return
+            setError(
+                event.error === 'not-allowed' || event.error === 'service-not-allowed'
+                    ? 'Microphone access was denied — allow microphone permission in your browser to use voice input.'
+                    : event.error === 'no-speech'
+                        ? "Didn't catch anything — tap the mic and try again."
+                        : `Voice input failed (${event.error}) — please try again.`
+            )
         }
         // Browsers fire 'onend' automatically once they detect the speaker
         // has stopped talking (a short trailing silence) — exactly the
@@ -555,6 +582,13 @@ const Epsilon = () => {
                 sendMessage(finalText)
             } else if (voiceModeOpenRef.current) {
                 setVoicePhase('idle')
+                // No transcript and no error already set (onerror covers the
+                // known failure cases above) — still don't leave this
+                // silent; e.g. the browser can end recognition with neither
+                // a result nor an error event at all in some edge cases.
+                if (!finalText && !recognitionCancelledRef.current) {
+                    setError((prev) => prev || "Didn't catch anything — tap the mic and try again.")
+                }
             }
         }
         recognitionRef.current = recognition
