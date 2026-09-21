@@ -983,7 +983,20 @@ const DashView = () =>{
                 if (isFirstLoad) setReorderRecommendations([])
                 return
             }
-            const recommendations = Array.isArray(resp.recommendations) ? resp.recommendations : []
+            // categoryLooksOffForLocation (recommend_reorders/computeReorderRecommendations,
+            // wageserver/UserModule/AIAssistant/purchaseAdvisor.js) flags a
+            // recommendation whose product category isn't in that location's own
+            // admin-configured allowed-categories list (General Settings >
+            // Warehouses) — confirmed live: real kitchen items (Chicken,
+            // Native soup, Cat-fish, Goat meat...) were showing up under
+            // drinks-only locations (open bar1/bar2/vip) purely from a
+            // stock-location-tagging data issue, not a real need there.
+            // Epsilon's own purchase-order proposal flow already excludes
+            // these; this dashboard widget reads the exact same backend data
+            // and needs the same filter, or its per-location counts/lists
+            // (and the "no low stock" empty state) lie.
+            const recommendations = (Array.isArray(resp.recommendations) ? resp.recommendations : [])
+                .filter((rec) => !rec.categoryLooksOffForLocation)
             setReorderRecommendations(recommendations)
             const grouped = {}
             recommendations.forEach((rec) => {
@@ -1370,7 +1383,12 @@ const DashView = () =>{
                                               border: expandedLocations[locIdx] ? '2px solid #1976d2' : '1px solid #ddd',
                                               boxShadow: expandedLocations[locIdx] ? '0 2px 8px rgba(25,118,210,0.12)' : 'none'
                                                 }}
-                                                onClick={() => setExpandedLocations({ [locIdx]: true })}
+                                                // Toggle, not just expand — clicking an already-expanded
+                                                // location used to just re-set the same {[locIdx]: true},
+                                                // which never collapsed it (confirmed live: no way back).
+                                                // Clicking a different one still switches (one expanded
+                                                // at a time), unchanged.
+                                                onClick={() => setExpandedLocations((prev) => (prev[locIdx] ? {} : { [locIdx]: true }))}
                                             >
                                                 {locAlert.location} <span style={{color:'#c00', fontWeight:'normal'}}>({locAlert.lowStockProducts.length})</span>
                                             </div>

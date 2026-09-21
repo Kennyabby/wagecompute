@@ -706,20 +706,29 @@
     margin-bottom: 6px;
 }
 
-.epsilon-proposal-price-field {
+/* Purchase-order proposals hold a whole table of lines (one order per
+   location, per the real Purchase screen) — wider than a typical
+   text-only proposal card so the table has room to breathe. */
+.epsilon-po-card {
+    max-width: 96%;
+}
+
+.epsilon-po-vendor-row {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
 }
 
-.epsilon-proposal-price-field span:first-child {
+.epsilon-po-vendor-row span {
     font-size: 11px;
     color: var(--epsilon-text-muted);
 }
 
-.epsilon-proposal-price-field input {
-    width: 90px;
+.epsilon-po-vendor-row select,
+.epsilon-po-date-input {
+    flex: 1;
+    min-width: 0;
     padding: 4px 6px;
     border-radius: 6px;
     border: 1px solid var(--epsilon-border-soft);
@@ -728,9 +737,113 @@
     font-size: 12px;
 }
 
-.epsilon-proposal-price-total {
-    font-size: 11px;
+.epsilon-po-date-input:disabled {
+    opacity: 0.7;
+}
+
+.epsilon-po-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0 8px;
+    font-size: 11.5px;
+}
+
+.epsilon-po-table th,
+.epsilon-po-table td {
+    text-align: left;
+    padding: 5px 6px;
+    border-bottom: 1px solid var(--epsilon-border-soft);
+    /* Explicit — without it these inherit an unreadable color in the
+       proposal card's own theme (confirmed live: Product/Qty text was
+       essentially invisible, same color as the card's background, while
+       .epsilon-po-line-total right next to it rendered fine because it
+       already set this explicitly). */
+    color: var(--epsilon-text);
+}
+
+.epsilon-po-table th {
     color: var(--epsilon-text-muted);
+    font-weight: 600;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+/* A completely unscoped global rule (TransactionReports.css: `tbody
+   tr:hover { background-color: #f8f9fa; }`, with no class qualifier at all)
+   bleeds into every table in the app, this one included — confirmed live:
+   hovering a row lightened its background while the text color (set above)
+   stayed light-for-dark-theme, making that row's text disappear. Higher
+   specificity here (a class ancestor) reliably wins over that bare
+   element-only selector without needing to touch the unrelated file it
+   lives in. */
+.epsilon-po-table tbody tr:hover {
+    background-color: transparent;
+}
+
+.epsilon-po-table tfoot td {
+    border-bottom: none;
+    border-top: 1.5px solid var(--epsilon-proposal-border);
+    font-weight: 700;
+    color: var(--epsilon-text);
+}
+
+.epsilon-po-cost-input {
+    width: 80px;
+    padding: 3px 5px;
+    border-radius: 5px;
+    border: 1px solid var(--epsilon-border-soft);
+    background: var(--epsilon-bg);
+    color: var(--epsilon-text);
+    font-size: 11.5px;
+}
+
+.epsilon-po-cost-input:disabled {
+    opacity: 0.7;
+}
+
+.epsilon-po-line-total {
+    white-space: nowrap;
+    color: var(--epsilon-text);
+}
+
+.epsilon-po-warning-banner {
+    background: var(--epsilon-callout-warning-bg);
+    border: 1px solid var(--epsilon-callout-warning-border);
+    color: var(--epsilon-callout-warning-text);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+
+.epsilon-po-row-warning td {
+    background: var(--epsilon-callout-warning-bg);
+}
+
+.epsilon-po-remove-btn {
+    background: transparent;
+    border: none;
+    /* Red by default, not just on hover — a muted default made it too easy
+       to miss (confirmed live: reported as "not very visible"). */
+    color: var(--epsilon-callout-error-text);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 4px;
+    opacity: 0.75;
+}
+
+.epsilon-po-remove-btn:hover:not(:disabled) {
+    opacity: 1;
+    background: var(--epsilon-callout-error-bg);
+}
+
+.epsilon-po-remove-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
 }
 
 .epsilon-proposal-actions {
@@ -1144,6 +1257,7 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .epsilon-expanded-main .epsilon-messages {
@@ -1197,5 +1311,188 @@
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
         box-sizing: border-box;
+    }
+}
+
+/* ===== Voice input (composer mic) + text-mode "read aloud" toggle ===== */
+.epsilon-mic-btn {
+    background: transparent;
+    color: var(--epsilon-text-muted);
+    border: 1px solid var(--epsilon-input-border);
+    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
+}
+
+.epsilon-mic-btn:hover {
+    background: var(--epsilon-menu-hover-bg);
+    color: var(--epsilon-brand);
+}
+
+.epsilon-mic-btn:active {
+    transform: scale(0.94);
+}
+
+.epsilon-speaker-active {
+    color: var(--epsilon-accent, #7ee093);
+}
+
+/* ===== Voice mode — the full-screen ChatGPT-style orb ===== */
+.epsilon-voice-overlay {
+    /* Fills whichever positioned container renders it (.epsilon-panel or
+       .epsilon-expanded-main — both position:relative) rather than the
+       whole viewport, so a voice conversation stays scoped to the chat
+       widget itself. */
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    background: radial-gradient(circle at 50% 40%, #16261c 0%, #0a120d 70%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    animation: epsilon-overlay-in 0.18s ease;
+}
+
+.epsilon-voice-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: #eef2ef;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s ease;
+}
+
+.epsilon-voice-close:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.epsilon-orb {
+    position: relative;
+    width: 128px;
+    height: 128px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.epsilon-orb-core {
+    /* Set directly from JS via style.setProperty('--level', ...), up to
+       ~60fps — real mic amplitude while listening (a second getUserMedia
+       analyser, since SpeechRecognition never exposes its own audio), and
+       speech word-boundary pulses (with a steady synthetic fallback for
+       voices that never fire boundaries) while speaking. 0 the rest of the
+       time, so transform/box-shadow below just settle to their resting
+       state. */
+    --level: 0;
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    /* Multiple green stops + an animated position (below) so the orb
+       constantly shifts between shades of green rather than sitting at one
+       flat color — the "looks alive" ask, independent of --level. */
+    background: linear-gradient(120deg, #c8f7d6 0%, #8ff0a6 18%, #4fc57e 38%, #2f9e5a 56%, #1c7a49 74%, #0d3f23 100%);
+    background-size: 260% 260%;
+    box-shadow: 0 0 calc(24px + var(--level) * 34px) calc(4px + var(--level) * 11px) rgba(126, 224, 147, calc(0.32 + var(--level) * 0.38));
+    transform: scale(calc(1 + var(--level) * 0.22));
+    filter: brightness(calc(1 + var(--level) * 0.22)) saturate(calc(1 + var(--level) * 0.15));
+    transition: transform 0.08s linear, box-shadow 0.08s linear, filter 0.08s linear;
+    animation: epsilon-orb-shimmer 7s ease-in-out infinite;
+}
+
+.epsilon-orb-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid rgba(126, 224, 147, 0.35);
+    opacity: 0;
+}
+
+/* Idle — gentle breathing, inviting a tap (plus the shimmer every state
+   gets — see .epsilon-orb-core). */
+.epsilon-orb-idle .epsilon-orb-core {
+    animation: epsilon-orb-shimmer 7s ease-in-out infinite, epsilon-orb-breathe 3.2s ease-in-out infinite;
+}
+
+/* Listening — the core's pulse/glow now comes entirely from the live
+   --level the mic analyser drives (see .epsilon-orb-core above); this just
+   adds the expanding rings on top, steady and continuous the whole time
+   it's listening regardless of momentary volume. */
+.epsilon-orb-listening .epsilon-orb-ring-1 {
+    animation: epsilon-orb-ring-expand 1.8s ease-out infinite;
+}
+
+.epsilon-orb-listening .epsilon-orb-ring-2 {
+    animation: epsilon-orb-ring-expand 1.8s ease-out 0.6s infinite;
+}
+
+/* Processing — a slow rotating sheen standing in for "thinking". */
+.epsilon-orb-processing .epsilon-orb-core {
+    animation: epsilon-orb-shimmer 7s ease-in-out infinite, epsilon-orb-think 1.1s linear infinite;
+    filter: saturate(0.85);
+}
+
+/* Speaking — the core's pulse now comes from --level too (word-boundary
+   events / fallback pulses, see startSpeakLevelLoop in Epsilon.js); rings
+   just echo it a little faster than the listening state's. */
+.epsilon-orb-speaking .epsilon-orb-ring-1,
+.epsilon-orb-speaking .epsilon-orb-ring-2 {
+    animation: epsilon-orb-ring-expand 0.9s ease-out infinite;
+}
+
+@keyframes epsilon-orb-breathe {
+    0%, 100% { transform: scale(calc(1 + var(--level) * 0.22)); }
+    50% { transform: scale(calc(1.05 + var(--level) * 0.22)); }
+}
+
+@keyframes epsilon-orb-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes epsilon-orb-think {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(0.96); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes epsilon-orb-ring-expand {
+    0% { transform: scale(0.82); opacity: 0.55; }
+    100% { transform: scale(1.55); opacity: 0; }
+}
+
+.epsilon-voice-caption {
+    max-width: min(480px, 84vw);
+    text-align: center;
+    color: #cfe6d6;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .epsilon-orb-core,
+    .epsilon-orb-ring-1,
+    .epsilon-orb-ring-2 {
+        animation: none !important;
     }
 }
