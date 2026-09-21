@@ -161,11 +161,18 @@ const Epsilon = () => {
     // Drives the orb's live reactive pulse (a CSS custom property, --level,
     // read straight off the DOM node via rAF — deliberately NOT React state,
     // since this updates far too often, ~60fps, for setState to be sane).
+    // Listening used to also drive this from real mic amplitude via a
+    // second, independent getUserMedia stream — removed (not just disabled)
+    // after a real, repeated "voice input just doesn't hear me at all"
+    // report: a second concurrent capture of the same input device
+    // alongside SpeechRecognition's own internal one is a known class of
+    // interference on some browser/OS/driver combinations, and working
+    // speech recognition matters far more than the orb's decorative
+    // amplitude reactivity while listening (it still pulses via a CSS-only
+    // keyframe instead — see .epsilon-orb-listening). Speaking's own pulse
+    // (below) is unaffected — it's driven by TTS word-boundary events, no
+    // microphone access involved at all.
     const orbCoreRef = useRef(null)
-    const micStreamRef = useRef(null)
-    const audioCtxRef = useRef(null)
-    const analyserRef = useRef(null)
-    const levelRafRef = useRef(null)
     const speakLevelRef = useRef(0)
     const speakRafRef = useRef(null)
     const speakBoundaryFiredRef = useRef(false)
@@ -189,7 +196,6 @@ const Epsilon = () => {
         abortControllerRef.current?.abort()
         recognitionRef.current?.abort()
         stopSpeaking()
-        stopLevelMeter()
         stopSpeakLevelLoop()
     }, [])
 
@@ -403,57 +409,16 @@ const Epsilon = () => {
         await fetchServer('POST', { conversationId }, 'ai/epsilon/clear', server)
     }
 
-    // ===== Orb reactivity: real mic amplitude while listening, word-boundary
-    // pulses (with a timed fallback for voices that never fire them) while
-    // speaking. Both funnel into the same --level CSS custom property on the
-    // orb core, set directly via the DOM (not React state — this updates at
-    // up to 60fps, way too hot a path for setState/re-render). =====
+    // ===== Orb reactivity: word-boundary pulses (with a timed fallback for
+    // voices that never fire them) while speaking, driving the same --level
+    // CSS custom property the orb core reads, set directly via the DOM (not
+    // React state — this updates at up to 60fps, way too hot a path for
+    // setState/re-render). Listening's own reactivity is CSS-only now — see
+    // orbCoreRef's comment above for why the mic-amplitude version was
+    // removed. =====
 
     const setOrbLevel = (level) => {
         orbCoreRef.current?.style.setProperty('--level', String(level))
-    }
-
-    const stopLevelMeter = () => {
-        if (levelRafRef.current) cancelAnimationFrame(levelRafRef.current)
-        levelRafRef.current = null
-        micStreamRef.current?.getTracks().forEach((t) => t.stop())
-        micStreamRef.current = null
-        analyserRef.current = null
-        if (audioCtxRef.current) { audioCtxRef.current.close().catch(() => {}); audioCtxRef.current = null }
-        setOrbLevel(0)
-    }
-
-    // A second, independent getUserMedia stream purely for amplitude —
-    // SpeechRecognition never exposes the raw audio it's listening to.
-    // Purely a visual nicety: if the browser refuses a second mic stream (or
-    // the user dismisses a second permission prompt), voice input itself is
-    // completely unaffected — this just silently leaves the orb static.
-    const startLevelMeter = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-            if (!recognitionRef.current) { stream.getTracks().forEach((t) => t.stop()); return }
-            micStreamRef.current = stream
-            const AudioCtx = window.AudioContext || window.webkitAudioContext
-            const ctx = new AudioCtx()
-            audioCtxRef.current = ctx
-            const source = ctx.createMediaStreamSource(stream)
-            const analyser = ctx.createAnalyser()
-            analyser.fftSize = 256
-            analyser.smoothingTimeConstant = 0.55
-            source.connect(analyser)
-            analyserRef.current = analyser
-            const data = new Uint8Array(analyser.frequencyBinCount)
-            const tick = () => {
-                if (!analyserRef.current) return
-                analyser.getByteFrequencyData(data)
-                let sum = 0
-                for (let i = 0; i < data.length; i++) sum += data[i]
-                const avg = sum / data.length / 255
-                setOrbLevel(Math.min(1, avg * 2.4))
-                levelRafRef.current = requestAnimationFrame(tick)
-            }
-            tick()
-        } catch (e) { /* visual nicety only — see comment above */ }
     }
 
     const stopSpeakLevelLoop = () => {
@@ -575,7 +540,6 @@ const Epsilon = () => {
         recognition.onend = () => {
             setIsListening(false)
             recognitionRef.current = null
-            stopLevelMeter()
             const finalText = finalTranscript.trim()
             if (finalText && !recognitionCancelledRef.current) {
                 if (voiceModeOpenRef.current) setVoicePhase('processing')
@@ -597,7 +561,11 @@ const Epsilon = () => {
         setVoicePhase('listening')
         try {
             recognition.start()
-            startLevelMeter()
+            // No mic-amplitude level meter here anymore — see orbCoreRef's
+            // comment above for why. The orb still animates while listening
+            // via the CSS-only expanding-ring keyframe (epsilon-orb-
+            // listening), just without real amplitude driving the core's
+            // pulse.
         } catch (e) {
             setIsListening(false)
             recognitionRef.current = null
