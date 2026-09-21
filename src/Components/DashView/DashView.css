@@ -401,3 +401,96 @@
         font-size: 1.3em;
     }
 }
+
+/* Low-stock-by-location popup — replaces the old inline expand-in-place
+   behavior, which pushed the whole dashboard panel taller/shorter every
+   time a location box was clicked (confirmed live: "distorting the
+   dashboard size and shape"). Desktop gets a centered dialog; mobile gets
+   a bottom-sheet instead, since a small centered card wastes most of a
+   phone screen and a full-width sheet is the more natural mobile pattern.
+   Self-contained (dash-lowstock- prefixed) rather than reusing the
+   `.modal-*` names other pages already use — those aren't defined in this
+   file and currently only render correctly by accident, whenever some
+   other page's CSS happens to already be loaded; a real conflicting
+   `.modal-*` rule defined here later would be a silent, hard-to-trace bug. */
+.dash-lowstock-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(23, 56, 41, 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.dash-lowstock-modal-content {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(23, 56, 41, 0.25);
+    overflow: hidden;
+}
+
+.dash-lowstock-modal-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid rgba(23, 56, 41, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.dash-lowstock-modal-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #173829;
+}
+
+.dash-lowstock-modal-close {
+    background: #f0f4f2;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: rgba(23, 56, 41, 0.6);
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dash-lowstock-modal-close:hover {
+    background: #e8f0eb;
+    color: #173829;
+}
+
+.dash-lowstock-modal-body {
+    padding: 16px 22px 22px;
+    overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+    .dash-lowstock-modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+    .dash-lowstock-modal-content {
+        max-width: 100%;
+        max-height: 85vh;
+        width: 100%;
+        border-radius: 16px 16px 0 0;
+    }
+}
