@@ -4,6 +4,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
 import StatCard from '../Shared/ui/StatCard'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb'
+import { VOICE_ACCENTS, getSpeechSupport, speak, stopSpeaking } from '../../Resources/speechVoice'
 
 const EPSILON_BILLING_CACHE_KEY = 'epsilonBillingSeatInfo'
 // Silent background refresh only — never clears what's already on screen,
@@ -56,6 +57,11 @@ const EpsilonBillingCard = ({ variants }) => {
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false)
   const [tone, setTone] = useState('professional')
   const [isSavingTone, setIsSavingTone] = useState(false)
+  const [voiceGender, setVoiceGender] = useState('female')
+  const [voiceAccent, setVoiceAccent] = useState('en-US')
+  const [isSavingVoice, setIsSavingVoice] = useState(false)
+  const [isTestingVoice, setIsTestingVoice] = useState(false)
+  const { ttsSupported } = getSpeechSupport()
   // Matches isTenantAdmin in wageserver/UserModule/Billing/billing.js exactly
   // (also POST /billing/epsilon/tone's own check) — without the permissions
   // clause, a user granted admin rights via the 'all' permission rather than
@@ -79,11 +85,17 @@ const EpsilonBillingCard = ({ variants }) => {
         tokenPriceNaira: Number(response.tokenPriceNaira || 0),
       }
       const nextTone = response.epsilonTone || 'professional'
+      const nextVoiceGender = response.epsilonVoiceGender || 'female'
+      const nextVoiceAccent = response.epsilonVoiceAccent || 'en-US'
       setSeatInfo(nextSeatInfo)
       setTone(nextTone)
+      setVoiceGender(nextVoiceGender)
+      setVoiceAccent(nextVoiceAccent)
       setAppCache(company, companyRecord.emailid, EPSILON_BILLING_CACHE_KEY, {
         seatInfo: nextSeatInfo,
         tone: nextTone,
+        voiceGender: nextVoiceGender,
+        voiceAccent: nextVoiceAccent,
       })
     } catch (error) {
       // A silent background/auto refresh failing shouldn't disturb data
@@ -107,6 +119,8 @@ const EpsilonBillingCard = ({ variants }) => {
         if (!cancelled && cached?.data) {
           if (cached.data.seatInfo) setSeatInfo(cached.data.seatInfo)
           if (cached.data.tone) setTone(cached.data.tone)
+          if (cached.data.voiceGender) setVoiceGender(cached.data.voiceGender)
+          if (cached.data.voiceAccent) setVoiceAccent(cached.data.voiceAccent)
           loadSeatInfo(false)
           return
         }
@@ -146,6 +160,44 @@ const EpsilonBillingCard = ({ variants }) => {
     } finally {
       setIsSavingTone(false)
     }
+  }
+
+  // Tenant-wide default voice Epsilon speaks replies in (gender + accent
+  // preference, not a specific browser voice — see speechVoice.js's
+  // best-effort matching). Same admin gate and save pattern as tone above.
+  const handleSetVoice = async (nextGender, nextAccent) => {
+    if ((nextGender === voiceGender && nextAccent === voiceAccent) || isSavingVoice) return
+    const previousGender = voiceGender
+    const previousAccent = voiceAccent
+    setVoiceGender(nextGender)
+    setVoiceAccent(nextAccent)
+    setIsSavingVoice(true)
+    try {
+      const response = await fetchServer('POST', { gender: nextGender, accent: nextAccent }, 'billing/epsilon/voice', server)
+      if (response.err || !response.ok) throw new Error(response.mess || 'Unable to update Epsilon voice.')
+    } catch (error) {
+      setVoiceGender(previousGender)
+      setVoiceAccent(previousAccent)
+      setAlertState('error')
+      setAlert(error.message || 'Unable to update Epsilon voice.')
+      setAlertTimeout(4000)
+    } finally {
+      setIsSavingVoice(false)
+    }
+  }
+
+  // Speaks a short sample using this admin's OWN browser's voice catalog —
+  // purely a preview. The actual voice each employee hears depends on
+  // their own device/browser, which can differ from this one.
+  const handleTestVoice = () => {
+    if (isTestingVoice) { stopSpeaking(); setIsTestingVoice(false); return }
+    setIsTestingVoice(true)
+    speak("Hi, I'm Epsilon — this is a preview of how I'll sound.", {
+      gender: voiceGender,
+      accent: voiceAccent,
+      onEnd: () => setIsTestingVoice(false),
+      onError: () => setIsTestingVoice(false),
+    })
   }
 
   const estimatedTotalNaira = seatInfo.priceNaira * Math.max(1, seatsToBuy) * Math.max(1, months)
@@ -251,6 +303,54 @@ const EpsilonBillingCard = ({ variants }) => {
               ))}
             </div>
           </div>
+
+          {ttsSupported && (
+            <div className='epsilon-tone-section epsilon-voice-section'>
+              <div className='epsilon-tone-header'>
+                <strong>Epsilon's voice</strong>
+                <span>
+                  Applies when an employee turns on spoken replies in the chat panel. Actual voice quality depends on each
+                  listener's own browser/device — this picks the closest match available there.
+                  {isWorkspaceAdmin ? '' : ' Only a workspace admin can change this.'}
+                </span>
+              </div>
+              <div className='epsilon-tone-options'>
+                {[
+                  { value: 'female', label: 'Female', desc: 'A female-sounding voice.' },
+                  { value: 'male', label: 'Male', desc: 'A male-sounding voice.' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type='button'
+                    className={`epsilon-tone-btn ${voiceGender === opt.value ? 'active' : ''}`}
+                    onClick={() => handleSetVoice(opt.value, voiceAccent)}
+                    disabled={!isWorkspaceAdmin || isSavingVoice}
+                    title={opt.desc}
+                  >
+                    <span className='epsilon-tone-btn-label'>{opt.label}</span>
+                    <span className='epsilon-tone-btn-desc'>{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+              <div className='epsilon-voice-accent-row'>
+                <label className='epsilon-billing-field'>
+                  <span>Accent</span>
+                  <select
+                    value={voiceAccent}
+                    onChange={(e) => handleSetVoice(voiceGender, e.target.value)}
+                    disabled={!isWorkspaceAdmin || isSavingVoice}
+                  >
+                    {VOICE_ACCENTS.map((a) => (
+                      <option key={a.value} value={a.value}>{a.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <button type='button' className='settings-billing-inline-btn epsilon-voice-test-btn' onClick={handleTestVoice}>
+                  {isTestingVoice ? 'Stop' : 'Test voice'}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className='epsilon-billing-purchase-row'>
             <label className='epsilon-billing-field'>

@@ -14,6 +14,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import renderMarkdownLite from './markdownLite'
 import streamEpsilonMessage from './streamEpsilon'
 import { generatePDF, generateExcel } from '../../utils/exportUtils'
+import { getSpeechSupport, speak, stopSpeaking } from '../../Resources/speechVoice'
 
 const STYLE_OPTIONS = [
     { value: 'quick', label: 'Quick' },
@@ -22,6 +23,7 @@ const STYLE_OPTIONS = [
 ]
 const STYLE_STORAGE_KEY = 'epsilon-response-style'
 const THEME_STORAGE_KEY = 'epsilon-theme'
+const AUTO_SPEAK_STORAGE_KEY = 'epsilon-auto-speak'
 
 // Friendly status text per backend tool name (see epsilon.js's TOOLS list) —
 // falls back to a title-cased version of the raw name for any tool not
@@ -133,19 +135,103 @@ const Epsilon = () => {
     // rather than making the user watch the reply finish, remember what
     // they wanted to add, and retype it into a brand new message.
     const [queuedFollowUp, setQueuedFollowUp] = useState('')
+    // Voice input/output — both entirely browser-native (SpeechRecognition /
+    // speechSynthesis); no audio ever reaches our backend, only the
+    // resulting text (same as a typed message). See speechVoice.js.
+    const { sttSupported, ttsSupported } = useMemo(() => getSpeechSupport(), [])
+    const [isListening, setIsListening] = useState(false)
+    const [isSpeaking, setIsSpeaking] = useState(false)
+    const [voicePreference, setVoicePreference] = useState({ gender: 'female', accent: 'en-US' })
+    const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(() => {
+        try { return localStorage.getItem(AUTO_SPEAK_STORAGE_KEY) === 'true' } catch (e) { return false }
+    })
+    // Full-screen "voice mode" (the orb) — a continuous listen-respond-speak
+    // loop, distinct from the small mic-into-textbox affordance: tapping the
+    // mic opens this instead of just dictating one message.
+    const [voiceModeOpen, setVoiceModeOpen] = useState(false)
+    const [voicePhase, setVoicePhase] = useState('idle') // idle | listening | processing | speaking
+    const voiceModeOpenRef = useRef(false)
+    useEffect(() => { voiceModeOpenRef.current = voiceModeOpen }, [voiceModeOpen])
     const bottomRef = useRef(null)
     const inputRef = useRef(null)
     const mountedRef = useRef(true)
     const abortControllerRef = useRef(null)
+    const recognitionRef = useRef(null)
+    const recognitionCancelledRef = useRef(false)
+    // Drives the orb's live reactive pulse (a CSS custom property, --level,
+    // read straight off the DOM node via rAF — deliberately NOT React state,
+    // since this updates far too often, ~60fps, for setState to be sane).
+    const orbCoreRef = useRef(null)
+    const micStreamRef = useRef(null)
+    const audioCtxRef = useRef(null)
+    const analyserRef = useRef(null)
+    const levelRafRef = useRef(null)
+    const speakLevelRef = useRef(0)
+    const speakRafRef = useRef(null)
+    const speakBoundaryFiredRef = useRef(false)
+    const speakFallbackTimerRef = useRef(null)
+    const speakFallbackIntervalRef = useRef(null)
     // Mirrors queuedFollowUp for reliable reads from inside sendMessage's
     // async closure — the closure's own `queuedFollowUp` binding is captured
     // at call time and won't see a state update made mid-stream via setState.
     const queuedFollowUpRef = useRef('')
+    // Mirrors `sending` for the same reason, but critically also for the
+    // SpeechRecognition 'onend' callback: that callback closes over whatever
+    // render was active when listening started, so reading the `sending`
+    // state directly there can be stale by the time the user actually stops
+    // talking. A ref's `.current` is always live regardless of which
+    // render's closure reads it.
+    const sendingRef = useRef(false)
+    useEffect(() => { sendingRef.current = sending }, [sending])
 
     useEffect(() => () => {
         mountedRef.current = false
         abortControllerRef.current?.abort()
+        recognitionRef.current?.abort()
+        stopSpeaking()
+        stopLevelMeter()
+        stopSpeakLevelLoop()
     }, [])
+
+    // Tenant-wide voice preference an admin set in Settings > Billing >
+    // Epsilon AI — fetched once the panel is actually opened (same trigger
+    // as history loading; no point fetching before the user ever opens it).
+    const [voicePrefLoaded, setVoicePrefLoaded] = useState(false)
+    useEffect(() => {
+        // Needed for STT too (recognition.lang), not just TTS — fetch
+        // whenever either voice capability exists, not only when speaking
+        // replies back is possible.
+        if (!open || voicePrefLoaded || (!ttsSupported && !sttSupported)) return
+        (async () => {
+            const resp = await fetchServer('GET', {}, 'ai/epsilon/voice-preference', server)
+            if (!mountedRef.current) return
+            if (!resp.err && resp.ok) {
+                setVoicePreference({ gender: resp.voiceGender || 'female', accent: resp.voiceAccent || 'en-US' })
+            }
+            setVoicePrefLoaded(true)
+        })()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open])
+
+    // Real vendor list, for the editable vendor picker on a purchase-order
+    // proposal's table — same generic gateway (getDocsDetails, collection:
+    // 'Vendors') Purchase.js itself uses to populate its own vendor
+    // dropdown, so this is always the same registered-vendor list a human
+    // filling the real form would see. Fetched once the panel opens, not
+    // gated on an actual proposal existing yet — cheap, and avoids a visible
+    // delay the first time a purchase_order card appears.
+    const [vendorsList, setVendorsList] = useState([])
+    const [vendorsListLoaded, setVendorsListLoaded] = useState(false)
+    useEffect(() => {
+        if (!open || vendorsListLoaded || !company) return
+        (async () => {
+            const resp = await fetchServer('POST', { database: company, collection: 'Vendors' }, 'getDocsDetails', server)
+            if (!mountedRef.current) return
+            if (!resp.err && Array.isArray(resp.record)) setVendorsList(resp.record)
+            setVendorsListLoaded(true)
+        })()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, company])
 
     useEffect(() => {
         if (!open || historyLoaded) return
@@ -260,6 +346,18 @@ const Epsilon = () => {
         })
     }
 
+    // Text-mode convenience — reads every reply aloud without opening full
+    // voice mode. A personal preference (like theme/style), not tenant
+    // policy, so it lives in localStorage rather than the server.
+    const toggleAutoSpeak = () => {
+        setAutoSpeakEnabled((prev) => {
+            const next = !prev
+            try { localStorage.setItem(AUTO_SPEAK_STORAGE_KEY, String(next)) } catch (e) { /* ignore */ }
+            if (!next) stopEpsilonSpeaking()
+            return next
+        })
+    }
+
     const clearQueuedFollowUp = () => {
         queuedFollowUpRef.current = ''
         setQueuedFollowUp('')
@@ -305,17 +403,228 @@ const Epsilon = () => {
         await fetchServer('POST', { conversationId }, 'ai/epsilon/clear', server)
     }
 
-    // overrideText is set only when this call is the auto-fired queued
-    // follow-up (see the 'done' handling below) — never a real user action,
-    // so it must never itself be treated as "still sending, queue it".
-    const sendMessage = async (overrideText) => {
+    // ===== Orb reactivity: real mic amplitude while listening, word-boundary
+    // pulses (with a timed fallback for voices that never fire them) while
+    // speaking. Both funnel into the same --level CSS custom property on the
+    // orb core, set directly via the DOM (not React state — this updates at
+    // up to 60fps, way too hot a path for setState/re-render). =====
+
+    const setOrbLevel = (level) => {
+        orbCoreRef.current?.style.setProperty('--level', String(level))
+    }
+
+    const stopLevelMeter = () => {
+        if (levelRafRef.current) cancelAnimationFrame(levelRafRef.current)
+        levelRafRef.current = null
+        micStreamRef.current?.getTracks().forEach((t) => t.stop())
+        micStreamRef.current = null
+        analyserRef.current = null
+        if (audioCtxRef.current) { audioCtxRef.current.close().catch(() => {}); audioCtxRef.current = null }
+        setOrbLevel(0)
+    }
+
+    // A second, independent getUserMedia stream purely for amplitude —
+    // SpeechRecognition never exposes the raw audio it's listening to.
+    // Purely a visual nicety: if the browser refuses a second mic stream (or
+    // the user dismisses a second permission prompt), voice input itself is
+    // completely unaffected — this just silently leaves the orb static.
+    const startLevelMeter = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            if (!recognitionRef.current) { stream.getTracks().forEach((t) => t.stop()); return }
+            micStreamRef.current = stream
+            const AudioCtx = window.AudioContext || window.webkitAudioContext
+            const ctx = new AudioCtx()
+            audioCtxRef.current = ctx
+            const source = ctx.createMediaStreamSource(stream)
+            const analyser = ctx.createAnalyser()
+            analyser.fftSize = 256
+            analyser.smoothingTimeConstant = 0.55
+            source.connect(analyser)
+            analyserRef.current = analyser
+            const data = new Uint8Array(analyser.frequencyBinCount)
+            const tick = () => {
+                if (!analyserRef.current) return
+                analyser.getByteFrequencyData(data)
+                let sum = 0
+                for (let i = 0; i < data.length; i++) sum += data[i]
+                const avg = sum / data.length / 255
+                setOrbLevel(Math.min(1, avg * 2.4))
+                levelRafRef.current = requestAnimationFrame(tick)
+            }
+            tick()
+        } catch (e) { /* visual nicety only — see comment above */ }
+    }
+
+    const stopSpeakLevelLoop = () => {
+        if (speakRafRef.current) cancelAnimationFrame(speakRafRef.current)
+        speakRafRef.current = null
+        if (speakFallbackTimerRef.current) clearTimeout(speakFallbackTimerRef.current)
+        speakFallbackTimerRef.current = null
+        if (speakFallbackIntervalRef.current) clearInterval(speakFallbackIntervalRef.current)
+        speakFallbackIntervalRef.current = null
+        speakLevelRef.current = 0
+        setOrbLevel(0)
+    }
+
+    const startSpeakLevelLoop = () => {
+        speakBoundaryFiredRef.current = false
+        const decay = () => {
+            speakLevelRef.current *= 0.85
+            if (speakLevelRef.current < 0.02) speakLevelRef.current = 0
+            setOrbLevel(speakLevelRef.current)
+            speakRafRef.current = requestAnimationFrame(decay)
+        }
+        speakRafRef.current = requestAnimationFrame(decay)
+        // Some voices never fire 'onboundary' at all — if none has landed
+        // shortly after speech starts, fall back to a steady synthetic pulse
+        // so the orb still looks alive rather than sitting dead-still.
+        speakFallbackTimerRef.current = setTimeout(() => {
+            if (speakBoundaryFiredRef.current) return
+            speakFallbackIntervalRef.current = setInterval(() => { speakLevelRef.current = 0.75 }, 260)
+        }, 450)
+    }
+
+    const bumpSpeakLevel = () => {
+        speakBoundaryFiredRef.current = true
+        if (speakFallbackIntervalRef.current) { clearInterval(speakFallbackIntervalRef.current); speakFallbackIntervalRef.current = null }
+        speakLevelRef.current = 1
+    }
+
+    const stopEpsilonSpeaking = () => {
+        stopSpeaking()
+        stopSpeakLevelLoop()
+        setIsSpeaking(false)
+    }
+
+    // Stops the current SpeechRecognition session. `cancel: true` (mic
+    // clicked again, orb tapped while listening, voice mode closed) discards
+    // whatever was heard so far; `cancel: false` (browser detected trailing
+    // silence on its own — the built-in "user stopped talking" signal) keeps
+    // it and 'onend' below sends it.
+    const stopListening = (cancel = false) => {
+        if (!recognitionRef.current) return
+        recognitionCancelledRef.current = cancel
+        if (cancel) recognitionRef.current.abort()
+        else recognitionRef.current.stop()
+    }
+
+    const startListening = () => {
+        if (!sttSupported) return
+        if (isListening) { stopListening(true); return }
+        // Never let Epsilon's own voice bleed into the mic.
+        stopEpsilonSpeaking()
+        const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition
+        const recognition = new SpeechRecognitionCtor()
+        recognition.lang = voicePreference.accent || 'en-US'
+        recognition.continuous = false
+        recognition.interimResults = true
+        recognition.maxAlternatives = 1
+        let finalTranscript = ''
+        recognitionCancelledRef.current = false
+
+        recognition.onresult = (event) => {
+            let interim = ''
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const chunk = event.results[i][0].transcript
+                if (event.results[i].isFinal) finalTranscript += chunk
+                else interim += chunk
+            }
+            setDraft((finalTranscript + interim).trim())
+        }
+        recognition.onerror = (event) => {
+            if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                setError(
+                    event.error === 'not-allowed' || event.error === 'service-not-allowed'
+                        ? 'Microphone access was denied — allow microphone permission in your browser to use voice input.'
+                        : 'Voice input failed — please try again.'
+                )
+            }
+        }
+        // Browsers fire 'onend' automatically once they detect the speaker
+        // has stopped talking (a short trailing silence) — exactly the
+        // "smartly know when the user is done talking" behavior, with no
+        // custom silence-detection code needed.
+        recognition.onend = () => {
+            setIsListening(false)
+            recognitionRef.current = null
+            stopLevelMeter()
+            const finalText = finalTranscript.trim()
+            if (finalText && !recognitionCancelledRef.current) {
+                if (voiceModeOpenRef.current) setVoicePhase('processing')
+                sendMessage(finalText)
+            } else if (voiceModeOpenRef.current) {
+                setVoicePhase('idle')
+            }
+        }
+        recognitionRef.current = recognition
+        setDraft('')
+        setIsListening(true)
+        setVoicePhase('listening')
+        try {
+            recognition.start()
+            startLevelMeter()
+        } catch (e) {
+            setIsListening(false)
+            recognitionRef.current = null
+            setVoicePhase('idle')
+        }
+    }
+
+    // Mic click in the composer — opens the full-screen voice conversation
+    // (the orb), not just a one-off dictation into the text box.
+    const openVoiceMode = () => {
+        if (!sttSupported) return
+        setError('')
+        setVoiceModeOpen(true)
+        startListening()
+    }
+
+    const closeVoiceMode = () => {
+        setVoiceModeOpen(false)
+        setVoicePhase('idle')
+        stopListening(true)
+        stopEpsilonSpeaking()
+    }
+
+    // Tap-to-interrupt, ChatGPT-style: tapping the orb while it's talking
+    // cuts it off and starts listening again (barge-in); tapping while
+    // listening cancels; tapping while idle starts a turn. Ignored mid
+    // 'processing' — nothing sensible to interrupt mid tool-call.
+    const handleOrbClick = () => {
+        if (voicePhase === 'speaking') {
+            stopEpsilonSpeaking()
+            startListening()
+        } else if (voicePhase === 'listening') {
+            stopListening(true)
+            setVoicePhase('idle')
+        } else if (voicePhase === 'idle') {
+            startListening()
+        }
+    }
+
+    // overrideText is passed by three callers now: a typed Enter/Send (undefined,
+    // reads draft), a completed voice transcription (startListening's 'onend'
+    // below), and the internal auto-fired queued follow-up (the 'done' handling
+    // further down). The first two must still queue if a turn is already
+    // in flight — checked via sendingRef, not the closed-over `sending` state,
+    // since the mic callback's closure can be stale by the time it fires.
+    // The auto-fire is different: it already knows 'done' just landed for
+    // THIS turn, so it must send unconditionally — skipQueueCheck exists
+    // because sendingRef itself is a ref synced by a useEffect, which hasn't
+    // necessarily flushed yet by the time this same tick calls it, and
+    // without the bypass the queued message would get silently re-queued
+    // with nothing left to ever fire it again.
+    const sendMessage = async (overrideText, { skipQueueCheck = false } = {}) => {
         const text = (overrideText ?? draft).trim()
         if (!text) return
-        if (sending && overrideText === undefined) {
+        if (sendingRef.current && !skipQueueCheck) {
             // Can't inject this into the reply that's already streaming — the
             // API has no such thing — so queue it (appending to anything
             // already queued) and it fires automatically the instant this
-            // turn's 'done' event lands, further down.
+            // turn's 'done' event lands, further down. Applies equally to a
+            // typed message and a voice-transcribed one (mic onend calls
+            // sendMessage the same way Enter does).
             setQueuedFollowUp((prev) => {
                 const combined = prev ? `${prev}\n${text}` : text
                 queuedFollowUpRef.current = combined
@@ -373,6 +682,10 @@ const Epsilon = () => {
                             return prev
                         })
                         setError(data.mess || 'Epsilon ran into an error. Please try again.')
+                        // Don't auto-relisten into an error loop — leave voice
+                        // mode open (if it is) with the orb idle so the user
+                        // can read/hear the problem and tap to retry.
+                        if (voiceModeOpenRef.current) setVoicePhase('idle')
                         return
                     }
                     // An array, not a single value — a request spanning several
@@ -403,6 +716,36 @@ const Epsilon = () => {
                         return next
                     })
                     if (conversationsLoaded) loadConversations()
+                    // Spoken replies: either the standalone "read replies aloud"
+                    // toggle (text-mode convenience) or full voice mode (always
+                    // speaks, and loops back into listening once done — a real
+                    // back-and-forth conversation, not click-mic-every-turn).
+                    if (ttsSupported && (autoSpeakEnabled || voiceModeOpenRef.current) && data.text) {
+                        speak(data.text, {
+                            gender: voicePreference.gender,
+                            accent: voicePreference.accent,
+                            onStart: () => {
+                                setIsSpeaking(true)
+                                startSpeakLevelLoop()
+                                if (voiceModeOpenRef.current) setVoicePhase('speaking')
+                            },
+                            onBoundary: bumpSpeakLevel,
+                            onEnd: () => {
+                                setIsSpeaking(false)
+                                stopSpeakLevelLoop()
+                                if (voiceModeOpenRef.current) startListening()
+                            },
+                            onError: () => {
+                                setIsSpeaking(false)
+                                stopSpeakLevelLoop()
+                                if (voiceModeOpenRef.current) setVoicePhase('idle')
+                            },
+                        })
+                    } else if (voiceModeOpenRef.current) {
+                        // Voice mode but nothing to speak (empty reply) — go
+                        // straight back to listening rather than stalling.
+                        startListening()
+                    }
                 }
             },
         })
@@ -418,7 +761,7 @@ const Epsilon = () => {
         if (mountedRef.current && queuedFollowUpRef.current) {
             const queued = queuedFollowUpRef.current
             clearQueuedFollowUp()
-            sendMessage(queued)
+            sendMessage(queued, { skipQueueCheck: true })
         }
     }
 
@@ -451,16 +794,41 @@ const Epsilon = () => {
         }
     }
 
-    const confirmProposal = async (token, kind, editedUnitCost) => {
+    // unitCostOverrides/vendorId only apply to purchase_order — a real order
+    // can hold several product lines (keyed by productId) and one editable
+    // vendor; the confirm route ignores both for every other proposal kind.
+    const confirmProposal = async (token, kind, poEdits) => {
         updateProposal(token, { status: 'running' })
-        // unitCost is only meaningful for purchase_order — the confirm route
-        // ignores it for every other kind. Undefined/blank means "use
-        // whatever was already computed at propose time," not "zero."
         const body = { token }
-        if (kind === 'purchase_order' && editedUnitCost !== undefined && editedUnitCost !== '') {
-            body.unitCost = Number(editedUnitCost)
+        if (kind === 'purchase_order') {
+            const lines = poEdits?.preview?.lines || []
+            const overrides = {}
+            lines.forEach((line) => {
+                const edited = poEdits?.editedLines?.[line.productId]
+                overrides[line.productId] = (edited !== undefined && edited !== '') ? Number(edited) : line.unitCost
+            })
+            if (Object.keys(overrides).length) body.unitCostOverrides = overrides
+            if (poEdits?.editedVendorId) body.vendorId = poEdits.editedVendorId
+            if (poEdits?.excludedProductIds?.length) body.excludeProductIds = poEdits.excludedProductIds
+            const acceptedDate = poEdits?.editedPostingDate ?? poEdits?.preview?.suggestedOrderDate
+            if (acceptedDate) body.postingDate = acceptedDate
         }
-        const resp = await fetchServer('POST', body, CONFIRM_ENDPOINTS[kind] || CONFIRM_ENDPOINTS.script, server)
+        // Confirmed live: a request that never gets a response (the backend
+        // route used to have no try/catch, so an exception there left the
+        // connection hanging with nothing ever sent back) left this stuck on
+        // "Running…" forever with zero feedback — the backend is fixed, but
+        // this timeout + try/catch is a second, independent guarantee that
+        // this specific "stuck" state can never happen again regardless of
+        // cause (a slow proxy, a dropped connection, anything else unforeseen).
+        let resp
+        try {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 30000)
+            resp = await fetchServer('POST', body, CONFIRM_ENDPOINTS[kind] || CONFIRM_ENDPOINTS.script, server, controller.signal)
+            clearTimeout(timeoutId)
+        } catch (e) {
+            resp = { err: true, mess: 'That action timed out or the connection was lost — please try again.' }
+        }
         if (!mountedRef.current) return
         if (resp.err || !resp.ok) {
             // Purchase orders stay interactive after a failed run (kind stays
@@ -606,35 +974,123 @@ const Epsilon = () => {
                         )}
                     </div>
                     {Array.isArray(m.proposals) && m.proposals.filter((p) => p.status !== 'dismissed').map((p) => (
-                        <div className="epsilon-proposal-card" key={p.token}>
+                        <div className={`epsilon-proposal-card ${p.kind === 'purchase_order' ? 'epsilon-po-card' : ''}`} key={p.token}>
                             <div className="epsilon-proposal-title">{p.title}</div>
                             {p.description && <div className="epsilon-proposal-desc">{p.description}</div>}
                             {p.kind === 'purchase_order' && p.preview && (
                                 <div className="epsilon-proposal-desc">
-                                    {p.preview.quantity}× {p.preview.productName} from {p.preview.vendor}
-                                    {' — posting '}{p.preview.postingDate}
+                                    {p.preview.location}
                                 </div>
                             )}
-                            {p.kind === 'purchase_order' && p.status === 'pending' && (
-                                <label className="epsilon-proposal-price-field">
-                                    <span>Unit cost (₦)</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={p.editedUnitCost ?? p.preview?.unitCost ?? ''}
-                                        placeholder="0.00"
-                                        onChange={(e) => updateProposal(p.token, { editedUnitCost: e.target.value })}
-                                    />
-                                    {(() => {
-                                        const cost = Number(p.editedUnitCost ?? p.preview?.unitCost ?? 0)
-                                        const qty = Number(p.preview?.quantity ?? 0)
-                                        return cost > 0 && qty > 0
-                                            ? <span className="epsilon-proposal-price-total">est. total {(cost * qty).toLocaleString()}</span>
-                                            : null
-                                    })()}
-                                </label>
+                            {p.kind === 'purchase_order' && p.preview && (
+                                <div className="epsilon-po-vendor-row">
+                                    <span>Vendor</span>
+                                    <select
+                                        value={p.editedVendorId ?? p.preview.vendorId ?? ''}
+                                        disabled={p.status !== 'pending'}
+                                        onChange={(e) => updateProposal(p.token, { editedVendorId: e.target.value })}
+                                    >
+                                        {/* Covers both an inferred/matched real vendor with no
+                                            _id yet selected here, and a not-yet-created vendor
+                                            (newVendorName on the backend) — either way, this
+                                            shows what will actually be used unless the user
+                                            explicitly picks a different real one below. */}
+                                        {!p.preview.vendorId && <option value="">{p.preview.vendor}</option>}
+                                        {vendorsList.map((v) => (
+                                            <option key={v._id} value={v._id}>{v.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             )}
+                            {p.kind === 'purchase_order' && p.preview && (
+                                <div className="epsilon-po-vendor-row">
+                                    <span>Order by</span>
+                                    <input
+                                        type="date"
+                                        className="epsilon-po-date-input"
+                                        value={p.editedPostingDate ?? p.preview.suggestedOrderDate ?? p.preview.postingDate ?? ''}
+                                        disabled={p.status !== 'pending'}
+                                        onChange={(e) => updateProposal(p.token, { editedPostingDate: e.target.value })}
+                                    />
+                                </div>
+                            )}
+                            {p.kind === 'purchase_order' && p.preview?.orderDateBasis && (
+                                <div className="epsilon-proposal-note">{p.preview.orderDateBasis}</div>
+                            )}
+                            {p.kind === 'purchase_order' && Array.isArray(p.preview?.lines) && (() => {
+                                const excluded = p.excludedProductIds || []
+                                const visibleLines = p.preview.lines.filter((line) => !excluded.includes(line.productId))
+                                const anyFlagged = visibleLines.some((line) => line.categoryLooksOffForLocation)
+                                return (
+                                    <>
+                                        {anyFlagged && (
+                                            <div className="epsilon-po-warning-banner">
+                                                ⚠ A highlighted product's category doesn't match what's normally bought for this location (see Settings &gt; Warehouses) — likely a stock-tagging mix-up. Remove it if it doesn't belong here.
+                                            </div>
+                                        )}
+                                        <table className="epsilon-po-table">
+                                            <thead>
+                                                <tr><th>Product</th><th>Qty</th><th>Unit cost (₦)</th><th>Total</th><th /></tr>
+                                            </thead>
+                                            <tbody>
+                                                {visibleLines.map((line) => {
+                                                    const edited = p.editedLines?.[line.productId]
+                                                    const cost = (edited !== undefined && edited !== '') ? Number(edited) : Number(line.unitCost) || 0
+                                                    const total = cost * (Number(line.quantity) || 0)
+                                                    return (
+                                                        <tr key={line.productId} className={line.categoryLooksOffForLocation ? 'epsilon-po-row-warning' : ''}>
+                                                            <td title={line.categoryLooksOffForLocation ? `Category: ${line.categoryName || line.category} — not normally bought for this location` : undefined}>
+                                                                {line.categoryLooksOffForLocation ? '⚠ ' : ''}{line.productName}
+                                                            </td>
+                                                            <td>{line.quantity} {line.purchaseUom}</td>
+                                                            <td>
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    className="epsilon-po-cost-input"
+                                                                    value={edited ?? line.unitCost ?? ''}
+                                                                    disabled={p.status !== 'pending'}
+                                                                    onChange={(e) => updateProposal(p.token, {
+                                                                        editedLines: { ...(p.editedLines || {}), [line.productId]: e.target.value },
+                                                                    })}
+                                                                />
+                                                            </td>
+                                                            <td className="epsilon-po-line-total">{total.toLocaleString()}</td>
+                                                            <td>
+                                                                <button
+                                                                    type="button"
+                                                                    className="epsilon-po-remove-btn"
+                                                                    disabled={p.status !== 'pending'}
+                                                                    title="Remove this product from the order"
+                                                                    aria-label="Remove"
+                                                                    onClick={() => updateProposal(p.token, { excludedProductIds: [...excluded, line.productId] })}
+                                                                >×</button>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colSpan={3}>Total</td>
+                                                    <td className="epsilon-po-line-total">
+                                                        {visibleLines.reduce((sum, line) => {
+                                                            const edited = p.editedLines?.[line.productId]
+                                                            const cost = (edited !== undefined && edited !== '') ? Number(edited) : Number(line.unitCost) || 0
+                                                            return sum + cost * (Number(line.quantity) || 0)
+                                                        }, 0).toLocaleString()}
+                                                    </td>
+                                                    <td />
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                        {!visibleLines.length && (
+                                            <div className="epsilon-proposal-note">Every product was removed — dismiss this order or re-ask Epsilon to propose it again.</div>
+                                        )}
+                                    </>
+                                )
+                            })()}
                             {p.preview?.output && (
                                 <pre className="epsilon-proposal-preview">{p.preview.output}</pre>
                             )}
@@ -651,7 +1107,11 @@ const Epsilon = () => {
                             )}
                             {p.status === 'pending' && (
                                 <div className="epsilon-proposal-actions">
-                                    <button className="epsilon-proposal-run-btn" onClick={() => confirmProposal(p.token, p.kind, p.editedUnitCost)}>Run it</button>
+                                    <button
+                                        className="epsilon-proposal-run-btn"
+                                        disabled={p.kind === 'purchase_order' && Array.isArray(p.preview?.lines) && (p.excludedProductIds || []).length >= p.preview.lines.length}
+                                        onClick={() => confirmProposal(p.token, p.kind, p)}
+                                    >Run it</button>
                                     <button className="epsilon-proposal-dismiss-btn" onClick={() => dismissProposal(p.token, p.kind)}>Dismiss</button>
                                 </div>
                             )}
@@ -748,6 +1208,15 @@ const Epsilon = () => {
                     rows={1}
                     maxLength={4000}
                 />
+                {sttSupported && (
+                    <button
+                        type="button"
+                        className="epsilon-mic-btn"
+                        onClick={openVoiceMode}
+                        aria-label="Talk to Epsilon"
+                        title="Talk to Epsilon"
+                    >🎤</button>
+                )}
                 <button
                     className="epsilon-send-btn"
                     onClick={() => sendMessage()}
@@ -757,6 +1226,34 @@ const Epsilon = () => {
                 >
                     {sending ? '⏱' : '➤'}
                 </button>
+            </div>
+        </div>
+    )
+
+    // Fills whichever container renders it (the collapsed panel or the
+    // expanded main pane) rather than the whole screen — position:absolute
+    // against that container's own position:relative, not position:fixed —
+    // so the rest of the page (and, in expanded mode, the conversation
+    // sidebar) stays visible/usable alongside a voice conversation.
+    const voiceOverlayJsx = voiceModeOpen && (
+        <div className="epsilon-voice-overlay" role="dialog" aria-label="Voice conversation with Epsilon">
+            <button className="epsilon-voice-close" onClick={closeVoiceMode} aria-label="Exit voice mode" title="Exit voice mode">×</button>
+            <div
+                className={`epsilon-orb epsilon-orb-${voicePhase}`}
+                onClick={handleOrbClick}
+                role="button"
+                tabIndex={0}
+                aria-label={voicePhase === 'speaking' ? 'Tap to interrupt' : 'Tap to talk'}
+            >
+                <span className="epsilon-orb-ring epsilon-orb-ring-1" />
+                <span className="epsilon-orb-ring epsilon-orb-ring-2" />
+                <span className="epsilon-orb-core" ref={orbCoreRef} />
+            </div>
+            <div className="epsilon-voice-caption">
+                {voicePhase === 'listening' && (draft || 'Listening…')}
+                {voicePhase === 'processing' && 'Thinking…'}
+                {voicePhase === 'speaking' && 'Speaking…'}
+                {voicePhase === 'idle' && (error || 'Tap the orb to talk')}
             </div>
         </div>
     )
@@ -824,6 +1321,14 @@ const Epsilon = () => {
                                     <span className="epsilon-panel-subtitle">AI assistant</span>
                                 </div>
                                 <div className="epsilon-header-actions">
+                                    {ttsSupported && isSpeaking && !voiceModeOpen && (
+                                        <button className="epsilon-icon-btn" onClick={stopEpsilonSpeaking} aria-label="Stop speaking" title="Stop speaking">⏹</button>
+                                    )}
+                                    {ttsSupported && (
+                                        <button className={`epsilon-icon-btn ${autoSpeakEnabled ? 'epsilon-speaker-active' : ''}`} onClick={toggleAutoSpeak} aria-label={autoSpeakEnabled ? 'Voice replies on' : 'Voice replies off'} title={autoSpeakEnabled ? 'Voice replies on — click to mute' : 'Read replies aloud'}>
+                                            {autoSpeakEnabled ? '🔊' : '🔇'}
+                                        </button>
+                                    )}
                                     <button className="epsilon-icon-btn" onClick={refreshChat} disabled={isRefreshingChat} aria-label="Refresh" title="Refresh conversation">
                                         <span className={isRefreshingChat ? 'epsilon-refresh-spinning' : ''}>↻</span>
                                     </button>
@@ -833,6 +1338,7 @@ const Epsilon = () => {
                             </div>
                             {messagesListJsx}
                             {inputRowJsx}
+                            {voiceOverlayJsx}
                         </div>
                     </div>
                 </div>
@@ -846,6 +1352,14 @@ const Epsilon = () => {
                             <span className="epsilon-panel-subtitle">AI assistant</span>
                         </div>
                         <div className="epsilon-header-actions">
+                            {ttsSupported && isSpeaking && !voiceModeOpen && (
+                                <button className="epsilon-icon-btn" onClick={stopEpsilonSpeaking} aria-label="Stop speaking" title="Stop speaking">⏹</button>
+                            )}
+                            {ttsSupported && (
+                                <button className={`epsilon-icon-btn ${autoSpeakEnabled ? 'epsilon-speaker-active' : ''}`} onClick={toggleAutoSpeak} aria-label={autoSpeakEnabled ? 'Voice replies on' : 'Voice replies off'} title={autoSpeakEnabled ? 'Voice replies on — click to mute' : 'Read replies aloud'}>
+                                    {autoSpeakEnabled ? '🔊' : '🔇'}
+                                </button>
+                            )}
                             <button className="epsilon-icon-btn" onClick={refreshChat} disabled={isRefreshingChat} aria-label="Refresh" title="Refresh conversation">
                                 <span className={isRefreshingChat ? 'epsilon-refresh-spinning' : ''}>↻</span>
                             </button>
@@ -862,6 +1376,7 @@ const Epsilon = () => {
                     </div>
                     {messagesListJsx}
                     {inputRowJsx}
+                    {voiceOverlayJsx}
                 </div>
             )}
             <button
