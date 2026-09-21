@@ -54,8 +54,13 @@ const DashView = () =>{
     const [draftFromDate, setDraftFromDate] = useState(saleFrom || defaultFromDate)
     const [draftToDate, setDraftToDate] = useState(saleTo || defaultToDate)
     const dashboardRequestRef = useRef(0)
-        // Track expanded locations for stock alerts
-        const [expandedLocations, setExpandedLocations] = useState({})
+        // Which location's low-stock popup is open — null means closed. The
+        // location NAME, not an index into `restock` — `restock` can now
+        // refresh live while the popup is open (see the wc:inventory-stock-
+        // changed listener below), and an index would silently point at
+        // whatever location happens to reorder into that slot instead of
+        // the one actually being viewed.
+        const [lowStockModalLocation, setLowStockModalLocation] = useState(null)
     // Filters
     const [locationFilter, setLocationFilter] = useState('')
     const [productFilter, setProductFilter] = useState('')
@@ -1027,8 +1032,34 @@ const DashView = () =>{
     useEffect(() => {
         const handleRefresh = () => loadReorderRecommendations()
         window.addEventListener('wc:dashboard-summary-update', handleRefresh)
-        return () => window.removeEventListener('wc:dashboard-summary-update', handleRefresh)
+        // wc:dashboard-summary-update only fires once the (separate, cached,
+        // debounced) DashboardSummaries rebuild pipeline gets around to it —
+        // an indirect, potentially delayed signal for "stock actually
+        // changed". wc:inventory-stock-changed (App.js's SSE handling for
+        // the Purchase/InventoryTransactions collections — dispatched the
+        // moment a receipt or any other stock-moving write lands) is the
+        // direct one, confirmed live to be missing before this fix: a just-
+        // received PO would not reliably refresh this widget at all.
+        // computeReorderRecommendations itself is never cached (a live Mongo
+        // aggregation every call, see purchaseAdvisor.js) — the staleness
+        // was purely about WHEN this widget re-fetched it, not stale data
+        // being returned once it did.
+        window.addEventListener('wc:inventory-stock-changed', handleRefresh)
+        return () => {
+            window.removeEventListener('wc:dashboard-summary-update', handleRefresh)
+            window.removeEventListener('wc:inventory-stock-changed', handleRefresh)
+        }
     }, [loadReorderRecommendations])
+
+    // Escape closes the low-stock popup — the only close mechanism other
+    // modals in this app implement is backdrop-click + an X button (kept
+    // below too), but a real popup should also respond to Escape.
+    useEffect(() => {
+        if (lowStockModalLocation === null) return
+        const handleKeyDown = (e) => { if (e.key === 'Escape') setLowStockModalLocation(null) }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [lowStockModalLocation])
 
     // Opens Epsilon pre-seeded, reusing its already-built
     // recommend_reorders -> propose_purchase_order -> confirm chain rather
@@ -1368,27 +1399,26 @@ const DashView = () =>{
                             </button>
                         </div>
                         <div className='alert-content'>
+                                {/* A location box used to expand its item list inline, right in the
+                                    dashboard flow — pushing everything below it down and changing the
+                                    panel's height/shape every time (confirmed live: "distorting the
+                                    dashboard size and shape"). Now it just opens a popup instead; the
+                                    dashboard layout never moves. */}
                                 {restock.length > 0 ? (
                                     <div className='location-labels-row' style={{display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '16px'}}>
                                         {restock.map((locAlert, locIdx) => (
                                             <div
                                                 key={`location-label-${locIdx}`}
-                                                className={`location-label${expandedLocations[locIdx] ? ' active' : ''}`}
+                                                className='location-label'
                                                 style={{
                                               fontWeight: 'bold',
                                               cursor: 'pointer',
                                               padding: '8px 16px',
                                               borderRadius: '6px',
-                                              background: expandedLocations[locIdx] ? '#f0f8ff' : '#fff',
-                                              border: expandedLocations[locIdx] ? '2px solid #1976d2' : '1px solid #ddd',
-                                              boxShadow: expandedLocations[locIdx] ? '0 2px 8px rgba(25,118,210,0.12)' : 'none'
+                                              background: '#fff',
+                                              border: '1px solid #ddd',
                                                 }}
-                                                // Toggle, not just expand — clicking an already-expanded
-                                                // location used to just re-set the same {[locIdx]: true},
-                                                // which never collapsed it (confirmed live: no way back).
-                                                // Clicking a different one still switches (one expanded
-                                                // at a time), unchanged.
-                                                onClick={() => setExpandedLocations((prev) => (prev[locIdx] ? {} : { [locIdx]: true }))}
+                                                onClick={() => setLowStockModalLocation(locAlert.location)}
                                             >
                                                 {locAlert.location} <span style={{color:'#c00', fontWeight:'normal'}}>({locAlert.lowStockProducts.length})</span>
                                             </div>
@@ -1398,26 +1428,44 @@ const DashView = () =>{
                                     <div className='no-alerts'>No low stock items by location</div>
                                 )}
 
-                                {/* Show products for expanded location only */}
-                                {restock.map((locAlert, locIdx) => (
-                                    expandedLocations[locIdx] ? (
-                                        <div className='alert-category' key={`location-products-${locIdx}`} style={{marginBottom:'24px'}}>
-                                            <div className='alert-items'>
-                                                {locAlert.lowStockProducts.length > 0 ? (
-                                                    locAlert.lowStockProducts.map((item, idx) => (
-                                                        <div key={`low-stock-${locAlert.location}-${idx}`} className='alert-item'>
-                                                            <span className='alert-item-name'>{item.name}</span>
-                                                            <span className='alert-item-detail'>Stock: {fmt(item.stock)} (Reorder at: {Math.ceil(item.threshold)})</span>
-                                                            <span className='alert-item-detail'>{item.daysUntilStockout !== null && item.daysUntilStockout !== undefined ? `Runs out in ~${item.daysUntilStockout} day${item.daysUntilStockout === 1 ? '' : 's'} at current sales pace` : 'No recent sales pace to estimate runout'}</span>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className='no-alerts'>No low stock items</div>
-                                                )}
+                                {lowStockModalLocation !== null && (() => {
+                                    // Looked up by name, live, every render — not captured once at
+                                    // click time — so if this widget refreshes while the popup is
+                                    // open (e.g. a PO for this exact location just got received),
+                                    // what's shown updates or clears itself instead of going stale.
+                                    const activeLocAlert = restock.find((r) => r.location === lowStockModalLocation)
+                                    return (
+                                        <div className='dash-lowstock-modal-overlay' onClick={() => setLowStockModalLocation(null)}>
+                                            <div className='dash-lowstock-modal-content' onClick={(e) => e.stopPropagation()} role='dialog' aria-modal='true' aria-label={`Low stock at ${lowStockModalLocation}`}>
+                                                <div className='dash-lowstock-modal-header'>
+                                                    <h4>{lowStockModalLocation}{activeLocAlert ? ` — ${activeLocAlert.lowStockProducts.length} low stock item${activeLocAlert.lowStockProducts.length === 1 ? '' : 's'}` : ''}</h4>
+                                                    <button
+                                                        type='button'
+                                                        className='dash-lowstock-modal-close'
+                                                        onClick={() => setLowStockModalLocation(null)}
+                                                        aria-label='Close'
+                                                        title='Close'
+                                                    >&times;</button>
+                                                </div>
+                                                <div className='dash-lowstock-modal-body'>
+                                                    <div className='alert-items'>
+                                                        {activeLocAlert && activeLocAlert.lowStockProducts.length > 0 ? (
+                                                            activeLocAlert.lowStockProducts.map((item, idx) => (
+                                                                <div key={`low-stock-${lowStockModalLocation}-${idx}`} className='alert-item'>
+                                                                    <span className='alert-item-name'>{item.name}</span>
+                                                                    <span className='alert-item-detail'>Stock: {fmt(item.stock)} (Reorder at: {Math.ceil(item.threshold)})</span>
+                                                                    <span className='alert-item-detail'>{item.daysUntilStockout !== null && item.daysUntilStockout !== undefined ? `Runs out in ~${item.daysUntilStockout} day${item.daysUntilStockout === 1 ? '' : 's'} at current sales pace` : 'No recent sales pace to estimate runout'}</span>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className='no-alerts'>Nothing here is low on stock anymore.</div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    ) : null
-                                ))}
+                                    )
+                                })()}
 
                             {/* Price Discrepancy Alerts */}
                             {(() => {

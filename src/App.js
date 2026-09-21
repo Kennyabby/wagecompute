@@ -791,6 +791,12 @@ function App() {
                   setCached(company, 'purchase', merged, companyRecord?.emailid);
                   return merged;
                 });
+                // A real, direct "stock may have changed" signal — e.g. the
+                // Dashboard's low-stock widget listens for this so a
+                // just-received PO reliably refreshes it, instead of
+                // depending on the separate DashboardSummaries rebuild
+                // pipeline's own (indirect, potentially delayed) broadcast.
+                window.dispatchEvent(new CustomEvent('wc:inventory-stock-changed', { detail: { company, collection: 'Purchase' } }));
               } catch (e) {
                 console.error('SSE Purchase apply error', e);
                 setReloadCount(c => c + 1)
@@ -1021,6 +1027,12 @@ function App() {
               }
               break;
             case 'InventoryTransactions':
+              // Same direct "stock may have changed" signal as the Purchase
+              // case above — fires on every stock-moving write (receipts,
+              // transfers, sales, adjustments...), not just purchases.
+              try {
+                window.dispatchEvent(new CustomEvent('wc:inventory-stock-changed', { detail: { company, collection: 'InventoryTransactions' } }));
+              } catch (e) { /* ignore */ }
               // apply inventory transactions into IndexedDB with conflict-aware logic
               if (Array.isArray(payload.data)) {
                 import('./Resources/offlineDb').then(async ({ putInventoryTransactions, loadPendingChanges }) => {
