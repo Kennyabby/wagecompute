@@ -1257,6 +1257,16 @@ input:checked + .slider:before {
     color: var(--settings-text);
 }
 
+.epsilon-voice-save-status {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--settings-text-muted);
+}
+
+.epsilon-voice-save-status.epsilon-voice-saved {
+    color: var(--settings-primary);
+}
+
 .epsilon-tone-header span {
     font-size: 12px;
     color: var(--settings-text-muted);

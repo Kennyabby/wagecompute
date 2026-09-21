@@ -60,6 +60,11 @@ const EpsilonBillingCard = ({ variants }) => {
   const [voiceGender, setVoiceGender] = useState('female')
   const [voiceAccent, setVoiceAccent] = useState('en-US')
   const [isSavingVoice, setIsSavingVoice] = useState(false)
+  // Saves happen automatically the instant a gender/accent is picked — no
+  // separate Save button — but nothing on screen ever said so. This is
+  // purely a transient confirmation flash, cleared a couple seconds after
+  // a successful save.
+  const [voiceJustSaved, setVoiceJustSaved] = useState(false)
   const [isTestingVoice, setIsTestingVoice] = useState(false)
   const { ttsSupported } = getSpeechSupport()
   // Matches isTenantAdmin in wageserver/UserModule/Billing/billing.js exactly
@@ -175,6 +180,8 @@ const EpsilonBillingCard = ({ variants }) => {
     try {
       const response = await fetchServer('POST', { gender: nextGender, accent: nextAccent }, 'billing/epsilon/voice', server)
       if (response.err || !response.ok) throw new Error(response.mess || 'Unable to update Epsilon voice.')
+      setVoiceJustSaved(true)
+      setTimeout(() => setVoiceJustSaved(false), 2500)
     } catch (error) {
       setVoiceGender(previousGender)
       setVoiceAccent(previousAccent)
@@ -307,10 +314,15 @@ const EpsilonBillingCard = ({ variants }) => {
           {ttsSupported && (
             <div className='epsilon-tone-section epsilon-voice-section'>
               <div className='epsilon-tone-header'>
-                <strong>Epsilon's voice</strong>
+                <strong>
+                  Epsilon's voice
+                  {isSavingVoice && <span className='epsilon-voice-save-status'> · Saving…</span>}
+                  {voiceJustSaved && <span className='epsilon-voice-save-status epsilon-voice-saved'> · Saved</span>}
+                </strong>
                 <span>
-                  Applies when an employee turns on spoken replies in the chat panel. Actual voice quality depends on each
-                  listener's own browser/device — this picks the closest match available there.
+                  Changes save automatically — there's no separate Save button. Applies when an employee turns on spoken
+                  replies in the chat panel. Actual voice quality depends on each listener's own browser/device (many
+                  systems only have one or two voices installed at all) — this picks the closest match available there.
                   {isWorkspaceAdmin ? '' : ' Only a workspace admin can change this.'}
                 </span>
               </div>
