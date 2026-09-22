@@ -1870,6 +1870,28 @@ body {
   font-size: 14px;
 }
 
+/* .ca-metric-row/-label/-value were built for short bar-chart-style rows
+   (a tenant name, a monitor label) — the fixed 100px/60px widths truncate
+   the wrong things here: "Top users" rows carry a full email address plus
+   company name on the label side and a large token count on the value side.
+   Modifiers, not a change to the base rule, so every other ca-metric-row
+   usage (Impacted Tenants, etc.) keeps its original fixed-width layout. */
+.ca-metric-row-userlist {
+  gap: 12px;
+}
+
+.ca-metric-label-wide {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ca-metric-value-wide {
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .ca-monitors {
   padding: 20px 24px;
   display: flex;
