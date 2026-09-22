@@ -3111,76 +3111,80 @@ const CentralAdminApp = () => {
                 <div className='ca-panel-head'>
                   <h3>Create Epsilon subscription for a tenant</h3>
                 </div>
-                <p className='ca-panel-note'>
-                  Free grant, bypasses Paystack entirely — same as the manual subscription/offline-license forms.
-                  Set seats to 0 to revoke.
-                </p>
-                <div className='ca-form-grid'>
-                  <label>
-                    <span>Tenant database</span>
-                    <select name='database' value={epsilonSubForm.database} onChange={handleEpsilonSubField}>
-                      <option value=''>Select tenant</option>
-                      {snapshot.tenants.map((tenant) => (
-                        <option key={tenant.database} value={tenant.database}>{tenant.companyName} ({tenant.database})</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Seats</span>
-                    <input type='number' min='0' name='seats' value={epsilonSubForm.seats} onChange={handleEpsilonSubField} />
-                  </label>
+                <div className='ca-panel-content'>
+                  <p className='ca-panel-note'>
+                    Free grant, bypasses Paystack entirely — same as the manual subscription/offline-license forms.
+                    Set seats to 0 to revoke.
+                  </p>
+                  <div className='ca-form-grid'>
+                    <label>
+                      <span>Tenant database</span>
+                      <select name='database' value={epsilonSubForm.database} onChange={handleEpsilonSubField}>
+                        <option value=''>Select tenant</option>
+                        {snapshot.tenants.map((tenant) => (
+                          <option key={tenant.database} value={tenant.database}>{tenant.companyName} ({tenant.database})</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Seats</span>
+                      <input type='number' min='0' name='seats' value={epsilonSubForm.seats} onChange={handleEpsilonSubField} />
+                    </label>
+                  </div>
+                  <button className='ca-primary-btn' type='submit' disabled={isCreatingEpsilonSub}>
+                    {isCreatingEpsilonSub ? 'Processing...' : 'Create Epsilon Subscription'}
+                  </button>
                 </div>
-                <button className='ca-primary-btn' type='submit' disabled={isCreatingEpsilonSub}>
-                  {isCreatingEpsilonSub ? 'Processing...' : 'Create Epsilon Subscription'}
-                </button>
               </form>
 
               <div className='ca-panel'>
                 <div className='ca-panel-head'>
                   <h3>Epsilon pricing</h3>
                 </div>
-                <p className='ca-panel-note'>
-                  What every tenant actually pays for Epsilon — both figures feed the pricing page and the
-                  in-app purchase flow directly. These were previously only editable from Offline Licenses
-                  (per-seat price) and Admin Settings (token rate); consolidated here since they are both
-                  Epsilon-specific.
-                </p>
-                <div className='ca-form-grid'>
-                  <label>
-                    <span>Price per seat, per month (₦)</span>
-                    <input
-                      type='number'
-                      min='0'
-                      value={epsilonSeatPriceDraft}
-                      onChange={(e) => setEpsilonSeatPriceDraft(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    <span>Token price (₦ per 1,000 tokens)</span>
-                    <input
-                      type='number'
-                      min='0'
-                      value={globalSettingsForm.epsilonTokenPriceNaira}
-                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonTokenPriceNaira: Number(e.target.value) })}
-                    />
-                  </label>
-                </div>
-                <div className='ca-panel-head-actions'>
-                  <button className='ca-primary-btn' type='button' onClick={handleSaveEpsilonSeatPrice} disabled={isSavingSeatPrice}>
-                    {isSavingSeatPrice ? 'Saving...' : 'Save Seat Price'}
-                  </button>
-                  <button
-                    className='ca-primary-btn'
-                    type='button'
-                    onClick={async () => {
-                      setIsSavingTokenPrice(true)
-                      await handleUpdateGlobalSettings()
-                      setIsSavingTokenPrice(false)
-                    }}
-                    disabled={isSavingTokenPrice}
-                  >
-                    {isSavingTokenPrice ? 'Saving...' : 'Save Token Price'}
-                  </button>
+                <div className='ca-panel-content'>
+                  <p className='ca-panel-note'>
+                    What every tenant actually pays for Epsilon — both figures feed the pricing page and the
+                    in-app purchase flow directly. These were previously only editable from Offline Licenses
+                    (per-seat price) and Admin Settings (token rate); consolidated here since they are both
+                    Epsilon-specific.
+                  </p>
+                  <div className='ca-form-grid'>
+                    <label>
+                      <span>Price per seat, per month (₦)</span>
+                      <input
+                        type='number'
+                        min='0'
+                        value={epsilonSeatPriceDraft}
+                        onChange={(e) => setEpsilonSeatPriceDraft(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>Token price (₦ per 1,000 tokens)</span>
+                      <input
+                        type='number'
+                        min='0'
+                        value={globalSettingsForm.epsilonTokenPriceNaira}
+                        onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonTokenPriceNaira: Number(e.target.value) })}
+                      />
+                    </label>
+                  </div>
+                  <div className='ca-panel-head-actions'>
+                    <button className='ca-primary-btn' type='button' onClick={handleSaveEpsilonSeatPrice} disabled={isSavingSeatPrice}>
+                      {isSavingSeatPrice ? 'Saving...' : 'Save Seat Price'}
+                    </button>
+                    <button
+                      className='ca-primary-btn'
+                      type='button'
+                      onClick={async () => {
+                        setIsSavingTokenPrice(true)
+                        await handleUpdateGlobalSettings()
+                        setIsSavingTokenPrice(false)
+                      }}
+                      disabled={isSavingTokenPrice}
+                    >
+                      {isSavingTokenPrice ? 'Saving...' : 'Save Token Price'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -3188,71 +3192,73 @@ const CentralAdminApp = () => {
                 <div className='ca-panel-head'>
                   <h3>Epsilon real cost / margin tracking</h3>
                 </div>
-                <p className='ca-panel-note'>
-                  What Epsilon actually costs from Anthropic, vs. the token price charged above — the gap is
-                  real margin (see the "Real Margin This Month" card). Manually maintained: Anthropic's rates
-                  and the exchange rate both drift over time and aren't fetched automatically, so keep these
-                  current yourself.
-                </p>
-                <div className='ca-form-grid'>
-                  <label>
-                    <span>Exchange rate (₦ per $1)</span>
-                    <input
-                      type='number'
-                      min='0'
-                      value={globalSettingsForm.epsilonUsdToNgn}
-                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonUsdToNgn: Number(e.target.value) })}
-                    />
-                  </label>
-                  <label>
-                    <span>Fast model (tried first, escalates only if a tool call is needed)</span>
-                    <input
-                      type='text'
-                      value={globalSettingsForm.epsilonFastModel}
-                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonFastModel: e.target.value })}
-                      placeholder='claude-haiku-4-5-20251001'
-                    />
-                  </label>
-                  <label>
-                    <span>Fast-model routing</span>
-                    <select
-                      value={globalSettingsForm.epsilonFastModelEnabled ? 'enabled' : 'disabled'}
-                      onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonFastModelEnabled: e.target.value === 'enabled' })}
-                    >
-                      <option value='enabled'>Enabled</option>
-                      <option value='disabled'>Disabled (Sonnet-only)</option>
-                    </select>
-                  </label>
-                </div>
-                {Object.entries(globalSettingsForm.epsilonModelRatesUsd || {}).map(([modelId, rates]) => (
-                  <div key={modelId}>
-                    <p className='ca-panel-note' style={{ marginBottom: 4 }}><strong>{modelId}</strong> — USD per 1,000,000 tokens</p>
-                    <div className='ca-form-grid'>
-                      {['inputPerM', 'outputPerM', 'cacheWritePerM', 'cacheReadPerM'].map((field) => (
-                        <label key={field}>
-                          <span>{field.replace('PerM', '')}</span>
-                          <input
-                            type='number'
-                            min='0'
-                            step='0.01'
-                            value={rates[field]}
-                            onChange={(e) => setGlobalSettingsForm({
-                              ...globalSettingsForm,
-                              epsilonModelRatesUsd: {
-                                ...globalSettingsForm.epsilonModelRatesUsd,
-                                [modelId]: { ...rates, [field]: Number(e.target.value) },
-                              },
-                            })}
-                          />
-                        </label>
-                      ))}
-                    </div>
+                <div className='ca-panel-content'>
+                  <p className='ca-panel-note'>
+                    What Epsilon actually costs from Anthropic, vs. the token price charged above — the gap is
+                    real margin (see the "Real Margin This Month" card). Manually maintained: Anthropic's rates
+                    and the exchange rate both drift over time and aren't fetched automatically, so keep these
+                    current yourself.
+                  </p>
+                  <div className='ca-form-grid'>
+                    <label>
+                      <span>Exchange rate (₦ per $1)</span>
+                      <input
+                        type='number'
+                        min='0'
+                        value={globalSettingsForm.epsilonUsdToNgn}
+                        onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonUsdToNgn: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label>
+                      <span>Fast model (tried first, escalates only if a tool call is needed)</span>
+                      <input
+                        type='text'
+                        value={globalSettingsForm.epsilonFastModel}
+                        onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonFastModel: e.target.value })}
+                        placeholder='claude-haiku-4-5-20251001'
+                      />
+                    </label>
+                    <label>
+                      <span>Fast-model routing</span>
+                      <select
+                        value={globalSettingsForm.epsilonFastModelEnabled ? 'enabled' : 'disabled'}
+                        onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonFastModelEnabled: e.target.value === 'enabled' })}
+                      >
+                        <option value='enabled'>Enabled</option>
+                        <option value='disabled'>Disabled (Sonnet-only)</option>
+                      </select>
+                    </label>
                   </div>
-                ))}
-                <div className='ca-panel-head-actions'>
-                  <button className='ca-primary-btn' type='button' onClick={handleUpdateGlobalSettings} disabled={isBusy}>
-                    {isBusy ? 'Saving...' : 'Save Cost Tracking Config'}
-                  </button>
+                  {Object.entries(globalSettingsForm.epsilonModelRatesUsd || {}).map(([modelId, rates]) => (
+                    <div key={modelId} style={{ marginTop: 16 }}>
+                      <p className='ca-panel-note' style={{ marginBottom: 4 }}><strong>{modelId}</strong> — USD per 1,000,000 tokens</p>
+                      <div className='ca-form-grid'>
+                        {['inputPerM', 'outputPerM', 'cacheWritePerM', 'cacheReadPerM'].map((field) => (
+                          <label key={field}>
+                            <span>{field.replace('PerM', '')}</span>
+                            <input
+                              type='number'
+                              min='0'
+                              step='0.01'
+                              value={rates[field]}
+                              onChange={(e) => setGlobalSettingsForm({
+                                ...globalSettingsForm,
+                                epsilonModelRatesUsd: {
+                                  ...globalSettingsForm.epsilonModelRatesUsd,
+                                  [modelId]: { ...rates, [field]: Number(e.target.value) },
+                                },
+                              })}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <div className='ca-panel-head-actions'>
+                    <button className='ca-primary-btn' type='button' onClick={handleUpdateGlobalSettings} disabled={isBusy}>
+                      {isBusy ? 'Saving...' : 'Save Cost Tracking Config'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -3260,40 +3266,42 @@ const CentralAdminApp = () => {
                 <div className='ca-panel-head'>
                   <h3>Grant an employee Epsilon access directly</h3>
                 </div>
-                <p className='ca-panel-note'>
-                  Bypasses Team Access entirely — use this when a tenant's own super admin needs a seat right
-                  now (they cannot edit their own profile from Settings, so a seat granted to them above has
-                  no self-service way to actually reach them). The rate-limit reset below uses the same
-                  tenant/email fields — deliberately platform-operator-only: a workspace admin resetting their
-                  own limit would defeat the point of having one.
-                </p>
-                <div className='ca-form-grid'>
-                  <label>
-                    <span>Tenant database</span>
-                    <select name='database' value={epsilonEmployeeGrantForm.database} onChange={handleEpsilonEmployeeGrantField}>
-                      <option value=''>Select tenant</option>
-                      {snapshot.tenants.map((tenant) => (
-                        <option key={tenant.database} value={tenant.database}>{tenant.companyName} ({tenant.database})</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Employee email</span>
-                    <input type='email' name='emailid' value={epsilonEmployeeGrantForm.emailid} onChange={handleEpsilonEmployeeGrantField} placeholder='admin@company.com' />
-                  </label>
-                </div>
-                <div className='ca-panel-head-actions'>
-                  <button className='ca-primary-btn' type='submit' disabled={isGrantingEmployeeAccess}>
-                    {isGrantingEmployeeAccess ? 'Granting...' : 'Grant Epsilon Access'}
-                  </button>
-                  <button
-                    className='ca-primary-btn'
-                    type='button'
-                    onClick={() => handleResetEmployeeRateLimit(epsilonEmployeeGrantForm.database, epsilonEmployeeGrantForm.emailid.trim())}
-                    disabled={!!isResettingEmployeeRateLimit}
-                  >
-                    {isResettingEmployeeRateLimit ? 'Resetting...' : 'Reset Their Rate Limit Now'}
-                  </button>
+                <div className='ca-panel-content'>
+                  <p className='ca-panel-note'>
+                    Bypasses Team Access entirely — use this when a tenant's own super admin needs a seat right
+                    now (they cannot edit their own profile from Settings, so a seat granted to them above has
+                    no self-service way to actually reach them). The rate-limit reset below uses the same
+                    tenant/email fields — deliberately platform-operator-only: a workspace admin resetting their
+                    own limit would defeat the point of having one.
+                  </p>
+                  <div className='ca-form-grid'>
+                    <label>
+                      <span>Tenant database</span>
+                      <select name='database' value={epsilonEmployeeGrantForm.database} onChange={handleEpsilonEmployeeGrantField}>
+                        <option value=''>Select tenant</option>
+                        {snapshot.tenants.map((tenant) => (
+                          <option key={tenant.database} value={tenant.database}>{tenant.companyName} ({tenant.database})</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Employee email</span>
+                      <input type='email' name='emailid' value={epsilonEmployeeGrantForm.emailid} onChange={handleEpsilonEmployeeGrantField} placeholder='admin@company.com' />
+                    </label>
+                  </div>
+                  <div className='ca-panel-head-actions'>
+                    <button className='ca-primary-btn' type='submit' disabled={isGrantingEmployeeAccess}>
+                      {isGrantingEmployeeAccess ? 'Granting...' : 'Grant Epsilon Access'}
+                    </button>
+                    <button
+                      className='ca-primary-btn'
+                      type='button'
+                      onClick={() => handleResetEmployeeRateLimit(epsilonEmployeeGrantForm.database, epsilonEmployeeGrantForm.emailid.trim())}
+                      disabled={!!isResettingEmployeeRateLimit}
+                    >
+                      {isResettingEmployeeRateLimit ? 'Resetting...' : 'Reset Their Rate Limit Now'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </section>
@@ -3337,9 +3345,11 @@ const CentralAdminApp = () => {
                   <div className='ca-panel-head'><h3>Top users (last 30 days)</h3></div>
                   <div className='ca-metrics-list'>
                     {epsilonOverview?.topUsers?.length ? epsilonOverview.topUsers.map((row) => (
-                      <div className='ca-metric-row' key={`${row.database}:${row.userEmail}`}>
-                        <span className='ca-metric-label'>{row.userEmail} <small>({row.companyName})</small></span>
-                        <span className='ca-metric-value'>{row.totalTokens.toLocaleString()} tok</span>
+                      <div className='ca-metric-row ca-metric-row-userlist' key={`${row.database}:${row.userEmail}`}>
+                        <span className='ca-metric-label ca-metric-label-wide' title={`${row.userEmail} (${row.companyName})`}>
+                          {row.userEmail} <small>({row.companyName})</small>
+                        </span>
+                        <span className='ca-metric-value ca-metric-value-wide'>{row.totalTokens.toLocaleString()} tok</span>
                       </div>
                     )) : (
                       <div className='ca-empty'>No user activity yet.</div>

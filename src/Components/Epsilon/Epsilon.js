@@ -1133,7 +1133,10 @@ const Epsilon = () => {
                                 <span>
                                     {m.usage.modelsUsed?.length ? m.usage.modelsUsed.map(modelLabel).join(' → ') : 'Instant reply'}
                                 </span>
-                                <span>{formatTokens(m.usage.totalTokens)} tokens used</span>
+                                <span>
+                                    {formatTokens(m.usage.totalTokens)} tokens used
+                                    {m.usage.naira ? ` (≈₦${m.usage.naira.toLocaleString()})` : ''}
+                                </span>
                                 {m.usage.rateLimitTokensRemaining != null && (
                                     <span>{formatTokens(m.usage.rateLimitTokensRemaining)} left this window</span>
                                 )}
