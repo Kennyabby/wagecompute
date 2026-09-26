@@ -543,7 +543,7 @@ const Settings = () => {
         setDeliveryPostsPermissions(deliveryPostsPerms)
         setPosAdminPermissions([
             'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent', 'reconcile_inventory',
-            'edit_ended_sessions', 'place_multiple_deliveries', ...overridePerms])
+            'edit_ended_sessions', 'place_multiple_deliveries', 'manage_session_manager', ...overridePerms])
     }, [wrhs])
 
     // useCache=true (mount + the periodic timer's leading edge is fine to
@@ -847,10 +847,20 @@ const Settings = () => {
         })
     }
 
+    // window.prompt used to be used here — Electron's renderer doesn't
+    // reliably support it (confirmed: it just silently does nothing there,
+    // whereas it shows a real native OS dialog on the web build), so this
+    // needs to work identically on both without relying on any native
+    // browser dialog at all. A real in-app modal, rendered once below.
+    const [approverModal, setApproverModal] = useState(null) // { moduleName, value } | null
     const addApprovalApprover = (moduleName) => {
-        const approverId = window.prompt('Enter approver employee ID or email')
-        if (!approverId) return
-        updateApprovalApprover(moduleName, approverId.trim(), 'sections', 'all')
+        setApproverModal({ moduleName, value: '' })
+    }
+    const confirmAddApprover = () => {
+        const approverId = (approverModal?.value || '').trim()
+        if (!approverId) { setApproverModal(null); return }
+        updateApprovalApprover(approverModal.moduleName, approverId, 'sections', 'all')
+        setApproverModal(null)
     }
 
     const removeApprovalApprover = (moduleName, approverId) => {
@@ -2017,42 +2027,50 @@ const Settings = () => {
                                                 <span className='slider'></span>
                                             </label>
                                         </div>
-                                        <div className='inpcov'>
-                                            <div>
-                                                Epsilon AI Access
-                                                {epsilonSeatInfo.epsilonSeats > 0 && (
-                                                    <span className='ai-seat-usage'> ({epsilonSeatInfo.usedSeats} of {epsilonSeatInfo.epsilonSeats} seats used)</span>
+                                        {/* Epsilon is online-only — its backend needs a live Anthropic
+                                            API key, which the desktop build deliberately never ships
+                                            with (see the .env exclusion in the electron package build).
+                                            Showing a toggle for a feature that can't work on this
+                                            platform at all is just confusing, so it's hidden outright
+                                            here rather than shown disabled with an explanation. */}
+                                        {!window.electronAPI?.isElectron && (
+                                            <div className='inpcov'>
+                                                <div>
+                                                    Epsilon AI Access
+                                                    {epsilonSeatInfo.epsilonSeats > 0 && (
+                                                        <span className='ai-seat-usage'> ({epsilonSeatInfo.usedSeats} of {epsilonSeatInfo.epsilonSeats} seats used)</span>
+                                                    )}
+                                                </div>
+                                                <label className='toggle-switch'>
+                                                    <input
+                                                        type='checkbox'
+                                                        name='aiAccess'
+                                                        checked={loginDetails.aiAccess}
+                                                        disabled={
+                                                            epsilonSeatInfo.epsilonSeats <= 0 ||
+                                                            (!selectedEmployee?.aiAccess && epsilonSeatInfo.usedSeats >= epsilonSeatInfo.epsilonSeats)
+                                                        }
+                                                        onChange={handleLoginDetailsChange}
+                                                    />
+                                                    <span className='slider'></span>
+                                                </label>
+                                                {epsilonSeatInfo.epsilonSeats <= 0 && (
+                                                    <div className='settings-toggle-hint'>
+                                                        No Epsilon AI seats yet — purchase seats from Settings &gt; Billing, or ask the platform admin to grant some.
+                                                    </div>
+                                                )}
+                                                {epsilonSeatInfo.epsilonSeats > 0 && !selectedEmployee?.aiAccess && epsilonSeatInfo.usedSeats >= epsilonSeatInfo.epsilonSeats && (
+                                                    <div className='settings-toggle-hint'>
+                                                        All {epsilonSeatInfo.epsilonSeats} seat(s) are in use — free one up or purchase more before granting this employee access.
+                                                    </div>
+                                                )}
+                                                {selectedEmployee?.aiAccess && (
+                                                    <div className='settings-toggle-hint'>
+                                                        Locked out of Epsilon until the usage window resets? Only the platform admin can reset that early (Central Admin) — this is a deliberate cost control, not something a workspace can bypass on its own.
+                                                    </div>
                                                 )}
                                             </div>
-                                            <label className='toggle-switch'>
-                                                <input
-                                                    type='checkbox'
-                                                    name='aiAccess'
-                                                    checked={loginDetails.aiAccess}
-                                                    disabled={
-                                                        epsilonSeatInfo.epsilonSeats <= 0 ||
-                                                        (!selectedEmployee?.aiAccess && epsilonSeatInfo.usedSeats >= epsilonSeatInfo.epsilonSeats)
-                                                    }
-                                                    onChange={handleLoginDetailsChange}
-                                                />
-                                                <span className='slider'></span>
-                                            </label>
-                                            {epsilonSeatInfo.epsilonSeats <= 0 && (
-                                                <div className='settings-toggle-hint'>
-                                                    No Epsilon AI seats yet — purchase seats from Settings &gt; Billing, or ask the platform admin to grant some.
-                                                </div>
-                                            )}
-                                            {epsilonSeatInfo.epsilonSeats > 0 && !selectedEmployee?.aiAccess && epsilonSeatInfo.usedSeats >= epsilonSeatInfo.epsilonSeats && (
-                                                <div className='settings-toggle-hint'>
-                                                    All {epsilonSeatInfo.epsilonSeats} seat(s) are in use — free one up or purchase more before granting this employee access.
-                                                </div>
-                                            )}
-                                            {selectedEmployee?.aiAccess && (
-                                                <div className='settings-toggle-hint'>
-                                                    Locked out of Epsilon until the usage window resets? Only the platform admin can reset that early (Central Admin) — this is a deliberate cost control, not something a workspace can bypass on its own.
-                                                </div>
-                                            )}
-                                        </div>
+                                        )}
                                     </div>
 
                                     <div className="form-actions">
@@ -2799,6 +2817,32 @@ const Settings = () => {
                     {renderView()}
                 </AnimatePresence>
             </main>
+
+            {approverModal && (
+                <div className='approver-modal-overlay' onClick={() => setApproverModal(null)}>
+                    <div className='approver-modal-content' onClick={(e) => e.stopPropagation()}>
+                        <div className='approver-modal-header'>
+                            <h3>Add Approver</h3>
+                            <button className='approver-modal-close' onClick={() => setApproverModal(null)} aria-label='Close'>×</button>
+                        </div>
+                        <div className='approver-modal-body'>
+                            <label>Employee ID or email</label>
+                            <input
+                                type='text'
+                                autoFocus
+                                value={approverModal.value}
+                                onChange={(e) => setApproverModal((prev) => ({ ...prev, value: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') confirmAddApprover() }}
+                                placeholder='e.g. jane@company.com'
+                            />
+                        </div>
+                        <div className='approver-modal-actions'>
+                            <button className='approver-modal-cancel' onClick={() => setApproverModal(null)}>Cancel</button>
+                            <button className='approver-modal-add' onClick={confirmAddApprover} disabled={!approverModal.value.trim()}>Add</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

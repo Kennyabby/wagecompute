@@ -19,8 +19,16 @@ const SideNav = () => {
     const {
         server, fetchServer, company, companyRecord,
         setAlertState, setAlert, setAlertTimeout, approvals, setCurApproval,
-        isFullyConnected, enabledModules
+        isFullyConnected, isBrowserOnline, enabledModules
     } = useContext(ContextProvider)
+    // The desktop build's own server is always local (127.0.0.1) — real
+    // internet status doesn't affect whether it's reachable, so isBrowserOnline
+    // (real navigator.onLine signal) is what's worth showing there, not
+    // isFullyConnected (which also factors in a health-ping to the server,
+    // a genuinely meaningful "are we actually connected" question only for
+    // the web build, where the server really is remote).
+    const isElectron = !!window.electronAPI?.isElectron
+    const connectivitySignal = isElectron ? isBrowserOnline : isFullyConnected
     const [companyName, setCompanyName] = useState('....')
     const [curPath, setCurPath] = useState('')
     const [logStatus, setLogStatus] = useState('Log Out')
@@ -417,11 +425,15 @@ const SideNav = () => {
                 </div>
                 {!isCollapsed && (
                     <div
-                        className={`connectivity-indicator ${isFullyConnected ? 'online' : 'offline'}`}
-                        title={isFullyConnected ? 'Connected to server' : 'No connection to server — some actions require a live connection'}
+                        className={`connectivity-indicator ${connectivitySignal ? 'online' : 'offline'} ${isElectron ? 'is-desktop' : ''}`}
+                        title={
+                            isElectron
+                                ? (connectivitySignal ? 'Internet connection available' : "No internet connection — you're working locally, everything still works")
+                                : (connectivitySignal ? 'Connected to server' : 'No connection to server — some actions require a live connection')
+                        }
                     >
                         <span className='connectivity-dot' />
-                        {isFullyConnected ? 'Online' : 'Offline'}
+                        {connectivitySignal ? 'Online' : 'Offline'}
                     </div>
                 )}
                 <nav className='navbox' onClick={handleNavClick}>

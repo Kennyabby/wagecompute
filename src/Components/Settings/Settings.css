@@ -1707,3 +1707,115 @@ input:checked + .slider:before {
         text-align: right;
     }
 }
+
+/* Add Approver modal — replaces window.prompt, which Electron's renderer
+   doesn't reliably support (confirmed: silently does nothing there). Own,
+   self-contained class names rather than a generic shared ".modal-*" set,
+   deliberately — this codebase has more than one page where reusing an
+   ambiguous shared modal class name bled in unrelated styling by accident. */
+.approver-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 16px;
+}
+
+.approver-modal-content {
+    background: var(--settings-card-bg);
+    color: var(--settings-text);
+    border-radius: var(--settings-radius);
+    box-shadow: var(--settings-shadow);
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+}
+
+.approver-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.approver-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.approver-modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--settings-text-muted);
+    padding: 0 4px;
+}
+
+.approver-modal-body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.approver-modal-body label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--settings-text-muted);
+}
+
+.approver-modal-body input {
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--settings-text);
+    background: var(--settings-bg);
+}
+
+.approver-modal-body input:focus {
+    outline: none;
+    border-color: var(--settings-primary);
+}
+
+.approver-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px 20px;
+}
+
+.approver-modal-cancel,
+.approver-modal-add {
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.approver-modal-cancel {
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    color: var(--settings-text);
+}
+
+.approver-modal-add {
+    background: var(--settings-primary);
+    color: #ffffff;
+}
+
+.approver-modal-add:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

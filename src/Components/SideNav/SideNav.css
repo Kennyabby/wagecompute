@@ -169,6 +169,22 @@
     animation: connectivity-pulse 1.5s ease-in-out infinite;
 }
 
+/* Desktop build only: "Offline" here just means no internet — the app's own
+   server is local and unaffected, so nothing actually stops working. Shown
+   as a calm, positive signal instead of the web build's red alarm styling,
+   which would wrongly suggest something's broken. No pulsing animation
+   either, for the same reason — that's an attention-getting cue for a real
+   problem, and this isn't one. */
+.connectivity-indicator.offline.is-desktop {
+    color: #6ee7b7;
+}
+
+.connectivity-indicator.offline.is-desktop .connectivity-dot {
+    background: #22c55e;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.7);
+    animation: none;
+}
+
 @keyframes connectivity-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.35; }

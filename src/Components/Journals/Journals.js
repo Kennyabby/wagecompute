@@ -198,7 +198,7 @@ const Journals = () => {
     const [showAuditModal, setShowAuditModal] = useState(false)
     const [isClosingLoading, setIsClosingLoading] = useState(false)
     const [isClosingAction, setIsClosingAction] = useState(false)
-    const [closingToolbarOpen, setClosingToolbarOpen] = useState(true)
+    const [closingToolbarOpen, setClosingToolbarOpen] = useState(false)
 
     const loadLastClosing = async () => {
         if (!company) return
@@ -336,32 +336,6 @@ const Journals = () => {
         }
     }
 
-    const handleComputeClosing = async (includeRaw = false) => {
-        if (!company || !companyRecord) return
-        const closingDate = monthEndFor(toDate)
-        setIsClosingAction(true)
-        try {
-            const resp = await fetchServer('POST', { closingDate, includeRawLedger: includeRaw }, `accounting/compute-closing`, server)
-            if (resp && resp.ok) {
-                setLastClosing(resp.closing || null)
-                loadBalances(true)
-                setAlertState('success')
-                setAlert(resp.mess || 'Closing computed')
-                setAlertTimeout(3000)
-            } else {
-                setAlertState('error')
-                setAlert(resp?.mess || 'Failed to compute closing')
-                setAlertTimeout(4000)
-            }
-        } catch (e) {
-            console.error('compute closing failed', e)
-            setAlertState('error')
-            setAlert(e.message || 'Failed to compute closing')
-            setAlertTimeout(4000)
-        } finally {
-            setIsClosingAction(false)
-        }
-    }
 
     const handleBuildMissingMonthlyClosings = async (includeRawLedger = false) => {
         if (!company || !companyRecord) return
@@ -514,38 +488,76 @@ const Journals = () => {
         try { return window.localStorage.getItem(glBacklogStorageKey) || null; } catch (e) { return null; }
     });
     const glBacklogOperation = usePostingOperationProgress(glBacklogOperationId);
+    // usePostingOperationProgress only ever updates from a live SSE event —
+    // right after a page reload it starts back at null and stays that way
+    // until the next document-processed broadcast, which for a large run can
+    // be a real, visible gap ("connecting…" for no good reason when the
+    // actual progress was known all along). Seeded from the one-off status
+    // check below and used as a fallback wherever glBacklogOperation itself
+    // is still null; once the first live event arrives, glBacklogOperation
+    // takes over and this is never read again for that run.
+    const [glBacklogSeed, setGlBacklogSeed] = useState(null);
+    const glBacklogDisplay = glBacklogOperation || glBacklogSeed;
+
+    // Generic in-app confirm modal — window.confirm doesn't reliably work in
+    // Electron's renderer (confirmed, same class of issue as window.prompt
+    // elsewhere in this app), so anything here that used to gate a real
+    // action behind it needs a real modal instead. { message, onConfirm } | null.
+    const [confirmModal, setConfirmModal] = useState(null)
 
     useEffect(() => {
         if (!glBacklogOperationId || !server) return;
         // Reattach: fetch the current state immediately on mount/reload
         // instead of waiting for the next SSE event, since the run may have
-        // finished (or failed) while this tab was closed.
+        // finished (or failed) while this tab was closed, or simply be
+        // sitting between two documents right now with nothing new to
+        // broadcast for a moment.
         checkPostingOperationStatus(glBacklogOperationId, server).then((status) => {
             if (!status || status.status === 'unknown') {
                 try { window.localStorage.removeItem(glBacklogStorageKey); } catch (e) {}
                 setGlBacklogOperationId(null);
+                return;
             }
+            setGlBacklogSeed(status);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [server]);
 
+    const handleCancelBacklog = async () => {
+        if (!glBacklogOperationId) return;
+        try {
+            const resp = await fetchServer('POST', {}, `accounting/postingOperations/${glBacklogOperationId}/cancel`, server);
+            setAlertState(resp?.ok ? 'info' : 'error');
+            setAlert(resp?.mess || (resp?.ok ? 'Stopping after the current record finishes…' : 'Failed to stop the run'));
+            setAlertTimeout(5000);
+        } catch (e) {
+            setAlertState('error'); setAlert(e.message || 'Failed to stop the run'); setAlertTimeout(4000);
+        }
+    }
+
     useEffect(() => {
         if (!glBacklogOperation || glBacklogOperation.status === 'in-progress') return;
-        // Finished (completed or failed) — surface a final summary and clear
-        // the reattach pointer so a fresh run starts clean next time.
-        setAlertState(glBacklogOperation.status === 'completed' ? 'success' : 'error');
-        setAlert(`Backlog ${glBacklogOperation.status}: ${glBacklogOperation.posted || 0} posted, ${glBacklogOperation.alreadyPresent || 0} already present, ${glBacklogOperation.skipped || 0} skipped${glBacklogOperation.errors?.length ? `, ${glBacklogOperation.errors.length} errors` : ''}.`);
+        // Finished (completed, cancelled, or failed) — surface a final
+        // summary and clear the reattach pointer so a fresh run starts clean
+        // next time.
+        const statusLabel = glBacklogOperation.status === 'completed' ? 'completed'
+            : glBacklogOperation.status === 'cancelled' ? 'stopped'
+            : 'failed';
+        setAlertState(glBacklogOperation.status === 'completed' ? 'success' : glBacklogOperation.status === 'cancelled' ? 'info' : 'error');
+        setAlert(`Backlog ${statusLabel}: ${glBacklogOperation.posted || 0} posted, ${glBacklogOperation.alreadyPresent || 0} already present, ${glBacklogOperation.skipped || 0} skipped${glBacklogOperation.errors?.length ? `, ${glBacklogOperation.errors.length} errors` : ''}.`);
         setAlertTimeout(8000);
         try { window.localStorage.removeItem(glBacklogStorageKey); } catch (e) {}
         setGlBacklogOperationId(null);
+        setGlBacklogSeed(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [glBacklogOperation?.status]);
 
-    const handlePopulateGeneralLedgerBacklog = async () => {
-        if (!company) return;
-        if (!window.confirm('This posts real General Ledger entries for all historical Purchase, Inventory, Asset, and Business Partner records that don\'t have one yet. It can take a while for a tenant with a lot of history. Continue?')) {
-            return;
-        }
+    // The actual "start the backlog run" call — shared by both entry points
+    // below (the general Populate GL Backlog button, and the desktop-only
+    // Migrate Old Data button). Only the confirmation message differs;
+    // everything after that is the exact same server call and progress
+    // tracking either way.
+    const runGeneralLedgerBacklog = async () => {
         const operationId = generateOperationId();
         try {
             const resp = await fetchServer('POST', { operationId }, 'accounting/populateGeneralLedgerBacklog', server);
@@ -560,6 +572,30 @@ const Journals = () => {
             console.error('populate GL backlog failed', e);
             setAlertState('error'); setAlert(e.message || 'Failed to start General Ledger backlog'); setAlertTimeout(4000);
         }
+    }
+
+    const handlePopulateGeneralLedgerBacklog = () => {
+        if (!company) return;
+        setConfirmModal({
+            title: 'Populate GL Backlog',
+            message: "This posts real General Ledger entries for all historical Purchase, Inventory, Asset, and Business Partner records that don't have one yet. It can take a while for a tenant with a lot of history. Continue?",
+            onConfirm: runGeneralLedgerBacklog,
+        })
+    }
+
+    // Desktop build only — see Settings > Accounting Migration. Same
+    // underlying operation as above (populateGeneralLedgerBacklog now also
+    // covers Orders — see that route's own comment), just framed for the
+    // scenario it actually exists for: an old local install upgraded from a
+    // pre-accounting version of the app, whose historical Orders/Purchase/
+    // Inventory records never posted to the General Ledger at all.
+    const handleMigrateOldDesktopData = () => {
+        if (!company) return;
+        setConfirmModal({
+            title: 'Migrate Old Desktop Data',
+            message: "This scans every historical Sale, Purchase, and Inventory record on this computer and posts whatever hasn't been recorded in the General Ledger yet — fixing dashboard totals (like Sales Amount) that were missing anything from before this app's accounting engine existed. Safe to run more than once; already-posted records are left untouched. It can take a while. Continue?",
+            onConfirm: runGeneralLedgerBacklog,
+        })
     }
 
     const buildImbalanceSnapshot = (ledgerSource = rawLedger) => {
@@ -3293,14 +3329,48 @@ const Journals = () => {
         )
     }
 
+    // Build Closing / Build with Ledger used to be here — removed, not just
+    // hidden: confirmed by tracing the actual backend routes that
+    // compute-closings-range (Build Monthly Closings / Build Monthly +
+    // Ledgers) explicitly reuses compute-closing's exact per-month logic
+    // while walking every month from the earliest posting through the
+    // current one — a strict superset, always including whatever month
+    // these two single-month buttons targeted. handleComputeClosing (their
+    // only caller) was removed with them.
+    //
+    // Single source of truth for every button in the Monthly Closing/GL
+    // toolbar's tooltip AND its "What do these actions do?" help panel below
+    // (which just renders this whole array) — every button's `title` prop
+    // pulls from here via getActionHelp(label) instead of a separately
+    // hand-written string, so the two can never drift out of sync, including
+    // for whatever gets added here next: add one entry, reference it from
+    // the button, and it's automatically documented in both places at once.
+    // `desktopOnly` mirrors a button's own visibility condition so the help
+    // panel never describes something that isn't actually on screen.
     const closingActionHelp = [
         {
-            label: 'Build Closing',
-            title: 'Compute and save the monthly closing balances for the selected period end. This keeps future reports from recalculating from day one.',
+            label: 'Confirm Closing',
+            title: 'Mark the closing as reviewed. Confirmed closings can still be corrected before they are locked.',
         },
         {
-            label: 'Build with Ledger',
-            title: 'Build the same monthly closing and also store detailed ledger traces for audit. This is heavier, so use it when you need proof lines.',
+            label: 'Lock Closing',
+            title: 'Lock the closing to prevent normal recompute. Admin override is required to change it.',
+        },
+        {
+            label: 'Rebuild Closing',
+            title: 'Rebuild the currently selected last closing from the latest source records.',
+        },
+        {
+            label: 'Build Monthly Closings',
+            title: 'Build missing month-end closing snapshots (from the earliest posting through the selected period) so opening balances load from saved closings instead of recalculating all history. Uses the real General Ledger — the same source every report and dashboard total reads from.',
+        },
+        {
+            label: 'Build Monthly + Ledgers',
+            title: 'Same as Build Monthly Closings, and also stores raw ledger traces in each closing snapshot for audit drill-down. Heavier to run — use when you need proof lines, not for routine catch-up.',
+        },
+        {
+            label: 'Monthly Closing List',
+            title: 'View all monthly closing builds, summaries, audit state, and locking controls.',
         },
         {
             label: 'Find Late Changes',
@@ -3318,7 +3388,18 @@ const Journals = () => {
             label: 'Admin Override Run',
             title: 'Admin-only queue processing for locked closings. Use carefully when a locked period must be corrected.',
         },
+        {
+            label: 'Populate GL Backlog',
+            title: "One-time (re-runnable) tool: posts real General Ledger entries for existing Sales/Orders, Purchase, Inventory, Asset, and Business Partner records that don't have one yet, including into already-locked historical periods. Safe to run more than once — already-posted records are skipped, never duplicated.",
+        },
+        {
+            label: 'Migrate Old Desktop Data',
+            desktopOnly: true,
+            title: "Desktop build only, tenant super admin only. One-time (re-runnable) tool for an old local install upgraded from a pre-accounting version of this app: posts missing General Ledger entries for this computer's historical Sales, Purchase, and Inventory records from before this app's accounting engine existed — fixing dashboard totals (like Sales Amount) that silently omitted anything from before the upgrade.",
+        },
     ]
+
+    const getActionHelp = (label) => closingActionHelp.find((item) => item.label === label)?.title || ''
 
     const buildGlQueryFilters = (filtersOverride = glFilters, fromOverride = fromDate, toOverride = toDate) => ({
         fromDate: fromOverride,
@@ -3849,8 +3930,14 @@ const Journals = () => {
         return (
             <div className="header-closing-panel">
                 <div className={`closing-toolbar ${closingToolbarOpen ? '' : 'collapsed'}`}>
-                    <button className="closing-toggle" onClick={() => setClosingToolbarOpen(v => !v)} title={closingToolbarOpen ? 'Collapse' : 'Expand'}>
-                        {closingToolbarOpen ? '▾' : '▸'}
+                    <button
+                        className="closing-toggle"
+                        onClick={() => setClosingToolbarOpen(v => !v)}
+                        title={closingToolbarOpen ? 'Collapse' : 'Expand'}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                        <span>{closingToolbarOpen ? '▾' : '▸'}</span>
+                        <span className="closing-toolbar-title">Monthly Closing &amp; General Ledger Tools</span>
                     </button>
 
                     {isClosingLoading ? (
@@ -3870,50 +3957,102 @@ const Journals = () => {
                             </div>
 
                             <div className="closing-actions" style={{ display: closingToolbarOpen ? 'flex' : 'none' }}>
-                                <button className="j-btn-primary" onClick={() => handleComputeClosing(false)} disabled={isClosingAction} title={closingActionHelp[0].title}>Build Closing</button>
-                                <button className="j-btn-secondary" onClick={() => handleComputeClosing(true)} disabled={isClosingAction} title={closingActionHelp[1].title}>Build with Ledger</button>
                                 {lastClosing && lastClosing.status !== 'confirmed' && (
-                                    <button className="j-btn-secondary" onClick={() => handleSetClosingStatus('confirmed')} disabled={isClosingAction} title="Mark the closing as reviewed. Confirmed closings can still be corrected before they are locked.">Confirm Closing</button>
+                                    <button className="j-btn-secondary" onClick={() => handleSetClosingStatus('confirmed')} disabled={isClosingAction} title={getActionHelp('Confirm Closing')}>Confirm Closing</button>
                                 )}
                                 {lastClosing && lastClosing.status !== 'locked' && (
-                                    <button className="j-btn-danger" onClick={() => handleSetClosingStatus('locked')} disabled={isClosingAction} title="Lock the closing to prevent normal recompute. Admin override is required to change it.">Lock Closing</button>
+                                    <button className="j-btn-danger" onClick={() => handleSetClosingStatus('locked')} disabled={isClosingAction} title={getActionHelp('Lock Closing')}>Lock Closing</button>
                                 )}
                                 {lastClosing && (
-                                    <button className="j-btn-secondary" onClick={() => handleRecomputeClosing()} disabled={isClosingAction} title="Rebuild the currently selected last closing from the latest source records.">Rebuild Closing</button>
+                                    <button className="j-btn-secondary" onClick={() => handleRecomputeClosing()} disabled={isClosingAction} title={getActionHelp('Rebuild Closing')}>Rebuild Closing</button>
                                 )}
-                                <button className="j-btn-primary" onClick={() => handleBuildMissingMonthlyClosings(false)} disabled={isClosingAction} title="Build missing month-end closing snapshots so opening balances load from saved closings instead of recalculating all history.">Build Monthly Closings</button>
-                                <button className="j-btn-secondary" onClick={() => handleBuildMissingMonthlyClosings(true)} disabled={isClosingAction} title="Build monthly closings and store raw ledger traces in each closing snapshot for audit drill-down.">Build Monthly + Ledgers</button>
-                                <button className="j-btn-secondary" onClick={handleOpenClosingsModal} disabled={isClosingAction} title="View all monthly closing builds, summaries, audit state, and locking controls.">Monthly Closing List</button>
-                                <button className="j-btn-secondary" onClick={() => handleDetectAffectedClosings()} disabled={isClosingAction} title={closingActionHelp[2].title}>Find Late Changes</button>
-                                <button className="j-btn-secondary" onClick={handleOpenPendingModal} disabled={isClosingAction} title={closingActionHelp[3].title}>Review Queue</button>
-                                <button className="j-btn-secondary" onClick={() => handleTriggerPendingRecomputes(false)} disabled={isClosingAction} title={closingActionHelp[4].title}>Run Queue</button>
+                                <button className="j-btn-primary" onClick={() => handleBuildMissingMonthlyClosings(false)} disabled={isClosingAction} title={getActionHelp('Build Monthly Closings')}>Build Monthly Closings</button>
+                                <button className="j-btn-secondary" onClick={() => handleBuildMissingMonthlyClosings(true)} disabled={isClosingAction} title={getActionHelp('Build Monthly + Ledgers')}>Build Monthly + Ledgers</button>
+                                <button className="j-btn-secondary" onClick={handleOpenClosingsModal} disabled={isClosingAction} title={getActionHelp('Monthly Closing List')}>Monthly Closing List</button>
+                                <button className="j-btn-secondary" onClick={() => handleDetectAffectedClosings()} disabled={isClosingAction} title={getActionHelp('Find Late Changes')}>Find Late Changes</button>
+                                <button className="j-btn-secondary" onClick={handleOpenPendingModal} disabled={isClosingAction} title={getActionHelp('Review Queue')}>Review Queue</button>
+                                <button className="j-btn-secondary" onClick={() => handleTriggerPendingRecomputes(false)} disabled={isClosingAction} title={getActionHelp('Run Queue')}>Run Queue</button>
                                 {companyRecord?.status === 'admin' && (
-                                    <button className="j-btn-danger" onClick={() => handleTriggerPendingRecomputes(true)} disabled={isClosingAction} title={closingActionHelp[5].title}>Admin Override Run</button>
+                                    <button className="j-btn-danger" onClick={() => handleTriggerPendingRecomputes(true)} disabled={isClosingAction} title={getActionHelp('Admin Override Run')}>Admin Override Run</button>
                                 )}
                                 {companyRecord?.status === 'admin' && (
-                                    <button className="j-btn-danger" onClick={handlePopulateGeneralLedgerBacklog} disabled={isClosingAction || !!glBacklogOperationId} title="One-time (re-runnable) tool: posts real General Ledger entries for existing Purchase, Inventory, Asset, and Business Partner records that don't have one yet, including into already-locked historical periods.">
+                                    <button className="j-btn-danger" onClick={handlePopulateGeneralLedgerBacklog} disabled={isClosingAction || !!glBacklogOperationId} title={getActionHelp('Populate GL Backlog')}>
                                         {glBacklogOperationId ? 'Backlog Running…' : 'Populate GL Backlog'}
                                     </button>
                                 )}
+                                {/* Desktop build only, and only the tenant's own super admin — see
+                                    this action's own entry in closingActionHelp for why. Not shown
+                                    on the web build at all: an online tenant's data has never gone
+                                    through that kind of version gap. */}
+                                {window.electronAPI?.isElectron && companyRecord?.access === 'admin' && (
+                                    <button className="j-btn-danger" onClick={handleMigrateOldDesktopData} disabled={isClosingAction || !!glBacklogOperationId} title={getActionHelp('Migrate Old Desktop Data')}>
+                                        {glBacklogOperationId ? 'Migration Running…' : 'Migrate Old Desktop Data'}
+                                    </button>
+                                )}
                             </div>
-                            {glBacklogOperationId && (
-                                <div className="closing-meta" style={{ display: 'block' }}>
-                                    <div className="closing-line">
-                                        General Ledger backlog: {glBacklogOperation
-                                            ? `${glBacklogOperation.completed || 0} / ${glBacklogOperation.total || '?'} processed (${glBacklogOperation.posted || 0} posted, ${glBacklogOperation.alreadyPresent || 0} already present, ${glBacklogOperation.skipped || 0} skipped${glBacklogOperation.errors?.length ? `, ${glBacklogOperation.errors.length} errors` : ''})`
-                                            : 'connecting…'}
-                                    </div>
-                                </div>
-                            )}
-                            <details className="accounting-actions-help" style={{ display: closingToolbarOpen ? 'block' : 'none' }}>
-                                <summary>What do these closing actions do?</summary>
-                                <div className="accounting-actions-help-grid">
-                                    {closingActionHelp.map((item) => (
-                                        <div className="accounting-actions-help-card" key={item.label}>
-                                            <strong>{item.label}</strong>
-                                            <span>{item.title}</span>
+                            {glBacklogOperationId && (() => {
+                                // Genuinely real-time — updatePostingOperation (server) broadcasts
+                                // over SSE after every single source document it processes, and
+                                // usePostingOperationProgress re-renders this from that same feed;
+                                // there's no polling involved. Rendered as an actual percentage bar
+                                // now instead of only the text line, so progress reads at a glance
+                                // during a run that can process tens of thousands of records.
+                                // glBacklogDisplay (SSE data, falling back to the one-off reattach
+                                // fetch) instead of glBacklogOperation alone — see its own comment:
+                                // otherwise a page reload mid-run shows "connecting…" until the next
+                                // document happens to finish, even though the real progress was
+                                // already known from the reattach check.
+                                const total = glBacklogDisplay?.total || 0;
+                                const completed = glBacklogDisplay?.completed || 0;
+                                const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+                                const isDone = glBacklogDisplay?.status && glBacklogDisplay.status !== 'in-progress';
+                                // "InventoryTransactions" -> "Inventory Transactions" — the phase
+                                // name is the raw collection name server-side (see
+                                // setPostingOperationPhase's callers); spacing it out here is purely
+                                // cosmetic and never needs to match anything the server checks.
+                                const phaseLabel = glBacklogDisplay?.currentPhase
+                                    ? String(glBacklogDisplay.currentPhase).replace(/([a-z])([A-Z])/g, '$1 $2')
+                                    : null;
+                                return (
+                                    <div className="closing-meta" style={{ display: 'block' }}>
+                                        <div className="closing-line">
+                                            {glBacklogDisplay
+                                                ? `${isDone ? 'Finished' : 'Running'}${phaseLabel && !isDone ? ` — working on: ${phaseLabel}` : ''}: ${completed} / ${total || '?'} processed (${percent}%) — ${glBacklogDisplay.posted || 0} posted, ${glBacklogDisplay.alreadyPresent || 0} already present, ${glBacklogDisplay.skipped || 0} skipped${glBacklogDisplay.errors?.length ? `, ${glBacklogDisplay.errors.length} errors` : ''}`
+                                                : 'connecting…'}
+                                            {!isDone && (
+                                                <button
+                                                    className="j-btn-secondary btn-sm"
+                                                    style={{ marginLeft: 12 }}
+                                                    onClick={handleCancelBacklog}
+                                                    disabled={glBacklogDisplay?.cancelRequested === true}
+                                                    title="Stops after whatever record is currently being posted finishes — never mid-record."
+                                                >
+                                                    {glBacklogDisplay?.cancelRequested ? 'Stopping…' : 'Stop'}
+                                                </button>
+                                            )}
                                         </div>
-                                    ))}
+                                        <div style={{ background: '#e5e7eb', borderRadius: 6, height: 10, marginTop: 6, overflow: 'hidden', maxWidth: 480 }}>
+                                            <div style={{
+                                                width: `${percent}%`,
+                                                height: '100%',
+                                                background: isDone ? '#16a34a' : '#2563eb',
+                                                transition: 'width 0.3s ease',
+                                            }} />
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                            <details className="accounting-actions-help" style={{ display: closingToolbarOpen ? 'block' : 'none' }}>
+                                <summary>What do these actions do?</summary>
+                                <div className="accounting-actions-help-grid">
+                                    {closingActionHelp
+                                        .filter((item) => !item.desktopOnly || window.electronAPI?.isElectron)
+                                        .map((item) => (
+                                            <div className="accounting-actions-help-card" key={item.label}>
+                                                <strong>{item.label}</strong>
+                                                <span>{item.title}</span>
+                                            </div>
+                                        ))}
                                 </div>
                             </details>
                         </>
@@ -3981,6 +4120,32 @@ const Journals = () => {
             {renderPendingModal && renderPendingModal()}
             {renderAuditModal && renderAuditModal()}
             {renderInitProgress()}
+            {confirmModal && (
+                <div className="journals-modal-overlay" style={getModalOverlayStyle()} onClick={() => setConfirmModal(null)}>
+                    <div className="journals-modal" onClick={e => e.stopPropagation()}>
+                        <div className="journals-modal-header">
+                            <h2>{confirmModal.title || 'Confirm'}</h2>
+                            <button className="journals-modal-close" onClick={() => setConfirmModal(null)}><MdClose /></button>
+                        </div>
+                        <div className="journals-modal-body">
+                            <p>{confirmModal.message}</p>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+                                <button className="j-btn-secondary" onClick={() => setConfirmModal(null)}>Cancel</button>
+                                <button
+                                    className="j-btn-danger"
+                                    onClick={() => {
+                                        const { onConfirm } = confirmModal
+                                        setConfirmModal(null)
+                                        onConfirm?.()
+                                    }}
+                                >
+                                    Continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -360,19 +360,21 @@ const DocsPage = () => {
             </ol>
 
             <h3>Closings</h3>
-            <p>Closings store balances by date so the system does not recompute from the beginning every time. When reports start from a date with a prior closing, the engine uses that closing as opening balance and computes only the missing period.</p>
+            <p>Closings store balances by date so the system does not recompute from the beginning every time. When reports start from a date with a prior closing, the engine uses that closing as opening balance and computes only the missing period. This whole toolbar (Journals &gt; COA) is collapsed by default and admin-only — expand it with the arrow to reach any of the actions below.</p>
 
             <h3>Closing Action Buttons</h3>
             <ul>
-              <li><strong>Build Closing:</strong> Computes and saves monthly closing balances for the selected period end without storing detailed raw ledger lines.</li>
-              <li><strong>Build with Ledger:</strong> Computes the closing and includes ledger trace details for audit. It is heavier, so use it when you need proof lines.</li>
+              <li><strong>Build Monthly Closings:</strong> Builds every missing month-end closing, from the earliest posting through the currently selected period end, in one run. This is the normal way to create or catch up closings — it already covers whatever the current period needs, so there's no separate single-month "build" button.</li>
+              <li><strong>Build Monthly + Ledgers:</strong> Same as above, and also stores raw ledger trace details in each snapshot for audit drill-down. Heavier to run — use it when you need proof lines, not for routine catch-up.</li>
               <li><strong>Confirm Closing:</strong> Marks a closing as reviewed while still allowing correction before final lock.</li>
               <li><strong>Lock Closing:</strong> Prevents normal recomputation of that period. Locked closings require admin override to change.</li>
               <li><strong>Rebuild Closing:</strong> Recomputes the latest closing from current operational and journal records.</li>
               <li><strong>Find Late Changes:</strong> Detects changed or backdated transactions that may affect old closings and queues those dates for review.</li>
               <li><strong>Review Queue:</strong> Opens the list of closing dates waiting to be reprocessed.</li>
               <li><strong>Run Queue:</strong> Processes queued closings that are not locked.</li>
-              <li><strong>Admin Override Run:</strong> Allows an admin to process queued closings even when locked periods are involved.</li>
+              <li><strong>Admin Override Run:</strong> Allows an admin to process queued closings even when locked periods are involved. This only refreshes a cached closing snapshot from the real ledger — it never changes already-posted General Ledger entries.</li>
+              <li><strong>Populate GL Backlog:</strong> Posts a real General Ledger entry for every existing historical Sales/Orders, Purchase, Inventory, Fixed Asset, and Business Partner record that doesn't have one yet — including Cost of Goods Sold from inventory-driven sales. Safe to run more than once: an already-posted record is detected and skipped, never duplicated. Shows live progress (which record type is currently being processed, a percentage bar, and posted/skipped/error counts), survives a page refresh mid-run, and can be stopped — a stop always finishes whatever record it's currently posting before actually stopping.</li>
+              <li><strong>Migrate Old Desktop Data:</strong> Desktop app only, and only visible to the tenant's own super admin. The exact same operation as Populate GL Backlog, for a local install that was upgraded from a version of the app old enough to predate the accounting engine — where historical records were never posted to the General Ledger because that logic didn't exist yet when they were created. Not shown in the web version, since an online tenant's data never goes through that kind of version gap.</li>
             </ul>
 
             <h3>Ledger Drill-Down</h3>
@@ -473,6 +475,11 @@ const DocsPage = () => {
             <div className="docs-note">
               <h4>Security Tip</h4>
               <p>Always use the "Least Privilege" principle—only give users access to the specific modules they need for their daily tasks.</p>
+            </div>
+
+            <div className="docs-step">
+              <h4>Session Manager Access</h4>
+              <p>Starting and ending the day-level Session Manager doesn't have to go through an admin. Grant an employee the dedicated Session Manager permission and they can open and close it themselves — this is narrower than full session access, so it won't also expose warehouse purchase categories or other broader session-area data.</p>
             </div>
           </article>
         )

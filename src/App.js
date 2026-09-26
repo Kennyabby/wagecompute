@@ -393,7 +393,16 @@ function App() {
   const [isInitialSyncDone, setIsInitialSyncDone] = useState(false)
   const [isProduction, setIsProduction] = useState(false)
   const [subscriptionState, setSubscriptionState] = useState(null)
-  const { isFullyConnected } = useConnectionStatus(SERVER, isSSEConnected)
+  // isBrowserOnline (real OS-level internet, navigator.onLine) is exposed
+  // separately from isFullyConnected — the desktop build's sidebar indicator
+  // wants the former specifically (see SideNav.js): its own server is always
+  // local and effectively always reachable, so isFullyConnected's
+  // health-ping-to-server component isn't a meaningful signal there the way
+  // it is for the web build. Real internet status still matters to show
+  // (Epsilon, license checks, and update checks all need it), it's just not
+  // something to treat as an error/offline-mode problem the way the web
+  // build correctly does.
+  const { isFullyConnected, isBrowserOnline } = useConnectionStatus(SERVER, isSSEConnected)
 
   useEffect(() => {
     setConnectivityStatus(isFullyConnected)
@@ -1312,7 +1321,7 @@ function App() {
             if (window.location.pathname !== '/assets') Navigate('/assets' + window.location.search)
           }
           if (companyRecord?.permissions.includes('delivery')) {
-            if (companyRecord?.permissions.includes('access_delivery_sessions')) {
+            if (companyRecord?.permissions.includes('access_delivery_sessions') || companyRecord?.permissions.includes('manage_session_manager')) {
               fetchAllSessions({ company, companyRecord })
               getPosOrders({ company: company, companyRecord: companyRecord })
               getLastActiveSessions(company, companyRecord)
@@ -1324,7 +1333,7 @@ function App() {
             if (window.location.pathname !== '/delivery') Navigate('/delivery' + window.location.search)
           }
           if (companyRecord?.permissions.includes('pos')) {
-            if (companyRecord?.permissions.includes('access_pos_sessions')) {
+            if (companyRecord?.permissions.includes('access_pos_sessions') || companyRecord?.permissions.includes('manage_session_manager')) {
               fetchAllSessions({ company, companyRecord })
               getPosOrders({ company: company, companyRecord: companyRecord })
               getLastActiveSessions(company, companyRecord)
@@ -1359,6 +1368,23 @@ function App() {
             // getSales(company, 'first', saleFrom, saleTo, 10)
             window.localStorage.removeItem('lgt-vw')
             if (window.location.pathname !== '/sales') Navigate('/sales' + window.location.search)
+          }
+          // Session Manager's "post pending sales before starting today's
+          // session" check (PointOfSales.js's canUpdateSession) reads the
+          // `sales` state populated here — which otherwise only ever loads
+          // for an admin or someone with the full, unrelated 'sales' module
+          // permission. Without it, sales.length stays 0 forever for a
+          // manage_session_manager-only holder, so the effect that computes
+          // canUpdateSession never even runs its body (see its own `if
+          // (sales.length)` guard) and it's stuck at its initial `false` —
+          // meaning they'd get redirected to /sales for "pending postings"
+          // on every single attempt to start Session Manager, even with
+          // zero actually pending. Deliberately NOT reusing the 'sales'
+          // block above — that also navigates to /sales and loads
+          // rentals/accommodations, none of which this narrower permission
+          // should pull in on its own.
+          if (!companyRecord?.permissions.includes('sales') && companyRecord?.permissions.includes('manage_session_manager')) {
+            getSales(company)
           }
         }
       }
@@ -1924,8 +1950,24 @@ function App() {
 
       if (!sessionsResponse.err){
         if (Array.isArray(sessionsResponse?.record) && sessionsResponse.record?.length){
-          mergeAndPersistSessions(sessionsResponse.record)
-          setLastActiveSessions(sessionsResponse?.record)          
+          // Set from the RECONCILED result (server data with local pending
+          // changes overlaid), not the raw server response directly —
+          // confirmed live as a real race: ending a POS session updates
+          // allSalesSessions immediately (via this same reconcile, from
+          // stopSession's own mergeAndPersistSessions call), correctly
+          // clearing PointOfSales.js's activeSessions. But this function
+          // also gets called around the same actions (session
+          // manager start/stop) and used to set lastActiveSessions from the
+          // UNMERGED server response — which, if the just-ended session
+          // hadn't finished syncing to the server yet, still showed it as
+          // active. PointOfSales.js's activeSessions effect reacts to
+          // BOTH allSalesSessions and lastActiveSessions changes, so that
+          // stale, unreconciled value could overwrite the correct one that
+          // was just set, moments earlier, in the same render pass — which
+          // is exactly why "Please end all POS sessions" kept showing even
+          // after every session had actually ended.
+          const reconciled = await mergeAndPersistSessions(sessionsResponse.record)
+          setLastActiveSessions(reconciled)
         }
       } else {
         if (sessionsResponse.mess !== 'Request aborted') {
@@ -2626,6 +2668,12 @@ function App() {
           await putSession(company, companyRecord.emailid, o);
         }
       }
+      // Returned so callers that also keep their own separate "last active
+      // sessions" snapshot (getLastActiveSessions below) can set it from
+      // this same reconciled result instead of the raw, unmerged server
+      // response — see that function's own comment for the stale-read bug
+      // this was closing.
+      return merged;
     } catch (e) {
       console.warn('POS Sessions: mergeAndPersist failed', e);
       if (sessions.length) {
@@ -2633,6 +2681,7 @@ function App() {
         setAllSalesSessions(sessions.filter(sess => sess.type === 'sales'))
         setAllDeliverySessions(sessions.filter(sess => sess.type === 'delivery'))
       }
+      return sessions;
     }
   };
 
@@ -4120,7 +4169,7 @@ function App() {
         accountingLiveBalances, setAccountingLiveBalances,
         showSubscriptionBanner, setShowSubscriptionBanner,
         subscriptionState, setSubscriptionState, refreshSubscriptionState,
-        isSSEConnected, isFullyConnected,
+        isSSEConnected, isFullyConnected, isBrowserOnline,
         profiles, setProfiles, fetchProfiles,
         DBProfiles, setDBProfiles, fetchDBProfiles,
         departments, setDepartments, getDepartments,
