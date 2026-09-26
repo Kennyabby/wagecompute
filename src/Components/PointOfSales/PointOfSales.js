@@ -665,7 +665,7 @@ const PointOfSales = () => {
     // ]);
 
     useEffect(()=>{
-        if (companyRecord?.permissions?.includes('access_pos_sessions') || companyRecord?.access === 'admin'){
+        if (companyRecord?.permissions?.includes('access_pos_sessions') || companyRecord?.permissions?.includes('manage_session_manager') || companyRecord?.access === 'admin'){
             let activeSessions = lastActiveSessions.filter(s => s.active)
             if (currSessionManager && currSessionManager?.end && activeSessions.length){
                 setAlertState('info')
@@ -1712,7 +1712,7 @@ const PointOfSales = () => {
             });
 
             if (!products.length) {
-                setAlertState('error');
+                setAlertState('info');
                 setAlert('Wait for Products to load, or refresh and try again!');
                 setAlertTimeout(3000);
                 return;
@@ -1721,7 +1721,7 @@ const PointOfSales = () => {
             const product = products.find((prd) => prd.i_d === item.i_d);
             
             let itemWrh = wrh;
-            const isKitchenitem = wrhCategories['kitchen'].includes(item.category)
+            const isKitchenitem = wrhCategories['kitchen']?.includes(item.category)
             if (isKitchenitem){
                 itemWrh = 'kitchen'
             }
@@ -1921,7 +1921,7 @@ const PointOfSales = () => {
                 return itm.i_d === item.i_d;
             });
 
-            if (wrhCategories[wrh].includes(item.category) && wrh !== 'kitchen') {
+            if (wrhCategories[wrh]?.includes(item.category) && wrh !== 'kitchen') {
                 if (item.delivery !== 'completed') {
                     const depletedQuantity = Number(
                         item.orderQuantity ||
@@ -1933,7 +1933,7 @@ const PointOfSales = () => {
                 }
             }
             
-            if (wrhCategories['kitchen'].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
+            if (wrhCategories['kitchen']?.includes(item.category) && curPosSettings?.automateKitchenDelivery) {
                 if (item.delivery !== 'completed') {
                     const depletedQuantity = Number(
                         item.orderQuantity ||
@@ -2026,7 +2026,7 @@ const PointOfSales = () => {
                     return itm.i_d === item.i_d;
                 });
 
-                if (wrhCategories[wrh].includes(item.category) && wrh !== 'kitchen') {
+                if (wrhCategories[wrh]?.includes(item.category) && wrh !== 'kitchen') {
                     if (item.delivery !== 'completed') {
                         const depletedQuantity = Number(
                             item.orderQuantity ||
@@ -2054,7 +2054,7 @@ const PointOfSales = () => {
                     deliveredOrderItems.push(previousItemState);
                 }
                 
-                if (wrhCategories['kitchen'].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
+                if (wrhCategories['kitchen']?.includes(item.category) && curPosSettings?.automateKitchenDelivery) {
                     if (item.delivery !== 'completed') {
                         const depletedQuantity = Number(
                             item.orderQuantity ||
@@ -2289,11 +2289,11 @@ const PointOfSales = () => {
 
         const deliveredItems = order.items.filter((item) => {
             orderItemsQuantity += Number(item.quantity);
-            if (wrhCategories[wrh].includes(item.category) && wrh !== 'kitchen') {
+            if (wrhCategories[wrh]?.includes(item.category) && wrh !== 'kitchen') {
                 deliveredItemsQuantity += Number(item.deliveredQuantity || 0);
                 return Number(item.deliveredQuantity || 0) > 0;
             }
-            if (wrhCategories['kitchen'].includes(item.category)){
+            if (wrhCategories['kitchen']?.includes(item.category)){
                 deliveredItemsQuantity += Number(item.deliveredQuantity || 0);
                 return Number(item.deliveredQuantity || 0) > 0;
             }
@@ -2583,7 +2583,7 @@ const PointOfSales = () => {
                         var totalItems = 0
                         var deliveredQuantity = 0
                         const deliveredItems = placedOrder.items.filter((item) => {
-                            if (wrhCategories[wrh].includes(item.category)) {
+                            if (wrhCategories[wrh]?.includes(item.category)) {
                                 totalItems += Number(item.quantity)
                                 deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
@@ -2743,7 +2743,7 @@ const PointOfSales = () => {
                         var totalItems = 0
                         var deliveredQuantity = 0
                         const deliveredItems = placedOrder.items.filter((item) => {
-                            if (wrhCategories[wrh].includes(item.category)) {
+                            if (wrhCategories[wrh]?.includes(item.category)) {
                                 totalItems += Number(item.quantity)
                                 deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
@@ -3071,12 +3071,12 @@ const PointOfSales = () => {
                         var kitchenItems = 0
                         var deliveredQuantity = 0
                         const deliveredItems = newOrder.items.filter((item) => {
-                            if (wrhCategories[wrh].includes(item.category) && wrh !== 'kitchen') {
+                            if (wrhCategories[wrh]?.includes(item.category) && wrh !== 'kitchen') {
                                 totalItems += Number(item.quantity)
                                 deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
                             }
-                            if (wrhCategories["kitchen"].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
+                            if (wrhCategories["kitchen"]?.includes(item.category) && curPosSettings?.automateKitchenDelivery) {
                                 kitchenItems += Number(item.quantity)
                                 deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
@@ -3816,7 +3816,7 @@ const PointOfSales = () => {
                 {(currentOrder.status !== 'cancelled' && ((curPosSettings?.type === 'shop' && currentOrder.delivery === 'pending') || (curPosSettings?.type === 'restaurant' && currentOrder?.status !== 'pending')) && !['new', 'edit'].includes(currentOrder.status))
                 && (
                     currentOrder.items.filter((item) => {
-                        if (wrhCategories[wrh].includes(item.category)) {
+                        if (wrhCategories[wrh]?.includes(item.category)) {
                             return Number(item?.deliveredQuantity || 0) > 0
                         }
                     }).length < currentOrder.items.reduce((sum, item) => { return sum + Number(item.quantity) }, 0)
@@ -3826,7 +3826,7 @@ const PointOfSales = () => {
                         var totalItems = 0
                         var deliveredQuantity = 0
                         const deliveredItems = currentOrder.items.filter((item) => {
-                            if (wrhCategories[wrh].includes(item.category)) {
+                            if (wrhCategories[wrh]?.includes(item.category)) {
                                 totalItems += Number(item.quantity)
                                 deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                 return Number(item?.deliveredQuantity || 0) > 0
@@ -4473,7 +4473,7 @@ const PaymentModal = ({
         var bc = 0
 
         currentOrder.items.forEach((item) => {
-            if (wrhCategories[wrh].includes(item.category)) {
+            if (wrhCategories[wrh]?.includes(item.category)) {
                 bc++
             } else if (wrhCategories['kitchen']?.includes(item.category)) {
                 kc++
@@ -4878,12 +4878,12 @@ const OrdersModal = ({
                                             var kitchenItems = 0
                                             var deliveredQuantity = 0
                                             const deliveredItems = order.items.filter((item) => {
-                                                if (wrhCategories[wrh].includes(item.category) && wrh !=='kitchen') {
+                                                if (wrhCategories[wrh]?.includes(item.category) && wrh !=='kitchen') {
                                                     totalItems += Number(item.quantity)
                                                     deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                                     return Number(item?.deliveredQuantity || 0) > 0
                                                 }
-                                                if (wrhCategories["kitchen"].includes(item.category) && curPosSettings?.automateKitchenDelivery) {
+                                                if (wrhCategories["kitchen"]?.includes(item.category) && curPosSettings?.automateKitchenDelivery) {
                                                     kitchenItems += Number(item.quantity)
                                                     deliveredQuantity += Number(item?.deliveredQuantity || 0)
                                                     return Number(item?.deliveredQuantity || 0) > 0
@@ -5045,13 +5045,13 @@ const POSDashboard = ({
         if (Array.isArray(lastActiveSessions)){
             let activeSessions = lastActiveSessions.filter(s => s.active && getSessionEnd(s.start) <= Date.now())
             let endedCount = (lastActiveSessions.filter(s => s.end))?.length
-            if (activeSessions.length > 0 && companyRecord?.status === 'admin'){
+            if (activeSessions.length > 0 && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager'))){
                 setAlertState('info')
                 setAlert('Session as ended. Please Stop Session Manager')
                 setAlertTimeout(5000)
             }
 
-            if (endedCount && endedCount === lastActiveSessions.length && companyRecord?.status === 'admin'){
+            if (endedCount && endedCount === lastActiveSessions.length && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager'))){
                 setAlertState('info')
                 setAlert('All sesisons ended, Please Start Session Manager!')
                 setAlertTimeout(8000)
@@ -5198,7 +5198,7 @@ const POSDashboard = ({
                     </div>
                 </div>
                 <div className='pos-session-board-view'>
-                    {companyRecord?.status === 'admin' && <div className='pos-session-manager-panel'>
+                    {(companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager')) && <div className='pos-session-manager-panel'>
                         <label className='pos-session-manager-label'>Session Manager</label>
                         <div 
                             className='pos-session-manager-toggle'

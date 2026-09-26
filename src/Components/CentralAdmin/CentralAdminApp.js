@@ -174,6 +174,8 @@ const CentralAdminApp = () => {
   const [offlineAccounts, setOfflineAccounts] = useState([])
   const [offlineModulePricing, setOfflineModulePricing] = useState([])
   const [desktopReleases, setDesktopReleases] = useState([])
+  const [deletingReleaseVersion, setDeletingReleaseVersion] = useState(null)
+  const [deleteReleaseResults, setDeleteReleaseResults] = useState({})
   const [editingLicense, setEditingLicense] = useState(null) // { licenseId, modules, expiresAt, status }
   const [newOfflineLicenseForm, setNewOfflineLicenseForm] = useState(null)
   const [feedback, setFeedback] = useState({ type: '', message: '' })
@@ -1088,6 +1090,52 @@ const CentralAdminApp = () => {
     } finally {
       setIsBusy(false)
     }
+  }
+
+  const handleDeleteDesktopRelease = async (version) => {
+    if (!window.confirm(
+      `Permanently delete desktop release v${version}? This removes its installer and blockmap from Google Drive and its record from the database. This cannot be undone.` +
+      (desktopReleases[0]?.version === version ? '\n\nThis is the CURRENT version — deleting it means the next most recent release becomes what desktop installs auto-update to.' : '')
+    )) return;
+
+    setDeletingReleaseVersion(version);
+    setDeleteReleaseResults((prev) => ({ ...prev, [version]: null }));
+    try {
+      const response = await requestAdmin('POST', `admin/desktop-releases/${encodeURIComponent(version)}/delete`);
+      setDeleteReleaseResults((prev) => ({ ...prev, [version]: response }));
+      if (response.err && !response.results) throw new Error(response.mess || 'Failed to delete release.');
+      if (response.ok) {
+        setNotice('success', response.mess || 'Release deleted.');
+        await loadDesktopReleases();
+      } else {
+        setNotice('error', response.mess || 'Some files could not be deleted — see details below.');
+      }
+    } catch (error) {
+      setDeleteReleaseResults((prev) => ({ ...prev, [version]: { ok: false, mess: error.message, results: [] } }));
+      setNotice('error', error.message);
+    } finally {
+      setDeletingReleaseVersion(null);
+    }
+  }
+
+  // Per-file success/failure with reasons for the most recent delete attempt
+  // on this version — stays visible until the next attempt or a page
+  // navigation, rather than the 4-second auto-clearing toast, since a
+  // partial failure needs the admin to actually read which file failed and
+  // why before retrying.
+  const renderReleaseDeleteResult = (version) => {
+    const result = deleteReleaseResults[version];
+    if (!result) return null;
+    return (
+      <div style={{ marginTop: 6, fontSize: 12 }}>
+        {(result.results || []).map((r) => (
+          <div key={r.name} style={{ color: r.success ? '#2e7d32' : '#c62828' }}>
+            {r.success ? '✓' : '✗'} {r.name} — {r.reason}
+          </div>
+        ))}
+        {!result.ok && <p style={{ color: '#c62828', margin: '4px 0 0' }}>{result.mess}</p>}
+      </div>
+    );
   }
 
   const loadOfflineModulePricing = async () => {
@@ -2274,6 +2322,15 @@ const CentralAdminApp = () => {
                         {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB) — <a href={f.downloadLink} target='_blank' rel='noreferrer'>Download</a>
                       </div>
                     ))}
+                    <button
+                      className='ca-inline-btn danger mini'
+                      style={{ marginTop: 8 }}
+                      disabled={deletingReleaseVersion === desktopReleases[0].version}
+                      onClick={() => handleDeleteDesktopRelease(desktopReleases[0].version)}
+                    >
+                      {deletingReleaseVersion === desktopReleases[0].version ? 'Deleting…' : 'Delete this release'}
+                    </button>
+                    {renderReleaseDeleteResult(desktopReleases[0].version)}
                   </div>
                 )}
               </div>
@@ -2291,6 +2348,15 @@ const CentralAdminApp = () => {
                         {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB) — <a href={f.downloadLink} target='_blank' rel='noreferrer'>Download</a>
                       </div>
                     ))}
+                    <button
+                      className='ca-inline-btn danger mini'
+                      style={{ marginTop: 8 }}
+                      disabled={deletingReleaseVersion === release.version}
+                      onClick={() => handleDeleteDesktopRelease(release.version)}
+                    >
+                      {deletingReleaseVersion === release.version ? 'Deleting…' : 'Delete this release'}
+                    </button>
+                    {renderReleaseDeleteResult(release.version)}
                   </div>
                 ))}
                 {desktopReleases.length <= 1 && <p className='ca-empty'>No earlier releases yet.</p>}

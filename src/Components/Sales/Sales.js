@@ -690,7 +690,7 @@ const Sales = () => {
                                         if (wrhCategories[warehouse].includes(item.category)) {
                                             bct += totalItemPrice
                                             blastDeliveredBy = item.lastDeliveredBy
-                                        } else if (wrhCategories['kitchen'].includes(item.category)) {
+                                        } else if (wrhCategories['kitchen']?.includes(item.category)) {
                                             kct += totalItemPrice
                                         }
                                         const employeeId = item.lastDeliveredBy
@@ -735,7 +735,7 @@ const Sales = () => {
                                         const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
                                         if (wrhCategories[warehouse].includes(item.category)) {
                                             bct += totalItemPrice
-                                        } else if (wrhCategories['kitchen'].includes(item.category)) {
+                                        } else if (wrhCategories['kitchen']?.includes(item.category)) {
                                             kct += totalItemPrice
                                             klastDeliveredBy = item.lastDeliveredBy
                                         }
@@ -1086,7 +1086,7 @@ const Sales = () => {
                                         if (wrhCategories[warehouse].includes(item.category)) {
                                             bct += totalItemPrice
                                             blastDeliveredBy = item.lastDeliveredBy
-                                        } else if (wrhCategories['kitchen'].includes(item.category)) {
+                                        } else if (wrhCategories['kitchen']?.includes(item.category)) {
                                             kct += totalItemPrice
                                         }
                                         const employeeId = item.lastDeliveredBy
@@ -1131,7 +1131,7 @@ const Sales = () => {
                                         const totalItemPrice = (Number(item.deliveredQuantity || 0) * (warehouse === 'vip' ? Number(item.vipPrice || item.salesPrice) : Number(item.salesPrice)))
                                         if (wrhCategories[warehouse].includes(item.category)) {
                                             bct += totalItemPrice
-                                        } else if (wrhCategories['kitchen'].includes(item.category)) {
+                                        } else if (wrhCategories['kitchen']?.includes(item.category)) {
                                             kct += totalItemPrice
                                             klastDeliveredBy = item.lastDeliveredBy
                                         }

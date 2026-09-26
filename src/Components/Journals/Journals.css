@@ -847,10 +847,13 @@
 }
 
 .closing-toolbar.collapsed {
+    /* Used to shrink to a bare 56px icon-only widget when collapsed, which
+       clipped away any title text — the section's buttons are already
+       hidden via their own inline display:none when collapsed, so this
+       only needs to stop forcing the whole toolbar (title included) into
+       that tiny width. */
     width: auto;
-    max-width: 56px;
-    padding: 8px;
-    overflow: hidden;
+    padding: 8px 14px;
 }
 
 .closing-toolbar-head {
@@ -863,13 +866,24 @@
 .closing-toggle {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 40px;
+    /* Was a fixed 40px square sized for just the arrow glyph — now also
+       carries the section's title (see closing-toolbar-title below), so it
+       needs to size to its content instead of clipping the label. */
+    width: auto;
+    min-width: 40px;
     height: 36px;
+    padding: 0 12px;
     border-radius: 8px;
     background: transparent;
     border: 1px solid rgba(0,0,0,0.06);
     cursor: pointer;
+}
+
+.closing-toolbar-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1f2937;
+    white-space: nowrap;
 }
 
 .closing-meta {
