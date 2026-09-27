@@ -17,7 +17,7 @@ const AccommodationReport = ({
 
     const {storePath,
         getDate,
-        company, companyRecord,
+        company, companyRecord, centralCompany,
         monthDays,
         employees, customers,
         attendance
@@ -74,7 +74,7 @@ const AccommodationReport = ({
             margin:       0.1,
             filename:     `ACCOMMODATION REPORT - FROM ${getDate(fromDate)} TO ${getDate(toDate)}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
+            html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
@@ -98,10 +98,11 @@ const AccommodationReport = ({
                                     <div className="row payeerow">
                                        <div className='invhead'>
                                             <div className="billfrom">
+                                                {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className="payee-report-logo" crossOrigin="anonymous" />}
                                                 <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                 <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p>
-                                                <p className='billfrompayee'>{`ACCOMMODATION REPORT FROM `}<b>{`${getDate(fromDate)}`}</b>{` TO `}<b>{`${getDate(toDate)}`}</b></p>                                                                                   
+                                                <p className='billfrompayee'>{`ACCOMMODATION REPORT FROM `}<b>{`${getDate(fromDate)}`}</b>{` TO `}<b>{`${getDate(toDate)}`}</b></p>
                                                 <p className='billfrompayee'>Created Date: <b>{getDate()}</b></p>
                                             </div>
                                        </div>

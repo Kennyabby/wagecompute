@@ -27,7 +27,7 @@ const Sales = () => {
     const { storePath,
         fetchServer, paymentMethods,
         server, intervalPeriod,
-        companyRecord, posSettings,
+        companyRecord, centralCompany, posSettings,
         company, recoveryVal, allowBacklogs,
         employees, setEmployees, getEmployees, getPendingSalesDates,
         sales, setSales, getSales, months, years, initialYear,
@@ -3463,6 +3463,7 @@ const Sales = () => {
                 </div>}
                 {productAdd && <AddProduct
                     companyRecord={companyRecord}
+                    centralCompany={centralCompany}
                     products={products}
                     productAdd={productAdd}
                     setProductAdd={setProductAdd}
@@ -5621,7 +5622,7 @@ export default Sales
 const AddProduct = ({
     products, productAdd, setProductAdd, categories, uoms, wrhs, isProductView, curSale,
     setIsProductView, handleProductSales, salesEntries, setSalesEntries, fields,
-    getDate, companyRecord, addingProducts, setAddingProducts, setPostedProducts,
+    getDate, companyRecord, centralCompany, addingProducts, setAddingProducts, setPostedProducts,
     runApprovalWorkFlow, isProductApprover
 }) => {
     const [category, setCategory] = useState('all')
@@ -5636,7 +5637,7 @@ const AddProduct = ({
             margin: 0.1,
             filename: `PRODUCT SALES DETAILS ${getDate(curSale.postingDate)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
@@ -5843,6 +5844,7 @@ const AddProduct = ({
         <>
             <div className='addproduct'>
                 <div className='add-products' ref={targetRef}>
+                    {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" style={{ maxWidth: 60, maxHeight: 60, objectFit: 'contain', display: 'block', marginBottom: 6 }} crossOrigin="anonymous" />}
                     <div className='slprwh-cover' onClick={(e) => {
                         const name = e.target.getAttribute('name')
                         if (name) {

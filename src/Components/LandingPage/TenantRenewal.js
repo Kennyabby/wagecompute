@@ -2,6 +2,8 @@ import './SubPages.css'
 import { useEffect, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
+import applogo from '../../Resources/assets/images/enterprisecompute.png'
+import { fetchPublicCompanyLogo } from '../../Resources/ClientServerAPIConn/fetchServer'
 
 // Public (no-login) self-service renewal page for a suspended/expired tenant.
 // The tenant is resolved server-side from the request's host, exactly like
@@ -13,10 +15,16 @@ const TenantRenewal = () => {
   const [status, setStatus] = useState({ loading: true, type: 'info', message: 'Loading workspace status...' })
   const [currentStatus, setCurrentStatus] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [companyLogo, setCompanyLogo] = useState(null)
+  const resolveDisplayLogo = () => companyLogo || applogo
 
   useEffect(() => {
     storePath('renew')
     document.title = 'Renew Subscription | Enterprise Compute Central'
+    ;(async () => {
+      const logoUrl = await fetchPublicCompanyLogo(server);
+      if (logoUrl) setCompanyLogo(logoUrl);
+    })();
   }, [storePath])
 
   useEffect(() => {
@@ -62,6 +70,7 @@ const TenantRenewal = () => {
     <div className="ec-landing">
       <section className="sp-hero">
         <div className="sp-hero-inner">
+          <img src={resolveDisplayLogo()} alt="Company logo" className="sp-hero-logo" />
           <div className="ec-hero-kicker">Workspace Renewal</div>
           <h1>Renew your subscription</h1>
           <p>

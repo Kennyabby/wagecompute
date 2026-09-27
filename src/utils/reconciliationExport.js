@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { generateExcel } from './exportUtils';
+import { loadPdfImage, fitImageBox } from './pdfLogo';
 
 // Every column the on-screen reconciliation table shows (ReconciliationReview.js's
 // <table className='reconcile-review-table'>), in the same order, so the
@@ -71,19 +72,29 @@ export const exportReconciliationExcel = ({ companyInfo, postingDate, location, 
     );
 };
 
-export const exportReconciliationPDF = ({ companyInfo, postingDate, location, lines = [] }) => {
+export const exportReconciliationPDF = async ({ companyInfo, postingDate, location, lines = [] }) => {
     const rows = lines.map(toReportRow);
     const totalsRow = toTotalsRow(rows);
     const allRows = [totalsRow, ...rows, totalsRow];
     const doc = new jsPDF({ orientation: 'landscape' });
 
+    // Logo — only if the tenant actually uploaded one (never a platform default)
+    const logo = await loadPdfImage(companyInfo?.logoUrl);
+    const textX = 14 + (logo ? 20 : 0);
+    if (logo) {
+        try {
+            const { w, h } = fitImageBox(logo, 16, 16);
+            doc.addImage(logo.dataUrl, logo.format, 14, 8, w, h);
+        } catch (e) { /* ignore */ }
+    }
+
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(companyInfo?.name || '', 14, 15);
+    doc.text(companyInfo?.name || '', textX, 15);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Inventory Reconciliation — ${location}`, 14, 23);
-    doc.text(`Posting Date: ${postingDate}`, 14, 29);
+    doc.text(`Inventory Reconciliation — ${location}`, textX, 23);
+    doc.text(`Posting Date: ${postingDate}`, textX, 29);
 
     autoTable(doc, {
         head: [RECONCILIATION_COLUMNS.map((col) => col.name)],

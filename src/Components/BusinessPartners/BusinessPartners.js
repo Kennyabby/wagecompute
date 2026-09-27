@@ -19,7 +19,7 @@ const totalLines = (lines = []) => lines.reduce((sum, line) => {
 }, 0)
 
 const BusinessPartners = () => {
-    const { server, fetchServer, storePath, company, companyRecord, settings, products, getProducts, setAlert, setAlertState, setAlertTimeout } = useContext(ContextProvider)
+    const { server, fetchServer, storePath, company, companyRecord, centralCompany, settings, products, getProducts, setAlert, setAlertState, setAlertTimeout } = useContext(ContextProvider)
     const reportPrintRef = useRef(null)
     const [activeTab, setActiveTab] = useState('customers')
     const [loading, setLoading] = useState(false)
@@ -340,7 +340,8 @@ const BusinessPartners = () => {
         address: companyRecord?.address || '',
         phone: companyRecord?.phone || companyRecord?.mobile || '',
         email: companyRecord?.email || companyRecord?.emailid || '',
-    }), [company, companyRecord])
+        logoUrl: centralCompany?.logoUrl || null,
+    }), [company, companyRecord, centralCompany])
 
     const loadReport = async (mode = reportMode) => {
         setSaving(true)
@@ -447,7 +448,7 @@ const BusinessPartners = () => {
             margin: 0.25,
             filename: `${cleanName(companyInfo.name)}_${cleanName(report.title)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'landscape' },
         }).from(reportPrintRef.current).save()
     }
@@ -481,6 +482,7 @@ const BusinessPartners = () => {
             <section class="bp-print-doc">
                 <header>
                     <div>
+                        ${companyInfo.logoUrl ? `<img alt="" class="bp-report-logo" src="${companyInfo.logoUrl}" crossorigin="anonymous" />` : ''}
                         <h1>${companyInfo.name}</h1>
                         <p>${companyInfo.address || ''}</p>
                         <p>${companyInfo.phone || ''} ${companyInfo.email ? ` | ${companyInfo.email}` : ''}</p>
@@ -963,6 +965,7 @@ const BusinessPartners = () => {
             {saving && <div className='bp-empty'>Loading report...</div>}
             {!saving && <div ref={reportPrintRef} className='bp-print-report'>
                 {report && <div className='bp-report-heading'>
+                    {companyInfo.logoUrl && <img src={companyInfo.logoUrl} alt="" className="bp-report-logo" crossOrigin="anonymous" />}
                     <h2>{companyInfo.name}</h2>
                     <p>{companyInfo.address}</p>
                     <h3>{report.title || 'Partner Report'}</h3>

@@ -5,6 +5,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import { MdSearch, MdAdd, MdEdit, MdDelete, MdFilterList, MdOutlineAccountBalance, MdOutlineReceiptLong, MdClose, MdRefresh, MdAnalytics, MdPictureAsPdf, MdDeleteSweep } from 'react-icons/md'
 import { FaFileExcel } from 'react-icons/fa'
 import jsPDF from 'jspdf'
+import { loadPdfImage, fitImageBox } from '../../utils/pdfLogo'
 import { generateExcel } from '../../utils/exportUtils'
 import { exportGlToExcel, exportGlToPDF } from '../../utils/glExport'
 import * as XLSX from 'xlsx'
@@ -69,7 +70,7 @@ const buildJournalCachePayload = ({ fromDate, toDate, balances = {}, reports = {
 
 const Journals = () => {
     const {
-        server, fetchServer, company, companyRecord,
+        server, fetchServer, company, companyRecord, centralCompany,
         setAlertState, setAlert, setAlertTimeout,
         chartOfAccounts, getChartOfAccounts, storePath,
     } = useContext(ContextProvider)
@@ -535,6 +536,32 @@ const Journals = () => {
         }
     }
 
+    // Force Stop: for when a graceful Stop is taking too long (a slow record,
+    // a slow machine, a big backlog) and the user wants their controls back
+    // right now rather than keep waiting. This can't safely abort whatever
+    // record is actually mid-write server-side (see forceReleasePostingOperation's
+    // own comment — that's deliberate, not a limitation of this button), but it
+    // does immediately let go of this operationId on the frontend, which is
+    // what's actually keeping the buttons disabled and the progress panel up —
+    // so the run controls are free again at once, and a fresh run can be
+    // started right away if wanted.
+    const handleForceStopBacklog = async () => {
+        if (!glBacklogOperationId) return;
+        const operationId = glBacklogOperationId;
+        try {
+            const resp = await fetchServer('POST', { force: true }, `accounting/postingOperations/${operationId}/cancel`, server);
+            setAlertState(resp?.ok ? 'info' : 'error');
+            setAlert(resp?.mess || (resp?.ok ? 'Stopped.' : 'Failed to force-stop the run'));
+            setAlertTimeout(5000);
+        } catch (e) {
+            setAlertState('error'); setAlert(e.message || 'Failed to force-stop the run'); setAlertTimeout(4000);
+        } finally {
+            try { window.localStorage.removeItem(glBacklogStorageKey); } catch (e) {}
+            setGlBacklogOperationId(null);
+            setGlBacklogSeed(null);
+        }
+    }
+
     useEffect(() => {
         if (!glBacklogOperation || glBacklogOperation.status === 'in-progress') return;
         // Finished (completed, cancelled, or failed) — surface a final
@@ -820,7 +847,7 @@ const Journals = () => {
         }
     };
 
-    const exportToPDF = () => {
+    const exportToPDF = async () => {
         const isTrialBalance = reportType === 'TB'
         const doc = new jsPDF({ orientation: isTrialBalance ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
         const compName = companyRecord?.name || 'Enterprise Compute';
@@ -836,15 +863,27 @@ const Journals = () => {
         const fmt = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const safeFileName = (name) => String(name || 'Report').replace(/[\\/:*?"<>|]+/g, '_');
 
+        // Loaded once up front (addHeader below runs synchronously, repeated
+        // on every page) — only drawn if the tenant actually uploaded a logo,
+        // never this platform's own.
+        const logo = await loadPdfImage(centralCompany?.logoUrl);
+        const headerTextX = margin + (logo ? 18 : 0);
+
         const addHeader = () => {
             y = 16;
+            if (logo) {
+                try {
+                    const { w, h } = fitImageBox(logo, 14, 14);
+                    doc.addImage(logo.dataUrl, logo.format, margin, y - 10, w, h);
+                } catch (e) { /* ignore */ }
+            }
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(13);
-            doc.text(`${compName} - ${title}`, margin, y);
+            doc.text(`${compName} - ${title}`, headerTextX, y);
             y += 6;
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8.5);
-            doc.text(`Period: ${fromDate} to ${toDate}`, margin, y);
+            doc.text(`Period: ${fromDate} to ${toDate}`, headerTextX, y);
             y += 9;
         };
 
@@ -968,7 +1007,7 @@ const Journals = () => {
     };
 
     const exportToExcel = () => {
-        const compInfo = { name: companyRecord?.name || 'Enterprise' };
+        const compInfo = { name: companyRecord?.name || 'Enterprise', logoUrl: centralCompany?.logoUrl || null };
         const dRange = { startDate: fromDate, endDate: toDate };
         const skipAutoTotals = { skipAutoTotals: true };
 
@@ -1818,7 +1857,7 @@ const Journals = () => {
             Account: `${drillDown.glCode} - ${drillDown.accountName}`,
             Side: sideLabel,
         }
-        const compInfo = { name: companyRecord?.name || 'Enterprise' }
+        const compInfo = { name: companyRecord?.name || 'Enterprise', logoUrl: centralCompany?.logoUrl || null }
         const dRange = { startDate: fromDate, endDate: toDate }
 
         return (
@@ -3741,7 +3780,7 @@ const Journals = () => {
         setGlExporting(true)
         try {
             const rows = await fetchAllMatchingGlRows()
-            const compInfo = { name: companyRecord?.name || 'Enterprise' }
+            const compInfo = { name: companyRecord?.name || 'Enterprise', logoUrl: centralCompany?.logoUrl || null }
             const dRange = { startDate: fromDate, endDate: toDate }
             const filtersSummary = buildGlFiltersSummary()
             if (format === 'excel') {
@@ -4028,6 +4067,16 @@ const Journals = () => {
                                                     title="Stops after whatever record is currently being posted finishes — never mid-record."
                                                 >
                                                     {glBacklogDisplay?.cancelRequested ? 'Stopping…' : 'Stop'}
+                                                </button>
+                                            )}
+                                            {!isDone && glBacklogDisplay?.cancelRequested === true && (
+                                                <button
+                                                    className="j-btn-danger btn-sm"
+                                                    style={{ marginLeft: 8 }}
+                                                    onClick={handleForceStopBacklog}
+                                                    title="Frees up the controls right away instead of waiting — whatever record is currently mid-post still finishes safely in the background, it just won't keep you waiting for it. Safe to start a new run immediately after."
+                                                >
+                                                    Force Stop
                                                 </button>
                                             )}
                                         </div>

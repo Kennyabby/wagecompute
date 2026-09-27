@@ -23,7 +23,7 @@ const Stock = ({
     const {
         server, fetchServer, getProducts, getProductsWithStock, getProductsStockReport,
         setAlert, setAlertState, setAlertTimeout, intervalPeriod,
-        products, setProducts, settings, company, companyRecord,
+        products, setProducts, settings, company, companyRecord, centralCompany,
           runApprovalWorkFlow, approvals, getApprovals, allowBacklogs,
         inventoryDateRange, setInventoryDateRange,
     } = useContext(ContextProvider);
@@ -662,7 +662,8 @@ const Stock = ({
             name: companyData.name || settings?.companyName || 'Company Name',
             address: companyData.address || settings?.companyAddress || 'Company Address',
             phone: companyData.phone || settings?.companyPhone || 'Phone Number',
-            email: companyData.email || settings?.companyEmail || 'email@example.com'
+            email: companyData.email || settings?.companyEmail || 'email@example.com',
+            logoUrl: centralCompany?.logoUrl || companyData.logoUrl || null
         };
     };
 

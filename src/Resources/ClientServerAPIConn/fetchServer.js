@@ -32,13 +32,53 @@ export const setDesktopTenant = (tenantDb) => {
         else window.localStorage.removeItem(DESKTOP_TENANT_STORAGE_KEY);
     } catch (e) { /* ignore */ }
 };
-const getDesktopTenantHeader = () => {
+export const getDesktopTenantHeader = () => {
     if (!window.electronAPI?.isElectron) return {};
     try {
         const tenantDb = window.localStorage.getItem(DESKTOP_TENANT_STORAGE_KEY);
         return tenantDb ? { 'x-desktop-tenant': tenantDb } : {};
     } catch (e) {
         return {};
+    }
+};
+
+// Shared by every pre-login/public page that shows the tenant's own logo
+// before any session exists (Login, Signup, Forgot Password, Tenant
+// Renewal, License Expired, Payment Confirmation, ...) — one fetch used
+// everywhere instead of each page re-implementing it slightly differently,
+// so a fix here (like adding the desktop tenant header) never has to be
+// re-applied file by file again. Resolves the tenant the same way
+// wageserver/UserModule/Users/userLogin.js's /public/company-profile route
+// does: the x-desktop-tenant header first (Electron desktop, where the
+// window's own hostname is always 127.0.0.1 and carries no real tenant),
+// falling back to the page's real hostname (web, subdomain-based).
+//
+// Returns the tenant's logoUrl, or null when there is none (unrecognized
+// host, or a real tenant that simply never uploaded one) — callers show
+// the platform's own default logo in either null case; only a genuinely
+// uploaded logo ever overrides it.
+//
+// `server` (the same origin every other fetchServer call already targets)
+// is required, not optional — a bare relative fetch here would resolve
+// against whatever origin the PAGE ITSELF loaded from. That's harmless in
+// production (wageserver serves both the API and the built SPA from one
+// origin), but in local dev the frontend (CRA's own dev server) and the
+// backend are different origins entirely, so a relative fetch silently hit
+// CRA's own dev server instead — which has no idea what this path is and
+// just serves back its own index.html, making the logo look like it's
+// always missing even when the real data and the real API are both fine.
+// Confirmed exactly this way against a real dev environment.
+export const fetchPublicCompanyLogo = async (server) => {
+    try {
+        const host = window.location.hostname;
+        const resp = await fetch(`${server}/public/company-profile?host=${encodeURIComponent(host)}`, {
+            headers: getDesktopTenantHeader(),
+        });
+        if (!resp.ok) return null;
+        const body = await resp.json();
+        return body?.record?.logoUrl || null;
+    } catch (e) {
+        return null;
     }
 };
 

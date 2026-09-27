@@ -36,7 +36,7 @@ const TransactionReports = ({
     initialDateHint = null,
 }) => {
     const {
-        company, server, fetchServer, user, companyRecord, allowBacklogs,
+        company, server, fetchServer, user, companyRecord, centralCompany, allowBacklogs,
         paymentReceipts, getPosOrders, fetchSessions, paymentMethods,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider);
@@ -1362,7 +1362,7 @@ const TransactionReports = ({
             // Export to PDF logic
             console.log('Exporting to PDF:', data);
             // alert('Export to PDF functionality will be implemented here');
-            exportToPDF(data, `${type}_report_${new Date().toISOString().split('T')[0]}`, type);
+            exportToPDF(data, `${type}_report_${new Date().toISOString().split('T')[0]}`, type, centralCompany?.logoUrl || null);
         }
     };
     return (

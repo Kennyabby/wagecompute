@@ -574,16 +574,13 @@
     min-width: 0;
 }
 
-.navbrand-mark {
-    display: grid;
-    place-items: center;
+.navbrand-logo {
     width: 44px;
     height: 44px;
     border-radius: 16px;
     background: linear-gradient(135deg, #ffe29a, #dff1e6);
-    color: #173829;
-    font-weight: 800;
-    letter-spacing: 0.08em;
+    object-fit: contain;
+    padding: 4px;
     flex-shrink: 0;
 }
 

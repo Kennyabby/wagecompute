@@ -8,6 +8,7 @@ import { utils, writeFile } from 'xlsx';
 // Import jsPDF with autoTable
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { loadPdfImage, fitImageBox } from '../../../utils/pdfLogo';
 import './TransactionHistory.css';
 
 // Reusable checkbox-list multi-select dropdown for the filter bar. Options
@@ -109,6 +110,7 @@ const TransactionHistory = () => {
     setAlertTimeout,
     products,
     companyRecord,
+    centralCompany,
     allowBacklogs,
     getProductsStockReport,
     approvals,
@@ -924,7 +926,7 @@ const TransactionHistory = () => {
   };
 
   // Export data to PDF without using autoTable
-  const exportToPDF = (title, type, data, summary, startDate, endDate) => {
+  const exportToPDF = async (title, type, data, summary, startDate, endDate) => {
     // Initialize jsPDF
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -932,17 +934,27 @@ const TransactionHistory = () => {
       format: 'a4'
     });
 
+    // Logo — only if the tenant actually uploaded one (never a platform default)
+    const logo = await loadPdfImage(centralCompany?.logoUrl);
+    const textX = 15 + (logo ? 20 : 0);
+    if (logo) {
+      try {
+        const { w, h } = fitImageBox(logo, 16, 16);
+        doc.addImage(logo.dataUrl, logo.format, 15, 10, w, h);
+      } catch (e) { /* ignore */ }
+    }
+
     // Set font
     doc.setFont('helvetica');
 
     // Add title
     doc.setFontSize(18);
-    doc.text(title, 15, 20);
+    doc.text(title, textX, 20);
 
     // Add date and date range
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 15, 28);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, textX, 28);
 
     let startY = 35; // Default start position
 
@@ -950,7 +962,7 @@ const TransactionHistory = () => {
     if (startDate && endDate) {
       const formattedStart = new Date(startDate).toLocaleDateString();
       const formattedEnd = new Date(endDate).toLocaleDateString();
-      doc.text(`Date Range: ${formattedStart} to ${formattedEnd}`, 15, 34);
+      doc.text(`Date Range: ${formattedStart} to ${formattedEnd}`, textX, 34);
       startY = 42; // Adjust startY if date range is shown
     }
 

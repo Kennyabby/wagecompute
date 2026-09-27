@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import { loadPdfImage, fitImageBox } from '../../../utils/pdfLogo';
 
 // Helper function to format currency
 const formatCurrency = (amount) => {
@@ -118,7 +119,7 @@ export const exportToExcel = (data, filename) => {
     }
 };
 
-export const exportToPDF = (data, filename, type = 'sales') => {
+export const exportToPDF = async (data, filename, type = 'sales', logoUrl = null) => {
     try {
         // Create a new PDF document
         const doc = new jsPDF({
@@ -127,16 +128,26 @@ export const exportToPDF = (data, filename, type = 'sales') => {
             format: 'a4'
         });
 
+        // Logo — only if the tenant actually uploaded one (never a platform default)
+        const logo = await loadPdfImage(logoUrl);
+        const titleX = 14 + (logo ? 20 : 0);
+        if (logo) {
+            try {
+                const { w, h } = fitImageBox(logo, 16, 16);
+                doc.addImage(logo.dataUrl, logo.format, 14, 10, w, h);
+            } catch (e) { /* ignore */ }
+        }
+
         // Add title and metadata
         const title = `${type === 'sales' ? 'POS' : 'Delivery'} Transaction Report`;
         const date = new Date().toLocaleString();
-        
+
         // Set font for title
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
-        
+
         // Add title
-        doc.text(title, 14, 20);
+        doc.text(title, titleX, 20);
         
         // Add date and page number
         doc.setFontSize(10);

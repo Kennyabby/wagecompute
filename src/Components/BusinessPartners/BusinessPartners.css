@@ -438,6 +438,14 @@
     color: #132f23;
 }
 
+.bp-report-logo {
+    max-width: 60px;
+    max-height: 60px;
+    object-fit: contain;
+    display: block;
+    margin-bottom: 6px;
+}
+
 .bp-report-heading h2,
 .bp-report-heading h3 {
     margin: 0 0 6px;

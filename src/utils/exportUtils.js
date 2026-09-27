@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
+import { loadPdfImage, fitImageBox } from './pdfLogo';
 
 // Simple table drawing function
 const drawTable = (doc, headers, data, startY) => {
@@ -45,24 +46,35 @@ const formatCurrency = (value) => {
     });
 };
 
-export const generatePDF = (data, columns, companyInfo, dateRange, reportTitle, filters = {}) => {
+export const generatePDF = async (data, columns, companyInfo, dateRange, reportTitle, filters = {}) => {
     try {
         // Create a new PDF document
         const doc = new jsPDF({
             orientation: 'landscape'
         });
-        
+
+        // Logo — only if the tenant actually uploaded one via companyInfo.logoUrl
+        // (never a platform default; this is the tenant's own document).
+        const logo = await loadPdfImage(companyInfo.logoUrl);
+        const textX = 14 + (logo ? 20 : 0);
+        if (logo) {
+            try {
+                const { w, h } = fitImageBox(logo, 16, 16);
+                doc.addImage(logo.dataUrl, logo.format, 14, 10, w, h);
+            } catch (e) { /* ignore */ }
+        }
+
         // Add company info
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text(companyInfo.name, 14, 15);
+        doc.text(companyInfo.name, textX, 15);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        
+
         // Add company details
-        doc.text(companyInfo.address || '', 14, 22);
-        doc.text(`Phone: ${companyInfo.phone || ''}`, 14, 29);
-        doc.text(`Email: ${companyInfo.email || ''}`, 14, 36);
+        doc.text(companyInfo.address || '', textX, 22);
+        doc.text(`Phone: ${companyInfo.phone || ''}`, textX, 29);
+        doc.text(`Email: ${companyInfo.email || ''}`, textX, 36);
         
         // Add report title and date range
         doc.setFontSize(16);

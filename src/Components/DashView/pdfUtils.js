@@ -1,7 +1,8 @@
 
 import jsPDF from 'jspdf';
+import { loadPdfImage, fitImageBox } from '../../utils/pdfLogo';
 
-export function exportReceiptsTableToPDF({ payPointAccounts, dbName, filteredReceipts, filter, resultCount, employees, grouped = false }) {
+export async function exportReceiptsTableToPDF({ payPointAccounts, dbName, filteredReceipts, filter, resultCount, employees, grouped = false, logoUrl = null }) {
   const doc = new jsPDF({ orientation: 'landscape' });
   const marginLeft = 7;
   const marginTop = 18;
@@ -17,9 +18,18 @@ export function exportReceiptsTableToPDF({ payPointAccounts, dbName, filteredRec
   } else {
     totalAmount = filteredReceipts.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
   }
+  // Logo (only if the tenant actually uploaded one — never a platform default)
+  const logo = await loadPdfImage(logoUrl);
+  const titleX = marginLeft + (logo ? 16 : 0);
+  if (logo) {
+    try {
+      const { w, h } = fitImageBox(logo, 14, 14);
+      doc.addImage(logo.dataUrl, logo.format, marginLeft, marginTop - 12, w, h);
+    } catch (e) { /* ignore */ }
+  }
   // Title
   doc.setFontSize(16);
-  doc.text(`${dbName} Payment Receipts Report`, marginLeft, marginTop);
+  doc.text(`${dbName} Payment Receipts Report`, titleX, marginTop);
   doc.setFontSize(11);
   doc.text(`Filters:`, marginLeft, marginTop + 10);
   // Format multi-select filters for display
@@ -194,11 +204,12 @@ export function exportReceiptsTableToPDF({ payPointAccounts, dbName, filteredRec
 }
 
 
-export function exportSummaryMatrixToPDF({
+export async function exportSummaryMatrixToPDF({
   summary,
   payPointAccounts = {},
   title = 'Summary by Module and Paypoint',
-  filters = {}
+  filters = {},
+  logoUrl = null
 }) {
   const doc = new jsPDF({ orientation: 'landscape' });
   const marginLeft = 10;
@@ -210,9 +221,18 @@ export function exportSummaryMatrixToPDF({
   const colWidthBase = Math.max(28, Math.min(60, (290 / columns.length))); // simple width calc
   const colWidths = new Array(columns.length).fill(colWidthBase);
 
+  // Logo (only if the tenant actually uploaded one — never a platform default)
+  const logo = await loadPdfImage(logoUrl);
+  const titleX = marginLeft + (logo ? 16 : 0);
+  if (logo) {
+    try {
+      const { w, h } = fitImageBox(logo, 14, 14);
+      doc.addImage(logo.dataUrl, logo.format, marginLeft, marginTop - 10, w, h);
+    } catch (e) { /* ignore */ }
+  }
   // Title
   doc.setFontSize(14);
-  doc.text(title, marginLeft, marginTop);
+  doc.text(title, titleX, marginTop);
   // Filters line
   doc.setFontSize(10);
   const filterLine = `Date From: ${filters.from || 'Any'} | Date To: ${filters.to || 'Any'}`;
@@ -279,22 +299,6 @@ export function exportSummaryMatrixToPDF({
   doc.save('payment_receipts_summary.pdf');
 }
 
-const loadImageAsBase64 = async (url) => {
-  if (!url) return null;
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-  } catch (error) {
-    console.warn('Failed to load image:', url, error);
-    return null;
-  }
-};
-
 export async function exportPurchaseDocumentToPDF({
   type = 'purchaseOrder',
   title = 'PURCHASE DOCUMENT',
@@ -327,19 +331,24 @@ export async function exportPurchaseDocumentToPDF({
   const rowHeight = 8;
   let y = 12;
 
-  // Load images asynchronously
-  const logoBase64 = await loadImageAsBase64(logoUrl);
-  const signatureBase64 = await loadImageAsBase64(signatureUrl);
+  // Load images asynchronously — null (not a placeholder) whenever the
+  // tenant never uploaded one, so nothing gets drawn below rather than
+  // this platform's own logo appearing on the tenant's own document.
+  const logo = await loadPdfImage(logoUrl);
+  const signature = await loadPdfImage(signatureUrl);
 
   const formatValue = (value) => {
     if (value === undefined || value === null) return '';
     return String(value);
   };
 
-  // Add logo at top-left if available
-  if (logoBase64) {
+  // Add logo at top-left if available — aspect-fit within a 20x20mm box
+  // instead of stretching to it, so a non-square uploaded logo isn't
+  // distorted.
+  if (logo) {
     try {
-      doc.addImage(logoBase64, 'PNG', marginLeft, y, 20, 20);
+      const { w, h } = fitImageBox(logo, 20, 20);
+      doc.addImage(logo.dataUrl, logo.format, marginLeft, y, w, h);
     } catch (e) {
       console.warn('Failed to add logo to PDF:', e);
     }
@@ -348,7 +357,7 @@ export async function exportPurchaseDocumentToPDF({
   // Add document title to the right
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  const titleX = logoBase64 ? marginLeft + 25 : marginLeft;
+  const titleX = logo ? marginLeft + 25 : marginLeft;
   doc.text(title, titleX, y + 6);
   y += 24;
 
@@ -488,14 +497,15 @@ export async function exportPurchaseDocumentToPDF({
   }
 
   // Add authorized signature if approved
-  if (curApproval?.approved && signatureBase64) {
+  if (curApproval?.approved && signature) {
     y += 24;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text('Authorized Signature:', marginLeft, y);
     y += 2;
     try {
-      doc.addImage(signatureBase64, 'PNG', marginLeft, y, 40, 16);
+      const { w, h } = fitImageBox(signature, 40, 16);
+      doc.addImage(signature.dataUrl, signature.format, marginLeft, y, w, h);
     } catch (e) {
       console.warn('Failed to add signature to PDF:', e);
     }
@@ -545,8 +555,8 @@ export async function exportExpenseDocumentToPDF({
   const rowHeight = 8;
   let y = 12;
 
-  const logoBase64 = await loadImageAsBase64(logoUrl);
-  const signatureBase64 = await loadImageAsBase64(signatureUrl);
+  const logo = await loadPdfImage(logoUrl);
+  const signature = await loadPdfImage(signatureUrl);
 
   const formatValue = (value) => (value === undefined || value === null ? '' : String(value));
   const formatCurrency = (value) => {
@@ -554,9 +564,10 @@ export async function exportExpenseDocumentToPDF({
     return amount ? `${amount.toLocaleString()}` : '0';
   };
 
-  if (logoBase64) {
+  if (logo) {
     try {
-      doc.addImage(logoBase64, 'PNG', marginLeft, y, 20, 20);
+      const { w, h } = fitImageBox(logo, 20, 20);
+      doc.addImage(logo.dataUrl, logo.format, marginLeft, y, w, h);
     } catch (e) {
       console.warn('Failed to add logo to PDF:', e);
     }
@@ -564,7 +575,7 @@ export async function exportExpenseDocumentToPDF({
 
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  const titleX = logoBase64 ? marginLeft + 25 : marginLeft;
+  const titleX = logo ? marginLeft + 25 : marginLeft;
   doc.text(title, titleX, y + 6);
   y += 24;
 
@@ -688,14 +699,15 @@ export async function exportExpenseDocumentToPDF({
     doc.text('PAID', marginLeft, y);
   }
 
-  if (curApproval?.approved && signatureBase64) {
+  if (curApproval?.approved && signature) {
     y += 24;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text('Authorized Signature:', marginLeft, y);
     y += 2;
     try {
-      doc.addImage(signatureBase64, 'PNG', marginLeft, y, 40, 16);
+      const { w, h } = fitImageBox(signature, 40, 16);
+      doc.addImage(signature.dataUrl, signature.format, marginLeft, y, w, h);
     } catch (e) {
       console.warn('Failed to add signature to PDF:', e);
     }

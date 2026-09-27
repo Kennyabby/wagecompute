@@ -13,7 +13,7 @@ const RentalReceipt = ({
     const targetRef = useRef(null)
     const {storePath,
         getDate,
-        company, companyRecord,
+        company, companyRecord, centralCompany,
         employees,
     } = useContext(ContextProvider)
    
@@ -69,7 +69,7 @@ const RentalReceipt = ({
             margin:       0.1,
             filename:     `${rentalSale.rentalSpace.toUpperCase()} RENTAL RECEIPT - FOR ${rentalSale.paymentMonth}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
+            html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
@@ -93,7 +93,8 @@ const RentalReceipt = ({
                                     <div className="row payeerow">
                                        <div className='invhead'>
                                             <div className="billfrom">
-                                                <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>                                               
+                                                {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className="payee-report-logo" crossOrigin="anonymous" />}
+                                                <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                 <p className='billfromitem'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfromitem'>{`Phone: +234 906 4648 510, Email: ${companyRecord.emailid}`}</p>
                                                 <p className='billfromitem'><b>{`RENTAL RECEIPT FOR THE MONTH OF ${rentalSale.paymentMonth}`}</b></p>

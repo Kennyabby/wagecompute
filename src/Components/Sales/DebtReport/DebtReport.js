@@ -17,7 +17,7 @@ const DebtReport = ({
 
     const {storePath,
         getDate,
-        company, companyRecord,
+        company, companyRecord, centralCompany,
         monthDays,
         employees,
         attendance
@@ -76,7 +76,7 @@ const DebtReport = ({
             margin:       0.1,
             filename:     `DEBT REPORT - ${recoveryMonth}, ${recoveryYear}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
+            html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
@@ -100,6 +100,7 @@ const DebtReport = ({
                                     <div className="row payeerow">
                                        <div className='invhead'>
                                             <div className="billfrom">
+                                                {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className="payee-report-logo" crossOrigin="anonymous" />}
                                                 <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                 <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p>

@@ -2,6 +2,13 @@
     width: fit-content;
     margin: auto;
 }
+.payee-report-logo {
+    max-width: 60px;
+    max-height: 60px;
+    object-fit: contain;
+    display: block;
+    margin-bottom: 6px;
+}
 .prr-table {
     /* margin: 10px auto; */
     width: 90%;

@@ -10,7 +10,7 @@ const Payroll = () =>{
     const {storePath,
         server, fetchServer,
         getDate, intervalPeriod,
-        company, companyRecord,
+        company, companyRecord, centralCompany,
         monthDays,months, years,
         employees, getEmployees, sales,
         attendance, getAttendance
@@ -195,7 +195,7 @@ const Payroll = () =>{
                                 <div className="col-md-12">
                                     <div className="pr-row">
                                        <div className='invhead'>
-                                            {/* <img src={''} className='invlogo'/> */}
+                                            {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className='invlogo' crossOrigin="anonymous" />}
                                             <div className="billfrom">
                                                 <h4 className='company' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                 <p className='billfromitem'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>

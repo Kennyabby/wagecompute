@@ -21,7 +21,7 @@ const Inventory = ()=>{
     const {storePath,
         server, fetchServer,
         getDate,
-        company, companyRecord,
+        company, companyRecord, centralCompany,
         monthDays,months, years,
         employees, getEmployees, sales,
         products, setProducts, getProducts
@@ -288,7 +288,7 @@ const Inventory = ()=>{
             margin:       0.1,
             filename:     `INVENTORY RECORD REPORT`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
+            html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
@@ -480,6 +480,7 @@ const Inventory = ()=>{
                     </div>}
                 </div>
                 <div className='inventoryView' ref={targetRef}>
+                    {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" style={{ maxWidth: 60, maxHeight: 60, objectFit: 'contain', display: 'block', marginBottom: 6 }} crossOrigin="anonymous" />}
                     {view}
                 </div>
             </div>
