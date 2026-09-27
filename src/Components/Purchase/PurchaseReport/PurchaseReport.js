@@ -15,7 +15,7 @@ const PurchaseReport = ({
     const targetRef = useRef(null)
     const {storePath,
         getDate,
-        company, companyRecord,
+        company, companyRecord, centralCompany,
         employees,
     } = useContext(ContextProvider)
    
@@ -83,7 +83,7 @@ const PurchaseReport = ({
             margin:       0.1,
             filename:     `PURCHASE REPORT - FROM ${getDate(fromDate)} TO ${getDate(toDate)}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
+            html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
@@ -107,7 +107,8 @@ const PurchaseReport = ({
                                     <div className="row payeerow">
                                        <div className='invhead'>
                                             <div className="billfrom">
-                                                <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>                                               
+                                                {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className="payee-report-logo" crossOrigin="anonymous" />}
+                                                <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                 <p className='billfrompayee'>{`PURCHASE FROM `}<b>{`${getDate(fromDate)}`}</b>{` TO `}<b>{`${getDate(toDate)}`}</b></p>                                                                                   
                                                 <p className='billfrompayee'>Created Date: <b>{getDate()}</b></p>
                                             </div>

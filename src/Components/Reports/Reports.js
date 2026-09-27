@@ -10,7 +10,7 @@ const Reports = () => {
     const { storePath,
         server, intervalPeriod,
         fetchServer,
-        companyRecord,
+        companyRecord, centralCompany,
         company, getDate, years, monthDays,
         employees, months, expenses, sales, rentals, purchase, attendance,
         getSales, getRentals, getPurchase, getExpenses,
@@ -429,7 +429,7 @@ const Reports = () => {
             margin: 0.2,
             filename: `${curReport.title} REPORT - ${new Date(filterTo).getFullYear()}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
         html2pdf().set(options).from(element).save();
@@ -491,6 +491,7 @@ const Reports = () => {
 
                                     <div className='report-invhead'>
                                         <div className="billfrom">
+                                            {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className="payee-report-logo" crossOrigin="anonymous" />}
                                             <h4 className='company report-company' style={{ color: '#173829' }}>
                                                 <strong>{companyRecord.name.toUpperCase()}</strong>
                                             </h4>

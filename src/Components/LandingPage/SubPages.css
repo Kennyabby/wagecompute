@@ -11,6 +11,7 @@
               linear-gradient(180deg, #f7f4eb 0%, #eef3ef 100%);
 }
 .sp-hero-inner { max-width: 720px; margin: 0 auto; }
+.sp-hero-logo { width: 64px; height: 64px; object-fit: contain; margin: 0 auto 20px; display: block; }
 .sp-hero h1 { font-family: 'MontserratBold', sans-serif; font-size: clamp(2rem, 4vw, 3.2rem); color: var(--ec-primary); margin-bottom: 16px; line-height: 1.1; letter-spacing: -1px; }
 .sp-hero p { font-size: 1.1rem; color: #607064; line-height: 1.7; max-width: 560px; margin: 0 auto 32px; }
 

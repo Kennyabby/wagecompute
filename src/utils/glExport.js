@@ -5,6 +5,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { generateExcel } from './exportUtils';
+import { loadPdfImage, fitImageBox } from './pdfLogo';
 
 export const GL_EXPORT_COLUMNS = [
     { name: 'Posting Date', reference: 'postingDate' },
@@ -35,16 +36,26 @@ export const exportGlToExcel = (rows, companyInfo, dateRange, filtersSummary = {
     generateExcel(exportRows, GL_EXPORT_COLUMNS, companyInfo, dateRange, reportTitle, filtersSummary);
 };
 
-export const exportGlToPDF = (rows, companyInfo, dateRange, filtersSummary = {}, reportTitle = 'General Ledger') => {
+export const exportGlToPDF = async (rows, companyInfo, dateRange, filtersSummary = {}, reportTitle = 'General Ledger') => {
     const exportRows = (rows || []).map(toExportRow);
     const doc = new jsPDF({ orientation: 'landscape' });
 
+    // Logo — only if the tenant actually uploaded one (never a platform default)
+    const logo = await loadPdfImage(companyInfo?.logoUrl);
+    const textX = 14 + (logo ? 20 : 0);
+    if (logo) {
+        try {
+            const { w, h } = fitImageBox(logo, 16, 16);
+            doc.addImage(logo.dataUrl, logo.format, 14, 8, w, h);
+        } catch (e) { /* ignore */ }
+    }
+
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(companyInfo?.name || '', 14, 15);
+    doc.text(companyInfo?.name || '', textX, 15);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(reportTitle, 14, 23);
+    doc.text(reportTitle, textX, 23);
 
     let y = 29;
     if (dateRange?.startDate && dateRange?.endDate) {

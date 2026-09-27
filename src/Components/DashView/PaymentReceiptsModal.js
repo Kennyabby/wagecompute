@@ -5,7 +5,8 @@ import { exportReceiptsTableToPDF, exportSummaryMatrixToPDF } from './pdfUtils';
 import { generateExcel } from '../../utils/exportUtils';
 
 const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
-  const { employees, paymentMethods, companyRecord, allowBacklogs } = useContext(ContextProvider);
+  const { employees, paymentMethods, companyRecord, centralCompany, allowBacklogs } = useContext(ContextProvider);
+  const companyLogoUrl = centralCompany?.logoUrl || companyRecord?.logoUrl || null;
   // Get earliest date boundary
   const earliestDate = useMemo(() => {
     if (!paymentReceipts.length) return '';
@@ -200,7 +201,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                 exportData = Object.entries(groups).map(([receiptNum, group]) => ({ receiptNum, group }));
                 grouped = true;
               }
-              exportReceiptsTableToPDF({ payPointAccounts: payPointAccounts, dbName: companyRecord.name, filteredReceipts: exportData, filter, resultCount: filteredReceipts.length, employees, grouped });
+              exportReceiptsTableToPDF({ payPointAccounts: payPointAccounts, dbName: companyRecord.name, filteredReceipts: exportData, filter, resultCount: filteredReceipts.length, employees, grouped, logoUrl: companyLogoUrl });
             }}
           >
             Download PDF
@@ -254,7 +255,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                 summary: summaryByModulePaypoint,
                 payPointAccounts,
                 title: 'Payment Receipts Summary by Module and Paypoint',
-                filters: { from: filter.from, to: filter.to }
+                filters: { from: filter.from, to: filter.to },
+                logoUrl: companyLogoUrl
               })
             }}
           >

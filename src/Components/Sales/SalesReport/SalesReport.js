@@ -13,7 +13,7 @@ const SalesReport = ({
 }) => {
     const { storePath,
         getDate, paymentMethods,
-        company, companyRecord,
+        company, companyRecord, centralCompany,
         monthDays, wrhs,
         employees,
         attendance
@@ -211,7 +211,11 @@ const SalesReport = ({
             margin: 0.1,
             filename: `SALES REPORT - FROM ${getDate(fromDate)} TO ${getDate(toDate)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
+            // useCORS: without it, a remote (Google Drive-hosted) logo image
+            // taints html2canvas's canvas and renders blank in the exported
+            // PDF instead of throwing — confirmed working elsewhere in this
+            // app (BusinessPartners.js's QR code image uses the same flag).
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'landscape' }
         };
         html2pdf().set(options).from(element).save();
@@ -235,6 +239,7 @@ const SalesReport = ({
                                         <div className="prr-row headerrow">
                                             <div className='invhead'>
                                                 <div className="billfrom">
+                                                    {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className="payee-report-logo" crossOrigin="anonymous" />}
                                                     <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                     {/* <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p> */}

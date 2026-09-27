@@ -3,6 +3,7 @@ import ContextProvider from '../../../Resources/ContextProvider';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Barcode from 'react-barcode';
+import { loadPdfImage, fitImageBox } from '../../../utils/pdfLogo';
 
 const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
     const [InvoiceNumber, setInvoiceNumber] = useState('')
@@ -15,7 +16,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
     const targetRef = useRef(null)
     const {storePath,
         getDate,
-        company, companyRecord,
+        company, companyRecord, centralCompany,
         months,
         monthDays,
         employees,
@@ -67,7 +68,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
         });
     };
 
-    const generatePDF = useCallback(() => {
+    const generatePDF = useCallback(async () => {
         try {
             const doc = new jsPDF({
                 orientation: 'landscape',
@@ -78,7 +79,19 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 5;
-            
+
+            // Logo, top-left — only if the tenant actually uploaded one
+            // (never a platform default). Kept out of the centered header
+            // block below so every other coordinate in this function stays
+            // unchanged.
+            const logo = await loadPdfImage(centralCompany?.logoUrl);
+            if (logo) {
+                try {
+                    const { w, h } = fitImageBox(logo, 18, 18);
+                    doc.addImage(logo.dataUrl, logo.format, margin, margin, w, h);
+                } catch (e) { /* ignore */ }
+            }
+
             // Center company header
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(18);
@@ -308,7 +321,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
             setAlertState('error');
             setAlert('Error generating PDF. Please check console for details.');
         }
-    }, [employees, attendance, selectedMonth, selectedYear, companyRecord, monthDays]);
+    }, [employees, attendance, selectedMonth, selectedYear, companyRecord, centralCompany, monthDays]);
 
     
 

@@ -2721,7 +2721,7 @@ const AddProduct = ({
     companyRecord, addingProducts, setAddingProducts,
     setAlertState, setAlert, setAlertTimeout,
 }) => {
-    const { fetchServer, server, company, allowBacklogs, settings } = useContext(ContextProvider)
+    const { fetchServer, server, company, centralCompany, allowBacklogs, settings } = useContext(ContextProvider)
     const isAdmin = companyRecord?.status === 'admin'
     const canBacklog = isAdmin || allowBacklogs
     const todayStr = new Date().toISOString().slice(0, 10)
@@ -2963,7 +2963,7 @@ const AddProduct = ({
         try {
             const fn = format === 'excel' ? exportReconciliationExcel : exportReconciliationPDF
             fn({
-                companyInfo: { name: company },
+                companyInfo: { name: company, logoUrl: centralCompany?.logoUrl || null },
                 postingDate,
                 location: wrh1,
                 lines: currentLocationRecord.lines || [],

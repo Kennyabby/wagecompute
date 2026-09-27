@@ -130,7 +130,7 @@ const resolveDefaultTheme = () => {
 }
 
 const Epsilon = () => {
-    const { server, fetchServer, company, companyRecord } = useContext(ContextProvider)
+    const { server, fetchServer, company, companyRecord, centralCompany } = useContext(ContextProvider)
     // Same shape every real export caller already builds (e.g.
     // BusinessPartners.js) — exportUtils.js's generatePDF reads
     // companyInfo.name directly with no fallback, so this must never be
@@ -140,7 +140,8 @@ const Epsilon = () => {
         address: companyRecord?.address || '',
         phone: companyRecord?.phone || companyRecord?.mobile || '',
         email: companyRecord?.email || companyRecord?.emailid || '',
-    }), [company, companyRecord])
+        logoUrl: centralCompany?.logoUrl || null,
+    }), [company, companyRecord, centralCompany])
     const [open, setOpen] = useState(false)
     const [expanded, setExpanded] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)

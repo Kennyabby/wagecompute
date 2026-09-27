@@ -36,7 +36,7 @@ const ReconciliationReview = ({
     setAlert, setAlertState, setAlertTimeout,
     initialPostingDate, initialEmployeeId,
 }) => {
-    const { fetchServer, server, company, getSessionStart, getSessionEnd } = useContext(ContextProvider)
+    const { fetchServer, server, company, centralCompany, getSessionStart, getSessionEnd } = useContext(ContextProvider)
     const isAdmin = companyRecord?.status === 'admin'
     const [postingDate, setPostingDate] = useState(initialPostingDate || new Date().toISOString().slice(0, 10))
     const [record, setRecord] = useState(null)
@@ -302,8 +302,8 @@ const ReconciliationReview = ({
                                                 {isAdmin && !loc.locked && (
                                                     <button disabled={busyAction} onClick={() => setConfirmAdjustment(loc.location)}>Post Inventory Adjustment</button>
                                                 )}
-                                                <button onClick={() => exportReconciliationExcel({ companyInfo: { name: company }, postingDate, location: loc.location, lines: loc.lines || [] })}>Export Excel</button>
-                                                <button onClick={() => exportReconciliationPDF({ companyInfo: { name: company }, postingDate, location: loc.location, lines: loc.lines || [] })}>Export PDF</button>
+                                                <button onClick={() => exportReconciliationExcel({ companyInfo: { name: company, logoUrl: centralCompany?.logoUrl || null }, postingDate, location: loc.location, lines: loc.lines || [] })}>Export Excel</button>
+                                                <button onClick={() => exportReconciliationPDF({ companyInfo: { name: company, logoUrl: centralCompany?.logoUrl || null }, postingDate, location: loc.location, lines: loc.lines || [] })}>Export PDF</button>
                                             </div>
 
                                             {loc.lockedReason === 'shortage' && (loc.shortagePostings || []).length > 0 && (

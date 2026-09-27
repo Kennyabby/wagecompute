@@ -8,10 +8,11 @@ import ContextProvider from '../../Resources/ContextProvider';
 import { motion, AnimatePresence } from "framer-motion";
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
 import AuthNotify from '../../Resources/Notify/AuthNotify';
+import { fetchPublicCompanyLogo } from '../../Resources/ClientServerAPIConn/fetchServer';
 
 const Login = () => {
   const { server, fetchServer, storePath,
-    loginMessage, setLoginMessage, loadPage, companyRecord
+    loginMessage, setLoginMessage, loadPage
   } = useContext(ContextProvider)
   const [viewType, setViewType] = useState('')
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -25,6 +26,7 @@ const Login = () => {
   const [capsLock, setCapsLock] = useState(false);
   const [showSymbols, setShowSymbols] = useState(false);
   const [loginLogo, setLoginLogo] = useState(null);
+  const resolveDisplayLogo = () => loginLogo || applogo;
 
   const Navigate = useNavigate()
   const location = useLocation()
@@ -170,15 +172,10 @@ const Login = () => {
     storePath('login');
     // set page title
     document.title = "Login | Enterprise Compute Central";
-    // Fetch public company profile for pre-login logo
+    // Fetch public company profile for pre-login logo.
     (async () => {
-      try {
-        const host = window.location.hostname;
-        const resp = await fetch(`/public/company-profile?host=${encodeURIComponent(host)}`);
-        if (!resp.ok) return;
-        const body = await resp.json();
-        if (body?.record?.logoUrl) setLoginLogo(body.record.logoUrl);
-      } catch (e) { /* ignore */ }
+      const logoUrl = await fetchPublicCompanyLogo(server);
+      if (logoUrl) setLoginLogo(logoUrl);
     })();
   }, [storePath])
 
@@ -413,7 +410,7 @@ const Login = () => {
         <div className="user-header">
           <motion.div className="logo-link" onClick={() => Navigate('/')}>
             <motion.img
-              src={companyRecord?.logoUrl || loginLogo || applogo}
+              src={resolveDisplayLogo()}
               alt="Company Logo"
               className="user-app-logo"
               initial={{ y: -20, opacity: 0 }}
@@ -620,7 +617,7 @@ const Login = () => {
           >
             <div className="mobile-logo">
               <div className="logo-link" onClick={() => Navigate('/')}>
-                <img src={applogo} alt="Logo" />
+                <img src={resolveDisplayLogo()} alt="Logo" />
               </div>
             </div>
             <h2>Welcome Back</h2>
@@ -708,7 +705,7 @@ const Login = () => {
           >
             <div className="visual-logo-box">
               <div className="logo-link" onClick={() => Navigate('/')}>
-                <img src={applogo} alt="Enterprise Compute" />
+                <img src={resolveDisplayLogo()} alt="Enterprise Compute" />
               </div>
             </div>
             <h1>Enterprise Compute</h1>

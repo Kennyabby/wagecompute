@@ -1,6 +1,6 @@
 import './SideNav.css'
 
-import { useState, useEffect, useContext, useMemo } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BiSolidDashboard, BiMenu } from "react-icons/bi";
@@ -14,10 +14,11 @@ import { TbReportMoney } from "react-icons/tb";
 import { CgArrangeBack } from "react-icons/cg";
 import OfflineSyncModal from '../Offline Sync/OfflineSyncModal';
 import { loadPendingChanges } from '../../Resources/offlineDb';
+import applogo from '../../Resources/assets/images/enterprisecompute.png'
 
 const SideNav = () => {
     const {
-        server, fetchServer, company, companyRecord,
+        server, fetchServer, company, companyRecord, centralCompany,
         setAlertState, setAlert, setAlertTimeout, approvals, setCurApproval,
         isFullyConnected, isBrowserOnline, enabledModules
     } = useContext(ContextProvider)
@@ -138,16 +139,6 @@ const SideNav = () => {
     const hasModuleAccess = (moduleKey) => {
         return (enabledModules || []).includes(moduleKey) && hasPermission(moduleKey)
     }
-
-    const companyInitials = useMemo(() => {
-        return (companyName || 'Company')
-            .split(' ')
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0])
-            .join('')
-            .toUpperCase()
-    }, [companyName])
 
     const refreshOfflinePendingCount = async () => {
         try {
@@ -409,7 +400,7 @@ const SideNav = () => {
             <div className={`sidenav ${isMenuOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className='navheader'>
                     <div className='navbrand' style={{cursor: 'pointer'}} onClick={()=>{Navigate('/')}}>
-                        <div className='navbrand-mark'>{companyInitials || 'CO'}</div>
+                        <img className='navbrand-logo' src={centralCompany?.logoUrl || applogo} alt={companyName || 'Company logo'} />
                         {!isCollapsed && <div className='navbrand-copy'>
                             <span className='navbrand-title'>{companyName.toUpperCase()}</span>
                             <span className='navbrand-subtitle'>Operations Console</span>

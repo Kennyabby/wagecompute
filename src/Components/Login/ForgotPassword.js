@@ -6,11 +6,14 @@ import ContextProvider from '../../Resources/ContextProvider';
 import { motion, AnimatePresence } from "framer-motion";
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
 import AuthNotify from '../../Resources/Notify/AuthNotify';
+import { fetchPublicCompanyLogo } from '../../Resources/ClientServerAPIConn/fetchServer';
 
 const ForgotPassword = () => {
   const { server, storePath } = useContext(ContextProvider)
   const Navigate = useNavigate()
-  
+
+  const [companyLogo, setCompanyLogo] = useState(null);
+  const resolveDisplayLogo = () => companyLogo || applogo;
   const [emailid, setEmailid] = useState("");
   const [subdomain, setSubdomain] = useState("");
   const [otp, setOtp] = useState("");
@@ -133,6 +136,10 @@ const ForgotPassword = () => {
   useEffect(() => {
     storePath('forgot-password')
     document.title = 'Forgot Password | Enterprise Compute Central'
+    ;(async () => {
+      const logoUrl = await fetchPublicCompanyLogo(server);
+      if (logoUrl) setCompanyLogo(logoUrl);
+    })();
   }, [storePath])
   
   return (
@@ -147,7 +154,7 @@ const ForgotPassword = () => {
           >
             <div className="mobile-logo">
               <div className="logo-link" onClick={() => Navigate('/')}>
-                <img src={applogo} alt="Logo" />
+                <img src={resolveDisplayLogo()} alt="Logo" />
               </div>
             </div>
             <h2>Account Recovery</h2>
@@ -286,7 +293,7 @@ const ForgotPassword = () => {
           >
             <div className="visual-logo-box">
               <div className="logo-link" onClick={() => Navigate('/')}>
-                <img src={applogo} alt="Enterprise Compute" />
+                <img src={resolveDisplayLogo()} alt="Enterprise Compute" />
               </div>
             </div>
             <h1>Super Admin Recovery</h1>
