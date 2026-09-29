@@ -128,6 +128,7 @@ const NavBar = () => {
 
           <div className="ec-nav-item" onClick={() => Navigate('/community')}>Community</div>
           <div className="ec-nav-item" onClick={() => Navigate('/pricing')}>Pricing</div>
+          <div className="ec-nav-item" onClick={() => Navigate('/about#story')}>Our Story</div>
           <div className="ec-nav-item" onClick={() => Navigate('/about')}>About</div>
           <div className="ec-nav-item" onClick={() => Navigate('/help')}>Help</div>
         </div>
@@ -149,6 +150,7 @@ const NavBar = () => {
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/') }}>Home</div>
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/community') }}>Community</div>
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/pricing') }}>Pricing</div>
+        <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/about#story') }}>Our Story</div>
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/about') }}>About</div>
         <div className="ec-nav-item" onClick={() => { setMobileOpen(false); Navigate('/help') }}>Help</div>
         {isAuthenticated ? (
