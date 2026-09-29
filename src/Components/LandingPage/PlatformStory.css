@@ -1,0 +1,208 @@
+/* Visual language ported directly from the platform's detailed pitch
+   document (the "Design" canvas artifact) — same palette, same type
+   choices, same component shapes (kicker labels, pillar cards, note and
+   quote asides, the before/after table), just sized for on-screen reading
+   instead of a printed page. Keep this in step with the pitch document. */
+
+.ps-root {
+  background: #ffffff;
+  padding: 64px 20px;
+}
+
+.ps-page {
+  max-width: 760px;
+  margin: 0 auto;
+  font-family: 'MontserratRegular', 'Montserrat', system-ui, sans-serif;
+  color: #1f2937;
+}
+
+.ps-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'MontserratBold', 'Montserrat', sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-secondary, #2b6a4b);
+  margin: 0 0 8px;
+}
+
+.ps-title {
+  font-size: 32px;
+  font-weight: 800;
+  font-family: 'MontserratBold', 'Montserrat', sans-serif;
+  color: var(--brand-primary, #173829);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+
+.ps-h2 {
+  font-size: 23px;
+  font-weight: 800;
+  font-family: 'MontserratBold', 'Montserrat', sans-serif;
+  color: var(--brand-primary, #173829);
+  margin: 0 0 6px;
+  line-height: 1.2;
+}
+
+.ps-h3 {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'MontserratBold', 'Montserrat', sans-serif;
+  color: #1a4430;
+  margin: 18px 0 6px;
+}
+
+.ps-p {
+  font-size: 15.5px;
+  line-height: 1.62;
+  margin: 0 0 12px;
+  color: #2c3a34;
+}
+
+.ps-lede {
+  font-size: 17px;
+  line-height: 1.58;
+  color: #1a4430;
+  font-style: italic;
+  margin: 0 0 16px;
+}
+
+.ps-bridge {
+  font-size: 14px;
+  line-height: 1.58;
+  color: #4a5b53;
+  font-style: italic;
+  margin: 14px 0 0;
+}
+
+.ps-divider {
+  height: 1px;
+  background: #e3ede6;
+  border: none;
+  margin: 30px 0;
+}
+
+.ps-pillar-row {
+  display: flex;
+  gap: 14px;
+  margin: 16px 0 4px;
+  flex-wrap: wrap;
+}
+
+.ps-pillar {
+  flex: 1 1 180px;
+  border: 1px solid #d7e8dd;
+  border-radius: 10px;
+  padding: 14px 14px 12px;
+  background: #f7faf8;
+}
+
+.ps-pillar-num {
+  font-size: 11px;
+  font-weight: 800;
+  font-family: 'MontserratBold', 'Montserrat', sans-serif;
+  letter-spacing: 0.08em;
+  color: #6b8f7c;
+  margin: 0 0 5px;
+}
+
+.ps-pillar-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: 'MontserratBold', 'Montserrat', sans-serif;
+  color: var(--brand-primary, #173829);
+  margin: 0 0 5px;
+}
+
+.ps-pillar-body {
+  font-size: 12.5px;
+  line-height: 1.48;
+  color: #3c4a44;
+  margin: 0;
+}
+
+.ps-nav-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a9a92;
+  margin: 0 0 8px;
+}
+
+.ps-chapter-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 30px;
+}
+
+.ps-chapter-nav-item {
+  font-family: 'MontserratRegular', 'Montserrat', sans-serif;
+  font-size: 12.5px;
+  color: var(--brand-primary, #173829);
+  background: #f7faf8;
+  border: 1px solid #d7e8dd;
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ps-chapter-nav-item:hover,
+.ps-chapter-nav-item.active {
+  background: var(--brand-secondary, #2b6a4b);
+  border-color: var(--brand-secondary, #2b6a4b);
+  color: #ffffff;
+}
+
+.ps-chapter {
+  scroll-margin-top: 90px;
+}
+
+.ps-quote-box {
+  background: #f7faf8;
+  border: 1px solid #d7e8dd;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 12px 0 14px;
+}
+
+.ps-quote-box p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.58;
+  color: #1a4430;
+  font-style: italic;
+}
+
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 16px;
+  font-size: 13.5px;
+}
+
+.ps-table th {
+  text-align: left;
+  font-family: 'MontserratBold', 'Montserrat', sans-serif;
+  font-weight: 700;
+  color: var(--brand-primary, #173829);
+  border-bottom: 1.5px solid var(--brand-primary, #173829);
+  padding: 8px 10px 8px 0;
+}
+
+.ps-table td {
+  border-bottom: 1px solid #e3ede6;
+  padding: 8px 10px 8px 0;
+  color: #2c3a34;
+  vertical-align: top;
+}
+
+@media (max-width: 640px) {
+  .ps-root { padding: 40px 16px; }
+  .ps-title { font-size: 25px; }
+  .ps-h2 { font-size: 19px; }
+  .ps-pillar-row { flex-direction: column; }
+  .ps-table { font-size: 12px; }
+}

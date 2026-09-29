@@ -2,6 +2,7 @@ import './SubPages.css'
 import { useEffect, useContext } from 'react'
 import NavBar from './NavBar'
 import Footer from './Footer'
+import PlatformStory from './PlatformStory'
 import ContextProvider from '../../Resources/ContextProvider'
 
 const AboutPage = () => {
@@ -10,7 +11,16 @@ const AboutPage = () => {
   useEffect(() => {
     storePath('about')
     document.title = "About Us | Enterprise Compute Central"
-    window.scrollTo(0, 0)
+    // Links into this page (NavBar, footer) point at /about#story — react-router
+    // does not auto-scroll to a hash, so do it manually once the section has
+    // rendered, the same pattern PricingPage uses for /pricing#epsilon.
+    if (window.location.hash === '#story') {
+      setTimeout(() => {
+        document.getElementById('story')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    } else {
+      window.scrollTo(0, 0)
+    }
   }, [storePath])
 
   return (
@@ -75,6 +85,18 @@ const AboutPage = () => {
             <p>We believe departments shouldn't be silos. Our platform connects your entire team.</p>
           </div>
         </div>
+      </section>
+
+      <section className="ec-section" id="story">
+        <div className="ec-section-header">
+          <div className="ec-section-kicker">The Full Walkthrough</div>
+          <h2 className="ec-section-title">See exactly how it works, module by module</h2>
+          <p style={{ maxWidth: 640, margin: '0 auto', color: 'var(--ec-muted)' }}>
+            The same detailed walkthrough we give investors and customers evaluating the platform,
+            told as one story, from the dashboard through every module to how access and security work.
+          </p>
+        </div>
+        <PlatformStory />
       </section>
 
       <Footer />
