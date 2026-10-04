@@ -1,0 +1,506 @@
+/* ============================================================================
+   Page chrome: global header + mega menu, secondary (in-page) nav, footer.
+   Modelled on sap.com's global header / SecondaryNavigation / NavigationColumn
+   footer. See ds.css for the palette rationale.
+   ========================================================================= */
+
+/* ============================================================================
+   Global header
+   ========================================================================= */
+
+.ds-header {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+}
+.ds-header.scrolled { box-shadow: 0 2px 12px rgba(23, 56, 41, 0.07); }
+
+.ds-header-bar {
+  height: var(--ds-header-h);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.ds-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ds-brand img { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; }
+.ds-brand span {
+  font-family: var(--ds-font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  color: var(--ds-deep);
+  white-space: nowrap;
+}
+
+.ds-nav { display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; }
+
+.ds-nav-item { position: static; }
+.ds-nav-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
+  height: var(--ds-header-h);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ds-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.16s var(--ds-ease), border-color 0.16s var(--ds-ease);
+}
+.ds-nav-trigger:hover,
+.ds-nav-item.open .ds-nav-trigger,
+.ds-nav-trigger.current { color: var(--ds-action); border-bottom-color: var(--ds-action); }
+.ds-nav-caret {
+  width: 7px; height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 0.18s var(--ds-ease);
+}
+.ds-nav-item.open .ds-nav-caret { transform: rotate(-135deg) translate(-2px, -2px); }
+
+.ds-header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.ds-header-icon-btn {
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  background: none; border: none; border-radius: var(--ds-radius);
+  color: var(--ds-text); cursor: pointer; font-size: 1.05rem;
+  transition: background 0.16s var(--ds-ease);
+}
+.ds-header-icon-btn:hover { background: var(--ds-surface-alt); color: var(--ds-action); }
+.ds-header-text-btn {
+  padding: 8px 12px;
+  background: none; border: none; border-radius: var(--ds-radius);
+  font-family: inherit; font-size: 0.9375rem; font-weight: 500;
+  color: var(--ds-text); cursor: pointer; white-space: nowrap;
+}
+.ds-header-text-btn:hover { background: var(--ds-surface-alt); color: var(--ds-action); }
+
+/* ---- Mega menu: full-bleed panel under the header, SAP style ---- */
+.ds-mega {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+  box-shadow: 0 16px 36px rgba(23, 56, 41, 0.1);
+  z-index: 899;
+  animation: ds-mega-in 0.26s var(--ds-ease-out);
+  transform-origin: top center;
+
+  /* The Products panel carries four columns of up to six links plus a
+     promoted card, which is taller than a laptop viewport once the header
+     is subtracted. Without these the bottom of the panel is simply
+     unreachable — the panel is absolutely positioned, so the page scrolling
+     underneath moves the header and the panel together and never brings the
+     cut-off content into view.
+
+     `overscroll-behavior: contain` stops a scroll that reaches the end of
+     the panel from chaining into the page behind it, which would otherwise
+     yank the whole document the moment you hit the last link. */
+  max-height: calc(100vh - var(--ds-header-h));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* A slim scrollbar, so a scrollable panel is visibly scrollable rather than
+   looking identical to one that just happens to be cut off. */
+.ds-mega { scrollbar-width: thin; scrollbar-color: var(--ds-border-strong) transparent; }
+.ds-mega::-webkit-scrollbar { width: 8px; }
+.ds-mega::-webkit-scrollbar-track { background: transparent; }
+.ds-mega::-webkit-scrollbar-thumb {
+  background: var(--ds-border-strong);
+  border-radius: 4px;
+  border: 2px solid var(--ds-surface);
+}
+.ds-mega::-webkit-scrollbar-thumb:hover { background: var(--ds-text-muted); }
+@keyframes ds-mega-in {
+  from { opacity: 0; transform: translate3d(0, -8px, 0); }
+  to { opacity: 1; transform: none; }
+}
+/* Columns cascade so the panel assembles rather than flashing in whole. */
+.ds-mega-col, .ds-mega-feature { animation: ds-mega-col-in 0.34s var(--ds-ease-out) both; }
+.ds-mega-col:nth-child(1) { animation-delay: 0.02s; }
+.ds-mega-col:nth-child(2) { animation-delay: 0.06s; }
+.ds-mega-col:nth-child(3) { animation-delay: 0.1s; }
+.ds-mega-col:nth-child(4) { animation-delay: 0.14s; }
+.ds-mega-feature { animation-delay: 0.16s; }
+@keyframes ds-mega-col-in {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 1; transform: none; }
+}
+.ds-mega-inner { padding: 40px 0 44px; }
+
+/* On a short viewport (a laptop with browser chrome, a scaled display) the
+   padding is a meaningful share of the available height, so trade some of
+   it back before falling to a scrollbar. */
+@media (max-height: 820px) {
+  .ds-mega-inner { padding: 26px 0 30px; }
+  .ds-mega-cols { gap: 24px var(--ds-gutter); }
+  .ds-mega-link { padding-top: 6px; padding-bottom: 6px; }
+}
+
+.ds-mega-cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 32px var(--ds-gutter);
+}
+.ds-mega-cols.with-feature { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.1fr); }
+
+.ds-mega-col { min-width: 0; }
+.ds-mega-col-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ds-text-muted);
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--ds-border);
+}
+.ds-mega-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px 8px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: var(--ds-radius);
+  transition: color 0.14s var(--ds-ease);
+}
+.ds-mega-link:hover { color: var(--ds-action); }
+.ds-mega-link strong {
+  display: block;
+  font-family: var(--ds-font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+}
+.ds-mega-link span { display: block; font-size: 0.8125rem; line-height: 1.45; color: var(--ds-text-muted); margin-top: 2px; }
+.ds-mega-link:hover span { color: var(--ds-text-muted); }
+
+.ds-mega-feature {
+  background: var(--ds-surface-alt);
+  border-radius: var(--ds-radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ds-mega-feature-media { aspect-ratio: 16 / 9; overflow: hidden; background: var(--ds-border); }
+.ds-mega-feature-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ds-mega-feature-body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.ds-mega-feature-body .ds-card-eyebrow { color: var(--ds-action); }
+.ds-mega-feature-body h4 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--ds-text-strong); line-height: 1.32; }
+.ds-mega-feature-body p { margin: 0; font-size: 0.875rem; line-height: 1.5; color: var(--ds-text-muted); }
+.ds-mega-feature-body .ds-link { margin-top: auto; padding-top: 8px; }
+
+.ds-mega-foot {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ds-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  align-items: center;
+}
+
+/* Backdrop that dims the page while a mega menu is open. */
+.ds-mega-scrim {
+  position: fixed;
+  inset: var(--ds-header-h) 0 0;
+  background: rgba(15, 42, 30, 0.28);
+  z-index: 880;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+/* ---- Mobile ---- */
+.ds-burger { display: none; }
+
+.ds-mobile-panel {
+  position: fixed;
+  inset: var(--ds-header-h) 0 0;
+  background: var(--ds-surface);
+  z-index: 895;
+  overflow-y: auto;
+  padding: 16px var(--ds-pad-x) 48px;
+  -webkit-overflow-scrolling: touch;
+}
+.ds-mobile-group { border-bottom: 1px solid var(--ds-border); }
+.ds-mobile-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--ds-text-strong);
+  text-align: left;
+  cursor: pointer;
+}
+.ds-mobile-sub { padding: 0 0 16px 12px; display: grid; gap: 2px; }
+.ds-mobile-sub-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ds-text-muted);
+  margin: 14px 0 4px;
+}
+.ds-mobile-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: var(--ds-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+.ds-mobile-link:hover { color: var(--ds-action); }
+.ds-mobile-actions { display: grid; gap: 10px; margin-top: 28px; }
+
+@media (max-width: 1100px) {
+  .ds-nav { display: none; }
+  .ds-burger {
+    display: grid;
+    place-items: center;
+    width: 40px; height: 40px;
+    background: none; border: none; border-radius: var(--ds-radius);
+    color: var(--ds-text); font-size: 1.3rem; cursor: pointer;
+  }
+  .ds-burger:hover { background: var(--ds-surface-alt); }
+  .ds-header-bar { justify-content: space-between; gap: 12px; }
+  .ds-header-actions .ds-desktop-only { display: none; }
+}
+
+@media (max-width: 1280px) {
+  .ds-mega-cols.with-feature { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ds-mega-feature { display: none; }
+}
+
+/* ============================================================================
+   Secondary navigation — breadcrumbs + in-page anchors + page CTA
+   ========================================================================= */
+
+.ds-subnav {
+  position: sticky;
+  top: var(--ds-header-h);
+  z-index: 850;
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+}
+.ds-subnav-bar {
+  min-height: var(--ds-subnav-h);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.ds-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  padding: 10px 0;
+}
+.ds-breadcrumbs a,
+.ds-breadcrumbs button {
+  color: var(--ds-text-muted);
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+.ds-breadcrumbs a:hover,
+.ds-breadcrumbs button:hover { color: var(--ds-action); text-decoration: underline; }
+.ds-breadcrumbs .sep { color: var(--ds-border-strong); }
+.ds-breadcrumbs .current { color: var(--ds-text-strong); font-weight: 600; }
+
+.ds-subnav-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ds-subnav-tabs::-webkit-scrollbar { display: none; }
+.ds-subnav-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  min-height: var(--ds-subnav-h);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-size: 0.9125rem;
+  font-weight: 500;
+  color: var(--ds-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ds-subnav-tab:hover { color: var(--ds-action); }
+.ds-subnav-tab.active { color: var(--ds-text-strong); font-weight: 600; border-bottom-color: var(--ds-action); }
+.ds-subnav-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ds-text-strong);
+  white-space: nowrap;
+  padding-right: 8px;
+  border-right: 1px solid var(--ds-border);
+  margin-right: 4px;
+}
+.ds-subnav-cta { flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .ds-subnav-title, .ds-subnav-cta { display: none; }
+}
+
+/* ============================================================================
+   Footer — SAP's NavigationColumn grid + social + legal row + back-to-top
+   ========================================================================= */
+
+.ds-footer { background: var(--ds-deep); color: var(--ds-text-on-deep); padding: 64px 0 0; }
+
+.ds-footer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr));
+  gap: 40px var(--ds-gutter);
+  padding-bottom: 48px;
+}
+.ds-footer-brand { min-width: 0; }
+.ds-footer-brand .ds-brand span { color: #fff; }
+.ds-footer-brand p {
+  margin: 16px 0 0;
+  font-size: 0.9125rem;
+  line-height: 1.62;
+  color: var(--ds-text-on-deep-muted);
+  max-width: 34ch;
+}
+.ds-footer-col { min-width: 0; }
+.ds-footer-col h4 {
+  margin: 0 0 16px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(242, 246, 243, 0.5);
+}
+.ds-footer-col a,
+.ds-footer-col button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.9125rem;
+  line-height: 1.5;
+  color: var(--ds-text-on-deep-muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+.ds-footer-col a:hover,
+.ds-footer-col button:hover { color: #fff; text-decoration: underline; }
+
+.ds-footer-social { display: flex; gap: 10px; margin-top: 22px; }
+.ds-footer-social a {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border: 1px solid var(--ds-border-on-deep);
+  border-radius: var(--ds-radius);
+  color: var(--ds-text-on-deep-muted);
+  text-decoration: none;
+  transition: all 0.16s var(--ds-ease);
+}
+.ds-footer-social a:hover { background: rgba(255, 255, 255, 0.1); color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+
+.ds-footer-legal {
+  border-top: 1px solid var(--ds-border-on-deep);
+  padding: 22px 0 32px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 28px;
+}
+.ds-footer-legal-links { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.ds-footer-legal-links a,
+.ds-footer-legal-links button {
+  background: none; border: none; padding: 0;
+  font-family: inherit; font-size: 0.8125rem;
+  color: var(--ds-text-on-deep-muted); text-decoration: none; cursor: pointer;
+}
+.ds-footer-legal-links a:hover,
+.ds-footer-legal-links button:hover { color: #fff; text-decoration: underline; }
+.ds-footer-copy { font-size: 0.8125rem; color: rgba(242, 246, 243, 0.5); }
+
+.ds-backtotop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 1px solid var(--ds-border-on-deep);
+  border-radius: var(--ds-radius);
+  padding: 9px 16px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ds-text-on-deep-muted);
+  cursor: pointer;
+}
+.ds-backtotop:hover { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+
+@media (max-width: 1024px) {
+  .ds-footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ds-footer-brand { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .ds-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-footer-legal { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 420px) {
+  .ds-footer-grid { grid-template-columns: minmax(0, 1fr); }
+}

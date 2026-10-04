@@ -40,6 +40,23 @@
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!--
+      Public-site typography. Three roles, loaded as variable fonts so the
+      whole weight range costs one file each:
+        Plus Jakarta Sans — display/headings (geometric-humanist, distinctive)
+        Inter             — body, UI and tabular figures
+        Newsreader        — pull quotes and large statement text
+      `display=swap` means text paints immediately in the fallback stack and
+      reflows once the webfont lands, rather than holding the page blank.
+      The authenticated app keeps its own Montserrat faces (src/index.css).
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..700&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..700&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&display=swap"
+    />
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.

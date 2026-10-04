@@ -30,6 +30,28 @@ import CareersPage from './Components/LandingPage/CareersPage';
 import PartnersPage from './Components/LandingPage/PartnersPage';
 import DocsPage from './Components/LandingPage/DocsPage';
 import LegalPage from './Components/LandingPage/LegalPage';
+// Public site: product, industry, solution, customer, resource and company
+// pages. All of these are session-free — see the PUBLIC_EXACT /
+// PUBLIC_PREFIXES lists in removeSessions(), which must stay in step with the
+// <Routes> block at the bottom of this file.
+import ProductsPage from './Components/LandingPage/ProductsPage';
+import ProductDetailPage from './Components/LandingPage/ProductDetailPage';
+import IndustriesPage from './Components/LandingPage/IndustriesPage';
+import IndustryDetailPage from './Components/LandingPage/IndustryDetailPage';
+import SolutionsPage from './Components/LandingPage/SolutionsPage';
+import CustomersPage from './Components/LandingPage/CustomersPage';
+import CustomerStoryPage from './Components/LandingPage/CustomerStoryPage';
+import ResourcesPage from './Components/LandingPage/ResourcesPage';
+import EventsPage from './Components/LandingPage/EventsPage';
+import { InsightsPage, InsightPostPage } from './Components/LandingPage/InsightsPage';
+import NewsroomPage from './Components/LandingPage/NewsroomPage';
+import TrustCenterPage from './Components/LandingPage/TrustCenterPage';
+import ServicesPage from './Components/LandingPage/ServicesPage';
+import TrainingPage from './Components/LandingPage/TrainingPage';
+import IntegrationsPage from './Components/LandingPage/IntegrationsPage';
+import WhyPage from './Components/LandingPage/WhyPage';
+import RoiCalculatorPage from './Components/LandingPage/RoiCalculatorPage';
+import ContactPage from './Components/LandingPage/ContactPage';
 
 import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -2270,12 +2292,36 @@ function App() {
     // terms, and the rest of the public marketing/docs pages), so visiting
     // any of those with no active session force-redirected to /login even
     // though the page itself needs no session at all.
-    const isPublicPath = [
-      '/', '/loading', '/payment/confirm', '/login', '/signup', '/forgot-password', '/pricing', '/renew', '/license-expired',
-      '/database-not-found', '/community', '/help', '/about', '/careers', '/partners',
-      '/docs', '/tutorials', '/api', '/privacy', '/terms', '/cookie-policy', '/security',
+    //
+    // Split into exact paths and prefixes because the public site now has
+    // detail routes (/products/pos, /industries/retail, /customers/<slug>,
+    // /blog/<slug>) whose slugs cannot be enumerated here. None of these
+    // prefixes collide with a tenant module route — those are the single
+    // segments in dashList (dashboard, employees, pos, inventory, …) and are
+    // deliberately kept out of the public namespace.
+    // NB: deliberately not named `path` — removeSessions already takes a
+    // parameter of that name.
+    const currentPath = window.location.pathname;
+    const PUBLIC_EXACT = [
+      '/', '/loading', '/payment/confirm', '/login', '/signup', '/forgot-password',
+      '/pricing', '/renew', '/license-expired', '/database-not-found',
+      // Marketing and company
+      '/about', '/careers', '/partners', '/community', '/contact', '/press',
+      '/why-enterprise-compute', '/roi-calculator', '/solutions',
+      // Product, industry and customer indexes
+      '/products', '/industries', '/customers',
+      // Resources, learning and platform
+      '/resources', '/events', '/blog', '/docs', '/tutorials', '/api',
+      '/help', '/services', '/training', '/integrations', '/trust-center',
+      // Legal
+      '/privacy', '/terms', '/cookie-policy', '/security',
+      // Offline licence portal
       '/offline-license-portal/login', '/offline-license/payment-complete',
-    ].includes(window.location.pathname);
+    ];
+    const PUBLIC_PREFIXES = ['/products/', '/industries/', '/customers/', '/blog/'];
+    const isPublicPath =
+      PUBLIC_EXACT.includes(currentPath) ||
+      PUBLIC_PREFIXES.some((prefix) => currentPath.startsWith(prefix));
     if (!isPublicPath) Navigate('/login')
   }
 
@@ -4259,6 +4305,30 @@ function App() {
           <Route path='/about' element={<AboutPage />}></Route>
           <Route path='/careers' element={<CareersPage />}></Route>
           <Route path='/partners' element={<PartnersPage />}></Route>
+          <Route path='/contact' element={<ContactPage />}></Route>
+          <Route path='/press' element={<NewsroomPage />}></Route>
+
+          {/* Public site. Every path here is a multi-segment route or a
+              single segment that is NOT in dashList, so none of them can
+              shadow a tenant module route caught by '/:id' further down. */}
+          <Route path='/products' element={<ProductsPage />}></Route>
+          <Route path='/products/:slug' element={<ProductDetailPage />}></Route>
+          <Route path='/industries' element={<IndustriesPage />}></Route>
+          <Route path='/industries/:slug' element={<IndustryDetailPage />}></Route>
+          <Route path='/solutions' element={<SolutionsPage />}></Route>
+          <Route path='/customers' element={<CustomersPage />}></Route>
+          <Route path='/customers/:slug' element={<CustomerStoryPage />}></Route>
+          <Route path='/why-enterprise-compute' element={<WhyPage />}></Route>
+          <Route path='/roi-calculator' element={<RoiCalculatorPage />}></Route>
+          <Route path='/resources' element={<ResourcesPage />}></Route>
+          <Route path='/events' element={<EventsPage />}></Route>
+          <Route path='/blog' element={<InsightsPage />}></Route>
+          <Route path='/blog/:slug' element={<InsightPostPage />}></Route>
+          <Route path='/services' element={<ServicesPage />}></Route>
+          <Route path='/training' element={<TrainingPage />}></Route>
+          <Route path='/integrations' element={<IntegrationsPage />}></Route>
+          <Route path='/trust-center' element={<TrustCenterPage />}></Route>
+
           <Route path='/docs' element={<DocsPage />}></Route>
           <Route path='/tutorials' element={<DocsPage />}></Route>
           <Route path='/api' element={<DocsPage />}></Route>

@@ -39,7 +39,7 @@ const PaymentConfirmPage = () => {
           return
         }
         const successMessage = checkout === 'epsilon-seats'
-          ? `Epsilon seats confirmed — this workspace now has ${response.epsilonSeats ?? '?'} seat(s).${response.grantedSelfAccess ? ' You have been granted one of them — log out and back in for it to take effect.' : ''}`
+          ? `Epsilon seats confirmed. This workspace now has ${response.epsilonSeats ?? '?'} seat(s).${response.grantedSelfAccess ? ' You have been granted one of them, so log out and back in for it to take effect.' : ''}`
           : (response.message || 'Verification complete.')
         setState({
           verifying: false,

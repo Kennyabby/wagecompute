@@ -206,3 +206,134 @@
   .ps-pillar-row { flex-direction: column; }
   .ps-table { font-size: 12px; }
 }
+
+/* ============================================================================
+   Design-system alignment.
+   ----------------------------------------------------------------------------
+   The story renders inside the About page, which is now on the public design
+   system. This re-skins it onto the same typefaces, measure and geometry so
+   it reads as part of that page rather than as an embedded document. The
+   structure and copy are untouched.
+   ========================================================================= */
+
+.ds-page .ps-root { background: transparent; }
+.ds-page .ps-page { max-width: 76ch; margin: 0 auto; padding: 0; }
+
+.ds-page .ps-kicker {
+  font-family: var(--ds-font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ds-action);
+  margin-bottom: 14px;
+}
+
+.ds-page .ps-title,
+.ds-page .ps-h2,
+.ds-page .ps-h3 {
+  font-family: var(--ds-font-display);
+  color: var(--ds-text-strong);
+  letter-spacing: -0.026em;
+  text-wrap: balance;
+}
+.ds-page .ps-title { font-size: clamp(1.875rem, 1.1rem + 2.6vw, 2.75rem); font-weight: 400; line-height: 1.12; }
+.ds-page .ps-h2 { font-size: clamp(1.625rem, 1.1rem + 1.8vw, 2.25rem); font-weight: 400; line-height: 1.16; }
+.ds-page .ps-h3 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.014em; }
+
+.ds-page .ps-lede {
+  font-family: var(--ds-font);
+  font-size: clamp(1.0625rem, 0.99rem + 0.4vw, 1.25rem);
+  line-height: 1.6;
+  color: var(--ds-text);
+  text-wrap: pretty;
+}
+.ds-page .ps-p,
+.ds-page .ps-bridge {
+  font-family: var(--ds-font);
+  font-size: 1.0625rem;
+  line-height: 1.78;
+  color: var(--ds-text-muted);
+  text-wrap: pretty;
+}
+.ds-page .ps-bridge { color: var(--ds-text); font-style: italic; }
+
+.ds-page .ps-divider { background: var(--ds-border); height: 1px; border: none; }
+
+/* Pillars read as a stat row, matching .ds-fact elsewhere on the site. */
+.ds-page .ps-pillar { border-top: 2px solid var(--ds-action); padding-top: 16px; }
+.ds-page .ps-pillar-num {
+  font-family: var(--ds-font-display);
+  font-size: 1.75rem;
+  font-weight: 350;
+  letter-spacing: -0.03em;
+  color: var(--ds-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.ds-page .ps-pillar-title {
+  font-family: var(--ds-font-display);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ds-text-strong);
+}
+.ds-page .ps-pillar-body { font-family: var(--ds-font); color: var(--ds-text-muted); line-height: 1.6; }
+
+.ds-page .ps-nav-label {
+  font-family: var(--ds-font);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ds-text-muted);
+}
+.ds-page .ps-chapter-nav-item {
+  font-family: var(--ds-font);
+  border-radius: var(--ds-radius-pill);
+  border: 1px solid var(--ds-border-strong);
+  background: var(--ds-surface);
+  color: var(--ds-text-muted);
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 8px 16px;
+  transition: all 0.16s var(--ds-ease);
+}
+.ds-page .ps-chapter-nav-item:hover { border-color: var(--ds-action); color: var(--ds-action); }
+.ds-page .ps-chapter-nav-item.active {
+  background: var(--ds-deep);
+  border-color: var(--ds-deep);
+  color: #fff;
+}
+
+/* The one serif moment, same as .ds-quote elsewhere. */
+.ds-page .ps-quote-box {
+  border-left: 2px solid var(--ds-action);
+  background: transparent;
+  border-radius: 0;
+  padding: 4px 0 4px clamp(20px, 3vw, 36px);
+}
+.ds-page .ps-quote-box p {
+  font-family: var(--ds-font-serif);
+  font-size: clamp(1.1875rem, 1rem + 0.8vw, 1.5rem);
+  font-style: italic;
+  line-height: 1.42;
+  color: var(--ds-text-strong);
+}
+
+.ds-page .ps-table { border: 1px solid var(--ds-border); border-radius: var(--ds-radius); border-collapse: collapse; width: 100%; }
+.ds-page .ps-table th,
+.ds-page .ps-table td {
+  font-family: var(--ds-font);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ds-border);
+  text-align: left;
+  vertical-align: top;
+}
+.ds-page .ps-table thead th {
+  background: var(--ds-surface-alt);
+  font-weight: 600;
+  color: var(--ds-text-strong);
+}
+.ds-page .ps-table td { color: var(--ds-text-muted); }
+.ds-page .ps-table tbody tr:last-child td { border-bottom: none; }

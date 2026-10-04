@@ -642,3 +642,209 @@
   .sp-app-tag { font-size: 0.76rem; padding: 5px 8px; }
   .sp-checkout-submit, .sp-confirm-secondary-btn, .sp-plan-cta { padding: 14px; font-size: 0.9rem; }
 }
+
+/* ============================================================================
+   DESIGN-SYSTEM ALIGNMENT LAYER
+   ----------------------------------------------------------------------------
+   Everything above is the original sub-page styling, kept intact because the
+   pricing page's checkout, module calculator and workspace-resolution markup
+   all depend on those class names and restructuring them would risk live
+   billing behaviour for no visual gain.
+
+   This block instead re-skins those same components onto the public design
+   system defined in ds/ds.css: the display/body typefaces, the near-square
+   4px geometry, the flatter elevation and the shared colour tokens. It is
+   appended rather than merged so the original rules stay readable and the
+   re-skin can be reverted by deleting one contiguous block.
+   ========================================================================= */
+
+/* ---- Typography ---- */
+.sp-hero h1,
+.sp-pricing-card h3,
+.sp-checkout-card h2,
+.sp-community-content h2,
+.ec-section-title {
+  font-family: var(--ds-font-display) !important;
+  letter-spacing: -0.026em;
+  font-weight: 400;
+}
+.sp-hero p,
+.sp-plan-desc,
+.sp-community-content p,
+.ec-section-sub { font-family: var(--ds-font); }
+
+.ec-section-kicker {
+  font-family: var(--ds-font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ds-action);
+}
+
+/* ---- Section rhythm, matched to .ds-section ---- */
+.ec-section {
+  padding: clamp(64px, 7.5vw, 112px) var(--ds-pad-x, 48px);
+  max-width: var(--ds-container, 1312px);
+}
+.ec-section-header { margin-bottom: clamp(36px, 4.5vw, 60px); }
+
+/* ---- Geometry: near-square corners throughout ---- */
+.sp-pricing-card,
+.sp-checkout-card,
+.sp-confirm-card,
+.sp-help-card,
+.sp-faq-item,
+.sp-stat-card,
+.sp-app-card,
+.sp-community-icon-box,
+.sp-calculator-summary-card,
+.sp-calculator-slider-card,
+.sp-optional-apps-card,
+.sp-workspace-status-card,
+.sp-status-banner,
+.sp-comparison-table,
+.sp-contact-card { border-radius: var(--ds-radius-lg, 8px) !important; }
+
+.sp-plan-cta,
+.sp-checkout-submit,
+.sp-confirm-secondary-btn,
+.sp-app-logo,
+.sp-billing-toggle,
+.sp-billing-toggle button,
+.sp-input-group input,
+.sp-input-group select,
+.sp-input-group textarea { border-radius: var(--ds-radius, 4px) !important; }
+
+/* ---- Elevation: flatter, closer to the rest of the site ---- */
+.sp-pricing-card,
+.sp-checkout-card,
+.sp-help-card,
+.sp-stat-card,
+.sp-confirm-card {
+  box-shadow: none;
+  border: 1px solid var(--ds-border, #dbe3dd);
+  transition: border-color 0.18s var(--ds-ease), box-shadow 0.18s var(--ds-ease),
+    transform 0.18s var(--ds-ease);
+}
+.sp-pricing-card:hover,
+.sp-help-card:hover {
+  box-shadow: 0 10px 30px rgba(23, 56, 41, 0.1);
+  border-color: var(--ds-action, #2b6a4b);
+  transform: translateY(-3px);
+}
+/* The featured plan was scaled up, which broke the grid's baseline against
+   its neighbours. A top accent rule carries the same emphasis without
+   knocking the row out of alignment. */
+.sp-pricing-card.featured {
+  transform: none;
+  border-color: var(--ds-action, #2b6a4b);
+  border-top: 3px solid var(--ds-action, #2b6a4b);
+  box-shadow: 0 10px 30px rgba(23, 56, 41, 0.1);
+}
+.sp-pricing-card.featured:hover { transform: translateY(-3px); }
+.sp-pricing-card.selected { border-color: var(--ds-action, #2b6a4b); }
+
+/* ---- Figures ---- */
+.sp-amount,
+.sp-calculator-summary-card strong,
+.sp-checkout-highlight strong,
+.sp-epsilon-price strong {
+  font-family: var(--ds-font-display);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Controls ---- */
+.sp-plan-cta,
+.sp-checkout-submit,
+.sp-confirm-secondary-btn {
+  font-family: var(--ds-font);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  transition: background 0.2s var(--ds-ease), border-color 0.2s var(--ds-ease),
+    transform 0.2s var(--ds-ease-spring), box-shadow 0.2s var(--ds-ease);
+}
+.sp-plan-cta.primary:hover,
+.sp-checkout-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(23, 56, 41, 0.18);
+}
+.sp-plan-chip {
+  background: var(--ds-surface, #fff);
+  border: 1px solid var(--ds-border, #dbe3dd);
+  color: var(--ds-text-strong, #173829);
+  font-family: var(--ds-font);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+.sp-billing-toggle {
+  border-radius: var(--ds-radius, 4px);
+  border-color: var(--ds-border, #dbe3dd);
+  box-shadow: none;
+}
+.sp-billing-toggle button.active {
+  background: var(--ds-deep, #173829);
+  box-shadow: none;
+}
+
+/* ---- Tables ---- */
+.sp-comparison-table table { border-collapse: collapse; }
+.sp-comparison-table th,
+.sp-comparison-table td {
+  font-family: var(--ds-font);
+  border-bottom: 1px solid var(--ds-border, #dbe3dd);
+}
+.sp-comparison-table thead th {
+  background: var(--ds-surface-alt, #f4f7f5);
+  font-weight: 600;
+  color: var(--ds-text-strong, #173829);
+}
+
+/* ---- Form fields, matched to .ds-field ---- */
+.sp-input-group > span {
+  font-family: var(--ds-font);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ds-text-strong, #173829);
+}
+.sp-input-group input,
+.sp-input-group select,
+.sp-input-group textarea {
+  font-family: var(--ds-font) !important;
+  border: 1px solid var(--ds-border-strong, #c3cfc7) !important;
+}
+.sp-input-group input:focus,
+.sp-input-group select:focus,
+.sp-input-group textarea:focus {
+  border-color: var(--ds-action, #2b6a4b) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ds-action-soft, rgba(43, 106, 75, 0.08));
+}
+
+/* ---- Legal prose: the policy pages now render inside .ds-prose, so the
+   old rich-content rules only need to stop fighting it. ---- */
+.ds-prose.sp-legal-rich-content { color: var(--ds-text-muted); }
+.ds-prose.sp-legal-rich-content h3 {
+  font-family: var(--ds-font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--ds-text-strong);
+  margin: 48px 0 14px;
+}
+.ds-prose.sp-legal-rich-content h4 {
+  font-family: var(--ds-font-display);
+  font-size: 1.1875rem;
+  font-weight: 600;
+  color: var(--ds-text-strong);
+  margin: 30px 0 10px;
+}
+.ds-prose.sp-legal-rich-content h5 {
+  font-family: var(--ds-font);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ds-text-strong);
+  margin: 24px 0 8px;
+}
+.ds-prose.sp-legal-rich-content h3:first-child { margin-top: 0; }

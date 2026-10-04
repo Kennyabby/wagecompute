@@ -199,7 +199,7 @@ const OfflineLicensePortal = () => {
                     <p>Status: <strong>{license.status}</strong></p>
                     {showCountdown ? (
                       <p style={{ color: '#c0392b', fontWeight: 'bold' }}>
-                        {daysRemaining > 0 ? `${daysRemaining} day(s) remaining — renewal due soon` : 'Your license has expired'}
+                        {daysRemaining > 0 ? `${daysRemaining} day(s) remaining, renewal due soon` : 'Your license has expired'}
                       </p>
                     ) : (
                       <p>Renews on {new Date(license.expiresAt).toLocaleDateString()}</p>
@@ -226,7 +226,7 @@ const OfflineLicensePortal = () => {
                   </>
                 )}
                 <div style={{ marginTop: '20px', borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '16px' }}>
-                  <p>{license?.status === 'terminated' ? 'Your license was terminated — register for a new one to keep using the desktop app.' : 'Want a fresh license key (e.g. a different module set, or a new key to re-enter in the app)?'}</p>
+                  <p>{license?.status === 'terminated' ? 'Your license was terminated. Register for a new one to keep using the desktop app.' : 'Want a fresh license key (e.g. a different module set, or a new key to re-enter in the app)?'}</p>
                   <button className="main-login-btn" style={{ width: 'auto', padding: '10px 18px' }} onClick={() => setShowNewLicensePicker(true)}>
                     Register for a New License
                   </button>
@@ -238,7 +238,7 @@ const OfflineLicensePortal = () => {
               <>
                 <h3>Register a New License</h3>
                 <p>This issues a brand new license key (a new purchase) under your existing account. Enter the new key in the desktop app's license screen once payment completes.</p>
-                {/* Epsilon excluded — never available on the offline/desktop
+                {/* Epsilon excluded: never available on the offline/desktop
                     build (no Anthropic key, no per-seat billing there); the
                     server already strips it from computeOfflinePrice too. */}
                 <div className='module-picker-grid'>

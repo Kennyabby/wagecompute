@@ -1,374 +1,500 @@
-import './LandingPage.css'
-import { useState, useEffect, useContext } from 'react'
-import { useNavigate } from 'react-router-dom'
-import applogo from '../../Resources/assets/images/enterprisecompute.png'
-import LoadingPage from '../LoadingPage/LoadingPage'
-import ContextProvider from '../../Resources/ContextProvider'
-import NavBar from './NavBar'
-import Footer from './Footer'
-import MODULE_ICONS from '../../Resources/moduleIcons'
+/* ============================================================================
+   Home page.
+   ----------------------------------------------------------------------------
+   Section order mirrors the architecture of sap.com's homepage, which is a
+   well-tested sequence for an enterprise platform: immersive hero, trust
+   strip, a promoted customer story, a tabbed capability showcase, a
+   fast-fact band, the AI story, the platform explanation, industries,
+   the product catalogue, the partner ecosystem, a "what's new" resource row,
+   and a closing call to action.
 
-const EpsilonIcon = MODULE_ICONS.epsilon
+   Every tile that SAP fills with a photograph or a product screenshot is
+   filled with one here too — see ds/landingImages.js for the registry.
+   ========================================================================= */
+
+import { useContext, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import ContextProvider from '../../Resources/ContextProvider'
+import LoadingPage from '../LoadingPage/LoadingPage'
+import PageShell from './ds/PageShell'
+import {
+  Button, ButtonRow, Card, CTABanner, Container, FastFacts, FiftyFifty, Grid,
+  Hero, LogoStrip, Quote, Section, Showcase, TextLink, Tile, Tiles, Checklist,
+} from './ds/DS'
+import { img, heroImg } from './ds/landingImages'
+import { PRODUCT_CATEGORIES, productsInCategory } from './content/products'
+import { INDUSTRIES } from './content/industries'
+import { RESOURCES, EVENTS } from './content/resources'
+import { PARTNER_PROGRAMS } from './content/programs'
+import { STORIES, ILLUSTRATIVE, PLACEHOLDER_NOTICE } from './content/customers'
+import './ds/ds.css'
+
+const TRUST_NAMES = [
+  'Retail Co.', 'TechVenture', 'GreenField', 'Metro Group', 'AlphaServ', 'BlueChip Inc.',
+]
 
 const LandingPage = () => {
   const { storePath, showLoading, getViewAccess } = useContext(ContextProvider)
   const navigate = useNavigate()
-  const [demoTab, setDemoTab] = useState(0)
 
   useEffect(() => {
-    if (!showLoading) {
-      storePath('')
-      document.title = 'Enterprise Compute | All-in-One ERP, POS & Accounting Platform'
-    }
+    if (!showLoading) storePath('')
   }, [storePath, showLoading])
 
-  useEffect(() => {
-    getViewAccess()
-  }, [])
+  useEffect(() => { getViewAccess() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (showLoading) return <LoadingPage />
 
-  const demoTabs = [
+  const featuredStory = STORIES[0]
+  const sideStories = STORIES.slice(1, 4)
+  const featuredResources = RESOURCES.filter((r) => r.featured)
+  const nextEvent = EVENTS.find((e) => e.featured)
+
+  /* The capability showcase — the equivalent of SAP's "when every function is
+     autonomous" block, but built from this platform's real module groups. */
+  const showcase = [
     {
-      label: 'Point of Sale',
-      title: 'Lightning-Fast POS Terminal',
-      desc: 'Process orders in seconds with a responsive POS flow, live inventory movement, receipt handling, and session-based oversight.',
-      feats: [
-        { t: 'Multi-Session', d: 'Run parallel POS sessions across locations' },
-        { t: 'Offline Mode', d: 'Keep selling even without internet' },
-        { t: 'Smart Receipts', d: 'Support customer, kitchen, and operational receipt flows' },
+      label: 'Point of sale',
+      summary: 'Sell fast, stay accountable, keep trading offline',
+      title: 'A till your team can run without thinking about it',
+      body: 'Session-based cash handling ties the float, the sales and the closing count to a named operator. Stock moves as each sale completes, and the whole thing keeps working through a network outage.',
+      image: img('posTerminal', 'showcase'),
+      points: [
+        'Opening float, sales and closing count attributed per shift',
+        'Real-time stock deduction on every completed sale',
+        'Discounting and voids as permissions separate from selling',
+        'Tables, takeaway and delivery in one order flow',
       ],
+      link: <TextLink to="/products/pos" navigate={navigate}>Explore Point of Sale</TextLink>,
     },
     {
       label: 'Inventory',
-      title: 'Real-Time Stock Intelligence',
-      desc: 'Track every item across warehouses with transfers, adjustments, low-stock signals, and product-level visibility by location.',
-      feats: [
-        { t: 'Multi-Warehouse', d: 'Manage stock across locations' },
-        { t: 'Auto Adjustments', d: 'Operational activity updates inventory positions' },
-        { t: 'Transfer Orders', d: 'Move stock between warehouses cleanly' },
+      summary: 'A position built from movements you can read',
+      title: 'Know exactly what you have, and why',
+      body: 'Stock is never a stored number that gets overwritten. It is a running position derived from attributed movements, so a variance against a physical count is a list of transactions rather than a mystery.',
+      image: img('inventoryCount', 'showcase'),
+      points: [
+        'Positions held per item, per location',
+        'Transfers tracked in transit, discrepancies raised on receipt',
+        'Adjustments require a reason code',
+        'Production converts components into finished goods at real cost',
       ],
-    },
-    {
-      label: 'Payroll',
-      title: 'Effortless Payroll Processing',
-      desc: 'Move from attendance into payroll with deductions, allowances, and visibility into paid and pending salary obligations.',
-      feats: [
-        { t: 'Auto Calculate', d: 'From attendance to payroll-ready figures' },
-        { t: 'Deductions', d: 'Tax, pension, and custom payroll rules' },
-        { t: 'Debt Visibility', d: 'Track salary liabilities and employee debt recovery paths' },
-      ],
+      link: <TextLink to="/products/inventory" navigate={navigate}>Explore Inventory</TextLink>,
     },
     {
       label: 'Accounting',
-      title: 'Live Journals, COA and Closings',
-      desc: 'Follow journals, chart of accounts balances, ledgers, and closing-aware financial summaries without recomputing from day one each time.',
-      feats: [
-        { t: 'Computed COA', d: 'Operational activity feeds the accounting layer' },
-        { t: 'Incremental Closings', d: 'Use prior snapshots to accelerate new summaries' },
-        { t: 'Ledger Views', d: 'Move from COA to ledgers, trial balance, and statements' },
+      summary: 'A ledger written as you trade, not rebuilt at month-end',
+      title: 'The general ledger is the foundation, not a report',
+      body: 'Sales, purchases, stock movement, payroll and expenses each generate real double-entry postings at the moment they happen. By the time anyone asks for a trial balance, it already exists.',
+      image: img('accountantDesk', 'showcase'),
+      points: [
+        'Chart of accounts you design, mapped to operations once',
+        'Incremental period closings that compute forward from a snapshot',
+        'Drill from any statement figure to its source document',
+        'Corrections are reversing entries, never deletions',
       ],
+      link: <TextLink to="/products/journals" navigate={navigate}>Explore the accounting engine</TextLink>,
+    },
+    {
+      label: 'People & payroll',
+      summary: 'Approved hours straight into the pay run',
+      title: 'Payroll that reads attendance directly',
+      body: 'Hours are captured, reviewed and approved by a supervisor, and the pay run reads them. No export step, no second spreadsheet, and no payday argument about who worked which Saturday.',
+      image: img('budgetPlanning', 'showcase'),
+      points: [
+        'Statutory and custom deductions applied consistently',
+        'Salary advances with recovery tracked, not remembered',
+        'Itemised payslips every run',
+        'Gross cost, liabilities and net pay posted to the ledger',
+      ],
+      link: <TextLink to="/products/payroll" navigate={navigate}>Explore Payroll</TextLink>,
+    },
+    {
+      label: 'Sales & delivery',
+      summary: 'Quote to cash, and cash back off the road',
+      title: 'Every order followed through to the money',
+      body: 'A quote becomes an order, an invoice, a dispatch and a receipt, each step linked to the last. Cash collected on delivery is reconciled per rider, per run.',
+      image: img('deliveryDriver', 'showcase'),
+      points: [
+        'Credit limits enforced at the point of order',
+        'Proof of delivery captured at handover',
+        'Goods in transit visible rather than simply absent',
+        'Receivables and ageing per customer, kept in step with the ledger',
+      ],
+      link: <TextLink to="/products/sales" navigate={navigate}>Explore Sales</TextLink>,
+    },
+    {
+      label: 'Reporting',
+      summary: 'Statements you can trace to their cause',
+      title: 'Trial balance, P&L and balance sheet, from the actual ledger',
+      body: 'Every figure opens into the entries behind it, and from there into the sale, receipt or pay run that produced them. A report that cannot be traced is an opinion.',
+      image: img('financialAnalysis', 'showcase'),
+      points: [
+        'Statutory statements plus management reporting by branch and department',
+        'Closed periods locked to their signed-off figures',
+        'Export to spreadsheet and PDF for external advisers',
+        'Scoped read-only access for your accountant',
+      ],
+      link: <TextLink to="/products/reports" navigate={navigate}>Explore Reports</TextLink>,
+    },
+    {
+      label: 'Epsilon AI',
+      summary: 'An assistant that reads your real records',
+      title: 'Ask why the number is what it is',
+      body: 'Epsilon queries your live data within your own permission scope, cites the transactions behind its answer, and proposes changes without ever applying them on its own.',
+      image: img('dataAnalytics', 'showcase'),
+      points: [
+        'Traces a figure through its real movement history',
+        'Names the person who can approve a blocked transaction',
+        'Generates reporting grounded in posted figures',
+        'Proposes, never writes, until someone authorised confirms',
+      ],
+      link: <TextLink to="/products/epsilon" navigate={navigate}>Explore Epsilon</TextLink>,
     },
   ]
 
-  // Real module icons (the same ones used in the app's own sidebar — see
-  // Resources/moduleIcons.js) instead of raw emoji, so the marketing page
-  // looks like the product it's selling rather than a generic template.
-  const appCards = [
-    { n: 'Dashboard', icon: MODULE_ICONS.dashboard, c: 'rgba(43,106,75,0.1)' },
-    { n: 'Employees', icon: MODULE_ICONS.employees, c: 'rgba(255,226,154,0.3)' },
-    { n: 'Departments', icon: MODULE_ICONS.departments, c: 'rgba(106,242,173,0.15)' },
-    { n: 'Positions', icon: MODULE_ICONS.positions, c: 'rgba(59,130,246,0.1)' },
-    { n: 'Attendance', icon: MODULE_ICONS.attendance, c: 'rgba(43,106,75,0.1)' },
-    { n: 'Payroll', icon: MODULE_ICONS.payroll, c: 'rgba(255,226,154,0.3)' },
-    { n: 'POS', icon: MODULE_ICONS.pos, c: 'rgba(106,242,173,0.15)' },
-    { n: 'Delivery', icon: MODULE_ICONS.delivery, c: 'rgba(240,93,94,0.1)' },
-    { n: 'Sales', icon: MODULE_ICONS.sales, c: 'rgba(43,106,75,0.1)' },
-    { n: 'Inventory', icon: MODULE_ICONS.inventory, c: 'rgba(59,130,246,0.1)' },
-    { n: 'Accommodation', icon: MODULE_ICONS.accommodations, c: 'rgba(255,226,154,0.3)' },
-    { n: 'Purchase', icon: MODULE_ICONS.purchase, c: 'rgba(106,242,173,0.15)' },
-    { n: 'Expenses', icon: MODULE_ICONS.expenses, c: 'rgba(240,93,94,0.1)' },
-    { n: 'Journals & COA', icon: MODULE_ICONS.journals, c: 'rgba(43,106,75,0.1)' },
-    { n: 'Settings', icon: MODULE_ICONS.settings, c: 'rgba(59,130,246,0.1)' },
-    { n: 'Epsilon AI', icon: MODULE_ICONS.epsilon, c: 'rgba(59,130,246,0.1)', tag: 'AI · Paid add-on' },
-  ]
-
-  const allInOneCards = [
-    { icon: '🏪', title: 'POS -> Inventory', desc: 'Sales auto-deduct stock in real time' },
-    { icon: '⏰', title: 'Attendance -> Payroll', desc: 'Hours worked flow directly into payroll processing' },
-    { icon: '📦', title: 'Purchase -> Inventory', desc: 'Incoming goods update stock positions instantly' },
-    { icon: '📊', title: 'Operations -> COA', desc: 'Operational activity feeds live financial summaries and reports' },
-    { icon: '🚚', title: 'Orders -> Delivery', desc: 'Dispatch orders directly from the operational flow' },
-    { icon: '💸', title: 'Expenses -> Accounting', desc: 'Costs are tracked, categorized, and reflected downstream' },
-    { icon: '🏨', title: 'Accommodation -> Revenue', desc: 'Bookings tie directly into service income visibility' },
-    { icon: '🔄', title: 'Offline -> Cloud', desc: 'Pending changes sync automatically and refresh summaries' },
-  ]
-
-  const industries = [
-    { icon: '🛒', title: 'Retail & eCommerce', desc: 'POS, inventory, and multi-location stock management for fast-moving retail teams.' },
-    { icon: '🏭', title: 'Manufacturing', desc: 'Purchasing, stock movement, costing visibility, and workforce administration.' },
-    { icon: '🏨', title: 'Hospitality', desc: 'Accommodation, restaurant POS, tables, service operations, and delivery.' },
-    { icon: '🔧', title: 'Professional Services', desc: 'Employee management, attendance, expenses, and connected reporting.' },
-    { icon: '🏗️', title: 'Construction', desc: 'Project expenses, payroll, and on-site attendance tracking.' },
-    { icon: '🏥', title: 'Healthcare', desc: 'Staff scheduling, payroll processing, and department coordination.' },
-  ]
-
   return (
-    <div className="ec-landing">
-      <NavBar />
+    <PageShell
+      title="Enterprise Compute | One platform for operations, people and accounting"
+      description="Run point of sale, inventory, sales, purchasing, delivery, payroll and a real double-entry ledger on one platform. Unlimited users, priced per module, built to keep working offline."
+    >
+      {/* ---------------------------------------------------------- hero -- */}
+      <Hero
+        tone="deep"
+        size="lg"
+        backgroundImage={heroImg('heroTeam', 'heroWide')}
+        eyebrow="One platform. One ledger."
+        title="Run the whole business on records you can actually trust"
+        lede="Point of sale, inventory, sales, purchasing, delivery, payroll and a genuine double-entry general ledger. One system, where every number traces back to the transaction that caused it and the business keeps trading when the network does not."
+      >
+        <ButtonRow>
+          <Button variant="primary" size="lg" to="/signup" navigate={navigate}>Start a free 14-day trial</Button>
+          <Button variant="secondary" size="lg" to="/contact" navigate={navigate}>Request a demo</Button>
+        </ButtonRow>
+        <div style={{ marginTop: 28 }}>
+          <Checklist
+            items={[
+              'Every module unlocked during the trial',
+              'Unlimited users on every plan, forever',
+              'Six core modules free permanently',
+            ]}
+          />
+        </div>
+      </Hero>
 
-      <section className="ec-hero" id="top">
-        <div className="ec-hero-inner">
-          <div>
-            <div className="ec-hero-kicker">All-in-One ERP, POS &amp; AI Platform</div>
-            <h1>Run Your Entire Business with <span className="ec-highlight">One Platform</span></h1>
-            <p>
-              Enterprise Compute unifies HR, inventory, POS, sales, payroll, delivery, accommodation,
-              and live accounting into one operating platform — with Epsilon, a built-in AI assistant that
-              understands your real data, plus real-time summaries and closing-aware reporting.
-            </p>
-            <div className="sp-badge-row" style={{ justifyContent: 'flex-start', marginTop: 0, marginBottom: 24 }}>
-              <span className="sp-plan-chip">14-day free trial</span>
-              <span className="sp-plan-chip">All apps included</span>
-              <span className="sp-plan-chip">Built-in AI assistant</span>
-              <span className="sp-plan-chip">Works online or offline</span>
-            </div>
-            <div className="ec-hero-btns">
-              <button className="ec-btn-primary" onClick={() => navigate('/pricing')}>View Pricing</button>
-              <button className="ec-btn-secondary" onClick={() => navigate('/help')}>Schedule a Demo</button>
-            </div>
-          </div>
-          <div className="ec-hero-visual">
-            <div className="ec-hero-panel">
-              <div className="ec-hero-panel-top">
-                <img src={applogo} alt="Enterprise Compute" className="ec-hero-panel-logo" />
-                <span>Live Operations Dashboard</span>
-              </div>
-              <div className="ec-hero-panel-stats">
-                <div className="ec-hero-stat"><span>Revenue Today</span><strong>₦2.4M</strong></div>
-                <div className="ec-hero-stat"><span>Orders</span><strong>148</strong></div>
-                <div className="ec-hero-stat"><span>Active Staff</span><strong>32</strong></div>
-              </div>
-              <div className="ec-hero-panel-chart">
-                {[42, 68, 50, 82, 60, 94, 74].map((h, i) => (
-                  <div key={i} className="ec-hero-bar" style={{ height: `${h}%` }} />
-                ))}
-              </div>
-            </div>
-            <div className="ec-hero-float-badge">🔒 Enterprise-grade security</div>
-          </div>
-        </div>
-      </section>
+      <LogoStrip label="Built for operators across retail, hospitality, distribution and industry" items={TRUST_NAMES} />
 
-      <section className="ec-trust">
-        <p>Trusted by businesses across industries</p>
-        <div className="ec-trust-logos">
-          {['Retail Co.', 'TechVenture', 'GreenField', 'Metro Group', 'AlphaServ', 'BlueChip Inc.'].map((name) => (
-            <div key={name} className="ec-trust-chip">{name}</div>
-          ))}
-        </div>
-      </section>
-
-      <section className="ec-section ec-value-section">
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">Why Enterprise Compute</div>
-          <h2 className="ec-section-title">Everything Your Business Needs, Nothing It Doesn't</h2>
-          <p className="ec-section-sub">A modular ERP designed to scale with you from startup operations to multi-team execution.</p>
-        </div>
-        <div className="ec-value-grid">
-          {[
-            { icon: '🔗', title: 'Fully Integrated', desc: 'All modules work together seamlessly. Sales feed inventory, attendance feeds payroll, and operations feed accounting.', bg: 'rgba(43,106,75,0.1)' },
-            { icon: '📡', title: 'Real-Time Sync', desc: 'Tenant-scoped Server-Sent Events keep dashboards, sessions, and summary data updated instantly.', bg: 'rgba(255,226,154,0.3)' },
-            { icon: '🌐', title: 'Works Offline', desc: 'IndexedDB-powered offline mode lets teams queue changes locally and sync when reconnected.', bg: 'rgba(106,242,173,0.15)' },
-            { icon: '🔐', title: 'Role-Based Access', desc: 'Control who sees, edits, approves, posts, and exports across the platform.', bg: 'rgba(59,130,246,0.1)' },
-          ].map((item) => (
-            <div className="ec-value-card" key={item.title}>
-              <div className="ec-value-icon" style={{ background: item.bg }}>{item.icon}</div>
-              <h3>{item.title}</h3>
-              <p>{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="ec-section ec-apps-section">
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">Product Ecosystem</div>
-          <h2 className="ec-section-title">One Platform, Every Module You Need</h2>
-          <p className="ec-section-sub">Run daily operations, approvals, reporting, and accounting from one connected system.</p>
-        </div>
-        <div className="ec-apps-grid">
-          {appCards.map((app) => {
-            const Icon = app.icon
-            return (
-              <div
-                className="ec-app-card"
-                key={app.n}
-                onClick={app.tag ? () => navigate('/pricing#epsilon') : undefined}
-              >
-                {app.tag && <span className="ec-app-card-tag">{app.tag}</span>}
-                <div className="ec-app-card-icon" style={{ background: app.c }}>{Icon && <Icon />}</div>
-                <strong>{app.n}</strong>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      <section className="ec-section" style={{ background: 'var(--ec-light-bg)' }}>
-        <div className="ec-feature-block">
-          <div className="ec-feature-text">
-            <div className="ec-section-kicker">AI Assistant · Paid add-on</div>
-            <h2>Meet Epsilon, an AI That Actually Knows Your Data</h2>
-            <p>
-              Built into every workspace, Epsilon is wired directly into your real records — not a generic chatbot.
-              It diagnoses blocked transactions, traces exactly why a number is what it is, and tells you who can
-              approve something instead of just saying "ask your admin."
-            </p>
-            <ul className="ec-feature-list">
-              <li>Explains blockers and traces real transaction history, across every module</li>
-              <li>Interprets accounting trends and generates reports from your live figures</li>
-              <li>Recommends reorders and flags profit opportunities from real data</li>
-              <li>Proposes purchase orders and data corrections — nothing changes without your confirmation</li>
-            </ul>
-            <button className="ec-btn-secondary" onClick={() => navigate('/pricing#epsilon')}>See Epsilon Pricing</button>
-          </div>
-          <div>
-            <div style={{ width: '100%', height: 340, borderRadius: 24, background: 'linear-gradient(135deg, #173829, #2b6a4b)', display: 'grid', placeItems: 'center' }}>
-              {EpsilonIcon && <EpsilonIcon size={88} color="#fff" />}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ec-section ec-demo-section">
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">See It In Action</div>
-          <h2 className="ec-section-title">Powerful Modules, Simple Interface</h2>
-          <p className="ec-section-sub">Explore the main operating surfaces behind the platform.</p>
-        </div>
-        <div className="ec-demo-tabs">
-          {demoTabs.map((tab, index) => (
-            <button key={tab.label} className={`ec-demo-tab ${demoTab === index ? 'active' : ''}`} onClick={() => setDemoTab(index)}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div className="ec-demo-preview">
-          <h3>{demoTabs[demoTab].title}</h3>
-          <p>{demoTabs[demoTab].desc}</p>
-          <div className="ec-demo-features">
-            {demoTabs[demoTab].feats.map((feature) => (
-              <div className="ec-demo-feat" key={feature.t}>
-                <strong>{feature.t}</strong>
-                <span>{feature.d}</span>
-              </div>
+      {/* ------------------------------------------------ featured story -- */}
+      <Section
+        eyebrow="Customer stories"
+        title="What changes when the numbers stop disagreeing"
+        subtitle="Operators who replaced disconnected tools with one ledger, and what they found when they could finally see the figures."
+        split
+      >
+        <Grid cols={2}>
+          <Card
+            image={img(featuredStory.heroImage, 'fifty')}
+            badge={featuredStory.industryLabel}
+            eyebrow={featuredStory.company}
+            title={featuredStory.headline}
+            text={featuredStory.summary}
+            link="Read the story"
+            to={`/customers/${featuredStory.slug}`}
+            navigate={navigate}
+          />
+          <div className="ds-stack lg">
+            {sideStories.map((story) => (
+              <Card
+                key={story.slug}
+                flat
+                eyebrow={`${story.company} · ${story.industryLabel}`}
+                title={story.headline}
+                text={story.summary}
+                link="Read the story"
+                to={`/customers/${story.slug}`}
+                navigate={navigate}
+              />
             ))}
+            <TextLink to="/customers" navigate={navigate}>All customer stories</TextLink>
           </div>
-        </div>
-      </section>
+        </Grid>
+        {ILLUSTRATIVE && (
+          <p className="ds-body sm" style={{ marginTop: 24, marginBottom: 0 }}>{PLACEHOLDER_NOTICE}</p>
+        )}
+      </Section>
 
-      <section className="ec-section" style={{ background: '#fff' }}>
-        <div className="ec-feature-block">
-          <div className="ec-feature-text">
-            <div className="ec-section-kicker">Human Resources</div>
-            <h2>Manage Your Workforce End-to-End</h2>
-            <p>From onboarding to payroll, handle workforce operations, approvals, deductions, and live visibility into payroll obligations in one place.</p>
-            <ul className="ec-feature-list">
-              <li>Employee profiles with role-based access</li>
-              <li>Automated attendance and time tracking</li>
-              <li>Payroll visibility for paid, pending, and debt recovery workflows</li>
-              <li>Department and position management</li>
-            </ul>
-          </div>
-          <div><div style={{ width: '100%', height: 340, borderRadius: 24, background: 'linear-gradient(135deg,rgba(255,226,154,0.2),rgba(223,241,230,0.3))', display: 'grid', placeItems: 'center', fontSize: '4rem' }}>👥</div></div>
-        </div>
-        <div className="ec-feature-block reverse">
-          <div className="ec-feature-text">
-            <div className="ec-section-kicker">Point of Sale</div>
-            <h2>The Fastest POS Your Team Can Adopt</h2>
-            <p>Multi-session, multi-warehouse, offline-capable POS with delivery support, receipt flows, and instant dashboard summary updates.</p>
-            <ul className="ec-feature-list">
-              <li>Real-time inventory deduction</li>
-              <li>Multiple payment methods</li>
-              <li>Table management and delivery orders</li>
-              <li>Session-based cash tracking with live summary refresh</li>
-            </ul>
-          </div>
-          <div><div style={{ width: '100%', height: 340, borderRadius: 24, background: 'linear-gradient(135deg,rgba(106,242,173,0.15),rgba(43,106,75,0.08))', display: 'grid', placeItems: 'center', fontSize: '4rem' }}>🏪</div></div>
-        </div>
-      </section>
+      {/* -------------------------------------------- capability showcase -- */}
+      <Section
+        variant="alt"
+        eyebrow="The platform"
+        title="Every part of the business writes to the same ledger"
+        subtitle="Not a suite of products that export to each other overnight. One system, where a sale, a goods receipt and a pay run all post to one chart of accounts at the moment they happen."
+        split
+      >
+        <Showcase items={showcase} />
+      </Section>
 
-      <section className="ec-allinone">
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">Connected Ecosystem</div>
-          <h2 className="ec-section-title">Everything Works Together</h2>
-          <p className="ec-section-sub">Every module feeds into every other. No data silos, no duplicate entry, and no isolated reporting layer.</p>
-        </div>
-        <div className="ec-allinone-grid">
-          {allInOneCards.map((card) => (
-            <div className="ec-allinone-card" key={card.title}>
-              <div className="ec-aio-icon">{card.icon}</div>
-              <h4>{card.title}</h4>
-              <p>{card.desc}</p>
+      {/* ----------------------------------------------------- fast facts -- */}
+      <Section variant="deep" tight>
+        <FastFacts
+          cols={4}
+          items={[
+            { value: '19', label: 'Modules across operations, people and accounting' },
+            { value: 'Unlimited', label: 'Users on every workspace, on every plan' },
+            { value: '6', label: 'Core modules free permanently, on every plan' },
+            { value: '14', suffix: 'days', label: 'Free trial with every module unlocked' },
+          ]}
+        />
+      </Section>
+
+      {/* ---------------------------------------------------------- epsilon -- */}
+      <Section>
+        <FiftyFifty
+          eyebrow="Epsilon · AI assistant"
+          title="An assistant that actually knows the business it is talking about"
+          image={img('realtimeDashboard', 'fifty')}
+          reversed
+        >
+          <p className="ds-lede">
+            A general chatbot can tell you what a trial balance is. Epsilon can tell you why
+            yours does not balance, which journal caused it, and who posted it.
+          </p>
+          <Checklist
+            items={[
+              'Queries your live records, not a summary from last night',
+              'Answers inside the asking person’s own permission scope',
+              'Cites the transactions behind every answer, so it is checkable',
+              'Proposes a purchase order or a correction, but never writes one alone',
+            ]}
+          />
+          <ButtonRow>
+            <Button variant="secondary" to="/products/epsilon" navigate={navigate}>How Epsilon works</Button>
+            <Button variant="tertiary" to="/pricing#epsilon" navigate={navigate}>See per-seat pricing</Button>
+          </ButtonRow>
+        </FiftyFifty>
+      </Section>
+
+      {/* ------------------------------------------------- how it holds up -- */}
+      <Section
+        variant="cream"
+        eyebrow="Why it holds together"
+        title="Three design decisions everything else follows from"
+        subtitle="Most business software gets these wrong in ways that are impossible to fix later, because they are architecture rather than features."
+        split
+      >
+        <Grid cols={3}>
+          <Card
+            image={img('bookkeeping', 'card')}
+            title="The ledger is written, not reconstructed"
+            text="Operational transactions generate their own balanced double-entry postings. Month-end becomes a review of figures that already exist rather than a rebuild from exports."
+            link="Inside the accounting engine"
+            to="/products/journals"
+            navigate={navigate}
+          />
+          <Card
+            image={img('shopkeeper', 'card')}
+            title="Offline is a normal state, not an error"
+            text="A durable local queue, client transaction ids that make retries safe, and conflicts raised for a person rather than settled by whichever write landed last."
+            link="How offline operation works"
+            to="/products/offline-sync"
+            navigate={navigate}
+          />
+          <Card
+            image={img('teamWorking', 'card')}
+            title="Permissions are per action, and so is the audit trail"
+            text="A cashier can sell without discounting. A storekeeper can transfer without adjusting. And every posted record says who did it, when, and under whose approval."
+            link="Governance and access control"
+            to="/products/settings"
+            navigate={navigate}
+          />
+        </Grid>
+      </Section>
+
+      {/* -------------------------------------------------------- products -- */}
+      <Section
+        id="products"
+        eyebrow="Products"
+        title="Nineteen modules. Pay for the ones you run."
+        subtitle="Core modules are free on every workspace forever. Everything else is priced individually, so a two-module business is not subsidising a twelve-module one."
+        split
+        footer={(
+          <ButtonRow>
+            <Button variant="secondary" to="/products" navigate={navigate}>Browse all products</Button>
+            <Button variant="tertiary" to="/pricing" navigate={navigate}>Build your plan and see the cost</Button>
+          </ButtonRow>
+        )}
+      >
+        <div className="ds-stack lg">
+          {PRODUCT_CATEGORIES.map((category) => (
+            <div key={category.key}>
+              <h3 className="ds-h3" style={{ marginBottom: 6 }}>{category.name}</h3>
+              <p className="ds-body" style={{ maxWidth: '70ch' }}>{category.blurb}</p>
+              <Tiles cols={4}>
+                {productsInCategory(category.key).map((product) => (
+                  <Tile
+                    key={product.slug}
+                    eyebrow={product.tier === 'free' ? 'Free on every plan' : (product.perSeat ? 'Per seat' : 'Priced module')}
+                    title={product.name}
+                    text={product.summary}
+                    to={`/products/${product.slug}`}
+                    navigate={navigate}
+                  />
+                ))}
+              </Tiles>
             </div>
           ))}
         </div>
-      </section>
+      </Section>
 
-      <section className="ec-section ec-industries-section">
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">Built for Every Industry</div>
-          <h2 className="ec-section-title">Solutions Tailored to Your Sector</h2>
-        </div>
-        <div className="ec-industry-cards">
-          {industries.map((industry) => (
-            <div className="ec-industry-card" key={industry.title}>
-              <div className="ind-icon">{industry.icon}</div>
-              <h3>{industry.title}</h3>
-              <p>{industry.desc}</p>
-            </div>
+      {/* ------------------------------------------------------ industries -- */}
+      <Section
+        variant="alt"
+        eyebrow="Industries"
+        title="Configured for how your sector actually trades"
+        subtitle="The same engine underneath, set up around the operations, documents and controls each sector depends on."
+        split
+        footer={<TextLink to="/industries" navigate={navigate}>See all fourteen industries</TextLink>}
+      >
+        <Grid cols={4}>
+          {INDUSTRIES.slice(0, 8).map((industry) => (
+            <Card
+              key={industry.slug}
+              flat
+              image={img(industry.cardImage, 'card')}
+              title={industry.name}
+              text={industry.summary}
+              link="Explore"
+              to={`/industries/${industry.slug}`}
+              navigate={navigate}
+            />
           ))}
-        </div>
-      </section>
+        </Grid>
+      </Section>
 
-      <section className="ec-section ec-testimonials">
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">Testimonials</div>
-          <h2 className="ec-section-title">Loved by Teams Everywhere</h2>
-        </div>
-        <div className="ec-testimonial-grid">
-          {[
-            { q: 'Enterprise Compute replaced four different tools we were using. Everything is now in one place and our team productivity has doubled.', n: 'Sarah K.', r: 'Operations Manager', i: 'SK' },
-            { q: 'The offline POS mode saved us during a network outage. We did not lose a single sale and the sync recovered cleanly.', n: 'Michael R.', r: 'Retail Director', i: 'MR' },
-            { q: 'Payroll used to take us three days. With attendance integration and better summaries, it now takes a fraction of the time.', n: 'Amara T.', r: 'HR Director', i: 'AT' },
-          ].map((testimonial) => (
-            <div className="ec-testimonial-card" key={testimonial.i}>
-              <div className="stars">★★★★★</div>
-              <blockquote>"{testimonial.q}"</blockquote>
-              <div className="ec-testimonial-author">
-                <div className="ec-testimonial-avatar">{testimonial.i}</div>
-                <div className="ec-testimonial-info">
-                  <strong>{testimonial.n}</strong>
-                  <span>{testimonial.r}</span>
-                </div>
-              </div>
-            </div>
+      {/* ------------------------------------------------------- the story -- */}
+      <Section>
+        <FiftyFifty
+          eyebrow="Built where it is used"
+          title="Designed for businesses that trade through outages"
+          image={img('marketTrader', 'fifty')}
+        >
+          <p className="ds-body">
+            Most enterprise software assumes the network is always there, and treats being
+            offline as an error screen. For a shop that loses connectivity on an ordinary
+            Thursday afternoon, that assumption costs real revenue.
+          </p>
+          <p className="ds-body">
+            Enterprise Compute was built the other way round: naira-native amounts, local
+            tax treatment, receipt formats operators recognise, and a client that keeps
+            taking money when the connection drops, plus a desktop build with a bundled
+            local database for sites where the problem is structural rather than occasional.
+          </p>
+          <ButtonRow>
+            <Button variant="secondary" to="/about#story" navigate={navigate}>Read the full product story</Button>
+            <Button variant="tertiary" to="/why-enterprise-compute" navigate={navigate}>Compare the alternatives</Button>
+          </ButtonRow>
+        </FiftyFifty>
+      </Section>
+
+      {/* ---------------------------------------------------------- quote -- */}
+      <Section variant="deep-grad">
+        <Container width="narrow">
+          <Quote
+            name={featuredStory.quote.name}
+            role={featuredStory.quote.role}
+            company={featuredStory.company}
+            avatar={img(featuredStory.quote.avatar, 'avatar')}
+          >
+            {featuredStory.quote.text}
+          </Quote>
+        </Container>
+      </Section>
+
+      {/* -------------------------------------------------------- partners -- */}
+      <Section
+        eyebrow="Partner ecosystem"
+        title="Get live with help, or build on top of it"
+        subtitle="Implementation specialists, accounting practices, technology builders and referral partners."
+        split
+        footer={<TextLink to="/partners" navigate={navigate}>Explore the partner network</TextLink>}
+      >
+        <Grid cols={4}>
+          {PARTNER_PROGRAMS.map((program) => (
+            <Card
+              key={program.name}
+              flat
+              image={img(program.image, 'card')}
+              title={program.name}
+              text={program.text}
+              link="Learn more"
+              to="/partners"
+              navigate={navigate}
+            />
           ))}
-        </div>
-      </section>
+        </Grid>
+      </Section>
 
-      <section className="ec-final-cta">
-        <h2>Ready to Transform Your Business?</h2>
-        <p>Start with a free 14-day trial, then move into production billing with secure Paystack checkout when your team is ready.</p>
-        <div className="ec-hero-btns">
-          <button className="ec-btn-primary" onClick={() => navigate('/signup')}>Start Free Trial</button>
-          <button className="ec-btn-secondary" onClick={() => navigate('/help')}>Schedule a Demo</button>
-        </div>
-      </section>
+      {/* --------------------------------------------------------- what's new */}
+      <Section
+        variant="alt"
+        eyebrow="What's new"
+        title="Guides, sessions and writing from the team"
+        split
+        subtitle="Practical material on running the platform and on the operational problems it exists to solve."
+        footer={(
+          <ButtonRow>
+            <Button variant="secondary" to="/resources" navigate={navigate}>Resource library</Button>
+            <Button variant="tertiary" to="/blog" navigate={navigate}>Read the blog</Button>
+          </ButtonRow>
+        )}
+      >
+        <Grid cols={4}>
+          {nextEvent && (
+            <Card
+              image={img(nextEvent.image, 'card')}
+              eyebrow={`Live · ${nextEvent.type}`}
+              title={nextEvent.title}
+              text={nextEvent.text}
+              link="See upcoming dates"
+              to="/events"
+              navigate={navigate}
+            />
+          )}
+          {featuredResources.map((resource) => (
+            <Card
+              key={resource.slug}
+              image={img(resource.image, 'card')}
+              eyebrow={`${resource.type} · ${resource.minutes} min`}
+              title={resource.title}
+              text={resource.text}
+              link="Read it"
+              to={resource.to}
+              navigate={navigate}
+            />
+          ))}
+          <Card
+            image={img('dataDashboard', 'card')}
+            eyebrow="Tool"
+            title="Model your own payback before you commit"
+            text="Set licence cost against admin time recovered, shrinkage avoided and revenue retained through outages, with every assumption visible and editable."
+            link="Open the ROI calculator"
+            to="/roi-calculator"
+            navigate={navigate}
+          />
+        </Grid>
+      </Section>
 
-      <Footer />
-    </div>
+      {/* ------------------------------------------------------------- CTA -- */}
+      <CTABanner
+        eyebrow="Get started"
+        title="Start with every module unlocked for fourteen days"
+        text="No card required to begin. Choose which modules to keep before your first payment, and add more at any time. The new price applies from your next renewal, not the day you switch them on."
+      >
+        <Button variant="primary" size="lg" to="/signup" navigate={navigate}>Start a free trial</Button>
+        <Button variant="secondary" size="lg" to="/pricing" navigate={navigate}>Build your plan</Button>
+        <Button variant="tertiary" to="/contact" navigate={navigate}>Talk to sales</Button>
+      </CTABanner>
+    </PageShell>
   )
 }
 
