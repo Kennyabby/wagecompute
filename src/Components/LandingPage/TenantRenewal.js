@@ -74,7 +74,7 @@ const TenantRenewal = () => {
           <div className="ec-hero-kicker">Workspace Renewal</div>
           <h1>Renew your subscription</h1>
           <p>
-            {companyName ? `${companyName}'s` : 'Your'} workspace subscription is currently <strong>{statusLabel}</strong>. Renew below to restore access immediately — no login required.
+            {companyName ? `${companyName}'s` : 'Your'} workspace subscription is currently <strong>{statusLabel}</strong>. Renew below to restore access immediately. No login required.
           </p>
         </div>
       </section>

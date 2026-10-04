@@ -1,12 +1,46 @@
-import './SubPages.css'
-import { useEffect, useContext, useState } from 'react'
-import NavBar from './NavBar'
-import Footer from './Footer'
+/* ============================================================================
+   /privacy, /terms, /cookie-policy, /security
+   ----------------------------------------------------------------------------
+   Re-housed on the public design system: the page shell, typography and
+   navigation are new, with the body rendered inside `.ds-prose` for proper
+   long-form measure and rhythm.
+
+   The existing Privacy and Security wording is unchanged — it is binding
+   text and not something a redesign should rewrite. Terms of Service and
+   Cookie Policy previously had no body at all and fell through to a generic
+   five-paragraph stub, so full drafts have been written for both. Those two
+   are drafts: they are substantive and specific to how this platform
+   actually works (per-module billing, the offline IndexedDB queue, reversing
+   entries, tenant isolation), but they have not been reviewed by counsel and
+   should be before launch.
+   ========================================================================= */
+
+import { useEffect, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
+import PageShell from './ds/PageShell'
+import { Button, ButtonRow, Container, Hero, Section, Tiles, Tile } from './ds/DS'
+import { heroImg } from './ds/landingImages'
+import './SubPages.css'
+
+const LEGAL_PAGES = [
+  { type: 'privacy', name: 'Privacy policy', to: '/privacy', text: 'What we collect, why, and how long we keep it.' },
+  { type: 'terms', name: 'Terms of service', to: '/terms', text: 'Your agreement with us, including retention on termination.' },
+  { type: 'cookies', name: 'Cookie policy', to: '/cookie-policy', text: 'What is stored in your browser and what it is for.' },
+  { type: 'security', name: 'Security overview', to: '/security', text: 'The controls protecting your workspace data.' },
+]
+
+const HERO_IMAGE = {
+  privacy: 'dataProtection',
+  terms: 'businessDeal',
+  cookies: 'officeLaptop',
+  security: 'cyberSecurity',
+}
 
 const LegalPage = ({ type = 'privacy' }) => {
   const { storePath } = useContext(ContextProvider)
-  
+  const navigate = useNavigate()
+
   const contentMap = {
     privacy: {
       title: 'Privacy Policy',
@@ -86,14 +120,185 @@ const LegalPage = ({ type = 'privacy' }) => {
     terms: {
       title: 'Terms of Service',
       kicker: '📜 Standard Agreement',
-      desc: 'The legal framework for using the Enterprise Compute platform.',
-      lastUpdated: 'April 15, 2026'
+      desc: 'The agreement governing your use of the Enterprise Compute platform, including subscription terms, data ownership and termination.',
+      lastUpdated: 'April 15, 2026',
+      fullContent: (
+        <div className="sp-legal-rich-content">
+          <p>These Terms of Service govern your access to and use of the Enterprise Compute platform. By creating a workspace, or by using the Service on behalf of an organisation, you agree to them. If you are accepting on behalf of a company, you confirm you have authority to bind it.</p>
+
+          <h3>1. Definitions</h3>
+          <ul>
+            <li><strong>Service:</strong> the Enterprise Compute platform, including all operational, accounting and administrative modules, the desktop application, and any associated documentation.</li>
+            <li><strong>Workspace</strong> (or <strong>Tenant</strong>): the isolated environment created for your organisation, reachable at your own subdomain.</li>
+            <li><strong>Customer Data:</strong> all records you or your users enter into, generate within, or upload to the Workspace, including employee, financial, inventory and transaction records.</li>
+            <li><strong>Module:</strong> a separately enabled area of functionality as listed in the published module catalogue.</li>
+            <li><strong>Core Modules:</strong> Dashboard, Employees, Departments, Positions, Attendance and Settings, which are provided at no charge on every plan.</li>
+          </ul>
+
+          <h3>2. Your account and workspace</h3>
+          <h4>Registration</h4>
+          <p>Creating a Workspace requires a verified email address. You are responsible for the accuracy of the information you provide and for keeping it current.</p>
+          <h4>Account security</h4>
+          <p>You are responsible for all activity that occurs under your Workspace, including the acts of your users. Because the Service attributes every posted record to the account that created it, shared logins materially undermine the audit trail and are strongly discouraged; every plan includes unlimited users precisely so sharing is never necessary.</p>
+          <h4>Administrators</h4>
+          <p>Workspace administrators can create and remove users, grant and revoke permissions per action, enable and disable Modules, and access all Customer Data within the Workspace. You are responsible for who you appoint as an administrator.</p>
+
+          <h3>3. Subscription, trial and billing</h3>
+          <h4>Free trial</h4>
+          <p>New Workspaces receive a free trial period, stated at signup, during which every Module in the catalogue is unlocked. No payment is required to begin, and the Service displays warnings as the trial approaches its end.</p>
+          <h4>Per-module pricing</h4>
+          <p>Charges are based on which Modules your Workspace has enabled, not on the number of users. Core Modules remain free on every plan. The current price of each Module is published on the pricing page and is also shown in your Workspace before any charge is taken.</p>
+          <h4>Adding and removing modules</h4>
+          <p>You may enable additional Modules at any time. Enabling a Module takes effect immediately and the revised subscription amount applies from your next renewal date rather than being charged pro rata on the day. Dependencies required by a Module are enabled automatically.</p>
+          <h4>Payment</h4>
+          <p>Subscription payments are processed by our payment provider. Each payment is verified against the corresponding order before entitlements change. Where a network interruption delays confirmation, the payment can be reconciled subsequently and entitlements applied with effect from the original payment.</p>
+          <h4>Non-payment</h4>
+          <p>If a subscription lapses, the Workspace enters a restricted state. Customer Data is retained during this period in accordance with Section 8 and remains exportable. We will give notice before any restriction takes effect.</p>
+          <h4>Taxes</h4>
+          <p>Stated prices exclude applicable taxes and duties unless expressly indicated otherwise. You are responsible for any taxes arising from your use of the Service other than taxes on our income.</p>
+
+          <h3>4. Acceptable use</h3>
+          <p>You agree not to, and not to permit your users to:</p>
+          <ul>
+            <li>Use the Service in violation of any applicable law, or to store or process data you are not lawfully entitled to hold.</li>
+            <li>Attempt to gain access to another tenant&rsquo;s Workspace or data, or to circumvent the permission model, tenancy boundary, or any other access control.</li>
+            <li>Probe, scan or test the vulnerability of the Service, or defeat any security or authentication measure, except under a written testing agreement with us.</li>
+            <li>Reverse engineer, decompile or attempt to derive the source code of the Service, except to the extent that restriction is prohibited by law.</li>
+            <li>Resell, sublicense or provide the Service to third parties other than your own users, except under a partner agreement with us.</li>
+            <li>Introduce malicious code, or use the Service in a way that impairs its availability for other customers.</li>
+          </ul>
+          <p>We may suspend access where we reasonably believe continued use poses a security risk, a legal risk, or a material risk to the availability of the Service for others. Where practicable we will give notice first.</p>
+
+          <h3>5. Ownership of data and intellectual property</h3>
+          <h4>Your data is yours</h4>
+          <p>You retain all right, title and interest in Customer Data. We claim no ownership of it. You grant us only the limited licence necessary to host, process, transmit, back up and display it in order to operate the Service for you, and to provide support when you request it.</p>
+          <h4>We do not use your data to serve other customers</h4>
+          <p>Customer Data from one Workspace is never used to produce results for another, including for any artificial intelligence feature. Processing by the Epsilon assistant is scoped to the requesting user&rsquo;s own Workspace and their own permission set.</p>
+          <h4>Our intellectual property</h4>
+          <p>We retain all right, title and interest in the Service itself, including its software, design, documentation and trade marks. These Terms grant you a non-exclusive, non-transferable right to use the Service during your subscription and nothing more.</p>
+          <h4>Feedback</h4>
+          <p>If you send us suggestions or feature requests, we may use them without restriction or obligation to you. This does not give us any rights in your Customer Data.</p>
+
+          <h3>6. Service availability and support</h3>
+          <p>We aim to keep the Service available at all times but do not warrant uninterrupted operation. Planned maintenance will be notified in advance where it is likely to be disruptive.</p>
+          <p>The Service includes offline-capable operation on client devices, so that a loss of connectivity on your side does not necessarily prevent you from trading. That capability is a design feature of the client and is not a warranty of availability of our hosted infrastructure.</p>
+          <p>Support is provided through the help centre and the published support channels on every plan. Priority support with agreed response targets is available only where expressly set out in an Enterprise agreement.</p>
+
+          <h3>7. Your responsibilities regarding records</h3>
+          <p>The Service maintains a double-entry general ledger and an audit trail, and is designed so that posted entries are corrected by reversing entries rather than deleted. You remain responsible for:</p>
+          <ul>
+            <li>The accuracy and completeness of the data you enter, including opening balances and opening stock.</li>
+            <li>The design of your chart of accounts and the mapping of operational activity to it.</li>
+            <li>Your own statutory, tax, accounting, payroll and employment obligations. The Service is a tool for maintaining records; it does not constitute accounting, tax or legal advice.</li>
+            <li>Reviewing reports before relying on them for a statutory filing or an external submission.</li>
+          </ul>
+
+          <h3>8. Term, termination and data retention</h3>
+          <h4>Term</h4>
+          <p>These Terms apply from the creation of your Workspace until terminated. Subscriptions renew for successive periods unless cancelled before the renewal date.</p>
+          <h4>Termination by you</h4>
+          <p>You may cancel at any time from your Workspace billing settings. Cancellation takes effect at the end of the current paid period; we do not refund part-periods unless required by law.</p>
+          <h4>Termination by us</h4>
+          <p>We may terminate for material breach of these Terms that is not cured within thirty days of written notice, or immediately where the breach is incapable of cure or involves unlawful activity.</p>
+          <h4>Export and deletion</h4>
+          <p>You may export your reports, ledgers and operational records to spreadsheet and PDF at any time while your Workspace is active, including during a restricted or lapsed state. Following termination, Customer Data is retained for a defined period to allow recovery and export, after which it is deleted. You may request earlier deletion in writing.</p>
+
+          <h3>9. Confidentiality</h3>
+          <p>Each party may receive information the other treats as confidential. Each party agrees to use the other&rsquo;s confidential information only to perform under these Terms, to protect it with at least the care it applies to its own, and not to disclose it except to personnel and advisers who need it and are bound by equivalent obligations. These obligations do not apply to information that is public through no fault of the recipient, independently developed, or required to be disclosed by law.</p>
+
+          <h3>10. Warranties and disclaimers</h3>
+          <p>We warrant that we will provide the Service with reasonable skill and care. Except as expressly stated in these Terms, and to the maximum extent permitted by law, the Service is provided &ldquo;as is&rdquo; and we disclaim all other warranties, express or implied, including implied warranties of merchantability, fitness for a particular purpose and non-infringement.</p>
+          <p>We do not warrant that the Service will be error-free, that it will meet every requirement of your business, or that the outputs of any analytical or AI feature will be free from error. Figures generated by the Service should be reviewed by a competent person before being relied upon externally.</p>
+
+          <h3>11. Limitation of liability</h3>
+          <p>To the maximum extent permitted by law, neither party is liable for indirect, incidental, special, consequential or punitive damages, or for loss of profits, revenue, goodwill or anticipated savings, however arising.</p>
+          <p>Our total aggregate liability arising out of or relating to these Terms, whether in contract, tort or otherwise, is limited to the subscription fees you paid to us in the twelve months immediately preceding the event giving rise to the claim.</p>
+          <p>Nothing in these Terms excludes or limits liability for death or personal injury caused by negligence, for fraud or fraudulent misrepresentation, or for any other liability that cannot lawfully be excluded.</p>
+
+          <h3>12. Indemnity</h3>
+          <p>You agree to indemnify us against third-party claims arising from your Customer Data or your use of the Service in breach of these Terms, except to the extent the claim arises from our own breach or negligence.</p>
+
+          <h3>13. Changes to the Service and to these Terms</h3>
+          <p>We continue to develop the Service and may add, change or remove functionality. We will not make a change that materially reduces the core functionality of a Module you are paying for without notice and, where the change is materially adverse to you, the opportunity to cancel without penalty.</p>
+          <p>We may amend these Terms. Where an amendment is material we will give reasonable notice before it takes effect. Continued use of the Service after the effective date constitutes acceptance.</p>
+
+          <h3>14. General</h3>
+          <ul>
+            <li><strong>Assignment:</strong> you may not assign these Terms without our written consent, except to a successor in a merger or sale of substantially all assets. We may assign on the same basis.</li>
+            <li><strong>Entire agreement:</strong> these Terms, together with the Privacy Policy and any Enterprise agreement signed between us, form the whole agreement on their subject matter. Where an Enterprise agreement conflicts with these Terms, that agreement prevails.</li>
+            <li><strong>Severability:</strong> if any provision is held unenforceable, the remainder continues in full force.</li>
+            <li><strong>No waiver:</strong> a failure to enforce a provision is not a waiver of it.</li>
+            <li><strong>Force majeure:</strong> neither party is liable for failure to perform caused by events beyond its reasonable control.</li>
+          </ul>
+
+          <h3>15. Contact</h3>
+          <p>Questions about these Terms can be sent to legal@epxcentral.com, or through the contact form on this site.</p>
+        </div>
+      ),
     },
     cookies: {
       title: 'Cookie Policy',
       kicker: '🍪 Browser Data',
-      desc: 'Information about how we use cookies to improve your experience.',
-      lastUpdated: 'March 20, 2026'
+      desc: 'What Enterprise Compute stores in your browser, why, and how to control it.',
+      lastUpdated: 'March 20, 2026',
+      fullContent: (
+        <div className="sp-legal-rich-content">
+          <p>This policy explains what we store in your browser or on your device when you use the Enterprise Compute website and platform, what each item is for, and what control you have over it. It covers cookies in the strict sense and also the other browser storage mechanisms the platform relies on, because from a privacy point of view what matters is what is stored, not which API stores it.</p>
+
+          <h3>1. What a cookie is, and what else we use</h3>
+          <p>A cookie is a small text file placed in your browser by a website. Browsers also provide other storage mechanisms, and the Service uses two of them substantially:</p>
+          <ul>
+            <li><strong>localStorage and sessionStorage:</strong> simple key-value storage used to remember session identifiers, your current workspace, and small interface preferences.</li>
+            <li><strong>IndexedDB:</strong> a structured, durable database in your browser. This is what makes offline operation possible. See Section 3.</li>
+          </ul>
+
+          <h3>2. Strictly necessary storage</h3>
+          <p>These cannot be switched off, because the Service cannot function without them. They are set only in response to actions you take, such as signing in.</p>
+          <ul>
+            <li><strong>Authentication cookies:</strong> issued when you sign in and used to keep you signed in across pages. These are set as HTTP-only cookies, meaning page scripts cannot read them. That is a deliberate protection against session theft.</li>
+            <li><strong>Session and workspace identifiers:</strong> stored so that a page refresh returns you to the same workspace and the same place in the application rather than to a sign-in screen.</li>
+            <li><strong>Security tokens:</strong> short-lived values used to verify that a sensitive request genuinely originated from your session, including the handoff used when an administrator signs in at the root address and is routed into their own workspace.</li>
+          </ul>
+
+          <h3>3. Offline operation storage</h3>
+          <p>This is the most substantial thing the platform stores on your device, and it is worth understanding.</p>
+          <p>Operational screens, the point of sale in particular, are designed to keep working when connectivity drops. To do that, the client keeps a working copy of the records it needs and writes any changes you make into a durable local queue in IndexedDB. When connectivity returns, that queue is replayed to the server in order and then cleared.</p>
+          <ul>
+            <li><strong>What is stored:</strong> operational records relevant to the screens you use, and any changes you have made that have not yet reached the server.</li>
+            <li><strong>Why it is durable rather than in memory:</strong> so that a browser refresh, a crash or a flat battery during an outage does not lose transactions you have already taken.</li>
+            <li><strong>How long it lasts:</strong> queued changes are removed once confirmed by the server. Cached records are refreshed as you work and cleared when you sign out.</li>
+            <li><strong>Consequence of clearing it:</strong> clearing site data while changes are still pending will discard those changes permanently. The interface always shows whether anything is pending, and you should sync before clearing.</li>
+          </ul>
+
+          <h3>4. Preference storage</h3>
+          <p>Small items that remember how you like the interface arranged, for example the warehouse last selected at a till, or a chosen view on a listing screen. These are conveniences only. Removing them loses nothing but the preference itself.</p>
+
+          <h3>5. Analytics and advertising</h3>
+          <p>We do not use advertising cookies, and we do not permit third parties to place advertising or cross-site tracking cookies through the Service. We do not sell personal information, and we do not build advertising profiles from your use of the platform.</p>
+          <p>Where we measure usage of the public website in order to understand which pages are useful, we do so in an aggregated form. Any change to that position would be reflected here and, where consent is required, requested before any such storage is set.</p>
+
+          <h3>6. Third-party storage</h3>
+          <p>A small number of third parties may set storage when you interact with specific features:</p>
+          <ul>
+            <li><strong>Payment provider:</strong> when you proceed to checkout, our payment provider may set cookies necessary to process the payment securely and to prevent fraud. These are governed by that provider&rsquo;s own policy.</li>
+            <li><strong>Font delivery:</strong> the public website loads its typefaces from a font content-delivery network. This involves a request to that network when the page loads.</li>
+          </ul>
+
+          <h3>7. How to control storage</h3>
+          <p>You can view, block and delete cookies and other site data from your browser settings. The relevant controls are usually found under Privacy, Security or Site Settings.</p>
+          <p>Two warnings before you do so for this Service:</p>
+          <ul>
+            <li>Blocking strictly necessary cookies will prevent you from signing in at all. There is no version of the platform that works without them.</li>
+            <li>Clearing site data while offline changes are pending will discard those transactions. Confirm the interface shows nothing pending before clearing.</li>
+          </ul>
+
+          <h3>8. Changes to this policy</h3>
+          <p>If we introduce a new category of storage, in particular anything requiring consent, we will update this page and, where the law requires it, ask you before setting it. The date at the top of this page reflects the most recent change.</p>
+
+          <h3>9. Contact</h3>
+          <p>Questions about this policy can be sent to legal@epxcentral.com, or through the contact form on this site.</p>
+        </div>
+      ),
     },
     security: {
       title: 'Security Overview',
@@ -107,30 +312,36 @@ const LegalPage = ({ type = 'privacy' }) => {
 
   useEffect(() => {
     storePath(`legal-${type}`)
-    document.title = `${active.title} | Enterprise Compute Central`
-    window.scrollTo(0, 0)
-  }, [storePath, type, active.title])
+  }, [storePath, type])
+
+  const others = LEGAL_PAGES.filter((page) => page.type !== type)
 
   return (
-    <div className="ec-landing">
-      <NavBar />
+    <PageShell
+      title={`${active.title} | Enterprise Compute`}
+      description={active.desc}
+      breadcrumbs={[{ name: 'Home', to: '/' }, { name: 'Legal' }, { name: active.title }]}
+      subnavTitle="Legal"
+      subnavCta={{ label: 'Trust Center', to: '/trust-center' }}
+    >
+      <Hero
+        tone="alt"
+        size="sm"
+        eyebrow="Legal"
+        title={active.title}
+        lede={active.desc}
+        image={heroImg(HERO_IMAGE[type] || 'dataProtection')}
+      >
+        <p className="ds-body sm ds-mb-0">Last updated: {active.lastUpdated}</p>
+      </Hero>
 
-      <section className="sp-hero">
-        <div className="sp-hero-inner">
-          <div className="ec-hero-kicker">{active.kicker}</div>
-          <h1>{active.title}</h1>
-          <p>{active.desc}</p>
-          <div style={{ fontSize: '0.8rem', color: 'var(--ec-muted)', fontWeight: 600 }}>Last Updated: {active.lastUpdated}</div>
-        </div>
-      </section>
-
-      <section className="ec-section">
-        <div className="sp-faq-list" style={{ maxWidth: '840px' }}>
-          <div className="sp-faq-item" style={{ cursor: 'default', padding: '40px' }}>
+      <Section>
+        <Container width="narrow">
+          <div className="ds-prose sp-legal-rich-content">
             {active.fullContent ? (
               active.fullContent
             ) : (
-              <div style={{ color: '#506055', lineHeight: 1.8, fontSize: '0.95rem' }}>
+              <>
                 <h3>1. Introduction</h3>
                 <p>Welcome to Enterprise Compute. This {active.title} describes our practices regarding the information we collect through our platform and related services.</p>
                 
@@ -145,14 +356,38 @@ const LegalPage = ({ type = 'privacy' }) => {
                 
                 <h3 style={{ marginTop: '24px' }}>5. Contact Information</h3>
                 <p>If you have any questions about our {active.title.toLowerCase()}, please contact our legal team at legal@epxcentral.com.</p>
-              </div>
+              </>
             )}
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
-      <Footer />
-    </div>
+      <Section variant="alt" tight eyebrow="Other documents" title="The rest of the policy set">
+        <Tiles cols={3}>
+          {others.map((page) => (
+            <Tile
+              key={page.type}
+              title={page.name}
+              text={page.text}
+              link="Read it"
+              to={page.to}
+              navigate={navigate}
+            />
+          ))}
+        </Tiles>
+        <div className="ds-section-foot">
+          <p className="ds-body">
+            The Trust Center sets out the controls these documents describe, covering
+            access control, tenant isolation, audit trails and resilience, in operational
+            terms rather than legal ones.
+          </p>
+          <ButtonRow>
+            <Button variant="secondary" to="/trust-center" navigate={navigate}>Open the Trust Center</Button>
+            <Button variant="tertiary" to="/contact" navigate={navigate}>Ask a legal or security question</Button>
+          </ButtonRow>
+        </div>
+      </Section>
+    </PageShell>
   )
 }
 

@@ -1,64 +1,96 @@
-import { useNavigate } from 'react-router-dom'
-import applogo from '../../Resources/assets/images/enterprisecompute.png'
-import { FaXTwitter, FaLinkedinIn, FaYoutube, FaFacebookF } from 'react-icons/fa6'
+/* ============================================================================
+   Global site footer.
+   ----------------------------------------------------------------------------
+   Follows sap.com's footer structure: a brand column, four navigation
+   columns, social links, then a separate legal/site-information row and a
+   back-to-top control. The link tree lives in content/navigation.js.
+   ========================================================================= */
 
-const SOCIALS = [
-  { Icon: FaXTwitter, label: 'X (Twitter)' },
-  { Icon: FaLinkedinIn, label: 'LinkedIn' },
-  { Icon: FaYoutube, label: 'YouTube' },
-  { Icon: FaFacebookF, label: 'Facebook' }
-]
+import { useNavigate } from 'react-router-dom'
+import { FaXTwitter, FaLinkedinIn, FaYoutube, FaFacebookF } from 'react-icons/fa6'
+import applogo from '../../Resources/assets/images/enterprisecompute.png'
+import { FOOTER_COLUMNS, FOOTER_LEGAL, SOCIAL_LINKS } from './content/navigation'
+import { Container, Chevron } from './ds/DS'
+import { smoothScrollToId, smoothScrollToTop } from './ds/motion'
+import './ds/ds.css'
+import './ds/chrome.css'
+
+const SOCIAL_ICONS = {
+  x: FaXTwitter,
+  linkedin: FaLinkedinIn,
+  youtube: FaYoutube,
+  facebook: FaFacebookF,
+}
 
 const Footer = () => {
-  const Navigate = useNavigate()
+  const navigate = useNavigate()
+
+  const go = (to) => {
+    const [, hash] = to.split('#')
+    navigate(to)
+    if (hash) setTimeout(() => smoothScrollToId(hash), 180)
+    else window.scrollTo(0, 0)
+  }
 
   return (
-    <footer className="ec-footer">
-      <div className="ec-footer-inner">
-        <div className="ec-footer-grid">
-          <div className="ec-footer-brand">
-            <div className="ec-footer-logo" onClick={() => Navigate('/')}>
-              <img src={applogo} alt="EC" />
+    <footer className="ds-footer ds-on-deep">
+      <Container>
+        <div className="ds-footer-grid">
+          <div className="ds-footer-brand">
+            <button type="button" className="ds-brand" onClick={() => go('/')} aria-label="Enterprise Compute, home">
+              <img src={applogo} alt="" />
               <span>Enterprise Compute</span>
+            </button>
+            <p>
+              One platform for operations, people and accounting, with a real double-entry
+              ledger underneath and an assistant that can read it. Unlimited users, priced
+              per module, built to keep working offline.
+            </p>
+            <div className="ds-footer-social">
+              {SOCIAL_LINKS.map(({ key, label, href }) => {
+                const Icon = SOCIAL_ICONS[key]
+                return (
+                  <a key={key} href={href} aria-label={label} target="_blank" rel="noopener noreferrer">
+                    {Icon && <Icon aria-hidden="true" />}
+                  </a>
+                )
+              })}
             </div>
-            <p>Powering productivity with precision. The all-in-one business management platform.</p>
           </div>
-          <div className="ec-footer-col">
-            <h4>Products</h4>
-            {['Dashboard','Employees','Attendance','Payroll','POS','Inventory','Sales'].map((l, i) => <a key={i} href="/">{l}</a>)}
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/pricing#epsilon') }}>Epsilon AI</a>
-          </div>
-          <div className="ec-footer-col">
-            <h4>Company</h4>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/about') }}>About Us</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/careers') }}>Careers</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/blog') }}>Blog</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/press') }}>Press</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/partners') }}>Partners</a>
-          </div>
-          <div className="ec-footer-col">
-            <h4>Resources</h4>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/help') }}>Help Center</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/community') }}>Community</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/docs') }}>Documentation</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/tutorials') }}>Tutorials</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/api') }}>API Reference</a>
-          </div>
-          <div className="ec-footer-col">
-            <h4>Legal</h4>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/privacy') }}>Privacy Policy</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/terms') }}>Terms of Service</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/cookie-policy') }}>Cookie Policy</a>
-            <a href="/" onClick={(e) => { e.preventDefault(); Navigate('/security') }}>Security</a>
-          </div>
+
+          {FOOTER_COLUMNS.map((column) => (
+            <nav className="ds-footer-col" key={column.title} aria-label={column.title}>
+              <h4>{column.title}</h4>
+              {column.links.map((link) => (
+                <button type="button" key={link.name} onClick={() => go(link.to)}>
+                  {link.name}
+                </button>
+              ))}
+            </nav>
+          ))}
         </div>
-        <div className="ec-footer-bottom">
-          <span>© {new Date().getFullYear()} Enterprise Compute Central. All rights reserved.</span>
-          <div className="ec-footer-socials">
-            {SOCIALS.map(({ Icon, label }) => <a key={label} href="/" aria-label={label}><Icon /></a>)}
+
+        <div className="ds-footer-legal">
+          <span className="ds-footer-copy">
+            © {new Date().getFullYear()} Enterprise Compute Central. All rights reserved.
+          </span>
+          <div className="ds-footer-legal-links">
+            {FOOTER_LEGAL.map((link) => (
+              <button type="button" key={link.name} onClick={() => go(link.to)}>
+                {link.name}
+              </button>
+            ))}
           </div>
+          <button
+            type="button"
+            className="ds-backtotop"
+            onClick={smoothScrollToTop}
+          >
+            Back to top
+            <Chevron dir="up" />
+          </button>
         </div>
-      </div>
+      </Container>
     </footer>
   )
 }

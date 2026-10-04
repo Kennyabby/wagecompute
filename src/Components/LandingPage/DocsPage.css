@@ -197,3 +197,125 @@
         padding: 40px 20px;
     }
 }
+
+/* ============================================================================
+   Design-system alignment for the documentation layout.
+   ----------------------------------------------------------------------------
+   The docs page now renders inside PageShell, which contributes a 64px
+   sticky header and a 56px sticky sub-nav. The original `top: 80px` on the
+   sidebar was written against the old 72px navbar, so it is re-anchored to
+   the shared custom properties rather than another hardcoded number.
+   ========================================================================= */
+
+.ds-page .docs-layout {
+  background: var(--ds-surface);
+  min-height: calc(100vh - var(--ds-header-h) - var(--ds-subnav-h));
+  max-width: var(--ds-container);
+  margin: 0 auto;
+  grid-template-columns: 290px minmax(0, 1fr);
+}
+
+.ds-page .docs-sidebar {
+  top: calc(var(--ds-header-h) + var(--ds-subnav-h));
+  height: calc(100vh - var(--ds-header-h) - var(--ds-subnav-h));
+  padding: 36px 24px 48px;
+  border-right: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+}
+
+.ds-page .docs-nav-group h4 {
+  font-family: var(--ds-font);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ds-text-muted);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-page .docs-nav-item {
+  font-family: var(--ds-font);
+  font-size: 0.9125rem;
+  border-radius: var(--ds-radius);
+  color: var(--ds-text-muted);
+}
+.ds-page .docs-nav-item:hover { background: var(--ds-surface-alt); color: var(--ds-action); }
+.ds-page .docs-nav-item.active {
+  background: var(--ds-action-soft);
+  color: var(--ds-action);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--ds-action);
+}
+
+.ds-page .docs-content { padding: clamp(32px, 4vw, 56px) clamp(20px, 4vw, 56px) 96px; min-width: 0; }
+
+.ds-page .docs-article { max-width: 76ch; }
+.ds-page .docs-article h1 {
+  font-family: var(--ds-font-display);
+  font-size: clamp(1.875rem, 1.2rem + 2.2vw, 2.625rem);
+  font-weight: 400;
+  letter-spacing: -0.028em;
+  line-height: 1.12;
+  color: var(--ds-text-strong);
+  margin-bottom: 20px;
+}
+.ds-page .docs-article h2,
+.ds-page .docs-article h3 {
+  font-family: var(--ds-font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--ds-text-strong);
+}
+.ds-page .docs-article h3 { font-size: 1.375rem; margin-top: 40px; }
+.ds-page .docs-article p,
+.ds-page .docs-article li {
+  font-family: var(--ds-font);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--ds-text-muted);
+  text-wrap: pretty;
+}
+.ds-page .docs-article code {
+  font-size: 0.9em;
+  background: var(--ds-surface-alt);
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: var(--ds-deep);
+}
+
+.ds-page .docs-step,
+.ds-page .docs-note {
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid var(--ds-border);
+}
+.ds-page .docs-step h4,
+.ds-page .docs-note h4 {
+  font-family: var(--ds-font-display);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ds-text-strong);
+}
+.ds-page .docs-step-number {
+  background: var(--ds-action);
+  color: #fff;
+  border-radius: var(--ds-radius);
+}
+
+.ds-page .docs-mobile-nav {
+  font-family: var(--ds-font);
+  border-radius: var(--ds-radius);
+  border: 1px solid var(--ds-border-strong);
+}
+
+@media (max-width: 1024px) {
+  .ds-page .docs-layout { grid-template-columns: minmax(0, 1fr); }
+  .ds-page .docs-sidebar { display: none; }
+  .ds-page .docs-mobile-nav {
+    display: block;
+    width: calc(100% - 2 * var(--ds-pad-x));
+    margin: 24px var(--ds-pad-x) 0;
+    padding: 12px 14px;
+  }
+}

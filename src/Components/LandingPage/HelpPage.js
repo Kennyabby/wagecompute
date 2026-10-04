@@ -1,235 +1,303 @@
-import './SubPages.css'
-import "../Login/Login.css";
-import { useState, useEffect, useContext } from 'react'
+/* ============================================================================
+   /help — help centre.
+   ----------------------------------------------------------------------------
+   Redesigned onto the public design system. The enquiry logic is unchanged:
+   it still posts to /public/support/enquiry with the same payload shape
+   (including tenant and visitorUserEmail) that the server already expects.
+   ========================================================================= */
+
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import NavBar from './NavBar'
-import Footer from './Footer'
+import { motion, AnimatePresence } from 'framer-motion'
 import ContextProvider from '../../Resources/ContextProvider'
-import { motion, AnimatePresence } from "framer-motion";
+import PageShell from './ds/PageShell'
+import {
+  Accordion, Button, Card, Container, FastFacts, Grid, Hero,
+  Section, TextLink, Tile, Tiles,
+} from './ds/DS'
+import { img, heroImg } from './ds/landingImages'
+import { PRODUCTS } from './content/products'
+import { RESOURCES } from './content/resources'
+import '../Login/Login.css'
+
+const CATEGORIES = [
+  { title: 'Getting started', desc: 'First steps, setup and data loading', image: 'businessTraining', to: '/docs' },
+  { title: 'Point of Sale', desc: 'Tills, sessions, cash and receipts', image: 'posTerminal', to: '/products/pos' },
+  { title: 'Inventory', desc: 'Stock, transfers, counts and production', image: 'warehouseRacks', to: '/products/inventory' },
+  { title: 'Sales & purchasing', desc: 'Orders, invoicing, receipts and payables', image: 'posCard', to: '/products/sales' },
+  { title: 'HR & payroll', desc: 'Employees, attendance, pay runs and payslips', image: 'workingOffice', to: '/products/payroll' },
+  { title: 'Accounting', desc: 'Chart of accounts, journals and closings', image: 'accountantDesk', to: '/products/journals' },
+  { title: 'Reports', desc: 'Trial balance, P&L, balance sheet and exports', image: 'financialAnalysis', to: '/products/reports' },
+  { title: 'Settings & access', desc: 'Permissions, approvals and configuration', image: 'cyberSecurity', to: '/products/settings' },
+  { title: 'Epsilon AI', desc: 'Asking questions and reading the answers', image: 'dataAnalytics', to: '/products/epsilon' },
+]
+
+const FAQS = [
+  { q: 'How do I add a new employee?', a: 'Open the Employees module, choose Add Employee, complete the required fields including employment terms and bank details, then save. Place them in a department and position, and assign the access profile that matches their role. That profile is what governs everything they can do in the platform.' },
+  { q: 'How do I open a POS session?', a: 'Go to the POS module, select the warehouse the till sells from, choose Open Session and enter your opening cash float. The session is what ties the day’s sales and the closing count to you, so it has to be opened under your own login rather than a shared one.' },
+  { q: 'Can I use the system offline?', a: 'Yes. Operational screens switch to local-first working when the connection drops: sales continue, changes are queued in the browser’s local storage, and the queue replays in order when connectivity returns. Each queued change carries a transaction id, so a retry after a partly failed upload cannot post the same sale twice.' },
+  { q: 'How do I run payroll?', a: 'Make sure the period’s attendance has been approved by supervisors first, because the pay run reads approved hours directly. Then open Payroll, select the period and employees, generate the run, review it, and approve. Payslips issue and the cost, deduction liabilities and net pay post to the ledger as part of the run.' },
+  { q: 'How do I set user permissions?', a: 'Settings → Employee Settings. Permissions are granted per action rather than per screen, so you can let someone sell without letting them discount, or transfer stock without letting them post adjustments.' },
+  { q: 'Why can I not see a module I expected?', a: 'Either it is not enabled for your workspace, or your access profile does not include it. A workspace administrator can check both from Settings. Enabling a module takes effect immediately and the new price applies from your next renewal, not the day you turn it on.' },
+  { q: 'How do I correct a posted transaction?', a: 'Posted entries are corrected with a reversing entry rather than being edited or deleted, so the original and the correction both remain visible. That is deliberate. It is what makes the audit trail worth having.' },
+  { q: 'My stock count does not match the system. What now?', a: 'Open the item’s movement history: every sale, purchase, transfer, production consumption, wastage and adjustment is recorded with a date, a document and a person. The gap is almost always one of those. Once you have found it, post the correction as an adjustment with a reason code rather than silently overwriting the figure.' },
+]
 
 const HelpPage = () => {
-  const { storePath, server, company, viewAccess, setAlert, setAlertState, setAlertTimeout } = useContext(ContextProvider)
-  const Navigate = useNavigate()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [openFaq, setOpenFaq] = useState(null)
-  
-  const [message, setMessage] = useState("")
-  const [messageType, setMessageType] = useState("error") // 'success' | 'info' | 'error' | 'warning'
+  const { storePath, server, company, viewAccess } = useContext(ContextProvider)
+  const navigate = useNavigate()
 
-  const showMsg = (msg, type = 'error') => {
-    setMessage(msg)
-    setMessageType(type)
-    setTimeout(() => setMessage(""), 5000)
-  }
-
-  const categories = [
-    { icon: '🚀', title: 'Getting Started', desc: 'First steps with Enterprise Compute', count: 12, color: 'rgba(43,106,75,0.1)' },
-    { icon: '👥', title: 'HR & Employees', desc: 'Managing your workforce', count: 18, color: 'rgba(255,226,154,0.3)' },
-    { icon: '🏪', title: 'Point of Sale', desc: 'POS setup and operations', count: 24, color: 'rgba(106,242,173,0.15)' },
-    { icon: '📦', title: 'Inventory', desc: 'Stock and warehouse management', count: 15, color: 'rgba(59,130,246,0.1)' },
-    { icon: '💰', title: 'Sales & Purchase', desc: 'Revenue and procurement', count: 20, color: 'rgba(240,93,94,0.1)' },
-    { icon: '💵', title: 'Payroll', desc: 'Salary and compensation', count: 10, color: 'rgba(43,106,75,0.1)' },
-    { icon: '📊', title: 'Reports', desc: 'Analytics and insights', count: 8, color: 'rgba(255,226,154,0.3)' },
-    { icon: '⚙️', title: 'Settings & Admin', desc: 'System configuration', count: 16, color: 'rgba(106,242,173,0.15)' },
-    { icon: '🤖', title: 'Epsilon AI', desc: 'Using the AI assistant', count: 9, color: 'rgba(59,130,246,0.1)' }
-  ]
-
-  const faqs = [
-    { q: 'How do I add a new employee?', a: 'Navigate to the Employees module from the sidebar, click "Add Employee", fill in the required fields, and save.' },
-    { q: 'How do I set up a POS session?', a: 'Go to POS module, select a warehouse, click "Open Session", enter your opening cash balance, and start selling.' },
-    { q: 'Can I use the system offline?', a: 'Yes! Enterprise Compute supports offline mode. Changes are queued locally and synced automatically when you reconnect.' },
-    { q: 'How do I generate payroll?', a: 'Ensure attendance is recorded, go to Payroll module, select the period and employees, then click Generate Payroll.' },
-    { q: 'How do I set user permissions?', a: 'Go to Settings > Employee Settings, select a user profile, and configure their module access and action permissions.' }
-  ]
-
-  const [contactForm, setContactForm] = useState({
-    name: viewAccess?.name || '',
-    email: viewAccess?.emailid || viewAccess?.username || '',
-    subject: '',
-    category: 'General Support',
-    message: ''
+  const [query, setQuery] = useState('')
+  const [form, setForm] = useState({
+    name: '', email: '', subject: '', category: 'General Support', message: '',
   })
+  const [submitting, setSubmitting] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  useEffect(() => { storePath('help') }, [storePath])
 
   useEffect(() => {
-    if (viewAccess) {
-      setContactForm(prev => ({
-        ...prev,
-        name: prev.name || viewAccess.name || '',
-        email: prev.email || viewAccess.emailid || viewAccess.username || ''
-      }))
-    }
+    if (!viewAccess) return
+    setForm((previous) => ({
+      ...previous,
+      name: previous.name || viewAccess.name || '',
+      email: previous.email || viewAccess.emailid || viewAccess.username || '',
+    }))
   }, [viewAccess])
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const show = (text, type = 'error') => {
+    setToast({ text, type })
+    setTimeout(() => setToast(null), 6000)
+  }
 
-  const handleSubmitEnquiry = async (e) => {
-    e.preventDefault()
-    if (!contactForm.name || !contactForm.email || !contactForm.message) {
-      showMsg('Please fill in all required fields.', 'warning')
+  // Searches the guides and module pages that already exist, rather than a
+  // knowledge base that does not.
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (q.length < 2) return null
+    const fromResources = RESOURCES
+      .filter((r) => `${r.title} ${r.text} ${r.topic}`.toLowerCase().includes(q))
+      .map((r) => ({ kind: r.type, title: r.title, text: r.text, to: r.to }))
+    const fromProducts = PRODUCTS
+      .filter((p) => `${p.name} ${p.summary} ${p.eyebrow}`.toLowerCase().includes(q))
+      .map((p) => ({ kind: 'Module', title: p.name, text: p.summary, to: `/products/${p.slug}` }))
+    return [...fromProducts, ...fromResources].slice(0, 9)
+  }, [query])
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (!form.name || !form.email || !form.message) {
+      show('Please fill in your name, email and message.', 'warning')
       return
     }
-
-    setIsSubmitting(true)
+    setSubmitting(true)
     try {
-      const payload = {
-        ...contactForm,
-        tenant: company || '',
-        visitorUserEmail: viewAccess?.emailid || viewAccess?.username || ''
-      }
-
       const response = await fetch(`${server}/public/support/enquiry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          ...form,
+          tenant: company || '',
+          visitorUserEmail: viewAccess?.emailid || viewAccess?.username || '',
+        }),
       })
-
       const data = await response.json()
       if (data.ok) {
-        showMsg('Your enquiry has been sent successfully. We will get back to you soon!', 'success')
-        setContactForm({ name: '', email: '', subject: '', category: 'General Support', message: '' })
+        show('Your enquiry has been sent. We will come back to you shortly.', 'success')
+        setForm({ name: '', email: '', subject: '', category: 'General Support', message: '' })
       } else {
-        showMsg('Failed to send enquiry: ' + (data.error || 'Unknown error'), 'error')
+        show(`Failed to send enquiry: ${data.error || 'unknown error'}`, 'error')
       }
-    } catch (err) {
-      console.error(err)
-      showMsg('Network error. Please try again later.', 'error')
+    } catch (error) {
+      console.error(error)
+      show('Network error. Please try again later.', 'error')
     } finally {
-      setIsSubmitting(false)
+      setSubmitting(false)
     }
   }
 
-  useEffect(() => {
-    storePath('help')
-    // set page title
-    document.title = "Help & Support | Enterprise Compute Central"
-  }, [storePath])
+  const SECTIONS = [
+    { id: 'categories', label: 'Browse by area' },
+    { id: 'faq', label: 'Common questions' },
+    { id: 'contact', label: 'Ask us' },
+  ]
 
   return (
-    <div className="ec-landing">
-      <NavBar />
+    <PageShell
+      title="Help & support | Enterprise Compute"
+      description="Search the guides, browse help by module, read the common questions, or send the support team a message."
+      breadcrumbs={[{ name: 'Home', to: '/' }, { name: 'Help' }]}
+      subnavTitle="Help"
+      sections={SECTIONS}
+      subnavCta={{ label: 'Contact support', to: '/contact' }}
+    >
+      <Hero
+        eyebrow="Help & support"
+        title="What are you trying to do?"
+        lede="Search the guides and module reference, browse by area, or send us a message. Most answers are faster than waiting for a reply."
+        image={heroImg('supportAgent')}
+      >
+        <div className="ds-search" style={{ marginTop: 8 }}>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search guides and module reference"
+            aria-label="Search help"
+          />
+          <button type="button" onClick={() => document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth' })}>
+            Search
+          </button>
+        </div>
+      </Hero>
 
-      <section className="sp-hero">
-        <div className="sp-hero-inner">
-          <div className="ec-hero-kicker">🆘 Help & Support</div>
-          <h1>How Can We Help You?</h1>
-          <p>Search our knowledge base or browse categories to find answers fast.</p>
-          <div className="sp-search-box">
-            <input type="text" placeholder="Search for help articles..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            <button>Search</button>
+      {results && (
+        <Section tight eyebrow="Search results" title={`${results.length} ${results.length === 1 ? 'match' : 'matches'} for "${query.trim()}"`}>
+          {results.length === 0 ? (
+            <p className="ds-body">
+              Nothing matched. Try a module name or a task such as &ldquo;stock count&rdquo;, or{' '}
+              <button type="button" className="ds-link" onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>
+                <span>ask us directly</span>
+              </button>.
+            </p>
+          ) : (
+            <Tiles cols={3}>
+              {results.map((result) => (
+                <Tile
+                  key={`${result.kind}-${result.title}`}
+                  eyebrow={result.kind}
+                  title={result.title}
+                  text={result.text}
+                  link="Open"
+                  to={result.to}
+                  navigate={navigate}
+                />
+              ))}
+            </Tiles>
+          )}
+        </Section>
+      )}
+
+      <Section variant="alt" tight>
+        <FastFacts
+          cols={4}
+          items={[
+            { value: '19', label: 'Modules documented end to end' },
+            { value: 'Free', label: 'Support on every plan, including the trial' },
+            { value: 'Fortnightly', label: 'Open office hours with the product team' },
+            { value: 'Templates', label: 'For catalogue, stock, rooms and opening balances' },
+          ]}
+        />
+      </Section>
+
+      {/* ----------------------------------------------------- categories -- */}
+      <Section
+        id="categories"
+        eyebrow="Browse by area"
+        title="Find the part of the platform you are in"
+        subtitle="Each area links to its module page, which explains what it does, what it depends on and what it posts to the ledger."
+        split
+      >
+        <Grid cols={3}>
+          {CATEGORIES.map((category) => (
+            <Card
+              key={category.title}
+              flat
+              image={img(category.image, 'card')}
+              title={category.title}
+              text={category.desc}
+              link="Open guide"
+              to={category.to}
+              navigate={navigate}
+            />
+          ))}
+        </Grid>
+        <div className="ds-section-foot">
+          <div className="ds-link-list">
+            <TextLink to="/docs" navigate={navigate}>Full documentation</TextLink>
+            <TextLink to="/resources" navigate={navigate}>Resource library</TextLink>
+            <TextLink to="/training" navigate={navigate}>Training paths</TextLink>
+            <TextLink to="/community" navigate={navigate}>Community forums</TextLink>
           </div>
         </div>
-      </section>
+      </Section>
 
-      {/* Help Categories */}
-      <section className="ec-section" style={{ paddingTop: 20 }}>
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">Browse by Category</div>
-          <h2 className="ec-section-title">Find What You Need</h2>
-        </div>
-        <div className="sp-help-grid">
-          {categories.map((cat, i) => (
-            <div key={i} className="sp-help-card">
-              <div className="sp-help-icon" style={{ background: cat.color }}>{cat.icon}</div>
-              <h3>{cat.title}</h3>
-              <p>{cat.desc}</p>
-              <span className="sp-article-count">{cat.count} articles</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ------------------------------------------------------------ FAQ -- */}
+      <Section id="faq" variant="cream" eyebrow="Common questions" title="The ones we are asked most">
+        <Container width="narrow">
+          <Accordion items={FAQS} />
+        </Container>
+      </Section>
 
-      {/* Popular FAQs */}
-      <section className="ec-section" style={{ background: 'var(--ec-light-bg)' }}>
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">Popular Questions</div>
-          <h2 className="ec-section-title">Frequently Asked Questions</h2>
-        </div>
-        <div className="sp-faq-list">
-          {faqs.map((faq, i) => (
-            <div key={i} className={`sp-faq-item ${openFaq === i ? 'open' : ''}`} onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-              <div className="sp-faq-q"><span>{faq.q}</span><span className="sp-faq-toggle">{openFaq === i ? '−' : '+'}</span></div>
-              {openFaq === i && <div className="sp-faq-a">{faq.a}</div>}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Contact Options */}
-      <section className="ec-section">
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">Still Need Help?</div>
-          <h2 className="ec-section-title">Send Us a Message</h2>
-        </div>
-        
-        <div className="sp-confirm-shell" style={{ maxWidth: '800px' }}>
-          <div className="sp-confirm-card">
-            <form onSubmit={handleSubmitEnquiry} className="sp-checkout-grid" style={{ gap: '20px' }}>
-              <div className="sp-input-group">
-                <span>Your Name *</span>
-                <input type="text" placeholder="Full Name" value={contactForm.name} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} required />
-              </div>
-              <div className="sp-input-group">
-                <span>Email Address *</span>
-                <input type="email" placeholder="email@example.com" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} required />
-              </div>
-              <div className="sp-input-group" style={{ gridColumn: '1 / -1' }}>
-                <span>Subject</span>
-                <input type="text" placeholder="What is this about?" value={contactForm.subject} onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })} />
-              </div>
-              <div className="sp-input-group" style={{ gridColumn: '1 / -1' }}>
-                <span>Category</span>
-                <select 
-                  style={{ width: '100%', padding: '16px 18px', borderRadius: '16px', border: '1px solid rgba(23,56,41,0.1)', background: '#fff', fontSize: '0.95rem', fontFamily: 'MontserratRegular, sans-serif' }}
-                  value={contactForm.category}
-                  onChange={(e) => setContactForm({ ...contactForm, category: e.target.value })}
-                >
-                  {categories.map((cat, i) => <option key={i} value={cat.title}>{cat.title}</option>)}
-                  <option value="Other">Other Enquiry</option>
+      {/* -------------------------------------------------------- contact -- */}
+      <Section id="contact" eyebrow="Ask us" title="Send the support team a message">
+        <Container width="narrow">
+          <form onSubmit={submit}>
+            <div className="ds-form-grid">
+              <label className="ds-field">
+                <span>Your name *</span>
+                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Full name" required />
+              </label>
+              <label className="ds-field">
+                <span>Email address *</span>
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@company.com" required />
+              </label>
+              <label className="ds-field span-2">
+                <span>Area</span>
+                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                  <option value="General Support">General support</option>
+                  {CATEGORIES.map((category) => (
+                    <option key={category.title} value={category.title}>{category.title}</option>
+                  ))}
+                  <option value="Other">Something else</option>
                 </select>
-              </div>
-              <div className="sp-input-group" style={{ gridColumn: '1 / -1' }}>
+              </label>
+              <label className="ds-field span-2">
+                <span>Subject</span>
+                <input type="text" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="A one-line summary" />
+              </label>
+              <label className="ds-field span-2">
                 <span>Message *</span>
-                <textarea 
-                  placeholder="How can we help you?" 
-                  style={{ width: '100%', padding: '16px 18px', borderRadius: '16px', border: '1px solid rgba(23,56,41,0.1)', background: '#fff', fontSize: '0.95rem', fontFamily: 'MontserratRegular, sans-serif', minHeight: '150px' }}
-                  value={contactForm.message}
-                  onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                <textarea
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  placeholder="What you were doing, what you expected, and what happened instead."
                   required
                 />
+                <span className="ds-field-hint">
+                  If it relates to a specific transaction, include the document reference. It makes the first reply far more useful.
+                </span>
+              </label>
+              <div className="span-2">
+                <Button variant="primary" size="lg" type="submit" disabled={submitting}>
+                  {submitting ? 'Sending…' : 'Send message'}
+                </Button>
               </div>
-              <button type="submit" className="sp-checkout-submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Sending...' : 'Send Message'}
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
+            </div>
+          </form>
+        </Container>
+      </Section>
 
       <AnimatePresence>
-        {message && (
+        {toast && (
           <motion.div
-            key="login-toast"
+            key="help-toast"
             initial={{ opacity: 0, y: 30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className={`login-toast ${messageType}`}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className={`login-toast ${toast.type}`}
           >
             <div className="login-toast-accent" />
             <div className="login-toast-icon">
-              {messageType === 'success' ? '✓' : messageType === 'info' ? 'ℹ' : '!'}
+              {toast.type === 'success' ? '✓' : toast.type === 'info' ? 'ℹ' : '!'}
             </div>
-            <span className="login-toast-text">{message}</span>
-            <button
-              className="login-toast-close"
-              onClick={() => setMessage("")}
-            >×</button>
+            <span className="login-toast-text">{toast.text}</span>
+            <button className="login-toast-close" onClick={() => setToast(null)}>×</button>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </PageShell>
   )
 }
 

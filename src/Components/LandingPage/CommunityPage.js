@@ -1,145 +1,182 @@
-import './SubPages.css'
+/* ============================================================================
+   /community
+   ========================================================================= */
+
+import { useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import NavBar from './NavBar'
-import Footer from './Footer'
-import { motion } from 'framer-motion'
-import { useEffect, useContext } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
+import PageShell from './ds/PageShell'
+import {
+  Button, ButtonRow, Card, CTABanner, FastFacts, FiftyFifty, Grid, Hero,
+  Section, TextLink,
+} from './ds/DS'
+import { img, heroImg } from './ds/landingImages'
+import { COMMUNITY_PILLARS } from './content/company'
+import { EVENTS } from './content/resources'
+import { POSTS } from './content/insights'
+
+const SECTIONS = [
+  { id: 'pillars', label: 'Where to go' },
+  { id: 'events', label: 'Events' },
+  { id: 'contribute', label: 'Contribute' },
+]
 
 const CommunityPage = () => {
   const { storePath } = useContext(ContextProvider)
-  const Navigate = useNavigate()
+  const navigate = useNavigate()
 
-  const sections = [
-    {
-      icon: '🌐', title: 'Open Source', kicker: 'Built in the Open',
-      desc: 'Enterprise Compute is built on open principles. Contribute to the codebase, submit feature requests, and help shape the future of business software.',
-      items: ['View source on GitHub', 'Contributor guidelines', 'Report issues', 'Feature roadmap'],
-      color: 'rgba(43,106,75,0.1)'
-    },
-    {
-      icon: '📖', title: 'Documentation', kicker: 'Learn Everything',
-      desc: 'Comprehensive guides for every module—from getting started to advanced configurations. Searchable, versioned, and always up to date.',
-      items: ['Quick start guide', 'Module documentation', 'API reference', 'Video tutorials'],
-      color: 'rgba(255,226,154,0.3)'
-    },
-    {
-      icon: '💬', title: 'Forum', kicker: 'Ask & Answer',
-      desc: 'Join thousands of users and developers. Ask questions, share solutions, and learn best practices from the community.',
-      items: ['Browse topics', 'Ask a question', 'Share a solution', 'Top contributors'],
-      color: 'rgba(106,242,173,0.15)'
-    },
-    {
-      icon: '📅', title: 'Events', kicker: 'Meet & Learn',
-      desc: 'Webinars, workshops, and conferences. Learn from experts, connect with peers, and stay ahead of the curve.',
-      items: ['Upcoming webinars', 'Annual conference', 'Local meetups', 'Workshop schedule'],
-      color: 'rgba(59,130,246,0.1)'
-    },
-    {
-      icon: '🤝', title: 'Partners', kicker: 'Grow Together',
-      desc: 'Join our partner network. Whether you\'re an integrator, consultant, or reseller, we have a program for you.',
-      items: ['Become a partner', 'Partner directory', 'Certification program', 'Partner resources'],
-      color: 'rgba(240,93,94,0.1)'
-    },
-    {
-      icon: '👨‍💻', title: 'Developers', kicker: 'Build & Extend',
-      desc: 'Extend Enterprise Compute with custom modules, integrations, and automations. Full API access and developer tools.',
-      items: ['API documentation', 'SDK downloads', 'Developer blog', 'Sample projects'],
-      color: 'rgba(43,106,75,0.1)'
-    }
-  ]
+  useEffect(() => { storePath('community') }, [storePath])
 
-  const stats = [
-    { num: '10,000+', label: 'Active Users' },
-    { num: '500+', label: 'Community Posts' },
-    { num: '50+', label: 'Partner Companies' },
-    { num: '24/7', label: 'Community Support' }
-  ]
-
-  useEffect(() => {
-    storePath('community')
-    // set page title
-    document.title = "Community & Ecosystem | Enterprise Compute Central"
-  }, [storePath])
+  const upcoming = EVENTS.filter((event) => event.format !== 'Recording').slice(0, 3)
 
   return (
-    <div className="ec-landing">
-      <NavBar />
+    <PageShell
+      title="Community | Enterprise Compute"
+      description="Forums, user groups, events, documentation, the partner network and product feedback. These are the places other operators have usually solved it first."
+      breadcrumbs={[{ name: 'Home', to: '/' }, { name: 'Community' }]}
+      subnavTitle="Community"
+      sections={SECTIONS}
+      subnavCta={{ label: 'Start free trial', to: '/signup' }}
+    >
+      <Hero
+        tone="deep"
+        backgroundImage={heroImg('teamCollaboration', 'heroWide')}
+        eyebrow="Community"
+        title="The fastest answers usually come from another operator"
+        lede="Forums, sector user groups, open office hours and a documentation set written for people running businesses rather than for developers."
+      >
+        <ButtonRow>
+          <Button variant="primary" to="/events" navigate={navigate}>Upcoming sessions</Button>
+          <Button variant="secondary" to="/docs" navigate={navigate}>Documentation</Button>
+        </ButtonRow>
+      </Hero>
 
-      <section className="sp-hero">
-        <div className="sp-hero-inner">
-          <div className="ec-hero-kicker">🌍 Community & Ecosystem</div>
-          <h1>Built by the Community, <span className="ec-highlight">For the Community</span></h1>
-          <p>Join a global network of businesses, developers, and partners shaping the future of enterprise software.</p>
-        </div>
-      </section>
+      <Section variant="alt" tight>
+        <FastFacts
+          cols={4}
+          items={[
+            { value: 'Fortnightly', label: 'Open office hours with the product team' },
+            { value: 'Monthly', label: 'Implementation webinars and module workshops' },
+            { value: 'Sector', label: 'User groups for retail, hospitality, distribution and finance' },
+            { value: 'Open', label: 'Roadmap input, because priorities follow what people ask for' },
+          ]}
+        />
+      </Section>
 
-      {/* Stats */}
-      <section className="ec-section" style={{ paddingTop: 0, paddingBottom: 60 }}>
-        <div className="sp-stats-row">
-          {stats.map((s, i) => (
-            <div key={i} className="sp-stat-card">
-              <strong>{s.num}</strong>
-              <span>{s.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Community Sections */}
-      <section className="ec-section sp-community-section" style={{ paddingTop: 0 }}>
-        {sections.map((sec, i) => (
-          <motion.div 
-            key={i} 
-            className={`sp-community-block ${i % 2 !== 0 ? 'reverse' : ''}`}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <div className="sp-community-visual">
-              <div className="sp-community-icon-box" style={{ background: sec.color }}>
-                <motion.span
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  {sec.icon}
-                </motion.span>
-              </div>
-            </div>
-            <div className="sp-community-content">
-              <div className="ec-section-kicker">{sec.kicker}</div>
-              <h2>{sec.title}</h2>
-              <p>{sec.desc}</p>
-              <div className="sp-community-links">
-                {sec.items.map((item, j) => (
-                  <motion.a 
-                    key={j} 
-                    href="#" 
-                    className="sp-community-link"
-                    whileHover={{ x: 5, backgroundColor: 'rgba(43,106,75,0.1)' }}
-                  >
-                    <span className="sp-link-arrow">→</span> {item}
-                  </motion.a>
+      {/* -------------------------------------------------------- pillars -- */}
+      <Section
+        id="pillars"
+        eyebrow="Where to go"
+        title="Six places to get unstuck"
+        subtitle="Ranked roughly by speed: documentation for a known question, the forum for a configuration one, office hours when it needs a conversation."
+        split
+      >
+        <Grid cols={3}>
+          {COMMUNITY_PILLARS.map((pillar) => (
+            <Card
+              key={pillar.title}
+              image={img(pillar.image, 'card')}
+              title={pillar.title}
+              text={pillar.text}
+              link="Go there"
+              to={pillar.to}
+              navigate={navigate}
+            >
+              <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
+                {pillar.links.map((link) => (
+                  <li key={link} className="ds-card-text" style={{ padding: '2px 0' }}>· {link}</li>
                 ))}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </section>
+              </ul>
+            </Card>
+          ))}
+        </Grid>
+      </Section>
 
-      {/* CTA */}
-      <section className="ec-final-cta">
-        <h2>Join the Community Today</h2>
-        <p>Whether you're a user, developer, or partner—there's a place for you.</p>
-        <div className="ec-hero-btns" style={{ justifyContent: 'center' }}>
-          <button className="ec-btn-primary" onClick={() => Navigate('/login')}>Get Started</button>
-          <button className="ec-btn-secondary">Join the Forum</button>
-        </div>
-      </section>
+      {/* --------------------------------------------------------- events -- */}
+      <Section
+        id="events"
+        variant="cream"
+        eyebrow="Events"
+        title="Coming up"
+        split
+        subtitle="Every session is free, whether you are a customer or still evaluating."
+        footer={<TextLink to="/events" navigate={navigate}>All events and recordings</TextLink>}
+      >
+        <Grid cols={3}>
+          {upcoming.map((event) => (
+            <Card
+              key={event.slug}
+              flat
+              image={img(event.image, 'card')}
+              eyebrow={`${event.type} · ${event.duration}`}
+              title={event.title}
+              text={event.text}
+              link={event.when}
+              to="/events"
+              navigate={navigate}
+            />
+          ))}
+        </Grid>
+      </Section>
 
-      <Footer />
-    </div>
+      {/* ----------------------------------------------------- contribute -- */}
+      <Section id="contribute">
+        <FiftyFifty
+          eyebrow="Contribute"
+          title="Roadmap priority genuinely follows what people ask for"
+          image={img('teamWhiteboard', 'fifty')}
+          titleAs="h2"
+        >
+          <p className="ds-body">
+            The public API, webhooks and bank-feed import are all on the roadmap, and the
+            order they ship in is driven mostly by how many operators say they are blocked
+            on one. That is not a platitude. It is how a small team decides.
+          </p>
+          <p className="ds-body">
+            The most useful thing you can send is not a feature name but the workflow it
+            would unblock. Those arrive as context we can design against, where a feature
+            request arrives as a guess at an implementation.
+          </p>
+          <ButtonRow>
+            <Button variant="secondary" to="/contact" navigate={navigate}>Send product feedback</Button>
+            <Button variant="tertiary" to="/integrations" navigate={navigate}>See the current roadmap</Button>
+          </ButtonRow>
+        </FiftyFifty>
+      </Section>
+
+      <Section
+        variant="alt"
+        eyebrow="Reading"
+        title="How the team thinks about the problems"
+        tight
+        footer={<TextLink to="/blog" navigate={navigate}>All articles</TextLink>}
+      >
+        <Grid cols={3}>
+          {POSTS.slice(0, 3).map((post) => (
+            <Card
+              key={post.slug}
+              flat
+              image={img(post.image, 'card')}
+              eyebrow={`${post.topic} · ${post.minutes} min read`}
+              title={post.title}
+              text={post.excerpt}
+              link="Read the article"
+              to={`/blog/${post.slug}`}
+              navigate={navigate}
+            />
+          ))}
+        </Grid>
+      </Section>
+
+      <CTABanner
+        eyebrow="Join in"
+        title="You will get more out of it with a workspace open"
+        text="Start a free trial, bring a real configuration question to office hours, and leave with it solved."
+      >
+        <Button variant="primary" size="lg" to="/signup" navigate={navigate}>Start a free trial</Button>
+        <Button variant="secondary" size="lg" to="/events" navigate={navigate}>See upcoming sessions</Button>
+      </CTABanner>
+    </PageShell>
   )
 }
 

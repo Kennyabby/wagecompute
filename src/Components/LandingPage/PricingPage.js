@@ -2,11 +2,24 @@ import './SubPages.css'
 import "../Login/Login.css";
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import NavBar from './NavBar'
-import Footer from './Footer'
 import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from "framer-motion";
 import MODULE_ICONS from '../../Resources/moduleIcons'
+// Public design system. The billing logic below is unchanged — only the page
+// shell, hero and section chrome move onto the shared components, so the
+// Paystack flow, workspace resolution and module calculator behave exactly
+// as before.
+import PageShell from './ds/PageShell'
+import { Hero, Section, Container, Accordion, Button, ButtonRow } from './ds/DS'
+import { heroImg } from './ds/landingImages'
+
+const PRICING_SECTIONS = [
+  { id: 'plans', label: 'Plans' },
+  { id: 'pricing-checkout', label: 'Plan calculator' },
+  { id: 'epsilon', label: 'Epsilon AI' },
+  { id: 'compare', label: 'Compare' },
+  { id: 'faq', label: 'FAQ' },
+]
 
 const FALLBACK_STANDARD_PRICE = 92000
 const FREE_TRIAL_DAYS = 14
@@ -83,7 +96,7 @@ const getAppInitials = (name) => {
 const PricingPage = () => {
   const { storePath, fetchServer, server, setAlert, setAlertState, setAlertTimeout } = useContext(ContextProvider)
   const navigate = useNavigate()
-  const [openFaq, setOpenFaq] = useState(null)
+  // (FAQ open/close state now lives inside the shared Accordion component.)
   const [selectedPlan, setSelectedPlan] = useState('standard')
   const [billingCycle, setBillingCycle] = useState('monthly')
   const [teamSize, setTeamSize] = useState(8)
@@ -200,7 +213,7 @@ const PricingPage = () => {
       features: [
         'Unlimited users on one tenant workspace',
         'Core apps always free: Dashboard, Employees, Departments, Positions, Attendance, Settings',
-        'Add modules individually — POS, Sales, Inventory, Payroll, Purchase, Accounting, and more',
+        'Add modules individually: POS, Sales, Inventory, Payroll, Purchase, Accounting and more',
         'Add more modules anytime; the new price applies from your next renewal',
       ],
       cta: 'Build Your Plan',
@@ -231,7 +244,7 @@ const PricingPage = () => {
   const faqs = [
     {
       q: 'What does the Standard subscription include?',
-      a: 'Core apps — Dashboard, Employees, Departments, Positions, Attendance, and Settings — are free on every workspace, forever. Everything else (POS, Sales, Inventory, Payroll, Purchase, Delivery, Accommodations, Business Partners, and the full accounting suite — journals, COA, ledgers, Trial Balance, Balance Sheet, Profit & Loss, Reports) is priced per module, so you only pay for what your business actually uses.',
+      a: 'Six core apps are free on every workspace, forever: Dashboard, Employees, Departments, Positions, Attendance and Settings. Everything else is priced per module, so you only pay for what your business actually uses. That covers POS, Sales, Inventory, Payroll, Purchase, Delivery, Accommodations, Business Partners, and the full accounting suite of journals, COA, ledgers, Trial Balance, Balance Sheet, Profit & Loss and Reports.',
     },
     {
       q: 'Can I start with a free trial first?',
@@ -243,7 +256,7 @@ const PricingPage = () => {
     },
     {
       q: 'Do I need a separate license for each module?',
-      a: 'Pricing is per module rather than one flat platform fee. Each operational or accounting module beyond the free core apps has its own price, dependencies are added automatically (e.g. enabling Sales also enables Inventory), and you can add more modules at any time from Settings — the higher price applies starting your next renewal, with no extra charge the day you add them.',
+      a: 'Pricing is per module rather than one flat platform fee. Each operational or accounting module beyond the free core apps has its own price, dependencies are added automatically (e.g. enabling Sales also enables Inventory), and you can add more modules at any time from Settings. The higher price applies starting your next renewal, with no extra charge the day you add them.',
     },
   ]
 
@@ -303,17 +316,11 @@ const PricingPage = () => {
     }
   }, [billingCycle, selectedPlan, selectedOptionalApps, modulePricing, moduleCatalog])
 
+  // Title and hash scrolling are both handled by PageShell now — it sets the
+  // document title from its `title` prop and eases to any hash in the URL,
+  // including the /pricing#epsilon links in the header and on the home page.
   useEffect(() => {
     storePath('pricing')
-    document.title = 'Pricing | Enterprise Compute Central'
-    // Links into this page (NavBar mega-menu, the landing page app grid)
-    // point at /pricing#epsilon — react-router does not auto-scroll to a
-    // hash, so do it manually once the section has rendered.
-    if (window.location.hash === '#epsilon') {
-      setTimeout(() => {
-        document.getElementById('epsilon')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 100)
-    }
   }, [storePath])
 
   useEffect(() => {
@@ -528,29 +535,30 @@ const PricingPage = () => {
   }
 
   return (
-    <div className="ec-landing">
-      <NavBar />
-
-      <section className="sp-hero">
-        <div className="sp-hero-inner">
-          <div className="ec-hero-kicker">Platform Pricing</div>
-          <h1>Pay Only For The Modules Your Business Actually Uses</h1>
-          <p>
-            Core apps are free on every workspace. Try the full catalog free for {liveTrialDays} days,
-            then build a plan from only the operational and accounting modules you need —
-            add more anytime and billing adjusts automatically.
-          </p>
-          <div className="sp-badge-row">
-            <span className="sp-plan-chip">{liveTrialDays}-day free trial</span>
-            <span className="sp-plan-chip">Unlimited users</span>
-            <span className="sp-plan-chip">Pay per module</span>
-            <span className="sp-plan-chip">Secure Paystack billing</span>
-          </div>
+    <PageShell
+      title="Pricing | Enterprise Compute"
+      description="Per-module pricing with unlimited users on every plan. Six core modules free permanently, a 14-day trial with everything unlocked, and a calculator that shows the exact checkout amount."
+      breadcrumbs={[{ name: 'Home', to: '/' }, { name: 'Pricing' }]}
+      subnavTitle="Pricing"
+      sections={PRICING_SECTIONS}
+      subnavCta={{ label: 'Start free trial', to: '/signup' }}
+    >
+      <Hero
+        eyebrow="Platform pricing"
+        title="Pay only for the modules your business actually uses"
+        lede={`Core apps are free on every workspace, permanently. Try the full catalogue free for ${liveTrialDays} days, then build a plan from only the operational and accounting modules you need. Add more at any time, and the new price applies from your next renewal.`}
+        image={heroImg('businessFinance')}
+      >
+        <div className="sp-badge-row" style={{ justifyContent: 'flex-start', marginTop: 0 }}>
+          <span className="sp-plan-chip">{liveTrialDays}-day free trial</span>
+          <span className="sp-plan-chip">Unlimited users</span>
+          <span className="sp-plan-chip">Pay per module</span>
+          <span className="sp-plan-chip">Secure Paystack billing</span>
         </div>
-      </section>
+      </Hero>
 
       {(checkoutState.message || checkoutState.verifying) && (
-        <section className="ec-section" style={{ paddingTop: 0 }}>
+        <section className="ec-section" style={{ paddingBottom: 0 }}>
           <div className={`sp-status-banner ${checkoutState.type || 'info'}`}>
             <strong>{checkoutState.type === 'success' ? 'Payment Confirmed' : checkoutState.type === 'error' ? 'Checkout Update' : 'Subscription Status'}</strong>
             <p>{checkoutState.message}</p>
@@ -560,7 +568,7 @@ const PricingPage = () => {
         </section>
       )}
 
-      <section className="ec-section" style={{ paddingTop: 0, marginTop: -40 }}>
+      <section className="ec-section" id="plans">
         <div className="sp-pricing-grid">
           {plans.map((plan) => (
             <div
@@ -601,7 +609,7 @@ const PricingPage = () => {
               <div className="ec-section-kicker">Plan Calculator</div>
               <h2>Build your plan and see the exact monthly cost</h2>
               <p>
-                Pick your modules below and the total updates live — this is the exact amount charged at checkout,
+                Pick your modules below and the total updates live. This is the exact amount charged at checkout,
                 not an estimate. Team size never changes the price: every plan includes unlimited users.
               </p>
 
@@ -669,7 +677,7 @@ const PricingPage = () => {
                 <div className="ec-section-kicker">Modules</div>
                 <p style={{ marginTop: 6, marginBottom: 12 }}>
                   Core apps are always free and already included above. Add the operational and accounting
-                  modules your business needs below — dependencies (e.g. Sales requires Inventory) are added automatically.
+                  modules your business needs below. Dependencies are added automatically, so picking Sales also picks up Inventory.
                 </p>
                 <div className="sp-optional-list">
                   {selectedPlan === 'standard' && moduleCatalog.filter(a => a.tier === 'standard' && a.key !== 'epsilon').map(app => {
@@ -701,7 +709,7 @@ const PricingPage = () => {
 
               <div className="sp-calculator-slider-card">
                 <div className="sp-calculator-slider-head">
-                  <span>Expected team size <em>(unlimited users included — for your own planning only)</em></span>
+                  <span>Expected team size <em>(unlimited users are included, so this is for your own planning only)</em></span>
                   <strong>{teamSize} user{teamSize > 1 ? 's' : ''}</strong>
                 </div>
                 <input
@@ -835,17 +843,17 @@ const PricingPage = () => {
             <div className="ec-section-kicker">AI Assistant · Paid add-on</div>
             <h2>Epsilon: an AI that actually knows your data</h2>
             <p>
-              Epsilon is built into every workspace but never included in a plan or free trial — it is purchased
+              Epsilon is built into every workspace but never included in a plan or free trial. It is purchased
               separately, per seat, from inside your workspace. Unlike a generic chatbot, it is wired directly into
               your real records: it diagnoses why a specific transaction is blocked, traces exactly why a stock
               quantity or balance is what it is, and tells you the actual person who can approve something instead
               of just saying "ask your admin."
             </p>
             <ul className="sp-feature-list">
-              <li><span className="sp-check">✓</span> Explains blockers and traces the real transaction history behind any number, across every module — not just inventory.</li>
+              <li><span className="sp-check">✓</span> Explains blockers and traces the real transaction history behind any number, across every module and not just inventory.</li>
               <li><span className="sp-check">✓</span> Interprets your accounting trends and generates reports on demand, grounded in your live figures.</li>
               <li><span className="sp-check">✓</span> Recommends reorders and flags profit opportunities from your actual revenue and expense data.</li>
-              <li><span className="sp-check">✓</span> Can draft a purchase order or a data correction, but only ever proposes — nothing changes until you confirm it.</li>
+              <li><span className="sp-check">✓</span> Can draft a purchase order or a data correction, but it only ever proposes. Nothing changes until you confirm it.</li>
             </ul>
             <div className="sp-epsilon-cta-row">
               <div className="sp-epsilon-price">
@@ -857,7 +865,7 @@ const PricingPage = () => {
               </button>
             </div>
             <p className="sp-epsilon-note">
-              Epsilon has no free trial of its own — create a workspace first, then add seats anytime from
+              Epsilon has no free trial of its own. Create a workspace first, then add seats anytime from
               Settings → Billing, plus a per-1,000-token usage balance. It is not part of the module calculator
               above since its pricing works differently from every other module.
             </p>
@@ -865,10 +873,10 @@ const PricingPage = () => {
         </div>
       </section>
 
-      <section className="ec-section" style={{ background: 'var(--ec-light-bg)' }}>
+      <section className="ec-section" id="compare" style={{ background: 'var(--ds-surface-alt)' }}>
         <div className="ec-section-header">
-          <div className="ec-section-kicker">Plan Comparison</div>
-          <h2 className="ec-section-title">Commercial Fit at a Glance</h2>
+          <div className="ec-section-kicker">Plan comparison</div>
+          <h2 className="ec-section-title">Commercial fit at a glance</h2>
         </div>
         <div className="sp-comparison-table">
           <table>
@@ -894,38 +902,35 @@ const PricingPage = () => {
         </div>
       </section>
 
-      <section className="ec-section">
-        <div className="ec-section-header">
-          <div className="ec-section-kicker">FAQ</div>
-          <h2 className="ec-section-title">Questions Before You Subscribe?</h2>
-        </div>
-        <div className="sp-faq-list">
-          {faqs.map((faq, index) => (
-            <div key={faq.q} className={`sp-faq-item ${openFaq === index ? 'open' : ''}`} onClick={() => setOpenFaq(openFaq === index ? null : index)}>
-              <div className="sp-faq-q">
-                <span>{faq.q}</span>
-                <span className="sp-faq-toggle">{openFaq === index ? '-' : '+'}</span>
-              </div>
-              {openFaq === index ? <div className="sp-faq-a">{faq.a}</div> : null}
-            </div>
-          ))}
-        </div>
-      </section>
+      <Section id="faq" eyebrow="FAQ" title="Questions before you subscribe">
+        <Container width="narrow">
+          <Accordion items={faqs} />
+        </Container>
+      </Section>
 
-      <section className="ec-final-cta">
-        <h2>Ready to roll out the platform?</h2>
-        <p>Start with the free trial, or move straight into the Standard plan when your team is ready for production billing.</p>
-        <div className="ec-hero-btns" style={{ justifyContent: 'center' }}>
-          <button className="ec-btn-primary" onClick={() => navigate('/signup')}>
-            Start Free Trial
-          </button>
-          <button className="ec-btn-secondary" onClick={() => document.getElementById('pricing-checkout')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-            Review Standard Checkout
-          </button>
-        </div>
-      </section>
-
-      <Footer />
+      <Section variant="deep-grad">
+        <Container width="narrow">
+          <div className="ds-center">
+            <span className="ds-eyebrow">Get started</span>
+            <h2 className="ds-h2">Ready to roll out the platform?</h2>
+            <p className="ds-lede">
+              Start with the free trial and every module unlocked, or move straight into
+              the Standard plan when your team is ready for production billing.
+            </p>
+            <ButtonRow className="ds-center" >
+              <Button variant="primary" size="lg" to="/signup" navigate={navigate}>Start free trial</Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => document.getElementById('pricing-checkout')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              >
+                Review the calculator
+              </Button>
+              <Button variant="tertiary" to="/roi-calculator" navigate={navigate}>Model the payback</Button>
+            </ButtonRow>
+          </div>
+        </Container>
+      </Section>
 
       <AnimatePresence>
         {message && (
@@ -949,7 +954,7 @@ const PricingPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </PageShell>
   )
 }
 

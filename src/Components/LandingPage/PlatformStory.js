@@ -19,28 +19,24 @@ const PlatformStory = () => {
       <div className="ps-page">
 
         <p className="ps-kicker">{intro.kicker}</p>
-        <h1 className="ps-title">{intro.title}</h1>
+        {/* h3, not h1: this story is embedded inside the About page, which
+            already owns the page h1 in its hero and an h2 on the section
+            heading above. Two h1s would break the document outline. */}
+        <h3 className="ps-title">{intro.title}</h3>
         <p className="ps-lede">{intro.lede}</p>
         {intro.paragraphs.map((p, i) => <p className="ps-p" key={i}>{p}</p>)}
 
-        <div className="ps-pillar-row">
-          {intro.pillars.slice(0, 3).map((pillar) => (
-            <div className="ps-pillar" key={pillar.num}>
-              <p className="ps-pillar-num">{pillar.num}</p>
-              <p className="ps-pillar-title">{pillar.title}</p>
-              <p className="ps-pillar-body">{pillar.body}</p>
-            </div>
-          ))}
-        </div>
-        <div className="ps-pillar-row">
-          {intro.pillars.slice(3, 6).map((pillar) => (
-            <div className="ps-pillar" key={pillar.num}>
-              <p className="ps-pillar-num">{pillar.num}</p>
-              <p className="ps-pillar-title">{pillar.title}</p>
-              <p className="ps-pillar-body">{pillar.body}</p>
-            </div>
-          ))}
-        </div>
+        {Array.from({ length: Math.ceil(intro.pillars.length / 3) }, (_, row) => (
+          <div className="ps-pillar-row" key={row}>
+            {intro.pillars.slice(row * 3, row * 3 + 3).map((pillar) => (
+              <div className="ps-pillar" key={pillar.num}>
+                <p className="ps-pillar-num">{pillar.num}</p>
+                <p className="ps-pillar-title">{pillar.title}</p>
+                <p className="ps-pillar-body">{pillar.body}</p>
+              </div>
+            ))}
+          </div>
+        ))}
 
         <hr className="ps-divider" />
 
@@ -62,7 +58,7 @@ const PlatformStory = () => {
           <div className="ps-chapter" id={chapter.id} key={chapter.id}>
             <hr className="ps-divider" />
             <p className="ps-kicker">{chapter.kicker}</p>
-            <h2 className="ps-h2">{chapter.title}</h2>
+            <h4 className="ps-h2">{chapter.title}</h4>
             <p className="ps-lede">{chapter.lede}</p>
             {chapter.paragraphs.map((p, i) => <p className="ps-p" key={i}>{p}</p>)}
             {chapter.quote && (
@@ -70,7 +66,7 @@ const PlatformStory = () => {
             )}
             {chapter.whyMatters && (
               <>
-                <h3 className="ps-h3">Why this matters</h3>
+                <h5 className="ps-h3">Why this matters</h5>
                 <p className="ps-p">{chapter.whyMatters}</p>
               </>
             )}
@@ -81,7 +77,7 @@ const PlatformStory = () => {
         <hr className="ps-divider" />
 
         <p className="ps-kicker">{closing.kicker}</p>
-        <h2 className="ps-h2">{closing.title}</h2>
+        <h4 className="ps-h2">{closing.title}</h4>
         <table className="ps-table">
           <thead>
             <tr>
