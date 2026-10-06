@@ -13,7 +13,7 @@ import './TransactionHistory.css';
 
 // Reusable checkbox-list multi-select dropdown for the filter bar. Options
 // can be searched internally (needed for the Product list, which can run
-// into the hundreds) — Location/Transaction Type just render with an empty
+// into the hundreds), Location/Transaction Type just render with an empty
 // option set of a few items, so the search box is harmless there too.
 const MultiSelectDropdown = ({ label, options, selected, onChange, placeholder = 'All', searchable = false }) => {
   const [open, setOpen] = useState(false);
@@ -147,7 +147,7 @@ const TransactionHistory = () => {
   // Deep-link from the General Ledger table (Journals module): a GL row
   // sourced from InventoryTransactions (Purchases/Production/Transfer
   // Orders/Inventory-Reconciliation adjustments/Sales-Shipment-COGS+Return
-  // all post under this one sourceCollection — see Journals.js's tier-B
+  // all post under this one sourceCollection, see Journals.js's tier-B
   // note) carries the GL entry's own postingDate as the closest available
   // hint, plus the transaction's own _id as sourceId. The date narrows the
   // fetch window; once the matching row shows up in `transactions` we jump
@@ -176,13 +176,13 @@ const TransactionHistory = () => {
   const [glDeepLinkScrollTarget, setGlDeepLinkScrollTarget] = useState(null);
   const txRowRefs = useRef({});
 
-  // location/productId/transactionType are arrays now (multi-select) — an
+  // location/productId/transactionType are arrays now (multi-select), an
   // empty array means "no restriction on this facet", matching the old
   // 'all'/'' sentinels. These same values both build the server query (on
   // mount and when Apply Filters is clicked) and drive instant client-side
   // filtering of whatever's already loaded (see displayedTransactions).
-  // Falls back to the shared inventoryDateRange (App.js) — also used by
-  // Stock and Adjustments — so this page's date picker starts showing
+  // Falls back to the shared inventoryDateRange (App.js), also used by
+  // Stock and Adjustments, so this page's date picker starts showing
   // whatever range was last actually Applied on any of the three, instead
   // of independently defaulting to "1st of month to today" every time. A
   // GL deep-link's date hint still wins when present.
@@ -196,7 +196,7 @@ const TransactionHistory = () => {
     limit: 50,
   });
   // Free-text search across orderNumber/product name/date/location/
-  // reference/document number — filters the already-loaded set instantly,
+  // reference/document number, filters the already-loaded set instantly,
   // and is cleared (not sent to the server) when Apply Filters is clicked.
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -212,7 +212,7 @@ const TransactionHistory = () => {
     };
   };
 
-  // Clamp date filters for non-admin users to yesterday–today on mount
+  // Clamp date filters for non-admin users to yesterday to today on mount
   useEffect(() => {
     if (companyRecord && isNonAdmin) {
       const { minDate, maxDate } = getNonAdminDateBounds();
@@ -233,7 +233,7 @@ const TransactionHistory = () => {
   const postApprovedTransfer = async (approval) => {
     // Posting is a single atomic server-side call (see
     // wageserver/UserModule/Inventory/transferOrders.js) rather than a
-    // client-side loop over /createDoc per transaction — the server claims
+    // client-side loop over /createDoc per transaction, the server claims
     // the approval (posted:false -> deleted) and inserts the transactions in
     // one Mongo transaction, so a double-click or two admins approving the
     // same request concurrently can no longer create two sets of postings.
@@ -525,7 +525,7 @@ const TransactionHistory = () => {
 
   // Per-unit price the sale actually transacted at, derived from the line's
   // own totalSales/baseQuantity rather than the product's current
-  // salesPrice/vipPrice — correct regardless of which price list applied
+  // salesPrice/vipPrice, correct regardless of which price list applied
   // (VIP vs regular) and immune to later price changes. null for non-Sales
   // rows and for the (rare) shortage-recovery style docs with no baseQuantity.
   const getUnitSalesPrice = (tx) => {
@@ -934,7 +934,7 @@ const TransactionHistory = () => {
       format: 'a4'
     });
 
-    // Logo — only if the tenant actually uploaded one (never a platform default)
+    // Logo, only if the tenant actually uploaded one (never a platform default)
     const logo = await loadPdfImage(centralCompany?.logoUrl);
     const textX = 15 + (logo ? 20 : 0);
     if (logo) {
@@ -1445,7 +1445,7 @@ const TransactionHistory = () => {
       })
 
       // GL is the authoritative, cancellation-reversed figure Dashboard and
-      // the Chart of Accounts already use — tallying the card to it (when
+      // the Chart of Accounts already use, tallying the card to it (when
       // the view is unscoped, the only case GL's location/product-less
       // total actually corresponds to) is what keeps this card permanently
       // in sync with them, independent of any InventoryTransactions data-
@@ -1531,7 +1531,7 @@ const TransactionHistory = () => {
       const netTransferCost = transfersInCost + transfersOutCost;
       const netAdjustmentCost = positiveAdjustmentsCost + negativeAdjustmentsCost;
 
-      // Same GL tally as the other summary block above — keeps this path
+      // Same GL tally as the other summary block above, keeps this path
       // (used on initial/cached load) consistent with the freshly-fetched one.
       if (!(filters.location || []).length && !(filters.productId || []).length && typeof products?.glSalesValue === 'number') {
         summaryData.salesValue = products.glSalesValue;
@@ -1837,7 +1837,7 @@ const TransactionHistory = () => {
   };
 
   // Prepare CSV data
-  // Instant client-side filtering of whatever's already loaded — location/
+  // Instant client-side filtering of whatever's already loaded, location/
   // transactionType/productId/date range/search all apply here immediately
   // as the user changes them; only Apply Filters goes back to the server
   // (see handleApplyFilters/fetchTransactionHistory). Sorting (below) is
@@ -2097,7 +2097,7 @@ const TransactionHistory = () => {
     }));
   };
 
-  // Location/Transaction Type/Product multi-selects — updates apply
+  // Location/Transaction Type/Product multi-selects, updates apply
   // instantly to whatever's already loaded via displayedTransactions below;
   // no fetch happens here (that's what the Apply Filters button is for).
   const handleMultiFilterChange = (name, values) => {
@@ -2120,7 +2120,7 @@ const TransactionHistory = () => {
     const formattedEndDate = new Date(effEnd).toISOString().split('T')[0];
 
     // The summary cards' figures come from getProductsStockReport (App.js),
-    // which only scopes by a single location/product/transactionType — pass
+    // which only scopes by a single location/product/transactionType, pass
     // one through only when exactly one is selected here; leave the cards
     // unscoped by that facet otherwise (0 or 2+ selected reads as "all" for
     // the cards specifically, the transaction list below still honors the
@@ -2145,7 +2145,7 @@ const TransactionHistory = () => {
     // shared `products` state every page reads from).
     setInventoryDateRange({ startDate: formattedStartDate, endDate: formattedEndDate });
 
-    // Clear the free-text search — Apply Filters is specifically about
+    // Clear the free-text search, Apply Filters is specifically about
     // getting a fresh, server-accurate set for the currently selected
     // dropdown/date filters, not the ad-hoc text search.
     setSearchQuery('');

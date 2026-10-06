@@ -1,8 +1,8 @@
 /* ============================================================================
    Content for /why-enterprise-compute and /roi-calculator.
    ----------------------------------------------------------------------------
-   Comparisons are drawn against CATEGORIES of alternative — spreadsheets,
-   separate point tools, legacy on-premise ERP, per-seat cloud suites — and
+   Comparisons are drawn against CATEGORIES of alternative, spreadsheets,
+   separate point tools, legacy on-premise ERP, per-seat cloud suites, and
    deliberately not against named competitors.
 
    That is a considered choice, not timidity. Named-vendor comparison tables
@@ -159,7 +159,7 @@ export const COMPARISONS = [
 /**
  * Inputs and coefficients for the /roi-calculator page.
  *
- * These are PLANNING ASSUMPTIONS the visitor can and should change — they are
+ * These are PLANNING ASSUMPTIONS the visitor can and should change, they are
  * not measured outcomes from a customer base, and the page says so in plain
  * language. The defaults are deliberately conservative: stock shrinkage of
  * 2% of inventory value and a 25% reduction in it is well below the figures

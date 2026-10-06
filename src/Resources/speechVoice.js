@@ -1,6 +1,6 @@
 // Shared browser-native speech helpers for Epsilon's voice input/output.
 // Both speech-to-text (SpeechRecognition) and text-to-speech
-// (speechSynthesis) are 100% client-side — no audio is ever sent to our own
+// (speechSynthesis) are 100% client-side, no audio is ever sent to our own
 // backend, only the resulting text (exactly like a typed message) or the
 // gender/accent *preference* (a tenant Settings value, not a specific
 // voice). Which actual voices exist is entirely up to each listener's own
@@ -23,8 +23,8 @@ export const getSpeechSupport = () => ({
     ttsSupported: typeof window !== 'undefined' && !!window.speechSynthesis,
 })
 
-// speechSynthesis.getVoices() is frequently empty on the very first call —
-// the real list loads asynchronously and Chrome fires 'voiceschanged' once
+// speechSynthesis.getVoices() is frequently empty on the very first call.
+// The real list loads asynchronously and Chrome fires 'voiceschanged' once
 // it's ready (Safari/Firefox sometimes have it populated immediately).
 // Cached across calls within a page load since the list never changes.
 let cachedVoicesPromise = null
@@ -42,7 +42,7 @@ export const loadVoices = () => {
             }
         }
         window.speechSynthesis.addEventListener('voiceschanged', handler)
-        // Safety net — some browsers never fire the event at all.
+        // Safety net, some browsers never fire the event at all.
         setTimeout(() => resolve(window.speechSynthesis.getVoices()), 1500)
     })
     return cachedVoicesPromise
@@ -99,7 +99,7 @@ export const stopSpeaking = () => {
 
 // Fire-and-forget: speaks `text` using the best-matching voice for
 // {gender, accent}, calling onStart/onEnd/onError as the utterance
-// progresses. Cancels anything already speaking first — only one Epsilon
+// progresses. Cancels anything already speaking first, only one Epsilon
 // reply should ever be audible at a time.
 export const speak = async (text, { gender = 'female', accent = 'en-US', onStart, onEnd, onError, onBoundary } = {}) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return
@@ -114,8 +114,8 @@ export const speak = async (text, { gender = 'female', accent = 'en-US', onStart
     utterance.onstart = () => onStart?.()
     utterance.onend = () => onEnd?.()
     utterance.onerror = (e) => { onError?.(e); onEnd?.() }
-    // Fires roughly per word/sentence on most Chrome/Edge voices (not all —
-    // some platform voices never fire it) — the closest browser-native
+    // Fires roughly per word/sentence on most Chrome/Edge voices (not all,
+    // some platform voices never fire it), the closest browser-native
     // signal to "reacting to what's actually being said" without access to
     // the synthesized audio's real waveform, which speechSynthesis never
     // exposes. Callers should have their own fallback for voices that never

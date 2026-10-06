@@ -323,7 +323,7 @@ const DocsPage = () => {
             <p>Define your business hours, contact info, and base currency.</p>
 
             <h3>2. Warehouses & Locations</h3>
-            <p>Create storage points. Crucial for Inventory and POS modules to track stock correctly.</p>
+            <p>Create storage points. Inventory and POS both need these to track stock correctly.</p>
 
             <h3>3. Payment Methods & G/L Linking</h3>
             <p>Configure Cash, Bank Transfer, POS Terminals, and Online gateways. Critically, each payment method must be linked to a Cash/Bank account in your COA.</p>

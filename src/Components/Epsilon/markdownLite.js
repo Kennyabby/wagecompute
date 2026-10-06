@@ -1,14 +1,14 @@
-// A small, dependency-free markdown-lite renderer for Epsilon's replies —
-// handles the things a model actually produces in a chat answer (bold,
+// A small, dependency-free markdown-lite renderer for Epsilon's replies.
+// Handles the things a model actually produces in a chat answer (bold,
 // italic, inline code, bullet/numbered lists, paragraphs, fenced code
 // blocks, GFM pipe tables, and a small fixed set of semantic callouts/inline
-// colors — see SYSTEM_PROMPT's "Formatting" rule in epsilon.js for the exact
+// colors, see SYSTEM_PROMPT's "Formatting" rule in epsilon.js for the exact
 // syntax taught to the model) without pulling in a full markdown library.
 // Deliberately returns React elements built from plain text, never
-// dangerouslySetInnerHTML — model output is never trusted as raw HTML.
+// dangerouslySetInnerHTML, model output is never trusted as raw HTML.
 import React, { useState } from 'react'
 
-// Fixed, finite set — never arbitrary CSS/colors from model text. Anything
+// Fixed, finite set, never arbitrary CSS/colors from model text. Anything
 // outside this set is left as plain text rather than guessed at.
 const CALLOUT_TYPES = new Set(['success', 'warning', 'error', 'info'])
 
@@ -19,7 +19,7 @@ const CodeBlock = ({ code, lang }) => {
             navigator.clipboard.writeText(code)
             setCopied(true)
             setTimeout(() => setCopied(false), 1500)
-        } catch (e) { /* clipboard unavailable — silently no-op */ }
+        } catch (e) { /* clipboard unavailable, silently no-op */ }
     }
     return (
         <div className="epsilon-md-pre-wrap">
@@ -34,7 +34,7 @@ const CodeBlock = ({ code, lang }) => {
 
 const renderInline = (text, keyPrefix) => {
     // Split on **bold**, *italic*/_italic_, `code`, and [[type:text]] inline
-    // callouts — order matters so ** is matched before single *.
+    // callouts, order matters so ** is matched before single *.
     const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|_[^_]+_|\[\[(?:success|warning|error|info):[^\]]+\]\])/g
     const parts = text.split(pattern).filter((p) => p !== '')
     return parts.map((part, i) => {
@@ -61,7 +61,7 @@ const isTableSeparatorLine = (line) => /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\
 
 const parseTableRow = (line) => {
     const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '')
-    // Splits on unescaped pipes only — a literal `\|` inside a cell stays intact.
+    // Splits on unescaped pipes only, a literal `\|` inside a cell stays intact.
     return trimmed.split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, '|'))
 }
 

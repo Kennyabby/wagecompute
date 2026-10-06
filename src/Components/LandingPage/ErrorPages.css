@@ -213,3 +213,28 @@
     font-size: 28px;
   }
 }
+
+/* ---- Spacing pass -------------------------------------------------------
+   The error, licence-expired and payment-complete screens are short, centred
+   pages. These move their rhythm onto the shared scale and tighten it on a
+   phone, where 60px of card padding ate most of a small screen.
+   ---------------------------------------------------------------------- */
+
+.error-page { padding: var(--ds-s10, 40px) var(--ds-pad-x, 24px); }
+.error-container { padding: var(--ds-s14, 56px) var(--ds-s12, 48px); }
+.error-icon-box { margin: 0 auto var(--ds-s8, 32px); }
+.error-info-card { padding: var(--ds-s6, 24px); margin-bottom: var(--ds-s8, 32px); gap: var(--ds-s5, 20px); }
+.error-actions { gap: var(--ds-s5, 20px); }
+
+@media (max-width: 768px) {
+  .error-page { padding: var(--ds-s8, 32px) var(--ds-pad-x, 20px); }
+  .error-container { padding: var(--ds-s8, 32px) var(--ds-s6, 24px); }
+  .error-icon-box { margin-bottom: var(--ds-s6, 24px); }
+}
+@media (max-width: 480px) {
+  .error-container { padding: var(--ds-s7, 28px) var(--ds-s5, 20px); }
+  .error-actions { flex-direction: column; align-items: stretch; }
+  .error-actions .btn-primary,
+  .error-actions .btn-secondary,
+  .error-actions .btn-back { width: 100%; text-align: center; justify-content: center; }
+}

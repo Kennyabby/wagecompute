@@ -563,9 +563,9 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
     // Unrecovered inventory-reconciliation shortage charges for this employee
     // (Post Shortage on the reconciliation page debits their receivable, but
     // the deduction still has to actually be included in a payroll run to
-    // clear it — see accounting.js's attendance posting, which already nets
+    // clear it, see accounting.js's attendance posting, which already nets
     // `payee.shortages` against this same receivable). Purely informational
-    // + an explicit "Apply" action — never auto-added, unlike the sales
+    // + an explicit "Apply" action, never auto-added, unlike the sales
     // shortage below, so it never silently overwrites a manual edit.
     const [outstandingInventoryShortage, setOutstandingInventoryShortage] = useState(0)
     const [appliedInventoryShortage, setAppliedInventoryShortage] = useState(0)
@@ -589,7 +589,7 @@ const PayAttendance = ({att, prevAtt, curAtt, setPrevDebt, setDebtDue, setShorta
         setAppliedInventoryShortage(outstandingInventoryShortage)
         // Marked recovered immediately on Apply rather than after the payroll
         // batch actually posts (that save is a fire-and-forget click handler
-        // below with no reliable success callback to hook into) — the
+        // below with no reliable success callback to hook into), the
         // acceptable tradeoff for a minimal settlement surface: if this
         // payslip is never actually saved, re-open the reconciliation to
         // re-charge, which is rare.

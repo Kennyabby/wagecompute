@@ -18,7 +18,7 @@ export async function exportReceiptsTableToPDF({ payPointAccounts, dbName, filte
   } else {
     totalAmount = filteredReceipts.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
   }
-  // Logo (only if the tenant actually uploaded one — never a platform default)
+  // Logo (only if the tenant actually uploaded one, never a platform default)
   const logo = await loadPdfImage(logoUrl);
   const titleX = marginLeft + (logo ? 16 : 0);
   if (logo) {
@@ -221,7 +221,7 @@ export async function exportSummaryMatrixToPDF({
   const colWidthBase = Math.max(28, Math.min(60, (290 / columns.length))); // simple width calc
   const colWidths = new Array(columns.length).fill(colWidthBase);
 
-  // Logo (only if the tenant actually uploaded one — never a platform default)
+  // Logo (only if the tenant actually uploaded one, never a platform default)
   const logo = await loadPdfImage(logoUrl);
   const titleX = marginLeft + (logo ? 16 : 0);
   if (logo) {
@@ -331,7 +331,7 @@ export async function exportPurchaseDocumentToPDF({
   const rowHeight = 8;
   let y = 12;
 
-  // Load images asynchronously — null (not a placeholder) whenever the
+  // Load images asynchronously, null (not a placeholder) whenever the
   // tenant never uploaded one, so nothing gets drawn below rather than
   // this platform's own logo appearing on the tenant's own document.
   const logo = await loadPdfImage(logoUrl);
@@ -342,7 +342,7 @@ export async function exportPurchaseDocumentToPDF({
     return String(value);
   };
 
-  // Add logo at top-left if available — aspect-fit within a 20x20mm box
+  // Add logo at top-left if available, aspect-fit within a 20x20mm box
   // instead of stretching to it, so a non-square uploaded logo isn't
   // distorted.
   if (logo) {
@@ -370,9 +370,9 @@ export async function exportPurchaseDocumentToPDF({
     return amount ? `${amount.toLocaleString()}` : '0';
   };
 
-  // A GRN is a quantity-only receiving record — no cost/Amount figures
+  // A GRN is a quantity-only receiving record, no cost/Amount figures
   // belong on it at all, unlike the PO (what was ordered, priced) and the
-  // Invoice (what was received, priced — what's actually being billed for).
+  // Invoice (what was received, priced, what's actually being billed for).
   const isGrn = type === 'grn';
 
   const documentDate = purchaseDate || fields.postingDate || '';
@@ -518,10 +518,10 @@ export async function exportPurchaseDocumentToPDF({
 
 // Same visual scaffold as exportPurchaseDocumentToPDF (company header/logo,
 // title, date/party block, line-item table, grand total, signature) but for
-// Expenses' actual shape — free-text description/qty/unit-price lines
+// Expenses' actual shape, free-text description/qty/unit-price lines
 // (expenseLines) rather than a product-catalog lookup, and Vendor/Department/
 // Category/Handler fields instead of Purchase's. `type` is 'expensePO' or
-// 'expenseInvoice' — the invoice variant additionally shows the payment
+// 'expenseInvoice', the invoice variant additionally shows the payment
 // method used (expensesBank); the PO variant doesn't, since nothing's been
 // paid yet at PO time.
 export async function exportExpenseDocumentToPDF({

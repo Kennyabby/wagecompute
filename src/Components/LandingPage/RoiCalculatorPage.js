@@ -1,5 +1,5 @@
 /* ============================================================================
-   /roi-calculator — interactive payback model.
+   /roi-calculator, interactive payback model.
    ----------------------------------------------------------------------------
    Deliberately unlike most vendor ROI calculators in three ways: nothing is
    gated behind a form, every assumption is adjustable, and the full method is
@@ -251,6 +251,7 @@ const RoiCalculatorPage = () => {
         eyebrow="How it is calculated"
         title="The whole model, in four lines"
         subtitle="Printed so you can check it rather than trust it. If a line looks wrong for your business, change the inputs or the assumptions above."
+        rail
         split
       >
         <Tiles cols={4}>
@@ -259,7 +260,7 @@ const RoiCalculatorPage = () => {
           ))}
         </Tiles>
 
-        <div style={{ marginTop: 40 }}>
+        <div>
           <Table
             head={['Line', 'Formula', 'Your figure']}
             rows={[

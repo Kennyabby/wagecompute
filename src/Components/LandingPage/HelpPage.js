@@ -1,5 +1,5 @@
 /* ============================================================================
-   /help — help centre.
+   /help, help centre.
    ----------------------------------------------------------------------------
    Redesigned onto the public design system. The enquiry logic is unchanged:
    it still posts to /public/support/enquiry with the same payload shape
@@ -137,7 +137,7 @@ const HelpPage = () => {
         lede="Search the guides and module reference, browse by area, or send us a message. Most answers are faster than waiting for a reply."
         image={heroImg('supportAgent')}
       >
-        <div className="ds-search" style={{ marginTop: 8 }}>
+        <div className="ds-search">
           <input
             type="search"
             value={query}
@@ -196,6 +196,7 @@ const HelpPage = () => {
         eyebrow="Browse by area"
         title="Find the part of the platform you are in"
         subtitle="Each area links to its module page, which explains what it does, what it depends on and what it posts to the ledger."
+        rail
         split
       >
         <Grid cols={3}>
@@ -223,14 +224,16 @@ const HelpPage = () => {
       </Section>
 
       {/* ------------------------------------------------------------ FAQ -- */}
-      <Section id="faq" variant="cream" eyebrow="Common questions" title="The ones we are asked most">
+      <Section
+        rail id="faq" variant="cream" eyebrow="Common questions" title="The ones we are asked most">
         <Container width="narrow">
           <Accordion items={FAQS} />
         </Container>
       </Section>
 
       {/* -------------------------------------------------------- contact -- */}
-      <Section id="contact" eyebrow="Ask us" title="Send the support team a message">
+      <Section
+        rail id="contact" eyebrow="Ask us" title="Send the support team a message">
         <Container width="narrow">
           <form onSubmit={submit}>
             <div className="ds-form-grid">

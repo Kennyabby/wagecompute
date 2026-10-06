@@ -52,7 +52,7 @@ const Accommodation = () => {
     const [accommodationApprovals, setAccommodationApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
     // Split, badge-facing counterparts to accommodationApprovals (left
-    // untouched — it's used for per-booking link matching elsewhere).
+    // untouched, it's used for per-booking link matching elsewhere).
     // Approved is visible only to whoever raised the request or an admin,
     // matching SideNav's green-badge visibility rule.
     const [accommodationPending, setAccommodationPending] = useState([])
@@ -105,7 +105,7 @@ const Accommodation = () => {
     const [curSelectedUnPaidAccommodation, setCurSelectedUnPaidAccommodation] = useState('')
     const [curPaymentAmount, setCurPaymentAmount] = useState(0)
     // Split-bill: the main Payment Amount/Payment Point/Receipt fields above
-    // still cover one payment method (unchanged) — this is an ADDITIONAL
+    // still cover one payment method (unchanged), this is an ADDITIONAL
     // cash leg paid at the same time, so one booking's payment can be split
     // across cash + a bank/other method in a single submission instead of
     // requiring two separate "Make Payment" round trips.
@@ -677,7 +677,7 @@ const Accommodation = () => {
         }
 
         // Booking + GL charge posting (Dr Receivable, Cr Revenue) now happen
-        // together, server-side, in one atomic request — previously this was
+        // together, server-side, in one atomic request, previously this was
         // a bare createDoc insert with no documentNo/idempotency protection
         // and no ledger entry at all.
         const resps = await postWithResumability({
@@ -743,8 +743,8 @@ const Accommodation = () => {
 
         // Payment amount/status/history are now computed server-side from
         // the stored booking (in accommodations/postAccommodationPayment),
-        // and the GL settlement posts atomically in the same request —
-        // previously this whole function computed paymentStatus in the
+        // and the GL settlement posts atomically in the same request.
+        // Previously this whole function computed paymentStatus in the
         // browser and sent it as a raw field update with no ledger entry.
         const primaryLeg = {
             accommodationId: curAccommodation?._id,
@@ -759,7 +759,7 @@ const Accommodation = () => {
         }
         const cashSplit = Number(splitCashAmount) || 0
         // Split-bill: an additional cash leg paid alongside the main
-        // payPoint above, in the same submission — cash needs no receipt
+        // payPoint above, in the same submission, cash needs no receipt
         // number/image (consistent with every other cash entry point in
         // this form). Sending `payments` (array) instead of the legacy
         // `payment` (single object) only when there's actually a split

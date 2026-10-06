@@ -213,7 +213,7 @@ const SalesReport = ({
             image: { type: 'jpeg', quality: 0.98 },
             // useCORS: without it, a remote (Google Drive-hosted) logo image
             // taints html2canvas's canvas and renders blank in the exported
-            // PDF instead of throwing — confirmed working elsewhere in this
+            // PDF instead of throwing, confirmed working elsewhere in this
             // app (BusinessPartners.js's QR code image uses the same flag).
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'landscape' }

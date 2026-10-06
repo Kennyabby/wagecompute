@@ -42,7 +42,7 @@ export function getTerminalId() {
     }
     return id;
   } catch (e) {
-    // localStorage unavailable (private mode, etc.) — fall back to a per-session id.
+    // localStorage unavailable (private mode, etc.), fall back to a per-session id.
     return uuid().split('-')[0].toUpperCase();
   }
 }

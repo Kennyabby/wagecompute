@@ -24,7 +24,7 @@ const Signup = () => {
     country: "Nigeria",
     state: ""
   });
-  // Epsilon is a paid, per-seat add-on — never bundled into signup for free.
+  // Epsilon is a paid, per-seat add-on, never bundled into signup for free.
   // Opting in here only carries the requested seat count to signupNewCompany
   // as an intent signal; the account is created with epsilonSeats: 0
   // regardless, and (when requested) the new admin is sent to the dedicated
@@ -94,7 +94,7 @@ const Signup = () => {
   const [isVerifying, setIsVerifying] = useState(false);
 
   // 'online' (existing flow, unchanged below) vs 'offline' (purchases a
-  // desktop-app license instead of creating a hosted tenant — see
+  // desktop-app license instead of creating a hosted tenant, see
   // /offline-license/register in wageserver/UserModule/OfflineLicense).
   const [usageType, setUsageType] = useState('online');
   const [moduleCatalog, setModuleCatalog] = useState([]);
@@ -111,7 +111,7 @@ const Signup = () => {
     }).catch(() => {});
   }, [server]);
 
-  // Client-side dependency expansion for snappy checkbox UX only — the
+  // Client-side dependency expansion for snappy checkbox UX only, the
   // server (resolveModuleDependencies, called from offlineLicense.js) always
   // re-resolves and is authoritative for what's actually billed/granted.
   const toggleModule = (key) => {
@@ -288,7 +288,7 @@ const Signup = () => {
         targetUrl = `${protocol}//${field.subdomain}.${rootDomain}/login`;
       }
 
-      // localStorage is per-origin — a flag set here (the central signup
+      // localStorage is per-origin, a flag set here (the central signup
       // origin) would never be visible on the tenant's own subdomain, so
       // this is carried as a query param instead; the tenant's own Login
       // page (same-origin as its own Settings page) is what actually
@@ -551,9 +551,9 @@ const Signup = () => {
                     </div>
                   </div>
 
-                  {/* Epsilon is a paid, per-seat add-on — this signup form has
+                  {/* Epsilon is a paid, per-seat add-on, this signup form has
                       no general module picker (that's an intentional, narrow
-                      scope decision — see the Epsilon plan), just this one
+                      scope decision, see the Epsilon plan), just this one
                       opt-in. Checking it never grants seats for free; it only
                       sends a seat-count intent to signupNewCompany, which the
                       new admin then pays for from Settings > Billing right
@@ -565,7 +565,7 @@ const Signup = () => {
                         checked={wantsEpsilon}
                         onChange={(e) => setWantsEpsilon(e.target.checked)}
                       />
-                      <span>Add Epsilon AI Assistant (paid, billed per seat — you'll pay after signup)</span>
+                      <span>Add Epsilon AI Assistant (paid, billed per seat, and you'll pay after signup)</span>
                     </label>
                     {wantsEpsilon && (
                       <div className="input-with-icon" style={{ marginTop: '10px', maxWidth: '160px' }}>
@@ -626,7 +626,7 @@ const Signup = () => {
 
                   <div className="input-group" style={{ marginTop: '10px' }}>
                     <label>Select Modules (yearly)</label>
-                    {/* Epsilon excluded — it's never available on the offline/
+                    {/* Epsilon excluded, it's never available on the offline/
                         desktop build at all (no Anthropic key, no per-seat
                         billing there), so it can't be offered as a yearly
                         desktop license module. */}
@@ -676,7 +676,7 @@ const Signup = () => {
             </div>
             <h1>Join Enterprise Compute</h1>
             <div className="visual-divider"></div>
-            <p>The all-in-one business management platform. Streamline operations, empower employees, and grow faster.</p>
+            <p>Run sales, stock, people and your accounts in one place, on records that agree with each other.</p>
 
             <div className="visual-stats">
               <div className="stat-item">

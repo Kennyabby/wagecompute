@@ -169,11 +169,11 @@
     animation: connectivity-pulse 1.5s ease-in-out infinite;
 }
 
-/* Desktop build only: "Offline" here just means no internet — the app's own
+/* Desktop build only: "Offline" here just means no internet, the app's own
    server is local and unaffected, so nothing actually stops working. Shown
    as a calm, positive signal instead of the web build's red alarm styling,
    which would wrongly suggest something's broken. No pulsing animation
-   either, for the same reason — that's an attention-getting cue for a real
+   either, for the same reason, that's an attention-getting cue for a real
    problem, and this isn't one. */
 .connectivity-indicator.offline.is-desktop {
     color: #6ee7b7;
@@ -712,7 +712,7 @@
     font-weight: 700;
 }
 
-/* Single positioned anchor for both badges — lets the green "approved" one
+/* Single positioned anchor for both badges, lets the green "approved" one
    and the red "pending" one sit side by side instead of both trying to
    occupy the same absolute top/right corner (which .navdivcount's own
    position:absolute would otherwise cause when two of them render at once). */

@@ -7,7 +7,7 @@ import { loadPdfImage, fitImageBox } from './pdfLogo';
 // <table className='reconcile-review-table'>), in the same order, so the
 // export is never missing a column the user can already see on screen.
 // Product Id is kept as an extra reference column even though the on-screen
-// table only shows the product name — a spreadsheet export benefits from a
+// table only shows the product name, a spreadsheet export benefits from a
 // stable identifier, and having it doesn't remove anything the table shows.
 const RECONCILIATION_COLUMNS = [
     { name: 'Product Id', reference: 'productId' },
@@ -48,7 +48,7 @@ const toReportRow = (line = {}) => ({
     salesDifference: round2(line.salesDifference),
 });
 
-// A TOTAL row (column-wise sum of every numeric field) — matches the same
+// A TOTAL row (column-wise sum of every numeric field), matches the same
 // top/bottom TOTAL rows the on-screen table now shows around its product
 // lines, so the export's rows are a full match, not just the product lines.
 const toTotalsRow = (rows = []) => rows.reduce((acc, row) => {
@@ -78,7 +78,7 @@ export const exportReconciliationPDF = async ({ companyInfo, postingDate, locati
     const allRows = [totalsRow, ...rows, totalsRow];
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Logo — only if the tenant actually uploaded one (never a platform default)
+    // Logo, only if the tenant actually uploaded one (never a platform default)
     const logo = await loadPdfImage(companyInfo?.logoUrl);
     const textX = 14 + (logo ? 20 : 0);
     if (logo) {
@@ -93,7 +93,7 @@ export const exportReconciliationPDF = async ({ companyInfo, postingDate, locati
     doc.text(companyInfo?.name || '', textX, 15);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Inventory Reconciliation — ${location}`, textX, 23);
+    doc.text(`Inventory Reconciliation: ${location}`, textX, 23);
     doc.text(`Posting Date: ${postingDate}`, textX, 29);
 
     autoTable(doc, {

@@ -1,5 +1,5 @@
 /* ============================================================================
-   /products/:slug — one page per module.
+   /products/:slug, one page per module.
    ----------------------------------------------------------------------------
    Driven entirely from content/products.js, so adding a module is a content
    change rather than a new component. Section order follows sap.com's product
@@ -126,9 +126,9 @@ const ProductDetailPage = () => {
           <Button variant="primary" to="/signup" navigate={navigate}>Start a free trial</Button>
           <Button variant="secondary" to="/pricing" navigate={navigate}>See pricing</Button>
         </ButtonRow>
-        <p className="ds-body sm" style={{ marginTop: 20, marginBottom: 0 }}>
+        <p className="ds-note">
           <span className="ds-tag">{tierLabel}</span>
-          <span style={{ marginLeft: 12 }}>{CATEGORY_NAME[product.category]}</span>
+          <span className="ds-inline-meta">{CATEGORY_NAME[product.category]}</span>
         </p>
       </Hero>
 
@@ -143,6 +143,7 @@ const ProductDetailPage = () => {
         eyebrow="Capabilities"
         title={`What ${product.name} does`}
         subtitle={product.summary}
+        rail
         split
       >
         <Tiles cols={3}>
@@ -160,14 +161,15 @@ const ProductDetailPage = () => {
           eyebrow="How it works"
           title="The sequence, start to finish"
           subtitle="Each step produces a record. Nothing in this chain requires a second person to retype what the previous step already captured."
-          split
+          rail
+        split
         >
           <Grid cols={product.howItWorks.length === 4 ? 4 : 3}>
             {product.howItWorks.map((step, index) => (
               <div key={step.step}>
                 <div className="ds-fact" style={{ borderTopWidth: 3 }}>
                   <div className="ds-fact-value" style={{ fontSize: '2rem' }}>{String(index + 1).padStart(2, '0')}</div>
-                  <h3 className="ds-h4" style={{ marginTop: 14, marginBottom: 6 }}>{step.step}</h3>
+                  <h3 className="ds-h4 ds-step-title">{step.step}</h3>
                   <p className="ds-body sm ds-mb-0">{step.text}</p>
                 </div>
               </div>
@@ -233,7 +235,8 @@ const ProductDetailPage = () => {
 
       {/* ------------------------------------------------------------ FAQ -- */}
       {product.faqs && (
-        <Section id="faq" eyebrow="FAQ" title="Questions people ask about this module">
+        <Section
+        rail id="faq" eyebrow="FAQ" title="Questions people ask about this module">
           <Container width="narrow" className="ds-mt-0" >
             <Accordion items={product.faqs} />
           </Container>
@@ -243,6 +246,7 @@ const ProductDetailPage = () => {
       {/* ------------------------------------------------- same category --- */}
       {sameCategory.length > 0 && (
         <Section
+        rail
           variant="cream"
           eyebrow={CATEGORY_NAME[product.category]}
           title="Other modules in this group"

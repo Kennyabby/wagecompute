@@ -90,7 +90,7 @@ const Expenses = () => {
     const [expenseFilter, setExpenseFilter] = useState('')
     const [expenseAccount, setExpenseAccount] = useState({})
     const [expenseApprovals, setExpenseApprovals] = useState([])
-    // Split, badge-facing counterparts to expenseApprovals (left untouched —
+    // Split, badge-facing counterparts to expenseApprovals (left untouched,
     // it deliberately mixes pending+approved for the existing merged list
     // view). Approved is visible only to whoever raised the request or an
     // admin, matching SideNav's green-badge visibility rule.
@@ -102,11 +102,11 @@ const Expenses = () => {
 
     const emptyExpenseLine = { description: '', quantity: 1, unitPrice: '' }
     // Split-bill: an expense's payment can be divided across multiple
-    // payment methods in one submission — one {payPoint, amount} per leg,
+    // payment methods in one submission, one {payPoint, amount} per leg,
     // summing to expensesAmount (enforced in addExpenses). expensesBank is
     // still set (to the first/primary leg) on submit for every existing
     // reader of that single field (deriveExpenseEntries falls back to it
-    // for legacy docs, reports/pdfUtils display it) — paymentMethods is the
+    // for legacy docs, reports/pdfUtils display it), paymentMethods is the
     // authoritative source once present.
     const emptyPaymentMethod = { payPoint: '', amount: '' }
     const defaultFields = {
@@ -118,7 +118,7 @@ const Expenses = () => {
         paymentMethods: [{ ...emptyPaymentMethod }],
         expensesVendor: '',
         expensesDescription: '',
-        // Line items replace the old free-text-only description — each
+        // Line items replace the old free-text-only description, each
         // line's amount is derived (quantity * unitPrice), never entered
         // directly, and the sum must equal expensesAmount before posting
         // (enforced in addExpenses). expensesDescription is still populated
@@ -379,7 +379,7 @@ const Expenses = () => {
         setCurApproval(null)
         setCurExpense(exp)
         // Legacy expenses (posted before split-bill existed) only have the
-        // single expensesBank field — synthesize a one-row paymentMethods
+        // single expensesBank field, synthesize a one-row paymentMethods
         // array so they still display correctly instead of showing an
         // empty payment methods list.
         const paymentMethods = Array.isArray(exp.paymentMethods) && exp.paymentMethods.length
@@ -473,7 +473,7 @@ const Expenses = () => {
             const expenseAmount = round2(fields.expensesAmount)
             if (Math.abs(linesTotal - expenseAmount) > 0.01) {
                 setAlertState('error')
-                setAlert(`Item lines total ₦${linesTotal.toLocaleString()} but Expenses Amount is ₦${expenseAmount.toLocaleString()} — they must match before posting.`)
+                setAlert(`Item lines total ₦${linesTotal.toLocaleString()} but Expenses Amount is ₦${expenseAmount.toLocaleString()}. They must match before posting.`)
                 setAlertTimeout(6000)
                 return
             }
@@ -486,12 +486,12 @@ const Expenses = () => {
             const paymentTotal = getPaymentMethodsTotal(paymentRows)
             if (Math.abs(paymentTotal - expenseAmount) > 0.01) {
                 setAlertState('error')
-                setAlert(`Payment methods total ₦${paymentTotal.toLocaleString()} but Expenses Amount is ₦${expenseAmount.toLocaleString()} — they must match before posting.`)
+                setAlert(`Payment methods total ₦${paymentTotal.toLocaleString()} but Expenses Amount is ₦${expenseAmount.toLocaleString()}. They must match before posting.`)
                 setAlertTimeout(6000)
                 return
             }
             // expensesDescription is auto-derived from the lines (rather than
-            // typed separately) — deriveExpenseEntries (GL note) and
+            // typed separately), deriveExpenseEntries (GL note) and
             // ExpensesReport still read this field, so keep it populated.
             const derivedDescription = lines.map((line) => line.description).filter(Boolean).join(', ')
             const nextFields = {
@@ -500,7 +500,7 @@ const Expenses = () => {
                 expensesDescription: derivedDescription || fields.expensesDescription,
                 paymentMethods: paymentRows,
                 // Kept in sync (first/primary leg) for every existing reader
-                // of this single field — deriveExpenseEntries's legacy
+                // of this single field, deriveExpenseEntries's legacy
                 // fallback, reports, printed documents.
                 expensesBank: paymentRows[0].payPoint,
             }
@@ -541,7 +541,7 @@ const Expenses = () => {
                 setAlertState('success')
                 // /removeDoc reverses any posted GL entries for this expense
                 // before deleting it (server-side, aborts the delete instead
-                // of ever leaving the ledger inconsistent) — the original
+                // of ever leaving the ledger inconsistent), the original
                 // toast gave no indication of that, reading identically to
                 // "deleted, ledger untouched".
                 setAlert('Expense deleted and its ledger entries reversed.')
@@ -614,8 +614,8 @@ const Expenses = () => {
         html2pdf().set(options).from(element).save();
     };
 
-    // PO is available as soon as the expense exists; Payment Invoice too —
-    // per the confirmed one-step flow, an Expense settles in full the moment
+    // PO is available as soon as the expense exists; Payment Invoice too.
+    // Per the confirmed one-step flow, an Expense settles in full the moment
     // it's submitted, so there's no separate "mark as paid" gate here (unlike
     // Purchase, which now has one). Both print together once saved.
     const printExpenseDocument = async (expenseRecord, type) => {
@@ -928,7 +928,7 @@ const Expenses = () => {
                                             />
                                         }
                                         {(companyRecord?.status === 'admin' || companyRecord?.permissions.includes('print_purchase_doc')) && (
-                                            // Available on every posted expense card directly — printing a PO/
+                                            // Available on every posted expense card directly, printing a PO/
                                             // Payment Invoice shouldn't require first expanding the card's details.
                                             <div className='purchase-doc-print-actions' onClick={(e) => e.stopPropagation()}>
                                                 <button type='button' onClick={() => printExpenseDocument(exp, 'expensePO')}>Print PO</button>

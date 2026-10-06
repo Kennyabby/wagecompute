@@ -146,7 +146,7 @@ const BusinessPartners = () => {
     }
 
     // Drill-down modal for the Total/Paid/Balance due metrics on a
-    // vendor/customer card — { partnerId, kind: 'total'|'paid'|'balance', isVendor }.
+    // vendor/customer card, { partnerId, kind: 'total'|'paid'|'balance', isVendor }.
     const [drillDown, setDrillDown] = useState(null)
 
     const getDrillDownRows = (partnerId, kind, isVendor) => {
@@ -169,9 +169,9 @@ const BusinessPartners = () => {
                 date: row.postingDate, doc: row.receiptNo || row.paymentNo, type: 'Customer Payment', amount: Number(row.amount) || 0, method: row.payPoint, appliedTo: row.invoiceNo || 'General',
             }))
         }
-        // 'balance' — same debit documents as 'total', each carrying its own
+        // 'balance', same debit documents as 'total', each carrying its own
         // remaining balance after netting payments against it (tagged first,
-        // then the partner's shared oldest-first pool) — a single-partner
+        // then the partner's shared oldest-first pool), a single-partner
         // version of the same logic the server's calculateAging uses.
         const debitDocs = isVendor
             ? [
@@ -591,7 +591,7 @@ const BusinessPartners = () => {
                 <div className='bp-drilldown-panel' onClick={(e) => e.stopPropagation()}>
                     <div className='bp-drilldown-header'>
                         <div>
-                            <h3>{title} — {partnerName}</h3>
+                            <h3>{title}: {partnerName}</h3>
                             <p className='bp-muted'>{rows.length} document{rows.length === 1 ? '' : 's'}</p>
                         </div>
                         <button className='bp-soft-btn' onClick={() => setDrillDown(null)}>Close</button>

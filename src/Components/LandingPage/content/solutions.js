@@ -1,5 +1,5 @@
 /* ============================================================================
-   Content for /solutions — the "find yourself on this page" entry points.
+   Content for /solutions, the "find yourself on this page" entry points.
    ----------------------------------------------------------------------------
    Three axes, the set that netsuite.com and sap.com both converged on and
    that works because buyers arrive thinking in exactly one of them: how big

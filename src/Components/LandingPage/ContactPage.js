@@ -1,5 +1,5 @@
 /* ============================================================================
-   /contact — one form, routed by category.
+   /contact, one form, routed by category.
    ----------------------------------------------------------------------------
    Submits to the same public endpoint the help centre already uses
    (/public/support/enquiry), so there is no new backend surface and no
@@ -135,6 +135,7 @@ const ContactPage = () => {
         eyebrow="What do you need?"
         title="Pick a route"
         subtitle="Choosing one sets the category on the form below, which is what determines who picks it up."
+        rail
         split
       >
         <Grid cols={3}>
@@ -152,7 +153,8 @@ const ContactPage = () => {
       </Section>
 
       {/* ----------------------------------------------------------- form -- */}
-      <Section id="form" variant="cream" eyebrow="Send a message" title="One form, straight to a person">
+      <Section
+        rail id="form" variant="cream" eyebrow="Send a message" title="One form, straight to a person">
         <Container width="narrow">
           <form onSubmit={submit}>
             <div className="ds-form-grid">

@@ -133,7 +133,7 @@ const Sales = () => {
     // ?openGlSource=Rentals:<rentalId> opens that rental's existing view
     // panel; ?openGlSource=Sales:<saleId>-debt-<n> or -recovery-<n> (the
     // legacy debt/recovery collection's composite sourceId) opens the
-    // session it belongs to — there's no stable per-row id for one debt/
+    // session it belongs to, there's no stable per-row id for one debt/
     // recovery line today, so the session view is as precise as this gets.
     const glLocation = useLocation()
     const glDeepLinkAppliedRef = useRef(false)
@@ -185,7 +185,7 @@ const Sales = () => {
     const [rentalsApprovals, setRentalsApprovals] = useState([])
     const [recoveryApprovals, setRecoveryApprovals] = useState([])
     // Green "approved" counterparts to the three red pending-badge arrays
-    // above — same per-section split (sales/rentals/recovery), but visible
+    // above, same per-section split (sales/rentals/recovery), but visible
     // only to whoever raised the request plus admins (never just any
     // approver), matching SideNav's badge visibility rule exactly.
     const [salesApproved, setSalesApproved] = useState([])
@@ -232,7 +232,7 @@ const Sales = () => {
     // Physical-inventory-reconciliation shortage recovery is a distinct kind
     // of recovery from sales debt (not tied to a specific `recoverySales`
     // record, not classified by `recoveryReasons` which are all about missing
-    // sales accounting) — kept as its own flag + card rather than overloading
+    // sales accounting), kept as its own flag + card rather than overloading
     // the existing reason list with an unrelated meaning.
     const defaultShortageRecoveryFields = {
         isInventoryShortage: true,
@@ -761,7 +761,7 @@ const Sales = () => {
                     }
                     kmultSessions = (structuredClone({ sessionCopy1 })).sessionCopy1
                     // The kitchen-split clone must be tagged as belonging to
-                    // 'kitchen' at the session level too — otherwise, when the
+                    // 'kitchen' at the session level too, otherwise, when the
                     // session's own cashier (session.employee_id) is the one
                     // whose totals are being tallied for wh==='kitchen', the
                     // `session.wrh === wh` check below (used to avoid
@@ -1157,7 +1157,7 @@ const Sales = () => {
                     }
                     kmultSessions = (structuredClone({ sessionCopy1 })).sessionCopy1
                     // The kitchen-split clone must be tagged as belonging to
-                    // 'kitchen' at the session level too — otherwise, when the
+                    // 'kitchen' at the session level too, otherwise, when the
                     // session's own cashier (session.employee_id) is the one
                     // whose totals are being tallied for wh==='kitchen', the
                     // `session.wrh === wh` check below (used to avoid
@@ -1664,16 +1664,16 @@ const Sales = () => {
                     setIsView(true)
                     setFields([...(posted.saleDoc.record || [])])
                     appendAutoPostLog(`Automatic sales posting completed for ${targetDate}.`, 'success')
-                    // Settings > Payment Methods > "Automatic Account Clearing" —
-                    // sweeps any auto-clear-enabled method's balance to its
+                    // Settings > Payment Methods > "Automatic Account Clearing".
+                    // Sweeps any auto-clear-enabled method's balance to its
                     // receiving account for THIS day, once its automatic sales
-                    // posting is done. Fire-and-forget, deliberately NOT awaited —
-                    // this is a best-effort side effect (errors are swallowed
+                    // posting is done. Fire-and-forget, deliberately NOT awaited.
+                    // This is a best-effort side effect (errors are swallowed
                     // either way, and it's safe to also fire from
                     // PointOfSales.js's Session Manager stop, idempotent per
                     // day/method), so it must never add its own network round
-                    // trip to the critical path of posting each pending day —
-                    // that's real, avoidable latency in a loop that can run
+                    // trip to the critical path of posting each pending day.
+                    // That's real, avoidable latency in a loop that can run
                     // across a multi-day backlog.
                     fetchServer("POST", { postingDate: formatDateToDefault(targetDate) }, "accounting/runPaymentMethodClearing", server).catch(() => {})
                 }
@@ -1854,11 +1854,11 @@ const Sales = () => {
         }))
 
         // Green badges: only the requester (via handlerId) or an admin should
-        // see these — never just any employee who happens to hold the
+        // see these, never just any employee who happens to hold the
         // approve permission for that section, since a plain approver isn't
         // who's waiting on the outcome. Disappears on its own the moment the
-        // Approvals doc is posted or deleted, same as the red badges above —
-        // both are pure live counts of the shared approvals array.
+        // Approvals doc is posted or deleted, same as the red badges above.
+        // Both are pure live counts of the shared approvals array.
         const isMine = (appr) => (
             companyRecord?.status === 'admin'
             || companyRecord?.access === 'admin'
@@ -2525,7 +2525,7 @@ const Sales = () => {
 
             // Session posting + GL debt entries (Dr Employee Receivable, Cr
             // Revenue for any row with a shortfall) now post together,
-            // server-side, in one atomic request — previously a bare
+            // server-side, in one atomic request, previously a bare
             // createDoc insert with no documentNo/idempotency protection and
             // no ledger entry for the debt at all.
             const resps = await postWithResumability({
@@ -2790,7 +2790,7 @@ const Sales = () => {
         const debtFields = recoveryFields.filter((field) => !field.isInventoryShortage)
 
         // Inventory shortage recoveries already go through a dedicated,
-        // atomic, GL-posting route from Phase 1 — sequential here (not the
+        // atomic, GL-posting route from Phase 1, sequential here (not the
         // previous forEach(async...), which never awaited its callback and
         // let every field in the batch race with no ordering).
         for (const field of inventoryShortageFields) {
@@ -2822,7 +2822,7 @@ const Sales = () => {
 
         // Sales-debt and employee-debt-list recoveries (plus any
         // employee-to-employee transfers they trigger) now post together,
-        // server-side, in one atomic request — matching the correct
+        // server-side, in one atomic request, matching the correct
         // Sales-row-vs-Employees-list target and posting the real GL
         // settlement (Dr Cash/Bank/Salary Payable/Employee Receivable, Cr
         // Employee Receivable) for each, instead of up to three separate,
@@ -3076,7 +3076,7 @@ const Sales = () => {
 
         // Booking + GL charge (Dr Receivable, Cr Revenue) + payment
         // settlement (if a payment amount was entered) now post together,
-        // server-side, in one atomic request — previously a bare createDoc
+        // server-side, in one atomic request, previously a bare createDoc
         // insert with no documentNo/idempotency protection and no ledger
         // entry at all.
         const resps = await postWithResumability({
@@ -3762,7 +3762,7 @@ const Sales = () => {
                                         <div>Cash: <b>{'₦' + totalCashSales.toLocaleString()}</b></div>
                                         <div>Debts: <b>{'₦' + (Number(totalDebt) + Number(totalShortage) - Number(totalDebtRecovered ? totalDebtRecovered : 0)).toLocaleString()}</b></div>
                                         <div>Recovered: <b>{'₦' + (Number(totalDebtRecovered ? totalDebtRecovered : 0)).toLocaleString()}</b></div>
-                                        {/* Distinct from "Debts" (till/cash shortage) above — this is the
+                                        {/* Distinct from "Debts" (till/cash shortage) above, this is the
                                         physical-inventory-reconciliation shortage charged to staff for this
                                         day, recoverable from the Recovery section below or the Reconcile
                                         Inventory modal. */}
@@ -4304,7 +4304,7 @@ const Sales = () => {
                                         setRecoveryFields((fields) => {
                                             // recoveryMaxAmount reuses the same cap the existing
                                             // recoveryAmount onChange handler already enforces
-                                            // (handleRecoveryFieldChange) — no new validation path needed.
+                                            // (handleRecoveryFieldChange), no new validation path needed.
                                             return [...fields, { ...defaultShortageRecoveryFields, recoveryMaxAmount: outstandingInventoryShortage }]
                                         })
                                     }
@@ -4317,7 +4317,7 @@ const Sales = () => {
                             salesOpts === 'recovery' && recoveryFields.map((field, index) => {
                                 if (field.isInventoryShortage) {
                                     // Compact card for the physical-inventory-reconciliation
-                                    // shortage recovery type — same delete/upload helpers as
+                                    // shortage recovery type, same delete/upload helpers as
                                     // the sales-debt card below, no recoverySales/recoveryReason
                                     // selectors since neither concept applies here.
                                     return (
@@ -4329,7 +4329,7 @@ const Sales = () => {
                                                 }}
                                             />
                                             <div className='inpcov'>
-                                                <div>Inventory Shortage Recovery — Outstanding: ₦{Number(field.recoveryMaxAmount || 0).toLocaleString()}</div>
+                                                <div>Inventory Shortage Recovery, outstanding: ₦{Number(field.recoveryMaxAmount || 0).toLocaleString()}</div>
                                             </div>
                                             <input
                                                 className='forminp recoveryReceipt'

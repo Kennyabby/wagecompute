@@ -3,7 +3,7 @@
    ----------------------------------------------------------------------------
    The About page follows SAP's company-information structure: a fast-fact
    row, a mission block, a values grid, a leadership section and then the
-   long-form story — which here is the existing PlatformStory walkthrough,
+   long-form story, which here is the existing PlatformStory walkthrough,
    kept exactly as it was and simply re-housed in the new layout.
 
    LEADERSHIP is intentionally empty of invented people. Fabricating named
@@ -62,7 +62,7 @@ export const VALUES = [
  * What the section renders instead is the part that is true and that a
  * visitor actually came for: how the company is organised, who owns what,
  * and how to reach a person. Set `placeholder: false` and fill `people`
- * once the team page is approved — the page renders profiles automatically
+ * once the team page is approved, the page renders profiles automatically
  * and drops the note.
  */
 export const LEADERSHIP = {
@@ -160,7 +160,7 @@ export const COMMUNITY_PILLARS = [
   {
     title: 'Events & office hours',
     image: 'businessPresentation',
-    text: 'Live implementation sessions, module deep dives and open office hours with the product team every other week.',
+    text: 'Live implementation sessions, detailed module walkthroughs and open office hours with the product team every other week.',
     links: ['Upcoming sessions', 'On-demand recordings', 'Office hours'],
     to: '/events',
   },

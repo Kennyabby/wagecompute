@@ -1,11 +1,11 @@
-// Epsilon — the AI assistant launcher + chat panel, mounted once at the
+// Epsilon, the AI assistant launcher + chat panel, mounted once at the
 // App.js root (alongside Notify/the update-progress banner) so it's present
 // across every module without per-page wiring. Talks to
 // wageserver/UserModule/AIAssistant/epsilon.js's streaming
 // POST /ai/epsilon/message/stream (via streamEpsilon.js), the blocking
 // POST /ai/epsilon/message (kept only for the confirm-action follow-ups),
 // GET /ai/epsilon/conversations, GET /ai/epsilon/history, and
-// POST /ai/epsilon/clear — the same authenticated fetchServer every other
+// POST /ai/epsilon/clear, the same authenticated fetchServer every other
 // component already uses, so it's automatically tenant/permission-scoped to
 // whoever is logged in.
 import './Epsilon.css'
@@ -25,8 +25,8 @@ const STYLE_STORAGE_KEY = 'epsilon-response-style'
 const THEME_STORAGE_KEY = 'epsilon-theme'
 const AUTO_SPEAK_STORAGE_KEY = 'epsilon-auto-speak'
 
-// Friendly status text per backend tool name (see epsilon.js's TOOLS list) —
-// falls back to a title-cased version of the raw name for any tool not
+// Friendly status text per backend tool name (see epsilon.js's TOOLS list).
+// Falls back to a title-cased version of the raw name for any tool not
 // listed here, so a newly-added tool never shows up blank.
 const TOOL_STATUS_LABELS = {
     diagnose_blockage: 'Checking why that’s blocked…',
@@ -68,7 +68,7 @@ const toolStatusLabel = (toolName) => (
 )
 
 // Friendly names for the raw Anthropic model ids epsilon.js's 'model_start'/
-// 'done' events carry — falls back to the raw id for any model not listed
+// 'done' events carry, falls back to the raw id for any model not listed
 // here so a future/renamed model never shows up blank.
 const MODEL_LABELS = {
     'claude-sonnet-5': 'Sonnet 5',
@@ -84,7 +84,7 @@ const formatTokens = (n) => {
     return String(num)
 }
 
-// "resets at 4:32 PM (in 45m)" — short enough for an inline footer.
+// "resets at 4:32 PM (in 45m)", short enough for an inline footer.
 const formatResetIn = (resetAt) => {
     if (!resetAt) return ''
     const diffMs = Number(resetAt) - Date.now()
@@ -132,7 +132,7 @@ const resolveDefaultTheme = () => {
 const Epsilon = () => {
     const { server, fetchServer, company, companyRecord, centralCompany } = useContext(ContextProvider)
     // Same shape every real export caller already builds (e.g.
-    // BusinessPartners.js) — exportUtils.js's generatePDF reads
+    // BusinessPartners.js), exportUtils.js's generatePDF reads
     // companyInfo.name directly with no fallback, so this must never be
     // undefined by the time an export button is clickable.
     const companyInfo = useMemo(() => ({
@@ -149,11 +149,11 @@ const Epsilon = () => {
     const [draft, setDraft] = useState('')
     const [sending, setSending] = useState(false)
     const [toolStatus, setToolStatus] = useState(null)
-    // Live "which model / how many tokens so far" indicator — mirrors what
+    // Live "which model / how many tokens so far" indicator, mirrors what
     // this coding assistant's own UI shows while thinking, per the user's
     // explicit request. currentModel/liveTokens reset to null/0 at the start
     // of every turn and stop updating once 'done' lands (the final, settled
-    // usage figures then live on the message itself — see m.usage below).
+    // usage figures then live on the message itself, see m.usage below).
     const [currentModel, setCurrentModel] = useState(null)
     const [liveTokens, setLiveTokens] = useState(0)
     const [historyLoaded, setHistoryLoaded] = useState(false)
@@ -167,13 +167,13 @@ const Epsilon = () => {
     const [conversations, setConversations] = useState([])
     const [conversationsLoaded, setConversationsLoaded] = useState(false)
     const [activeConversationId, setActiveConversationId] = useState(null)
-    // A thought typed while Epsilon is still streaming a reply — can't be
+    // A thought typed while Epsilon is still streaming a reply, can't be
     // injected into that in-flight request (the API has no such thing), so
     // it's queued and auto-sent as soon as the current reply finishes,
     // rather than making the user watch the reply finish, remember what
     // they wanted to add, and retype it into a brand new message.
     const [queuedFollowUp, setQueuedFollowUp] = useState('')
-    // Voice input/output — both entirely browser-native (SpeechRecognition /
+    // Voice input/output, both entirely browser-native (SpeechRecognition /
     // speechSynthesis); no audio ever reaches our backend, only the
     // resulting text (same as a typed message). See speechVoice.js.
     const { sttSupported, ttsSupported } = useMemo(() => getSpeechSupport(), [])
@@ -183,15 +183,15 @@ const Epsilon = () => {
     const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(() => {
         try { return localStorage.getItem(AUTO_SPEAK_STORAGE_KEY) === 'true' } catch (e) { return false }
     })
-    // Full-screen "voice mode" (the orb) — a continuous listen-respond-speak
+    // Full-screen "voice mode" (the orb), a continuous listen-respond-speak
     // loop, distinct from the small mic-into-textbox affordance: tapping the
     // mic opens this instead of just dictating one message.
     const [voiceModeOpen, setVoiceModeOpen] = useState(false)
     const [voicePhase, setVoicePhase] = useState('idle') // idle | listening | processing | speaking
     const voiceModeOpenRef = useRef(false)
     useEffect(() => { voiceModeOpenRef.current = voiceModeOpen }, [voiceModeOpen])
-    // Mirrors voicePhase for the same reason sendingRef mirrors sending —
-    // the "still working" timer below fires from a setTimeout callback,
+    // Mirrors voicePhase for the same reason sendingRef mirrors sending.
+    // The "still working" timer below fires from a setTimeout callback,
     // which closes over whatever render was active when it was armed and
     // would otherwise see a stale phase.
     const voicePhaseRef = useRef('idle')
@@ -204,18 +204,18 @@ const Epsilon = () => {
     const recognitionRef = useRef(null)
     const recognitionCancelledRef = useRef(false)
     // Drives the orb's live reactive pulse (a CSS custom property, --level,
-    // read straight off the DOM node via rAF — deliberately NOT React state,
+    // read straight off the DOM node via rAF, deliberately NOT React state,
     // since this updates far too often, ~60fps, for setState to be sane).
     // Listening used to also drive this from real mic amplitude via a
-    // second, independent getUserMedia stream — removed (not just disabled)
+    // second, independent getUserMedia stream, removed (not just disabled)
     // after a real, repeated "voice input just doesn't hear me at all"
     // report: a second concurrent capture of the same input device
     // alongside SpeechRecognition's own internal one is a known class of
     // interference on some browser/OS/driver combinations, and working
     // speech recognition matters far more than the orb's decorative
     // amplitude reactivity while listening (it still pulses via a CSS-only
-    // keyframe instead — see .epsilon-orb-listening). Speaking's own pulse
-    // (below) is unaffected — it's driven by TTS word-boundary events, no
+    // keyframe instead, see .epsilon-orb-listening). Speaking's own pulse
+    // (below) is unaffected, it's driven by TTS word-boundary events, no
     // microphone access involved at all.
     const orbCoreRef = useRef(null)
     const speakLevelRef = useRef(0)
@@ -224,7 +224,7 @@ const Epsilon = () => {
     const speakFallbackTimerRef = useRef(null)
     const speakFallbackIntervalRef = useRef(null)
     // Mirrors queuedFollowUp for reliable reads from inside sendMessage's
-    // async closure — the closure's own `queuedFollowUp` binding is captured
+    // async closure, the closure's own `queuedFollowUp` binding is captured
     // at call time and won't see a state update made mid-stream via setState.
     const queuedFollowUpRef = useRef('')
     // Mirrors `sending` for the same reason, but critically also for the
@@ -246,11 +246,11 @@ const Epsilon = () => {
     }, [])
 
     // Tenant-wide voice preference an admin set in Settings > Billing >
-    // Epsilon AI — fetched once the panel is actually opened (same trigger
+    // Epsilon AI, fetched once the panel is actually opened (same trigger
     // as history loading; no point fetching before the user ever opens it).
     const [voicePrefLoaded, setVoicePrefLoaded] = useState(false)
     useEffect(() => {
-        // Needed for STT too (recognition.lang), not just TTS — fetch
+        // Needed for STT too (recognition.lang), not just TTS, fetch
         // whenever either voice capability exists, not only when speaking
         // replies back is possible.
         if (!open || voicePrefLoaded || (!ttsSupported && !sttSupported)) return
@@ -266,11 +266,11 @@ const Epsilon = () => {
     }, [open])
 
     // Real vendor list, for the editable vendor picker on a purchase-order
-    // proposal's table — same generic gateway (getDocsDetails, collection:
+    // proposal's table, same generic gateway (getDocsDetails, collection:
     // 'Vendors') Purchase.js itself uses to populate its own vendor
     // dropdown, so this is always the same registered-vendor list a human
     // filling the real form would see. Fetched once the panel opens, not
-    // gated on an actual proposal existing yet — cheap, and avoids a visible
+    // gated on an actual proposal existing yet, cheap, and avoids a visible
     // delay the first time a purchase_order card appears.
     const [vendorsList, setVendorsList] = useState([])
     const [vendorsListLoaded, setVendorsListLoaded] = useState(false)
@@ -308,7 +308,7 @@ const Epsilon = () => {
         setConversationsLoaded(true)
     }
 
-    // Manual refresh — re-fetches whatever conversation is currently open
+    // Manual refresh, re-fetches whatever conversation is currently open
     // (not necessarily the most recent one) plus the sidebar list, without
     // requiring a full close/reopen of the widget. Resets the loaded flags
     // first so the same loading state the initial open uses shows here too,
@@ -346,7 +346,7 @@ const Epsilon = () => {
     }, [expanded])
 
     // Collapsed and expanded are two separate, mutually-exclusive DOM
-    // subtrees (see the conditional render below) — switching `expanded`
+    // subtrees (see the conditional render below), switching `expanded`
     // unmounts one and mounts the other, so bottomRef points at a brand new
     // node that has never been scrolled. Without `expanded` in the deps,
     // this effect never re-ran on that toggle, which is why expanding used
@@ -369,12 +369,12 @@ const Epsilon = () => {
         }
     }, [open, expanded])
 
-    // Lets any other component open Epsilon pre-seeded with a question —
-    // e.g. an "Ask Epsilon why" affordance next to a blocked-action error —
-    // without that component needing to import/control this one directly.
+    // Lets any other component open Epsilon pre-seeded with a question.
+    // E.g. an "Ask Epsilon why" affordance next to a blocked-action error.
+    // Without that component needing to import/control this one directly.
     // Same wc:*-CustomEvent convention App.js already uses for dashboard-
     // summary updates. No call sites wire this up yet (a fast follow, not
-    // part of this pass) — the mechanism is just ready for when they do.
+    // part of this pass), the mechanism is just ready for when they do.
     useEffect(() => {
         const handler = (e) => {
             setOpen(true)
@@ -398,7 +398,7 @@ const Epsilon = () => {
         })
     }
 
-    // Text-mode convenience — reads every reply aloud without opening full
+    // Text-mode convenience, reads every reply aloud without opening full
     // voice mode. A personal preference (like theme/style), not tenant
     // policy, so it lives in localStorage rather than the server.
     const toggleAutoSpeak = () => {
@@ -415,7 +415,7 @@ const Epsilon = () => {
         setQueuedFollowUp('')
     }
 
-    // Purely a client-side reset now — no server call. The next message sent
+    // Purely a client-side reset now, no server call. The next message sent
     // creates a fresh conversation server-side; nothing is deleted here.
     const startNewChat = () => {
         setMenuOpen(false)
@@ -458,8 +458,8 @@ const Epsilon = () => {
     // ===== Orb reactivity: word-boundary pulses (with a timed fallback for
     // voices that never fire them) while speaking, driving the same --level
     // CSS custom property the orb core reads, set directly via the DOM (not
-    // React state — this updates at up to 60fps, way too hot a path for
-    // setState/re-render). Listening's own reactivity is CSS-only now — see
+    // React state, this updates at up to 60fps, way too hot a path for
+    // setState/re-render). Listening's own reactivity is CSS-only now, see
     // orbCoreRef's comment above for why the mic-amplitude version was
     // removed. =====
 
@@ -487,7 +487,7 @@ const Epsilon = () => {
             speakRafRef.current = requestAnimationFrame(decay)
         }
         speakRafRef.current = requestAnimationFrame(decay)
-        // Some voices never fire 'onboundary' at all — if none has landed
+        // Some voices never fire 'onboundary' at all, if none has landed
         // shortly after speech starts, fall back to a steady synthetic pulse
         // so the orb still looks alive rather than sitting dead-still.
         speakFallbackTimerRef.current = setTimeout(() => {
@@ -508,7 +508,7 @@ const Epsilon = () => {
         setIsSpeaking(false)
     }
 
-    // ===== Voice-mode progress narration — confirmed live: while a turn was
+    // ===== Voice-mode progress narration, confirmed live: while a turn was
     // doing real work (tool calls, a slow generation), voice mode just sat
     // in total silence until the final answer, indistinguishable from being
     // stuck. This speaks the same tool-status labels already shown visually
@@ -517,7 +517,7 @@ const Epsilon = () => {
 
     // Every speak() call (interim status or the final answer) gets the next
     // generation number; a callback only acts if its generation is still
-    // current — prevents a slow-to-fire interim onEnd from clobbering state
+    // current, prevents a slow-to-fire interim onEnd from clobbering state
     // a NEWER speak call (the final answer, or a later status update)
     // already moved past. speak() itself cancels whatever's currently
     // playing before starting the next one, so at most one is ever
@@ -531,7 +531,7 @@ const Epsilon = () => {
 
     // Speaks a short interim status (a tool label, or the "still working"
     // nudge) without triggering the auto-relisten the FINAL answer's own
-    // speak() call does in the 'done' handler below — this is mid-turn, not
+    // speak() call does in the 'done' handler below, this is mid-turn, not
     // the end of one.
     const speakInterim = (text) => {
         if (!ttsSupported || !text || !voiceModeOpenRef.current) return
@@ -561,7 +561,7 @@ const Epsilon = () => {
     }
 
     // Re-arms itself (via speakInterim's own onEnd above) for as long as the
-    // turn stays in 'processing' with nothing new to announce — a single
+    // turn stays in 'processing' with nothing new to announce, a single
     // slow tool call or generation still gets a periodic audible nudge
     // instead of the silence that prompted this feature.
     const armStillWorkingTimer = () => {
@@ -576,7 +576,7 @@ const Epsilon = () => {
     // Stops the current SpeechRecognition session. `cancel: true` (mic
     // clicked again, orb tapped while listening, voice mode closed) discards
     // whatever was heard so far; `cancel: false` (browser detected trailing
-    // silence on its own — the built-in "user stopped talking" signal) keeps
+    // silence on its own, the built-in "user stopped talking" signal) keeps
     // it and 'onend' below sends it.
     const stopListening = (cancel = false) => {
         if (!recognitionRef.current) return
@@ -589,7 +589,7 @@ const Epsilon = () => {
         if (!sttSupported) return
         if (isListening) { stopListening(true); return }
         // Clear any leftover error from a previous attempt/turn before this
-        // one starts — otherwise the onend fallback's setError(prev => prev
+        // one starts, otherwise the onend fallback's setError(prev => prev
         // || …) below could preserve a stale, unrelated message instead of
         // reflecting THIS attempt's own outcome.
         setError('')
@@ -597,15 +597,15 @@ const Epsilon = () => {
         stopEpsilonSpeaking()
         const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition
         const recognition = new SpeechRecognitionCtor()
-        // Deliberately NOT voicePreference.accent — that's an admin-set
+        // Deliberately NOT voicePreference.accent, that's an admin-set
         // preference for how EPSILON's spoken replies sound (TTS), matched
         // loosely/gracefully against whatever voices the browser happens to
         // have (see speechVoice.js's pickVoice). Speech RECOGNITION is a
-        // completely different, much stricter API — confirmed live: setting
+        // completely different, much stricter API, confirmed live: setting
         // recognition.lang to "en-NG" (a real, valid accent option in this
         // same Settings screen) made recognition silently produce zero
         // results on every attempt, with no visible cause (the resulting
-        // empty transcript looked identical to "the user said nothing" —
+        // empty transcript looked identical to "the user said nothing",
         // see the onerror/onend fix below for the other half of this).
         // en-US is universally supported by every browser implementing this
         // API and handles a wide range of real accents reasonably well.
@@ -625,27 +625,27 @@ const Epsilon = () => {
             }
             setDraft((finalTranscript + interim).trim())
         }
-        // 'aborted' is the one real silent case — it only fires when WE
+        // 'aborted' is the one real silent case, it only fires when WE
         // called recognition.abort() ourselves (the user cancelled), so
         // there's nothing to tell them that they don't already know.
-        // Everything else, including 'no-speech', now surfaces something —
-        // confirmed live: silently swallowing 'no-speech' made a genuine
+        // Everything else, including 'no-speech', now surfaces something.
+        // Confirmed live: silently swallowing 'no-speech' made a genuine
         // recognition failure (e.g. an unsupported language, confirmed
         // separately above) look EXACTLY like "you didn't say anything",
-        // with zero visible difference between the two — "I don't see any
+        // with zero visible difference between the two, "I don't see any
         // sign that a prompt was sent at all" had no way to be diagnosed.
         recognition.onerror = (event) => {
             if (event.error === 'aborted') return
             setError(
                 event.error === 'not-allowed' || event.error === 'service-not-allowed'
-                    ? 'Microphone access was denied — allow microphone permission in your browser to use voice input.'
+                    ? 'Microphone access was denied. Allow microphone permission in your browser to use voice input.'
                     : event.error === 'no-speech'
-                        ? "Didn't catch anything — tap the mic and try again."
-                        : `Voice input failed (${event.error}) — please try again.`
+                        ? "Didn't catch that. Tap the mic and try again."
+                        : `Voice input failed (${event.error}). Please try again.`
             )
         }
         // Browsers fire 'onend' automatically once they detect the speaker
-        // has stopped talking (a short trailing silence) — exactly the
+        // has stopped talking (a short trailing silence), exactly the
         // "smartly know when the user is done talking" behavior, with no
         // custom silence-detection code needed.
         recognition.onend = () => {
@@ -661,11 +661,11 @@ const Epsilon = () => {
             } else if (voiceModeOpenRef.current) {
                 setVoicePhase('idle')
                 // No transcript and no error already set (onerror covers the
-                // known failure cases above) — still don't leave this
+                // known failure cases above), still don't leave this
                 // silent; e.g. the browser can end recognition with neither
                 // a result nor an error event at all in some edge cases.
                 if (!finalText && !recognitionCancelledRef.current) {
-                    setError((prev) => prev || "Didn't catch anything — tap the mic and try again.")
+                    setError((prev) => prev || "Didn't catch that. Tap the mic and try again.")
                 }
             }
         }
@@ -675,7 +675,7 @@ const Epsilon = () => {
         setVoicePhase('listening')
         try {
             recognition.start()
-            // No mic-amplitude level meter here anymore — see orbCoreRef's
+            // No mic-amplitude level meter here anymore, see orbCoreRef's
             // comment above for why. The orb still animates while listening
             // via the CSS-only expanding-ring keyframe (epsilon-orb-
             // listening), just without real amplitude driving the core's
@@ -687,7 +687,7 @@ const Epsilon = () => {
         }
     }
 
-    // Mic click in the composer — opens the full-screen voice conversation
+    // Mic click in the composer, opens the full-screen voice conversation
     // (the orb), not just a one-off dictation into the text box.
     const openVoiceMode = () => {
         if (!sttSupported) return
@@ -708,7 +708,7 @@ const Epsilon = () => {
     // Tap-to-interrupt, ChatGPT-style: tapping the orb while it's talking
     // cuts it off and starts listening again (barge-in); tapping while
     // listening cancels; tapping while idle starts a turn. Ignored mid
-    // 'processing' — nothing sensible to interrupt mid tool-call.
+    // 'processing', nothing sensible to interrupt mid tool-call.
     const handleOrbClick = () => {
         if (voicePhase === 'speaking') {
             stopEpsilonSpeaking()
@@ -725,10 +725,10 @@ const Epsilon = () => {
     // reads draft), a completed voice transcription (startListening's 'onend'
     // below), and the internal auto-fired queued follow-up (the 'done' handling
     // further down). The first two must still queue if a turn is already
-    // in flight — checked via sendingRef, not the closed-over `sending` state,
+    // in flight, checked via sendingRef, not the closed-over `sending` state,
     // since the mic callback's closure can be stale by the time it fires.
     // The auto-fire is different: it already knows 'done' just landed for
-    // THIS turn, so it must send unconditionally — skipQueueCheck exists
+    // THIS turn, so it must send unconditionally, skipQueueCheck exists
     // because sendingRef itself is a ref synced by a useEffect, which hasn't
     // necessarily flushed yet by the time this same tick calls it, and
     // without the bypass the queued message would get silently re-queued
@@ -737,8 +737,8 @@ const Epsilon = () => {
         const text = (overrideText ?? draft).trim()
         if (!text) return
         if (sendingRef.current && !skipQueueCheck) {
-            // Can't inject this into the reply that's already streaming — the
-            // API has no such thing — so queue it (appending to anything
+            // Can't inject this into the reply that's already streaming, the
+            // API has no such thing, so queue it (appending to anything
             // already queued) and it fires automatically the instant this
             // turn's 'done' event lands, further down. Applies equally to a
             // typed message and a voice-transcribed one (mic onend calls
@@ -812,13 +812,13 @@ const Epsilon = () => {
                         setError(data.mess || 'Epsilon ran into an error. Please try again.')
                         clearStillWorkingTimer()
                         speakGenerationRef.current += 1 // stale-proofs any interim speak still in flight
-                        // Don't auto-relisten into an error loop — leave voice
+                        // Don't auto-relisten into an error loop, leave voice
                         // mode open (if it is) with the orb idle so the user
                         // can read/hear the problem and tap to retry.
                         if (voiceModeOpenRef.current) setVoicePhase('idle')
                         return
                     }
-                    // An array, not a single value — a request spanning several
+                    // An array, not a single value, a request spanning several
                     // locations/vendors in one turn (e.g. "use vendor X for bar1
                     // and vip, vendor Y for kitchen") makes the model call
                     // propose_purchase_order once per location, and each one
@@ -835,7 +835,7 @@ const Epsilon = () => {
                             proposals.push({ ...p, kind: 'purchase_order', title: 'Proposed purchase order', status: 'pending' })
                         })
                     }
-                    // Read-only, no confirm step — a sibling to proposals, not
+                    // Read-only, no confirm step, a sibling to proposals, not
                     // a variant of it.
                     const report = data.pendingReport || null
                     setMessages((prev) => {
@@ -844,7 +844,7 @@ const Epsilon = () => {
                         const next = [...prev]
                         next[lastIdx] = {
                             ...next[lastIdx], text: data.text || next[lastIdx].text, at: Date.now(), streaming: false, proposals, report,
-                            // Settled per-turn cost/rate-limit figures — see
+                            // Settled per-turn cost/rate-limit figures, see
                             // runEpsilonTurn's final return in epsilon.js. Shown
                             // as this specific reply's own footer summary
                             // ("this reply used 1.2k tokens, 8.8k left this hour,
@@ -855,14 +855,14 @@ const Epsilon = () => {
                         return next
                     })
                     if (conversationsLoaded) loadConversations()
-                    // The turn is over — no more "still working" nudges, and any
+                    // The turn is over, no more "still working" nudges, and any
                     // interim status speech still in flight is now stale (its
                     // generation check makes its callbacks no-op from here on).
                     clearStillWorkingTimer()
                     speakGenerationRef.current += 1
                     // Spoken replies: either the standalone "read replies aloud"
                     // toggle (text-mode convenience) or full voice mode (always
-                    // speaks, and loops back into listening once done — a real
+                    // speaks, and loops back into listening once done, a real
                     // back-and-forth conversation, not click-mic-every-turn).
                     if (ttsSupported && (autoSpeakEnabled || voiceModeOpenRef.current) && data.text) {
                         speak(data.text, {
@@ -886,7 +886,7 @@ const Epsilon = () => {
                             },
                         })
                     } else if (voiceModeOpenRef.current) {
-                        // Voice mode but nothing to speak (empty reply) — go
+                        // Voice mode but nothing to speak (empty reply), go
                         // straight back to listening rather than stalling.
                         startListening()
                     }
@@ -899,7 +899,7 @@ const Epsilon = () => {
             setToolStatus(null)
         }
 
-        // Fire whatever got queued while this turn was streaming — read from
+        // Fire whatever got queued while this turn was streaming, read from
         // the ref (not the `queuedFollowUp` closed-over above, which is
         // stale by now) so this sees updates made mid-stream via setState.
         if (mountedRef.current && queuedFollowUpRef.current) {
@@ -914,8 +914,8 @@ const Epsilon = () => {
         purchase_order: 'ai/epsilon/purchase-orders/confirm',
     }
 
-    // Updates just the one proposal matching this token, wherever it lives —
-    // a message can hold several (see the proposals array built above), so
+    // Updates just the one proposal matching this token, wherever it lives.
+    // A message can hold several (see the proposals array built above), so
     // this must patch by token within the array, not replace a single value.
     const updateProposal = (token, patch) => {
         setMessages((prev) => prev.map((m) => (
@@ -926,7 +926,7 @@ const Epsilon = () => {
     }
 
     // Purchase-order proposals are deliberately non-expiring and re-runnable
-    // server-side (see purchaseAdvisor.js) — dismissing one is the only
+    // server-side (see purchaseAdvisor.js), dismissing one is the only
     // thing that actually removes it, so this tells the server to forget it
     // too, not just hide the card locally. Script-correction proposals stay
     // one-shot/short-lived server-side, so a local-only hide is enough for
@@ -938,7 +938,7 @@ const Epsilon = () => {
         }
     }
 
-    // unitCostOverrides/vendorId only apply to purchase_order — a real order
+    // unitCostOverrides/vendorId only apply to purchase_order, a real order
     // can hold several product lines (keyed by productId) and one editable
     // vendor; the confirm route ignores both for every other proposal kind.
     const confirmProposal = async (token, kind, poEdits) => {
@@ -960,7 +960,7 @@ const Epsilon = () => {
         // Confirmed live: a request that never gets a response (the backend
         // route used to have no try/catch, so an exception there left the
         // connection hanging with nothing ever sent back) left this stuck on
-        // "Running…" forever with zero feedback — the backend is fixed, but
+        // "Running…" forever with zero feedback, the backend is fixed, but
         // this timeout + try/catch is a second, independent guarantee that
         // this specific "stuck" state can never happen again regardless of
         // cause (a slow proxy, a dropped connection, anything else unforeseen).
@@ -971,12 +971,12 @@ const Epsilon = () => {
             resp = await fetchServer('POST', body, CONFIRM_ENDPOINTS[kind] || CONFIRM_ENDPOINTS.script, server, controller.signal)
             clearTimeout(timeoutId)
         } catch (e) {
-            resp = { err: true, mess: 'That action timed out or the connection was lost — please try again.' }
+            resp = { err: true, mess: 'That action timed out or the connection was lost. Please try again.' }
         }
         if (!mountedRef.current) return
         if (resp.err || !resp.ok) {
             // Purchase orders stay interactive after a failed run (kind stays
-            // pending-equivalent, not a dead end) — the user should be able
+            // pending-equivalent, not a dead end), the user should be able
             // to fix the price/etc and just try again without re-asking
             // Epsilon to propose it from scratch.
             updateProposal(token, { status: kind === 'purchase_order' ? 'pending' : 'error', resultMess: resp.mess || 'That action failed to run.' })
@@ -985,7 +985,7 @@ const Epsilon = () => {
         const resultMess = kind === 'purchase_order'
             ? `Purchase order ${resp.documentNo || ''} created.`
             : 'Applied successfully.'
-        // Purchase orders go back to 'pending' (fully interactive — edit
+        // Purchase orders go back to 'pending' (fully interactive, edit
         // price, run again) rather than a terminal 'done'; only Dismiss
         // actually ends this card's life, per the user's explicit ask.
         updateProposal(token, kind === 'purchase_order'
@@ -994,8 +994,8 @@ const Epsilon = () => {
     }
 
     // exportUtils.js's generatePDF/generateExcel expect columns as
-    // {name, reference, numeric?} (see BusinessPartners.js's own callers) —
-    // a different shape from the {key, label} the report card's own inline
+    // {name, reference, numeric?} (see BusinessPartners.js's own callers).
+    // A different shape from the {key, label} the report card's own inline
     // table uses, so it's adapted here rather than changing either contract.
     const exportReport = (report, format) => {
         const columns = (report.tabular?.columns || []).map((col) => ({ name: col.label, reference: col.key }))
@@ -1024,7 +1024,7 @@ const Epsilon = () => {
             navigator.clipboard.writeText(text)
             setCopiedIndex(index)
             setTimeout(() => setCopiedIndex((cur) => (cur === index ? null : cur)), 1500)
-        } catch (e) { /* clipboard unavailable — silently no-op */ }
+        } catch (e) { /* clipboard unavailable, silently no-op */ }
     }
 
     const renderOptionsMenu = () => (
@@ -1051,7 +1051,7 @@ const Epsilon = () => {
     const messagesListJsx = (
         <div className="epsilon-messages">
             {/* Distinguish "still fetching history" from "genuinely no history
-                yet" — without this, opening the chat showed the empty-state
+                yet", without this, opening the chat showed the empty-state
                 invite text immediately, then had it pop away and get replaced
                 by real messages a moment later once ai/epsilon/history
                 actually resolved, which read as if nothing was happening. */}
@@ -1099,7 +1099,7 @@ const Epsilon = () => {
                             </span>
                         )}
                         {m.streaming && toolStatus && <span className="epsilon-tool-status">🔧 {toolStatus}</span>}
-                        {/* Live "which model / how many tokens so far" — only meaningful
+                        {/* Live "which model / how many tokens so far", only meaningful
                             on the message currently streaming, since currentModel/liveTokens
                             are reset for every new turn (see sendMessage above). */}
                         {m.streaming && (currentModel || liveTokens > 0) && (
@@ -1125,7 +1125,7 @@ const Epsilon = () => {
                                 )}
                             </div>
                         )}
-                        {/* Settled end-of-turn cost/rate-limit summary — "how many
+                        {/* Settled end-of-turn cost/rate-limit summary, "how many
                             tokens consumed, how many remaining, how long before my
                             rate limit ends and when next it will restart", per the
                             user's explicit request, shown on every completed reply. */}
@@ -1166,7 +1166,7 @@ const Epsilon = () => {
                                     >
                                         {/* Covers both an inferred/matched real vendor with no
                                             _id yet selected here, and a not-yet-created vendor
-                                            (newVendorName on the backend) — either way, this
+                                            (newVendorName on the backend), either way, this
                                             shows what will actually be used unless the user
                                             explicitly picks a different real one below. */}
                                         {!p.preview.vendorId && <option value="">{p.preview.vendor}</option>}
@@ -1199,7 +1199,7 @@ const Epsilon = () => {
                                     <>
                                         {anyFlagged && (
                                             <div className="epsilon-po-warning-banner">
-                                                ⚠ A highlighted product's category doesn't match what's normally bought for this location (see Settings &gt; Warehouses) — likely a stock-tagging mix-up. Remove it if it doesn't belong here.
+                                                ⚠ A highlighted product's category doesn't match what's normally bought for this location (see Settings &gt; Warehouses), which is usually a stock-tagging mix-up. Remove it if it doesn't belong here.
                                             </div>
                                         )}
                                         <table className="epsilon-po-table">
@@ -1213,7 +1213,7 @@ const Epsilon = () => {
                                                     const total = cost * (Number(line.quantity) || 0)
                                                     return (
                                                         <tr key={line.productId} className={line.categoryLooksOffForLocation ? 'epsilon-po-row-warning' : ''}>
-                                                            <td title={line.categoryLooksOffForLocation ? `Category: ${line.categoryName || line.category} — not normally bought for this location` : undefined}>
+                                                            <td title={line.categoryLooksOffForLocation ? `Category: ${line.categoryName || line.category}, not normally bought for this location` : undefined}>
                                                                 {line.categoryLooksOffForLocation ? '⚠ ' : ''}{line.productName}
                                                             </td>
                                                             <td>{line.quantity} {line.purchaseUom}</td>
@@ -1260,7 +1260,7 @@ const Epsilon = () => {
                                             </tfoot>
                                         </table>
                                         {!visibleLines.length && (
-                                            <div className="epsilon-proposal-note">Every product was removed — dismiss this order or re-ask Epsilon to propose it again.</div>
+                                            <div className="epsilon-proposal-note">Every product was removed. Dismiss this order, or ask Epsilon to propose it again.</div>
                                         )}
                                     </>
                                 )
@@ -1270,7 +1270,7 @@ const Epsilon = () => {
                             )}
                             {p.note && <div className="epsilon-proposal-note">{p.note}</div>}
                             {/* Purchase orders revert to 'pending' after every run (success
-                                or failure) instead of a terminal 'done'/'error' — the card
+                                or failure) instead of a terminal 'done'/'error', the card
                                 stays fully interactive (editable price, runnable again)
                                 until the user explicitly dismisses it, per the user's
                                 explicit ask that these never just expire on their own. */}
@@ -1305,7 +1305,7 @@ const Epsilon = () => {
                             <div className="epsilon-report-title">{m.report.title || 'Report'}</div>
                             {(m.report.fromDate || m.report.location) && (
                                 <div className="epsilon-report-meta">
-                                    {m.report.fromDate && m.report.toDate ? `${m.report.fromDate} – ${m.report.toDate}` : ''}
+                                    {m.report.fromDate && m.report.toDate ? `${m.report.fromDate} to ${m.report.toDate}` : ''}
                                     {m.report.location ? ` · ${m.report.location}` : ''}
                                 </div>
                             )}
@@ -1324,7 +1324,7 @@ const Epsilon = () => {
                                         </tbody>
                                     </table>
                                     {m.report.tabular.rows.length > 100 && (
-                                        <div className="epsilon-report-truncated">Showing first 100 of {m.report.tabular.rows.length} rows — export for the full report.</div>
+                                        <div className="epsilon-report-truncated">Showing the first 100 of {m.report.tabular.rows.length} rows. Export to get the full report.</div>
                                     )}
                                 </div>
                             ) : (
@@ -1396,7 +1396,7 @@ const Epsilon = () => {
                     onClick={() => sendMessage()}
                     disabled={!draft.trim()}
                     aria-label={sending ? 'Queue for after this reply' : 'Send'}
-                    title={sending ? 'Queue — sends automatically once Epsilon finishes replying' : 'Send'}
+                    title={sending ? 'Queue this, it sends automatically once Epsilon finishes replying' : 'Send'}
                 >
                     {sending ? '⏱' : '➤'}
                 </button>
@@ -1405,9 +1405,9 @@ const Epsilon = () => {
     )
 
     // Fills whichever container renders it (the collapsed panel or the
-    // expanded main pane) rather than the whole screen — position:absolute
-    // against that container's own position:relative, not position:fixed —
-    // so the rest of the page (and, in expanded mode, the conversation
+    // expanded main pane) rather than the whole screen, position:absolute
+    // against that container's own position:relative, not position:fixed.
+    // So the rest of the page (and, in expanded mode, the conversation
     // sidebar) stays visible/usable alongside a voice conversation.
     const voiceOverlayJsx = voiceModeOpen && (
         <div className="epsilon-voice-overlay" role="dialog" aria-label="Voice conversation with Epsilon">
@@ -1429,8 +1429,8 @@ const Epsilon = () => {
                 {voicePhase === 'speaking' && 'Speaking…'}
                 {voicePhase === 'idle' && (error || 'Tap the orb to talk')}
             </div>
-            {/* Same live model/token visibility as the text-mode bubble above —
-                spoken aloud too (see speakInterim's tool_start wiring), but shown
+            {/* Same live model/token visibility as the text-mode bubble above.
+                Spoken aloud too (see speakInterim's tool_start wiring), but shown
                 here as well so it's visible without needing sound on. */}
             {voicePhase === 'processing' && (currentModel || liveTokens > 0) && (
                 <div className="epsilon-voice-status-sub">
@@ -1508,7 +1508,7 @@ const Epsilon = () => {
                                         <button className="epsilon-icon-btn" onClick={stopEpsilonSpeaking} aria-label="Stop speaking" title="Stop speaking">⏹</button>
                                     )}
                                     {ttsSupported && (
-                                        <button className={`epsilon-icon-btn ${autoSpeakEnabled ? 'epsilon-speaker-active' : ''}`} onClick={toggleAutoSpeak} aria-label={autoSpeakEnabled ? 'Voice replies on' : 'Voice replies off'} title={autoSpeakEnabled ? 'Voice replies on — click to mute' : 'Read replies aloud'}>
+                                        <button className={`epsilon-icon-btn ${autoSpeakEnabled ? 'epsilon-speaker-active' : ''}`} onClick={toggleAutoSpeak} aria-label={autoSpeakEnabled ? 'Voice replies on' : 'Voice replies off'} title={autoSpeakEnabled ? 'Voice replies on, click to mute' : 'Read replies aloud'}>
                                             {autoSpeakEnabled ? '🔊' : '🔇'}
                                         </button>
                                     )}
@@ -1539,7 +1539,7 @@ const Epsilon = () => {
                                 <button className="epsilon-icon-btn" onClick={stopEpsilonSpeaking} aria-label="Stop speaking" title="Stop speaking">⏹</button>
                             )}
                             {ttsSupported && (
-                                <button className={`epsilon-icon-btn ${autoSpeakEnabled ? 'epsilon-speaker-active' : ''}`} onClick={toggleAutoSpeak} aria-label={autoSpeakEnabled ? 'Voice replies on' : 'Voice replies off'} title={autoSpeakEnabled ? 'Voice replies on — click to mute' : 'Read replies aloud'}>
+                                <button className={`epsilon-icon-btn ${autoSpeakEnabled ? 'epsilon-speaker-active' : ''}`} onClick={toggleAutoSpeak} aria-label={autoSpeakEnabled ? 'Voice replies on' : 'Voice replies off'} title={autoSpeakEnabled ? 'Voice replies on, click to mute' : 'Read replies aloud'}>
                                     {autoSpeakEnabled ? '🔊' : '🔇'}
                                 </button>
                             )}
@@ -1566,7 +1566,7 @@ const Epsilon = () => {
                 className="epsilon-launcher"
                 onClick={() => setOpen((prev) => !prev)}
                 aria-label={open ? 'Close Epsilon' : 'Open Epsilon'}
-                title="Epsilon — AI assistant"
+                title="Epsilon, the AI assistant"
             >
                 <span className="epsilon-mark">ε</span>
             </button>

@@ -4,7 +4,7 @@
    The library mirrors the resource-centre pattern used by every major ERP
    vendor: one pool of items, three filter axes (type, topic, industry), and
    a small number of promoted entries. Everything is routed to a real
-   destination — mostly the documentation and help pages that already exist —
+   destination, mostly the documentation and help pages that already exist,
    rather than to a download gate that is not built.
 
    Items marked `gated: false` genuinely open in-app. Anything that would need
@@ -219,7 +219,7 @@ export const EVENTS = [
   {
     slug: 'inventory-deep-dive',
     type: 'Webinar',
-    title: 'Inventory deep dive: movements, transfers and production',
+    title: 'Inventory in detail: movements, transfers and production',
     text: 'How positions are built from movements, how transfers behave in transit, and how production converts components into finished goods.',
     image: 'warehouseRacks',
     when: 'Quarterly',

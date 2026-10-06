@@ -1,5 +1,5 @@
 /* ============================================================================
-   /services — implementation and support.
+   /services, implementation and support.
    ========================================================================= */
 
 import { useContext, useEffect } from 'react'
@@ -64,6 +64,7 @@ const ServicesPage = () => {
         eyebrow="Implementation"
         title="Three levels of help"
         subtitle="Most single-site businesses genuinely do not need us in the room. We will say so rather than sell you an engagement you do not need."
+        rail
         split
       >
         <Grid cols={3}>
@@ -94,6 +95,7 @@ const ServicesPage = () => {
         eyebrow="The 30-day plan"
         title="What a sensible implementation actually looks like"
         subtitle="This is the sequence we use on guided engagements, and the one the documentation walks you through if you are doing it yourself."
+        rail
         split
       >
         <Tiles cols={4}>
@@ -102,7 +104,7 @@ const ServicesPage = () => {
           ))}
         </Tiles>
 
-        <div style={{ marginTop: 'clamp(48px, 6vw, 80px)' }}>
+        <div>
           <FiftyFifty
             eyebrow="The part worth paying attention to"
             title="Run in parallel before you cut over"
@@ -117,8 +119,8 @@ const ServicesPage = () => {
             </p>
             <p className="ds-body">
               It is also the week most rollouts skip, because it feels like duplicated
-              effort. It is not. It is the cheapest possible time to find out that your
-              opening stock was wrong.
+              effort. It is also the cheapest possible moment to discover that your opening
+              stock was wrong.
             </p>
             <ButtonRow>
               <Button variant="secondary" to="/resources" navigate={navigate}>Read the onboarding guide</Button>

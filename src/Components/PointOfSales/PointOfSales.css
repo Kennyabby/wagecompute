@@ -1913,12 +1913,12 @@
 }
 
 /* Place Order / Edit Order, Make Payment, Place Delivery all share this one
-   class — the shared hover rule above (same selector list, same
+   class, the shared hover rule above (same selector list, same
    specificity) flips every POS button to a white background with dark
    text on hover, which for THIS button meant its label text turned black
    against a still-mostly-dark button. These are the primary submit actions
    and should stay high-contrast dark-gradient-background/white-text in
-   every state, not just at rest — kept as its own rule, after the shared
+   every state, not just at rest, kept as its own rule, after the shared
    one in source order, so it wins on the properties both set without
    needing !important. */
 .pos-container .place-order-btn:hover:not(:disabled) {

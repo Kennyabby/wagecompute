@@ -1,8 +1,8 @@
-// The real Epsilon brand mark — the same slanted serif "ε" used by the
+// The real Epsilon brand mark, the same slanted serif "ε" used by the
 // actual chat launcher (Components/Epsilon/Epsilon.css .epsilon-mark), not a
 // generic AI/robot icon. Mimics the react-icons component API (size/color
 // props) so it drops into MODULE_ICONS and renders correctly anywhere an
-// icon component is expected — module pickers, nav menus, marketing pages.
+// icon component is expected, module pickers, nav menus, marketing pages.
 const EpsilonMark = ({ size = '1em', color = 'currentColor', style, ...rest }) => (
   <span
     aria-label="Epsilon AI"

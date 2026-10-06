@@ -31,7 +31,7 @@ import PartnersPage from './Components/LandingPage/PartnersPage';
 import DocsPage from './Components/LandingPage/DocsPage';
 import LegalPage from './Components/LandingPage/LegalPage';
 // Public site: product, industry, solution, customer, resource and company
-// pages. All of these are session-free — see the PUBLIC_EXACT /
+// pages. All of these are session-free, see the PUBLIC_EXACT /
 // PUBLIC_PREFIXES lists in removeSessions(), which must stay in step with the
 // <Routes> block at the bottom of this file.
 import ProductsPage from './Components/LandingPage/ProductsPage';
@@ -82,16 +82,16 @@ import {
 // Electron desktop build only: wageserver always serves this same bundle
 // from whatever port it's actually listening on (electron/main.js sets that
 // via PORT, currently 5001, kept off 3001 so a web-dev backend can run
-// alongside it) — window.location.origin is always correct there rather
+// alongside it), window.location.origin is always correct there rather
 // than a hardcoded port guess, and window.electronAPI only exists when
 // electron/preload.js ran, so the web build's fallback is untouched.
 const SERVER = process.env.REACT_APP_API_URL
   || (window.electronAPI?.isElectron ? window.location.origin : "http://localhost:3001")
 // const SERVER = process.env.REACT_APP_API_URL || "https://api.epxcentral.com"
 if (process.env.NODE_ENV === 'production' && SERVER.includes('localhost')) {
-  // Loud, unmissable warning rather than a silent guaranteed-to-fail deploy —
-  // a real build-time check belongs in CI, but this catches it at runtime too.
-  console.error('CONFIGURATION ERROR: REACT_APP_API_URL is not set for this production build — API calls will target localhost and fail.')
+  // Loud, unmissable warning rather than a silent guaranteed-to-fail deploy.
+  // A real build-time check belongs in CI, but this catches it at runtime too.
+  console.error('CONFIGURATION ERROR: REACT_APP_API_URL is not set for this production build. API calls will target localhost and fail.')
 }
 
 const DEFAULT_APPROVAL_CONFIG = {
@@ -143,7 +143,7 @@ const DEFAULT_APPROVAL_CONFIG = {
 };
 
 // App-level cache helpers now backed by IndexedDB (appCache store)
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minute TTL — used opt-in via getCached's ttlMs param
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minute TTL, used opt-in via getCached's ttlMs param
 
 const makeCacheKey = (company, resource) => {
   const db = company || 'global';
@@ -152,11 +152,11 @@ const makeCacheKey = (company, resource) => {
 
 // getCached returns a Promise resolving to cached data or null.
 // ttlMs is opt-in: omitted (the ~20 existing call sites), this behaves
-// exactly as before — cached data of any age is returned, purely to paint
+// exactly as before, cached data of any age is returned, purely to paint
 // instantly while the caller still always re-fetches live afterward. Passed
 // explicitly, a stale entry (older than ttlMs) is treated as a miss (null),
 // letting a caller skip the live re-fetch entirely when data is fresh enough
-// — see fetchProfiles/fetchDBProfiles/getChartOfAccounts/getEmployees/
+//, see fetchProfiles/fetchDBProfiles/getChartOfAccounts/getEmployees/
 // getSettings's useCache param, added to fix the Settings page always
 // re-fetching everything (including modules Settings doesn't even need,
 // like employees/chart of accounts) on every mount/refresh.
@@ -231,7 +231,7 @@ const applySseCollectionChange = (existing = [], payload = {}) => {
 
 const ACCOUNTING_UI_CACHE_VERSION = 6;
 
-// Electron desktop build only — rendered at '/', the route Electron's
+// Electron desktop build only, rendered at '/', the route Electron's
 // BrowserWindow always loads on launch (electron/main.js:
 // mainWindow.loadURL('http://127.0.0.1:5001')). Used to previously always
 // mean "show TenantSetup", which meant the terms/license/master-password
@@ -241,7 +241,7 @@ const ACCOUNTING_UI_CACHE_VERSION = 6;
 // requested via Settings > Databases (?desktopSwitch=1, set by that panel's
 // "Switch or Create Database" button). Otherwise this tries to silently
 // resume the already-selected database's session (using whatever refresh
-// token Electron's main process may have stored for it — see
+// token Electron's main process may have stored for it, see
 // electron/main.js and wageserver's POST /desktop/session/resume) and falls
 // back to that database's own direct login screen if it can't.
 const DesktopEntry = () => {
@@ -274,7 +274,7 @@ const DesktopEntry = () => {
         }
       }
       // No stored token, or it was rejected (expired / explicitly logged
-      // out / mismatched) — that database's own direct tenant login (see
+      // out / mismatched), that database's own direct tenant login (see
       // Login.js's isElectron-gated isRootDomainLogin) is exactly what
       // should show next, no master password involved.
       Navigate('/login')
@@ -293,14 +293,14 @@ function App() {
   const [pauseView, setPauseView] = useState(!window.localStorage.getItem('ps-vw'))
   const [centralCompany, setCentralCompany] = useState(null)
   const [showSubscriptionBanner, setShowSubscriptionBanner] = useState(false)
-  // Electron desktop build only — reflects electron-updater's download
+  // Electron desktop build only, reflects electron-updater's download
   // progress (see electron/main.js's 'update-download-progress'/
   // 'update-downloaded-ready' IPC events, bridged via electron/preload.js).
   // null = nothing in progress, so the banner below stays hidden.
   const [updateDownloadProgress, setUpdateDownloadProgress] = useState(null)
   // Starts expanded (so the "keep this app open" warning is actually seen
   // once, right when a download starts) but collapsible to a one-line pill
-  // — the full text is long enough that leaving it permanently expanded
+  //, the full text is long enough that leaving it permanently expanded
   // would sit on top of page content for however long the download takes.
   const [updateBannerCollapsed, setUpdateBannerCollapsed] = useState(false)
 
@@ -386,7 +386,7 @@ function App() {
   const [allSessions, setAllSessions] = useState([])
   const [products, setProducts] = useState([])
   // Shared across Inventory's Overview/Transaction History, Stock, and
-  // Adjustments pages — each has its own "Apply Filters" button, but they
+  // Adjustments pages, each has its own "Apply Filters" button, but they
   // all read from and write to this single date range so that applying a
   // new range in one page updates what the others show/report too, instead
   // of one page's numbers silently reflecting a different period than what
@@ -397,7 +397,7 @@ function App() {
   })
   // The global SSE subscription effect below has [company, companyRecord] as
   // its only deps (re-subscribing on every products change would tear down
-  // and reopen the EventSource constantly) — its message handler therefore
+  // and reopen the EventSource constantly), its message handler therefore
   // closes over whatever `products` was at subscribe time. A ref sidesteps
   // that stale closure without changing the effect's dependency array.
   const productsRef = useRef(products)
@@ -416,7 +416,7 @@ function App() {
   const [isProduction, setIsProduction] = useState(false)
   const [subscriptionState, setSubscriptionState] = useState(null)
   // isBrowserOnline (real OS-level internet, navigator.onLine) is exposed
-  // separately from isFullyConnected — the desktop build's sidebar indicator
+  // separately from isFullyConnected, the desktop build's sidebar indicator
   // wants the former specifically (see SideNav.js): its own server is always
   // local and effectively always reachable, so isFullyConnected's
   // health-ping-to-server component isn't a meaningful signal there the way
@@ -495,25 +495,25 @@ function App() {
     return await fetchServer(method, body, endpoint, serverParam, signal)
   }
 
-  // 'license-expired' and 'renew' must be here too — a suspended tenant can
+  // 'license-expired' and 'renew' must be here too, a suspended tenant can
   // now log in and land on /license-expired (see LicenseExpired.js's
   // storePath('license-expired')). Without them in this list, refreshing
   // while there hit the `else` branch below and called removeSessions()
-  // unconditionally, wiping a perfectly valid login and bouncing to /login —
-  // this whole path only became reachable once a suspended tenant could log
+  // unconditionally, wiping a perfectly valid login and bouncing to /login.
+  // This whole path only became reachable once a suspended tenant could log
   // in at all, so the gap was latent until now.
   const pathList = ['', 'login', 'profile', 'dashboard', 'license-expired', 'renew',
     'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
   const dashList = ['dashboard',
     'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
   // Must mirror the free-tier keys in wageserver/UserModule/Billing/moduleCatalog.js
-  // exactly — these are always available regardless of what a tenant purchased.
+  // exactly, these are always available regardless of what a tenant purchased.
   const FREE_TIER_MODULE_KEYS = ['dashboard', 'settings', 'employees', 'departments', 'positions', 'attendance']
-  // Tenant-level module entitlement ceiling — mirrors the exact logic of
+  // Tenant-level module entitlement ceiling, mirrors the exact logic of
   // wageserver/UserModule/Billing/moduleCatalog.js's resolveEffectiveModules,
   // computed here from data already fetched (centralCompany, subscriptionState)
   // rather than a new network call. Full trial access and the "no field yet"
-  // grandfather clause both intentionally return every module — see that
+  // grandfather clause both intentionally return every module, see that
   // file's comments for why.
   const isTrialFullAccess = !!subscriptionState?.trialActive && !subscriptionState?.hasConfiguredSubscription
   const tenantEnabledModules = Array.isArray(centralCompany?.enabledModules) ? centralCompany.enabledModules : null
@@ -534,8 +534,8 @@ function App() {
   const initialYear = '2025'
 
 
-  // Re-fetches the central CompanyProfiles record — the source of
-  // `enabledModules` — so a tenant admin adding modules (or a central admin
+  // Re-fetches the central CompanyProfiles record, the source of
+  // `enabledModules`, so a tenant admin adding modules (or a central admin
   // changing them) is reflected in nav/route gating without a full page
   // reload. Exposed via context for any component that mutates entitlements.
   const refreshCentralCompany = async () => {
@@ -618,7 +618,7 @@ function App() {
     // Electron desktop build: before a workspace is selected there's no
     // tenant to scope this connection to, and EventSource can't carry the
     // x-desktop-tenant header fetchServer.js attaches to normal requests
-    // (browsers don't support custom headers on EventSource at all) — the
+    // (browsers don't support custom headers on EventSource at all), the
     // request would reach InitializeApp.js's tenant-resolution middleware
     // with nothing identifying a tenant and 404 as "Invalid Tenant". Skip
     // connecting until TenantSetup has actually picked one.
@@ -780,8 +780,8 @@ function App() {
               break;
             case 'SessionManagers':
               // Session Manager start/stop (the POS "All Sessions" board's
-              // day-level gate) previously only refreshed on mount/login —
-              // other open tabs/terminals wouldn't see a Start/Stop until
+              // day-level gate) previously only refreshed on mount/login.
+              // Other open tabs/terminals wouldn't see a Start/Stop until
               // reload. Merging the broadcast doc here feeds PointOfSales'
               // existing [sessionManagers]-keyed effect that derives
               // currSessionManager, so it now updates live like POSSessions.
@@ -822,7 +822,7 @@ function App() {
                   setCached(company, 'purchase', merged, companyRecord?.emailid);
                   return merged;
                 });
-                // A real, direct "stock may have changed" signal — e.g. the
+                // A real, direct "stock may have changed" signal, e.g. the
                 // Dashboard's low-stock widget listens for this so a
                 // just-received PO reliably refreshes it, instead of
                 // depending on the separate DashboardSummaries rebuild
@@ -931,7 +931,7 @@ function App() {
               break;
             case 'PostingOperations':
               // Live posting-progress feed (single postings and the GL
-              // backlog run alike) — re-dispatched as a plain CustomEvent,
+              // backlog run alike), re-dispatched as a plain CustomEvent,
               // same fan-out pattern as accounting-live/dashboard-summary
               // below, so any page can subscribe via
               // Resources/postingOperations.js's usePostingOperationProgress
@@ -1059,7 +1059,7 @@ function App() {
               break;
             case 'InventoryTransactions':
               // Same direct "stock may have changed" signal as the Purchase
-              // case above — fires on every stock-moving write (receipts,
+              // case above, fires on every stock-moving write (receipts,
               // transfers, sales, adjustments...), not just purchases.
               try {
                 window.dispatchEvent(new CustomEvent('wc:inventory-stock-changed', { detail: { company, collection: 'InventoryTransactions' } }));
@@ -1078,7 +1078,7 @@ function App() {
                       await putInventoryTransactions(company, companyRecord?.emailid, toApply).catch(() => { });
                     }
                   } catch (e) { console.error('SSE InventoryTransactions apply error', e) }
-                  // recompute stock view (best-effort) — uses the ref so this
+                  // recompute stock view (best-effort), uses the ref so this
                   // reads current products regardless of when this effect
                   // last re-subscribed, and calls the same complete,
                   // date-scoped aggregation every other stock surface uses
@@ -1145,7 +1145,7 @@ function App() {
     }
   }, [window.localStorage.getItem('sessn-cmp')])
 
-  // Local IndexedDB housekeeping only — clears stale cached entries older than
+  // Local IndexedDB housekeeping only, clears stale cached entries older than
   // the app-cache TTL. Never touches the server/live database.
   useEffect(() => {
     if (company && companyRecord?.emailid) {
@@ -1393,16 +1393,16 @@ function App() {
           }
           // Session Manager's "post pending sales before starting today's
           // session" check (PointOfSales.js's canUpdateSession) reads the
-          // `sales` state populated here — which otherwise only ever loads
+          // `sales` state populated here, which otherwise only ever loads
           // for an admin or someone with the full, unrelated 'sales' module
           // permission. Without it, sales.length stays 0 forever for a
           // manage_session_manager-only holder, so the effect that computes
           // canUpdateSession never even runs its body (see its own `if
-          // (sales.length)` guard) and it's stuck at its initial `false` —
-          // meaning they'd get redirected to /sales for "pending postings"
+          // (sales.length)` guard) and it's stuck at its initial `false`.
+          // Meaning they'd get redirected to /sales for "pending postings"
           // on every single attempt to start Session Manager, even with
           // zero actually pending. Deliberately NOT reusing the 'sales'
-          // block above — that also navigates to /sales and loads
+          // block above, that also navigates to /sales and loads
           // rentals/accommodations, none of which this narrower permission
           // should pull in on its own.
           if (!companyRecord?.permissions.includes('sales') && companyRecord?.permissions.includes('manage_session_manager')) {
@@ -1442,7 +1442,7 @@ function App() {
     } finally {
       // Electron desktop build only: an explicit logout must fully
       // invalidate this database's ability to be silently resumed later via
-      // Settings > Databases — otherwise the cached refresh token would let
+      // Settings > Databases, otherwise the cached refresh token would let
       // someone switch straight back in without a password. No-op on web.
       if (company) window.electronAPI?.clearTenantRefreshToken?.(company)
       removeSessions()
@@ -1973,19 +1973,19 @@ function App() {
       if (!sessionsResponse.err){
         if (Array.isArray(sessionsResponse?.record) && sessionsResponse.record?.length){
           // Set from the RECONCILED result (server data with local pending
-          // changes overlaid), not the raw server response directly —
-          // confirmed live as a real race: ending a POS session updates
+          // changes overlaid), not the raw server response directly.
+          // Confirmed live as a real race: ending a POS session updates
           // allSalesSessions immediately (via this same reconcile, from
           // stopSession's own mergeAndPersistSessions call), correctly
           // clearing PointOfSales.js's activeSessions. But this function
           // also gets called around the same actions (session
           // manager start/stop) and used to set lastActiveSessions from the
-          // UNMERGED server response — which, if the just-ended session
+          // UNMERGED server response, which, if the just-ended session
           // hadn't finished syncing to the server yet, still showed it as
           // active. PointOfSales.js's activeSessions effect reacts to
           // BOTH allSalesSessions and lastActiveSessions changes, so that
           // stale, unreconciled value could overwrite the correct one that
-          // was just set, moments earlier, in the same render pass — which
+          // was just set, moments earlier, in the same render pass, which
           // is exactly why "Please end all POS sessions" kept showing even
           // after every session had actually ended.
           const reconciled = await mergeAndPersistSessions(sessionsResponse.record)
@@ -2288,7 +2288,7 @@ function App() {
     setCompany(null)
     setLoadedCurPath('')
     // Every route registered without requiring a session (see the <Routes>
-    // block below) belongs here — this was missing most of them (privacy,
+    // block below) belongs here, this was missing most of them (privacy,
     // terms, and the rest of the public marketing/docs pages), so visiting
     // any of those with no active session force-redirected to /login even
     // though the page itself needs no session at all.
@@ -2296,10 +2296,10 @@ function App() {
     // Split into exact paths and prefixes because the public site now has
     // detail routes (/products/pos, /industries/retail, /customers/<slug>,
     // /blog/<slug>) whose slugs cannot be enumerated here. None of these
-    // prefixes collide with a tenant module route — those are the single
+    // prefixes collide with a tenant module route, those are the single
     // segments in dashList (dashboard, employees, pos, inventory, …) and are
     // deliberately kept out of the public namespace.
-    // NB: deliberately not named `path` — removeSessions already takes a
+    // NB: deliberately not named `path`, removeSessions already takes a
     // parameter of that name.
     const currentPath = window.location.pathname;
     const PUBLIC_EXACT = [
@@ -2365,8 +2365,8 @@ function App() {
   const getViewAccess = async () => {
     // Electron desktop build: never calls /getActivationDetails at all, not
     // just before a workspace is selected. This app was paid for once,
-    // manually, outside the app (or licensed via the offline-license system —
-    // see LicenseActivation.js) — there is no online trial/subscription
+    // manually, outside the app (or licensed via the offline-license system,
+    // see LicenseActivation.js), there is no online trial/subscription
     // state for a locally-created tenant to check, and this codepath (built
     // for hosted-tenant billing) has no concept of the offline license that
     // actually gates usage now. That gating happens earlier, in
@@ -2374,7 +2374,7 @@ function App() {
     if (window.electronAPI?.isElectron) {
       // pauseView defaults to true (no 'ps-vw' flag set yet on a fresh
       // launch) and PauseView.js renders a bare empty <label> while it's
-      // true. Setting it false here isn't enough on its own — a separate
+      // true. Setting it false here isn't enough on its own, a separate
       // effect (App.js, watching window.localStorage.getItem('ps-vw'))
       // unconditionally re-runs setPauseView(!ps-vw) on mount too, and
       // since nothing in this early-return path ever wrote 'ps-vw', that
@@ -2410,7 +2410,7 @@ function App() {
           setSubscriptionState(resps.currentStatus)
         }
         const workspaceSuspended = !!(resps.currentStatus?.isSuspended || !resps.isActive)
-        // Previously only excluded '/payment/confirm' — a suspended tenant
+        // Previously only excluded '/payment/confirm', a suspended tenant
         // could never even reach the login form (this redirect fired before
         // it could render), so "Manage Subscription" led to a dead end: no
         // session, no way to log in, nothing to click. '/login' and '/renew'
@@ -2459,7 +2459,7 @@ function App() {
         sales?.forEach((sale) => {
           (sale.recoveryList || []).forEach((recovery) => {
             // No longer gated on "is this payPoint one of the CURRENTLY
-            // configured payment method names" — a payment method renamed in
+            // configured payment method names", a payment method renamed in
             // Settings (e.g. adding an account number suffix) after this
             // recovery was recorded made the exact-name check fail forever,
             // silently dropping real historical payments from this report.
@@ -2487,7 +2487,7 @@ function App() {
           if (dateVar >= dateBoundary) {
             // A booking's payment can be split across multiple payment
             // methods in one submission (Accommodation.js's "Also Paid in
-            // Cash" split-bill) — one receipt per paymentHistory entry, not
+            // Cash" split-bill), one receipt per paymentHistory entry, not
             // one receipt using the booking's top-level payPoint/
             // paymentAmount (now the LAST leg's payPoint and the
             // CUMULATIVE total received, not any single payment's amount).
@@ -2556,7 +2556,7 @@ function App() {
   }
 
   // useCache: opt-in, only passed true by callers that are fine with data up
-  // to CACHE_TTL_MS old (e.g. a plain page load/refresh) — skips the live
+  // to CACHE_TTL_MS old (e.g. a plain page load/refresh), skips the live
   // re-fetch entirely when the cache is that fresh. Defaults false so every
   // existing call site (almost all of them post-save refreshes that must
   // see this tenant's own just-written change) keeps its current always-
@@ -2650,7 +2650,7 @@ function App() {
       // Object.values(map) has no defined order beyond insertion order, which
       // shifts between calls whenever the server's own tie-break order for
       // same-createdAt rows isn't identical run to run (or local/pending
-      // records get merged in at different points) — visible as View
+      // records get merged in at different points), visible as View
       // Reports' session/order cards and pay-point/location breakdown rows
       // randomly swapping position on every periodic refresh. Sorting here,
       // once, right after the merge, makes every consumer's render order
@@ -2698,8 +2698,8 @@ function App() {
       // finally apply pending orders (create/update) to override server
       for (const p of pendingSessions) if (p && p.start) map[p.start] = p;
 
-      // Same non-deterministic-order issue as mergeAndPersistOrders above —
-      // sort once, right after the merge, so session cards stop swapping
+      // Same non-deterministic-order issue as mergeAndPersistOrders above.
+      // Sort once, right after the merge, so session cards stop swapping
       // position on every periodic refresh.
       const merged = Object.values(map).sort((a, b) => {
         const diff = (Number(b?.start) || 0) - (Number(a?.start) || 0);
@@ -2717,7 +2717,7 @@ function App() {
       // Returned so callers that also keep their own separate "last active
       // sessions" snapshot (getLastActiveSessions below) can set it from
       // this same reconciled result instead of the raw, unmerged server
-      // response — see that function's own comment for the stale-read bug
+      // response, see that function's own comment for the stale-read bug
       // this was closing.
       return merged;
     } catch (e) {
@@ -3187,12 +3187,12 @@ function App() {
       // Cancelled orders' Shipments are left in InventoryTransactions
       // untouched (staff already have a manual Adjustment workaround for
       // correcting stock when a cancellation's reversal misses, and
-      // touching the ledger here risks double-correcting it) — but their
+      // touching the ledger here risks double-correcting it), but their
       // revenue never happened, so the sales VALUE figure below excludes
       // them. soldQty (and therefore closingQty/physical stock) is
       // deliberately left alone regardless of cancellation status.
       // Best-effort: if this lookup fails (network blip), fall back to no
-      // exclusions rather than aborting the whole report — a transient miss
+      // exclusions rather than aborting the whole report, a transient miss
       // here should degrade to the old behavior, not break page load.
       let cancelledOrderNumbers = [];
       try {
@@ -3215,13 +3215,13 @@ function App() {
       }
 
       // The Overview "SALES" card must always tally with the Dashboard and
-      // Chart of Accounts, which are both driven by GeneralLedgerEntries —
-      // the authoritative, GL-reconciled figure (cancellations reversed via
+      // Chart of Accounts, which are both driven by GeneralLedgerEntries.
+      // The authoritative, GL-reconciled figure (cancellations reversed via
       // reverseGeneralLedgerEntriesForSource, no duplicate-posting risk).
       // The InventoryTransactions-derived salesValue above stays as the
       // source for the per-product/per-location breakdown table (useful for
       // seeing WHICH products sold), but it can drift from GL when a
-      // shipment is duplicated or a record goes missing — data-integrity
+      // shipment is duplicated or a record goes missing, data-integrity
       // issues that get investigated/corrected separately and shouldn't
       // require touching live records just to make this card's total
       // correct. GL has no location/product granularity, so this override
@@ -3248,7 +3248,7 @@ function App() {
             "aggregateDocs",
             SERVER
           );
-          // Net of debit — a reversed/cancelled order's revenue un-recognition
+          // Net of debit, a reversed/cancelled order's revenue un-recognition
           // posts as a debit against this same account; summing credit alone
           // would keep counting revenue that was later reversed.
           const row = glSalesResp?.record?.[0];
@@ -3266,7 +3266,7 @@ function App() {
           collection: "InventoryTransactions",
           prop: [
             // Some historical InventoryTransactions documents have no
-            // postingDate field at all — a raw postingDate match silently
+            // postingDate field at all, a raw postingDate match silently
             // excludes them from BOTH this "opening stock" query and the
             // "in-range" query below, since neither $lt nor $gte/$lte ever
             // matches a missing field. That made closing stock come out
@@ -3380,7 +3380,7 @@ function App() {
           collection: "InventoryTransactions",
           prop: [
             // Same missing-postingDate fallback as the opening-stock query
-            // above — without it, undated documents fall into neither
+            // above, without it, undated documents fall into neither
             // bucket and closing stock comes out higher than the truth.
             {
               $addFields: {
@@ -3688,7 +3688,7 @@ function App() {
                     ]
                   }
                 },
-                // Production/Assembly/Deassembly — previously had no bucket
+                // Production/Assembly/Deassembly, previously had no bucket
                 // at all here, so any product with production activity in
                 // the selected range silently diverged from Adjustments/
                 // Products/Dashboard/Chart-of-Accounts, which all count
@@ -3929,7 +3929,7 @@ function App() {
         // setAlert('inventory data ready!');
         // setAlertTimeout(3000);
       }
-      // Non-index property on the array — ignored by .map/.forEach/JSON
+      // Non-index property on the array, ignored by .map/.forEach/JSON
       // rendering of the product list, read explicitly by summary cards
       // that need the GL-tallying total instead of the per-product sum.
       if (glSalesValue !== null) {
@@ -4158,7 +4158,7 @@ function App() {
               // path, so without this, electron/main.js's hasUserLoggedIn
               // flag (which gates the update-available prompt) would stay
               // false for the entire lifetime of any session that started
-              // from an already-open app rather than a fresh login — the
+              // from an already-open app rather than a fresh login, the
               // exact case of someone leaving the app open across days,
               // which is precisely when the periodic update check matters
               // most. No-op on the web build.
@@ -4181,7 +4181,7 @@ function App() {
 
   useEffect(()=>{
     // Electron desktop build: no in-app billing/trial UI at all, regardless
-    // of the offline-license system — this app was never going to sell
+    // of the offline-license system, this app was never going to sell
     // subscriptions from inside itself (see getViewAccess above).
     if (window.electronAPI?.isElectron) {
       setShowSubscriptionBanner(false)
@@ -4292,8 +4292,8 @@ function App() {
       }}>        
 
         {!pauseView ? <Routes>
-          {/* window.electronAPI only exists when electron/preload.js ran —
-              i.e. only inside the desktop shell (see electron/main.js's
+          {/* window.electronAPI only exists when electron/preload.js ran.
+              I.e. only inside the desktop shell (see electron/main.js's
               webPreferences.preload). A normal web page never has this, so
               LandingPage renders exactly as it always has for the web build. */}
           <Route path='/' element={window.electronAPI?.isElectron ? <DesktopEntry /> : <LandingPage />}></Route>
@@ -4391,18 +4391,18 @@ function App() {
             {!updateBannerCollapsed && (
               <div style={{ padding: '0 14px 12px', opacity: 0.9, lineHeight: 1.4 }}>
                 {updateDownloadProgress.done
-                  ? "Installing shortly — a popup will let you install now or ask again later."
-                  : 'Keep this app open until the download finishes. Closing it now cancels the download (it will not resume) — you would need to start over.'}
+                  ? "Installing shortly. A popup will let you install now or ask again later."
+                  : 'Keep this app open until the download finishes. Closing it now cancels the download and it will not resume, so you would need to start over.'}
               </div>
             )}
           </div>
         )}
-        {/* Online platform only (see the Epsilon plan) — not shown in the
+        {/* Online platform only (see the Epsilon plan), not shown in the
             Electron desktop build, on login/signup/forgot-password, or
             before a session is actually established. Mounted once here so
             it's available across every module without per-page wiring.
             Additionally requires this specific employee's own aiAccess
-            toggle (Settings > Team Access) — Epsilon is a paid, per-seat
+            toggle (Settings > Team Access), Epsilon is a paid, per-seat
             add-on, never on by default for anyone, admins included; the
             backend enforces this independently regardless of what's shown
             here, but hiding the button for someone without a seat avoids a

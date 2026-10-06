@@ -1,5 +1,5 @@
 /* ============================================================================
-   Enterprise Compute — public web design system
+   Enterprise Compute, public web design system
    ----------------------------------------------------------------------------
    Architecture is modelled directly on sap.com's marketing design system. The
    component names below are the same ones SAP's own front layer ships
@@ -24,7 +24,7 @@
    radii, bold type everywhere and heavy shadows. That contrast is the single
    biggest reason these pages now read as enterprise rather than as a SaaS
    template, so the small radii and light headline weights below are load
-   bearing — they are not an oversight.
+   bearing, they are not an oversight.
    ========================================================================= */
 
 :root {
@@ -65,17 +65,62 @@
   --ds-gutter: 24px;
   --ds-pad-x: 48px;
   --ds-header-h: 64px;
-  --ds-subnav-h: 56px;
+  /* The tab strip inside the secondary nav. A fixed constant, and the only
+     thing chrome.css may size the bar from. */
+  --ds-subnav-row-h: 56px;
+  /* The WHOLE secondary nav, breadcrumbs included. ds/useStickyChrome.js
+     overwrites this with the measured height on mount; the value here is
+     only the pre-hydration estimate, set high enough that a rail heading is
+     never clipped on first paint. Nothing may size the bar from this, or
+     the measurement feeds back into itself. */
+  --ds-subnav-h: 96px;
+  /* Header plus however much of the secondary nav is currently on screen.
+     ds/useStickyChrome.js keeps this in step as the bar hides and returns;
+     the value here is the at-rest default so the stylesheet stands alone. */
+  --ds-chrome-top: calc(var(--ds-header-h) + var(--ds-subnav-h));
+
+  /* ---- Spacing scale -------------------------------------------------
+     One ladder, used by everything. Before this existed the pages were
+     carrying around fifty-odd inline `style={{ marginTop: 40 }}` patches,
+     which is what happens when there is no shared vertical rhythm to
+     reach for. ------------------------------------------------------- */
+  --ds-s1: 4px;
+  --ds-s2: 8px;
+  --ds-s3: 12px;
+  --ds-s4: 16px;
+  --ds-s5: 20px;
+  --ds-s6: 24px;
+  --ds-s7: 28px;
+  --ds-s8: 32px;
+  --ds-s10: 40px;
+  --ds-s12: 48px;
+  --ds-s14: 56px;
+  --ds-s16: 64px;
+  --ds-s20: 80px;
+
+  /* ---- Vertical rhythm -----------------------------------------------
+     `section-y`  outer breathing room above and below a whole section.
+     `head-gap`   between a section heading and its content.
+     `block-gap`  between sibling blocks inside one section. This is the
+                  one that was missing entirely, so stacked blocks either
+                  collided or got a hand-written margin.
+     `rail-*`     the side-by-side layout, see .ds-section.rail below. -- */
+  --ds-section-y: clamp(76px, 8vw, 132px);
+  --ds-section-y-tight: clamp(48px, 5vw, 84px);
+  --ds-head-gap: clamp(40px, 4.6vw, 68px);
+  --ds-block-gap: clamp(48px, 6vw, 92px);
+  --ds-rail-w: 350px;
+  --ds-rail-gap: clamp(40px, 5.5vw, 104px);
 
   /* ---- Type ----------------------------------------------------------
      Three roles, loaded as variable fonts from index.html:
-       display  Plus Jakarta Sans — headings. Geometric-humanist, with
+       display  Plus Jakarta Sans, headings. Geometric-humanist, with
                 enough character at large light weights to carry a hero,
                 which a neutral grotesque cannot.
-       sans     Inter — body, UI, labels and tabular figures. Chosen for
+       sans     Inter, body, UI, labels and tabular figures. Chosen for
                 its large x-height and genuinely good small sizes, which is
                 where most of this site's text actually lives.
-       serif    Newsreader — pull quotes and large statement text only.
+       serif    Newsreader, pull quotes and large statement text only.
                 One editorial note stops the pages reading as a template.
      Each stack keeps a real fallback so the page is legible before the
      webfonts land and remains legible if they never do. ------------- */
@@ -102,7 +147,7 @@
 }
 
 /* ============================================================================
-   Scroll-reveal entrance animations — see ds/motion.js.
+   Scroll-reveal entrance animations, see ds/motion.js.
    ----------------------------------------------------------------------------
    The element starts offset and transparent and settles when an
    IntersectionObserver marks it `.is-in`. Staggering is done with
@@ -132,7 +177,7 @@
 .ds-reveal-scale { transform: scale(0.97); }
 
 /* Staggered children. The delay ladder stops at twelve, after which every
-   further child shares the last step — a longer ladder just makes the tail
+   further child shares the last step, a longer ladder just makes the tail
    of a long grid feel broken rather than choreographed. */
 .ds-reveal-stagger > * {
   opacity: 0;
@@ -143,9 +188,6 @@
 }
 .ds-reveal-stagger.is-in > * { opacity: 1; transform: none; }
 
-/* Used by hairline grids (.ds-tiles), where translating a child would tear
-   the 1px separators open while the animation runs. */
-.ds-reveal-stagger.fade-only > * { transform: none; }
 .ds-reveal-stagger.is-in > *:nth-child(1)  { transition-delay: calc(var(--ds-reveal-step, 0.07s) * 0); }
 .ds-reveal-stagger.is-in > *:nth-child(2)  { transition-delay: calc(var(--ds-reveal-step, 0.07s) * 1); }
 .ds-reveal-stagger.is-in > *:nth-child(3)  { transition-delay: calc(var(--ds-reveal-step, 0.07s) * 2); }
@@ -190,7 +232,7 @@
 /* Native anchor jumps (a pasted #hash, a browser Find) must clear the
    sticky header and sub-nav, the same allowance the eased scroll helpers
    in ds/motion.js make. */
-html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56px) + 20px); }
+html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 96px) + 20px); }
 
 .ds-page *,
 .ds-page *::before,
@@ -209,7 +251,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 }
 .ds-skip-link:focus { left: 8px; top: 8px; }
 
-/* Visible keyboard focus everywhere — SAP keeps a clear 2px focus ring. */
+/* Visible keyboard focus everywhere, SAP keeps a clear 2px focus ring. */
 .ds-page a:focus-visible,
 .ds-page button:focus-visible,
 .ds-page input:focus-visible,
@@ -224,7 +266,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 .ds-on-deep button:focus-visible { outline-color: var(--ds-mint); }
 
 /* ============================================================================
-   Grid — SAP's Grid__container / Grid__row / Grid__col-{bp}-{n}
+   Grid, SAP's Grid__container / Grid__row / Grid__col-{bp}-{n}
    ========================================================================= */
 
 .ds-container {
@@ -244,7 +286,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 }
 
 /* Item grids: the common 1/2/3/4-up layouts, collapsing the way SAP's do. */
-.ds-grid { display: grid; gap: 32px var(--ds-gutter); }
+.ds-grid { display: grid; gap: clamp(28px, 2.6vw, 40px) var(--ds-gutter); min-width: 0; }
 .ds-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ds-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ds-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -253,7 +295,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 .ds-grid.tight { gap: 20px; }
 
 /* ============================================================================
-   Typography — SAP sets large headlines LIGHT, not bold.
+   Typography, SAP sets large headlines LIGHT, not bold.
    ========================================================================= */
 
 .ds-eyebrow {
@@ -270,7 +312,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 .ds-on-deep .ds-eyebrow { color: var(--ds-mint); }
 
 /* Headings run on the display face. Large sizes take a light weight and
-   tighter tracking — the two move together, because tracking that reads as
+   tighter tracking, the two move together, because tracking that reads as
    correct at 16px reads as loose at 64px. */
 .ds-h1,
 .ds-h2,
@@ -336,7 +378,19 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 
 .ds-measure { max-width: 68ch; }
 
-/* Figures line up in columns — stat rows, tables and prices all read as
+/* Long unbroken strings are the other common cause of sideways scroll on a
+   phone: workspace subdomains, license keys, payment references, email
+   addresses. These wrap rather than forcing the page wider. */
+.ds-page p,
+.ds-page li,
+.ds-page td,
+.ds-page th,
+.ds-page .ds-card-title,
+.ds-page .ds-tile-title,
+.ds-page code { overflow-wrap: anywhere; }
+.ds-page h1, .ds-page h2, .ds-page h3, .ds-page h4 { overflow-wrap: break-word; }
+
+/* Figures line up in columns, stat rows, tables and prices all read as
    data rather than as prose when the digits share a width. */
 .ds-fact-value,
 .ds-hero-stats strong,
@@ -344,7 +398,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 .ds-price-figure { font-variant-numeric: tabular-nums; }
 
 /* ============================================================================
-   Buttons — SAP: 4px radius, solid primary, outlined secondary, text tertiary
+   Buttons, SAP: 4px radius, solid primary, outlined secondary, text tertiary
    ========================================================================= */
 
 .ds-btn {
@@ -412,7 +466,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 
 .ds-btn-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 
-/* Chevron link — SAP's `Learn more ›` pattern, used everywhere on their site */
+/* Chevron link, SAP's `Learn more ›` pattern, used everywhere on their site */
 .ds-link {
   display: inline-flex;
   align-items: center;
@@ -441,13 +495,80 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 .ds-link-list { display: flex; flex-wrap: wrap; gap: 12px 28px; }
 
 /* ============================================================================
-   Section — SAP's Section component: eyebrow + headline + subtitle + content
+   Section, SAP's Section component: eyebrow + headline + subtitle + content
    ========================================================================= */
 
-.ds-section { padding: clamp(64px, 7.5vw, 112px) 0; }
-.ds-section.tight { padding: clamp(44px, 5vw, 72px) 0; }
+.ds-section {
+  padding: var(--ds-section-y) 0;
+  /* An in-page jump has to clear the full chrome, including the secondary
+     nav, which reappears whenever the jump scrolls upward. --ds-subnav-h is
+     the measured height whether or not the bar is currently shown. */
+  scroll-margin-top: calc(var(--ds-header-h) + var(--ds-subnav-h) + var(--ds-s5));
+}
+.ds-section.tight { padding: var(--ds-section-y-tight) 0; }
 .ds-section.flush-top { padding-top: 0; }
 .ds-section.flush-bottom { padding-bottom: 0; }
+
+/* Two sections with the SAME background next to each other would otherwise
+   stack two full helpings of padding and read as one huge empty gap. With no
+   colour change there is no edge to justify it, so the pair shares a single
+   rhythm: the first section's padding-bottom is the whole gap.
+
+   Both sides of each pair have to be constrained. An earlier version wrote
+   the untinted case as `.ds-section + .ds-section:not(.alt)...`, which only
+   describes the SECOND section, so a plain section following a tinted one
+   also lost its top padding. That is the one place the padding is least
+   negotiable, because the colour edge sits right above the heading, and it
+   left section titles sitting flush against the previous section's border. */
+.ds-section:not(.alt):not(.cream):not(.deep):not(.deep-grad)
+  + .ds-section:not(.alt):not(.cream):not(.deep):not(.deep-grad),
+.ds-section.alt + .ds-section.alt,
+.ds-section.cream + .ds-section.cream,
+.ds-section.deep + .ds-section.deep,
+.ds-section.deep-grad + .ds-section.deep-grad { padding-top: 0; }
+
+/* Every section's children live in this wrapper, which is what gives
+   sibling blocks their spacing automatically. A section with one child is
+   unaffected; a section with three no longer needs a hand-written margin
+   between them. */
+.ds-section-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ds-block-gap);
+  min-width: 0;
+}
+/* A body whose children are a closely-related set, such as a filter bar and
+   the results it filters, rather than independent blocks. */
+.ds-section-body.snug { gap: var(--ds-s8); }
+
+/* ----------------------------------------------------------------------
+   A labelled sub-block inside a section body: a small heading, sometimes a
+   line of standfirst, then its own grid of content.
+
+   Without this the only separation between the label and its content was
+   the heading's own `margin-bottom`, which is sized for running text, not
+   for introducing a block. A 12px gap above a grid of cards reads as the
+   heading being stuck to it. The group owns the rhythm instead, and zeroes
+   the margins of its children so the two systems cannot fight.
+   ------------------------------------------------------------------- */
+.ds-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ds-s7);
+  min-width: 0;
+}
+.ds-group > * { margin: 0; }
+
+.ds-group-head {
+  display: grid;
+  gap: var(--ds-s2);
+  max-width: 72ch;
+}
+.ds-group-head > * { margin: 0; }
+
+@media (max-width: 768px) {
+  .ds-group { gap: var(--ds-s5); }
+}
 
 .ds-section.alt { background: var(--ds-surface-alt); }
 .ds-section.cream { background: var(--ds-surface-cream); }
@@ -456,11 +577,11 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
   background: linear-gradient(160deg, var(--ds-deep) 0%, var(--ds-deep-ink) 100%);
 }
 
-.ds-section-head { max-width: 760px; margin: 0 0 clamp(36px, 4.5vw, 60px); }
+.ds-section-head { max-width: 760px; margin: 0 0 var(--ds-head-gap); }
 .ds-section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
 .ds-section-head .ds-lede:last-child { margin-bottom: 0; }
 
-/* Headline on one side, supporting copy on the other — a layout SAP uses a
+/* Headline on one side, supporting copy on the other, a layout SAP uses a
    lot for section intros that need more than a single sentence. */
 .ds-section-head.split {
   max-width: none;
@@ -471,10 +592,86 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 }
 .ds-section-head.split > * { min-width: 0; }
 
-.ds-section-foot { margin-top: clamp(28px, 3.5vw, 44px); }
+.ds-section-foot { margin-top: var(--ds-head-gap); }
+
+/* ----------------------------------------------------------------------
+   Rail: the side-by-side section layout.
+
+   The heading, its standfirst and its closing links sit in a narrow
+   column on the left while the content runs down the right. The left
+   column sticks as you scroll past, so on a long section you keep the
+   context of what you are reading.
+
+   This is the layout that stops a page being one endless centred column.
+   It is used wherever the content is three columns or narrower; wide
+   four-up card grids and the tabbed showcase keep the full width and use
+   the stacked header instead, because squeezing those into two thirds of
+   the page makes the cards too narrow to read.
+   ------------------------------------------------------------------- */
+.ds-section.rail > .ds-container {
+  display: grid;
+  grid-template-columns: minmax(0, var(--ds-rail-w)) minmax(0, 1fr);
+  /* Only the column axis wants the wide rail gutter. A shorthand `gap` would
+     hand the same value to the row axis, where it would open a second gap
+     under the content on top of the footer's own margin, and leave that gap
+     behind even when the row is empty. */
+  column-gap: var(--ds-rail-gap);
+  row-gap: 0;
+  align-items: start;
+}
+.ds-section.rail .ds-section-head {
+  position: sticky;
+  /* Follows the chrome that is actually on screen, so the heading rises
+     into the space the secondary nav frees when it hides and is never
+     tucked underneath it when it returns. */
+  top: calc(var(--ds-chrome-top) + var(--ds-s8));
+  transition: top 0.28s var(--ds-ease-out);
+  max-width: none;
+  margin-bottom: 0;
+  grid-column: 1;
+  /* Spans both rows so the heading stays with you for the whole section. A
+     sticky grid item is penned inside its own grid area, so without this it
+     would come unstuck as soon as the content column ran past row one.
+     `span 2` rather than `1 / -1` because -1 counts against the explicit
+     grid, and the rows here are all implicit, so -1 would resolve straight
+     back to line 1 and span nothing. With no footer the second row is empty
+     and costs nothing, since row-gap is zero. */
+  grid-row: 1 / span 2;
+}
+.ds-section.rail .ds-section-body { grid-column: 2; }
+/* The closing links go under the content they refer to, not under the
+   heading. Sharing the left column with a sticky element meant the heading
+   travelled down over them as you scrolled, which is what put the links on
+   top of the standfirst. Nothing else sits in that column now, so there is
+   nothing left for the heading to collide with. */
+.ds-section.rail .ds-section-foot {
+  grid-column: 2;
+  margin-top: var(--ds-s8);
+}
+/* A rail heading carries less width, so the display sizes step down one
+   notch to stop a three-word headline breaking across four lines. */
+.ds-section.rail .ds-section-head .ds-h2 {
+  font-size: clamp(1.625rem, 1rem + 1.5vw, 2.125rem);
+}
+.ds-section.rail .ds-section-head .ds-lede {
+  font-size: clamp(1rem, 0.97rem + 0.2vw, 1.0625rem);
+}
+
+/* A rail section with no heading would leave an empty left column. */
+.ds-section.rail > .ds-container > .ds-section-body:only-child { grid-column: 1 / -1; }
+
+/* Sections that centre their content in a narrow container (FAQ accordions,
+   contact forms) keep that markup, but inside a rail the column is already
+   the right measure, so the nested container stops constraining and stops
+   adding a second helping of horizontal padding. */
+.ds-section.rail .ds-section-body > .ds-container {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
 
 /* ============================================================================
-   HeroFixedHeight — SAP's hero: half-width image, text in the other half
+   HeroFixedHeight, SAP's hero: half-width image, text in the other half
    ========================================================================= */
 
 .ds-hero {
@@ -500,7 +697,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 .ds-hero.lg .ds-hero-inner { min-height: 560px; }
 .ds-hero.sm .ds-hero-inner { min-height: 300px; padding: clamp(40px, 4.5vw, 60px) 0; }
 
-/* Text-only hero (section landing pages) — single centred/left column. */
+/* Text-only hero (section landing pages), single centred/left column. */
 .ds-hero.text-only .ds-hero-inner {
   grid-template-columns: minmax(0, 1fr);
   min-height: 0;
@@ -566,18 +763,28 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
   background: linear-gradient(100deg, rgba(15, 42, 30, 0.94) 0%, rgba(15, 42, 30, 0.78) 46%, rgba(15, 42, 30, 0.35) 100%);
 }
 
-/* Floating stat strip that overlaps the bottom edge of a hero. */
+/* Stat strip under the hero copy. Separate bordered cards with real space
+   between them, for the same reason the tiles are: a divider drawn by
+   letting a container colour show through 1px gaps only holds up while the
+   grid is exactly full, and any row with a spare cell paints that cell as a
+   solid block of the border colour. */
 .ds-hero-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 1px;
-  background: var(--ds-border);
+  gap: var(--ds-s4);
+  margin-top: var(--ds-s7);
+}
+.ds-hero-stats > div {
+  background: var(--ds-surface);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius);
-  overflow: hidden;
-  margin-top: 36px;
+  padding: var(--ds-s5) var(--ds-s5) var(--ds-s6);
 }
-.ds-hero-stats > div { background: var(--ds-surface); padding: 20px 22px; }
+/* Over a dark hero the card reads as a lifted pane rather than a white box. */
+.ds-on-deep .ds-hero-stats > div {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--ds-border-on-deep);
+}
 .ds-hero-stats strong {
   display: block;
   font-size: 1.75rem;
@@ -592,12 +799,14 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
   font-size: 0.8125rem;
   color: var(--ds-text-muted);
 }
+.ds-on-deep .ds-hero-stats strong { color: #fff; }
+.ds-on-deep .ds-hero-stats span { color: var(--ds-text-on-deep-muted); }
 
 /* ============================================================================
-   SeveralBoxes / fast facts — SAP's big-number stat row
+   SeveralBoxes / fast facts, SAP's big-number stat row
    ========================================================================= */
 
-.ds-facts { display: grid; gap: 32px var(--ds-gutter); }
+.ds-facts { display: grid; gap: clamp(28px, 2.6vw, 40px) var(--ds-gutter); min-width: 0; }
 .ds-facts.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ds-facts.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ds-facts.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -607,8 +816,8 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
   padding-top: 20px;
   position: relative;
 }
-/* The accent rule grows in with the stat rather than being painted flat —
-   a small thing that makes a row of figures feel assembled. */
+/* The accent rule grows in with the stat rather than being painted flat.
+   A small thing, but it makes a row of figures feel assembled. */
 .ds-fact::before {
   content: '';
   position: absolute;
@@ -641,7 +850,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 .ds-on-deep .ds-fact-label { color: var(--ds-text-on-deep-muted); }
 
 /* ============================================================================
-   FiftyFiftyHorizontal — alternating image / copy rows
+   FiftyFiftyHorizontal, alternating image / copy rows
    ========================================================================= */
 
 .ds-fifty {
@@ -650,7 +859,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
   gap: clamp(32px, 5vw, 80px);
   align-items: center;
 }
-.ds-fifty + .ds-fifty { margin-top: clamp(56px, 7vw, 96px); }
+.ds-fifty + .ds-fifty { margin-top: var(--ds-block-gap); }
 .ds-fifty.reversed .ds-fifty-visual { order: 2; }
 .ds-fifty.reversed .ds-fifty-copy { order: 1; }
 
@@ -688,7 +897,7 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 56
 .ds-on-deep .ds-checklist li::before { border-color: var(--ds-mint); }
 
 /* ============================================================================
-   Cards — image-topped content card with a chevron link (SAP's main tile)
+   Cards, image-topped content card with a chevron link (SAP's main tile)
    ========================================================================= */
 
 .ds-card {
@@ -798,16 +1007,41 @@ button.ds-card.flat:hover .ds-card-title { color: var(--ds-action); }
 .ds-on-deep a.ds-card:hover, .ds-on-deep button.ds-card:hover { border-color: var(--ds-mint); }
 
 /* ============================================================================
-   TilePromo — compact text tiles in a hairline grid (no imagery)
+   TilePromo, compact text tiles in a hairline grid (no imagery)
    ========================================================================= */
 
+/* Spaced cards.
+
+   This was previously a hairline grid:  with the container's
+   border colour showing through the gaps as divider lines, and each tile
+   painted opaque on top. It is a real pattern, and it is what sap.com uses,
+   but it has a failure I did not check for. The technique only works when
+   the grid is completely full. Six tiles in a four-column grid leaves two
+   empty cells, and an empty cell has no tile painted over it, so the
+   container colour shows through as a solid block. That was the grey-green
+   rectangle in the bottom-right of a short last row.
+
+   Real gaps remove the failure mode rather than patching it: there is no
+   container colour to leak, an incomplete row is simply empty, and the
+   tiles get the breathing room the rest of the system already uses. */
+/* Spaced cards.
+
+   This was a hairline grid: a 1px gap with the container's border colour
+   showing through as divider lines, and each tile painted opaque on top. It
+   is a real pattern and it is the one sap.com uses, but it only works when
+   the grid is completely full. Six tiles in a four-column grid leaves two
+   empty cells, and an empty cell has no tile painted over it, so the
+   container colour shows through as a solid block. That was the grey-green
+   rectangle sitting in the bottom-right of any short last row.
+
+   Real gaps remove the failure rather than patching it: there is no
+   container colour behind the grid to leak through, an incomplete row is
+   simply empty, and the tiles get the same breathing room as every other
+   card on the site. */
 .ds-tiles {
   display: grid;
-  gap: 1px;
-  background: var(--ds-border);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius);
-  overflow: hidden;
+  gap: var(--ds-gutter);
+  min-width: 0;
 }
 .ds-tiles.cols-1 { grid-template-columns: minmax(0, 1fr); }
 .ds-tiles.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -817,20 +1051,28 @@ button.ds-card.flat:hover .ds-card-title { color: var(--ds-action); }
 
 .ds-tile {
   background: var(--ds-surface);
-  padding: 30px 28px 32px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  padding: var(--ds-s7) var(--ds-s6) var(--ds-s8);
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: var(--ds-s2);
   text-align: left;
   text-decoration: none;
   color: inherit;
-  border: none;
   font-family: inherit;
-  transition: background 0.18s var(--ds-ease);
   min-width: 0;
+  transition:
+    border-color 0.18s var(--ds-ease),
+    box-shadow 0.18s var(--ds-ease),
+    transform 0.18s var(--ds-ease);
 }
 a.ds-tile, button.ds-tile { cursor: pointer; }
-a.ds-tile:hover, button.ds-tile:hover { background: var(--ds-surface-alt); }
+a.ds-tile:hover, button.ds-tile:hover {
+  border-color: var(--ds-action);
+  box-shadow: 0 10px 30px rgba(23, 56, 41, 0.1);
+  transform: translateY(-3px);
+}
 .ds-tile-title {
   font-family: var(--ds-font-display);
   font-size: 1.0625rem;
@@ -842,16 +1084,18 @@ a.ds-tile:hover, button.ds-tile:hover { background: var(--ds-surface-alt); }
 }
 a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var(--ds-action); }
 .ds-tile-text { font-size: 0.9125rem; line-height: 1.55; color: var(--ds-text-muted); margin: 0; }
-.ds-tile-foot { margin-top: auto; padding-top: 12px; }
+.ds-tile-foot { margin-top: auto; padding-top: var(--ds-s4); }
 
-.ds-on-deep .ds-tiles { background: var(--ds-border-on-deep); border-color: var(--ds-border-on-deep); }
-.ds-on-deep .ds-tile { background: var(--ds-deep); }
-.ds-on-deep a.ds-tile:hover, .ds-on-deep button.ds-tile:hover { background: var(--ds-deep-soft); }
+.ds-on-deep .ds-tile {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--ds-border-on-deep);
+}
+.ds-on-deep a.ds-tile:hover, .ds-on-deep button.ds-tile:hover { border-color: var(--ds-mint); }
 .ds-on-deep .ds-tile-title { color: var(--ds-text-on-deep); }
 .ds-on-deep .ds-tile-text { color: var(--ds-text-on-deep-muted); }
 
 /* ============================================================================
-   TabbedShowcase — SAP's "pick a capability, see the screen" pattern
+   TabbedShowcase, SAP's "pick a capability, see the screen" pattern
    ========================================================================= */
 
 .ds-showcase {
@@ -984,7 +1228,11 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
    Quote / customer story
    ========================================================================= */
 
-.ds-quote { border-left: 2px solid var(--ds-action); padding-left: clamp(20px, 3vw, 40px); }
+.ds-quote {
+  margin: 0; /* <figure> carries a browser default margin */
+  border-left: 2px solid var(--ds-action);
+  padding-left: clamp(20px, 3vw, 40px);
+}
 /* The one place the serif appears. A long customer quote set in the same
    face as the surrounding UI reads as more interface; set in Newsreader it
    reads as somebody speaking, which is the entire point of a pull quote. */
@@ -1170,13 +1418,81 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
    Misc utilities
    ========================================================================= */
 
+/* ---- Small, named pieces that were previously inline styles -----------
+   Each of these appeared at three or more call sites as a hand-written
+   `style={{ marginTop: ... }}`. Naming them keeps the spacing on the scale
+   and means a change lands everywhere at once. */
+
+/* Muted aside under a block: the illustrative-content notice, a caveat. */
+.ds-note {
+  margin: var(--ds-s6) 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.62;
+  color: var(--ds-text-muted);
+}
+.ds-note.flush { margin-top: 0; }
+/* Flagged variant, for a caveat the reader should not skim past. */
+.ds-note.flag {
+  padding-left: var(--ds-s4);
+  border-left: 3px solid var(--ds-gold);
+}
+.ds-note.quiet { padding-left: var(--ds-s3); border-left: 2px solid var(--ds-border); }
+
+/* Filter controls sitting directly above the results they filter. */
+.ds-filters { display: grid; gap: var(--ds-s3); margin-bottom: var(--ds-s8); }
+.ds-result-count { margin: 0 0 var(--ds-s5); font-size: 0.9375rem; color: var(--ds-text-muted); }
+
+/* Numbered step: the big figure, then its title, then its body. */
+.ds-step-title { margin: var(--ds-s4) 0 var(--ds-s2); }
+.ds-step-body { margin: 0; }
+
+/* Secondary label sitting beside a tag on the same line. */
+.ds-inline-meta { margin-left: var(--ds-s3); }
+
+/* Pushed to the bottom of a tile, for a trailing contact or meta line. */
+.ds-tile-foot-note {
+  margin-top: auto;
+  padding-top: var(--ds-s3);
+  color: var(--ds-action);
+}
+
+/* Plain unstyled list used inside a card for a short set of links. */
+.ds-plain-list { list-style: none; padding: 0; margin: var(--ds-s1) 0 0; }
+.ds-plain-list li { padding: 2px 0; }
+
+/* Supporting detail under the hero copy, before or after the buttons. */
+.ds-hero-checklist { margin-top: var(--ds-s7); }
+
+/* The handful of single-step nudges that are genuinely per-instance. */
+/* Bordered aside with real padding, for a point that deserves its own box
+   without becoming a full card. */
+.ds-callout {
+  padding: var(--ds-s6) var(--ds-s6);
+  border-left: 3px solid var(--ds-border-strong);
+  background: var(--ds-surface-alt);
+  border-radius: 0 var(--ds-radius) var(--ds-radius) 0;
+}
+.ds-callout.gold { border-left-color: var(--ds-gold); }
+.ds-on-deep .ds-callout { background: rgba(255, 255, 255, 0.05); }
+
+/* Aspect-ratio overrides for a visual slot. */
+.ds-fifty-visual.ratio-43 { aspect-ratio: 4 / 3; }
+.ds-fifty-visual.ratio-11 { aspect-ratio: 1 / 1; }
+
+.ds-mt-2 { margin-top: var(--ds-s2); }
+.ds-mt-5 { margin-top: var(--ds-s5); }
+.ds-mb-2 { margin-bottom: var(--ds-s2); }
+
 .ds-divider { height: 1px; background: var(--ds-border); border: none; margin: 0; }
 .ds-on-deep .ds-divider { background: var(--ds-border-on-deep); }
 .ds-center { text-align: center; }
 .ds-mt-0 { margin-top: 0; }
 .ds-mb-0 { margin-bottom: 0; }
-.ds-stack { display: grid; gap: 16px; }
-.ds-stack.lg { gap: 28px; }
+.ds-stack { display: grid; gap: var(--ds-s4); min-width: 0; }
+.ds-stack.sm { gap: var(--ds-s2); }
+.ds-stack.md { gap: var(--ds-s6); }
+.ds-stack.lg { gap: var(--ds-block-gap); }
+.ds-stack.xl { gap: calc(var(--ds-block-gap) * 1.25); }
 .ds-sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
@@ -1196,7 +1512,7 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
 }
 .ds-prose h2:first-child, .ds-prose h3:first-child { margin-top: 0; }
 .ds-prose p { font-size: 1.0625rem; line-height: 1.75; color: var(--ds-text-muted); margin: 0 0 18px; text-wrap: pretty; }
-/* Opening paragraph of an article reads a size up — a standing editorial
+/* Opening paragraph of an article reads a size up, a standing editorial
    convention that orients the reader without needing a separate standfirst. */
 .ds-prose > p:first-of-type {
   font-size: 1.1875rem;
@@ -1216,16 +1532,45 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
 }
 
 /* ============================================================================
-   Responsive — the shared breakpoint scale from styles/tokens.css
+   Responsive, the shared breakpoint scale from styles/tokens.css
    ========================================================================= */
 
 @media (max-width: 1280px) {
-  :root { --ds-pad-x: 32px; }
+  :root { --ds-pad-x: 32px; --ds-rail-w: 300px; }
   .ds-grid.cols-5, .ds-grid.cols-6 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  /* Four cards inside a rail would be too narrow to read. */
+  .ds-section.rail .ds-grid.cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* A tile is a padded card, so it needs more width than the flat cell it
+     replaced. Beside a rail there is roughly a third less room, so the
+     denser counts step down a level earlier than they do full width. */
+  .ds-section.rail .ds-tiles.cols-4,
+  .ds-section.rail .ds-tiles.cols-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-section.rail .ds-tiles.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1024px) {
   :root { --ds-pad-x: 24px; }
+
+  /* The rail unstacks: heading back on top, content full width, and the
+     sticky behaviour switched off so a tall heading cannot pin itself over
+     the content it is meant to introduce. */
+  .ds-section.rail > .ds-container {
+    display: block;
+  }
+  .ds-section.rail .ds-section-head {
+    position: static;
+    max-width: 760px;
+    margin-bottom: var(--ds-head-gap);
+  }
+  .ds-section.rail .ds-section-head .ds-h2 {
+    font-size: clamp(1.875rem, 1.1rem + 2.6vw, 2.875rem);
+  }
+  .ds-section.rail .ds-section-head .ds-lede {
+    font-size: clamp(1.0625rem, 0.99rem + 0.4vw, 1.3125rem);
+  }
+  .ds-section.rail .ds-section-foot { margin-top: var(--ds-head-gap); }
+  .ds-section.rail .ds-grid.cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
   .ds-hero-inner,
   .ds-fifty,
   .ds-showcase,
@@ -1246,18 +1591,31 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
 }
 
 @media (max-width: 768px) {
+  /* Tighten the vertical rhythm on phones. The desktop values are tuned for
+     a wide viewport; carried over unchanged they turn every section break
+     into half a screen of nothing. */
+  :root {
+    --ds-section-y: clamp(52px, 11vw, 72px);
+    --ds-section-y-tight: clamp(36px, 8vw, 52px);
+    --ds-head-gap: clamp(26px, 6vw, 36px);
+    --ds-block-gap: clamp(36px, 8vw, 52px);
+  }
   .ds-grid.cols-3, .ds-grid.cols-4, .ds-grid.cols-5, .ds-grid.cols-6 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ds-tiles.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-section.rail .ds-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-tiles.cols-3, .ds-tiles.cols-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ds-facts.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ds-form-grid { grid-template-columns: minmax(0, 1fr); }
   .ds-accordion-panel { padding-right: 24px; }
+  .ds-hero-inner { padding: clamp(36px, 9vw, 56px) 0; }
+  .ds-hero.immersive .ds-hero-inner { min-height: 0; }
 }
 
 @media (max-width: 480px) {
   :root { --ds-pad-x: 16px; --ds-gutter: 16px; }
   .ds-grid.cols-2, .ds-grid.cols-3, .ds-grid.cols-4,
   .ds-grid.cols-5, .ds-grid.cols-6 { grid-template-columns: minmax(0, 1fr); }
-  .ds-tiles.cols-2, .ds-tiles.cols-3, .ds-tiles.cols-4 { grid-template-columns: minmax(0, 1fr); }
+  .ds-tiles.cols-2, .ds-tiles.cols-3,
+  .ds-tiles.cols-4, .ds-tiles.cols-5 { grid-template-columns: minmax(0, 1fr); }
   .ds-facts.cols-2, .ds-facts.cols-3, .ds-facts.cols-4 { grid-template-columns: minmax(0, 1fr); }
   .ds-btn { width: 100%; }
   .ds-btn-row { flex-direction: column; align-items: stretch; }
@@ -1271,7 +1629,7 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
 /* ============================================================================
    Reduced motion
    ----------------------------------------------------------------------------
-   Critically, this must not just shorten the reveal transitions — an element
+   Critically, this must not just shorten the reveal transitions, an element
    whose transition is cancelled while it still carries the pre-reveal
    `opacity: 0` would stay invisible forever. So the reveal states are
    explicitly forced to their finished values here, and ds/motion.js

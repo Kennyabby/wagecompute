@@ -635,7 +635,7 @@ body {
   font-size: 14px;
   font-weight: 500;
   /* .ca-main (this alert's scrolling ancestor) is a tall, always-scrollable
-     pane — this sits right after the header, so scrolling down to reach any
+     pane, this sits right after the header, so scrolling down to reach any
      form/action further down the tab (which is most of them) carried the
      success/error feedback for whatever was just clicked off-screen along
      with it, making every action look like it silently did nothing. Sticky
@@ -1871,7 +1871,7 @@ body {
 }
 
 /* .ca-metric-row/-label/-value were built for short bar-chart-style rows
-   (a tenant name, a monitor label) — the fixed 100px/60px widths truncate
+   (a tenant name, a monitor label), the fixed 100px/60px widths truncate
    the wrong things here: "Top users" rows carry a full email address plus
    company name on the label side and a large token count on the value side.
    Modifiers, not a change to the base rule, so every other ca-metric-row

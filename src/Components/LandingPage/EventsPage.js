@@ -1,5 +1,5 @@
 /* ============================================================================
-   /events — live sessions, workshops, office hours and recordings.
+   /events, live sessions, workshops, office hours and recordings.
    ========================================================================= */
 
 import { useContext, useEffect, useMemo, useState } from 'react'
@@ -49,7 +49,7 @@ const EventsPage = () => {
         backgroundImage={heroImg('conferenceAudience', 'heroWide')}
         eyebrow="Events & webinars"
         title="Learn it from people who have set it up before"
-        lede="Monthly implementation walkthroughs, module deep dives, and open office hours where you can bring a configuration problem and leave with an answer."
+        lede="Monthly implementation walkthroughs, detailed sessions on individual modules, and open office hours where you can bring a configuration problem and leave with an answer."
       >
         <ButtonRow>
           <Button variant="primary" to="/contact" navigate={navigate}>Register your interest</Button>
@@ -79,12 +79,12 @@ const EventsPage = () => {
               <span className="ds-eyebrow">{`Next up · ${featured.type}`}</span>
               <h2 className="ds-h2">{featured.title}</h2>
               <p className="ds-lede">{featured.text}</p>
-              <div className="ds-hero-stats" style={{ marginTop: 8 }}>
+              <div className="ds-hero-stats">
                 <div><strong style={{ fontSize: '1.0625rem' }}>{featured.when}</strong><span>When</span></div>
                 <div><strong style={{ fontSize: '1.0625rem' }}>{featured.duration}</strong><span>Length</span></div>
                 <div><strong style={{ fontSize: '1.0625rem' }}>{featured.format}</strong><span>Format</span></div>
               </div>
-              <div style={{ marginTop: 28 }}>
+              <div className="ds-section-foot">
                 <Button variant="primary" to="/contact" navigate={navigate}>Register for this session</Button>
               </div>
             </div>
@@ -94,12 +94,14 @@ const EventsPage = () => {
 
       <Section
         id="upcoming"
+        bodySnug
         eyebrow="Live sessions"
         title="Running regularly"
+        rail
         split
         subtitle="Each session has an agenda and time for questions. If none of them covers what you need, office hours exist precisely for that."
       >
-        <div style={{ marginBottom: 32 }}>
+        <div className="ds-filters">
           <Pills label="Filter by format" options={EVENT_TYPES} value={format} onChange={setFormat} />
         </div>
 
@@ -129,9 +131,11 @@ const EventsPage = () => {
 
       <Section
         id="on-demand"
+        bodySnug
         variant="cream"
         eyebrow="On demand"
         title="Watch a recording instead"
+        rail
         split
         subtitle="Previously recorded sessions, available whenever you need them."
       >
@@ -163,6 +167,7 @@ const EventsPage = () => {
         id="community"
         eyebrow="User groups"
         title="Meet other operators running the same modules"
+        rail
         split
         subtitle="Sector and regional groups where people compare practice. Retail, hospitality, distribution and finance leads each run their own."
         footer={<TextLink to="/community" navigate={navigate}>Explore the community</TextLink>}

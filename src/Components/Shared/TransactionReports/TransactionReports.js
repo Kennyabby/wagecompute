@@ -23,7 +23,7 @@ const TransactionReports = ({
     wrhCategories,
     fetchSessionsByRange,
     fetchOrdersByRange,
-    // Deep-link from the General Ledger table (Journals module) — see
+    // Deep-link from the General Ledger table (Journals module), see
     // PointOfSales.js's glDeepLink / Delivery.js's equivalent wiring.
     // initialOrderId auto-expands that order's session + the order card
     // itself once loaded; initialSessionSourceId does the same for a
@@ -47,14 +47,14 @@ const TransactionReports = ({
     const [payPointAccounts, setPayPointAccounts] = useState({})
     const [glDeepLinkApplied, setGlDeepLinkApplied] = useState(false)
     // Populated by ref callbacks on each session/order card as they render
-    // (session.i_d / order._id -> DOM node) — used only to scroll the
+    // (session.i_d / order._id -> DOM node), used only to scroll the
     // deep-link target into view once it exists; not used for anything
     // else, so a plain mutable ref (not state) is correct here.
     const sessionCardRefs = useRef({})
     const orderCardRefs = useRef({})
     const [glDeepLinkScrollTarget, setGlDeepLinkScrollTarget] = useState(null)
 
-    // Temporary, unconditional diagnostic — logs exactly what this component
+    // Temporary, unconditional diagnostic, logs exactly what this component
     // received on mount, regardless of any later gating logic, so we can
     // tell definitively whether the deep-link props are even arriving here
     // at all before chasing anything further downstream.
@@ -67,7 +67,7 @@ const TransactionReports = ({
         if (!initialDateHint) return null;
         const target = new Date(`${initialDateHint}T00:00:00`);
         if (Number.isNaN(target.getTime())) return null;
-        // A few days of buffer either side — a shortage/recovery event's own
+        // A few days of buffer either side, a shortage/recovery event's own
         // date can differ slightly from the GL posting date, and this is
         // cheap since it's just widening a client-side filter window.
         const start = new Date(target); start.setDate(start.getDate() - 3); start.setHours(0, 0, 0, 0);
@@ -175,8 +175,8 @@ const TransactionReports = ({
         setPayPointAccounts({ ...payPoints, 'Employee': 'EMPLOYEE' })
     }, [paymentMethods])
 
-    // Clamp date filters for non-admin users to yesterday–today on mount —
-    // but never when a GL "Go to source" deep-link pointed at a specific
+    // Clamp date filters for non-admin users to yesterday to today on mount.
+    // But never when a GL "Go to source" deep-link pointed at a specific
     // historical date, or this clamp silently overwrites that target date
     // with "today" right after mount and the session/order it's trying to
     // reach can never be found (this was a real, confirmed bug: the deep
@@ -196,7 +196,7 @@ const TransactionReports = ({
 
     // Belt-and-suspenders re-assertion of the deep-link's date window: the
     // useState(initialDateRange...) initializer above only ever runs once,
-    // the very first time this component mounts — if initialDateHint arrives
+    // the very first time this component mounts, if initialDateHint arrives
     // a render late for any reason (or another effect resets the filters
     // first), the target date would silently never take effect and the
     // auto-expand below would have nothing to find. Runs once, guarded by
@@ -465,7 +465,7 @@ const TransactionReports = ({
 
     // Auto-expand the session/order a GL table "Go to source" link pointed
     // at, once its data has actually loaded (widening the date filter above
-    // only fetches it — the match itself has to wait for that data to
+    // only fetches it, the match itself has to wait for that data to
     // arrive). Runs once; glDeepLinkApplied stops it from re-fighting the
     // user if they manually collapse the card afterward.
     useEffect(() => {
@@ -485,7 +485,7 @@ const TransactionReports = ({
                 setGlDeepLinkApplied(true);
                 // Scrolling has to wait for the order card to actually be in
                 // the DOM, which only happens once its session is expanded
-                // (a render or two after the state update above) — the
+                // (a render or two after the state update above), the
                 // scroll effect below polls for the ref rather than trying
                 // to scroll synchronously here.
                 setGlDeepLinkScrollTarget(matchedOrder._id);
@@ -504,8 +504,8 @@ const TransactionReports = ({
         }
 
         // Temporary diagnostic: logs on every orders/sessions update (not
-        // just once) so the actual progression — empty on first render,
-        // then populated, then match-or-no-match — is visible in the
+        // just once) so the actual progression, empty on first render,
+        // then populated, then match-or-no-match, is visible in the
         // console, instead of a single snapshot that could catch the
         // arrays before they've finished loading.
         const targetId = initialOrderId || initialSessionSourceId;
@@ -522,7 +522,7 @@ const TransactionReports = ({
     }, [orders, sessions, initialOrderId, initialSessionSourceId, glDeepLinkApplied]);
 
     // Scrolls the deep-link target into view once its card actually exists
-    // in the DOM. Deliberately no dependency array — it needs to re-check
+    // in the DOM. Deliberately no dependency array, it needs to re-check
     // on every render because expanding a session is what makes the order
     // card's own ref exist in the first place, and that happens a render
     // (or a few, given nested expand state) after glDeepLinkScrollTarget is
@@ -537,18 +537,18 @@ const TransactionReports = ({
         setGlDeepLinkScrollTarget(null);
     });
 
-    // Separate, once-only on-screen alert — fires 5s after mount (giving the
+    // Separate, once-only on-screen alert, fires 5s after mount (giving the
     // fetch a chance to land) if still no match, so there's a visible signal
     // even if nobody happens to have devtools open, without spamming a toast
     // on every one of the console-logged attempts above.
     //
     // glDeepLinkAppliedRef mirrors the glDeepLinkApplied state on every
-    // render — the timeout callback below reads the ref, not the state
+    // render, the timeout callback below reads the ref, not the state
     // variable, because this effect intentionally has an empty dependency
     // array (it should only ever schedule once) and a plain closure over
     // glDeepLinkApplied would freeze at its value from the very first
     // render (false) forever, firing this alert even after a real match
-    // succeeded moments later. This was a real bug — confirmed live: the
+    // succeeded moments later. This was a real bug, confirmed live: the
     // match-attempt log showed found:true, yet this alert still fired.
     const glDeepLinkAppliedRef = useRef(glDeepLinkApplied)
     useEffect(() => { glDeepLinkAppliedRef.current = glDeepLinkApplied }, [glDeepLinkApplied])

@@ -1,6 +1,6 @@
 :root {
   /* Values now sourced from the shared platform tokens (src/styles/tokens.css)
-     instead of being duplicated here — same names, same visual result,
+     instead of being duplicated here, same names, same visual result,
      one real source of truth. */
   --login-primary: var(--brand-primary);
   --login-secondary: var(--brand-secondary);
@@ -102,7 +102,7 @@
   }
 }
 
-/* Offline-license module picker (Signup.js) — a responsive grid of chips,
+/* Offline-license module picker (Signup.js), a responsive grid of chips,
    each with an icon + name + price, matching the module-picker layout used
    elsewhere (Settings billing, Central Admin). Was a single-column
    inline-styled list before; this keeps it from overlapping/cramping on
@@ -1014,7 +1014,7 @@
   transform: scale(0.95);
 }
 
-/* ========== Responsive — Standard View ========== */
+/* ========== Responsive, Standard View ========== */
 @media (max-width: 900px) {
   .login-container {
     flex-direction: column;
@@ -1088,7 +1088,7 @@
   }
 }
 
-/* ========== Responsive — POS / User View ========== */
+/* ========== Responsive, POS / User View ========== */
 @media (max-width: 768px) {
   .user-login-container {
     padding: 20px;
@@ -1146,7 +1146,7 @@
   }
 }
 
-/* ========== Responsive — Keypad Modal ========== */
+/* ========== Responsive, Keypad Modal ========== */
 @media (max-width: 680px) {
   .keypad-modal {
     padding: 8px;
@@ -1291,7 +1291,7 @@
   }
 }
 
-/* ========== Responsive — Toast ========== */
+/* ========== Responsive, Toast ========== */
 @media (max-width: 600px) {
   .login-toast {
     bottom: 16px;

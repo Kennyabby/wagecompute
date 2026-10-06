@@ -3,7 +3,7 @@
    ----------------------------------------------------------------------------
    One component per structural pattern on sap.com, named after the pattern
    SAP's own front layer uses, so a page file reads as a list of sections
-   rather than a pile of divs. Styling lives entirely in ds.css — nothing here
+   rather than a pile of divs. Styling lives entirely in ds.css, nothing here
    carries inline style except values that are genuinely per-instance (an
    aspect ratio override, a background image URL).
 
@@ -75,7 +75,7 @@ export const Action = ({ to, href, onClick, navigate, className, children, ...re
   )
 }
 
-/** `Learn more ›` — SAP's single most repeated link affordance. */
+/** `Learn more ›`, SAP's single most repeated link affordance. */
 export const TextLink = ({ children, className, ...rest }) => (
   <Action className={cx('ds-link', className)} {...rest}>
     <span>{children}</span>
@@ -114,15 +114,25 @@ export const Section = ({
   variant,
   align,
   split,
+  rail,
   width,
   tight,
   flushTop,
   flushBottom,
+  bodySnug,
   titleAs: TitleTag = 'h2',
   className,
 }) => {
   const onDeep = variant === 'deep' || variant === 'deep-grad'
   const hasHead = eyebrow || title || subtitle
+  // `rail` puts the heading in a sticky column beside the content. It needs
+  // a heading to sit in, so without one it falls back to the stacked layout
+  // rather than leaving an empty column.
+  const useRail = rail && hasHead
+  // In a rail the standfirst already sits under the heading in its own
+  // narrow column, so the two-column header split has nothing to do.
+  const useSplit = split && !useRail
+
   return (
     <section
       id={id}
@@ -130,6 +140,7 @@ export const Section = ({
         'ds-section',
         variant,
         tight && 'tight',
+        useRail && 'rail',
         flushTop && 'flush-top',
         flushBottom && 'flush-bottom',
         onDeep && 'ds-on-deep',
@@ -140,22 +151,26 @@ export const Section = ({
         {hasHead && (
           <Reveal
             variant="up"
-            className={cx('ds-section-head', align === 'center' && 'center', split && 'split')}
+            className={cx('ds-section-head', align === 'center' && 'center', useSplit && 'split')}
           >
             <div>
               {eyebrow && <span className="ds-eyebrow">{eyebrow}</span>}
               <div className="ds-rule" aria-hidden="true" />
               {title && <TitleTag className="ds-h2">{title}</TitleTag>}
-              {!split && subtitle && <p className="ds-lede ds-mb-0">{subtitle}</p>}
+              {!useSplit && subtitle && <p className="ds-lede ds-mb-0">{subtitle}</p>}
             </div>
-            {split && subtitle && (
+            {useSplit && subtitle && (
               <div>
                 <p className="ds-lede ds-mb-0">{subtitle}</p>
               </div>
             )}
           </Reveal>
         )}
-        {children}
+        {/* Sibling blocks inside a section are spaced by this wrapper rather
+            than by a margin written at each call site. */}
+        <div className={cx('ds-section-body', bodySnug && 'snug')}>
+          {children}
+        </div>
         {footer && <Reveal variant="fade" className="ds-section-foot">{footer}</Reveal>}
       </Container>
     </section>
@@ -344,14 +359,16 @@ export const Card = ({
 /* ----------------------------------------------------------------- tiles -- */
 
 /**
- * Tiles sit in a 1px hairline grid, so their children must not be
- * translated during the reveal — shifting them would tear the hairlines
- * open mid-animation. `fade-only` stagger keeps the grid intact.
+ * A grid of spaced cards. These used to sit in a 1px hairline grid, which
+ * meant their children could not be translated during the reveal without
+ * tearing the separators open, hence the fade-only stagger. Now that they
+ * are individually bordered cards with real gaps, they take the same
+ * entrance as every other grid.
  */
 export const Tiles = ({ cols = 3, className, children, animate = true }) => {
   const classes = cx('ds-tiles', `cols-${cols}`, className)
   if (!animate) return <div className={classes}>{children}</div>
-  return <Reveal stagger step={0.05} className={cx(classes, 'fade-only')}>{children}</Reveal>
+  return <Reveal stagger step={0.05} className={classes}>{children}</Reveal>
 }
 
 export const Tile = ({ eyebrow, title, text, link, children, titleAs: T = 'h3', ...action }) => {
@@ -492,7 +509,7 @@ export const Accordion = ({ items, allowMultiple }) => {
 /* ----------------------------------------------------------------- quote -- */
 
 export const Quote = ({ children, name, role, company, avatar }) => (
-  <figure className="ds-quote" style={{ margin: 0 }}>
+  <figure className="ds-quote">
     <blockquote>{children}</blockquote>
     <figcaption className="ds-quote-by">
       {avatar && <img alt="" className="ds-quote-avatar" {...avatar} />}
@@ -593,7 +610,21 @@ export const Pills = ({ options, value, onChange, label }) => (
  * Tracks which in-page section is currently in view so the secondary nav can
  * highlight it, the way SAP's in-page tabs do. Returns the active id.
  */
-export const useScrollSpy = (ids, offset = 160) => {
+/**
+ * `offset` is where the "current section" line sits, measured from the top
+ * of the viewport. It defaults to just below the full chrome, read live so
+ * it stays correct on pages whose secondary nav is taller or absent. Passing
+ * a number overrides it.
+ */
+const chromeOffset = () => {
+  if (typeof window === 'undefined') return 180
+  const styles = getComputedStyle(document.documentElement)
+  const header = parseInt(styles.getPropertyValue('--ds-header-h'), 10) || 64
+  const subnav = parseInt(styles.getPropertyValue('--ds-subnav-h'), 10) || 96
+  return header + subnav + 24
+}
+
+export const useScrollSpy = (ids, offset) => {
   const [active, setActive] = useState(ids[0])
 
   // `ids` is almost always a fresh array literal from the calling page, so
@@ -609,10 +640,11 @@ export const useScrollSpy = (ids, offset = 160) => {
 
     const measure = () => {
       frame = null
+      const line = offset ?? chromeOffset()
       let current = sectionIds[0]
       for (const id of sectionIds) {
         const el = document.getElementById(id)
-        if (el && el.getBoundingClientRect().top <= offset) current = id
+        if (el && el.getBoundingClientRect().top <= line) current = id
       }
       // React bails out on an identical value, so this only re-renders the
       // sub-nav when the highlighted section genuinely changes.
@@ -640,7 +672,7 @@ export const useScrollSpy = (ids, offset = 160) => {
 
 /**
  * Scrolls to an in-page anchor, allowing for the sticky header + subnav.
- * Delegates to the eased implementation in ds/motion.js — native
+ * Delegates to the eased implementation in ds/motion.js, native
  * `behavior: 'smooth'` is linear and feels mechanical over long distances.
  */
 export const scrollToId = smoothScrollToId

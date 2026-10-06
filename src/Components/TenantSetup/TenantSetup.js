@@ -1,7 +1,7 @@
-// Electron desktop build only — the pre-login local workspace manager
+// Electron desktop build only, the pre-login local workspace manager
 // (App.js renders this instead of LandingPage at '/' when
 // window.electronAPI.isElectron is set, which only ever happens inside the
-// desktop shell — see electron/preload.js). Mirrors Odoo's on-premise
+// desktop shell, see electron/preload.js). Mirrors Odoo's on-premise
 // database manager: a single master password (independent of any user's own
 // login) gates listing/creating tenant databases in the bundled local
 // MongoDB, before the normal Login screen is ever reached.
@@ -12,7 +12,7 @@
 // side): a purchased, verified license key is required before the master
 // password / workspace picker is ever reached at all, and the app can be
 // locked out again later if it goes too long without reconnecting or its
-// license lapses — both checked here since this is the one place already
+// license lapses, both checked here since this is the one place already
 // positioned to react to the result.
 import '../Login/Login.css'
 import { useState, useEffect, useContext } from 'react'
@@ -26,13 +26,13 @@ const emptyCreateFields = {
     address: '', city: '', country: 'Nigeria', state: '',
 }
 
-// mode='initial' (default): the full first-run chain — terms, license,
+// mode='initial' (default): the full first-run chain, terms, license,
 // master-password setup-or-entry, picker/create. Used at '/' whenever no
 // database has ever been selected on this install.
 // mode='switch': terms/license are install-wide one-time gates unrelated to
 // which database is active, so this skips straight to the master-password
-// gate (already set, by definition, in this mode) then the picker/create —
-// reached only via Settings > Databases once a database is already in use,
+// gate (already set, by definition, in this mode) then the picker/create.
+// Reached only via Settings > Databases once a database is already in use,
 // which is the one deliberate door back into this screen after first run.
 const TenantSetup = ({ mode = 'initial' }) => {
     const { server, loadPage } = useContext(ContextProvider)
@@ -85,7 +85,7 @@ const TenantSetup = ({ mode = 'initial' }) => {
             await runLicenseRecheck({ blocking: true })
         } else {
             await proceedPastLicenseGate()
-            // Opportunistic, non-blocking — lets a well-connected install
+            // Opportunistic, non-blocking, lets a well-connected install
             // silently pick up a renewed expiry/updated modules/reset
             // connectivity deadline on any day it happens to be online,
             // not just on its deadline day.
@@ -93,7 +93,7 @@ const TenantSetup = ({ mode = 'initial' }) => {
         }
     }
 
-    // The very first thing this screen ever checks — nothing else (license
+    // The very first thing this screen ever checks, nothing else (license
     // activation, master password, workspace creation) is reachable until
     // this install has a recorded, timestamped acceptance. Runs once on
     // launch; the license flow below only starts once this clears.
@@ -101,7 +101,7 @@ const TenantSetup = ({ mode = 'initial' }) => {
         (async () => {
             if (mode === 'switch') {
                 // Terms/license were already satisfied to get this install
-                // into a usable state at all — re-checking them here would
+                // into a usable state at all, re-checking them here would
                 // just be the exact "why am I being asked this again"
                 // fatigue this mode exists to avoid. Master password is not
                 // skippable: it's the one gate this entry point exists to
@@ -188,7 +188,7 @@ const TenantSetup = ({ mode = 'initial' }) => {
         const verifyResp = await callDesktop(server, 'desktop/verifyMasterPassword', { password: masterPassword })
         setBusy(false)
         if (!verifyResp.ok) {
-            setMessage(verifyResp.mess || 'Master password was set, but verification failed — please try entering it.')
+            setMessage(verifyResp.mess || 'Master password was set, but verification failed. Please try entering it.')
             setStage('enterMaster')
             return
         }
@@ -211,8 +211,8 @@ const TenantSetup = ({ mode = 'initial' }) => {
 
     // Tries to silently resume a database's session using whatever refresh
     // token Electron's main process may have stored for it (see
-    // electron/main.js and wageserver's POST /desktop/session/resume) —
-    // this is what lets switching back to a database not logged out of, and
+    // electron/main.js and wageserver's POST /desktop/session/resume).
+    // This is what lets switching back to a database not logged out of, and
     // not expired, skip login entirely. Returns whether it succeeded;
     // callers fall back to the normal /login screen for that database
     // otherwise (first-ever visit to a database, an expired session, or a
@@ -267,8 +267,8 @@ const TenantSetup = ({ mode = 'initial' }) => {
             return
         }
         setBusy(true)
-        // Requires being online for this one call — see
-        // /desktop/license/create-branch — to confirm the subdomain against
+        // Requires being online for this one call, see
+        // /desktop/license/create-branch, to confirm the subdomain against
         // the offline license (exact match for the very first workspace,
         // unique-per-account for any later branch). Every later app launch
         // does not need to repeat this.
@@ -290,7 +290,7 @@ const TenantSetup = ({ mode = 'initial' }) => {
                         <div className="mobile-logo">
                             <img src={applogo} alt="Enterprise Compute" style={{ height: '40px' }} />
                         </div>
-                        <h2>Enterprise Compute — Desktop</h2>
+                        <h2>Enterprise Compute Desktop</h2>
                         <p>Local workspace manager</p>
                     </div>
 
@@ -360,7 +360,7 @@ const TenantSetup = ({ mode = 'initial' }) => {
 
                         {stage === 'setMaster' && (
                             <>
-                                <p>First time setup — choose a master password for this installation. It's separate from any user login and is required every time this app opens the workspace manager.</p>
+                                <p>First time setup. Choose a master password for this installation. It's separate from any user login and is required every time this app opens the workspace manager.</p>
                                 <div className="input-group">
                                     <label>Master Password</label>
                                     <input type="password" value={masterPassword} onChange={(e) => setMasterPassword(e.target.value)} />
@@ -390,7 +390,7 @@ const TenantSetup = ({ mode = 'initial' }) => {
                         {stage === 'picker' && (
                             <>
                                 <p>Select a workspace to continue:</p>
-                                {tenants.length === 0 && <p>No local workspaces yet — create one below.</p>}
+                                {tenants.length === 0 && <p>No local workspaces yet. Create one below.</p>}
                                 {tenants.map((tenant) => (
                                     <div
                                         key={tenant.db}

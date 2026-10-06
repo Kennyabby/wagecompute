@@ -60,7 +60,7 @@ const Purchase = () => {
     const [purchaseApprovals, setPurchaseApprovals] = useState([])
     const [isApprover, setIsApprover] = useState(false)
     // Split, badge-facing counterparts to purchaseApprovals (which stays
-    // untouched — it deliberately mixes pending+approved for the existing
+    // untouched, it deliberately mixes pending+approved for the existing
     // merged list view below). Pending mirrors the red badge logic used
     // elsewhere; approved is visible only to whoever raised the request or
     // an admin, matching SideNav's green-badge visibility rule exactly.
@@ -71,7 +71,7 @@ const Purchase = () => {
     const [uploadingWaybill, setUploadingWaybill] = useState(false)
     const [deletingWaybill, setDeletingWaybill] = useState(false)
 
-    // Payment tracking — a separate layer on top of Purchase, not stored on
+    // Payment tracking, a separate layer on top of Purchase, not stored on
     // the Purchase doc itself. purchasePaidTotals maps a purchase's own
     // createdAt (its stable key) to the sum of VendorPayments recorded
     // against it (sourceCollection:'Purchase', sourceId:<createdAt>).
@@ -81,8 +81,8 @@ const Purchase = () => {
     const [purchasePaymentMethodsUsed, setPurchasePaymentMethodsUsed] = useState({})
     const [showPaymentForm, setShowPaymentForm] = useState(false)
     // Split-bill: `rows` lets one payment submission be divided across
-    // multiple payment methods (e.g. part cash, part bank) in a single go —
-    // date/reference/notes stay shared across all rows since they represent
+    // multiple payment methods (e.g. part cash, part bank) in a single go.
+    // Date/reference/notes stay shared across all rows since they represent
     // one payment event, submitted as N independent VendorPayments records.
     const emptyPaymentRow = { amount: '', payPoint: '' }
     const [paymentForm, setPaymentForm] = useState({ rows: [{ ...emptyPaymentRow }], postingDate: new Date(Date.now()).toISOString().slice(0, 10), receiptNo: '', notes: '' })
@@ -264,7 +264,7 @@ const Purchase = () => {
         }
     }, [posSettings])
     // Payments live entirely in VendorPayments (a layer on top of Purchase,
-    // never stored on the Purchase doc) — grouping by sourceId here gives
+    // never stored on the Purchase doc), grouping by sourceId here gives
     // "how much has been paid so far" per purchase in one round trip instead
     // of a query per purchase.
     const refreshPurchasePaidTotals = async () => {
@@ -280,7 +280,7 @@ const Purchase = () => {
                     // Grouped first by (purchase, payPoint) so a split payment
                     // across multiple methods keeps each method's own amount
                     // distinct, then regrouped by purchase into a per-method
-                    // breakdown — a plain $addToSet of payPoint names alone
+                    // breakdown, a plain $addToSet of payPoint names alone
                     // couldn't show "Cash: N5,000, Bank: N3,000", only the
                     // method names with no amounts.
                     { $group: { _id: { sourceId: '$sourceId', payPoint: '$payPoint' }, amount: { $sum: '$amount' } } },
@@ -303,7 +303,7 @@ const Purchase = () => {
     const refreshPurchaseData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
-        // Fire-and-forget, deliberately outside the tasks below — a hiccup
+        // Fire-and-forget, deliberately outside the tasks below, a hiccup
         // refreshing payment totals must never be able to block loading
         // purchases/vendors (which the vendor dropdown depends on).
         refreshPurchasePaidTotals().catch(() => {});
@@ -533,7 +533,7 @@ const Purchase = () => {
 
     const updateInventory = async (action) => {
         // console.log(fields)
-        // vendorId (not purchaseVendor) is the required check — every
+        // vendorId (not purchaseVendor) is the required check, every
         // purchase must be linked to a Registered Vendor now, no more
         // free-text vendor name. purchaseVendor/vendorName are still auto-
         // derived from the selected vendor (handlePurchaseEntry) and used
@@ -573,7 +573,7 @@ const Purchase = () => {
                     // stage flip now happen server-side in one atomic Mongo
                     // transaction (see wageserver/UserModule/Purchase/purchase.js)
                     // instead of a client-side loop of individual /createDoc
-                    // calls followed by a separate re-link call — closes the
+                    // calls followed by a separate re-link call, closes the
                     // double-post/double-reverse race the two-step version had,
                     // and every InventoryTransactions line now gets a real
                     // server-issued documentNo.
@@ -629,7 +629,7 @@ const Purchase = () => {
                         } else {
                             let purchaseCreatedAt = curPurchase?.createdAt
                             if (curPurchase === null) {
-                                // No Purchase draft exists yet — create it first
+                                // No Purchase draft exists yet, create it first
                                 // (unchanged generic-gateway create, no stock
                                 // effect), then atomically receive it.
                                 setAlertState('info')
@@ -921,7 +921,7 @@ const Purchase = () => {
         setReportPurchase(filteredReportPurchases)
     }
 
-    // Payment methods eligible for a Purchase — same filtered-dropdown
+    // Payment methods eligible for a Purchase, same filtered-dropdown
     // pattern used across the app for the 'purchase' module (Settings ->
     // Payment Methods -> Assign To). A method missing `modules` entirely is
     // treated as available everywhere (legacy/back-compat), never as
@@ -930,7 +930,7 @@ const Purchase = () => {
 
     // Purchases received before this feature shipped were auto-settled to
     // cash in full by the old code (postPurchaseReceipt used to post both a
-    // receipt leg AND a settlement leg unconditionally) — there's no
+    // receipt leg AND a settlement leg unconditionally), there's no
     // VendorPayments record for them since that mechanism didn't exist yet,
     // so without this they'd incorrectly show as Unpaid. `updatedAt` is when
     // postPurchaseReceipt actually ran (createdAt is the original draft's
@@ -946,7 +946,7 @@ const Purchase = () => {
     // Purchase.paymentStatus/paidAmount are written directly onto the
     // document server-side (businessPartners.js's syncPurchasePaymentStatus)
     // the moment a payment posts, so they're already correct in the very
-    // first fetch of the purchase list — no need to wait on the separate
+    // first fetch of the purchase list, no need to wait on the separate
     // purchasePaidTotals aggregation, which was the cause of every purchase
     // visibly flashing UNPAID (the default) until that second round trip
     // resolved. purchasePaidTotals is kept only as a fallback for purchases
@@ -976,7 +976,7 @@ const Purchase = () => {
         const methods = purchasePaymentMethodsUsed[pur?.createdAt] || []
         return methods.length
             ? methods.map((m) => `${m.payPoint}: ₦${Number(m.amount || 0).toLocaleString()}`).join(', ')
-            : '—'
+            : '-'
     }
 
     const handlePostPurchasePayment = async () => {
@@ -998,13 +998,13 @@ const Purchase = () => {
         const remaining = getPurchaseRemainingBalance(curPurchase)
         if (totalAmount > remaining && remaining > 0) {
             setAlertState('info')
-            setAlert(`Heads up — this payment (₦${totalAmount.toLocaleString()}) exceeds the remaining balance (₦${remaining.toLocaleString()}). Posting anyway.`)
+            setAlert(`Heads up: this payment (₦${totalAmount.toLocaleString()}) exceeds the remaining balance (₦${remaining.toLocaleString()}). Posting anyway.`)
             setAlertTimeout(4000)
         }
         setIsPostingPayment(true)
         try {
             // Split-bill: one VendorPayments record per row, posted
-            // sequentially (not Promise.all) — postVendorPayment's
+            // sequentially (not Promise.all), postVendorPayment's
             // syncPurchasePaymentStatus recomputes the Purchase's cumulative
             // paidAmount by re-summing every VendorPayments row each time it
             // runs, so concurrent calls could race that read-then-write;
@@ -1374,7 +1374,7 @@ const Purchase = () => {
                                         {pur.vendorId ? (
                                             <div className='deptdesc' style={{ fontSize: '0.85rem', color: getPurchasePaymentStatus(pur) === 'PAID' ? 'green' : (getPurchasePaymentStatus(pur) === 'PARTIALLY PAID' ? '#b8860b' : 'red') }}><b>{getPurchasePaymentStatus(pur)}</b></div>
                                         ) : (
-                                            <div className='deptdesc' style={{ fontSize: '0.8rem', color: '#b8860b' }}>No registered vendor linked — payment tracking unavailable</div>
+                                            <div className='deptdesc' style={{ fontSize: '0.8rem', color: '#b8860b' }}>No registered vendor linked, so payment tracking is unavailable</div>
                                         )}
                                     </div>
                                     {(companyRecord.status === 'admin') && <div
@@ -1427,7 +1427,7 @@ const Purchase = () => {
                             <div className='purchase-payment-panel' style={{ marginBottom: '14px', padding: '12px', border: '1px solid rgba(200,120,0,0.3)', background: 'rgba(200,120,0,0.06)', borderRadius: '8px' }}>
                                 <b>No payment tracking available for this purchase.</b>
                                 <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                                    This purchase's vendor ({curPurchase.purchaseVendor || 'unnamed'}) was entered as free text, not selected from "Registered Vendor" —
+                                    This purchase's vendor ({curPurchase.purchaseVendor || 'unnamed'}) was entered as free text, not selected from "Registered Vendor".
                                     payment status/amount/method can only be tracked for a purchase linked to a registered vendor record.
                                 </div>
                             </div>
@@ -1497,7 +1497,7 @@ const Purchase = () => {
                                     </option>
                                 ))}
                             </select>
-                            {/* Free-text vendor entry removed — every purchase must be
+                            {/* Free-text vendor entry removed, every purchase must be
                                 linked to a Registered Vendor so payment tracking (status,
                                 amount, method) is always available; new vendors are
                                 created on the Corporate Vendors/Partners page instead. */}
@@ -1780,9 +1780,9 @@ const AddProduct = ({
         try {
             // PO shows what was ORDERED (the original line items captured when
             // this purchase was first drafted, preserved on `fields.data` even
-            // after receiving — see postPurchaseReceipt). GRN and Invoice both
+            // after receiving, see postPurchaseReceipt). GRN and Invoice both
             // show what was actually RECEIVED (`purchaseEntries`, sourced from
-            // the posted InventoryTransactions) — a GRN records what physically
+            // the posted InventoryTransactions), a GRN records what physically
             // arrived, and an invoice bills for what was received, not what was
             // originally ordered. Falls back to purchaseEntries for a purchase
             // still in 'receipt' stage, where the ordered lines are all that

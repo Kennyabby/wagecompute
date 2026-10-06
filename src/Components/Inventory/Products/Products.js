@@ -1315,7 +1315,7 @@ const Products = ({
                                 {monthLoading ? (
                                     <div className='stock-table-body'>
                                         <div>Loading...</div>
-                                        <div>—</div>
+                                        <div>-</div>
                                     </div>
                                 ) : (
                                     <>

@@ -402,14 +402,14 @@
     }
 }
 
-/* Low-stock-by-location popup — replaces the old inline expand-in-place
+/* Low-stock-by-location popup, replaces the old inline expand-in-place
    behavior, which pushed the whole dashboard panel taller/shorter every
    time a location box was clicked (confirmed live: "distorting the
    dashboard size and shape"). Desktop gets a centered dialog; mobile gets
    a bottom-sheet instead, since a small centered card wastes most of a
    phone screen and a full-width sheet is the more natural mobile pattern.
    Self-contained (dash-lowstock- prefixed) rather than reusing the
-   `.modal-*` names other pages already use — those aren't defined in this
+   `.modal-*` names other pages already use, those aren't defined in this
    file and currently only render correctly by accident, whenever some
    other page's CSS happens to already be loaded; a real conflicting
    `.modal-*` rule defined here later would be a silent, hard-to-trace bug. */

@@ -10,7 +10,7 @@
 
    `tier` likewise mirrors the catalogue: 'free' modules are included on every
    workspace forever, 'standard' ones are priced per module. The live price is
-   never hardcoded here — the pricing page reads it from /platform-modules.
+   never hardcoded here, the pricing page reads it from /platform-modules.
    ========================================================================= */
 
 export const PRODUCT_CATEGORIES = [

@@ -17,7 +17,7 @@
    SWAPPING IN YOUR OWN PHOTOGRAPHY
    Every consumer goes through `img()`/`photo()` below and refers to images by
    NAME, never by URL. To move to self-hosted assets or real product
-   screenshots, change only the `src` builder and the `id` values here — no
+   screenshots, change only the `src` builder and the `id` values here, no
    page component needs to be touched.
 
    Every entry carries real alt text. Decorative-only usage should pass
@@ -48,7 +48,7 @@ const LIBRARY = {
   teamDocuments: { id: 7693254, alt: 'A team reviewing printed reports and laptops together at a table' },
   businessOwner: { id: 30275077, alt: 'A business owner standing in their workplace' },
   marketTrader: { id: 34523107, alt: 'A trader serving customers at a busy market stall' },
-  localMarket: { id: 37796900, alt: 'Stalls and shoppers at a bustling local market' },
+  localMarket: { id: 37796900, alt: 'Stalls and shoppers at a busy local market' },
 
   // ---- Point of sale / retail -------------------------------------------
   posTerminal: { id: 32850670, alt: 'A cashier ringing up a sale at a point-of-sale terminal' },
@@ -236,7 +236,7 @@ export const img = (name, shape = 'card') => {
   return { src: buildSrc(entry.id, w, h), alt: entry.alt, loading: 'lazy', decoding: 'async' }
 }
 
-/** Same as img(), but eager — use for anything above the fold. */
+/** Same as img(), but eager, use for anything above the fold. */
 export const heroImg = (name, shape = 'hero') => ({ ...img(name, shape), loading: 'eager', fetchpriority: 'high' })
 
 /** Raw URL only, for CSS background-image style props. */

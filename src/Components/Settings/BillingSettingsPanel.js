@@ -7,7 +7,7 @@ import StatCard from '../Shared/ui/StatCard'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb'
 
 const BILLING_SNAPSHOT_CACHE_KEY = 'billingSettingsSnapshot'
-// Silent background refresh only — never clears what's already on screen,
+// Silent background refresh only, never clears what's already on screen,
 // just replaces it once fresh data actually arrives.
 const BILLING_AUTO_REFRESH_MS = 5 * 60 * 1000
 
@@ -147,7 +147,7 @@ const BillingSettingsPanel = ({ variants }) => {
       })
     } catch (error) {
       // A silent background/auto refresh failing shouldn't pop an error toast
-      // over data that's still correctly on screen — only a user-visible
+      // over data that's still correctly on screen, only a user-visible
       // (spinner) refresh surfaces the failure.
       if (showSpinner) {
         setAlertState('error')
@@ -161,7 +161,7 @@ const BillingSettingsPanel = ({ variants }) => {
     }
   }
 
-  // Cache-first mount: paint whatever was last cached (IndexedDB — survives
+  // Cache-first mount: paint whatever was last cached (IndexedDB, survives
   // tab switches, Settings navigation, and full page reloads) instantly with
   // no spinner, then silently revalidate in the background. Only when there
   // is no cache yet do we fall back to the original spinner-blocking fetch.
@@ -185,7 +185,7 @@ const BillingSettingsPanel = ({ variants }) => {
     return () => { cancelled = true }
   }, [company, companyRecord?.emailid])
 
-  // Periodic silent auto-refresh — keeps the snapshot from going stale
+  // Periodic silent auto-refresh, keeps the snapshot from going stale
   // without ever clearing what's displayed; state only changes once new
   // data actually arrives (see loadTenantSnapshot's success branch above).
   useEffect(() => {
@@ -210,7 +210,7 @@ const BillingSettingsPanel = ({ variants }) => {
     loadModuleCatalog()
   }, [server])
 
-  // Client-side optimistic dependency expansion only — the server
+  // Client-side optimistic dependency expansion only, the server
   // (moduleCatalog.js's resolveModuleDependencies) always re-resolves before
   // anything is actually saved/billed.
   const resolveModuleDepsClientSide = (selection) => {
@@ -238,13 +238,13 @@ const BillingSettingsPanel = ({ variants }) => {
     })
   }
 
-  // Epsilon is deliberately excluded from this general grid — it's a
+  // Epsilon is deliberately excluded from this general grid, it's a
   // per-seat add-on with its own dedicated purchase flow and pricing model
   // (see EpsilonBillingCard, rendered separately on this same billing view),
   // not a flat per-tenant module like everything else here.
   const addableModules = moduleCatalog.filter((app) => app.tier === 'standard' && app.key !== 'epsilon' && !(enabledModules || []).includes(app.key))
   const currentMonthlyNaira = moduleCatalog
-    // Epsilon excluded here too — its real per-seat cost (seats × price) is
+    // Epsilon excluded here too, its real per-seat cost (seats × price) is
     // shown in EpsilonBillingCard, not this flat-per-module total.
     .filter((app) => app.tier === 'standard' && app.key !== 'epsilon' && (enabledModules || []).includes(app.key))
     .reduce((sum, app) => sum + (Number(modulePricing[app.key]) || 0), 0)
@@ -259,7 +259,7 @@ const BillingSettingsPanel = ({ variants }) => {
         throw new Error(response.mess || 'Unable to add modules.')
       }
       setAlertState('success')
-      setAlert('Modules added. They\'re available now — the higher price applies from your next renewal.')
+      setAlert('Modules added. They\'re available now, and the higher price applies from your next renewal.')
       setAlertTimeout(4000)
       setSelectedNewModules([])
       if (typeof refreshCentralCompany === 'function') await refreshCentralCompany()
@@ -463,7 +463,7 @@ const BillingSettingsPanel = ({ variants }) => {
                     <div>{dedicatedAccount.accountName || dedicatedAccount.account_name || ''}</div>
                   </div>
                   <div className='transfer-actions'>
-                    <button className='savebtn' onClick={handleVerifyNow} disabled={isCheckoutLoading}>I've paid — Verify now</button>
+                    <button className='savebtn' onClick={handleVerifyNow} disabled={isCheckoutLoading}>I've paid, verify now</button>
                     <button className='settings-billing-secondary-btn' onClick={() => { setDedicatedAccount(null); setCheckoutReference('') }}>Close</button>
                   </div>
                 </div>
@@ -555,7 +555,7 @@ const BillingSettingsPanel = ({ variants }) => {
               <h3>Add modules</h3>
               <p>
                 Currently enabled: {formatMoney(currentMonthlyNaira)}/month.
-                {' '}Adding modules unlocks them right away — the higher price applies starting your next renewal, no extra charge today.
+                {' '}Adding modules unlocks them right away. The higher price applies starting your next renewal, with no extra charge today.
               </p>
             </div>
           </div>

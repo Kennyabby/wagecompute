@@ -280,7 +280,7 @@
 
 /* ================= Confirmation dialogs (adjustment / shortage) =================
    Nested above the review modal (higher z-index), centered, so they can never
-   be missed or hidden behind other content — replaces an earlier design that
+   be missed or hidden behind other content, replaces an earlier design that
    reused the small corner-toast Notify component for a confirmation, and an
    inline panel nested inside an already-collapsed location card, both of
    which were easy to miss in practice. */

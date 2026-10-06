@@ -2,10 +2,11 @@ import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import './ErrorPages.css'
+import './olp.css'
 
 // Landing page Paystack redirects back to after an offline-license purchase
-// (see buildOfflineCallbackUrl in wageserver/UserModule/OfflineLicense) —
-// verifies the reference and shows the license key exactly once. The key is
+// (see buildOfflineCallbackUrl in wageserver/UserModule/OfflineLicense).
+// Verifies the reference and shows the license key exactly once. The key is
 // also always retrievable afterwards from the license portal login.
 const OfflineLicensePaymentComplete = () => {
   const { server } = useContext(ContextProvider)
@@ -54,7 +55,7 @@ const OfflineLicensePaymentComplete = () => {
           <>
             <h1>Your Offline License Is Ready</h1>
             <p>Enter this license key in the Enterprise Compute desktop app to activate it. You can also always retrieve it later from the license portal.</p>
-            <div className="recovery-card-wrap" style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px', margin: '20px 0' }}>
+            <div className="recovery-card-wrap olp-key">
               {licenseKey}
             </div>
           </>

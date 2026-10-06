@@ -1,5 +1,5 @@
 /* ============================================================================
-   /solutions — entry points by business size, by role and by challenge.
+   /solutions, entry points by business size, by role and by challenge.
    ----------------------------------------------------------------------------
    The three-axis structure netsuite.com uses, because a visitor arrives
    thinking in exactly one of them. Anchors match content/navigation.js so the
@@ -27,7 +27,7 @@ const SECTIONS = [
 ]
 
 const ModuleLinks = ({ slugs, navigate }) => (
-  <div className="ds-link-list" style={{ marginTop: 18 }}>
+  <div className="ds-link-list ds-mt-5">
     {slugs
       .map((slug) => PRODUCT_BY_SLUG[slug])
       .filter(Boolean)
@@ -72,6 +72,7 @@ const SolutionsPage = () => {
         eyebrow="By business size"
         title="What you need depends on how big the problem is"
         subtitle="We will tell you honestly when you are too small to need this. A single-site business with eight people and a working spreadsheet should usually keep the spreadsheet."
+        rail
         split
       >
         <div className="ds-stack lg">
@@ -102,6 +103,7 @@ const SolutionsPage = () => {
         eyebrow="By role"
         title="The question each person actually arrives with"
         subtitle="Five jobs, five different reasons to care, all served by the same underlying records."
+        rail
         split
       >
         <Grid cols={3}>
@@ -127,6 +129,7 @@ const SolutionsPage = () => {
         eyebrow="By challenge"
         title="Four problems, and what actually fixes each"
         subtitle="Not features. Structural answers, because each of these is caused by a design decision somewhere else, and features do not undo architecture."
+        rail
         split
       >
         <div className="ds-stack lg">
@@ -155,6 +158,7 @@ const SolutionsPage = () => {
         eyebrow="Moving from"
         title="What you are leaving behind, and what that costs"
         subtitle="Each comparison also says where the alternative is genuinely better, because a comparison that wins everything reads as marketing and gets discarded."
+        rail
         split
         footer={<TextLink to="/why-enterprise-compute" navigate={navigate}>Read the full comparisons</TextLink>}
       >

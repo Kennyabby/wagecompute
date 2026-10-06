@@ -325,7 +325,7 @@
 }
 
 /* The date-range grid below needs ~340px to lay out both inputs without
-   clipping/overflowing (2 x 145px inputs + the "to" label + gaps) — without
+   clipping/overflowing (2 x 145px inputs + the "to" label + gaps), without
    this, .filter-group's generic 220px min-width lets flexbox squeeze this
    group smaller than its grid content actually needs, and the overflow
    visually bleeds into the next filter group (Warehouse) instead of wrapping

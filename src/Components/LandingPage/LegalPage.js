@@ -5,7 +5,7 @@
    navigation are new, with the body rendered inside `.ds-prose` for proper
    long-form measure and rhythm.
 
-   The existing Privacy and Security wording is unchanged — it is binding
+   The existing Privacy and Security wording is unchanged, it is binding
    text and not something a redesign should rewrite. Terms of Service and
    Cookie Policy previously had no body at all and fell through to a generic
    five-paragraph stub, so full drafts have been written for both. Those two
@@ -45,7 +45,7 @@ const LegalPage = ({ type = 'privacy' }) => {
     privacy: {
       title: 'Privacy Policy',
       kicker: '🔒 Your Data Matters',
-      desc: 'Comprehensive information on how Enterprise Compute handles and protects your organizational data.',
+      desc: 'What Enterprise Compute collects, what we do with it, how long we keep it, and what you can ask us to delete.',
       lastUpdated: 'May 11, 2026',
       fullContent: (
         <div className="sp-legal-rich-content">
@@ -345,16 +345,16 @@ const LegalPage = ({ type = 'privacy' }) => {
                 <h3>1. Introduction</h3>
                 <p>Welcome to Enterprise Compute. This {active.title} describes our practices regarding the information we collect through our platform and related services.</p>
                 
-                <h3 style={{ marginTop: '24px' }}>2. Scope of Service</h3>
+                <h3>2. Scope of Service</h3>
                 <p>Our platform provides comprehensive business operation tools including HR, Payroll, Accounting, and Inventory management. By using these services, you agree to the practices described in this document.</p>
                 
-                <h3 style={{ marginTop: '24px' }}>3. Data Collection & Usage</h3>
+                <h3>3. Data Collection & Usage</h3>
                 <p>We collect information necessary to provide the services requested. This includes company profiles, employee records, and financial transaction data initiated by authorized users of your tenant workspace.</p>
                 
-                <h3 style={{ marginTop: '24px' }}>4. Security Measures</h3>
+                <h3>4. Security Measures</h3>
                 <p>We implement enterprise-grade security protocols, including data encryption at rest and in transit, to ensure the confidentiality and integrity of your business operations.</p>
                 
-                <h3 style={{ marginTop: '24px' }}>5. Contact Information</h3>
+                <h3>5. Contact Information</h3>
                 <p>If you have any questions about our {active.title.toLowerCase()}, please contact our legal team at legal@epxcentral.com.</p>
               </>
             )}
@@ -362,7 +362,8 @@ const LegalPage = ({ type = 'privacy' }) => {
         </Container>
       </Section>
 
-      <Section variant="alt" tight eyebrow="Other documents" title="The rest of the policy set">
+      <Section
+        rail variant="alt" tight eyebrow="Other documents" title="The rest of the policy set">
         <Tiles cols={3}>
           {others.map((page) => (
             <Tile

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import { motion, AnimatePresence } from "framer-motion";
 import MODULE_ICONS from '../../Resources/moduleIcons'
-// Public design system. The billing logic below is unchanged — only the page
+// Public design system. The billing logic below is unchanged, only the page
 // shell, hero and section chrome move onto the shared components, so the
 // Paystack flow, workspace resolution and module calculator behave exactly
 // as before.
@@ -55,7 +55,7 @@ const buildWorkspacePricingUrl = (subdomain, modules = []) => {
   const port = window.location.port ? `:${window.location.port}` : ''
   // Redirect into tenant's public pricing route so checkout can continue inside the tenant.
   // Carry the module selection across so it isn't silently lost on this
-  // cross-domain redirect — the tenant-side page re-selects (and the server
+  // cross-domain redirect, the tenant-side page re-selects (and the server
   // always re-resolves/re-prices) from this, never trusting it directly.
   const modulesParam = Array.isArray(modules) && modules.length
     ? `&modules=${encodeURIComponent(modules.join(','))}`
@@ -125,7 +125,7 @@ const PricingPage = () => {
   const [liveStandardPlan, setLiveStandardPlan] = useState(null)
   const [liveTrialDays, setLiveTrialDays] = useState(FREE_TRIAL_DAYS)
   // Real module catalog + per-module pricing, fetched from the server (see
-  // wageserver/UserModule/Billing/moduleCatalog.js) — this used to be a
+  // wageserver/UserModule/Billing/moduleCatalog.js), this used to be a
   // hardcoded, drifted-out-of-sync copy of the app's real 18 module routes
   // with a purely decorative price estimate that was never sent to checkout.
   const [moduleCatalog, setModuleCatalog] = useState([])
@@ -172,14 +172,14 @@ const PricingPage = () => {
     loadModuleCatalog()
   }, [server])
 
-  // Cheapest single standard-tier module — used as the "From ₦X/mo" floor on
+  // Cheapest single standard-tier module, used as the "From ₦X/mo" floor on
   // the Standard plan card. The old flat `liveStandardPlan.amountNaira` price
   // shown here directly contradicted the module calculator lower on the same
   // page (a tenant selecting 2 of 12 modules would see one number up top and
-  // a much lower one in the calculator) — modular pricing has no single
+  // a much lower one in the calculator), modular pricing has no single
   // "the" price, so the card now points at the calculator instead of quoting
   // a number that isn't actually what most tenants would pay.
-  // 'epsilon' excluded — its price is per-seat, not a flat monthly module
+  // 'epsilon' excluded, its price is per-seat, not a flat monthly module
   // price, so it can't be meaningfully compared against the rest here.
   const standardTierPrices = moduleCatalog.filter(a => a.tier === 'standard' && a.key !== 'epsilon').map(a => Number(modulePricing[a.key]) || 0).filter(Boolean)
   const cheapestModuleNaira = standardTierPrices.length ? Math.min(...standardTierPrices) : (liveStandardPlan?.amountNaira ?? FALLBACK_STANDARD_PRICE)
@@ -288,9 +288,9 @@ const PricingPage = () => {
       }
     }
 
-    // Standard tier: real per-module pricing (server-provided) — the actual
+    // Standard tier: real per-module pricing (server-provided), the actual
     // amount charged at checkout is this same sum, not a proportional guess.
-    // 'epsilon' is excluded — it's a per-seat add-on with its own dedicated
+    // 'epsilon' is excluded, it's a per-seat add-on with its own dedicated
     // purchase flow (inside the tenant, Settings > Billing), never part of
     // this flat per-module picker/estimate.
     const standardApps = moduleCatalog.filter(a => a.tier === 'standard' && a.key !== 'epsilon')
@@ -316,7 +316,7 @@ const PricingPage = () => {
     }
   }, [billingCycle, selectedPlan, selectedOptionalApps, modulePricing, moduleCatalog])
 
-  // Title and hash scrolling are both handled by PageShell now — it sets the
+  // Title and hash scrolling are both handled by PageShell now, it sets the
   // document title from its `title` prop and eases to any hash in the URL,
   // including the /pricing#epsilon links in the header and on the home page.
   useEffect(() => {
@@ -337,7 +337,7 @@ const PricingPage = () => {
   }, [])
 
   // Re-select whatever module selection was carried across from the public
-  // marketing pricing page's redirect (see buildWorkspacePricingUrl) — needs
+  // marketing pricing page's redirect (see buildWorkspacePricingUrl), needs
   // the catalog loaded first to validate/resolve against real keys.
   useEffect(() => {
     if (!moduleCatalog.length) return
@@ -492,8 +492,8 @@ const PricingPage = () => {
     // App selection helpers
     // -----------------------
   const resolveSelectionWithDeps = (selection) => {
-    // Client-side optimistic expansion only, for snappy checkbox behavior —
-    // the server (moduleCatalog.js's resolveModuleDependencies) always
+    // Client-side optimistic expansion only, for snappy checkbox behavior.
+    // The server (moduleCatalog.js's resolveModuleDependencies) always
     // re-resolves and is the one whose output is actually billed/persisted.
     const selected = new Set(selection || [])
 
@@ -549,7 +549,7 @@ const PricingPage = () => {
         lede={`Core apps are free on every workspace, permanently. Try the full catalogue free for ${liveTrialDays} days, then build a plan from only the operational and accounting modules you need. Add more at any time, and the new price applies from your next renewal.`}
         image={heroImg('businessFinance')}
       >
-        <div className="sp-badge-row" style={{ justifyContent: 'flex-start', marginTop: 0 }}>
+        <div className="sp-badge-row sp-badge-row-start">
           <span className="sp-plan-chip">{liveTrialDays}-day free trial</span>
           <span className="sp-plan-chip">Unlimited users</span>
           <span className="sp-plan-chip">Pay per module</span>
@@ -558,7 +558,7 @@ const PricingPage = () => {
       </Hero>
 
       {(checkoutState.message || checkoutState.verifying) && (
-        <section className="ec-section" style={{ paddingBottom: 0 }}>
+        <section className="ec-section">
           <div className={`sp-status-banner ${checkoutState.type || 'info'}`}>
             <strong>{checkoutState.type === 'success' ? 'Payment Confirmed' : checkoutState.type === 'error' ? 'Checkout Update' : 'Subscription Status'}</strong>
             <p>{checkoutState.message}</p>
@@ -675,7 +675,7 @@ const PricingPage = () => {
 
               <div className="sp-optional-apps-card">
                 <div className="ec-section-kicker">Modules</div>
-                <p style={{ marginTop: 6, marginBottom: 12 }}>
+                <p className="sp-optional-intro">
                   Core apps are always free and already included above. Add the operational and accounting
                   modules your business needs below. Dependencies are added automatically, so picking Sales also picks up Inventory.
                 </p>
@@ -873,7 +873,7 @@ const PricingPage = () => {
         </div>
       </section>
 
-      <section className="ec-section" id="compare" style={{ background: 'var(--ds-surface-alt)' }}>
+      <section className="ec-section ec-section-alt" id="compare">
         <div className="ec-section-header">
           <div className="ec-section-kicker">Plan comparison</div>
           <h2 className="ec-section-title">Commercial fit at a glance</h2>
@@ -902,7 +902,8 @@ const PricingPage = () => {
         </div>
       </section>
 
-      <Section id="faq" eyebrow="FAQ" title="Questions before you subscribe">
+      <Section
+        rail id="faq" eyebrow="FAQ" title="Questions before you subscribe">
         <Container width="narrow">
           <Accordion items={faqs} />
         </Container>

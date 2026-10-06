@@ -69,7 +69,7 @@ const PaymentConfirmPage = () => {
         </div>
       </section>
 
-      <section className="ec-section" style={{ paddingTop: 0, marginTop: -48 }}>
+      <section className="ec-section">
         <div className="sp-confirm-shell">
           <div className={`sp-confirm-card ${state.type || 'info'}`}>
             <div className="sp-confirm-pill-row">

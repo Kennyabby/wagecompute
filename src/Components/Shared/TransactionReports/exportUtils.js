@@ -128,7 +128,7 @@ export const exportToPDF = async (data, filename, type = 'sales', logoUrl = null
             format: 'a4'
         });
 
-        // Logo — only if the tenant actually uploaded one (never a platform default)
+        // Logo, only if the tenant actually uploaded one (never a platform default)
         const logo = await loadPdfImage(logoUrl);
         const titleX = 14 + (logo ? 20 : 0);
         if (logo) {

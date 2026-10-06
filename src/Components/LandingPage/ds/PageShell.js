@@ -18,6 +18,7 @@ import NavBar from '../NavBar'
 import Footer from '../Footer'
 import { Container, useScrollSpy, scrollToId } from './DS'
 import { smoothScrollToId } from './motion'
+import useStickyChrome from './useStickyChrome'
 import './ds.css'
 import './chrome.css'
 
@@ -118,7 +119,7 @@ const useRouteScroll = (pathname, hash) => {
       const timer = setTimeout(() => smoothScrollToId(id), 160)
       return () => clearTimeout(timer)
     }
-    // A fresh page starts at the top instantly — easing a jump the visitor
+    // A fresh page starts at the top instantly, easing a jump the visitor
     // did not ask for just delays the content they navigated for.
     window.scrollTo(0, 0)
     return undefined
@@ -129,6 +130,10 @@ const PageShell = ({ title, description, breadcrumbs, sections, subnavTitle, sub
   const { pathname, hash } = useLocation()
   usePageMeta(title, description)
   useRouteScroll(pathname, hash)
+  // Measures the real chrome height and hides the secondary nav on the way
+  // down the page. Every sticky offset follows from the properties it
+  // publishes, so this runs on every page whether or not it has a sub-nav.
+  useStickyChrome()
 
   return (
     <div className="ds-page">

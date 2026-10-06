@@ -6,7 +6,7 @@
    one promoted item, then utility actions (search, help, sign in, primary
    CTA) on the right.
 
-   The menu tree itself lives in content/navigation.js — this file is only the
+   The menu tree itself lives in content/navigation.js, this file is only the
    behaviour: open/close, hover intent, keyboard handling, the mobile
    accordion, and the search overlay.
 

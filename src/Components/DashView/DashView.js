@@ -23,7 +23,7 @@ import { getAppCache, setAppCache } from '../../Resources/offlineDb';
 const fmt = (n)=> Number(n||0).toLocaleString()
 const DASHBOARD_SUMMARY_ENGINE_VERSION = 5
 // Minimum gap between background (SSE-triggered) recommend_reorders
-// refetches — that computation runs a couple of real aggregates and
+// refetches, that computation runs a couple of real aggregates and
 // wc:dashboard-summary-update can fire often during normal POS activity;
 // without a floor here every single event re-ran it, which visibly
 // flickered the "Generate PO" button enabled/disabled on each round trip.
@@ -54,8 +54,8 @@ const DashView = () =>{
     const [draftFromDate, setDraftFromDate] = useState(saleFrom || defaultFromDate)
     const [draftToDate, setDraftToDate] = useState(saleTo || defaultToDate)
     const dashboardRequestRef = useRef(0)
-        // Which location's low-stock popup is open — null means closed. The
-        // location NAME, not an index into `restock` — `restock` can now
+        // Which location's low-stock popup is open, null means closed. The
+        // location NAME, not an index into `restock`, `restock` can now
         // refresh live while the popup is open (see the wc:inventory-stock-
         // changed listener below), and an index would silently point at
         // whatever location happens to reorder into that slot instead of
@@ -148,7 +148,7 @@ const DashView = () =>{
     const [topEmployeesServices, setTopEmployeesServices] = useState([])
     const [series, setSeries] = useState([]) // [{date, sales, expenses, purchases, accommodations, rentals}]
     const [restock, setRestock] = useState([])
-    // Reorder recommendations — the single source of truth for low stock
+    // Reorder recommendations, the single source of truth for low stock
     // (GET /purchase/recommendReorders, same function Epsilon's own
     // recommend_reorders tool calls). lastReorderFetchedAt gates the
     // "Automatically generate PO for inspection" button: it only enables
@@ -220,8 +220,8 @@ const DashView = () =>{
         if (Array.isArray(snap.series)) setSeries(snap.series);
         if (Array.isArray(snap.monthlySeries)) setMonthlySeries(snap.monthlySeries);
         if (Array.isArray(snap.revenueMix)) setRevenueMix(snap.revenueMix);
-        // restock is intentionally NOT restored from this cache snapshot —
-        // it's owned exclusively by loadReorderRecommendations now (see
+        // restock is intentionally NOT restored from this cache snapshot.
+        // It's owned exclusively by loadReorderRecommendations now (see
         // below), which always fetches live so it can never disagree with
         // what Epsilon itself would suggest reordering.
         if (Array.isArray(snap.topProducts)) setTopProducts(snap.topProducts);
@@ -546,10 +546,10 @@ const DashView = () =>{
             // Restock alerts used to be computed here from a separate,
             // client-side-only heuristic (avg daily sales * 7, floored at 7
             // units) that disagreed with Epsilon's own recommend_reorders
-            // tool — a tenant could see one "low stock" list here and a
+            // tool, a tenant could see one "low stock" list here and a
             // different one if they asked the AI. Both now read the exact
             // same source (GET /purchase/recommendReorders, which just
-            // wraps recommend_reorders) — see loadReorderRecommendations
+            // wraps recommend_reorders), see loadReorderRecommendations
             // and the effect that calls it, below. Restock state is set
             // there, not here.
             if (dashboardRequestRef.current !== requestId) return
@@ -954,19 +954,19 @@ const DashView = () =>{
         return () => window.removeEventListener('wc:dashboard-summary-update', handleDashboardSummaryUpdate)
     }, [company, fromDate, toDate, locationFilter, productFilter, employeeFilter, seasonFilter])
 
-    // Single source of truth for low stock — see the state declarations
+    // Single source of truth for low stock, see the state declarations
     // above for why. Grouped by location here only to keep the existing
     // restock-panel JSX (location list -> expand -> product list) working
     // unchanged; the underlying numbers now come from recommend_reorders.
     //
     // This computation (sales-velocity aggregate + stock aggregate) isn't
     // free, and wc:dashboard-summary-update can fire frequently during
-    // normal POS activity — calling it unthrottled on every single event
+    // normal POS activity, calling it unthrottled on every single event
     // made the "Generate PO" button visibly flicker enabled/disabled on
     // every round trip. reorderFetchInFlightRef/lastReorderFetchStartRef
     // throttle background (non-forced) refreshes to at most once every
     // REORDER_REFRESH_THROTTLE_MS. isFirstLoad only affects whether a
-    // failure clears the panel — the button's enabled state is driven
+    // failure clears the panel, the button's enabled state is driven
     // purely by lastReorderFetchedAt/reorderRecommendations (see the JSX
     // below), so a background refresh never touches it at all.
     const reorderFetchInFlightRef = useRef(false)
@@ -992,7 +992,7 @@ const DashView = () =>{
             // wageserver/UserModule/AIAssistant/purchaseAdvisor.js) flags a
             // recommendation whose product category isn't in that location's own
             // admin-configured allowed-categories list (General Settings >
-            // Warehouses) — confirmed live: real kitchen items (Chicken,
+            // Warehouses), confirmed live: real kitchen items (Chicken,
             // Native soup, Cat-fish, Goat meat...) were showing up under
             // drinks-only locations (open bar1/bar2/vip) purely from a
             // stock-location-tagging data issue, not a real need there.
@@ -1033,15 +1033,15 @@ const DashView = () =>{
         const handleRefresh = () => loadReorderRecommendations()
         window.addEventListener('wc:dashboard-summary-update', handleRefresh)
         // wc:dashboard-summary-update only fires once the (separate, cached,
-        // debounced) DashboardSummaries rebuild pipeline gets around to it —
-        // an indirect, potentially delayed signal for "stock actually
+        // debounced) DashboardSummaries rebuild pipeline gets around to it.
+        // An indirect, potentially delayed signal for "stock actually
         // changed". wc:inventory-stock-changed (App.js's SSE handling for
-        // the Purchase/InventoryTransactions collections — dispatched the
+        // the Purchase/InventoryTransactions collections, dispatched the
         // moment a receipt or any other stock-moving write lands) is the
         // direct one, confirmed live to be missing before this fix: a just-
         // received PO would not reliably refresh this widget at all.
         // computeReorderRecommendations itself is never cached (a live Mongo
-        // aggregation every call, see purchaseAdvisor.js) — the staleness
+        // aggregation every call, see purchaseAdvisor.js), the staleness
         // was purely about WHEN this widget re-fetched it, not stale data
         // being returned once it did.
         window.addEventListener('wc:inventory-stock-changed', handleRefresh)
@@ -1051,7 +1051,7 @@ const DashView = () =>{
         }
     }, [loadReorderRecommendations])
 
-    // Escape closes the low-stock popup — the only close mechanism other
+    // Escape closes the low-stock popup, the only close mechanism other
     // modals in this app implement is backdrop-click + an X button (kept
     // below too), but a real popup should also respond to Escape.
     useEffect(() => {
@@ -1379,8 +1379,8 @@ const DashView = () =>{
                             <button
                                 type='button'
                                 onClick={handleAutoGeneratePoForInspection}
-                                // Driven only by whether data has ever loaded / is non-empty —
-                                // a background SSE-triggered refresh (see loadReorderRecommendations)
+                                // Driven only by whether data has ever loaded / is non-empty.
+                                // A background SSE-triggered refresh (see loadReorderRecommendations)
                                 // never toggles a separate loading flag, so this never flickers.
                                 disabled={!lastReorderFetchedAt || reorderRecommendations.length === 0}
                                 title={!lastReorderFetchedAt ? 'Waiting for current stock data to load…' : reorderRecommendations.length === 0 ? 'Nothing currently below its reorder threshold' : 'Ask Epsilon to draft a purchase order for these items'}
@@ -1400,7 +1400,7 @@ const DashView = () =>{
                         </div>
                         <div className='alert-content'>
                                 {/* A location box used to expand its item list inline, right in the
-                                    dashboard flow — pushing everything below it down and changing the
+                                    dashboard flow, pushing everything below it down and changing the
                                     panel's height/shape every time (confirmed live: "distorting the
                                     dashboard size and shape"). Now it just opens a popup instead; the
                                     dashboard layout never moves. */}
@@ -1429,8 +1429,8 @@ const DashView = () =>{
                                 )}
 
                                 {lowStockModalLocation !== null && (() => {
-                                    // Looked up by name, live, every render — not captured once at
-                                    // click time — so if this widget refreshes while the popup is
+                                    // Looked up by name, live, every render, not captured once at
+                                    // click time, so if this widget refreshes while the popup is
                                     // open (e.g. a PO for this exact location just got received),
                                     // what's shown updates or clears itself instead of going stale.
                                     const activeLocAlert = restock.find((r) => r.location === lowStockModalLocation)
@@ -1438,7 +1438,7 @@ const DashView = () =>{
                                         <div className='dash-lowstock-modal-overlay' onClick={() => setLowStockModalLocation(null)}>
                                             <div className='dash-lowstock-modal-content' onClick={(e) => e.stopPropagation()} role='dialog' aria-modal='true' aria-label={`Low stock at ${lowStockModalLocation}`}>
                                                 <div className='dash-lowstock-modal-header'>
-                                                    <h4>{lowStockModalLocation}{activeLocAlert ? ` — ${activeLocAlert.lowStockProducts.length} low stock item${activeLocAlert.lowStockProducts.length === 1 ? '' : 's'}` : ''}</h4>
+                                                    <h4>{lowStockModalLocation}{activeLocAlert ? `: ${activeLocAlert.lowStockProducts.length} low stock item${activeLocAlert.lowStockProducts.length === 1 ? '' : 's'}` : ''}</h4>
                                                     <button
                                                         type='button'
                                                         className='dash-lowstock-modal-close'

@@ -80,7 +80,7 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 5;
 
-            // Logo, top-left — only if the tenant actually uploaded one
+            // Logo, top-left, only if the tenant actually uploaded one
             // (never a platform default). Kept out of the centered header
             // block below so every other coordinate in this function stays
             // unchanged.

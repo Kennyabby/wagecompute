@@ -1,6 +1,6 @@
 import './ui.css'
 
-// One card inside a StatCardGrid — label / value / description, with an
+// One card inside a StatCardGrid, label / value / description, with an
 // optional semantic tone for the value (e.g. 'error' when a balance is
 // empty) so callers don't hand-roll inline color styles per screen.
 const TONE_CLASS = {

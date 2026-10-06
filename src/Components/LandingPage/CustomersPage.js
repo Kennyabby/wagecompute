@@ -1,5 +1,5 @@
 /* ============================================================================
-   /customers — customer story index, with filtering.
+   /customers, customer story index, with filtering.
    ----------------------------------------------------------------------------
    The illustrative-content notice from content/customers.js is rendered
    prominently here rather than buried, because this is the page where a
@@ -54,7 +54,7 @@ const CustomersPage = () => {
         image={heroImg('heroOffice')}
       >
         {ILLUSTRATIVE && (
-          <p className="ds-body sm" style={{ marginTop: 8 }}>{PLACEHOLDER_NOTICE}</p>
+          <p className="ds-note">{PLACEHOLDER_NOTICE}</p>
         )}
         <ButtonRow>
           <Button variant="primary" to="/signup" navigate={navigate}>Start a free trial</Button>
@@ -92,7 +92,7 @@ const CustomersPage = () => {
             >
               {featured.quote.text}
             </Quote>
-            <div style={{ marginTop: 24 }}>
+            <div className="ds-section-foot">
               <Button variant="secondary" to={`/customers/${featured.slug}`} navigate={navigate}>
                 Read the full story
               </Button>
@@ -104,12 +104,14 @@ const CustomersPage = () => {
       {/* -------------------------------------------------------- stories -- */}
       <Section
         id="stories"
+        bodySnug
         eyebrow="All stories"
         title="Browse by sector and size"
+        rail
         split
         subtitle="Each story sets out the situation before, what was actually changed, and what measurably moved as a result."
       >
-        <div className="ds-stack" style={{ marginBottom: 36 }}>
+        <div className="ds-filters">
           <Pills
             label="Filter by industry"
             options={STORY_FILTERS.industry}

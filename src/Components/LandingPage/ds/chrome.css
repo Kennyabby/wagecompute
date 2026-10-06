@@ -111,7 +111,7 @@
   /* The Products panel carries four columns of up to six links plus a
      promoted card, which is taller than a laptop viewport once the header
      is subtracted. Without these the bottom of the panel is simply
-     unreachable — the panel is absolutely positioned, so the page scrolling
+     unreachable, the panel is absolutely positioned, so the page scrolling
      underneath moves the header and the panel together and never brings the
      cut-off content into view.
 
@@ -314,7 +314,7 @@
 }
 
 /* ============================================================================
-   Secondary navigation — breadcrumbs + in-page anchors + page CTA
+   Secondary navigation, breadcrumbs + in-page anchors + page CTA
    ========================================================================= */
 
 .ds-subnav {
@@ -323,9 +323,36 @@
   z-index: 850;
   background: var(--ds-surface);
   border-bottom: 1px solid var(--ds-border);
+
+  /* Slides up out of view on the way down the page and comes back on the
+     way up. See ds/useStickyChrome.js, which also collapses the offsets
+     everything below sticks to, so hiding the bar never leaves a gap and
+     showing it never covers content.
+
+     A transform is used rather than a height or top change because it does
+     not touch layout: the page behind does not reflow, and the element can
+     still be measured while it is off screen. */
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.28s var(--ds-ease-out), box-shadow 0.28s var(--ds-ease);
+  will-change: transform;
+}
+.ds-subnav.is-hidden {
+  transform: translate3d(0, -100%, 0);
+  /* The header sits above it in the stack, so the bar passes behind rather
+     than over it on the way out. */
+  box-shadow: none;
+}
+
+/* Under reduced motion the bar simply never hides: ds/useStickyChrome.js
+   skips the whole behaviour, so the class is never applied and the offsets
+   stay at full height. Overriding the transform here instead would leave the
+   bar on screen while the offsets had already collapsed, and content would
+   slide underneath it. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-subnav { transition: none; }
 }
 .ds-subnav-bar {
-  min-height: var(--ds-subnav-h);
+  min-height: var(--ds-subnav-row-h);
   display: flex;
   align-items: center;
   gap: 24px;
@@ -369,7 +396,7 @@
   display: inline-flex;
   align-items: center;
   padding: 0 14px;
-  min-height: var(--ds-subnav-h);
+  min-height: var(--ds-subnav-row-h);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -398,7 +425,7 @@
 }
 
 /* ============================================================================
-   Footer — SAP's NavigationColumn grid + social + legal row + back-to-top
+   Footer, SAP's NavigationColumn grid + social + legal row + back-to-top
    ========================================================================= */
 
 .ds-footer { background: var(--ds-deep); color: var(--ds-text-on-deep); padding: 64px 0 0; }

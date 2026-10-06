@@ -1,4 +1,4 @@
-/* ROI calculator layout — see RoiCalculatorPage.js */
+/* ROI calculator layout, see RoiCalculatorPage.js */
 
 .roi-layout {
   display: grid;
@@ -99,7 +99,12 @@
 
 /* ---- result ---- */
 
-.roi-result { position: sticky; top: calc(var(--ds-header-h) + var(--ds-subnav-h) + 24px); min-width: 0; }
+.roi-result {
+  position: sticky;
+  top: calc(var(--ds-chrome-top) + var(--ds-s6));
+  transition: top 0.28s var(--ds-ease-out);
+  min-width: 0;
+}
 
 .roi-result-card {
   background: var(--ds-surface);

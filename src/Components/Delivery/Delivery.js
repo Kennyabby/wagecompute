@@ -64,7 +64,7 @@ const Delivery = () => {
     // POSSessions-sourced GL entry is an inventory shortage charge/recovery
     // (deriveInventoryShortageRecoveryEntries), so it belongs here, not on
     // the live POS terminal. This outer component mounts the instant
-    // /delivery loads, so detection lives here — it opens the reconciliation
+    // /delivery loads, so detection lives here, it opens the reconciliation
     // review directly (it isn't gated behind another screen the way
     // POSDashboard is on /pos) and hands the target down so it can select
     // the right posting date and expand the location holding the matching
@@ -688,7 +688,7 @@ const Delivery = () => {
                     clientId: newSession.start,
                     payload: newSession,
                 });
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     // 2) State
                     setAlertState('success');
@@ -754,7 +754,7 @@ const Delivery = () => {
                     payload: closedSession,
                 });
             }
-            // Immediate sync attempt – failures are fine, queue remains
+            // Immediate sync attempt, failures are fine, queue remains
             try {
                 // 2) State
                 setAlertState('success');
@@ -1287,8 +1287,8 @@ const Delivery = () => {
 
         const isDeplete = action === 'deplete';
         const createdAt = new Date().getTime();
-        // Settings > POS Settings > "Use Order Date for Inventory Posting" —
-        // defaults on. When off, admins have explicitly chosen to post
+        // Settings > POS Settings > "Use Order Date for Inventory Posting".
+        // Defaults on. When off, admins have explicitly chosen to post
         // Shipment/Return transactions on whatever date they're processed.
         const curPosSettings = posSettings?.posSettings?.find((setting) => setting.active)
         const useOrderDateForPosting = curPosSettings?.useOrderDateForPosting !== false;
@@ -1349,12 +1349,12 @@ const Delivery = () => {
                 handlerId: currentOrder.handlerId,
                 deliveredBy: companyRecord.emailid,
                 // Orders never carry their own postingDate/postingStamp field
-                // — the order's `createdAt` (stamped once, when it was placed)
+                //, the order's `createdAt` (stamped once, when it was placed)
                 // is the actual date/time this sale happened. Falling back to
                 // "now" here means an order that sat pending and only got
                 // depleted/returned later (backlog, next-day cleanup, etc.)
                 // posted its Shipment/Return to the day it was PROCESSED
-                // instead of the day it was SOLD — gated by the POS Settings
+                // instead of the day it was SOLD, gated by the POS Settings
                 // toggle so an admin can opt back into the old behavior.
                 postingDate: useOrderDateForPosting
                     ? (currentOrder.postingDate || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)).toISOString().slice(0, 10) : new Date(Date.now()).toISOString().slice(0, 10)))
@@ -1383,7 +1383,7 @@ const Delivery = () => {
                 setAlertState('success');
                 setAlert((count || 0) + 1, 'Order(s) Inventory updated successfully');
                 setAlertTimeout(1000);
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     // 3) Update local order state with deliveryDataUpdate
                     if (action === 'deplete') {
@@ -1719,7 +1719,7 @@ const Delivery = () => {
                             ...deliveryDataUpdate,
                         },
                     });
-                    // Immediate sync attempt – failures are fine, queue remains
+                    // Immediate sync attempt, failures are fine, queue remains
                     try {
                         // 3) Kick off local inventory update + queue
                         setTimeout(() => {
@@ -2305,7 +2305,7 @@ const Delivery = () => {
         const day = date.getDate().toString().padStart(2, '0');
 
         // Per-terminal identifier + a strictly-incrementing per-terminal
-        // sequence (not a random 0-999 guess) — collision-proof across
+        // sequence (not a random 0-999 guess), collision-proof across
         // terminals and across orders created in quick succession, fully
         // offline, with no server round-trip needed to generate it.
         const terminalId = getTerminalId();
@@ -2604,7 +2604,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                         ...deliveryUpdate,
                     },
                 });
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     setAlert('Delivery cancelled successfully');
@@ -2992,7 +2992,7 @@ const AddProduct = ({
                         />
                         {loadingRecord && <span className='reconcile-loading-tag'>Loading...</span>}
                         {isLocationLocked && <span className='reconcile-locked-tag'>Locked ({currentLocationRecord?.lockedReason})</span>}
-                        {isReadOnlyForUser && !isLocationLocked && <span className='reconcile-readonly-tag'>Already saved — read only</span>}
+                        {isReadOnlyForUser && !isLocationLocked && <span className='reconcile-readonly-tag'>Already saved, read only</span>}
                     </div>
                     <div className='slprwh-cover' onClick={(e) => {
                         const name = e.target.getAttribute('name')

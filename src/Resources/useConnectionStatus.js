@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 //   - a lightweight periodic /health ping, only while SSE is NOT connected
 //     (avoids extra load once the fast/cheap SSE signal already tells us we're fine)
 //
-// This does not change any existing behavior on its own — it's a read-only
+// This does not change any existing behavior on its own, it's a read-only
 // signal. Phase 5 wires isFullyConnected into actually gating Tier B postings.
 
 const HEALTH_PING_INTERVAL_MS = 20000;

@@ -1,4 +1,4 @@
-// Shared General Ledger export — used by both the Journals-tab GL table and
+// Shared General Ledger export, used by both the Journals-tab GL table and
 // the Chart-of-Accounts per-account drill-down, so both produce identical
 // reports (same columns, same "Filters Applied" summary) rather than two
 // independently-drifting exporters.
@@ -40,7 +40,7 @@ export const exportGlToPDF = async (rows, companyInfo, dateRange, filtersSummary
     const exportRows = (rows || []).map(toExportRow);
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Logo — only if the tenant actually uploaded one (never a platform default)
+    // Logo, only if the tenant actually uploaded one (never a platform default)
     const logo = await loadPdfImage(companyInfo?.logoUrl);
     const textX = 14 + (logo ? 20 : 0);
     if (logo) {

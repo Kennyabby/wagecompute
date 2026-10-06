@@ -1,5 +1,5 @@
 /* ============================================================================
-   /press — newsroom.
+   /press, newsroom.
    ========================================================================= */
 
 import { useContext, useEffect } from 'react'
@@ -83,6 +83,7 @@ const NewsroomPage = () => {
         variant="deep"
         eyebrow="Company facts"
         title="The numbers, for anyone writing about us"
+        rail
         split
         subtitle="Figures describing the product and its commercial model. We do not publish customer counts or revenue, and will say so rather than estimate."
       >
@@ -93,6 +94,7 @@ const NewsroomPage = () => {
         variant="alt"
         eyebrow="Background reading"
         title="Where the thinking is written down"
+        rail
         split
         subtitle="If you are covering the product, these explain the architecture and the commercial decisions better than a press release can."
         footer={<TextLink to="/blog" navigate={navigate}>All articles</TextLink>}
@@ -114,7 +116,8 @@ const NewsroomPage = () => {
         </Grid>
       </Section>
 
-      <Section id="media" eyebrow="Media contact" title="Talk to us directly">
+      <Section
+        rail id="media" eyebrow="Media contact" title="Talk to us directly">
         <Container width="narrow">
           <p className="ds-lede">{MEDIA_CONTACT.line}</p>
           <p className="ds-body">

@@ -22,7 +22,7 @@ const SideNav = () => {
         setAlertState, setAlert, setAlertTimeout, approvals, setCurApproval,
         isFullyConnected, isBrowserOnline, enabledModules
     } = useContext(ContextProvider)
-    // The desktop build's own server is always local (127.0.0.1) — real
+    // The desktop build's own server is always local (127.0.0.1), real
     // internet status doesn't affect whether it's reachable, so isBrowserOnline
     // (real navigator.onLine signal) is what's worth showing there, not
     // isFullyConnected (which also factors in a health-ping to the server,
@@ -40,13 +40,13 @@ const SideNav = () => {
     const [expenseApprovals, setExpenseApprovals] = useState([])
     const [inventoryApprovals, setInventoryApprovals] = useState([])
     const [allApprovals, setAllApprovals] = useState([])
-    // Green "approved" counterparts to the red pending badges above — only
+    // Green "approved" counterparts to the red pending badges above, only
     // ever visible to the person who raised the request (via handlerId,
-    // set to companyRecord.emailid at request time — App.js's
+    // set to companyRecord.emailid at request time, App.js's
     // executeApprovalAction, and preserved through the later approve/reject
     // update since that write is a partial $set) or an admin. Clears itself
     // automatically the moment the underlying Approvals doc is posted or
-    // deleted — nothing here ever needs a manual dismiss, since `approvals`
+    // deleted, nothing here ever needs a manual dismiss, since `approvals`
     // (the shared context array these all filter from) simply won't contain
     // that entry anymore once it's gone.
     const [salesApproved, setSalesApproved] = useState([])
@@ -133,7 +133,7 @@ const SideNav = () => {
     }
 
     // Tenant-level entitlement ceiling on top of the per-employee permission
-    // check above — an employee can only be granted a module the tenant
+    // check above, an employee can only be granted a module the tenant
     // itself has enabled. Only used for the top-level module nav gates below,
     // never for sub-permissions like approval badges (those aren't modules).
     const hasModuleAccess = (moduleKey) => {
@@ -187,7 +187,7 @@ const SideNav = () => {
             window.localStorage.removeItem('acc-vw')
             // Electron desktop build only: an explicit logout must fully
             // invalidate this database's ability to be silently resumed
-            // later via Settings > Databases — otherwise the cached refresh
+            // later via Settings > Databases, otherwise the cached refresh
             // token would let someone switch straight back in without a
             // password, defeating the point of logging out. No-op on web
             // (electronAPI only exists inside the desktop shell).
@@ -344,11 +344,11 @@ const SideNav = () => {
         hasModuleAccess('settings') && { name: 'settings', label: 'Settings', meta: 'Control room', icon: RiSettings2Fill }
     ].filter(Boolean)
 
-    // badge (red, pending — needs your action) and approvedBadge (green,
-    // approved — your request just cleared) are independent and can both be
+    // badge (red, pending, needs your action) and approvedBadge (green,
+    // approved, your request just cleared) are independent and can both be
     // non-zero on the same item at once (e.g. you're both an approver with
     // something pending AND a requester whose own request just got
-    // approved) — rendered as two separate small indicators, never merged
+    // approved), rendered as two separate small indicators, never merged
     // into one count.
     const renderNavItem = ({ name, label, meta, icon: Icon, badge, approvedBadge, action }) => {
         const displayBadge = Number(badge || 0)
@@ -369,7 +369,7 @@ const SideNav = () => {
                     <div className='navdivmeta'>{meta}</div>
                 </div>
                 <div className='navdivbadges'>
-                    {displayApproved > 0 && <div className='navdivcount navdivcount-approved' title='Approved — ready to post'>{displayApproved > 99 ? '99+' : displayApproved}</div>}
+                    {displayApproved > 0 && <div className='navdivcount navdivcount-approved' title='Approved, ready to post'>{displayApproved > 99 ? '99+' : displayApproved}</div>}
                     {displayBadge > 0 && <div className='navdivcount' title='Pending approval'>{displayBadge > 99 ? '99+' : displayBadge}</div>}
                 </div>
             </div>
@@ -385,7 +385,7 @@ const SideNav = () => {
             >
                 {isMenuOpen ? <MdClose /> : <BiMenu />}
                 {allApproved?.length > 0 && (
-                    <span className="mobile-menu-badge mobile-menu-badge-approved" title="Approved — ready to post">
+                    <span className="mobile-menu-badge mobile-menu-badge-approved" title="Approved, ready to post">
                         {allApproved.length}
                     </span>
                 )}
@@ -419,8 +419,8 @@ const SideNav = () => {
                         className={`connectivity-indicator ${connectivitySignal ? 'online' : 'offline'} ${isElectron ? 'is-desktop' : ''}`}
                         title={
                             isElectron
-                                ? (connectivitySignal ? 'Internet connection available' : "No internet connection — you're working locally, everything still works")
-                                : (connectivitySignal ? 'Connected to server' : 'No connection to server — some actions require a live connection')
+                                ? (connectivitySignal ? 'Internet connection available' : "No internet connection. You're working locally and everything still works")
+                                : (connectivitySignal ? 'Connected to server' : 'No connection to server. Some actions require a live connection')
                         }
                     >
                         <span className='connectivity-dot' />

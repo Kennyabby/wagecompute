@@ -37,7 +37,7 @@ const Login = () => {
   const hostname = window.location.hostname
   const isLocalRootLogin = ['localhost', '127.0.0.1'].includes(hostname)
   const isProductionRootLogin = ['epxcentral.com', 'www.epxcentral.com'].includes(hostname)
-  // Electron always loads http://127.0.0.1:5001 — that hostname is
+  // Electron always loads http://127.0.0.1:5001, that hostname is
   // indistinguishable from the web build's real root-domain login by
   // hostname alone, but the desktop app already knows exactly which tenant
   // it means (x-desktop-tenant, set by TenantSetup's picker) and should
@@ -162,10 +162,10 @@ const Login = () => {
   useEffect(() => {
     // Signup.js appends ?epsilonSeats=1 to this tenant's own /login URL when
     // the new admin opted in to Epsilon during registration (signupNewCompany
-    // never grants seats for free — this is only an intent signal). Stashed
+    // never grants seats for free, this is only an intent signal). Stashed
     // in localStorage HERE, on this subdomain's own origin, because a flag
-    // set on the central signup page's origin would never be visible here —
-    // localStorage doesn't cross subdomains. Settings.js reads and clears it.
+    // set on the central signup page's origin would never be visible here.
+    // LocalStorage doesn't cross subdomains. Settings.js reads and clears it.
     if (new URLSearchParams(location.search).get('epsilonSeats') === '1') {
       try { window.localStorage.setItem('wantsEpsilonSeats', '1') } catch (e) { /* ignore */ }
     }
@@ -275,13 +275,13 @@ const Login = () => {
         window.localStorage.setItem('idt-curr-usr', now + "")
         window.localStorage.setItem('sessn-id', idVal)
         // Electron desktop build only: tells main.js it's now safe to show
-        // an update-available prompt, if one was found and held — see
+        // an update-available prompt, if one was found and held, see
         // checkForAppUpdates in electron/main.js. No-op on the web build
         // (window.electronAPI is only ever defined inside the desktop shell).
         window.electronAPI?.notifyUserLoggedIn?.()
         // Electron desktop build only: authenticateUser only includes
         // refreshToken in the body for desktop clients (see the matching
-        // comment server-side) — hand it to the main process for encrypted,
+        // comment server-side), hand it to the main process for encrypted,
         // per-database safekeeping so Settings > Databases can silently
         // resume back into this database later without a password.
         if (resp.refreshToken && company) window.electronAPI?.saveTenantRefreshToken?.(company, resp.refreshToken)

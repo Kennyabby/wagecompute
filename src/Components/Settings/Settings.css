@@ -1,6 +1,6 @@
 :root {
   /* Values now sourced from the shared platform tokens (src/styles/tokens.css)
-     instead of being duplicated here — same names, same visual result,
+     instead of being duplicated here, same names, same visual result,
      one real source of truth. */
   --settings-primary: var(--brand-primary);
   --settings-secondary: var(--brand-secondary);
@@ -958,7 +958,7 @@ input:checked + .slider:before {
 }
 
 /* Wraps the billing tab bar + whichever panel (Plan & Billing or Epsilon) is
-   active — guarantees a vertical layout regardless of what ancestor renders
+   active, guarantees a vertical layout regardless of what ancestor renders
    it, rather than risking a row layout that squeezes stat-grids into half
    the available width (the root cause of the original cramped screenshot). */
 .settings-billing-stack {
@@ -971,8 +971,8 @@ input:checked + .slider:before {
     box-sizing: border-box;
 }
 
-/* Only one of BillingSettingsPanel / EpsilonBillingCard renders at a time —
-   they are unrelated billing concerns with their own stat grids, and
+/* Only one of BillingSettingsPanel / EpsilonBillingCard renders at a time.
+   They are unrelated billing concerns with their own stat grids, and
    stacking both meant scrolling past one to reach the other. */
 .settings-billing-tabs {
     display: flex;
@@ -1708,10 +1708,10 @@ input:checked + .slider:before {
     }
 }
 
-/* Add Approver modal — replaces window.prompt, which Electron's renderer
+/* Add Approver modal, replaces window.prompt, which Electron's renderer
    doesn't reliably support (confirmed: silently does nothing there). Own,
    self-contained class names rather than a generic shared ".modal-*" set,
-   deliberately — this codebase has more than one page where reusing an
+   deliberately, this codebase has more than one page where reusing an
    ambiguous shared modal class name bled in unrelated styling by accident. */
 .approver-modal-overlay {
     position: fixed;

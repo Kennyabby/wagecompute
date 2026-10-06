@@ -101,7 +101,7 @@ const PointOfSales = () => {
     // ?openGlSource=Orders:<orderId>&openGlDate=<postingDate>. This outer
     // component is what's actually mounted the instant /pos loads
     // (POSDashboard/"All Sessions" only mounts once viewSesions flips true),
-    // so detection has to live here — it flips viewSesions itself, then
+    // so detection has to live here, it flips viewSesions itself, then
     // hands the parsed target down as a prop for POSDashboard/
     // TransactionReports to open View Reports and auto-expand the matching
     // order card once loaded.
@@ -685,7 +685,7 @@ const PointOfSales = () => {
         const payPointList = Object.keys(payPoints)
         // An order paid under a payment method's prior name (before it was
         // renamed in Settings) still has its amount stored on that old field
-        // — summing only `order[payPoint]` under the CURRENT name would
+        //, summing only `order[payPoint]` under the CURRENT name would
         // silently drop that order's amount out of the session total the
         // moment the method is renamed, even though the payment itself never
         // changed.
@@ -693,7 +693,7 @@ const PointOfSales = () => {
         payPointList.forEach((payPoint) => {
             const method = (paymentMethods || []).find((m) => m.name === payPoint)
             const aliases = Array.isArray(method?.aliases) ? method.aliases : []
-            // Deduped — if aliases ever contains the method's own current
+            // Deduped, if aliases ever contains the method's own current
             // name (or the same alias twice), summing order[key] per key
             // below would count that same order field more than once,
             // doubling the session total for that payment method.
@@ -781,7 +781,7 @@ const PointOfSales = () => {
                     await processChange(change, company, fetchServer, server);
                 }
                 
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     // 2) Update React state
                     setAlertState('success');
@@ -904,10 +904,10 @@ const PointOfSales = () => {
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessionManagers(company, companyRecord)
-                    // Settings > Payment Methods > "Automatic Account Clearing" —
-                    // sweeps any auto-clear-enabled method's balance to its
+                    // Settings > Payment Methods > "Automatic Account Clearing".
+                    // Sweeps any auto-clear-enabled method's balance to its
                     // receiving account for the day that just closed.
-                    // Fire-and-forget, deliberately NOT awaited — this is a
+                    // Fire-and-forget, deliberately NOT awaited, this is a
                     // best-effort side effect (a failure here shouldn't undo the
                     // Session Manager stop that already succeeded above, and
                     // it's safe to also fire from Sales.js's automatic sales
@@ -975,7 +975,7 @@ const PointOfSales = () => {
                     await processChange(change, company, fetchServer, server);
                 }
                 
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     // 2) Update React state
                     setAlertState('success');
@@ -1094,7 +1094,7 @@ const PointOfSales = () => {
                 }else{
                     await processChange(change, company, fetchServer, server);
                 }
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     // 2) State updates
                     setAlertState('success');
@@ -1164,7 +1164,7 @@ const PointOfSales = () => {
             const previousSession = sessionManagers.filter((session) => session.active)
             if (previousSession.length) {
                 // Must pick the most recent ACTIVE session manager by date, not
-                // whatever position it happens to occupy in the array — if more
+                // whatever position it happens to occupy in the array, if more
                 // than one was ever left un-stopped (e.g. an admin missed a day),
                 // array order isn't guaranteed to be chronological, and picking
                 // the wrong (older) one here meant the reconciliation check below
@@ -1690,8 +1690,8 @@ const PointOfSales = () => {
 
         const isDeplete = action === 'deplete';
         const createdAt = new Date().getTime();
-        // Settings > POS Settings > "Use Order Date for Inventory Posting" —
-        // defaults on. When off, admins have explicitly chosen to post
+        // Settings > POS Settings > "Use Order Date for Inventory Posting".
+        // Defaults on. When off, admins have explicitly chosen to post
         // Shipment/Return transactions on whatever date they're processed.
         const useOrderDateForPosting = curPosSettings?.useOrderDateForPosting !== false;
         const transactions = [];
@@ -1763,12 +1763,12 @@ const PointOfSales = () => {
                 handlerId: currentOrder.handlerId,
                 deliveredBy: companyRecord.emailid,
                 // Orders never carry their own postingDate/postingStamp field
-                // — the order's `createdAt` (stamped once, when it was placed)
+                //, the order's `createdAt` (stamped once, when it was placed)
                 // is the actual date/time this sale happened. Falling back to
                 // "now" here means an order that sat pending and only got
                 // depleted/returned later (backlog, next-day cleanup, etc.)
                 // posted its Shipment/Return to the day it was PROCESSED
-                // instead of the day it was SOLD — gated by the POS Settings
+                // instead of the day it was SOLD, gated by the POS Settings
                 // toggle so an admin can opt back into the old behavior.
                 postingDate: useOrderDateForPosting
                     ? (currentOrder.postingDate || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)).toISOString().slice(0, 10) : new Date(Date.now()).toISOString().slice(0, 10)))
@@ -1802,7 +1802,7 @@ const PointOfSales = () => {
                 setAlertState('success');
                 setAlert((count || 0) + 1, 'Order(s) Inventory updated successfully');
                 setAlertTimeout(1000);
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     // 3) Update local order state with deliveryDataUpdate
                     if (action === 'deplete') {
@@ -2241,7 +2241,7 @@ const PointOfSales = () => {
                         }else{
                             await processChange(change, company, fetchServer, server);
                         }
-                        // Immediate sync attempt – failures are fine, queue remains
+                        // Immediate sync attempt, failures are fine, queue remains
                         try {
                             // 3) Kick off local inventory update + queue
                             setTimeout(() => {
@@ -2421,7 +2421,7 @@ const PointOfSales = () => {
                 }else{
                     await processChange(change, company, fetchServer, server);
                 }
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     setAlert('Delivery Reversed Successfully');
@@ -2560,7 +2560,7 @@ const PointOfSales = () => {
                 }else{
                     await processChange(change, company, fetchServer, server);
                 }
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 setAlertTimeout(20);
                 try {
                     setPlacingOrder(false);
@@ -2718,7 +2718,7 @@ const PointOfSales = () => {
                 }else{
                     await processChange(change, company, fetchServer, server);
                 }
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 setAlertTimeout(20);
                 try {
                     setPlacingOrder(false);
@@ -3051,7 +3051,7 @@ const PointOfSales = () => {
                     await processChange(change, company, fetchServer, server);
                 }
 
-                // Immediate sync attempt – failures are fine, queue remains
+                // Immediate sync attempt, failures are fine, queue remains
                 try {
                     setMakingPayment(false);
                     setShowPaymentModal(false);
@@ -4141,7 +4141,7 @@ const PointOfSales = () => {
         const day = date.getDate().toString().padStart(2, '0');
 
         // Per-terminal identifier + a strictly-incrementing per-terminal
-        // sequence (not a timestamp) — collision-proof across terminals and
+        // sequence (not a timestamp), collision-proof across terminals and
         // across orders created in the same millisecond, fully offline, with
         // no server round-trip needed to generate it.
         const terminalId = getTerminalId();
@@ -4784,7 +4784,7 @@ const OrdersModal = ({
                         await processChange(change, company, fetchServer, server);
                     }
                     
-                    // Immediate sync attempt – failures are fine, queue remains
+                    // Immediate sync attempt, failures are fine, queue remains
                     try {
                         setAlert('Order cancelled successfully');
                         setAlertState('success');
@@ -4966,7 +4966,7 @@ const POSDashboard = ({
     const reconciliationRequiredLocations = posReconciliationSetting?.locations || []
 
     // Manual re-run of Settings > Payment Methods > "Automatic Account
-    // Clearing" — lets an admin re-trigger it from the Session Manager panel
+    // Clearing", lets an admin re-trigger it from the Session Manager panel
     // if the automatic run (after Session Manager stop / automatic sales
     // posting) failed for some reason, without waiting for the next cycle.
     const [showClearingModal, setShowClearingModal] = useState(false)
@@ -4987,11 +4987,11 @@ const POSDashboard = ({
     const Navigate = useNavigate()
 
     // glDeepLink is detected up in the outer PointOfSales component (it has
-    // to be — that's what's mounted the instant /pos loads; this
+    // to be, that's what's mounted the instant /pos loads; this
     // POSDashboard component only mounts once "All Sessions" is clicked/
     // viewSesions becomes true, which is too late to catch the query
     // param on a fresh navigation). Once it arrives as a prop, just open
-    // View Reports — TransactionReports itself does the date-window/
+    // View Reports, TransactionReports itself does the date-window/
     // session/order matching via the initialOrderId/initialSessionSourceId/
     // initialDateHint props already wired up below.
     useEffect(() => {
@@ -5084,7 +5084,7 @@ const POSDashboard = ({
     // code+name, amount) without posting anything, so the admin can see
     // exactly what's about to happen before committing to it. Dated to the
     // current active Session Manager's day (matching the automatic trigger
-    // after Session Manager stop) rather than "today" — this button exists
+    // after Session Manager stop) rather than "today", this button exists
     // specifically to re-run clearing for the day that manager covers,
     // falling back to today only if no Session Manager is active at all.
     const openClearingPreview = async () => {
@@ -5103,12 +5103,12 @@ const POSDashboard = ({
         setShowClearingModal(true)
     }
 
-    // Double-posting protection isn't client-side debouncing — it's that the
+    // Double-posting protection isn't client-side debouncing, it's that the
     // server recomputes each account's ACTUAL balance fresh at post time
     // (never trusting the preview's amounts) and skips anything already at
     // zero, and every posting's clientTxnId is deterministic
     // (sourceCollection+sourceId+postingKind), so Mongo's unique index on it
-    // rejects a genuine duplicate outright — the automatic trigger firing
+    // rejects a genuine duplicate outright, the automatic trigger firing
     // moments before/after this manual confirm, or this button being clicked
     // twice, can never post the same clearing entry twice for the same
     // method/day.
@@ -5128,7 +5128,7 @@ const POSDashboard = ({
         setAlertState('success')
         setAlert(posted.length
             ? `Automatic account clearing posted (${posted.length} entr${posted.length === 1 ? 'y' : 'ies'}).`
-            : 'Nothing left to clear — already posted (by the automatic run or an earlier confirm).')
+            : 'Nothing left to clear. It was already posted, either by the automatic run or by an earlier confirm.')
         setAlertTimeout(3000)
     }
 
@@ -5241,7 +5241,7 @@ const POSDashboard = ({
                             {((currSessionManager === null || currSessionManager?.end)) ? 'Start' : 'Stop'}
                         </div>
                         {/* Only once there's an actual stopped Session Manager to clear
-                            for — clearing sweeps that manager's own day (still its
+                            for, clearing sweeps that manager's own day (still its
                             `start` date even after stopping), so there's nothing
                             meaningful to run while it's still active or before one has
                             ever been started. */}
@@ -5250,7 +5250,7 @@ const POSDashboard = ({
                             style={{ marginTop: '12px' }}
                             disabled={clearingLoading}
                             onClick={openClearingPreview}
-                            title='Manually re-run automatic account clearing (Settings > Payment Methods) — e.g. if it failed during automatic posting.'
+                            title='Manually re-run automatic account clearing (Settings > Payment Methods), for example if it failed during automatic posting.'
                         >
                             {clearingLoading ? 'Checking...' : 'Run Automatic Account Clearing'}
                         </button>}
@@ -5263,7 +5263,7 @@ const POSDashboard = ({
                                     <button className='close-btn' disabled={clearingLoading} onClick={() => setShowClearingModal(false)}>×</button>
                                 </div>
                                 {!clearingPreview.length ? (
-                                    <p>Nothing to clear — every auto-clear-enabled payment method's account is already at zero, or none are configured (Settings &gt; Payment Methods).</p>
+                                    <p>Nothing to clear. Every auto-clear-enabled payment method's account is already at zero, or none are configured (Settings &gt; Payment Methods).</p>
                                 ) : (
                                     <>
                                         <p>This will post one journal entry per payment method below, debiting its configured receiving account and crediting the payment method's own account to bring it to zero.</p>
@@ -5411,7 +5411,7 @@ const POSDashboard = ({
                                                                     if (reconciliationEnabled && reconciliationRequiredLocations.length) {
                                                                         // Checked against the specific session's own
                                                                         // business day (not whatever the currently
-                                                                        // active Session Manager happens to be) — a
+                                                                        // active Session Manager happens to be), a
                                                                         // lingering session from a prior day needs
                                                                         // that day's stock reconciled, regardless of
                                                                         // whether a newer Session Manager has since
@@ -5428,13 +5428,13 @@ const POSDashboard = ({
                                                                             reconResp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
                                                                         }
                                                                         if (reconResp?.err) {
-                                                                            // Fail open on a verification failure — the
+                                                                            // Fail open on a verification failure, the
                                                                             // reconciliation posting itself is still
                                                                             // enforced server-side; wrongly blocking a
                                                                             // session end is worse than occasionally
                                                                             // skipping this soft client-side reminder.
                                                                             setAlertState('error')
-                                                                            setAlert(reconResp?.mess || 'Could not verify inventory reconciliation status — allowing session end without blocking.')
+                                                                            setAlert(reconResp?.mess || 'Could not verify inventory reconciliation status, so the session end is allowed through without blocking.')
                                                                             setAlertTimeout(6000)
                                                                         } else {
                                                                             const recordLocations = new Set((reconResp?.record?.locations || []).map((loc) => loc.location))
